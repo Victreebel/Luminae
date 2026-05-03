@@ -187,7 +187,8 @@ function ArtifactCardView({
         <img
           src={art}
           alt={card.name}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none opacity-75"
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none opacity-75"
+          style={{ objectFit: 'cover', backgroundColor: '#1a1a2e' }}
           draggable={false}
         />
       )}

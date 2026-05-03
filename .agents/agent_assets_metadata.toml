@@ -366,3 +366,9 @@ id = "pJOUjWzNaIYhcOmLBcIl8"
 uri = "file://attached_assets/generated_images/card_back_tier3.png"
 type = "image"
 title = "Tier 3 card back — royal purple"
+
+[[generated]]
+id = "BGQZuqyiaAZSG9v4TdnSj"
+uri = "file://attached_assets/generated_images/cards_batch_all.png"
+type = "image"
+title = "All 45 card artworks, edge-to-edge, no padding"
