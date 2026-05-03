@@ -186,6 +186,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 
     const result = applyAction(stateData, player.id, action);
     if (!result.success) {
+      req.log.warn({ actionType: action.type, error: result.error }, "Action failed");
       return { ok: false as const, status: 400, error: result.error };
     }
 

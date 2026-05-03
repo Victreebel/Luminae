@@ -209,6 +209,8 @@ export const ActionRequestType = {
   reserve_card: "reserve_card",
   purchase_card: "purchase_card",
   purchase_reserved: "purchase_reserved",
+  pass: "pass",
+  surrender: "surrender",
 } as const;
 
 export type ActionRequestCrystal =

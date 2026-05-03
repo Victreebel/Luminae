@@ -606,6 +606,8 @@ components:
             - reserve_card
             - purchase_card
             - purchase_reserved
+            - pass
+            - surrender
         crystals:
           $ref: "#/components/schemas/CrystalCounts"
         crystal:

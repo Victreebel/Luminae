@@ -555,6 +555,8 @@ export const SubmitActionBody = zod.object({
     "reserve_card",
     "purchase_card",
     "purchase_reserved",
+    "pass",
+    "surrender",
   ]),
   crystals: zod
     .object({
