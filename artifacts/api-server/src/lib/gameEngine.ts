@@ -2,6 +2,8 @@
 // Original tabletop engine-building game inspired by gem-market tableau games.
 // Original names, original card designs, original rules presentation.
 
+import { getCardLore } from "./cardLore";
+
 export type CrystalColor = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl";
 export type CrystalColorWithFlux = CrystalColor | "flux";
 
@@ -42,6 +44,13 @@ export interface PlayerGameState {
   isConnected: boolean;
 }
 
+export interface ActionLogEntry {
+  playerId: string;
+  playerName: string;
+  summary: string;
+  turn: number;
+}
+
 export interface GameStateData {
   currentPlayerIndex: number;
   roundNumber: number;
@@ -57,7 +66,26 @@ export interface GameStateData {
   players: PlayerGameState[];
   winnerId: string | null;
   lastAction: Record<string, unknown> | null;
+  actionLog: ActionLogEntry[];
+  turnTimerSeconds: number | null;
+  turnDeadline: number | null;
   version: number;
+}
+
+const ACTION_LOG_MAX = 20;
+const COLOR_LABEL: Record<CrystalColor, string> = {
+  ruby: "Ruby",
+  sapphire: "Sapphire",
+  emerald: "Emerald",
+  onyx: "Onyx",
+  pearl: "Pearl",
+};
+
+function pushLog(state: GameStateData, entry: ActionLogEntry): void {
+  state.actionLog.push(entry);
+  if (state.actionLog.length > ACTION_LOG_MAX) {
+    state.actionLog.splice(0, state.actionLog.length - ACTION_LOG_MAX);
+  }
 }
 
 // ─── Card Catalog ────────────────────────────────────────────────────────────
@@ -261,6 +289,9 @@ export function initializeGame(
     players: playerStates,
     winnerId: null,
     lastAction: null,
+    actionLog: [],
+    turnTimerSeconds: null,
+    turnDeadline: null,
     version: 1,
   };
 }
@@ -272,7 +303,8 @@ export type ActionType =
   | "take_two_crystals"
   | "reserve_card"
   | "purchase_card"
-  | "purchase_reserved";
+  | "purchase_reserved"
+  | "pass";
 
 export interface ActionPayload {
   type: ActionType;
@@ -341,6 +373,12 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
     if (qualifies) {
       player.luminaries.push(lumId);
       player.prestige += lum.prestigePoints;
+      pushLog(state, {
+        playerId: player.playerId,
+        playerName: player.playerName,
+        summary: `Drew the favor of ${lum.name} (+${lum.prestigePoints})`,
+        turn: state.roundNumber,
+      });
     }
   }
 }
@@ -470,30 +508,32 @@ export function applyAction(
     case "reserve_card": {
       if (player.reservedCardIds.length >= 3)
         return { success: false, error: "Cannot reserve more than 3 cards" };
-      if (!action.cardId)
-        return { success: false, error: "cardId required" };
+      if (!action.cardId && !action.tier)
+        return { success: false, error: "cardId or tier required" };
+
+      // Blind reserve from deck (no cardId; tier specified)
+      if (!action.cardId) {
+        const tier = action.tier as 1 | 2 | 3;
+        if (![1, 2, 3].includes(tier))
+          return { success: false, error: "Invalid tier" };
+        const deck = getDeckForTier(state, tier);
+        if (deck.length === 0)
+          return { success: false, error: "Deck is empty" };
+        const blindId = deck.shift()!;
+        player.reservedCardIds.push(blindId);
+        if (state.crystalBank.flux > 0) {
+          player.crystals.flux++;
+          state.crystalBank.flux--;
+        }
+        break;
+      }
 
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Card not found" };
 
-      // Find card in market
       const market = getMarketForTier(state, card.tier as 1 | 2 | 3);
-      if (!market.includes(action.cardId)) {
-        // Check if reserving blind from deck
-        if (action.tier) {
-          const deck = getDeckForTier(state, action.tier as 1 | 2 | 3);
-          if (deck.length === 0)
-            return { success: false, error: "Deck is empty" };
-          const blindId = deck.shift()!;
-          player.reservedCardIds.push(blindId);
-          if (state.crystalBank.flux > 0) {
-            player.crystals.flux++;
-            state.crystalBank.flux--;
-          }
-          break;
-        }
+      if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
-      }
 
       // Reserve from market
       player.reservedCardIds.push(action.cardId);
@@ -543,15 +583,72 @@ export function applyAction(
       break;
     }
 
+    case "pass": {
+      // No effect; just advances turn. Used for timer expiry.
+      break;
+    }
+
     default:
       return { success: false, error: "Unknown action type" };
   }
 
   const { type: _t, ...restAction } = action;
   state.lastAction = { type: action.type, playerId, ...restAction };
+  pushLog(state, {
+    playerId,
+    playerName: player.playerName,
+    summary: describeAction(action, player),
+    turn: state.roundNumber,
+  });
   state.version++;
   advanceTurn(state);
   return { success: true };
+}
+
+// ─── Human-readable action summary ────────────────────────────────────────────
+
+function describeAction(action: ActionPayload, player: PlayerGameState): string {
+  switch (action.type) {
+    case "take_three_crystals": {
+      const sel = action.crystals ?? {};
+      const parts = CRYSTAL_COLORS
+        .filter((c) => (sel[c] ?? 0) > 0)
+        .map((c) => `${sel[c]} ${COLOR_LABEL[c]}`);
+      return parts.length === 0
+        ? "Took no crystals"
+        : `Took ${parts.join(", ")}`;
+    }
+    case "take_two_crystals":
+      return action.crystal
+        ? `Took 2 ${COLOR_LABEL[action.crystal]}`
+        : "Took 2 crystals";
+    case "reserve_card": {
+      if (action.cardId) {
+        const lore = getCardLore(action.cardId);
+        return `Reserved "${lore.name}"`;
+      }
+      return action.tier
+        ? `Reserved a Tier ${action.tier} card from the deck`
+        : "Reserved a card";
+    }
+    case "purchase_card":
+    case "purchase_reserved": {
+      if (action.cardId) {
+        const card = CARD_MAP.get(action.cardId);
+        const lore = getCardLore(action.cardId);
+        const verb = action.type === "purchase_reserved" ? "Built reserved" : "Forged";
+        const pts = card?.prestigePoints ?? 0;
+        return `${verb} "${lore.name}"${pts ? ` (+${pts})` : ""}`;
+      }
+      return "Forged a card";
+    }
+    case "pass":
+      return "Time expired — turn passed";
+    default:
+      return "Took an action";
+  }
+  // Reference player to satisfy unused-arg lint when added later
+  void player;
 }
 
 // ─── Market helpers ───────────────────────────────────────────────────────────
@@ -570,6 +667,11 @@ function getDeckForTier(state: GameStateData, tier: 1 | 2 | 3): string[] {
 
 // ─── State to API format ──────────────────────────────────────────────────────
 
+function withLore(card: ArtifactCard) {
+  const lore = getCardLore(card.id);
+  return { ...card, name: lore.name, flavor: lore.flavor };
+}
+
 export function formatGameState(
   roomId: string,
   status: string,
@@ -578,13 +680,16 @@ export function formatGameState(
 ) {
   const marketTier1 = stateData.marketTier1
     .map((id) => CARD_MAP.get(id))
-    .filter(Boolean) as ArtifactCard[];
+    .filter(Boolean)
+    .map((c) => withLore(c as ArtifactCard));
   const marketTier2 = stateData.marketTier2
     .map((id) => CARD_MAP.get(id))
-    .filter(Boolean) as ArtifactCard[];
+    .filter(Boolean)
+    .map((c) => withLore(c as ArtifactCard));
   const marketTier3 = stateData.marketTier3
     .map((id) => CARD_MAP.get(id))
-    .filter(Boolean) as ArtifactCard[];
+    .filter(Boolean)
+    .map((c) => withLore(c as ArtifactCard));
   const luminaries = stateData.activeLuminaries
     .map((id) => LUMINARY_MAP.get(id))
     .filter(Boolean) as LuminaryDef[];
@@ -597,7 +702,8 @@ export function formatGameState(
     prestige: p.prestige,
     reservedCards: p.reservedCardIds
       .map((id) => CARD_MAP.get(id))
-      .filter(Boolean) as ArtifactCard[],
+      .filter(Boolean)
+      .map((c) => withLore(c as ArtifactCard)),
     purchasedCardIds: p.purchasedCardIds,
     isConnected: connectedPlayerIds.has(p.playerId),
   }));
@@ -620,6 +726,9 @@ export function formatGameState(
     players,
     winnerId: stateData.winnerId,
     lastAction: stateData.lastAction,
+    actionLog: stateData.actionLog,
+    turnTimerSeconds: stateData.turnTimerSeconds,
+    turnDeadline: stateData.turnDeadline,
     version: stateData.version,
   };
 }

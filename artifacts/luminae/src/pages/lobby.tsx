@@ -30,6 +30,7 @@ import {
   Bot,
   Plus,
   ArrowLeft,
+  Timer,
 } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
@@ -261,7 +262,11 @@ export default function Lobby() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const connectedPlayers = players.filter((p) => p.isConnected || p.isAi);
+  // Treat the current viewer as "connected" even if their WS is mid-reconnect
+  // — they're clearly looking at this lobby right now.
+  const connectedPlayers = players.filter(
+    (p) => p.isConnected || p.isAi || p.id === session?.playerId,
+  );
   // Derive host status from the player list (more reliable than session flag,
   // which may be stale from older sessions before isHost was tracked)
   const me = players.find((p) => p.id === session?.playerId);
@@ -337,6 +342,14 @@ export default function Lobby() {
             {copied && (
               <p className="text-sm text-green-400 mt-1">Invite link copied!</p>
             )}
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Timer className="h-3.5 w-3.5" />
+              <span>
+                {roomInfo?.turnTimerSeconds
+                  ? `${roomInfo.turnTimerSeconds}s per turn`
+                  : "No turn timer"}
+              </span>
+            </div>
           </CardHeader>
         </Card>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -21,7 +21,7 @@ import { gameAudio } from '@/lib/audio';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Volume2, VolumeX, AlertCircle, Sparkles } from 'lucide-react';
+import { Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText, Bookmark, ShoppingCart } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier2Bg from '@assets/generated_images/card_tier2.png';
@@ -32,6 +32,18 @@ import luminaryArchivist from '@assets/generated_images/luminary_archivist.png';
 import luminaryCultivator from '@assets/generated_images/luminary_cultivator.png';
 import luminaryVoidcaller from '@assets/generated_images/luminary_voidcaller.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
+import cardBackImg from '@assets/generated_images/card_back.png';
+
+// Vite glob: bundle every per-card art image and key by id (filename w/o ext).
+const CARD_ART_MODULES = import.meta.glob(
+  '@assets/generated_images/cards/*.png',
+  { eager: true, query: '?url', import: 'default' },
+) as Record<string, string>;
+const CARD_ART: Record<string, string> = {};
+for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
+  const id = path.split('/').pop()!.replace('.png', '');
+  CARD_ART[id] = url;
+}
 
 const CRYSTALS: GemKey[] = GEM_KEYS;
 
@@ -132,83 +144,156 @@ function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
 
 function ArtifactCardView({
   card,
-  onClick,
-  selectable,
+  onBuy,
+  onReserve,
+  canBuy,
+  canReserve,
   reserved,
   tier,
 }: {
   card: ArtifactCard;
-  onClick?: () => void;
-  selectable?: boolean;
+  onBuy?: () => void;
+  onReserve?: () => void;
+  canBuy?: boolean;
+  canReserve?: boolean;
   reserved?: boolean;
   tier?: number;
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
-  const backdrop = TIER_BACKDROPS[tier ?? 1] ?? cardTier1Bg;
+  const backdrop = TIER_BACKDROPS[tier ?? card.tier ?? 1] ?? cardTier1Bg;
+  const art = CARD_ART[card.id];
+  const showActions = !!(onBuy || onReserve);
+
   return (
     <motion.div
-      whileHover={selectable ? { y: -5, rotateY: 5, rotateX: 5 } : {}}
-      onClick={selectable ? onClick : undefined}
+      whileHover={showActions ? { y: -3 } : {}}
       className={`
-        relative w-32 h-44 rounded-xl overflow-hidden
-        border-2 shadow-xl transition-colors
-        ${selectable ? 'cursor-pointer hover:border-primary/50' : 'border-border/60'}
-        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)]' : ''}
+        group relative w-32 h-44 rounded-xl overflow-hidden border-2 shadow-xl
+        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)]' : 'border-border/60'}
       `}
       style={{
         transformStyle: 'preserve-3d',
-        perspective: '1000px',
         borderColor: reserved ? GEM_META.flux.hex : undefined,
       }}
+      title={card.flavor || card.name}
     >
+      {/* Tier backdrop */}
+      <img src={backdrop} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
+      {/* Card art (top half) */}
+      {art && (
+        <img
+          src={art}
+          alt={card.name}
+          className="absolute inset-x-0 top-0 h-[58%] w-full object-cover pointer-events-none select-none opacity-95"
+          draggable={false}
+        />
+      )}
+      {/* Dark overlay so text is readable */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/90 pointer-events-none" />
+
+      <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+        <div className="flex justify-between items-start">
+          <span className="text-xl font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+            {card.prestigePoints > 0 ? card.prestigePoints : ''}
+          </span>
+          <div className="w-6 h-6 rounded-full shadow-md ring-2 ring-black/60 overflow-hidden" title={bonusMeta?.name}>
+            <img src={bonusMeta?.image} alt="" className="w-full h-full object-contain" draggable={false} />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-[10px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+            {card.name}
+          </div>
+          <div className="flex flex-wrap gap-0.5 justify-end">
+            {CRYSTALS.map((c) => {
+              const cost = card.cost[c as keyof CrystalCounts];
+              if (cost > 0) {
+                return (
+                  <div key={c} className="flex items-center gap-0.5 bg-black/55 backdrop-blur-sm rounded px-1 py-0.5">
+                    <span className="text-xs font-bold text-white">{cost}</span>
+                    <MiniGem color={c} size={11} />
+                  </div>
+                );
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Action overlay (Buy / Reserve) */}
+      {showActions && (
+        <div className="absolute inset-x-0 bottom-0 z-20 flex gap-1 p-1.5 bg-gradient-to-t from-black/95 via-black/80 to-transparent opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          {onBuy && (
+            <button
+              type="button"
+              disabled={!canBuy}
+              onClick={(e) => { e.stopPropagation(); onBuy?.(); }}
+              className="flex-1 text-[10px] font-bold uppercase tracking-wide rounded-md py-1.5 bg-primary text-primary-foreground hover:brightness-110 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+              title={canBuy ? 'Forge this artifact' : 'Cannot afford yet'}
+            >
+              <ShoppingCart className="h-3 w-3" />
+              Buy
+            </button>
+          )}
+          {onReserve && (
+            <button
+              type="button"
+              disabled={!canReserve}
+              onClick={(e) => { e.stopPropagation(); onReserve?.(); }}
+              className="flex-1 text-[10px] font-bold uppercase tracking-wide rounded-md py-1.5 bg-secondary text-secondary-foreground hover:brightness-125 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+              title={canReserve ? 'Reserve for later' : 'Reserve pile is full (3 max)'}
+            >
+              <Bookmark className="h-3 w-3" />
+              Hold
+            </button>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function TurnCountdown({ deadline, active }: { deadline: number | null; active: boolean }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!deadline) return;
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [deadline]);
+  if (!deadline) return null;
+  const remainingMs = Math.max(0, deadline - now);
+  const seconds = Math.ceil(remainingMs / 1000);
+  const urgent = remainingMs < 10_000;
+  const color = active ? (urgent ? 'text-red-400' : 'text-primary') : 'text-muted-foreground';
+  return (
+    <div
+      className={`flex items-center gap-1.5 font-mono tabular-nums text-sm ${color} ${urgent && active ? 'animate-pulse' : ''}`}
+      title="Turn time remaining"
+    >
+      <Clock className="h-4 w-4" />
+      <span>{seconds}s</span>
+    </div>
+  );
+}
+
+function CardBack({ size = 'md', count }: { size?: 'sm' | 'md'; count?: number }) {
+  const sz = size === 'sm' ? 'w-10 h-14' : 'w-32 h-44';
+  return (
+    <div className={`${sz} relative rounded-xl overflow-hidden border-2 border-border/60 shadow-md bg-secondary`}>
       <img
-        src={backdrop}
-        alt=""
+        src={cardBackImg}
+        alt="Card back"
         className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
         draggable={false}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/85 pointer-events-none" />
-
-      <div className="relative z-10 h-full p-2.5 flex flex-col justify-between">
-        <div className="flex justify-between items-start">
-          <span
-            className="text-2xl font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]"
-          >
-            {card.prestigePoints > 0 ? card.prestigePoints : ''}
-          </span>
-          <div
-            className="w-7 h-7 rounded-full shadow-md ring-2 ring-black/60 overflow-hidden"
-            title={bonusMeta?.name}
-          >
-            <img
-              src={bonusMeta?.image}
-              alt=""
-              className="w-full h-full object-contain"
-              draggable={false}
-            />
-          </div>
-        </div>
-        <div className="space-y-1">
-          {CRYSTALS.map((c) => {
-            const cost = card.cost[c as keyof CrystalCounts];
-            if (cost > 0) {
-              return (
-                <div
-                  key={c}
-                  className="flex items-center justify-end gap-1.5 bg-black/40 backdrop-blur-sm rounded px-1 py-0.5 w-fit ml-auto"
-                >
-                  <span className="text-sm font-bold text-white drop-shadow-md">
-                    {cost}
-                  </span>
-                  <MiniGem color={c} size={14} />
-                </div>
-              );
-            }
-            return null;
-          })}
-        </div>
-      </div>
-    </motion.div>
+      {count !== undefined && (
+        <span className="absolute bottom-1 right-1.5 text-xs font-mono font-bold text-white bg-black/70 rounded px-1.5 py-0.5">
+          {count}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -315,30 +400,59 @@ export default function GameBoard() {
   const isMyTurn = state.status === 'playing' && state.players[state.currentPlayerIndex].playerId === session.playerId;
   const me = state.players.find(p => p.playerId === session.playerId);
 
+  // Tap-to-queue: clicking a bank gem auto-enters a queueing mode and toggles
+  // selection. Mode auto-flips to take2 if the same gem is tapped twice and the
+  // bank had ≥4 of that color.
   const handleCrystalClick = (color: keyof CrystalCounts) => {
-    if (!isMyTurn || color === 'flux') return;
+    if (!isMyTurn || color === 'flux' || !state) return;
+    const inBank = state.crystalBank[color] ?? 0;
 
-    if (actionMode === 'take3') {
-      const currentCount = selectedCrystals[color] || 0;
-      if (currentCount > 0) {
-        const next = { ...selectedCrystals };
-        delete next[color];
-        setSelectedCrystals(next);
-      } else {
-        if (Object.keys(selectedCrystals).length < 3 && state.crystalBank[color] > 0) {
-          setSelectedCrystals({ ...selectedCrystals, [color]: 1 });
-          gameAudio.playCrystalPicked();
-        }
-      }
-    } else if (actionMode === 'take2') {
-      if (Object.keys(selectedCrystals).length === 1 && Object.keys(selectedCrystals)[0] !== color) return;
+    // Take-2 mode: only one color allowed at count 2.
+    if (actionMode === 'take2') {
       if (selectedCrystals[color] === 2) {
         setSelectedCrystals({});
-      } else if (state.crystalBank[color] >= 4 || selectedCrystals[color] === 1) {
+        setActionMode('none');
+      } else if (inBank >= 4) {
         setSelectedCrystals({ [color]: 2 });
         gameAudio.playCrystalPicked();
       }
+      return;
     }
+
+    // Take-3 / queueing mode (also entered from 'none' on first tap).
+    const current = selectedCrystals[color] ?? 0;
+    if (current > 0) {
+      // Toggle off
+      const next = { ...selectedCrystals };
+      delete next[color];
+      const empty = Object.keys(next).length === 0;
+      setSelectedCrystals(next);
+      if (empty) setActionMode('none');
+      return;
+    }
+
+    // Trying to add this color
+    const distinctCount = Object.keys(selectedCrystals).length;
+
+    // Special case: tap same color twice in a row (count=1, only color) → take2
+    if (distinctCount === 1 && (selectedCrystals[color] ?? 0) === 0 && inBank >= 4) {
+      // not the path because we already returned if current>0; ignore
+    }
+
+    if (inBank <= 0) return;
+    if (distinctCount >= 3) return;
+    setSelectedCrystals({ ...selectedCrystals, [color]: 1 });
+    setActionMode(actionMode === 'none' ? 'take3' : actionMode);
+    gameAudio.playCrystalPicked();
+  };
+
+  // Promote queueing → take2 by clicking same color twice (UX shortcut)
+  const promoteToTake2 = (color: GemKey) => {
+    if (!state) return;
+    if ((state.crystalBank[color] ?? 0) < 4) return;
+    setSelectedCrystals({ [color]: 2 });
+    setActionMode('take2');
+    gameAudio.playCrystalPicked();
   };
 
   const executeAction = async (payload: any) => {
@@ -365,21 +479,76 @@ export default function GameBoard() {
     }
   };
 
+  // Determine whether the queued tokens form a legal action.
+  // NOTE: not a hook — the early `return` for !state above means hook order
+  // would be inconsistent across renders if we used useMemo here.
+  const queueLegality: { ok: boolean; reason: string; actionType: null | 'take3' | 'take2' } = (() => {
+    if (!me) return { ok: false, reason: '', actionType: null };
+    const total = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
+    if (total === 0) return { ok: false, reason: '', actionType: null };
+    const distinct = Object.keys(selectedCrystals);
+    const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+    if (handTotal + total > 10) {
+      return { ok: false, reason: `Hand limit is 10 (you'd have ${handTotal + total})`, actionType: null };
+    }
+    if (distinct.length === 1 && (selectedCrystals[distinct[0] as keyof CrystalCounts] ?? 0) === 2) {
+      const c = distinct[0] as keyof CrystalCounts;
+      if ((state.crystalBank[c] ?? 0) >= 4) {
+        return { ok: true, reason: `Take 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
+      }
+      return { ok: false, reason: `Need 4+ in bank to take 2 of one color`, actionType: null };
+    }
+    if (distinct.every(c => (selectedCrystals[c as keyof CrystalCounts] ?? 0) === 1) && distinct.length <= 3) {
+      return { ok: true, reason: distinct.length === 3 ? 'Take 3 different' : `Take ${distinct.length}`, actionType: 'take3' };
+    }
+    return { ok: false, reason: 'Invalid combination', actionType: null };
+  })();
+
   const confirmCrystals = () => {
-    if (actionMode === 'take3' && Object.keys(selectedCrystals).length > 0) {
+    if (!queueLegality.ok) return;
+    if (queueLegality.actionType === 'take3') {
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
-    } else if (actionMode === 'take2' && Object.values(selectedCrystals)[0] === 2) {
-      executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+    } else if (queueLegality.actionType === 'take2') {
+      const color = Object.keys(selectedCrystals)[0];
+      executeAction({ type: 'take_two_crystals', crystal: color });
     }
   };
 
-  const handleCardClick = (card: ArtifactCard, reserved = false) => {
-    if (!isMyTurn) return;
-    if (reserved) {
-      executeAction({ type: 'purchase_reserved', cardId: card.id });
-    } else {
-      executeAction({ type: 'purchase_card', cardId: card.id });
+  // Affordability + reservation checks
+  const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
+    const out: Record<string, number> = {};
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      const ck = c as keyof CrystalCounts;
+      out[c] = Math.max(0, (card.cost[ck] ?? 0) - (p.bonuses[ck] ?? 0));
     }
+    return out;
+  };
+  const canAffordCard = (card: ArtifactCard, p: GamePlayerState): boolean => {
+    const cost = effectiveCost(card, p);
+    let fluxNeeded = 0;
+    for (const [c, need] of Object.entries(cost)) {
+      const have = p.crystals[c as keyof CrystalCounts] ?? 0;
+      if (have < need) fluxNeeded += need - have;
+    }
+    return fluxNeeded <= (p.crystals.flux ?? 0);
+  };
+  const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
+
+  const handleBuy = (card: ArtifactCard, fromReserve = false) => {
+    if (!isMyTurn) return;
+    executeAction({
+      type: fromReserve ? 'purchase_reserved' : 'purchase_card',
+      cardId: card.id,
+    });
+  };
+  const handleReserveCard = (card: ArtifactCard) => {
+    if (!isMyTurn) return;
+    executeAction({ type: 'reserve_card', cardId: card.id });
+  };
+  const handleReserveDeck = (tier: number) => {
+    if (!isMyTurn) return;
+    executeAction({ type: 'reserve_card', tier });
   };
 
   return (
@@ -398,6 +567,7 @@ export default function GameBoard() {
       <header className="p-4 flex justify-between items-center bg-card/50 backdrop-blur border-b border-border z-10">
         <h1 className="text-2xl font-serif font-bold text-primary gem-glow">Luminae</h1>
         <div className="flex items-center gap-4">
+          <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
           <span className="text-sm text-muted-foreground font-mono">Round {state.roundNumber}</span>
           <Button variant="ghost" size="icon" onClick={toggleMute} className="text-muted-foreground hover:text-foreground">
             {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -436,14 +606,42 @@ export default function GameBoard() {
                       ) : null,
                     )}
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
                     <span>{Object.values(p.crystals).reduce((a,b)=>a+b,0)} gems</span>
-                    <span>{p.reservedCards.length} rsv</span>
+                    <span>{p.reservedCards.length} reserved</span>
                   </div>
+                  {p.reservedCards.length > 0 && (
+                    <div className="flex gap-1 pt-1">
+                      {p.reservedCards.map((_, idx) => (
+                        <CardBack key={idx} size="sm" />
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
+
+          {/* Action Log */}
+          <Card className="border-border bg-card/80 backdrop-blur">
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                <ScrollText className="h-3.5 w-3.5" /> Recent Actions
+              </div>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 text-xs">
+                {(state.actionLog ?? []).length === 0 ? (
+                  <p className="text-muted-foreground italic">No actions yet.</p>
+                ) : (
+                  [...(state.actionLog ?? [])].reverse().slice(0, 12).map((entry, i) => (
+                    <div key={i} className="border-l-2 border-primary/30 pl-2">
+                      <span className="font-semibold text-primary">{entry.playerName}</span>
+                      <span className="text-foreground/80"> · {entry.summary}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Center Col: Market & Bank */}
@@ -463,22 +661,42 @@ export default function GameBoard() {
               { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2 },
               { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1 },
             ].map(row => (
-              <div key={row.tier} className="flex gap-4">
-                <div 
-                  className="w-32 h-44 rounded-xl bg-secondary border-2 border-border flex items-center justify-center cursor-pointer hover:border-primary/50 relative overflow-hidden"
-                  onClick={() => isMyTurn && executeAction({ type: 'reserve_card', tier: row.tier })}
+              <div key={row.tier} className="flex gap-4 items-start">
+                {/* Deck pile (face-down) — click to reserve from deck */}
+                <button
+                  type="button"
+                  onClick={() => row.deck > 0 && me && canReserveMore(me) && handleReserveDeck(row.tier)}
+                  disabled={!isMyTurn || row.deck === 0 || !me || !canReserveMore(me)}
+                  title={
+                    row.deck === 0
+                      ? 'Deck empty'
+                      : !isMyTurn
+                      ? 'Not your turn'
+                      : !me || !canReserveMore(me)
+                      ? 'Reserve pile full (3 max)'
+                      : `Reserve a hidden Tier ${row.tier} card`
+                  }
+                  className="relative group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,white_0%,transparent_100%)]" />
-                  <span className="font-bold text-muted-foreground">T{row.tier}</span>
-                  <span className="absolute bottom-2 right-2 text-xs text-muted-foreground font-mono">{row.deck}</span>
-                </div>
+                  <CardBack count={row.deck} />
+                  <span className="absolute top-1 left-1.5 text-[10px] font-bold text-white bg-black/70 rounded px-1.5 py-0.5">
+                    T{row.tier}
+                  </span>
+                  {isMyTurn && row.deck > 0 && me && canReserveMore(me) && (
+                    <span className="absolute inset-x-0 bottom-1 mx-1.5 text-[10px] font-bold uppercase tracking-wide bg-primary/90 text-primary-foreground rounded py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Hold
+                    </span>
+                  )}
+                </button>
                 {row.cards.map((c, i) => c ? (
                   <ArtifactCardView
                     key={c.id}
                     card={c}
                     tier={row.tier}
-                    selectable={isMyTurn && actionMode === 'none'}
-                    onClick={() => handleCardClick(c)}
+                    onBuy={() => handleBuy(c)}
+                    onReserve={() => handleReserveCard(c)}
+                    canBuy={isMyTurn && !!me && canAffordCard(c, me)}
+                    canReserve={isMyTurn && !!me && canReserveMore(me)}
                   />
                 ) : (
                   <div key={`empty-${i}`} className="w-32 h-44 rounded-xl border-2 border-dashed border-border/30 opacity-50" />
@@ -488,29 +706,57 @@ export default function GameBoard() {
           </div>
 
           {/* Bank */}
-          <div className="flex justify-center gap-4 p-6 rounded-2xl bg-secondary/30 border border-border/50 backdrop-blur">
-            {CRYSTALS.map((c) => (
-              <div key={c} className="flex flex-col items-center gap-1.5">
-                <CrystalIcon
-                  color={c}
-                  size={52}
-                  count={state.crystalBank[c as keyof CrystalCounts]}
-                  selectable={
-                    isMyTurn &&
-                    (actionMode === 'take3' || actionMode === 'take2') &&
-                    c !== 'flux'
-                  }
-                  selected={!!selectedCrystals[c as keyof CrystalCounts]}
-                  onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-                />
-                <span
-                  className="text-[10px] uppercase tracking-wider font-semibold"
-                  style={{ color: GEM_META[c].glowHex }}
-                >
-                  {GEM_META[c].shortName}
-                </span>
-              </div>
-            ))}
+          <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-secondary/30 border border-border/50 backdrop-blur">
+            <div className="flex items-center gap-4">
+              {CRYSTALS.map((c) => {
+                const count = state.crystalBank[c as keyof CrystalCounts] ?? 0;
+                const queued = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+                const selectable = isMyTurn && c !== 'flux';
+                return (
+                  <div key={c} className="flex flex-col items-center gap-1.5">
+                    <CrystalIcon
+                      color={c}
+                      size={56}
+                      selectable={selectable}
+                      selected={queued > 0}
+                      onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
+                    />
+                    {/* Big readable count pill */}
+                    <div
+                      className="min-w-[44px] px-2 py-0.5 rounded-full bg-black/70 border text-center"
+                      style={{ borderColor: `${GEM_META[c].glowHex}55` }}
+                    >
+                      <span className="text-base font-bold font-mono text-white">{count}</span>
+                      {queued > 0 && (
+                        <span className="ml-1 text-xs font-semibold text-primary">+{queued}</span>
+                      )}
+                    </div>
+                    <span
+                      className="text-[10px] uppercase tracking-wider font-semibold"
+                      style={{ color: GEM_META[c].glowHex }}
+                    >
+                      {GEM_META[c].shortName}
+                    </span>
+                    {/* Take-2 shortcut button (only when this color has ≥4 in bank and queue empty/single) */}
+                    {selectable && count >= 4 && queued !== 2 && (
+                      <button
+                        type="button"
+                        onClick={() => promoteToTake2(c)}
+                        className="text-[9px] uppercase tracking-wide text-muted-foreground hover:text-primary"
+                        title="Take 2 of this color"
+                      >
+                        ×2
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {isMyTurn && (
+              <p className="text-xs text-muted-foreground italic">
+                Tap a gem to queue it · same color twice or "×2" for double
+              </p>
+            )}
           </div>
 
         </div>
@@ -562,28 +808,39 @@ export default function GameBoard() {
               {isMyTurn && (
                 <div className="pt-4 border-t border-border space-y-3">
                   <h3 className="text-sm font-bold text-primary animate-pulse">Your Turn</h3>
-                  
+
                   {actionMode === 'none' ? (
-                    <>
-                      <Button variant="secondary" className="w-full justify-start" onClick={() => setActionMode('take3')}>
-                        Take 3 Different Resources
-                      </Button>
-                      <Button variant="secondary" className="w-full justify-start" onClick={() => setActionMode('take2')}>
-                        Take 2 Same Resources
-                      </Button>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
-                        <AlertCircle className="h-3 w-3" /> Click an artifact in the market to purchase or reserve
-                      </p>
-                    </>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      Tap gems below to queue them, or hover an artifact to Buy / Hold.
+                    </p>
                   ) : (
-                    <div className="space-y-3 bg-secondary/50 p-3 rounded-lg border border-primary/30">
-                      <p className="text-sm">Select resources from the bank...</p>
+                    <div className="space-y-2 bg-secondary/50 p-3 rounded-lg border border-primary/30">
+                      <p className="text-xs text-muted-foreground">Queued tokens:</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        {Object.entries(selectedCrystals).map(([c, n]) => (
+                          <div key={c} className="flex items-center gap-1 bg-black/40 rounded px-1.5 py-0.5">
+                            <MiniGem color={c as GemKey} size={14} />
+                            <span className="text-xs font-bold text-white">×{n}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className={`text-xs ${queueLegality.ok ? 'text-green-400' : 'text-amber-400'}`}>
+                        {queueLegality.reason || 'Pick gems to begin'}
+                      </p>
                       <div className="flex gap-2">
-                        <Button className="flex-1 bg-primary text-primary-foreground" onClick={confirmCrystals} disabled={Object.keys(selectedCrystals).length === 0}>
+                        <Button
+                          className="flex-1 bg-primary text-primary-foreground"
+                          onClick={confirmCrystals}
+                          disabled={!queueLegality.ok}
+                        >
                           Confirm
                         </Button>
-                        <Button variant="outline" onClick={() => { setActionMode('none'); setSelectedCrystals({}); }}>
-                          Cancel
+                        <Button
+                          variant="outline"
+                          onClick={() => { setActionMode('none'); setSelectedCrystals({}); }}
+                        >
+                          Clear
                         </Button>
                       </div>
                     </div>
@@ -593,16 +850,18 @@ export default function GameBoard() {
 
               {me?.reservedCards && me.reservedCards.length > 0 && (
                 <div className="pt-4 border-t border-border">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">Reserved</h3>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+                    Reserved ({me.reservedCards.length}/3)
+                  </h3>
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     {me.reservedCards.map((c) => (
-                      <div key={c.id} className="scale-75 origin-top-left -mr-8 last:mr-0">
+                      <div key={c.id} className="shrink-0">
                         <ArtifactCardView
                           card={c}
                           tier={c.tier}
                           reserved
-                          selectable={isMyTurn && actionMode === 'none'}
-                          onClick={() => handleCardClick(c, true)}
+                          onBuy={() => handleBuy(c, true)}
+                          canBuy={isMyTurn && canAffordCard(c, me)}
                         />
                       </div>
                     ))}

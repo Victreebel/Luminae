@@ -288,6 +288,9 @@ components:
           type: integer
           minimum: 2
           maximum: 4
+        turnTimerSeconds:
+          type: ["integer", "null"]
+          description: Optional per-turn time limit in seconds (null = no timer)
       required:
         - hostName
         - maxPlayers
@@ -366,6 +369,8 @@ components:
           enum: [lobby, playing, finished]
         maxPlayers:
           type: integer
+        turnTimerSeconds:
+          type: ["integer", "null"]
         players:
           type: array
           items:
@@ -428,12 +433,35 @@ components:
           type: integer
         cost:
           $ref: "#/components/schemas/CrystalCounts"
+        name:
+          type: string
+        flavor:
+          type: string
       required:
         - id
         - tier
         - bonusColor
         - prestigePoints
         - cost
+        - name
+        - flavor
+
+    ActionLogEntry:
+      type: object
+      properties:
+        playerId:
+          type: string
+        playerName:
+          type: string
+        summary:
+          type: string
+        turn:
+          type: integer
+      required:
+        - playerId
+        - playerName
+        - summary
+        - turn
 
     Luminary:
       type: object
@@ -537,6 +565,15 @@ components:
         lastAction:
           type: ["object", "null"]
           additionalProperties: true
+        actionLog:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionLogEntry"
+        turnTimerSeconds:
+          type: ["integer", "null"]
+        turnDeadline:
+          type: ["integer", "null"]
+          description: Unix timestamp (ms) when the current turn auto-passes; null if no timer
         version:
           type: integer
       required:
@@ -553,6 +590,7 @@ components:
         - players
         - winnerId
         - lastAction
+        - actionLog
         - version
 
     ActionRequest:

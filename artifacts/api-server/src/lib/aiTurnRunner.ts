@@ -9,6 +9,7 @@ import { chooseAiAction, type AiDifficulty } from "./aiPlayer";
 import { broadcastToRoom, getConnectedPlayerIds } from "./websocket";
 import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
+import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 
 const AI_TURN_DELAY_MS = 1500;
 
@@ -88,6 +89,9 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           }
         }
 
+        // Refresh per-turn deadline
+        updateTurnDeadline(state);
+
         const isFinished = (state.phase as string) === "finished";
         if (isFinished) {
           await db
@@ -138,6 +142,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           connectedIds,
         );
         broadcastToRoom(roomId, { type: "state_update", state: formatted });
+        armTurnTimer(roomId, state);
 
         if (isFinished) return { kind: "stop" as const };
         return { kind: "continue" as const };

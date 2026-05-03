@@ -12,6 +12,7 @@ import {
 import { broadcastToRoom, getConnectedPlayerIds } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
+import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 
 const router: IRouter = Router();
 
@@ -86,6 +87,9 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
       })),
       winnerId: null,
       lastAction: null,
+      actionLog: [],
+      turnTimerSeconds: room.turnTimerSeconds ?? null,
+      turnDeadline: null,
       version: 0,
     });
     return;
@@ -185,6 +189,9 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       return { ok: false as const, status: 400, error: result.error };
     }
 
+    // Refresh per-turn deadline based on configured timer
+    updateTurnDeadline(stateData);
+
     if (stateData.phase === "finished") {
       await db
         .update(roomsTable)
@@ -226,6 +233,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const formatted = formatGameState(rawId, room.status, stateData, connectedIds);
 
     broadcastToRoom(rawId, { type: "state_update", state: formatted });
+    armTurnTimer(rawId, stateData);
     return { ok: true as const, formatted };
   });
 

@@ -17,6 +17,7 @@ import {
 } from "../lib/gameEngine";
 import { broadcastToRoom, getConnectedPlayerIds } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
+import { armTurnTimer, updateTurnDeadline, clearTurnTimer } from "../lib/turnTimer";
 
 const router: IRouter = Router();
 
@@ -67,14 +68,19 @@ router.post("/rooms", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { hostName, maxPlayers } = parsed.data;
+  const { hostName, maxPlayers, turnTimerSeconds } = parsed.data;
 
   const inviteCode = generateInviteCode();
   const sessionToken = generateSessionToken();
 
   const [room] = await db
     .insert(roomsTable)
-    .values({ inviteCode, maxPlayers, status: "lobby" })
+    .values({
+      inviteCode,
+      maxPlayers,
+      status: "lobby",
+      turnTimerSeconds: turnTimerSeconds ?? null,
+    })
     .returning();
 
   const [player] = await db
@@ -105,6 +111,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
       inviteCode: room.inviteCode,
       status: room.status,
       maxPlayers: room.maxPlayers,
+      turnTimerSeconds: room.turnTimerSeconds,
       players: [serialized],
     },
     player: serialized,
@@ -152,6 +159,7 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
     inviteCode: room.inviteCode,
     status: room.status,
     maxPlayers: room.maxPlayers,
+    turnTimerSeconds: room.turnTimerSeconds,
     players: players.map(serializePlayer),
   });
 });
@@ -436,6 +444,8 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     players.map((p) => ({ id: p.id, name: p.name })),
     players.length,
   );
+  gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
+  updateTurnDeadline(gameData);
 
   await db
     .update(roomsTable)
@@ -467,6 +477,7 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   const formatted = formatGameState(rawId, "playing", gameData, connectedIds);
 
   broadcastToRoom(rawId, { type: "game_started", state: formatted });
+  armTurnTimer(rawId, gameData);
 
   res.json(formatted);
 
@@ -523,6 +534,8 @@ router.delete(
     }
 
     broadcastToRoom(rawRoomId, { type: "player_kicked", playerId: rawPlayerId });
+    // If kicking left no players, clear any pending timer
+    void clearTurnTimer(rawRoomId);
     res.json({ success: true });
   },
 );

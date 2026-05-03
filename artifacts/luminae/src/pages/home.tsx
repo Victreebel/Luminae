@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveSession, getSession } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -24,6 +25,7 @@ export default function Home() {
   
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(4);
+  const [turnTimer, setTurnTimer] = useState<string>("0"); // seconds; "0" = off
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   
@@ -47,7 +49,10 @@ export default function Home() {
   const handleCreate = async () => {
     if (!hostName.trim()) return;
     try {
-      const res = await createRoom.mutateAsync({ data: { hostName, maxPlayers } });
+      const turnTimerSeconds = parseInt(turnTimer) || null;
+      const res = await createRoom.mutateAsync({
+        data: { hostName, maxPlayers, turnTimerSeconds: turnTimerSeconds ?? null },
+      });
       saveSession({
         roomId: res.room.id,
         inviteCode: res.room.inviteCode,
@@ -161,6 +166,24 @@ export default function Home() {
                 <div className="space-y-2">
                   <Label htmlFor="maxPlayers">Players: {maxPlayers}</Label>
                   <input type="range" id="maxPlayers" min={2} max={4} value={maxPlayers} onChange={(e) => setMaxPlayers(parseInt(e.target.value))} className="w-full accent-primary" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="turnTimer">Turn timer</Label>
+                  <Select value={turnTimer} onValueChange={setTurnTimer}>
+                    <SelectTrigger id="turnTimer" className="bg-input/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">No timer (relaxed)</SelectItem>
+                      <SelectItem value="30">30 seconds per turn</SelectItem>
+                      <SelectItem value="60">60 seconds per turn</SelectItem>
+                      <SelectItem value="90">90 seconds per turn</SelectItem>
+                      <SelectItem value="120">2 minutes per turn</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Auto-pass if a player runs out of time.
+                  </p>
                 </div>
               </CardContent>
               <CardFooter>

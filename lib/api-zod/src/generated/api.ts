@@ -26,6 +26,10 @@ export const CreateRoomBody = zod.object({
     .number()
     .min(createRoomBodyMaxPlayersMin)
     .max(createRoomBodyMaxPlayersMax),
+  turnTimerSeconds: zod
+    .number()
+    .nullish()
+    .describe("Optional per-turn time limit in seconds (null = no timer)"),
 });
 
 /**
@@ -40,6 +44,7 @@ export const GetRoomByInviteCodeResponse = zod.object({
   inviteCode: zod.string(),
   status: zod.enum(["lobby", "playing", "finished"]),
   maxPlayers: zod.number(),
+  turnTimerSeconds: zod.number().nullish(),
   players: zod.array(
     zod.object({
       id: zod.string(),
@@ -77,6 +82,7 @@ export const JoinRoomResponse = zod.object({
     inviteCode: zod.string(),
     status: zod.enum(["lobby", "playing", "finished"]),
     maxPlayers: zod.number(),
+    turnTimerSeconds: zod.number().nullish(),
     players: zod.array(
       zod.object({
         id: zod.string(),
@@ -132,6 +138,7 @@ export const RejoinRoomResponse = zod.object({
     inviteCode: zod.string(),
     status: zod.enum(["lobby", "playing", "finished"]),
     maxPlayers: zod.number(),
+    turnTimerSeconds: zod.number().nullish(),
     players: zod.array(
       zod.object({
         id: zod.string(),
@@ -237,6 +244,8 @@ export const StartGameResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   marketTier2: zod.array(
@@ -253,6 +262,8 @@ export const StartGameResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   marketTier3: zod.array(
@@ -269,6 +280,8 @@ export const StartGameResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   deckCounts: zod.object({
@@ -332,6 +345,8 @@ export const StartGameResponse = zod.object({
             pearl: zod.number(),
             flux: zod.number(),
           }),
+          name: zod.string(),
+          flavor: zod.string(),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -340,6 +355,21 @@ export const StartGameResponse = zod.object({
   ),
   winnerId: zod.string().nullable(),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
+  actionLog: zod.array(
+    zod.object({
+      playerId: zod.string(),
+      playerName: zod.string(),
+      summary: zod.string(),
+      turn: zod.number(),
+    }),
+  ),
+  turnTimerSeconds: zod.number().nullish(),
+  turnDeadline: zod
+    .number()
+    .nullish()
+    .describe(
+      "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
+    ),
   version: zod.number(),
 });
 
@@ -381,6 +411,8 @@ export const GetGameStateResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   marketTier2: zod.array(
@@ -397,6 +429,8 @@ export const GetGameStateResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   marketTier3: zod.array(
@@ -413,6 +447,8 @@ export const GetGameStateResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   deckCounts: zod.object({
@@ -476,6 +512,8 @@ export const GetGameStateResponse = zod.object({
             pearl: zod.number(),
             flux: zod.number(),
           }),
+          name: zod.string(),
+          flavor: zod.string(),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -484,6 +522,21 @@ export const GetGameStateResponse = zod.object({
   ),
   winnerId: zod.string().nullable(),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
+  actionLog: zod.array(
+    zod.object({
+      playerId: zod.string(),
+      playerName: zod.string(),
+      summary: zod.string(),
+      turn: zod.number(),
+    }),
+  ),
+  turnTimerSeconds: zod.number().nullish(),
+  turnDeadline: zod
+    .number()
+    .nullish()
+    .describe(
+      "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
+    ),
   version: zod.number(),
 });
 
@@ -547,6 +600,8 @@ export const SubmitActionResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   marketTier2: zod.array(
@@ -563,6 +618,8 @@ export const SubmitActionResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   marketTier3: zod.array(
@@ -579,6 +636,8 @@ export const SubmitActionResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      name: zod.string(),
+      flavor: zod.string(),
     }),
   ),
   deckCounts: zod.object({
@@ -642,6 +701,8 @@ export const SubmitActionResponse = zod.object({
             pearl: zod.number(),
             flux: zod.number(),
           }),
+          name: zod.string(),
+          flavor: zod.string(),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -650,6 +711,21 @@ export const SubmitActionResponse = zod.object({
   ),
   winnerId: zod.string().nullable(),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
+  actionLog: zod.array(
+    zod.object({
+      playerId: zod.string(),
+      playerName: zod.string(),
+      summary: zod.string(),
+      turn: zod.number(),
+    }),
+  ),
+  turnTimerSeconds: zod.number().nullish(),
+  turnDeadline: zod
+    .number()
+    .nullish()
+    .describe(
+      "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
+    ),
   version: zod.number(),
 });
 

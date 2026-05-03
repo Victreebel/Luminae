@@ -16,6 +16,11 @@ export interface CreateRoomBody {
    * @maximum 4
    */
   maxPlayers: number;
+  /**
+   * Optional per-turn time limit in seconds (null = no timer)
+   * @nullable
+   */
+  turnTimerSeconds?: number | null;
 }
 
 export interface JoinRoomBody {
@@ -82,6 +87,8 @@ export interface RoomInfo {
   inviteCode: string;
   status: RoomInfoStatus;
   maxPlayers: number;
+  /** @nullable */
+  turnTimerSeconds?: number | null;
   players: RoomPlayer[];
 }
 
@@ -117,6 +124,15 @@ export interface ArtifactCard {
   bonusColor: ArtifactCardBonusColor;
   prestigePoints: number;
   cost: CrystalCounts;
+  name: string;
+  flavor: string;
+}
+
+export interface ActionLogEntry {
+  playerId: string;
+  playerName: string;
+  summary: string;
+  turn: number;
 }
 
 export interface Luminary {
@@ -173,6 +189,14 @@ export interface GameState {
   winnerId: string | null;
   /** @nullable */
   lastAction: GameStateLastAction;
+  actionLog: ActionLogEntry[];
+  /** @nullable */
+  turnTimerSeconds?: number | null;
+  /**
+   * Unix timestamp (ms) when the current turn auto-passes; null if no timer
+   * @nullable
+   */
+  turnDeadline?: number | null;
   version: number;
 }
 
