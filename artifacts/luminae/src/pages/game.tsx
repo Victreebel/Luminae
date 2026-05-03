@@ -172,7 +172,7 @@ function ArtifactCardView({
       whileHover={showActions ? { y: -3 } : {}}
       className={`
         group relative w-32 h-44 rounded-xl overflow-hidden border-2 shadow-xl
-        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)]' : 'border-border/60'}
+        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)]' : 'border-black/20'}
       `}
       style={{
         transformStyle: 'preserve-3d',
