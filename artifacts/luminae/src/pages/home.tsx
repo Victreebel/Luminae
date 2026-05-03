@@ -15,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { saveSession, getSession } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
+import logoLuminae from "@assets/generated_images/logo_luminae.png";
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -109,12 +111,34 @@ export default function Home() {
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background text-foreground p-4 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, var(--color-primary) 0%, transparent 50%)' }} />
-      
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${backgroundCosmos})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      <div className="absolute inset-0 bg-background/70 pointer-events-none" />
+      <div
+        className="absolute inset-0 opacity-30 pointer-events-none"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.4) 0%, transparent 60%)',
+        }}
+      />
+
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-serif font-bold tracking-tight mb-2 gem-glow text-primary">Luminae</h1>
-          <p className="text-muted-foreground text-lg">A game of gems and prestige</p>
+          <img
+            src={logoLuminae}
+            alt="Luminae"
+            className="mx-auto w-72 h-auto drop-shadow-[0_0_25px_rgba(255,196,61,0.35)]"
+            draggable={false}
+          />
+          <p className="text-muted-foreground text-lg mt-2 tracking-wide">
+            Forge cosmic affinities. Claim prestige.
+          </p>
         </div>
 
         <Tabs defaultValue="create" className="w-full">

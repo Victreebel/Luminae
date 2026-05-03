@@ -1,0 +1,98 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "IChmP_eJUnGZFBi61-vbx"
+uri = "file://attached_assets/generated_images/card_tier1.png"
+type = "image"
+title = "card_tier1"
+
+[[generated]]
+id = "0kyEPf5NyxoP2FcLamTb0"
+uri = "file://attached_assets/generated_images/card_tier2.png"
+type = "image"
+title = "card_tier2"
+
+[[generated]]
+id = "2FUyarSpJSCh75hI7ioPw"
+uri = "file://attached_assets/generated_images/card_tier3.png"
+type = "image"
+title = "card_tier3"
+
+[[generated]]
+id = "993IYdbvF6TQZlYnDvOTi"
+uri = "file://attached_assets/generated_images/luminary_stargazer.png"
+type = "image"
+title = "luminary_stargazer"
+
+[[generated]]
+id = "M-ss9U23dyv25WlWg9WF2"
+uri = "file://attached_assets/generated_images/luminary_forgemaster.png"
+type = "image"
+title = "luminary_forgemaster"
+
+[[generated]]
+id = "mVXQ6sCoEuY0kOiRF87s4"
+uri = "file://attached_assets/generated_images/luminary_archivist.png"
+type = "image"
+title = "luminary_archivist"
+
+[[generated]]
+id = "vXscha2tRHnihVoCYuFWr"
+uri = "file://attached_assets/generated_images/luminary_cultivator.png"
+type = "image"
+title = "luminary_cultivator"
+
+[[generated]]
+id = "eabNN5N_FEg1DMqeu0DCN"
+uri = "file://attached_assets/generated_images/luminary_voidcaller.png"
+type = "image"
+title = "luminary_voidcaller"
+
+[[generated]]
+id = "9d3HLhpLnlfRfY9Xa0kBE"
+uri = "file://attached_assets/generated_images/gem_radiance.png"
+type = "image"
+title = "gem_radiance"
+
+[[generated]]
+id = "a_bQ0i2bwq8mChGd0mhx1"
+uri = "file://attached_assets/generated_images/gem_flare.png"
+type = "image"
+title = "gem_flare"
+
+[[generated]]
+id = "11g8sIFlVIVbIYC2JzsPI"
+uri = "file://attached_assets/generated_images/gem_continuum.png"
+type = "image"
+title = "gem_continuum"
+
+[[generated]]
+id = "ZLv0rJsCmaAWZnUxHaDxM"
+uri = "file://attached_assets/generated_images/gem_verdance.png"
+type = "image"
+title = "gem_verdance"
+
+[[generated]]
+id = "odtshNJqH_19faGRGu0Tm"
+uri = "file://attached_assets/generated_images/gem_abyss.png"
+type = "image"
+title = "gem_abyss"
+
+[[generated]]
+id = "jx5Dbunb_oL_ma7BoTbD5"
+uri = "file://attached_assets/generated_images/gem_singularity.png"
+type = "image"
+title = "gem_singularity"
+
+[[generated]]
+id = "TspkuTLPmGFZknlIZpGhS"
+uri = "file://attached_assets/generated_images/background_cosmos.png"
+type = "image"
+title = "background_cosmos"
+
+[[generated]]
+id = "QmJYOvugBFT4YQGEjWVBV"
+uri = "file://attached_assets/generated_images/logo_luminae.png"
+type = "image"
+title = "logo_luminae"

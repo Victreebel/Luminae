@@ -22,87 +22,227 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Volume2, VolumeX, AlertCircle, Sparkles } from 'lucide-react';
+import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
+import cardTier1Bg from '@assets/generated_images/card_tier1.png';
+import cardTier2Bg from '@assets/generated_images/card_tier2.png';
+import cardTier3Bg from '@assets/generated_images/card_tier3.png';
+import luminaryStargazer from '@assets/generated_images/luminary_stargazer.png';
+import luminaryForgemaster from '@assets/generated_images/luminary_forgemaster.png';
+import luminaryArchivist from '@assets/generated_images/luminary_archivist.png';
+import luminaryCultivator from '@assets/generated_images/luminary_cultivator.png';
+import luminaryVoidcaller from '@assets/generated_images/luminary_voidcaller.png';
+import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 
-const CRYSTALS: Array<keyof CrystalCounts> = ['ruby', 'sapphire', 'emerald', 'onyx', 'pearl', 'flux'];
+const CRYSTALS: GemKey[] = GEM_KEYS;
+
+const TIER_BACKDROPS: Record<number, string> = {
+  1: cardTier1Bg,
+  2: cardTier2Bg,
+  3: cardTier3Bg,
+};
+
+const LUMINARY_PORTRAITS = [
+  luminaryStargazer,
+  luminaryForgemaster,
+  luminaryArchivist,
+  luminaryCultivator,
+  luminaryVoidcaller,
+];
+
+// Pick a deterministic luminary portrait based on the dominant required gem
+function pickLuminaryPortrait(luminary: Luminary): string {
+  const dominant = (Object.entries(luminary.requirements) as [GemKey, number][])
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  const idx: Record<GemKey, number> = {
+    pearl: 0, ruby: 1, sapphire: 2, emerald: 3, onyx: 4, flux: 0,
+  };
+  return LUMINARY_PORTRAITS[idx[dominant ?? "pearl"] % LUMINARY_PORTRAITS.length];
+}
 
 // --- Helper Components ---
 
-function CrystalIcon({ color, count, onClick, selectable, selected }: { color: string, count?: number, onClick?: () => void, selectable?: boolean, selected?: boolean }) {
-  const isFlux = color === 'flux';
+function CrystalIcon({
+  color,
+  count,
+  onClick,
+  selectable,
+  selected,
+  size = 40,
+}: {
+  color: GemKey;
+  count?: number;
+  onClick?: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  size?: number;
+}) {
+  const meta = GEM_META[color];
   return (
-    <motion.div 
+    <motion.div
       whileHover={selectable ? { scale: 1.1 } : {}}
       whileTap={selectable ? { scale: 0.95 } : {}}
       onClick={selectable ? onClick : undefined}
+      title={meta.name}
       className={`
-        relative w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow-lg
+        relative rounded-full flex items-center justify-center font-bold text-white
         ${selectable ? 'cursor-pointer' : ''}
         ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}
-        ${isFlux ? 'gem-glow' : ''}
       `}
       style={{
-        background: `radial-gradient(circle at 30% 30%, var(--color-gem-${color}) 0%, #000 100%)`,
-        border: `1px solid var(--color-gem-${color})`
+        width: size,
+        height: size,
+        boxShadow: `0 0 ${size * 0.3}px ${meta.glowHex}55, inset 0 0 4px rgba(0,0,0,0.5)`,
       }}
     >
-      {count !== undefined && count > 0 && <span className="drop-shadow-md">{count}</span>}
-      {count === 0 && <span className="opacity-50">0</span>}
+      <img
+        src={meta.image}
+        alt={meta.name}
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
+        draggable={false}
+      />
+      {count !== undefined && (
+        <span
+          className={`relative z-10 drop-shadow-[0_2px_2px_rgba(0,0,0,0.9)] font-serif ${count === 0 ? 'opacity-40' : ''}`}
+          style={{ fontSize: size * 0.4 }}
+        >
+          {count}
+        </span>
+      )}
     </motion.div>
   );
 }
 
-function ArtifactCardView({ card, onClick, selectable, reserved }: { card: ArtifactCard, onClick?: () => void, selectable?: boolean, reserved?: boolean }) {
+function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
+  const meta = GEM_META[color];
+  return (
+    <img
+      src={meta.image}
+      alt={meta.name}
+      title={meta.name}
+      width={size}
+      height={size}
+      className="rounded-full pointer-events-none select-none"
+      style={{
+        filter: `drop-shadow(0 0 3px ${meta.glowHex}88)`,
+      }}
+      draggable={false}
+    />
+  );
+}
+
+function ArtifactCardView({
+  card,
+  onClick,
+  selectable,
+  reserved,
+  tier,
+}: {
+  card: ArtifactCard;
+  onClick?: () => void;
+  selectable?: boolean;
+  reserved?: boolean;
+  tier?: number;
+}) {
+  const bonusMeta = GEM_META[card.bonusColor as GemKey];
+  const backdrop = TIER_BACKDROPS[tier ?? 1] ?? cardTier1Bg;
   return (
     <motion.div
       whileHover={selectable ? { y: -5, rotateY: 5, rotateX: 5 } : {}}
       onClick={selectable ? onClick : undefined}
       className={`
-        relative w-32 h-44 rounded-xl p-3 flex flex-col justify-between
-        bg-card border-2 shadow-xl transition-colors
-        ${selectable ? 'cursor-pointer hover:border-primary/50' : 'border-border'}
-        ${reserved ? 'border-gem-flux shadow-[0_0_15px_rgba(255,215,0,0.2)]' : ''}
+        relative w-32 h-44 rounded-xl overflow-hidden
+        border-2 shadow-xl transition-colors
+        ${selectable ? 'cursor-pointer hover:border-primary/50' : 'border-border/60'}
+        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)]' : ''}
       `}
       style={{
         transformStyle: 'preserve-3d',
-        perspective: '1000px'
+        perspective: '1000px',
+        borderColor: reserved ? GEM_META.flux.hex : undefined,
       }}
     >
-      <div className="flex justify-between items-start">
-        <span className="text-xl font-serif font-bold text-white drop-shadow-md">
-          {card.prestigePoints > 0 ? card.prestigePoints : ''}
-        </span>
-        <div className="w-6 h-6 rounded-full shadow-md" style={{ background: `var(--color-gem-${card.bonusColor})` }} />
-      </div>
-      <div className="space-y-1">
-        {CRYSTALS.map(c => {
-          const cost = card.cost[c as keyof CrystalCounts];
-          if (cost > 0) {
-            return (
-              <div key={c} className="flex items-center justify-end gap-1">
-                <span className="text-sm font-bold text-white drop-shadow-md">{cost}</span>
-                <div className="w-4 h-4 rounded-full" style={{ background: `var(--color-gem-${c})` }} />
-              </div>
-            );
-          }
-          return null;
-        })}
+      <img
+        src={backdrop}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        draggable={false}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/85 pointer-events-none" />
+
+      <div className="relative z-10 h-full p-2.5 flex flex-col justify-between">
+        <div className="flex justify-between items-start">
+          <span
+            className="text-2xl font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]"
+          >
+            {card.prestigePoints > 0 ? card.prestigePoints : ''}
+          </span>
+          <div
+            className="w-7 h-7 rounded-full shadow-md ring-2 ring-black/60 overflow-hidden"
+            title={bonusMeta?.name}
+          >
+            <img
+              src={bonusMeta?.image}
+              alt=""
+              className="w-full h-full object-contain"
+              draggable={false}
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
+          {CRYSTALS.map((c) => {
+            const cost = card.cost[c as keyof CrystalCounts];
+            if (cost > 0) {
+              return (
+                <div
+                  key={c}
+                  className="flex items-center justify-end gap-1.5 bg-black/40 backdrop-blur-sm rounded px-1 py-0.5 w-fit ml-auto"
+                >
+                  <span className="text-sm font-bold text-white drop-shadow-md">
+                    {cost}
+                  </span>
+                  <MiniGem color={c} size={14} />
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
       </div>
     </motion.div>
   );
 }
 
 function LuminaryCard({ luminary }: { luminary: Luminary }) {
+  const portrait = pickLuminaryPortrait(luminary);
   return (
-    <div className="w-24 h-24 rounded-lg bg-secondary/80 border-2 border-gem-flux/30 p-2 flex flex-col items-center justify-center gap-2 shadow-[0_0_15px_rgba(255,215,0,0.1)]">
-      <span className="text-2xl font-serif font-bold text-white drop-shadow-md">{luminary.prestigePoints}</span>
-      <div className="flex flex-wrap justify-center gap-1">
-        {CRYSTALS.map(c => {
+    <div
+      className="relative w-28 h-28 rounded-xl overflow-hidden border-2 p-2 flex flex-col items-center justify-end gap-1 shadow-[0_0_18px_rgba(255,196,61,0.18)]"
+      style={{ borderColor: `${GEM_META.flux.hex}55` }}
+    >
+      <img
+        src={portrait}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        draggable={false}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/90 pointer-events-none" />
+      <span
+        className="absolute top-1 right-2 text-2xl font-serif font-bold drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
+        style={{ color: GEM_META.flux.hex }}
+      >
+        {luminary.prestigePoints}
+      </span>
+      <div className="relative z-10 flex flex-wrap justify-center gap-0.5 max-w-full">
+        {CRYSTALS.map((c) => {
           const req = luminary.requirements[c as keyof CrystalCounts];
           if (req > 0) {
             return (
-              <div key={c} className="flex items-center gap-0.5 bg-background/50 px-1 rounded">
-                <span className="text-xs font-bold">{req}</span>
-                <div className="w-3 h-3 rounded-full" style={{ background: `var(--color-gem-${c})` }} />
+              <div
+                key={c}
+                className="flex items-center gap-0.5 bg-black/70 px-1 py-0.5 rounded"
+              >
+                <span className="text-[11px] font-bold text-white">{req}</span>
+                <MiniGem color={c} size={10} />
               </div>
             );
           }
@@ -244,7 +384,15 @@ export default function GameBoard() {
 
   return (
     <div className="min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 0%, var(--color-primary) 0%, transparent 70%)' }} />
+      <div
+        className="absolute inset-0 pointer-events-none opacity-25"
+        style={{
+          backgroundImage: `url(${backgroundCosmos})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      <div className="absolute inset-0 bg-background/80 pointer-events-none" />
       
       {/* Header */}
       <header className="p-4 flex justify-between items-center bg-card/50 backdrop-blur border-b border-border z-10">
@@ -273,10 +421,20 @@ export default function GameBoard() {
                     <span className="font-serif text-xl text-primary font-bold">{p.prestige} <Sparkles className="inline h-4 w-4" /></span>
                   </div>
                   <div className="flex gap-1 flex-wrap">
-                    {CRYSTALS.map(c => (
-                      p.bonuses[c as keyof CrystalCounts] > 0 && 
-                      <div key={`b-${c}`} className="w-4 h-4 rounded-sm border border-black/20" style={{ background: `var(--color-gem-${c})` }} title={`${p.bonuses[c as keyof CrystalCounts]} ${c} bonus`} />
-                    ))}
+                    {CRYSTALS.map((c) =>
+                      p.bonuses[c as keyof CrystalCounts] > 0 ? (
+                        <div
+                          key={`b-${c}`}
+                          className="flex items-center gap-0.5 bg-black/40 rounded px-1 py-0.5"
+                          title={`${p.bonuses[c as keyof CrystalCounts]} ${GEM_META[c].name} bonus`}
+                        >
+                          <MiniGem color={c} size={12} />
+                          <span className="text-[10px] font-bold text-white">
+                            {p.bonuses[c as keyof CrystalCounts]}
+                          </span>
+                        </div>
+                      ) : null,
+                    )}
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{Object.values(p.crystals).reduce((a,b)=>a+b,0)} gems</span>
@@ -315,11 +473,12 @@ export default function GameBoard() {
                   <span className="absolute bottom-2 right-2 text-xs text-muted-foreground font-mono">{row.deck}</span>
                 </div>
                 {row.cards.map((c, i) => c ? (
-                  <ArtifactCardView 
-                    key={c.id} 
-                    card={c} 
-                    selectable={isMyTurn && actionMode === 'none'} 
-                    onClick={() => handleCardClick(c)} 
+                  <ArtifactCardView
+                    key={c.id}
+                    card={c}
+                    tier={row.tier}
+                    selectable={isMyTurn && actionMode === 'none'}
+                    onClick={() => handleCardClick(c)}
                   />
                 ) : (
                   <div key={`empty-${i}`} className="w-32 h-44 rounded-xl border-2 border-dashed border-border/30 opacity-50" />
@@ -329,16 +488,28 @@ export default function GameBoard() {
           </div>
 
           {/* Bank */}
-          <div className="flex justify-center gap-6 p-6 rounded-2xl bg-secondary/30 border border-border/50">
-            {CRYSTALS.map(c => (
-              <CrystalIcon 
-                key={c} 
-                color={c} 
-                count={state.crystalBank[c as keyof CrystalCounts]} 
-                selectable={isMyTurn && (actionMode === 'take3' || actionMode === 'take2') && c !== 'flux'}
-                selected={!!selectedCrystals[c as keyof CrystalCounts]}
-                onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-              />
+          <div className="flex justify-center gap-4 p-6 rounded-2xl bg-secondary/30 border border-border/50 backdrop-blur">
+            {CRYSTALS.map((c) => (
+              <div key={c} className="flex flex-col items-center gap-1.5">
+                <CrystalIcon
+                  color={c}
+                  size={52}
+                  count={state.crystalBank[c as keyof CrystalCounts]}
+                  selectable={
+                    isMyTurn &&
+                    (actionMode === 'take3' || actionMode === 'take2') &&
+                    c !== 'flux'
+                  }
+                  selected={!!selectedCrystals[c as keyof CrystalCounts]}
+                  onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
+                />
+                <span
+                  className="text-[10px] uppercase tracking-wider font-semibold"
+                  style={{ color: GEM_META[c].glowHex }}
+                >
+                  {GEM_META[c].shortName}
+                </span>
+              </div>
             ))}
           </div>
 
@@ -362,11 +533,26 @@ export default function GameBoard() {
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">Your Gems</h3>
                 <div className="grid grid-cols-3 gap-3">
-                  {CRYSTALS.map(c => (
-                    <div key={c} className="flex flex-col items-center gap-1 bg-secondary/50 p-2 rounded-lg">
-                      <CrystalIcon color={c} count={me?.crystals[c as keyof CrystalCounts]} />
+                  {CRYSTALS.map((c) => (
+                    <div
+                      key={c}
+                      className="flex flex-col items-center gap-1 bg-secondary/50 p-2 rounded-lg"
+                    >
+                      <CrystalIcon
+                        color={c}
+                        size={42}
+                        count={me?.crystals[c as keyof CrystalCounts]}
+                      />
+                      <div
+                        className="text-[10px] uppercase tracking-wider font-semibold"
+                        style={{ color: GEM_META[c].glowHex }}
+                      >
+                        {GEM_META[c].shortName}
+                      </div>
                       {me?.bonuses[c as keyof CrystalCounts] ? (
-                        <div className="text-xs font-bold text-primary">+{me.bonuses[c as keyof CrystalCounts]}</div>
+                        <div className="text-xs font-bold text-primary">
+                          +{me.bonuses[c as keyof CrystalCounts]}
+                        </div>
                       ) : null}
                     </div>
                   ))}
@@ -380,18 +566,18 @@ export default function GameBoard() {
                   {actionMode === 'none' ? (
                     <>
                       <Button variant="secondary" className="w-full justify-start" onClick={() => setActionMode('take3')}>
-                        Take 3 Different Gems
+                        Take 3 Different Resources
                       </Button>
                       <Button variant="secondary" className="w-full justify-start" onClick={() => setActionMode('take2')}>
-                        Take 2 Same Gems
+                        Take 2 Same Resources
                       </Button>
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
-                        <AlertCircle className="h-3 w-3" /> Click market card to purchase or reserve
+                        <AlertCircle className="h-3 w-3" /> Click an artifact in the market to purchase or reserve
                       </p>
                     </>
                   ) : (
                     <div className="space-y-3 bg-secondary/50 p-3 rounded-lg border border-primary/30">
-                      <p className="text-sm">Select gems from the bank...</p>
+                      <p className="text-sm">Select resources from the bank...</p>
                       <div className="flex gap-2">
                         <Button className="flex-1 bg-primary text-primary-foreground" onClick={confirmCrystals} disabled={Object.keys(selectedCrystals).length === 0}>
                           Confirm
@@ -409,9 +595,15 @@ export default function GameBoard() {
                 <div className="pt-4 border-t border-border">
                   <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">Reserved</h3>
                   <div className="flex gap-2 overflow-x-auto pb-2">
-                    {me.reservedCards.map(c => (
+                    {me.reservedCards.map((c) => (
                       <div key={c.id} className="scale-75 origin-top-left -mr-8 last:mr-0">
-                        <ArtifactCardView card={c} reserved selectable={isMyTurn && actionMode === 'none'} onClick={() => handleCardClick(c, true)} />
+                        <ArtifactCardView
+                          card={c}
+                          tier={c.tier}
+                          reserved
+                          selectable={isMyTurn && actionMode === 'none'}
+                          onClick={() => handleCardClick(c, true)}
+                        />
                       </div>
                     ))}
                   </div>
@@ -438,7 +630,12 @@ export default function GameBoard() {
             >
               <h2 className="text-6xl font-serif font-bold text-primary gem-glow mb-4">Game Over</h2>
               {state.winnerId === session.playerId ? (
-                <div className="text-2xl font-bold text-gem-flux">Victory is yours!</div>
+                <div
+                  className="text-2xl font-bold"
+                  style={{ color: GEM_META.flux.hex }}
+                >
+                  Victory is yours!
+                </div>
               ) : (
                 <div className="text-2xl text-foreground">
                   Winner: <span className="font-bold text-primary">{state.players.find(p => p.playerId === state.winnerId)?.playerName}</span>

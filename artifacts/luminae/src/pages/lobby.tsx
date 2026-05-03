@@ -32,6 +32,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
+import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
+import logoLuminae from "@assets/generated_images/logo_luminae.png";
 
 type AiDifficulty = "easy" | "medium" | "hard";
 
@@ -267,10 +269,19 @@ export default function Lobby() {
   return (
     <div className="min-h-[100dvh] flex flex-col items-center py-16 px-4 bg-background text-foreground relative overflow-hidden">
       <div
-        className="absolute inset-0 opacity-10 pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${backgroundCosmos})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      />
+      <div className="absolute inset-0 bg-background/75 pointer-events-none" />
+      <div
+        className="absolute inset-0 opacity-25 pointer-events-none"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 50% 0%, hsl(var(--primary)) 0%, transparent 60%)",
+            "radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.4) 0%, transparent 60%)",
         }}
       />
 
@@ -289,10 +300,13 @@ export default function Lobby() {
             <ArrowLeft className="h-4 w-4" />
             Leave
           </Button>
-          <h1 className="text-4xl font-serif font-bold text-primary gem-glow mb-1">
-            Lobby
-          </h1>
-          <p className="text-muted-foreground">Waiting for players to join...</p>
+          <img
+            src={logoLuminae}
+            alt="Luminae"
+            className="mx-auto w-56 h-auto drop-shadow-[0_0_20px_rgba(255,196,61,0.3)]"
+            draggable={false}
+          />
+          <p className="text-muted-foreground mt-1">Lobby — waiting for players to join...</p>
         </div>
 
         {/* Invite Code Card */}

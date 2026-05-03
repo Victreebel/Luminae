@@ -16,7 +16,8 @@ pnpm workspace monorepo using TypeScript.
 
 ## Game Mechanics
 
-- **Crystals**: ruby, sapphire, emerald, onyx, pearl + flux (gold/wild)
+- **Crystals (cosmic resources)**: 6 affinities — Radiance, Flare, Continuum, Verdance, Abyss + Singularity (wild). Internal data keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are intentionally retained throughout the API, DB, engine, and AI for backward compatibility. The display layer maps keys → cosmic names via `artifacts/luminae/src/lib/gemMeta.ts`.
+- **Cosmic Affinity art** (May 2026): All gem tokens, tier card backdrops (3), Luminary portraits (5), home/lobby background, and Luminae logo are AI-generated and stored in `attached_assets/generated_images/`, imported via the Vite `@assets` alias.
 - **Market**: 3 tiers of Artifact cards (20/15/10 cards shuffled into decks, 4 face-up per tier)
 - **Luminaries**: 5 patron cards, playerCount+1 active per game, award 3 prestige for bonus requirements
 - **Actions**: take 3 different crystals, take 2 same (≥4 in bank), reserve card (get flux), purchase card/reserved

@@ -39,12 +39,13 @@
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-destructive-border: var(--destructive-border);
 
-  --color-gem-ruby: #DC143C;
-  --color-gem-sapphire: #1565C0;
-  --color-gem-emerald: #2E7D32;
-  --color-gem-onyx: #1A1A2E;
-  --color-gem-pearl: #F5F0E8;
-  --color-gem-flux: #FFD700;
+  /* Cosmic Affinity palette — keys retained for backward compatibility */
+  --color-gem-ruby: #FF5A3C;       /* Flare */
+  --color-gem-sapphire: #3D6BFF;   /* Continuum */
+  --color-gem-emerald: #2ECC71;    /* Verdance */
+  --color-gem-onyx: #7B1FA2;       /* Abyss */
+  --color-gem-pearl: #F2F5FF;      /* Radiance */
+  --color-gem-flux: #FFC43D;       /* Singularity */
 
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
