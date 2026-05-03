@@ -226,7 +226,10 @@ export default function Lobby() {
   };
 
   const connectedPlayers = players.filter((p) => p.isConnected || p.isAi);
-  const isHost = session?.isHost ?? false;
+  // Derive host status from the player list (more reliable than session flag,
+  // which may be stale from older sessions before isHost was tracked)
+  const me = players.find((p) => p.id === session?.playerId);
+  const isHost = me?.isHost ?? session?.isHost ?? false;
   const maxPlayers = roomInfo?.maxPlayers ?? 4;
   const canStart = isHost && connectedPlayers.length >= 2;
   const canAddMore = players.length < maxPlayers;
