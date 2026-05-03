@@ -305,7 +305,8 @@ export type ActionType =
   | "reserve_card"
   | "purchase_card"
   | "purchase_reserved"
-  | "pass";
+  | "pass"
+  | "surrender";
 
 export interface ActionPayload {
   type: ActionType;
@@ -589,6 +590,20 @@ export function applyAction(
       break;
     }
 
+    case "surrender": {
+      // Player surrenders; end the game with them as last place
+      state.phase = "finished";
+      // Set winner to highest prestige among remaining players (or first if tied)
+      const others = state.players.filter((p) => p.playerId !== playerId);
+      if (others.length > 0) {
+        const winner = others.reduce((best, p) =>
+          p.prestige > best.prestige ? p : best
+        );
+        state.winnerId = winner.playerId;
+      }
+      break;
+    }
+
     default:
       return { success: false, error: "Unknown action type" };
   }
@@ -645,6 +660,8 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
     }
     case "pass":
       return "Time expired — turn passed";
+    case "surrender":
+      return "Surrendered";
     default:
       return "Took an action";
   }

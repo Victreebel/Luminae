@@ -561,6 +561,16 @@ export default function GameBoard() {
     executeAction({ type: 'reserve_card', tier });
   };
 
+  const handleSurrender = () => {
+    if (
+      confirm(
+        "Are you sure you want to surrender? You will lose the game and cannot undo this."
+      )
+    ) {
+      executeAction({ type: 'surrender' });
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
       <div
@@ -581,6 +591,14 @@ export default function GameBoard() {
           <span className="text-sm text-muted-foreground font-mono">Round {state.roundNumber}</span>
           <Button variant="ghost" size="icon" onClick={toggleMute} className="text-muted-foreground hover:text-foreground">
             {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleSurrender}
+            className="text-red-500 hover:text-red-400 hover:bg-red-950/30"
+          >
+            Surrender
           </Button>
         </div>
       </header>
