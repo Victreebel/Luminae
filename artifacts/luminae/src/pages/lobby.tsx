@@ -57,15 +57,16 @@ export default function Lobby() {
   const [copied, setCopied] = useState(false);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("medium");
 
-  const { data: roomInfo } = useGetRoomByInviteCode(
-    session?.inviteCode ?? "",
-    {
-      query: {
-        enabled: !!session?.inviteCode,
-        queryKey: getGetRoomByInviteCodeQueryKey(session?.inviteCode ?? ""),
-      },
-    }
-  );
+  // Look up the room by invite code if we have one, otherwise fall back to the
+  // roomId from the URL (the GET endpoint accepts either). This keeps the lobby
+  // working even if localStorage holds a stale session without an invite code.
+  const lookupKey = session?.inviteCode ?? roomId ?? "";
+  const { data: roomInfo } = useGetRoomByInviteCode(lookupKey, {
+    query: {
+      enabled: !!lookupKey,
+      queryKey: getGetRoomByInviteCodeQueryKey(lookupKey),
+    },
+  });
 
   useEffect(() => {
     if (roomInfo?.players && players.length === 0) {
@@ -233,7 +234,7 @@ export default function Lobby() {
   const maxPlayers = roomInfo?.maxPlayers ?? 4;
   const canStart = isHost && connectedPlayers.length >= 2;
   const canAddMore = players.length < maxPlayers;
-  const inviteCode = session?.inviteCode ?? roomId ?? "";
+  const inviteCode = roomInfo?.inviteCode ?? session?.inviteCode ?? "";
 
   return (
     <div className="min-h-[100dvh] flex flex-col items-center py-16 px-4 bg-background text-foreground relative overflow-hidden">

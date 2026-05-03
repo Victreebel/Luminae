@@ -117,10 +117,22 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
     ? req.params.inviteCode[0]
     : req.params.inviteCode;
 
+  // Accept either an invite code OR a room UUID so the lobby can look up the
+  // room even if the client only has the roomId from the URL (e.g. a stale
+  // session that predates persisting the invite code).
+  const isUuid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      rawCode,
+    );
+
   const [room] = await db
     .select()
     .from(roomsTable)
-    .where(eq(roomsTable.inviteCode, rawCode.toUpperCase()))
+    .where(
+      isUuid
+        ? eq(roomsTable.id, rawCode)
+        : eq(roomsTable.inviteCode, rawCode.toUpperCase()),
+    )
     .limit(1);
 
   if (!room) {
