@@ -25,6 +25,7 @@ import type {
   HealthStatus,
   HostActionBody,
   JoinRoomBody,
+  RejoinRoomBody,
   RoomInfo,
   RoomPlayer,
   RoomWithPlayer,
@@ -374,6 +375,93 @@ export const useJoinRoom = <
   TContext
 > => {
   return useMutation(getJoinRoomMutationOptions(options));
+};
+
+/**
+ * @summary Reclaim an existing player slot in a room (works in any status)
+ */
+export const getRejoinRoomUrl = (roomId: string) => {
+  return `/api/rooms/${roomId}/rejoin`;
+};
+
+export const rejoinRoom = async (
+  roomId: string,
+  rejoinRoomBody: RejoinRoomBody,
+  options?: RequestInit,
+): Promise<RoomWithPlayer> => {
+  return customFetch<RoomWithPlayer>(getRejoinRoomUrl(roomId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(rejoinRoomBody),
+  });
+};
+
+export const getRejoinRoomMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejoinRoom>>,
+    TError,
+    { roomId: string; data: BodyType<RejoinRoomBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rejoinRoom>>,
+  TError,
+  { roomId: string; data: BodyType<RejoinRoomBody> },
+  TContext
+> => {
+  const mutationKey = ["rejoinRoom"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rejoinRoom>>,
+    { roomId: string; data: BodyType<RejoinRoomBody> }
+  > = (props) => {
+    const { roomId, data } = props ?? {};
+
+    return rejoinRoom(roomId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RejoinRoomMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rejoinRoom>>
+>;
+export type RejoinRoomMutationBody = BodyType<RejoinRoomBody>;
+export type RejoinRoomMutationError = ErrorType<void>;
+
+/**
+ * @summary Reclaim an existing player slot in a room (works in any status)
+ */
+export const useRejoinRoom = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rejoinRoom>>,
+    TError,
+    { roomId: string; data: BodyType<RejoinRoomBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rejoinRoom>>,
+  TError,
+  { roomId: string; data: BodyType<RejoinRoomBody> },
+  TContext
+> => {
+  return useMutation(getRejoinRoomMutationOptions(options));
 };
 
 /**

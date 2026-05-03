@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useCreateRoom, useGetRoomByInviteCode, useJoinRoom, getGetRoomByInviteCodeQueryKey } from "@workspace/api-client-react";
+import {
+  useCreateRoom,
+  useGetRoomByInviteCode,
+  useJoinRoom,
+  useRejoinRoom,
+  getGetRoomByInviteCodeQueryKey,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +27,7 @@ export default function Home() {
   
   const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
+  const rejoinRoom = useRejoinRoom();
   const { refetch: fetchRoom } = useGetRoomByInviteCode(inviteCode, { query: { enabled: false, queryKey: getGetRoomByInviteCodeQueryKey(inviteCode) } });
 
   useEffect(() => {
@@ -58,19 +65,45 @@ export default function Home() {
     try {
       const { data: roomInfo } = await fetchRoom();
       if (!roomInfo) throw new Error("Room not found");
-      
-      const res = await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName } });
+
+      // If the room is already playing, try to reclaim an existing seat by name
+      // instead of creating a new player (which would fail).
+      const isPlaying = roomInfo.status !== "lobby";
+      const alreadyMember = roomInfo.players?.some(
+        (p) => !p.isAi && p.name.toLowerCase() === playerName.trim().toLowerCase(),
+      );
+
+      const res =
+        isPlaying || alreadyMember
+          ? await rejoinRoom.mutateAsync({
+              roomId: roomInfo.id,
+              data: { playerName },
+            })
+          : await joinRoom.mutateAsync({
+              roomId: roomInfo.id,
+              data: { playerName },
+            });
+
       saveSession({
         roomId: res.room.id,
         inviteCode: res.room.inviteCode,
         playerId: res.player.id,
         sessionToken: res.sessionToken,
         playerName: res.player.name,
-        isHost: false,
+        isHost: res.player.isHost,
       });
-      setLocation(`/lobby/${res.room.id}`);
+      // If the game has already started, jump straight to the game screen.
+      if (res.room.status !== "lobby") {
+        setLocation(`/game/${res.room.id}`);
+      } else {
+        setLocation(`/lobby/${res.room.id}`);
+      }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error joining room", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Error joining room",
+        description: err.message,
+      });
     }
   };
 

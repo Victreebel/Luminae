@@ -78,6 +78,14 @@ export default function Lobby() {
     },
   });
 
+  // If the room is already in progress, send the player straight to the game
+  // screen — the lobby UI doesn't make sense once the game has started.
+  useEffect(() => {
+    if (roomInfo && roomInfo.status !== "lobby") {
+      setLocation(`/game/${roomId}`);
+    }
+  }, [roomInfo, roomId, setLocation]);
+
   useEffect(() => {
     if (roomInfo?.players && players.length === 0) {
       setPlayers(
@@ -227,10 +235,11 @@ export default function Lobby() {
   };
 
   const handleLeave = () => {
-    const message = isHost
-      ? "Leave the room? Other players will need to start a new game."
-      : "Leave the room? You can rejoin with the invite code.";
-    if (!window.confirm(message)) return;
+    // The lobby is only shown before the game starts, so leaving here means
+    // abandoning the seat. Clearing the session is fine.
+    if (!window.confirm("Leave the room? You can rejoin with the invite code and your name.")) {
+      return;
+    }
     clearSession();
     setLocation("/");
   };

@@ -22,6 +22,10 @@ export interface JoinRoomBody {
   playerName: string;
 }
 
+export interface RejoinRoomBody {
+  playerName: string;
+}
+
 export interface HostActionBody {
   sessionToken: string;
 }

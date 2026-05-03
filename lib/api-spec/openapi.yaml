@@ -97,6 +97,33 @@ paths:
         "404":
           description: Room not found
 
+  /rooms/{roomId}/rejoin:
+    post:
+      operationId: rejoinRoom
+      tags: [rooms]
+      summary: Reclaim an existing player slot in a room (works in any status)
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejoinRoomBody"
+      responses:
+        "200":
+          description: Rejoined room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomWithPlayer"
+        "404":
+          description: No matching player
+
   /rooms/{roomId}/ai-players:
     post:
       operationId: addAiPlayer
@@ -266,6 +293,14 @@ components:
         - maxPlayers
 
     JoinRoomBody:
+      type: object
+      properties:
+        playerName:
+          type: string
+      required:
+        - playerName
+
+    RejoinRoomBody:
       type: object
       properties:
         playerName:

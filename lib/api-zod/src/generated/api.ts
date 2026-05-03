@@ -116,6 +116,61 @@ export const JoinRoomResponse = zod.object({
 });
 
 /**
+ * @summary Reclaim an existing player slot in a room (works in any status)
+ */
+export const RejoinRoomParams = zod.object({
+  roomId: zod.coerce.string(),
+});
+
+export const RejoinRoomBody = zod.object({
+  playerName: zod.string(),
+});
+
+export const RejoinRoomResponse = zod.object({
+  room: zod.object({
+    id: zod.string(),
+    inviteCode: zod.string(),
+    status: zod.enum(["lobby", "playing", "finished"]),
+    maxPlayers: zod.number(),
+    players: zod.array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        isHost: zod.boolean(),
+        isConnected: zod.boolean(),
+        orderIndex: zod.number(),
+        isAi: zod.boolean(),
+        aiDifficulty: zod
+          .union([
+            zod.literal("easy"),
+            zod.literal("medium"),
+            zod.literal("hard"),
+            zod.literal(null),
+          ])
+          .nullish(),
+      }),
+    ),
+  }),
+  player: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    isHost: zod.boolean(),
+    isConnected: zod.boolean(),
+    orderIndex: zod.number(),
+    isAi: zod.boolean(),
+    aiDifficulty: zod
+      .union([
+        zod.literal("easy"),
+        zod.literal("medium"),
+        zod.literal("hard"),
+        zod.literal(null),
+      ])
+      .nullish(),
+  }),
+  sessionToken: zod.string(),
+});
+
+/**
  * @summary Add an AI player to the room (host only)
  */
 export const AddAiPlayerParams = zod.object({

@@ -4,6 +4,7 @@ import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
 import {
   CreateRoomBody,
   JoinRoomBody,
+  RejoinRoomBody,
   StartGameBody,
   KickPlayerBody,
   AddAiPlayerBody,
@@ -228,6 +229,72 @@ router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
     },
     player: serialized,
     sessionToken,
+  });
+});
+
+// POST /api/rooms/:roomId/rejoin — reclaim an existing player slot by name.
+// Works for any room status (lobby OR playing), so a player who lost their
+// session token can get back into a game in progress. Returns a fresh token.
+router.post("/rooms/:roomId/rejoin", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+
+  const parsed = RejoinRoomBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { playerName } = parsed.data;
+
+  const [room] = await db
+    .select()
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+
+  if (!room) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+
+  const players = await db
+    .select()
+    .from(playersTable)
+    .where(eq(playersTable.roomId, room.id))
+    .orderBy(playersTable.orderIndex);
+
+  // Match by case-insensitive name; never let someone reclaim an AI seat.
+  const target = players.find(
+    (p) => !p.isAi && p.name.toLowerCase() === playerName.trim().toLowerCase(),
+  );
+  if (!target) {
+    res
+      .status(404)
+      .json({ error: "No player with that name in this room" });
+    return;
+  }
+
+  // Issue a new session token (invalidates the old one if it still existed).
+  const newToken = generateSessionToken();
+  const [updated] = await db
+    .update(playersTable)
+    .set({ sessionToken: newToken, isConnected: false })
+    .where(eq(playersTable.id, target.id))
+    .returning();
+
+  const refreshed = players.map((p) => (p.id === updated.id ? updated : p));
+
+  res.json({
+    room: {
+      id: room.id,
+      inviteCode: room.inviteCode,
+      status: room.status,
+      maxPlayers: room.maxPlayers,
+      players: refreshed.map(serializePlayer),
+    },
+    player: serializePlayer(updated),
+    sessionToken: newToken,
   });
 });
 
