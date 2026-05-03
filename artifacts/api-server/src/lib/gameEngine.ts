@@ -617,7 +617,11 @@ export function applyAction(
     turn: state.roundNumber,
   });
   state.version++;
-  advanceTurn(state);
+  
+  // Only advance turn if game hasn't ended (e.g., from surrender)
+  if (state.phase !== "finished") {
+    advanceTurn(state);
+  }
   return { success: true };
 }
 
