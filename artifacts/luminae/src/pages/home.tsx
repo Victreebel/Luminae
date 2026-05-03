@@ -41,9 +41,11 @@ export default function Home() {
       const res = await createRoom.mutateAsync({ data: { hostName, maxPlayers } });
       saveSession({
         roomId: res.room.id,
+        inviteCode: res.room.inviteCode,
         playerId: res.player.id,
         sessionToken: res.sessionToken,
-        playerName: res.player.name
+        playerName: res.player.name,
+        isHost: true,
       });
       setLocation(`/lobby/${res.room.id}`);
     } catch (err: any) {
@@ -60,9 +62,11 @@ export default function Home() {
       const res = await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName } });
       saveSession({
         roomId: res.room.id,
+        inviteCode: res.room.inviteCode,
         playerId: res.player.id,
         sessionToken: res.sessionToken,
-        playerName: res.player.name
+        playerName: res.player.name,
+        isHost: false,
       });
       setLocation(`/lobby/${res.room.id}`);
     } catch (err: any) {

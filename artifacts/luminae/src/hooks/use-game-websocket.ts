@@ -68,8 +68,10 @@ export function useGameWebsocket({
             onGameStartedRef.current?.();
             break;
           case 'player_joined':
+            onPlayerJoinedRef.current?.(data.player || { id: data.playerId, name: data.playerName, isConnected: false });
+            break;
           case 'player_connected':
-            onPlayerJoinedRef.current?.(data.player || { id: data.playerId, isConnected: true });
+            onPlayerJoinedRef.current?.({ id: data.playerId, name: data.playerName, isConnected: true });
             break;
           case 'player_left':
           case 'player_disconnected':

@@ -1,8 +1,10 @@
 export interface Session {
   roomId: string;
+  inviteCode: string;
   playerId: string;
   sessionToken: string;
   playerName: string;
+  isHost: boolean;
 }
 
 const SESSION_KEY = "luminae_session";
