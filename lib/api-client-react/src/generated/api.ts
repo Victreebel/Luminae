@@ -18,6 +18,7 @@ import type {
 
 import type {
   ActionRequest,
+  AddAiPlayerBody,
   CreateRoomBody,
   GameState,
   GetGameStateParams,
@@ -25,6 +26,7 @@ import type {
   HostActionBody,
   JoinRoomBody,
   RoomInfo,
+  RoomPlayer,
   RoomWithPlayer,
 } from "./api.schemas";
 
@@ -372,6 +374,93 @@ export const useJoinRoom = <
   TContext
 > => {
   return useMutation(getJoinRoomMutationOptions(options));
+};
+
+/**
+ * @summary Add an AI player to the room (host only)
+ */
+export const getAddAiPlayerUrl = (roomId: string) => {
+  return `/api/rooms/${roomId}/ai-players`;
+};
+
+export const addAiPlayer = async (
+  roomId: string,
+  addAiPlayerBody: AddAiPlayerBody,
+  options?: RequestInit,
+): Promise<RoomPlayer> => {
+  return customFetch<RoomPlayer>(getAddAiPlayerUrl(roomId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(addAiPlayerBody),
+  });
+};
+
+export const getAddAiPlayerMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addAiPlayer>>,
+    TError,
+    { roomId: string; data: BodyType<AddAiPlayerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addAiPlayer>>,
+  TError,
+  { roomId: string; data: BodyType<AddAiPlayerBody> },
+  TContext
+> => {
+  const mutationKey = ["addAiPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addAiPlayer>>,
+    { roomId: string; data: BodyType<AddAiPlayerBody> }
+  > = (props) => {
+    const { roomId, data } = props ?? {};
+
+    return addAiPlayer(roomId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddAiPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addAiPlayer>>
+>;
+export type AddAiPlayerMutationBody = BodyType<AddAiPlayerBody>;
+export type AddAiPlayerMutationError = ErrorType<void>;
+
+/**
+ * @summary Add an AI player to the room (host only)
+ */
+export const useAddAiPlayer = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addAiPlayer>>,
+    TError,
+    { roomId: string; data: BodyType<AddAiPlayerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addAiPlayer>>,
+  TError,
+  { roomId: string; data: BodyType<AddAiPlayerBody> },
+  TContext
+> => {
+  return useMutation(getAddAiPlayerMutationOptions(options));
 };
 
 /**

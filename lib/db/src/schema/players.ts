@@ -10,6 +10,8 @@ export const playersTable = pgTable("players", {
   isHost: boolean("is_host").notNull().default(false),
   orderIndex: integer("order_index").notNull().default(0),
   isConnected: boolean("is_connected").notNull().default(false),
+  isAi: boolean("is_ai").notNull().default(false),
+  aiDifficulty: text("ai_difficulty"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

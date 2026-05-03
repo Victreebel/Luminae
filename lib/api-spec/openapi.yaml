@@ -97,6 +97,35 @@ paths:
         "404":
           description: Room not found
 
+  /rooms/{roomId}/ai-players:
+    post:
+      operationId: addAiPlayer
+      tags: [rooms]
+      summary: Add an AI player to the room (host only)
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddAiPlayerBody"
+      responses:
+        "200":
+          description: AI player added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomPlayer"
+        "400":
+          description: Cannot add AI player
+        "403":
+          description: Not the host
+
   /rooms/{roomId}/start:
     post:
       operationId: startGame
@@ -252,6 +281,18 @@ components:
       required:
         - sessionToken
 
+    AddAiPlayerBody:
+      type: object
+      properties:
+        sessionToken:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+      required:
+        - sessionToken
+        - difficulty
+
     RoomPlayer:
       type: object
       properties:
@@ -265,12 +306,18 @@ components:
           type: boolean
         orderIndex:
           type: integer
+        isAi:
+          type: boolean
+        aiDifficulty:
+          type: ["string", "null"]
+          enum: [easy, medium, hard, null]
       required:
         - id
         - name
         - isHost
         - isConnected
         - orderIndex
+        - isAi
 
     RoomInfo:
       type: object

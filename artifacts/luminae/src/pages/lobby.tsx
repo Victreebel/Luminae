@@ -1,14 +1,29 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { useStartGame, useKickPlayer, useGetRoomByInviteCode, getGetRoomByInviteCodeQueryKey } from "@workspace/api-client-react";
+import {
+  useStartGame,
+  useKickPlayer,
+  useGetRoomByInviteCode,
+  useAddAiPlayer,
+  getGetRoomByInviteCodeQueryKey,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getSession } from "@/lib/session";
 import { useGameWebsocket } from "@/hooks/use-game-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Copy, Users, Crown, X, Wifi, WifiOff } from "lucide-react";
+import { Copy, Users, Crown, X, Wifi, WifiOff, Bot, Plus } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
+
+type AiDifficulty = "easy" | "medium" | "hard";
 
 interface LobbyPlayer {
   id: string;
@@ -16,7 +31,21 @@ interface LobbyPlayer {
   isHost: boolean;
   isConnected: boolean;
   orderIndex: number;
+  isAi: boolean;
+  aiDifficulty?: AiDifficulty | null;
 }
+
+const DIFFICULTY_LABEL: Record<AiDifficulty, string> = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+};
+
+const DIFFICULTY_COLOR: Record<AiDifficulty, string> = {
+  easy: "text-green-400 border-green-400/40 bg-green-400/10",
+  medium: "text-yellow-400 border-yellow-400/40 bg-yellow-400/10",
+  hard: "text-red-400 border-red-400/40 bg-red-400/10",
+};
 
 export default function Lobby() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -26,8 +55,8 @@ export default function Lobby() {
   const session = getSession();
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [copied, setCopied] = useState(false);
+  const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("medium");
 
-  // Fetch initial room state using the invite code stored in session
   const { data: roomInfo } = useGetRoomByInviteCode(
     session?.inviteCode ?? "",
     {
@@ -38,7 +67,6 @@ export default function Lobby() {
     }
   );
 
-  // Seed players from API response on first load
   useEffect(() => {
     if (roomInfo?.players && players.length === 0) {
       setPlayers(
@@ -48,6 +76,8 @@ export default function Lobby() {
           isHost: p.isHost,
           isConnected: p.isConnected,
           orderIndex: p.orderIndex,
+          isAi: p.isAi,
+          aiDifficulty: p.aiDifficulty as AiDifficulty | null | undefined,
         }))
       );
     }
@@ -61,6 +91,7 @@ export default function Lobby() {
 
   const startGame = useStartGame();
   const kickPlayer = useKickPlayer();
+  const addAiPlayer = useAddAiPlayer();
 
   useGameWebsocket({
     roomId: roomId!,
@@ -75,7 +106,14 @@ export default function Lobby() {
         const exists = prev.find((p) => p.id === player.id);
         if (exists) {
           return prev.map((p) =>
-            p.id === player.id ? { ...p, isConnected: player.isConnected ?? true } : p
+            p.id === player.id
+              ? {
+                  ...p,
+                  isConnected: player.isConnected ?? true,
+                  isAi: player.isAi ?? p.isAi,
+                  aiDifficulty: player.aiDifficulty ?? p.aiDifficulty,
+                }
+              : p
           );
         }
         return [
@@ -86,6 +124,8 @@ export default function Lobby() {
             isHost: player.isHost ?? false,
             isConnected: player.isConnected ?? true,
             orderIndex: player.orderIndex ?? prev.length,
+            isAi: player.isAi ?? false,
+            aiDifficulty: player.aiDifficulty ?? null,
           },
         ];
       });
@@ -143,6 +183,38 @@ export default function Lobby() {
     }
   };
 
+  const handleAddAi = async () => {
+    if (!session) return;
+    try {
+      const newPlayer = await addAiPlayer.mutateAsync({
+        roomId: roomId!,
+        data: { sessionToken: session.sessionToken, difficulty: aiDifficulty },
+      });
+      // Optimistically add (broadcast may already update; useEffect dedupes by id)
+      setPlayers((prev) => {
+        if (prev.find((p) => p.id === newPlayer.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: newPlayer.id,
+            name: newPlayer.name,
+            isHost: newPlayer.isHost,
+            isConnected: newPlayer.isConnected,
+            orderIndex: newPlayer.orderIndex,
+            isAi: newPlayer.isAi,
+            aiDifficulty: newPlayer.aiDifficulty as AiDifficulty | null,
+          },
+        ];
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Could not add AI player",
+        description: err.message,
+      });
+    }
+  };
+
   const copyInvite = () => {
     const code = session?.inviteCode ?? roomId ?? "";
     const url = `${window.location.origin}/?invite=${code}`;
@@ -153,9 +225,11 @@ export default function Lobby() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const connectedPlayers = players.filter((p) => p.isConnected);
+  const connectedPlayers = players.filter((p) => p.isConnected || p.isAi);
   const isHost = session?.isHost ?? false;
+  const maxPlayers = roomInfo?.maxPlayers ?? 4;
   const canStart = isHost && connectedPlayers.length >= 2;
+  const canAddMore = players.length < maxPlayers;
   const inviteCode = session?.inviteCode ?? roomId ?? "";
 
   return (
@@ -212,7 +286,7 @@ export default function Lobby() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Users className="h-4 w-4" />
-                Players ({connectedPlayers.length} / {roomInfo?.maxPlayers ?? 4})
+                Players ({players.length} / {maxPlayers})
               </CardTitle>
             </div>
           </CardHeader>
@@ -229,31 +303,57 @@ export default function Lobby() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     className={`flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border/50 transition-opacity ${
-                      !p.isConnected ? "opacity-40" : ""
+                      !p.isConnected && !p.isAi ? "opacity-40" : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shadow-[0_0_12px_rgba(59,130,246,0.2)]">
-                        {p.name ? p.name.charAt(0).toUpperCase() : "?"}
+                      <div
+                        className={`h-10 w-10 rounded-full flex items-center justify-center font-bold shadow-[0_0_12px_rgba(59,130,246,0.2)] ${
+                          p.isAi
+                            ? "bg-purple-500/20 text-purple-300"
+                            : "bg-primary/20 text-primary"
+                        }`}
+                      >
+                        {p.isAi ? (
+                          <Bot className="h-5 w-5" />
+                        ) : (
+                          (p.name?.charAt(0)?.toUpperCase() ?? "?")
+                        )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-base">{p.name}</span>
-                          {(p.isHost || i === 0) && (
+                          {(p.isHost || i === 0) && !p.isAi && (
                             <Crown className="h-4 w-4 text-yellow-400" />
                           )}
                           {p.id === session?.playerId && (
                             <span className="text-xs text-muted-foreground">(you)</span>
                           )}
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                          {p.isConnected ? (
-                            <Wifi className="h-3 w-3 text-green-400" />
-                          ) : (
-                            <WifiOff className="h-3 w-3 text-red-400" />
+                          {p.isAi && p.aiDifficulty && (
+                            <span
+                              className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                DIFFICULTY_COLOR[p.aiDifficulty]
+                              }`}
+                            >
+                              AI · {DIFFICULTY_LABEL[p.aiDifficulty]}
+                            </span>
                           )}
-                          <span>{p.isConnected ? "Connected" : "Disconnected"}</span>
                         </div>
+                        {!p.isAi && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                            {p.isConnected ? (
+                              <Wifi className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <WifiOff className="h-3 w-3 text-red-400" />
+                            )}
+                            <span>{p.isConnected ? "Connected" : "Disconnected"}</span>
+                          </div>
+                        )}
+                        {p.isAi && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Computer-controlled opponent
+                          </div>
+                        )}
                       </div>
                     </div>
                     {isHost && p.id !== session?.playerId && (
@@ -262,6 +362,7 @@ export default function Lobby() {
                         size="sm"
                         onClick={() => handleKick(p.id)}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title={p.isAi ? "Remove AI player" : "Kick player"}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -272,6 +373,42 @@ export default function Lobby() {
             )}
           </CardContent>
         </Card>
+
+        {/* Add AI Player (host only, lobby has room) */}
+        {isHost && canAddMore && (
+          <Card className="border-border bg-card/60 backdrop-blur">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+                  <Bot className="h-4 w-4 text-purple-300" />
+                  <span>Add AI</span>
+                </div>
+                <Select
+                  value={aiDifficulty}
+                  onValueChange={(v) => setAiDifficulty(v as AiDifficulty)}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={handleAddAi}
+                  disabled={addAiPlayer.isPending}
+                  className="flex-1 gap-2"
+                  variant="secondary"
+                >
+                  <Plus className="h-4 w-4" />
+                  {addAiPlayer.isPending ? "Adding..." : "Add AI Player"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Start / Waiting */}
         {isHost ? (

@@ -26,12 +26,42 @@ export interface HostActionBody {
   sessionToken: string;
 }
 
+export type AddAiPlayerBodyDifficulty =
+  (typeof AddAiPlayerBodyDifficulty)[keyof typeof AddAiPlayerBodyDifficulty];
+
+export const AddAiPlayerBodyDifficulty = {
+  easy: "easy",
+  medium: "medium",
+  hard: "hard",
+} as const;
+
+export interface AddAiPlayerBody {
+  sessionToken: string;
+  difficulty: AddAiPlayerBodyDifficulty;
+}
+
+/**
+ * @nullable
+ */
+export type RoomPlayerAiDifficulty =
+  | (typeof RoomPlayerAiDifficulty)[keyof typeof RoomPlayerAiDifficulty]
+  | null;
+
+export const RoomPlayerAiDifficulty = {
+  easy: "easy",
+  medium: "medium",
+  hard: "hard",
+} as const;
+
 export interface RoomPlayer {
   id: string;
   name: string;
   isHost: boolean;
   isConnected: boolean;
   orderIndex: number;
+  isAi: boolean;
+  /** @nullable */
+  aiDifficulty?: RoomPlayerAiDifficulty;
 }
 
 export type RoomInfoStatus =

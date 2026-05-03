@@ -6,6 +6,7 @@ import {
   JoinRoomBody,
   StartGameBody,
   KickPlayerBody,
+  AddAiPlayerBody,
 } from "@workspace/api-zod";
 import { randomBytes } from "crypto";
 import {
@@ -14,6 +15,7 @@ import {
   type GameStateData,
 } from "../lib/gameEngine";
 import { broadcastToRoom, getConnectedPlayerIds } from "../lib/websocket";
+import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 
 const router: IRouter = Router();
 
@@ -23,6 +25,38 @@ function generateInviteCode(): string {
 
 function generateSessionToken(): string {
   return randomBytes(32).toString("hex");
+}
+
+type DbPlayer = typeof playersTable.$inferSelect;
+
+function serializePlayer(p: DbPlayer) {
+  return {
+    id: p.id,
+    name: p.name,
+    isHost: p.isHost,
+    isConnected: p.isAi ? true : p.isConnected,
+    orderIndex: p.orderIndex,
+    isAi: p.isAi,
+    aiDifficulty: p.aiDifficulty,
+  };
+}
+
+const AI_NAME_POOL = [
+  "Lyra",
+  "Orion",
+  "Vesper",
+  "Caelum",
+  "Nyx",
+  "Aurin",
+  "Soren",
+  "Thalia",
+];
+
+function pickAiName(existing: string[]): string {
+  const taken = new Set(existing);
+  const free = AI_NAME_POOL.filter((n) => !taken.has(n));
+  if (free.length > 0) return free[Math.floor(Math.random() * free.length)];
+  return `AI-${Math.floor(Math.random() * 10000)}`;
 }
 
 // POST /api/rooms — create room
@@ -37,7 +71,6 @@ router.post("/rooms", async (req, res): Promise<void> => {
   const inviteCode = generateInviteCode();
   const sessionToken = generateSessionToken();
 
-  // Create room + host player in a transaction-like sequence
   const [room] = await db
     .insert(roomsTable)
     .values({ inviteCode, maxPlayers, status: "lobby" })
@@ -52,10 +85,10 @@ router.post("/rooms", async (req, res): Promise<void> => {
       isHost: true,
       orderIndex: 0,
       isConnected: false,
+      isAi: false,
     })
     .returning();
 
-  // Update room with host player id
   await db
     .update(roomsTable)
     .set({ hostPlayerId: player.id })
@@ -63,34 +96,22 @@ router.post("/rooms", async (req, res): Promise<void> => {
 
   req.log.info({ roomId: room.id, inviteCode }, "Room created");
 
+  const serialized = serializePlayer(player);
+
   res.status(201).json({
     room: {
       id: room.id,
       inviteCode: room.inviteCode,
       status: room.status,
       maxPlayers: room.maxPlayers,
-      players: [
-        {
-          id: player.id,
-          name: player.name,
-          isHost: player.isHost,
-          isConnected: player.isConnected,
-          orderIndex: player.orderIndex,
-        },
-      ],
+      players: [serialized],
     },
-    player: {
-      id: player.id,
-      name: player.name,
-      isHost: player.isHost,
-      isConnected: player.isConnected,
-      orderIndex: player.orderIndex,
-    },
+    player: serialized,
     sessionToken,
   });
 });
 
-// GET /api/rooms/:inviteCode — get room info
+// GET /api/rooms/:inviteCode
 router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
   const rawCode = Array.isArray(req.params.inviteCode)
     ? req.params.inviteCode[0]
@@ -118,13 +139,7 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
     inviteCode: room.inviteCode,
     status: room.status,
     maxPlayers: room.maxPlayers,
-    players: players.map((p) => ({
-      id: p.id,
-      name: p.name,
-      isHost: p.isHost,
-      isConnected: p.isConnected,
-      orderIndex: p.orderIndex,
-    })),
+    players: players.map(serializePlayer),
   });
 });
 
@@ -178,19 +193,15 @@ router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
       isHost: false,
       orderIndex,
       isConnected: false,
+      isAi: false,
     })
     .returning();
 
-  // Notify room via WebSocket
+  const serialized = serializePlayer(player);
+
   broadcastToRoom(room.id, {
     type: "player_joined",
-    player: {
-      id: player.id,
-      name: player.name,
-      isHost: false,
-      isConnected: false,
-      orderIndex,
-    },
+    player: serialized,
   });
 
   const allPlayers = [...players, player];
@@ -201,23 +212,91 @@ router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
       inviteCode: room.inviteCode,
       status: room.status,
       maxPlayers: room.maxPlayers,
-      players: allPlayers.map((p) => ({
-        id: p.id,
-        name: p.name,
-        isHost: p.isHost,
-        isConnected: p.isConnected,
-        orderIndex: p.orderIndex,
-      })),
+      players: allPlayers.map(serializePlayer),
     },
-    player: {
-      id: player.id,
-      name: player.name,
-      isHost: player.isHost,
-      isConnected: player.isConnected,
-      orderIndex: player.orderIndex,
-    },
+    player: serialized,
     sessionToken,
   });
+});
+
+// POST /api/rooms/:roomId/ai-players — host adds an AI player
+router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+
+  const parsed = AddAiPlayerBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { sessionToken, difficulty } = parsed.data;
+
+  const [room] = await db
+    .select()
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+  if (!room) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+  if (room.status !== "lobby") {
+    res.status(400).json({ error: "Game already started" });
+    return;
+  }
+
+  const [host] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+  if (!host || !host.isHost) {
+    res.status(403).json({ error: "Only the host can add AI players" });
+    return;
+  }
+
+  const players = await db
+    .select()
+    .from(playersTable)
+    .where(eq(playersTable.roomId, room.id));
+
+  if (players.length >= room.maxPlayers) {
+    res.status(400).json({ error: "Room is full" });
+    return;
+  }
+
+  const aiName = pickAiName(players.map((p) => p.name));
+  const orderIndex = players.length;
+  const aiSessionToken = `ai-${randomBytes(16).toString("hex")}`;
+
+  const [aiPlayer] = await db
+    .insert(playersTable)
+    .values({
+      roomId: room.id,
+      name: aiName,
+      sessionToken: aiSessionToken,
+      isHost: false,
+      orderIndex,
+      isConnected: true,
+      isAi: true,
+      aiDifficulty: difficulty,
+    })
+    .returning();
+
+  const serialized = serializePlayer(aiPlayer);
+
+  broadcastToRoom(room.id, {
+    type: "player_joined",
+    player: serialized,
+  });
+
+  res.json(serialized);
 });
 
 // POST /api/rooms/:roomId/start
@@ -243,7 +322,6 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     return;
   }
 
-  // Verify host
   const [host] = await db
     .select()
     .from(playersTable)
@@ -275,19 +353,16 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     return;
   }
 
-  // Initialize game state
   const gameData = initializeGame(
     players.map((p) => ({ id: p.id, name: p.name })),
     players.length,
   );
 
-  // Update room status
   await db
     .update(roomsTable)
     .set({ status: "playing", updatedAt: new Date() })
     .where(eq(roomsTable.id, rawId));
 
-  // Upsert game state
   await db
     .insert(gameStatesTable)
     .values({
@@ -305,12 +380,19 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     });
 
   const connectedIds = getConnectedPlayerIds(rawId);
+  // AI players are always considered connected
+  for (const p of players) {
+    if (p.isAi) connectedIds.add(p.id);
+  }
+
   const formatted = formatGameState(rawId, "playing", gameData, connectedIds);
 
-  // Notify via WebSocket
   broadcastToRoom(rawId, { type: "game_started", state: formatted });
 
   res.json(formatted);
+
+  // If first player is an AI, kick off AI turns
+  void runAiTurnsIfNeeded(rawId);
 });
 
 // DELETE /api/rooms/:roomId/players/:playerId

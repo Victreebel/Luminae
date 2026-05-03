@@ -47,6 +47,15 @@ export const GetRoomByInviteCodeResponse = zod.object({
       isHost: zod.boolean(),
       isConnected: zod.boolean(),
       orderIndex: zod.number(),
+      isAi: zod.boolean(),
+      aiDifficulty: zod
+        .union([
+          zod.literal("easy"),
+          zod.literal("medium"),
+          zod.literal("hard"),
+          zod.literal(null),
+        ])
+        .nullish(),
     }),
   ),
 });
@@ -75,6 +84,15 @@ export const JoinRoomResponse = zod.object({
         isHost: zod.boolean(),
         isConnected: zod.boolean(),
         orderIndex: zod.number(),
+        isAi: zod.boolean(),
+        aiDifficulty: zod
+          .union([
+            zod.literal("easy"),
+            zod.literal("medium"),
+            zod.literal("hard"),
+            zod.literal(null),
+          ])
+          .nullish(),
       }),
     ),
   }),
@@ -84,8 +102,46 @@ export const JoinRoomResponse = zod.object({
     isHost: zod.boolean(),
     isConnected: zod.boolean(),
     orderIndex: zod.number(),
+    isAi: zod.boolean(),
+    aiDifficulty: zod
+      .union([
+        zod.literal("easy"),
+        zod.literal("medium"),
+        zod.literal("hard"),
+        zod.literal(null),
+      ])
+      .nullish(),
   }),
   sessionToken: zod.string(),
+});
+
+/**
+ * @summary Add an AI player to the room (host only)
+ */
+export const AddAiPlayerParams = zod.object({
+  roomId: zod.coerce.string(),
+});
+
+export const AddAiPlayerBody = zod.object({
+  sessionToken: zod.string(),
+  difficulty: zod.enum(["easy", "medium", "hard"]),
+});
+
+export const AddAiPlayerResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  isHost: zod.boolean(),
+  isConnected: zod.boolean(),
+  orderIndex: zod.number(),
+  isAi: zod.boolean(),
+  aiDifficulty: zod
+    .union([
+      zod.literal("easy"),
+      zod.literal("medium"),
+      zod.literal("hard"),
+      zod.literal(null),
+    ])
+    .nullish(),
 });
 
 /**

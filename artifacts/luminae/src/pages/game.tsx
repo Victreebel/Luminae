@@ -203,9 +203,17 @@ export default function GameBoard() {
 
   const executeAction = async (payload: any) => {
     try {
+      // Normalize crystals to always include all 6 keys (API requires complete shape)
+      const normalized = { ...payload };
+      if (normalized.crystals) {
+        normalized.crystals = {
+          ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0,
+          ...normalized.crystals,
+        };
+      }
       await submitAction.mutateAsync({
         roomId: roomId!,
-        data: { sessionToken: session.sessionToken, ...payload }
+        data: { sessionToken: session.sessionToken, ...normalized }
       });
       setActionMode('none');
       setSelectedCrystals({});
