@@ -182,12 +182,12 @@ function ArtifactCardView({
     >
       {/* Tier backdrop */}
       <img src={backdrop} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
-      {/* Card art (top half) */}
+      {/* Card art (full background, dimmed behind info) */}
       {art && (
         <img
           src={art}
           alt={card.name}
-          className="absolute inset-x-0 top-0 h-[58%] w-full object-cover pointer-events-none select-none opacity-95"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none opacity-75"
           draggable={false}
         />
       )}

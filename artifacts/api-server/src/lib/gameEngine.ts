@@ -82,6 +82,7 @@ const COLOR_LABEL: Record<CrystalColor, string> = {
 };
 
 function pushLog(state: GameStateData, entry: ActionLogEntry): void {
+  if (!state.actionLog) state.actionLog = [];
   state.actionLog.push(entry);
   if (state.actionLog.length > ACTION_LOG_MAX) {
     state.actionLog.splice(0, state.actionLog.length - ACTION_LOG_MAX);
