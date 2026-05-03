@@ -16,11 +16,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getSession } from "@/lib/session";
+import { getSession, clearSession } from "@/lib/session";
 import { useGameWebsocket } from "@/hooks/use-game-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Copy, Users, Crown, X, Wifi, WifiOff, Bot, Plus } from "lucide-react";
+import {
+  Copy,
+  Users,
+  Crown,
+  X,
+  Wifi,
+  WifiOff,
+  Bot,
+  Plus,
+  ArrowLeft,
+} from "lucide-react";
 import { gameAudio } from "@/lib/audio";
 
 type AiDifficulty = "easy" | "medium" | "hard";
@@ -216,6 +226,15 @@ export default function Lobby() {
     }
   };
 
+  const handleLeave = () => {
+    const message = isHost
+      ? "Leave the room? Other players will need to start a new game."
+      : "Leave the room? You can rejoin with the invite code.";
+    if (!window.confirm(message)) return;
+    clearSession();
+    setLocation("/");
+  };
+
   const copyInvite = () => {
     const code = session?.inviteCode ?? roomId ?? "";
     const url = `${window.location.origin}/?invite=${code}`;
@@ -251,7 +270,16 @@ export default function Lobby() {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-2xl relative z-10 space-y-6"
       >
-        <div className="text-center">
+        <div className="relative text-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLeave}
+            className="absolute left-0 top-1/2 -translate-y-1/2 gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Leave
+          </Button>
           <h1 className="text-4xl font-serif font-bold text-primary gem-glow mb-1">
             Lobby
           </h1>
