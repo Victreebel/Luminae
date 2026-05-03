@@ -1,0 +1,25 @@
+export interface Session {
+  roomId: string;
+  playerId: string;
+  sessionToken: string;
+  playerName: string;
+}
+
+const SESSION_KEY = "luminae_session";
+
+export function getSession(): Session | null {
+  try {
+    const data = localStorage.getItem(SESSION_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function saveSession(session: Session): void {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export function clearSession(): void {
+  localStorage.removeItem(SESSION_KEY);
+}

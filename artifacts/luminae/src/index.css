@@ -1,0 +1,144 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --color-gem-ruby: #DC143C;
+  --color-gem-sapphire: #1565C0;
+  --color-gem-emerald: #2E7D32;
+  --color-gem-onyx: #1A1A2E;
+  --color-gem-pearl: #F5F0E8;
+  --color-gem-flux: #FFD700;
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* Enforce dark mode by default for Luminae */
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  /* Deep Space Navy Palette */
+  --background: 230 40% 5%; /* #070912 */
+  --foreground: 210 20% 90%;
+  
+  --border: 230 30% 15%;
+  
+  --card: 230 35% 8%;
+  --card-foreground: 210 20% 90%;
+  --card-border: 230 30% 18%;
+
+  --popover: 230 35% 8%;
+  --popover-foreground: 210 20% 90%;
+  --popover-border: 230 30% 18%;
+
+  --primary: 210 100% 60%; 
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 230 30% 15%;
+  --secondary-foreground: 210 20% 90%;
+  
+  --muted: 230 30% 12%;
+  --muted-foreground: 210 20% 60%;
+  
+  --accent: 210 100% 60%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 348 83% 47%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --input: 230 30% 20%;
+  --ring: 210 100% 60%;
+
+  --app-font-sans: 'Geist', 'Inter', sans-serif;
+  --app-font-serif: 'Playfair Display', Georgia, serif;
+  --app-font-mono: 'Space Mono', Menlo, monospace;
+  --radius: 0.75rem;
+  
+  --shadow-2xs: 0px 2px 0px 0px hsl(var(--border) / 0.5);
+  --shadow-xs: 0px 2px 0px 0px hsl(var(--border) / 0.5);
+  --shadow-sm: 0px 2px 0px 0px hsl(var(--border) / 0.5), 0px 1px 2px -1px hsl(var(--border) / 0.5);
+  --shadow: 0px 2px 0px 0px hsl(var(--border) / 0.5), 0px 1px 2px -1px hsl(var(--border) / 0.5);
+  --shadow-md: 0px 2px 0px 0px hsl(var(--border) / 0.5), 0px 2px 4px -1px hsl(var(--border) / 0.5);
+  --shadow-lg: 0px 2px 0px 0px hsl(var(--border) / 0.5), 0px 4px 6px -1px hsl(var(--border) / 0.5);
+  --shadow-xl: 0px 2px 0px 0px hsl(var(--border) / 0.5), 0px 8px 10px -1px hsl(var(--border) / 0.5);
+  --shadow-2xl: 0px 2px 0px 0px hsl(var(--border) / 0.5);
+
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  /* Intentionally identical as we force dark mode */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .gem-glow {
+    box-shadow: 0 0 15px currentColor;
+  }
+  .gem-ruby { color: var(--color-gem-ruby); }
+  .gem-sapphire { color: var(--color-gem-sapphire); }
+  .gem-emerald { color: var(--color-gem-emerald); }
+  .gem-onyx { color: var(--color-gem-onyx); }
+  .gem-pearl { color: var(--color-gem-pearl); }
+  .gem-flux { color: var(--color-gem-flux); }
+}

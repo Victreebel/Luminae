@@ -1,22 +1,25 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Luminae multiplayer tabletop game API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: rooms
+    description: Room management
+  - name: game
+    description: Game state and actions
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +27,192 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /rooms:
+    post:
+      operationId: createRoom
+      tags: [rooms]
+      summary: Create a new game room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomBody"
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomWithPlayer"
+
+  /rooms/{inviteCode}:
+    get:
+      operationId: getRoomByInviteCode
+      tags: [rooms]
+      summary: Get room info by invite code
+      parameters:
+        - name: inviteCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Room info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomInfo"
+        "404":
+          description: Room not found
+
+  /rooms/{roomId}/join:
+    post:
+      operationId: joinRoom
+      tags: [rooms]
+      summary: Join a room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRoomBody"
+      responses:
+        "200":
+          description: Joined room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomWithPlayer"
+        "400":
+          description: Cannot join room
+        "404":
+          description: Room not found
+
+  /rooms/{roomId}/start:
+    post:
+      operationId: startGame
+      tags: [rooms]
+      summary: Start the game (host only)
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HostActionBody"
+      responses:
+        "200":
+          description: Game started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+        "400":
+          description: Cannot start game
+        "403":
+          description: Not the host
+
+  /rooms/{roomId}/state:
+    get:
+      operationId: getGameState
+      tags: [game]
+      summary: Get current game state
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sessionToken
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Game state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+        "403":
+          description: Not a member of this room
+        "404":
+          description: Room not found
+
+  /rooms/{roomId}/actions:
+    post:
+      operationId: submitAction
+      tags: [game]
+      summary: Submit a turn action
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActionRequest"
+      responses:
+        "200":
+          description: Action applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+        "400":
+          description: Invalid action
+        "403":
+          description: Not your turn
+
+  /rooms/{roomId}/players/{playerId}:
+    delete:
+      operationId: kickPlayer
+      tags: [rooms]
+      summary: Kick a player (host only)
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HostActionBody"
+      responses:
+        "200":
+          description: Player kicked
+        "403":
+          description: Not the host
+        "404":
+          description: Player not found
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +223,278 @@ components:
       required:
         - status
 
+    CreateRoomBody:
+      type: object
+      properties:
+        hostName:
+          type: string
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
+      required:
+        - hostName
+        - maxPlayers
+
+    JoinRoomBody:
+      type: object
+      properties:
+        playerName:
+          type: string
+      required:
+        - playerName
+
+    HostActionBody:
+      type: object
+      properties:
+        sessionToken:
+          type: string
+      required:
+        - sessionToken
+
+    RoomPlayer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        isHost:
+          type: boolean
+        isConnected:
+          type: boolean
+        orderIndex:
+          type: integer
+      required:
+        - id
+        - name
+        - isHost
+        - isConnected
+        - orderIndex
+
+    RoomInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        inviteCode:
+          type: string
+        status:
+          type: string
+          enum: [lobby, playing, finished]
+        maxPlayers:
+          type: integer
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoomPlayer"
+      required:
+        - id
+        - inviteCode
+        - status
+        - maxPlayers
+        - players
+
+    RoomWithPlayer:
+      type: object
+      properties:
+        room:
+          $ref: "#/components/schemas/RoomInfo"
+        player:
+          $ref: "#/components/schemas/RoomPlayer"
+        sessionToken:
+          type: string
+      required:
+        - room
+        - player
+        - sessionToken
+
+    CrystalCounts:
+      type: object
+      properties:
+        ruby:
+          type: integer
+        sapphire:
+          type: integer
+        emerald:
+          type: integer
+        onyx:
+          type: integer
+        pearl:
+          type: integer
+        flux:
+          type: integer
+      required:
+        - ruby
+        - sapphire
+        - emerald
+        - onyx
+        - pearl
+        - flux
+
+    ArtifactCard:
+      type: object
+      properties:
+        id:
+          type: string
+        tier:
+          type: integer
+        bonusColor:
+          type: string
+          enum: [ruby, sapphire, emerald, onyx, pearl]
+        prestigePoints:
+          type: integer
+        cost:
+          $ref: "#/components/schemas/CrystalCounts"
+      required:
+        - id
+        - tier
+        - bonusColor
+        - prestigePoints
+        - cost
+
+    Luminary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prestigePoints:
+          type: integer
+        requirements:
+          $ref: "#/components/schemas/CrystalCounts"
+      required:
+        - id
+        - name
+        - prestigePoints
+        - requirements
+
+    GamePlayerState:
+      type: object
+      properties:
+        playerId:
+          type: string
+        playerName:
+          type: string
+        crystals:
+          $ref: "#/components/schemas/CrystalCounts"
+        bonuses:
+          $ref: "#/components/schemas/CrystalCounts"
+        prestige:
+          type: integer
+        reservedCards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactCard"
+        purchasedCardIds:
+          type: array
+          items:
+            type: string
+        isConnected:
+          type: boolean
+      required:
+        - playerId
+        - playerName
+        - crystals
+        - bonuses
+        - prestige
+        - reservedCards
+        - purchasedCardIds
+        - isConnected
+
+    GameState:
+      type: object
+      properties:
+        roomId:
+          type: string
+        status:
+          type: string
+          enum: [lobby, playing, finished]
+        currentPlayerIndex:
+          type: integer
+        roundNumber:
+          type: integer
+        crystalBank:
+          $ref: "#/components/schemas/CrystalCounts"
+        marketTier1:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactCard"
+        marketTier2:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactCard"
+        marketTier3:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactCard"
+        deckCounts:
+          type: object
+          properties:
+            tier1:
+              type: integer
+            tier2:
+              type: integer
+            tier3:
+              type: integer
+          required:
+            - tier1
+            - tier2
+            - tier3
+        luminaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Luminary"
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GamePlayerState"
+        winnerId:
+          type: ["string", "null"]
+        lastAction:
+          type: ["object", "null"]
+          additionalProperties: true
+        version:
+          type: integer
+      required:
+        - roomId
+        - status
+        - currentPlayerIndex
+        - roundNumber
+        - crystalBank
+        - marketTier1
+        - marketTier2
+        - marketTier3
+        - deckCounts
+        - luminaries
+        - players
+        - winnerId
+        - lastAction
+        - version
+
+    ActionRequest:
+      type: object
+      properties:
+        sessionToken:
+          type: string
+        type:
+          type: string
+          enum:
+            - take_three_crystals
+            - take_two_crystals
+            - reserve_card
+            - purchase_card
+            - purchase_reserved
+        crystals:
+          $ref: "#/components/schemas/CrystalCounts"
+        crystal:
+          type: string
+          enum: [ruby, sapphire, emerald, onyx, pearl]
+        cardId:
+          type: string
+        tier:
+          type: integer
+      required:
+        - sessionToken
+        - type

@@ -1,0 +1,21 @@
+import { pgTable, text, integer, timestamp, uuid } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+export const roomsTable = pgTable("rooms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  inviteCode: text("invite_code").notNull().unique(),
+  hostPlayerId: text("host_player_id"),
+  status: text("status").notNull().default("lobby"), // lobby | playing | finished
+  maxPlayers: integer("max_players").notNull().default(4),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertRoomSchema = createInsertSchema(roomsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertRoom = z.infer<typeof insertRoomSchema>;
+export type Room = typeof roomsTable.$inferSelect;
