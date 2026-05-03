@@ -88,21 +88,26 @@ export default function Lobby() {
     }
   }, [roomInfo, roomId, setLocation]);
 
+  // roomInfo (TanStack Query) is the authoritative source for player membership
+  // and per-player metadata (isHost, name, orderIndex, isAi, aiDifficulty,
+  // isConnected). We re-sync on every roomInfo change so that any local stub
+  // inserted by an early WebSocket event (which lacks isHost) gets corrected
+  // when the API data arrives. WS handlers continue to layer live updates
+  // between refetches; missed WS events self-heal on the next refetch.
   useEffect(() => {
-    if (roomInfo?.players && players.length === 0) {
-      setPlayers(
-        roomInfo.players.map((p) => ({
-          id: p.id,
-          name: p.name,
-          isHost: p.isHost,
-          isConnected: p.isConnected,
-          orderIndex: p.orderIndex,
-          isAi: p.isAi,
-          aiDifficulty: p.aiDifficulty as AiDifficulty | null | undefined,
-        }))
-      );
-    }
-  }, [roomInfo, players.length]);
+    if (!roomInfo?.players) return;
+    setPlayers(
+      roomInfo.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        isHost: p.isHost,
+        isConnected: p.isConnected,
+        orderIndex: p.orderIndex,
+        isAi: p.isAi,
+        aiDifficulty: p.aiDifficulty as AiDifficulty | null | undefined,
+      })),
+    );
+  }, [roomInfo]);
 
   useEffect(() => {
     if (!session || session.roomId !== roomId) {

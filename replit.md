@@ -17,7 +17,11 @@ pnpm workspace monorepo using TypeScript.
 ## Game Mechanics
 
 - **Crystals (cosmic resources)**: 6 affinities — Radiance, Flare, Continuum, Verdance, Abyss + Singularity (wild). Internal data keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are intentionally retained throughout the API, DB, engine, and AI for backward compatibility. The display layer maps keys → cosmic names via `artifacts/luminae/src/lib/gemMeta.ts`.
-- **Cosmic Affinity art** (May 2026): All gem tokens, tier card backdrops (3), Luminary portraits (5), home/lobby background, and Luminae logo are AI-generated and stored in `attached_assets/generated_images/`, imported via the Vite `@assets` alias.
+- **Cosmic Affinity art** (May 2026): All gem tokens, tier card backdrops (3), Luminary portraits (5), home/lobby background, and Luminae logo are AI-generated and stored in `attached_assets/generated_images/`, imported via the Vite `@assets` alias. PNGs compressed via `sharp` (palette + max compression) — total payload ~5 MB.
+
+## Lobby state sync (important)
+
+The lobby reconciles its local `players` array from two sources: TanStack Query's `roomInfo` (authoritative) and WebSocket events (live deltas). Critical rule: the `roomInfo` populate effect must re-merge on **every** `roomInfo` change, not just when `players.length === 0`. Earlier code gated on `length === 0`, which was a bug: the server's `player_connected` WS event arrives before the initial query resolves and only carries `{ playerId, playerName, isConnected }` — no `isHost`. The WS handler would insert a host stub with `isHost: false` (default fallback), and the populate effect would then skip the API truth, leaving the host trapped in non-host UI (no "Start Game", no "Add AI"). Fix lives at `artifacts/luminae/src/pages/lobby.tsx` in the roomInfo merge effect — do not re-introduce a length guard.
 - **Market**: 3 tiers of Artifact cards (20/15/10 cards shuffled into decks, 4 face-up per tier)
 - **Luminaries**: 5 patron cards, playerCount+1 active per game, award 3 prestige for bonus requirements
 - **Actions**: take 3 different crystals, take 2 same (≥4 in bank), reserve card (get flux), purchase card/reserved
