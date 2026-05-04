@@ -106,71 +106,116 @@ function cost(
 }
 
 export const CARD_CATALOG: ArtifactCard[] = [
-  // ─── Tier 1 ───────────────────────────────────────────────────────────────
+  // ─── Tier 1 (40 cards — 8 per gem) ───────────────────────────────────────
   // Ruby bonus
   { id: "t1r01", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 1, 1, 1) },
   { id: "t1r02", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 1, 2, 0) },
   { id: "t1r03", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 1, 1, 0, 1) },
   { id: "t1r04", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 2, 0, 0, 0) },
+  { id: "t1r05", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 0, 2, 2) },
+  { id: "t1r06", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 2, 1, 0, 0) },
+  { id: "t1r07", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 2, 2, 0) },
+  { id: "t1r08", tier: 1, bonusColor: "ruby", prestigePoints: 1, cost: cost(0, 0, 0, 0, 4) },
   // Sapphire bonus
   { id: "t1s01", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 1, 0, 1) },
   { id: "t1s02", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(2, 0, 1, 0, 0) },
   { id: "t1s03", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 0, 1, 1) },
   { id: "t1s04", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 0, 0, 2) },
+  { id: "t1s05", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(0, 0, 0, 2, 2) },
+  { id: "t1s06", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 2, 0, 0) },
+  { id: "t1s07", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(2, 0, 0, 2, 0) },
+  { id: "t1s08", tier: 1, bonusColor: "sapphire", prestigePoints: 1, cost: cost(0, 0, 4, 0, 0) },
   // Emerald bonus
   { id: "t1e01", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(1, 1, 0, 0, 1) },
   { id: "t1e02", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 2, 0, 1, 0) },
   { id: "t1e03", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(1, 1, 0, 1, 0) },
   { id: "t1e04", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 3, 0, 0, 0) },
+  { id: "t1e05", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(2, 0, 0, 0, 2) },
+  { id: "t1e06", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 1, 0, 1, 2) },
+  { id: "t1e07", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 0, 0, 2, 1) },
+  { id: "t1e08", tier: 1, bonusColor: "emerald", prestigePoints: 1, cost: cost(0, 0, 0, 4, 0) },
   // Onyx bonus
   { id: "t1o01", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 1, 1, 0, 1) },
   { id: "t1o02", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 1, 0, 0, 2) },
   { id: "t1o03", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(1, 0, 1, 0, 1) },
   { id: "t1o04", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 0, 2, 1, 0) },
+  { id: "t1o05", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(2, 1, 0, 0, 0) },
+  { id: "t1o06", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 2, 2, 0, 0) },
+  { id: "t1o07", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(1, 0, 0, 1, 2) },
+  { id: "t1o08", tier: 1, bonusColor: "onyx", prestigePoints: 1, cost: cost(0, 4, 0, 0, 0) },
   // Pearl bonus
   { id: "t1p01", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(1, 1, 0, 1, 0) },
   { id: "t1p02", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(0, 1, 0, 2, 0) },
   { id: "t1p03", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(1, 0, 1, 1, 0) },
   { id: "t1p04", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(2, 0, 0, 0, 1) },
+  { id: "t1p05", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(0, 2, 0, 0, 2) },
+  { id: "t1p06", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(1, 0, 1, 0, 2) },
+  { id: "t1p07", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(0, 0, 1, 2, 1) },
+  { id: "t1p08", tier: 1, bonusColor: "pearl", prestigePoints: 1, cost: cost(0, 0, 4, 0, 0) },
 
-  // ─── Tier 2 ───────────────────────────────────────────────────────────────
+  // ─── Tier 2 (30 cards — 6 per gem) ───────────────────────────────────────
   // Ruby bonus
   { id: "t2r01", tier: 2, bonusColor: "ruby", prestigePoints: 1, cost: cost(0, 2, 0, 3, 2) },
   { id: "t2r02", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(0, 1, 4, 2, 0) },
   { id: "t2r03", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(3, 0, 0, 0, 3) },
+  { id: "t2r04", tier: 2, bonusColor: "ruby", prestigePoints: 1, cost: cost(2, 0, 2, 0, 2) },
+  { id: "t2r05", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(0, 3, 0, 2, 2) },
+  { id: "t2r06", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(0, 0, 0, 5, 0) },
   // Sapphire bonus
   { id: "t2s01", tier: 2, bonusColor: "sapphire", prestigePoints: 1, cost: cost(2, 0, 3, 0, 2) },
   { id: "t2s02", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(4, 0, 0, 2, 1) },
   { id: "t2s03", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(0, 3, 0, 0, 3) },
+  { id: "t2s04", tier: 2, bonusColor: "sapphire", prestigePoints: 1, cost: cost(0, 0, 2, 0, 3) },
+  { id: "t2s05", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(5, 0, 0, 0, 0) },
+  { id: "t2s06", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(2, 0, 0, 3, 2) },
   // Emerald bonus
   { id: "t2e01", tier: 2, bonusColor: "emerald", prestigePoints: 1, cost: cost(3, 2, 0, 0, 2) },
   { id: "t2e02", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(2, 4, 0, 1, 0) },
   { id: "t2e03", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(0, 0, 3, 3, 0) },
+  { id: "t2e04", tier: 2, bonusColor: "emerald", prestigePoints: 1, cost: cost(0, 2, 0, 2, 2) },
+  { id: "t2e05", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(0, 5, 0, 0, 0) },
+  { id: "t2e06", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(2, 0, 0, 2, 3) },
   // Onyx bonus
   { id: "t2o01", tier: 2, bonusColor: "onyx", prestigePoints: 1, cost: cost(0, 2, 2, 0, 3) },
   { id: "t2o02", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(1, 0, 2, 0, 4) },
   { id: "t2o03", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(3, 0, 0, 3, 0) },
+  { id: "t2o04", tier: 2, bonusColor: "onyx", prestigePoints: 1, cost: cost(2, 0, 3, 0, 2) },
+  { id: "t2o05", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(0, 0, 5, 0, 0) },
+  { id: "t2o06", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(2, 3, 0, 0, 2) },
   // Pearl bonus
   { id: "t2p01", tier: 2, bonusColor: "pearl", prestigePoints: 1, cost: cost(2, 3, 0, 2, 0) },
   { id: "t2p02", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 2, 1, 4, 0) },
   { id: "t2p03", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 0, 3, 0, 3) },
+  { id: "t2p04", tier: 2, bonusColor: "pearl", prestigePoints: 1, cost: cost(3, 2, 0, 0, 2) },
+  { id: "t2p05", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 0, 0, 0, 5) },
+  { id: "t2p06", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 2, 3, 2, 0) },
 
-  // ─── Tier 3 ───────────────────────────────────────────────────────────────
+  // ─── Tier 3 (20 cards — 4 per gem) ───────────────────────────────────────
   // Ruby bonus
   { id: "t3r01", tier: 3, bonusColor: "ruby", prestigePoints: 3, cost: cost(3, 0, 0, 5, 3) },
   { id: "t3r02", tier: 3, bonusColor: "ruby", prestigePoints: 4, cost: cost(0, 0, 3, 6, 3) },
+  { id: "t3r03", tier: 3, bonusColor: "ruby", prestigePoints: 3, cost: cost(0, 5, 0, 3, 3) },
+  { id: "t3r04", tier: 3, bonusColor: "ruby", prestigePoints: 5, cost: cost(0, 0, 7, 3, 3) },
   // Sapphire bonus
   { id: "t3s01", tier: 3, bonusColor: "sapphire", prestigePoints: 3, cost: cost(5, 3, 0, 0, 3) },
   { id: "t3s02", tier: 3, bonusColor: "sapphire", prestigePoints: 4, cost: cost(6, 3, 0, 3, 0) },
+  { id: "t3s03", tier: 3, bonusColor: "sapphire", prestigePoints: 3, cost: cost(3, 0, 5, 3, 0) },
+  { id: "t3s04", tier: 3, bonusColor: "sapphire", prestigePoints: 5, cost: cost(3, 7, 0, 0, 3) },
   // Emerald bonus
   { id: "t3e01", tier: 3, bonusColor: "emerald", prestigePoints: 3, cost: cost(0, 5, 3, 0, 3) },
   { id: "t3e02", tier: 3, bonusColor: "emerald", prestigePoints: 4, cost: cost(3, 6, 0, 3, 0) },
+  { id: "t3e03", tier: 3, bonusColor: "emerald", prestigePoints: 3, cost: cost(0, 3, 0, 5, 3) },
+  { id: "t3e04", tier: 3, bonusColor: "emerald", prestigePoints: 5, cost: cost(3, 3, 7, 0, 0) },
   // Onyx bonus
   { id: "t3o01", tier: 3, bonusColor: "onyx", prestigePoints: 3, cost: cost(0, 3, 5, 3, 0) },
   { id: "t3o02", tier: 3, bonusColor: "onyx", prestigePoints: 4, cost: cost(0, 3, 6, 0, 3) },
+  { id: "t3o03", tier: 3, bonusColor: "onyx", prestigePoints: 3, cost: cost(3, 0, 3, 0, 5) },
+  { id: "t3o04", tier: 3, bonusColor: "onyx", prestigePoints: 5, cost: cost(0, 3, 3, 7, 0) },
   // Pearl bonus
   { id: "t3p01", tier: 3, bonusColor: "pearl", prestigePoints: 3, cost: cost(3, 0, 3, 5, 0) },
   { id: "t3p02", tier: 3, bonusColor: "pearl", prestigePoints: 4, cost: cost(3, 0, 3, 0, 6) },
+  { id: "t3p03", tier: 3, bonusColor: "pearl", prestigePoints: 3, cost: cost(5, 0, 3, 0, 3) },
+  { id: "t3p04", tier: 3, bonusColor: "pearl", prestigePoints: 5, cost: cost(0, 3, 0, 3, 7) },
 ];
 
 export const LUMINARIES: LuminaryDef[] = [

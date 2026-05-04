@@ -83,6 +83,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
         prestige: 0,
         reservedCards: [],
         purchasedCardIds: [],
+        purchasedCards: [],
         isConnected: p.isAi ? true : p.isConnected,
       })),
       winnerId: null,
