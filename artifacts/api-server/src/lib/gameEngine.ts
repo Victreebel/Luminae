@@ -522,7 +522,7 @@ export function applyAction(
         return { success: false, error: "Must be different affinities" };
       for (const c of colors) {
         if ((selected[c] ?? 0) !== 1)
-          return { success: false, error: "Channel exactly 1 of each affinity" };
+          return { success: false, error: "Harvest exactly 1 of each affinity" };
         if (state.crystalBank[c] < 1)
           return { success: false, error: `No ${COLOR_LABEL[c]} available` };
       }
@@ -543,7 +543,7 @@ export function applyAction(
       if (!color || !CRYSTAL_COLORS.includes(color))
         return { success: false, error: "Invalid affinity" };
       if (state.crystalBank[color] < 4)
-        return { success: false, error: "Need at least 4 in the well to channel 2" };
+        return { success: false, error: "Need at least 4 in the well to harvest 2" };
       const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
       if (totalHeld + 2 > 10)
         return { success: false, error: "Would exceed 10 affinity limit" };
@@ -680,13 +680,13 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
         .filter((c) => (sel[c] ?? 0) > 0)
         .map((c) => `${sel[c]} ${COLOR_LABEL[c]}`);
       return parts.length === 0
-        ? "Channeled nothing"
-        : `Channeled ${parts.join(", ")}`;
+        ? "Harvested nothing"
+        : `Harvested ${parts.join(", ")}`;
     }
     case "take_two_crystals":
       return action.crystal
-        ? `Channeled 2 ${COLOR_LABEL[action.crystal]}`
-        : "Channeled 2 affinities";
+        ? `Harvested 2 ${COLOR_LABEL[action.crystal]}`
+        : "Harvested 2 affinities";
     case "reserve_card": {
       if (action.cardId) {
         const lore = getCardLore(action.cardId);

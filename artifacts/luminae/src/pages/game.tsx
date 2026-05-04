@@ -767,11 +767,11 @@ export default function GameBoard() {
     if (handTotal + total > 10) return { ok: false, reason: `Hand limit is 10 (you'd have ${handTotal + total})`, actionType: null };
     if (distinct.length === 1 && (selectedCrystals[distinct[0] as keyof CrystalCounts] ?? 0) === 2) {
       const c = distinct[0] as keyof CrystalCounts;
-      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Channel 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
-      return { ok: false, reason: `Need 4+ in well to channel 2`, actionType: null };
+      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Harvest 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
+      return { ok: false, reason: `Need 4+ in well to harvest 2`, actionType: null };
     }
     if (distinct.every(c => (selectedCrystals[c as keyof CrystalCounts] ?? 0) === 1) && distinct.length <= 3) {
-      return { ok: true, reason: distinct.length === 3 ? 'Channel 3 different' : `Channel ${distinct.length}`, actionType: 'take3' };
+      return { ok: true, reason: distinct.length === 3 ? 'Harvest 3 different' : `Harvest ${distinct.length}`, actionType: 'take3' };
     }
     return { ok: false, reason: 'Invalid combination', actionType: null };
   })();
@@ -1022,7 +1022,7 @@ export default function GameBoard() {
                     onClick={(e) => { e.stopPropagation(); promoteToTake2(c); }}
                     className="mt-0.5 text-[9px] font-bold text-primary/80 hover:text-primary bg-primary/10 rounded-full px-2 py-0.5 active:bg-primary/25 transition-colors"
                   >
-                    channel 2
+                    harvest 2
                   </motion.button>
                 )}
               </div>
@@ -1065,7 +1065,7 @@ export default function GameBoard() {
                       onClick={confirmCrystals}
                       disabled={!queueLegality.ok}
                     >
-                      Channel
+                      Harvest
                     </Button>
                   </div>
                 </div>
@@ -1076,7 +1076,7 @@ export default function GameBoard() {
         {isMyTurn && !crystalQueueActive && (
           <div className="px-3 pb-2.5">
             <p className="text-[9px] text-muted-foreground text-center italic">
-              Tap to channel affinities · up to 3 different or 2 of the same
+              Tap to harvest affinities · up to 3 different or 2 of the same
             </p>
           </div>
         )}
@@ -1821,7 +1821,7 @@ export default function GameBoard() {
                 {gemBurst.playerName}
               </div>
               <span className="text-lg font-serif font-bold text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.6)]">
-                Channeled
+                Harvested
               </span>
             </motion.div>
           </motion.div>
@@ -1868,7 +1868,7 @@ export default function GameBoard() {
                   {
                     icon: '🪙',
                     title: 'On your turn — pick one action',
-                    body: 'Channel up to 3 affinities (1 of each type) · Channel 2 of the same (needs 4+ in the well) · Reserve a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
+                    body: 'Harvest up to 3 affinities (1 of each type) · Harvest 2 of the same (needs 4+ in the well) · Reserve a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
                   },
                   {
                     icon: '🃏',
