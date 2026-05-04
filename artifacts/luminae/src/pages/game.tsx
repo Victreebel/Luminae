@@ -34,8 +34,9 @@ import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import cardBackLogo from '@assets/generated_images/luminae_card_back_logo.png';
 
 // Vite glob: bundle every per-card art image and key by id (filename w/o ext).
+// Files live inside src/assets/cards/ so the dev server can always serve them.
 const CARD_ART_MODULES = import.meta.glob(
-  '@assets/generated_images/cards/*.png',
+  '../assets/cards/*.png',
   { eager: true, query: '?url', import: 'default' },
 ) as Record<string, string>;
 const CARD_ART: Record<string, string> = {};
