@@ -449,6 +449,11 @@ export default function GameBoard() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
+  const [gemBurst, setGemBurst] = useState<{
+    key: number;
+    gems: GemKey[];
+  } | null>(null);
+  const gemBurstKeyRef = useRef(0);
   const [reserveBurst, setReserveBurst] = useState<{
     key: number;
     tier: 1 | 2 | 3;
@@ -633,6 +638,20 @@ export default function GameBoard() {
 
   const submitAction = useSubmitAction();
 
+  const playGemBurst = (crystals: Partial<CrystalCounts>) => {
+    const gems: GemKey[] = [];
+    for (const [color, count] of Object.entries(crystals)) {
+      if (color === 'flux') continue;
+      const gem = color as GemKey;
+      const total = count ?? 0;
+      for (let i = 0; i < total; i += 1) gems.push(gem);
+    }
+    if (gems.length === 0) return;
+    gemBurstKeyRef.current += 1;
+    setGemBurst({ key: gemBurstKeyRef.current, gems });
+    setTimeout(() => setGemBurst(null), 3800);
+  };
+
   if (error) {
     return <div className="h-[100dvh] flex items-center justify-center text-destructive">Error loading game.</div>;
   }
@@ -726,9 +745,21 @@ export default function GameBoard() {
 
   const confirmCrystals = () => {
     if (!queueLegality.ok) return;
-    if (queueLegality.actionType === 'take3') executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
-    else if (queueLegality.actionType === 'take2') executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+    if (queueLegality.actionType === 'take3') {
+      playGemBurst(selectedCrystals);
+      executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
+    } else if (queueLegality.actionType === 'take2') {
+      playGemBurst(selectedCrystals);
+      executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+    }
   };
+
+  const gemBurstView = gemBurst?.gems.map((gem, index) => ({
+    gem,
+    index,
+    x: (index - 1) * 74,
+    delay: index * 0.78,
+  })) ?? [];
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
     const out: Record<string, number> = {};
@@ -1641,6 +1672,49 @@ export default function GameBoard() {
                 </span>
               )}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Gem Pickup Burst ── */}
+      <AnimatePresence>
+        {gemBurst && (
+          <motion.div
+            key={gemBurst.key}
+            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 3.5, ease: 'easeOut' }}
+          >
+            <div className="absolute inset-0 bg-black/25" />
+            <div className="relative h-72 w-[18rem]">
+              {gemBurstView.map(({ gem, index, x, delay }) => {
+                return (
+                  <motion.div
+                    key={`${gemBurst.key}-${gem}-${index}`}
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0, rotateY: 0, scale: 0.4, x: 0, y: 64 }}
+                    animate={{
+                      opacity: [0, 0, 1, 1, 0],
+                      rotateY: [0, 180, 360, 540, 720],
+                      scale: [0.4, 0.68, 1.12, 1.02, 0.9],
+                      x: [0, x * 0.35, x * 0.95, x, x],
+                      y: [64, 18, 0, -6, -18],
+                    }}
+                    transition={{ duration: 1.25, delay, times: [0, 0.18, 0.46, 0.74, 1] }}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="rounded-full bg-black/50 p-2 shadow-[0_0_24px_rgba(255,255,255,0.2)]">
+                        <MiniGem color={gem} size={52} />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest" style={{ color: GEM_META[gem].glowHex }}>
+                        {GEM_META[gem].shortName}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
