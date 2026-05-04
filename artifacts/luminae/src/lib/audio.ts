@@ -293,6 +293,120 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  playBonusOnyx() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      this.osc(ctx, 55, 'sine', t, t + 1.8, 0.18, 0.04);
+      this.osc(ctx, 82.5, 'sine', t, t + 1.4, 0.12, 0.05);
+      this.osc(ctx, 110, 'sine', t + 0.1, t + 1.6, 0.06, 0.06);
+      this.noiseSweep(ctx, t, 1.2, 0.07, 80, 40);
+      this.noiseBlip(ctx, t + 0.3, 0.6, 0.05, 120, 2);
+      this.osc(ctx, 165, 'triangle', t + 0.5, t + 1.5, 0.03, 0.08);
+      this.noiseSweep(ctx, t + 0.8, 0.6, 0.04, 200, 60);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  playBonusRuby() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      this.osc(ctx, 880, 'sine', t, t + 0.6, 0.10, 0.003);
+      this.osc(ctx, 1320, 'sine', t + 0.02, t + 0.4, 0.05, 0.003);
+      for (let i = 0; i < 6; i++) {
+        const at = t + 0.05 + i * 0.12;
+        const freq = 1200 + Math.random() * 1600;
+        this.noiseBlip(ctx, at, 0.04 + Math.random() * 0.03, 0.06 - i * 0.006, freq, 6 + Math.random() * 4);
+      }
+      this.osc(ctx, 440, 'sawtooth', t + 0.1, t + 0.5, 0.03, 0.01);
+      this.noiseSweep(ctx, t + 0.3, 0.35, 0.05, 600, 2200);
+      this.noiseBlip(ctx, t + 0.55, 0.15, 0.04, 3000, 3);
+      this.osc(ctx, 659.25, 'sine', t + 0.6, t + 1.2, 0.04, 0.01);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  playBonusSapphire() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const bufLen = Math.ceil(ctx.sampleRate * 2.0);
+      const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(200, t);
+      lp.frequency.linearRampToValueAtTime(800, t + 0.6);
+      lp.frequency.linearRampToValueAtTime(300, t + 1.5);
+      lp.Q.value = 1;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.10, t + 0.4);
+      g.gain.linearRampToValueAtTime(0.06, t + 1.0);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+      src.connect(lp);
+      lp.connect(g);
+      g.connect(ctx.destination);
+      src.start(t);
+      src.stop(t + 2.1);
+      this.osc(ctx, 220, 'sine', t + 0.1, t + 1.6, 0.05, 0.08);
+      this.osc(ctx, 330, 'sine', t + 0.3, t + 1.4, 0.03, 0.06);
+      this.osc(ctx, 523.25, 'sine', t + 0.8, t + 1.8, 0.04, 0.05);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  playBonusEmerald() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const notes = [261.6, 329.6, 392.0, 440.0, 523.25, 587.33, 659.25];
+      notes.forEach((f, i) => {
+        const at = t + i * 0.14;
+        const dur = 0.6 - i * 0.04;
+        this.osc(ctx, f, 'sine', at, at + Math.max(dur, 0.25), 0.07 - i * 0.005, 0.02);
+        if (i % 2 === 0) {
+          this.osc(ctx, f * 0.5, 'sine', at, at + dur + 0.2, 0.03, 0.03);
+        }
+      });
+      this.noiseSweep(ctx, t, 0.8, 0.03, 400, 1200);
+      this.noiseBlip(ctx, t + 0.5, 0.3, 0.03, 800, 2);
+      this.osc(ctx, 196, 'sine', t, t + 1.5, 0.04, 0.06);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  playBonusPearl() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      this.osc(ctx, 783.99, 'sine', t, t + 1.8, 0.08, 0.01);
+      this.osc(ctx, 1046.5, 'sine', t + 0.05, t + 1.4, 0.05, 0.015);
+      this.osc(ctx, 1568, 'sine', t + 0.1, t + 1.0, 0.03, 0.02);
+      this.osc(ctx, 392, 'sine', t + 0.15, t + 1.6, 0.04, 0.03);
+      this.noiseBlip(ctx, t + 0.2, 0.5, 0.04, 3000, 2);
+      this.noiseBlip(ctx, t + 0.5, 0.4, 0.03, 4000, 3);
+      this.osc(ctx, 2093, 'sine', t + 0.6, t + 1.2, 0.02, 0.01);
+      this.osc(ctx, 1318.5, 'sine', t + 0.8, t + 1.5, 0.025, 0.01);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  playBonusSound(color: GemKey) {
+    switch (color) {
+      case 'onyx': return this.playBonusOnyx();
+      case 'ruby': return this.playBonusRuby();
+      case 'sapphire': return this.playBonusSapphire();
+      case 'emerald': return this.playBonusEmerald();
+      case 'pearl': return this.playBonusPearl();
+      default: break;
+    }
+  }
+
   // Kept for backward compat — maps to crystal ting on ruby
   playCrystalPickedLegacy() { this.playCrystalPicked('ruby'); }
 

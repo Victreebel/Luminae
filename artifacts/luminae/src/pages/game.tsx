@@ -607,13 +607,24 @@ export default function GameBoard() {
             });
 
             if (gotFlux) gameAudio.playFluxCoin();
-            if (action.type === 'purchase_card') gameAudio.playCardPurchased();
-            else gameAudio.playCardReserved();
+            if (action.type === 'purchase_card') {
+              gameAudio.playCardPurchased();
+            } else {
+              gameAudio.playCardReserved();
+            }
 
             for (const t of cardAnimTimersRef.current) clearTimeout(t);
             cardAnimTimersRef.current = [];
             setHiddenSlots(new Set());
             setFlippingCards(new Set());
+
+            if (action.type === 'purchase_card') {
+              const bonusColor = exitCard.bonusColor as GemKey;
+              if (bonusColor && bonusColor !== 'flux') {
+                const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 2500);
+                cardAnimTimersRef.current.push(tBonus);
+              }
+            }
 
             const slotKey = `${tier}-${idx}`;
             setHiddenSlots(new Set([slotKey]));
@@ -792,6 +803,11 @@ export default function GameBoard() {
       setSelectedCard(null);
       if (payload.type === 'purchase_reserved') {
         gameAudio.playCardPurchased();
+        const bonusColor = payload.cardRef?.bonusColor as GemKey | undefined;
+        if (bonusColor && bonusColor !== 'flux') {
+          const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 800);
+          cardAnimTimersRef.current.push(tBonus);
+        }
         const lumens = payload.cardRef?.lumens ?? 0;
         const name = payload.cardRef?.name ?? 'Artifact';
         burstKeyRef.current += 1;
