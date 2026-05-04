@@ -22,6 +22,7 @@ import logoLuminae from "@assets/generated_images/logo_luminae.png";
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [activeSession, setActiveSession] = useState(() => getSession());
   
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(4);
@@ -33,18 +34,6 @@ export default function Home() {
   const joinRoom = useJoinRoom();
   const rejoinRoom = useRejoinRoom();
   const { refetch: fetchRoom } = useGetRoomByInviteCode(inviteCode, { query: { enabled: false, queryKey: getGetRoomByInviteCodeQueryKey(inviteCode) } });
-
-  useEffect(() => {
-    const session = getSession();
-    if (session) {
-      // Could check if room is still valid, for now just offer rejoin via toast or UI
-      toast({
-        title: "Session found",
-        description: "You have an active session. Rejoining...",
-      });
-      setLocation(`/lobby/${session.roomId}`);
-    }
-  }, [setLocation, toast]);
 
   const handleCreate = async () => {
     if (!hostName.trim()) return;
@@ -99,12 +88,8 @@ export default function Home() {
         playerName: res.player.name,
         isHost: res.player.isHost,
       });
-      // If the game has already started, jump straight to the game screen.
-      if (res.room.status !== "lobby") {
-        setLocation(`/game/${res.room.id}`);
-      } else {
-        setLocation(`/lobby/${res.room.id}`);
-      }
+      if (res.room.status !== "lobby") setLocation(`/game/${res.room.id}`);
+      else setLocation(`/lobby/${res.room.id}`);
     } catch (err: any) {
       toast({
         variant: "destructive",
@@ -112,6 +97,19 @@ export default function Home() {
         description: err.message,
       });
     }
+  };
+
+  const handleContinueSession = () => {
+    if (!activeSession) return;
+    setLocation(`/lobby/${activeSession.roomId}`);
+  };
+
+  const handleStartFresh = () => {
+    setActiveSession(null);
+    toast({
+      title: "Session kept",
+      description: "You can still continue it later from this page.",
+    });
   };
 
   return (
@@ -145,6 +143,18 @@ export default function Home() {
             Forge cosmic affinities. Claim prestige.
           </p>
         </div>
+
+        {activeSession && (
+          <Card className="mb-4 border-primary/40 bg-card/70 backdrop-blur">
+            <CardContent className="p-4 space-y-3">
+              <div className="text-sm text-muted-foreground">Active session found for {activeSession.playerName}</div>
+              <div className="flex gap-2">
+                <Button onClick={handleContinueSession} className="flex-1">Continue</Button>
+                <Button variant="outline" onClick={handleStartFresh} className="flex-1">Start fresh</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="create" className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-secondary/50 p-1 rounded-xl mb-4">
