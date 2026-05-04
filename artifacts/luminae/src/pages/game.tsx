@@ -43,13 +43,23 @@ for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
   const id = path.split('/').pop()!.replace('.png', '');
   CARD_ART[id] = url;
 }
-const CARD_ART_FALLBACK = cardTier1Bg;
 
 const CRYSTALS: GemKey[] = GEM_KEYS;
 
 const TIER_BACKDROPS: Record<number, string> = {
   1: cardTier1Bg,
   3: cardTier3Bg,
+};
+
+// Gem-color gradients used as backdrop for cards that have no specific art image.
+// Each uses the gem's thematic palette so the card still looks distinct and intentional.
+const GEM_CARD_GRADIENTS: Record<string, string> = {
+  ruby:     'linear-gradient(175deg, #1a0404 0%, #3d0808 35%, #220505 70%, #100202 100%)',
+  sapphire: 'linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)',
+  emerald:  'linear-gradient(175deg, #021005 0%, #063020 35%, #041a10 70%, #020c04 100%)',
+  onyx:     'linear-gradient(175deg, #060606 0%, #181818 35%, #0e0e0e 70%, #050505 100%)',
+  pearl:    'linear-gradient(175deg, #06061a 0%, #10103a 35%, #0a0a28 70%, #050516 100%)',
+  flux:     'linear-gradient(175deg, #0a0a02 0%, #282808 35%, #181804 70%, #0a0a02 100%)',
 };
 
 const LUMINARY_PORTRAITS = [
@@ -162,9 +172,36 @@ function ArtifactCardView({
   effectiveCosts?: Partial<Record<GemKey, number>>;
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
-  const backdrop = TIER_BACKDROPS[tier ?? card.tier ?? 1] ?? cardTier1Bg;
-  const art = CARD_ART[card.id] ?? CARD_ART_FALLBACK;
+  const cardTier = tier ?? card.tier ?? 1;
+  const specificArt = CARD_ART[card.id];
   const showActions = !!(onBuy || onReserve);
+
+  // Visual layers built entirely from CSS background properties —
+  // no <img> transform tricks, so there are zero white-edge artifacts.
+  const artLayerStyle: React.CSSProperties = specificArt
+    ? {
+        backgroundImage: `url(${specificArt})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }
+    : {
+        // No PNG for this card — use the tier backdrop for T1/T3,
+        // or a gem-color gradient for T2 (the T2 source PNG has a baked-in
+        // white margin so we never use it as a backdrop).
+        backgroundImage:
+          cardTier !== 2
+            ? `url(${TIER_BACKDROPS[cardTier] ?? cardTier1Bg})`
+            : undefined,
+        background:
+          cardTier === 2
+            ? GEM_CARD_GRADIENTS[card.bonusColor] ??
+              GEM_CARD_GRADIENTS.pearl
+            : undefined,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      };
 
   return (
     <motion.div
@@ -173,40 +210,18 @@ function ArtifactCardView({
         group relative w-32 h-44 rounded-xl overflow-hidden shadow-xl bg-black
         ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)] ring-2 ring-[color:var(--flux)]' : 'ring-1 ring-black/30'}
       `}
-      style={{
-        transformStyle: 'preserve-3d',
-      }}
       title={card.flavor || card.name}
     >
-      {/* Tier backdrop */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            card.tier === 2
-              ? 'linear-gradient(180deg, rgba(8,16,24,1) 0%, rgba(7,28,31,1) 48%, rgba(10,14,22,1) 100%)'
-              : undefined,
-          backgroundImage: card.tier === 2 ? undefined : `url(${backdrop})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      />
-      {/* Card art (full background, dimmed behind info) */}
-      {art && (
-        <div className="absolute inset-0 overflow-hidden">
-          <img
-            src={art}
-            alt={card.name}
-            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
-            style={{
-              objectFit: 'cover',
-              backgroundColor: 'transparent',
-              imageRendering: 'auto',
-              transform: card.tier === 2 ? 'scale(1.3)' : 'scale(1.05)',
-            }}
-            draggable={false}
-          />
-        </div>
+      {/* Single background layer — covers edge to edge, no img-scale tricks */}
+      <div className="absolute inset-0 pointer-events-none" style={artLayerStyle} />
+      {/* Gem-color tint for cards using a gradient backdrop, so colors read clearly */}
+      {!specificArt && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse at 50% 40%, ${bonusMeta?.glowHex ?? '#ffffff'}22 0%, transparent 70%)`,
+          }}
+        />
       )}
       {/* Dark overlay so text is readable */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
