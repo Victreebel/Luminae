@@ -236,6 +236,31 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /** Metallic coin spin — rapid decelerating clicks + resonant ring. */
+  playFluxCoin() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Rapid metallic clicks that decelerate like a real spinning coin
+      let offset = 0;
+      for (let i = 0; i < 11; i++) {
+        const interval = 0.03 + i * 0.014;   // gaps widen as coin slows
+        const vol = Math.max(0.015, 0.1 - i * 0.007);
+        const freq = 2800 - i * 55;
+        this.noiseBlip(ctx, t + offset, 0.035, vol, freq, 12);
+        offset += interval;
+      }
+      // Final landing thud
+      this.noiseBlip(ctx, t + offset, 0.09, 0.14, 1600, 5);
+      // Resonant metallic ring that fades with the coin
+      this.osc(ctx, 1760, 'sine', t, t + 0.85, 0.05, 0.003);
+      this.osc(ctx, 2640, 'sine', t, t + 0.5,  0.03, 0.002);
+      // Gold shimmer high tone
+      this.osc(ctx, GEM_FREQS['flux'], 'sine', t + 0.04, t + 1.0, 0.04, 0.008);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   // Kept for backward compat — maps to crystal ting on ruby
   playCrystalPickedLegacy() { this.playCrystalPicked('ruby'); }
 

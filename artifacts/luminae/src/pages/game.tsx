@@ -339,6 +339,8 @@ export default function GameBoard() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; prestige: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
+  const [reserveBurst, setReserveBurst] = useState<{ key: number; tier: 1 | 2 | 3; gotFlux: boolean } | null>(null);
+  const reserveBurstKeyRef = useRef(0);
   const [showRules, setShowRules] = useState(false);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
@@ -433,8 +435,12 @@ export default function GameBoard() {
   };
 
   const executeAction = async (payload: any) => {
+    const isReserve = payload.type === 'reserve_card';
+    const gotFlux = isReserve && (state?.crystalBank.flux ?? 0) > 0;
+    const reserveTier = (payload._tier as 1 | 2 | 3) ?? 1;
     try {
       const normalized = { ...payload };
+      delete normalized._tier;
       if (normalized.crystals) {
         normalized.crystals = { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...normalized.crystals };
       }
@@ -449,8 +455,12 @@ export default function GameBoard() {
         burstKeyRef.current += 1;
         setPurchaseBurst({ key: burstKeyRef.current, prestige, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
-      } else if (payload.type === 'reserve_card' || payload.type === 'reserve_deck') {
+      } else if (isReserve) {
         gameAudio.playCardReserved();
+        if (gotFlux) gameAudio.playFluxCoin();
+        reserveBurstKeyRef.current += 1;
+        setReserveBurst({ key: reserveBurstKeyRef.current, tier: reserveTier, gotFlux });
+        setTimeout(() => setReserveBurst(null), 2100);
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Action failed', description: err.message });
@@ -506,11 +516,11 @@ export default function GameBoard() {
   };
   const handleReserveCard = (card: ArtifactCard) => {
     if (!isMyTurn) return;
-    executeAction({ type: 'reserve_card', cardId: card.id });
+    executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier });
   };
   const handleReserveDeck = (tier: number) => {
     if (!isMyTurn) return;
-    executeAction({ type: 'reserve_card', tier });
+    executeAction({ type: 'reserve_card', tier, _tier: tier });
   };
 
   const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
@@ -1294,6 +1304,88 @@ export default function GameBoard() {
                 ))}
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Reserve Burst Overlay ── */}
+      <AnimatePresence>
+        {reserveBurst && (
+          <motion.div
+            key={reserveBurst.key}
+            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div className="absolute inset-0 bg-black/30" />
+            <div className="relative flex items-center gap-8">
+              {/* Card back flips to center face-down */}
+              <div style={{ perspective: '900px' }}>
+                <motion.div
+                  style={{ transformStyle: 'preserve-3d' }}
+                  initial={{ rotateY: 90, scale: 0.65 }}
+                  animate={{ rotateY: 0, scale: 1 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  className="relative"
+                >
+                  {/* Fade-out wrapper */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 1, 1, 0] }}
+                    transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1] }}
+                  >
+                    <CardBack tier={reserveBurst.tier} size="md" />
+                  </motion.div>
+
+                  {/* Avatar swoops in over card */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.55, y: -32 }}
+                    animate={{ opacity: [0, 0, 1, 1, 0], scale: [0.55, 0.55, 1.05, 1, 0.9], y: [-32, -32, 0, 0, 0] }}
+                    transition={{ duration: 2.0, times: [0, 0.26, 0.48, 0.62, 1] }}
+                  >
+                    <div
+                      className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                      style={{
+                        width: 72, height: 72,
+                        borderColor: `${GEM_META.flux.glowHex}88`,
+                      }}
+                    >
+                      <img
+                        src={getAvatarForPlayer(session.avatarId).image}
+                        alt={session.playerName}
+                        className="w-full h-full object-cover"
+                        draggable={false}
+                      />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </div>
+
+              {/* Singularity token coin-flips in to the right */}
+              {reserveBurst.gotFlux && (
+                <motion.div
+                  className="flex flex-col items-center gap-2"
+                  style={{ perspective: '900px', transformStyle: 'preserve-3d' }}
+                  initial={{ opacity: 0, rotateY: 90, scale: 0.6 }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    rotateY: [90, 0, 720, 720],
+                    scale: [0.6, 1, 1, 0.8],
+                  }}
+                  transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1] }}
+                >
+                  <CrystalIcon color="flux" size={64} />
+                  <span
+                    className="text-sm font-bold drop-shadow-[0_0_10px_rgba(255,196,61,0.9)]"
+                    style={{ color: GEM_META.flux.hex }}
+                  >
+                    +1 Singularity
+                  </span>
+                </motion.div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
