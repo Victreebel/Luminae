@@ -580,6 +580,7 @@ export default function GameBoard() {
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
       initialTurnFiredRef.current = true;
+      setAnimEndTime(1200);
       const cp = state.players[state.currentPlayerIndex];
       const key = `init-${state.currentPlayerIndex}-${state.version}`;
       fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, cp.playerId === session.playerId);
