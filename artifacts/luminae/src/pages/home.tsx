@@ -38,6 +38,7 @@ export default function Home() {
   const [turnTimer, setTurnTimer] = useState<string>("0");
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [rejoinName, setRejoinName] = useState("");
 
   const handleAvatarSelect = (id: string) => {
     setAvatarId(id);
@@ -129,6 +130,22 @@ export default function Home() {
       toast({ variant: "destructive", title: "Error joining room", description: err.message });
     }
   };
+
+  const handleRejoin = async () => {
+    const session = getSession();
+    if (!session || !session.roomId || !session.sessionToken) {
+      setMode("join");
+      return;
+    }
+    try {
+      const state = await getGameState(session.roomId, { sessionToken: session.sessionToken });
+      setLocation(state.status === "playing" ? `/game/${session.roomId}` : `/lobby/${session.roomId}`);
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Couldn't rejoin", description: err.message });
+    }
+  };
+
+  const hasSavedSession = !!activeSession?.roomId && !!activeSession?.sessionToken;
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground relative overflow-hidden">
@@ -237,17 +254,7 @@ export default function Home() {
                     <div className="text-xs text-primary font-semibold uppercase tracking-wider mb-0.5">Active game</div>
                     <div className="font-bold text-sm">{activeSession.playerName}</div>
                   </div>
-                  <Button
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => {
-                      if (sessionGameStatus === 'playing') {
-                        setLocation(`/game/${activeSession.roomId}`);
-                      } else {
-                        setLocation(`/lobby/${activeSession.roomId}`);
-                      }
-                    }}
-                  >
+                  <Button size="sm" className="shrink-0" onClick={handleRejoin} disabled={!hasSavedSession}>
                     Resume <ArrowRight className="h-3.5 w-3.5 ml-1" />
                   </Button>
                 </div>
@@ -271,6 +278,30 @@ export default function Home() {
                 <Users className="h-5 w-5" />
                 Join Game
               </Button>
+
+              <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Rejoin anywhere</div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="rejoinName" className="text-sm font-medium">Your name</Label>
+                  <Input
+                    id="rejoinName"
+                    value={rejoinName}
+                    onChange={(e) => setRejoinName(e.target.value)}
+                    placeholder="Saved player name"
+                    className="h-13 text-base bg-input/60 rounded-xl"
+                  />
+                </div>
+                <Button
+                  className="w-full h-12 mt-3 rounded-xl"
+                  onClick={handleRejoin}
+                  disabled={!getSession()}
+                >
+                  Rejoin saved game
+                </Button>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Uses your saved room + token to restore the same seat.
+                </p>
+              </div>
             </motion.div>
           )}
 
