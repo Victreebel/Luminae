@@ -1496,7 +1496,7 @@ export default function GameBoard() {
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground">Bonus:</span>
                     <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
-                    <span className="text-xs font-semibold capitalize">{selectedCard.card.bonusColor}</span>
+                    <span className="text-xs font-semibold">{GEM_META[selectedCard.card.bonusColor as GemKey]?.name ?? selectedCard.card.bonusColor}</span>
                   </div>
                   {(selectedCard.card.lumens ?? 0) > 0 && (
                     <div className="flex items-center gap-1">

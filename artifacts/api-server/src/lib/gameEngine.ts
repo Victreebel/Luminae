@@ -74,11 +74,11 @@ export interface GameStateData {
 
 const ACTION_LOG_MAX = 20;
 const COLOR_LABEL: Record<CrystalColor, string> = {
-  ruby: "Ruby",
-  sapphire: "Sapphire",
-  emerald: "Emerald",
-  onyx: "Onyx",
-  pearl: "Pearl",
+  ruby: "Flare",
+  sapphire: "Continuum",
+  emerald: "Verdance",
+  onyx: "Abyss",
+  pearl: "Radiance",
 };
 
 function pushLog(state: GameStateData, entry: ActionLogEntry): void {
@@ -423,7 +423,7 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
-        summary: `Drew the favor of ${lum.name} (+${lum.lumens} lumens)`,
+        summary: `Drew the favor of ${lum.name} (+${lum.lumens} eminence)`,
         turn: state.roundNumber,
       });
     }
