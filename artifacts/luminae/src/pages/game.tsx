@@ -480,6 +480,8 @@ export default function GameBoard() {
   const turnAnnounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAnnouncedTurnRef = useRef<string | null>(null);
   const initialTurnFiredRef = useRef(false);
+  const animationEndTimeRef = useRef(0);
+  const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -510,21 +512,46 @@ export default function GameBoard() {
 
   const TURN_ANNOUNCE_DURATION = 1800;
 
+  const setAnimEndTime = (durationMs: number) => {
+    const end = Date.now() + durationMs;
+    if (end > animationEndTimeRef.current) animationEndTimeRef.current = end;
+  };
+
   const fireTurnAnnouncement = (dedupeKey: string, playerName: string, avatarId: string | null, isYou: boolean) => {
     if (dedupeKey === lastAnnouncedTurnRef.current) return;
     lastAnnouncedTurnRef.current = dedupeKey;
-    if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
-    turnAnnounceKeyRef.current += 1;
-    const seq = turnAnnounceKeyRef.current;
-    setTurnAnnouncement({ key: seq, playerName, avatarId, isYou });
-    if (isYou) gameAudio.playTurnStart();
-    turnAnnounceTimerRef.current = setTimeout(() => {
-      if (turnAnnounceKeyRef.current === seq) setTurnAnnouncement(null);
-      turnAnnounceTimerRef.current = null;
-    }, TURN_ANNOUNCE_DURATION);
+    if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
+    pendingTurnAnnounceRef.current = null;
+
+    const doFire = () => {
+      const stillRemaining = animationEndTimeRef.current - Date.now();
+      if (stillRemaining > 50) {
+        pendingTurnAnnounceRef.current = setTimeout(doFire, stillRemaining + 100);
+        return;
+      }
+      if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
+      turnAnnounceKeyRef.current += 1;
+      const seq = turnAnnounceKeyRef.current;
+      setTurnAnnouncement({ key: seq, playerName, avatarId, isYou });
+      if (isYou) gameAudio.playTurnStart();
+      turnAnnounceTimerRef.current = setTimeout(() => {
+        if (turnAnnounceKeyRef.current === seq) setTurnAnnouncement(null);
+        turnAnnounceTimerRef.current = null;
+      }, TURN_ANNOUNCE_DURATION);
+      pendingTurnAnnounceRef.current = null;
+    };
+
+    const remaining = animationEndTimeRef.current - Date.now();
+    if (remaining > 50) {
+      pendingTurnAnnounceRef.current = setTimeout(doFire, remaining + 100);
+    } else {
+      doFire();
+    }
   };
 
   const cancelTurnAnnouncement = () => {
+    if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
+    pendingTurnAnnounceRef.current = null;
     if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
     turnAnnounceTimerRef.current = null;
     setTurnAnnouncement(null);
@@ -536,6 +563,7 @@ export default function GameBoard() {
       cardAnimTimersRef.current = [];
       if (gemBurstTimerRef.current) clearTimeout(gemBurstTimerRef.current);
       if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
+      if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
     };
   }, []);
 
@@ -592,6 +620,7 @@ export default function GameBoard() {
               (newState.crystalBank.flux ?? 0) < (prev.crystalBank.flux ?? 0);
 
             cardActionBurstKeyRef.current += 1;
+            setAnimEndTime(4300);
             setCardActionBurst({
               key: cardActionBurstKeyRef.current,
               card: exitCard,
@@ -653,12 +682,6 @@ export default function GameBoard() {
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
 
-      if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
-        const nextPlayer = newState.players[newState.currentPlayerIndex];
-        const isMe = nextPlayer.playerId === session?.playerId;
-        const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
-        fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
-      }
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         cancelTurnAnnouncement();
         gameAudio.playWin();
@@ -695,6 +718,7 @@ export default function GameBoard() {
             const gotFlux = (newState.crystalBank.flux ?? 0) < ((prev ?? state)?.crystalBank.flux ?? 0);
             const tier = Number(action.tier ?? 1) as 1 | 2 | 3;
             reserveBurstKeyRef.current += 1;
+            setAnimEndTime(3500);
             setReserveBurst({
               key: reserveBurstKeyRef.current,
               tier,
@@ -707,6 +731,13 @@ export default function GameBoard() {
             setTimeout(() => setReserveBurst(null), 3500);
           }
         }
+      }
+
+      if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
+        const nextPlayer = newState.players[newState.currentPlayerIndex];
+        const isMe = nextPlayer.playerId === session?.playerId;
+        const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
+        fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
       }
     },
     onPlayerKicked: (playerId) => {
@@ -734,6 +765,7 @@ export default function GameBoard() {
     setGemBurst({ key: seq, gems, playerName, avatarId });
     gameAudio.playChipsCollected();
     const totalDuration = (gems.length - 1) * 780 + 1250 + 500;
+    setAnimEndTime(totalDuration);
     gemBurstTimerRef.current = setTimeout(() => {
       if (gemBurstKeyRef.current === seq) setGemBurst(null);
       gemBurstTimerRef.current = null;
@@ -811,6 +843,7 @@ export default function GameBoard() {
         const lumens = payload.cardRef?.lumens ?? 0;
         const name = payload.cardRef?.name ?? 'Artifact';
         burstKeyRef.current += 1;
+        setAnimEndTime(1400);
         setPurchaseBurst({ key: burstKeyRef.current, lumens, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
       }
