@@ -748,12 +748,12 @@ export default function GameBoard() {
                     />
                     {/* Big readable count pill */}
                     <div
-                      className="min-w-[44px] px-2 py-0.5 rounded-full bg-black/70 border text-center"
-                      style={{ borderColor: `${GEM_META[c].glowHex}55` }}
+                      className="min-w-[52px] px-2 py-1 rounded-full bg-black/90 border border-white/20 text-center shadow-lg"
+                      style={{ boxShadow: `0 0 10px ${GEM_META[c].glowHex}33` }}
                     >
-                      <span className="text-base font-bold font-mono text-white">{count}</span>
+                      <span className="text-lg font-black font-mono text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">{count}</span>
                       {queued > 0 && (
-                        <span className="ml-1 text-xs font-semibold text-primary">+{queued}</span>
+                        <span className="ml-1 text-xs font-bold text-primary drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">+{queued}</span>
                       )}
                     </div>
                     <span
@@ -815,7 +815,7 @@ export default function GameBoard() {
                         count={me?.crystals[c as keyof CrystalCounts]}
                       />
                       <div
-                        className="text-[10px] uppercase tracking-wider font-semibold"
+                        className="text-xs uppercase tracking-wider font-semibold text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
                         style={{ color: GEM_META[c].glowHex }}
                       >
                         {GEM_META[c].shortName}
