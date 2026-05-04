@@ -37,6 +37,14 @@ The lobby reconciles its local `players` array from two sources: TanStack Query'
 - **Actions**: harvest 3 different affinities, harvest 2 same (≥4 in well), reserve card (get Singularity), forge card/reserved
 - **Win condition**: 15 eminence; last round completes so all players finish equally; tie-break is fewest purchased cards
 
+## Stability & Error Handling
+
+- **React ErrorBoundary**: Wraps the entire app tree in `App.tsx`. Catches rendering/lifecycle errors and shows a recovery UI ("Something went wrong" + "Return Home" button) instead of a white screen. Does NOT catch async/event-handler errors (React limitation).
+- **Lobby self-connected**: The lobby treats `session.playerId` as always "Connected" visually, avoiding a brief "Disconnected" flash before the WebSocket handshake completes.
+- **strictPort**: `artifacts/mockup-sandbox/vite.config.ts` uses `strictPort: true` to prevent Vite from silently binding to incrementing ports behind the proxy.
+- **API server retry**: `artifacts/api-server/src/index.ts` has internal EADDRINUSE retry logic (10 retries, 2s delay).
+- **Dev scripts**: Both API server (`pnpm run build && pnpm run start`) and Luminae (`vite --config vite.config.ts --host 0.0.0.0`) use simple direct commands — no external retry wrappers.
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

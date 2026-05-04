@@ -229,7 +229,7 @@ export default function Lobby() {
                   key={p.id}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`flex items-center gap-3 px-4 py-3.5 ${!p.isConnected && !p.isAi ? "opacity-40" : ""}`}
+                  className={`flex items-center gap-3 px-4 py-3.5 ${!p.isConnected && !p.isAi && p.id !== session?.playerId ? "opacity-40" : ""}`}
                 >
                   {/* Avatar */}
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${p.isAi ? "bg-purple-500/20 text-purple-300" : "bg-primary/20 text-primary"}`}>
@@ -251,7 +251,7 @@ export default function Lobby() {
                     </div>
                     {!p.isAi && (
                       <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
-                        {p.isConnected
+                        {(p.isConnected || p.id === session?.playerId)
                           ? <><Wifi className="h-3 w-3 text-green-400" /><span className="text-green-400">Connected</span></>
                           : <><WifiOff className="h-3 w-3 text-red-400" /><span className="text-red-400">Disconnected</span></>
                         }
