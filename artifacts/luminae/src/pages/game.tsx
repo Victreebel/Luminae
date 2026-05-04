@@ -482,6 +482,10 @@ export default function GameBoard() {
   const initialTurnFiredRef = useRef(false);
   const animationEndTimeRef = useRef(0);
   const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stateQueueRef = useRef<GameState[]>([]);
+  const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processUpdateRef = useRef<(s: GameState) => void>(() => {});
+  const drainQueueFnRef = useRef<() => void>(() => {});
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -533,6 +537,7 @@ export default function GameBoard() {
       turnAnnounceKeyRef.current += 1;
       const seq = turnAnnounceKeyRef.current;
       setTurnAnnouncement({ key: seq, playerName, avatarId, isYou });
+      setAnimEndTime(TURN_ANNOUNCE_DURATION);
       if (isYou) gameAudio.playTurnStart();
       turnAnnounceTimerRef.current = setTimeout(() => {
         if (turnAnnounceKeyRef.current === seq) setTurnAnnouncement(null);
@@ -564,6 +569,8 @@ export default function GameBoard() {
       if (gemBurstTimerRef.current) clearTimeout(gemBurstTimerRef.current);
       if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
       if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
+      if (queueTimerRef.current) clearTimeout(queueTimerRef.current);
+      stateQueueRef.current = [];
     };
   }, []);
 
@@ -587,11 +594,8 @@ export default function GameBoard() {
     }
   }, [state?.status, state?.version]);
 
-  useGameWebsocket({
-    roomId: roomId!,
-    sessionToken: session?.sessionToken || '',
-    onStateUpdate: (newState) => {
-      const prev = prevStateRef.current;
+  processUpdateRef.current = (newState: GameState) => {
+    const prev = prevStateRef.current;
       const action = newState.lastAction;
       const isMarketAction = action && (
         action.type === 'purchase_card' ||
@@ -739,6 +743,40 @@ export default function GameBoard() {
         const isMe = nextPlayer.playerId === session?.playerId;
         const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
         fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
+      }
+  };
+
+  drainQueueFnRef.current = () => {
+    queueTimerRef.current = null;
+    if (stateQueueRef.current.length === 0) return;
+    const remaining = animationEndTimeRef.current - Date.now();
+    if (remaining > 50) {
+      queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), remaining + 100);
+      return;
+    }
+    const next = stateQueueRef.current.shift()!;
+    processUpdateRef.current(next);
+    if (stateQueueRef.current.length > 0) {
+      const nextRemaining = animationEndTimeRef.current - Date.now();
+      queueTimerRef.current = setTimeout(
+        () => drainQueueFnRef.current(),
+        Math.max(nextRemaining + 100, 100)
+      );
+    }
+  };
+
+  useGameWebsocket({
+    roomId: roomId!,
+    sessionToken: session?.sessionToken || '',
+    onStateUpdate: (newState) => {
+      const remaining = animationEndTimeRef.current - Date.now();
+      if (remaining > 50) {
+        stateQueueRef.current.push(newState);
+        if (!queueTimerRef.current) {
+          queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), remaining + 100);
+        }
+      } else {
+        processUpdateRef.current(newState);
       }
     },
     onPlayerKicked: (playerId) => {
