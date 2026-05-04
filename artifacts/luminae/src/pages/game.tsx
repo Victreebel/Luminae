@@ -539,14 +539,15 @@ export default function GameBoard() {
         </div>
 
         {[
-          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3 },
-          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2 },
-          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1 },
+          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Sovereigns & absolutes — apex relics that bend the cosmos to your will' },
+          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Forged instruments — crucibles and sigils of focused cosmic mastery' },
+          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, lore: 'Fragments & sparks — raw nascent shards that seed any engine' },
         ].map(row => (
           <div key={row.tier}>
             <div className="flex items-center gap-2 mb-2 px-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tier {row.tier}</span>
-              <div className="flex-1 h-px bg-border/40" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">Tier {row.tier}</span>
+              <span className="text-[9px] text-muted-foreground/50 italic truncate">{row.lore}</span>
+              <div className="shrink-0 w-4 h-px bg-border/40" />
             </div>
             <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
               {/* Deck pile */}
