@@ -589,6 +589,7 @@ export default function GameBoard() {
       initialTurnFiredRef.current = true;
       setAnimEndTime(1200);
       const cp = state.players[state.currentPlayerIndex];
+      if (!cp) return;
       const key = `init-${state.currentPlayerIndex}-${state.version}`;
       fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, cp.playerId === session.playerId);
     }
@@ -741,9 +742,11 @@ export default function GameBoard() {
 
       if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
         const nextPlayer = newState.players[newState.currentPlayerIndex];
-        const isMe = nextPlayer.playerId === session?.playerId;
-        const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
-        fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
+        if (nextPlayer) {
+          const isMe = nextPlayer.playerId === session?.playerId;
+          const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
+          fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
+        }
       }
   };
 
@@ -826,7 +829,7 @@ export default function GameBoard() {
   if (!prevStateRef.current) prevStateRef.current = state;
 
   const actionsLocked = !!turnAnnouncement;
-  const isMyTurn = !actionsLocked && state.status === 'playing' && state.players[state.currentPlayerIndex].playerId === session.playerId;
+  const isMyTurn = !actionsLocked && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
 
