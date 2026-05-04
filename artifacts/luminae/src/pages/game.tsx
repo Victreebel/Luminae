@@ -524,25 +524,24 @@ export default function GameBoard() {
         <div className={`rounded-2xl border px-3 py-2.5 bg-card/70 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}>
           {/* top row: name + prestige */}
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-              <span className="text-xs font-semibold truncate max-w-[140px]">{me.playerName}</span>
-              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">your turn</span>}
+              <span className="text-xs font-semibold truncate">{me.playerName}</span>
+              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[11px] text-muted-foreground">
-                <span className="font-semibold text-foreground/80">{myTotalGems}</span> gems
-                {' · '}
-                <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
-                {me.reservedCards.length > 0 && (
-                  <> · <span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</>
-                )}
-              </span>
-              <div className="flex items-center gap-0.5">
-                <span className="font-serif font-black text-lg text-primary leading-none">{me.prestige}</span>
-                <Sparkles className="h-3 w-3 text-primary" />
-              </div>
+            <div className="flex items-center gap-0.5 shrink-0 ml-2">
+              <span className="font-serif font-black text-lg text-primary leading-none">{me.prestige}</span>
+              <Sparkles className="h-3 w-3 text-primary" />
             </div>
+          </div>
+          {/* stats row */}
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
+            <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> gems</span>
+            <span>·</span>
+            <span><span className="font-semibold text-foreground/80">{myCardCount}</span> forged</span>
+            {me.reservedCards.length > 0 && (
+              <><span>·</span><span><span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</span></>
+            )}
           </div>
           {/* gem + bonus grid */}
           <div className="flex gap-1">
@@ -966,14 +965,14 @@ export default function GameBoard() {
           <h1 className="text-base font-serif font-bold text-primary tracking-wide">Luminae</h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           {/* Turn pill */}
-          <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${isMyTurn ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+          <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
             {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground animate-pulse" />}
-            <span className="truncate max-w-[90px]">{isMyTurn ? 'Your turn' : currentPlayerName}</span>
+            <span className="truncate max-w-[80px]">{isMyTurn ? 'Your turn' : currentPlayerName}</span>
           </div>
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
-          <span className="text-xs text-muted-foreground font-mono">R{state.roundNumber}</span>
+          <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -1038,7 +1037,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Bottom Navigation ── */}
-      <nav className="shrink-0 h-16 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20">
+      <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Hand', icon: Hand, badge: myReservedCount > 0 ? myReservedCount : undefined },
@@ -1083,7 +1082,7 @@ export default function GameBoard() {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-safe"
+              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
             >
               {/* Card preview + info */}
               <div className="flex gap-4 mb-5">
@@ -1116,7 +1115,7 @@ export default function GameBoard() {
                 {isMyTurn ? (
                   <>
                     <Button
-                      className="w-full h-13 text-base font-bold"
+                      className="w-full h-12 text-base font-bold"
                       disabled={!selectedCard.canBuy}
                       onClick={() => handleBuy(selectedCard.card, selectedCard.fromReserve)}
                     >
@@ -1126,7 +1125,7 @@ export default function GameBoard() {
                     {!selectedCard.fromReserve && (
                       <Button
                         variant="secondary"
-                        className="w-full h-13 text-base"
+                        className="w-full h-12 text-base"
                         disabled={!selectedCard.canReserve}
                         onClick={() => handleReserveCard(selectedCard.card)}
                       >
