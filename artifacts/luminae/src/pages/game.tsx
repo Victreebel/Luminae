@@ -635,6 +635,7 @@ export default function GameBoard() {
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
               const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
               const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
+              const heldColors = CRYSTALS.filter((c) => (p.crystals[c as keyof CrystalCounts] ?? 0) > 0).slice(0, 3);
               return (
                 <div
                   key={p.playerId}
@@ -672,14 +673,29 @@ export default function GameBoard() {
 
                   {/* Row 3: totals + reserved */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-0.5">
-                        <span className="font-semibold text-foreground/80">{totalGems}</span> gems
-                      </span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5">
-                        <span className="font-semibold text-foreground/80">{cardCount}</span> forged
-                      </span>
+                    <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-0.5">
+                          <span className="font-semibold text-foreground/80">{totalGems}</span> gems
+                        </span>
+                        <span>·</span>
+                        <span className="flex items-center gap-0.5">
+                          <span className="font-semibold text-foreground/80">{cardCount}</span> forged
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground/70">holds:</span>
+                        {heldColors.length > 0 ? (
+                          heldColors.map((c) => (
+                            <MiniGem key={c} color={c as GemKey} size={11} />
+                          ))
+                        ) : (
+                          <span className="italic">no gems</span>
+                        )}
+                        {CRYSTALS.some((c) => (p.crystals[c as keyof CrystalCounts] ?? 0) > 0) && totalGems > heldColors.length && (
+                          <span className="text-muted-foreground/70">+{totalGems - heldColors.length}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-1 items-center">
                       {p.reservedCards.length > 0 ? (
