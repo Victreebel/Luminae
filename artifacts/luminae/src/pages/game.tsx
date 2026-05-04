@@ -43,6 +43,7 @@ for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
   const id = path.split('/').pop()!.replace('.png', '');
   CARD_ART[id] = url;
 }
+const CARD_ART_FALLBACK = cardTier1Bg;
 
 const CRYSTALS: GemKey[] = GEM_KEYS;
 
@@ -162,7 +163,7 @@ function ArtifactCardView({
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
   const backdrop = TIER_BACKDROPS[tier ?? card.tier ?? 1] ?? cardTier1Bg;
-  const art = CARD_ART[card.id];
+  const art = CARD_ART[card.id] ?? CARD_ART_FALLBACK;
   const showActions = !!(onBuy || onReserve);
 
   return (
