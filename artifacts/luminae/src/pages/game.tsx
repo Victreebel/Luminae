@@ -470,6 +470,16 @@ export default function GameBoard() {
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
+  const [turnAnnouncement, setTurnAnnouncement] = useState<{
+    key: number;
+    playerName: string;
+    avatarId: string | null;
+    isYou: boolean;
+  } | null>(null);
+  const turnAnnounceKeyRef = useRef(0);
+  const turnAnnounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAnnouncedTurnRef = useRef<string | null>(null);
+  const initialTurnFiredRef = useRef(false);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -498,11 +508,34 @@ export default function GameBoard() {
     return () => { gameAudio.stopMusic(); };
   }, []);
 
+  const TURN_ANNOUNCE_DURATION = 1800;
+
+  const fireTurnAnnouncement = (dedupeKey: string, playerName: string, avatarId: string | null, isYou: boolean) => {
+    if (dedupeKey === lastAnnouncedTurnRef.current) return;
+    lastAnnouncedTurnRef.current = dedupeKey;
+    if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
+    turnAnnounceKeyRef.current += 1;
+    const seq = turnAnnounceKeyRef.current;
+    setTurnAnnouncement({ key: seq, playerName, avatarId, isYou });
+    if (isYou) gameAudio.playTurnStart();
+    turnAnnounceTimerRef.current = setTimeout(() => {
+      if (turnAnnounceKeyRef.current === seq) setTurnAnnouncement(null);
+      turnAnnounceTimerRef.current = null;
+    }, TURN_ANNOUNCE_DURATION);
+  };
+
+  const cancelTurnAnnouncement = () => {
+    if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
+    turnAnnounceTimerRef.current = null;
+    setTurnAnnouncement(null);
+  };
+
   useEffect(() => {
     return () => {
       for (const t of cardAnimTimersRef.current) clearTimeout(t);
       cardAnimTimersRef.current = [];
       if (gemBurstTimerRef.current) clearTimeout(gemBurstTimerRef.current);
+      if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
     };
   }, []);
 
@@ -515,6 +548,15 @@ export default function GameBoard() {
     { sessionToken: session?.sessionToken || '' },
     { query: { enabled: !!roomId && !!session, queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }) } }
   );
+
+  useEffect(() => {
+    if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
+      initialTurnFiredRef.current = true;
+      const cp = state.players[state.currentPlayerIndex];
+      const key = `init-${state.currentPlayerIndex}-${state.version}`;
+      fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, cp.playerId === session.playerId);
+    }
+  }, [state?.status, state?.version]);
 
   useGameWebsocket({
     roomId: roomId!,
@@ -600,12 +642,14 @@ export default function GameBoard() {
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
 
-      if (newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
-        if (newState.players[newState.currentPlayerIndex].playerId === session?.playerId) {
-          gameAudio.playTurnStart();
-        }
+      if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
+        const nextPlayer = newState.players[newState.currentPlayerIndex];
+        const isMe = nextPlayer.playerId === session?.playerId;
+        const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
+        fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
       }
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
+        cancelTurnAnnouncement();
         gameAudio.playWin();
       }
 
@@ -695,7 +739,8 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
-  const isMyTurn = state.status === 'playing' && state.players[state.currentPlayerIndex].playerId === session.playerId;
+  const actionsLocked = !!turnAnnouncement;
+  const isMyTurn = !actionsLocked && state.status === 'playing' && state.players[state.currentPlayerIndex].playerId === session.playerId;
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
 
@@ -1827,6 +1872,73 @@ export default function GameBoard() {
           </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* ── Turn Announcement Overlay ── */}
+      <AnimatePresence>
+        {turnAnnouncement && (
+          <motion.div
+            key={turnAnnouncement.key}
+            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="absolute inset-0"
+              style={{ background: turnAnnouncement.isYou
+                ? 'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(99,102,241,0.25) 0%, rgba(0,0,0,0.55) 70%)'
+                : 'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.55) 70%)'
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            />
+            <motion.div
+              className="relative flex flex-col items-center gap-3"
+              initial={{ scale: 0.5, opacity: 0, y: 20 }}
+              animate={{ scale: [0.5, 1.08, 1], opacity: [0, 1, 1], y: [20, -4, 0] }}
+              exit={{ scale: 0.9, opacity: 0, y: -12 }}
+              transition={{ duration: 0.5, times: [0, 0.6, 1], ease: 'easeOut' }}
+            >
+              <motion.div
+                className="rounded-full overflow-hidden border-4 shadow-lg"
+                style={{
+                  width: 80, height: 80,
+                  borderColor: turnAnnouncement.isYou ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.25)',
+                  boxShadow: turnAnnouncement.isYou
+                    ? '0 0 40px rgba(99,102,241,0.4), 0 0 80px rgba(99,102,241,0.15)'
+                    : '0 0 30px rgba(255,255,255,0.1)',
+                }}
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ duration: 1.2, repeat: 0 }}
+              >
+                <img
+                  src={getAvatarForPlayer(turnAnnouncement.avatarId).image}
+                  alt={turnAnnouncement.playerName}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              </motion.div>
+              <div className="rounded-full bg-black/70 px-4 py-1.5 backdrop-blur-sm">
+                <span className="text-sm font-semibold text-white">{turnAnnouncement.playerName}</span>
+              </div>
+              <motion.span
+                className={`text-2xl font-serif font-bold tracking-wide ${
+                  turnAnnouncement.isYou
+                    ? 'text-primary drop-shadow-[0_0_16px_rgba(99,102,241,0.7)]'
+                    : 'text-white/80 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'
+                }`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+              >
+                {turnAnnouncement.isYou ? 'Your Turn' : `${turnAnnouncement.playerName}'s Turn`}
+              </motion.span>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* ── Rules Sheet ── */}
