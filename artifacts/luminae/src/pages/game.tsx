@@ -24,7 +24,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText, Bookmark, ShoppingCart, Eye, EyeOff, Package } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
-import cardTier2Bg from '@assets/generated_images/card_tier2.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import luminaryStargazer from '@assets/generated_images/luminary_stargazer.png';
 import luminaryForgemaster from '@assets/generated_images/luminary_forgemaster.png';
@@ -49,7 +48,6 @@ const CRYSTALS: GemKey[] = GEM_KEYS;
 
 const TIER_BACKDROPS: Record<number, string> = {
   1: cardTier1Bg,
-  2: cardTier2Bg,
   3: cardTier3Bg,
 };
 
@@ -180,15 +178,31 @@ function ArtifactCardView({
       title={card.flavor || card.name}
     >
       {/* Tier backdrop */}
-      <img src={backdrop} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none scale-[1.06]" draggable={false} />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            card.tier === 2
+              ? 'linear-gradient(180deg, rgba(8,16,24,1) 0%, rgba(7,28,31,1) 48%, rgba(10,14,22,1) 100%)'
+              : undefined,
+          backgroundImage: card.tier === 2 ? undefined : `url(${backdrop})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
       {/* Card art (full background, dimmed behind info) */}
       {art && (
         <div className="absolute inset-0 overflow-hidden">
           <img
             src={art}
             alt={card.name}
-            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none scale-[1.22]"
-            style={{ objectFit: 'cover', backgroundColor: 'transparent', imageRendering: 'auto' }}
+            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
+            style={{
+              objectFit: 'cover',
+              backgroundColor: 'transparent',
+              imageRendering: 'auto',
+              transform: card.tier === 2 ? 'scale(1.3)' : 'scale(1.05)',
+            }}
             draggable={false}
           />
         </div>
