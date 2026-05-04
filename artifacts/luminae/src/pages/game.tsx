@@ -1043,7 +1043,7 @@ export default function GameBoard() {
                 <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
                 {isMyTurn && row.deck > 0 && me && canReserveMore(me) && (
                   <div className="absolute inset-x-0 bottom-0 bg-primary/90 text-primary-foreground text-[9px] font-bold uppercase text-center py-1 rounded-b-xl">
-                    Hold
+                    Reserve
                   </div>
                 )}
               </button>
