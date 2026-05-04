@@ -1627,9 +1627,6 @@ export default function GameBoard() {
                   {/* Token */}
                   <MiniGem color={c as GemKey} size={11} />
                   <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
-                  {bonus > 0 && (
-                    <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
-                  )}
                 </div>
               );
             })}
