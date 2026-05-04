@@ -355,6 +355,23 @@ export default function GameBoard() {
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
 
+  const [cardActionBurst, setCardActionBurst] = useState<{
+    key: number;
+    card: ArtifactCard;
+    tier: number;
+    actionType: 'purchase' | 'reserve';
+    playerName: string;
+    avatarId: string | null;
+    lumens: number;
+    gotFlux: boolean;
+    startRect: { x: number; y: number; w: number; h: number };
+  } | null>(null);
+  const cardActionBurstKeyRef = useRef(0);
+  const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
+  const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
+  const prevStateRef = useRef<GameState | null>(null);
+
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
   // Start ambient music when the game board mounts (user has already
@@ -363,6 +380,13 @@ export default function GameBoard() {
   useEffect(() => {
     gameAudio.startMusic();
     return () => { gameAudio.stopMusic(); };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      for (const t of cardAnimTimersRef.current) clearTimeout(t);
+      cardAnimTimersRef.current = [];
+    };
   }, []);
 
   useEffect(() => {
@@ -379,24 +403,104 @@ export default function GameBoard() {
     roomId: roomId!,
     sessionToken: session?.sessionToken || '',
     onStateUpdate: (newState) => {
+      const prev = prevStateRef.current;
+      const action = newState.lastAction;
+      const isMarketAction = action && (
+        action.type === 'purchase_card' ||
+        (action.type === 'reserve_card' && action.cardId)
+      );
+
+      if (prev && isMarketAction && action.cardId) {
+        const cardId = action.cardId as string;
+        const marketsOld: Record<number, (ArtifactCard | null)[]> = {
+          1: prev.marketTier1, 2: prev.marketTier2, 3: prev.marketTier3,
+        };
+        const marketsNew: Record<number, (ArtifactCard | null)[]> = {
+          1: newState.marketTier1, 2: newState.marketTier2, 3: newState.marketTier3,
+        };
+        for (const tierStr of ['1', '2', '3'] as const) {
+          const tier = Number(tierStr);
+          const oldCards = marketsOld[tier];
+          const idx = oldCards.findIndex((c: ArtifactCard | null) => c?.id === cardId);
+          if (idx >= 0) {
+            const exitCard = oldCards[idx]!;
+            const el = document.querySelector(`[data-card-id="${cardId}"]`);
+            const rect = el?.getBoundingClientRect();
+            const player = (newState.players as GamePlayerState[]).find(
+              (p) => p.playerId === (action.playerId as string),
+            );
+            const gotFlux = action.type === 'reserve_card' &&
+              (newState.crystalBank.flux ?? 0) < (prev.crystalBank.flux ?? 0);
+
+            cardActionBurstKeyRef.current += 1;
+            setCardActionBurst({
+              key: cardActionBurstKeyRef.current,
+              card: exitCard,
+              tier,
+              actionType: action.type === 'purchase_card' ? 'purchase' : 'reserve',
+              playerName: player?.playerName ?? 'Unknown',
+              avatarId: player?.avatarId ?? null,
+              lumens: exitCard.lumens ?? 0,
+              gotFlux,
+              startRect: rect
+                ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+                : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+            });
+
+            if (gotFlux) gameAudio.playFluxCoin();
+            if (action.type === 'purchase_card') gameAudio.playCardPurchased();
+            else gameAudio.playCardReserved();
+
+            for (const t of cardAnimTimersRef.current) clearTimeout(t);
+            cardAnimTimersRef.current = [];
+            setHiddenSlots(new Set());
+            setFlippingCards(new Set());
+
+            const slotKey = `${tier}-${idx}`;
+            setHiddenSlots(new Set([slotKey]));
+
+            const seq = cardActionBurstKeyRef.current;
+            const newCard = marketsNew[tier][idx];
+            const t1 = setTimeout(() => {
+              if (cardActionBurstKeyRef.current !== seq) return;
+              setCardActionBurst(null);
+              setHiddenSlots(new Set());
+              if (newCard) {
+                setFlippingCards(new Set([newCard.id]));
+                const t2 = setTimeout(() => {
+                  if (cardActionBurstKeyRef.current !== seq) return;
+                  setFlippingCards(new Set());
+                }, 700);
+                cardAnimTimersRef.current.push(t2);
+              }
+            }, 2300);
+            cardAnimTimersRef.current.push(t1);
+            break;
+          }
+        }
+      }
+
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
-      if (newState.lastAction && newState.currentPlayerIndex !== state?.currentPlayerIndex) {
+      prevStateRef.current = newState;
+
+      if (newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
         if (newState.players[newState.currentPlayerIndex].playerId === session?.playerId) {
           gameAudio.playTurnStart();
         }
       }
-      if (newState.status === 'finished' && state?.status !== 'finished') {
+      if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         gameAudio.playWin();
       }
-      const lastActionKey = newState.lastAction ? JSON.stringify(newState.lastAction) : null;
+
+      const lastActionKey = action ? JSON.stringify(action) : null;
       if (lastActionKey && lastActionKey !== reserveBurstActionRef.current) {
         reserveBurstActionRef.current = lastActionKey;
-        if (newState.lastAction?.type === 'reserve_card') {
-          const playerId = newState.lastAction.playerId as string | undefined;
+        if (action?.type === 'reserve_card' && !action.cardId) {
+          const playerId = action.playerId as string | undefined;
           const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === playerId);
           if (player) {
-            const gotFlux = (newState.crystalBank.flux ?? 0) < (state?.crystalBank.flux ?? 0);
-            const tier = Number(newState.lastAction.tier ?? 1) as 1 | 2 | 3;
+            const gotFlux = (newState.crystalBank.flux ?? 0) < ((prev ?? state)?.crystalBank.flux ?? 0);
+            const tier = Number(action.tier ?? 1) as 1 | 2 | 3;
             reserveBurstKeyRef.current += 1;
             setReserveBurst({
               key: reserveBurstKeyRef.current,
@@ -429,6 +533,8 @@ export default function GameBoard() {
   if (!state || !session) {
     return <div className="h-[100dvh] flex items-center justify-center text-muted-foreground animate-pulse">Loading board...</div>;
   }
+
+  if (!prevStateRef.current) prevStateRef.current = state;
 
   const isMyTurn = state.status === 'playing' && state.players[state.currentPlayerIndex].playerId === session.playerId;
   const me = state.players.find(p => p.playerId === session.playerId);
@@ -480,15 +586,13 @@ export default function GameBoard() {
       setActionMode('none');
       setSelectedCrystals({});
       setSelectedCard(null);
-      if (payload.type === 'purchase_card' || payload.type === 'purchase_reserved') {
+      if (payload.type === 'purchase_reserved') {
         gameAudio.playCardPurchased();
         const lumens = payload.cardRef?.lumens ?? 0;
         const name = payload.cardRef?.name ?? 'Artifact';
         burstKeyRef.current += 1;
         setPurchaseBurst({ key: burstKeyRef.current, lumens, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
-      } else if (payload.type === 'reserve_card') {
-        gameAudio.playCardReserved();
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Action failed', description: err.message });
@@ -672,18 +776,48 @@ export default function GameBoard() {
                   </div>
                 )}
               </button>
-              {row.cards.map((c, i) => c ? (
-                <ArtifactCardView
-                  key={c.id}
-                  card={c}
-                  tier={row.tier}
-                  onTap={() => openCardSheet(c, false)}
-                  tapped={selectedCard?.card.id === c.id}
-                  effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
-                />
-              ) : (
-                <div key={`empty-${i}`} className="w-28 h-40 rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />
-              ))}
+              {row.cards.map((c, i) => {
+                const slotKey = `${row.tier}-${i}`;
+                const isHidden = hiddenSlots.has(slotKey);
+
+                if (isHidden || !c) {
+                  return <div key={c?.id ?? `empty-${i}`} className="w-28 h-40 rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
+                }
+
+                const isFlipping = flippingCards.has(c.id);
+                if (isFlipping) {
+                  return (
+                    <div key={c.id} data-card-id={c.id} style={{ perspective: '800px' }}>
+                      <motion.div
+                        initial={{ rotateY: 180, scale: 0.85 }}
+                        animate={{ rotateY: 0, scale: 1 }}
+                        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ transformStyle: 'preserve-3d' }}
+                      >
+                        <ArtifactCardView
+                          card={c}
+                          tier={row.tier}
+                          onTap={() => openCardSheet(c, false)}
+                          tapped={selectedCard?.card.id === c.id}
+                          effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
+                        />
+                      </motion.div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={c.id} data-card-id={c.id}>
+                    <ArtifactCardView
+                      card={c}
+                      tier={row.tier}
+                      onTap={() => openCardSheet(c, false)}
+                      tapped={selectedCard?.card.id === c.id}
+                      effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -1227,7 +1361,138 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* ── Purchase Celebration Burst ── */}
+      {/* ── Card Action Burst (market purchase/reserve) ── */}
+      <AnimatePresence>
+        {cardActionBurst && (
+          <motion.div
+            key={cardActionBurst.key}
+            className="pointer-events-none fixed inset-0 z-50"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+
+            <div style={{ perspective: '900px' }}>
+              <motion.div
+                style={{ position: 'fixed', transformStyle: 'preserve-3d', left: 0, top: 0, width: cardActionBurst.startRect.w, height: cardActionBurst.startRect.h }}
+                initial={{
+                  x: cardActionBurst.startRect.x,
+                  y: cardActionBurst.startRect.y,
+                  scale: 1,
+                  rotateY: 0,
+                }}
+                animate={{
+                  x: window.innerWidth / 2 - cardActionBurst.startRect.w / 2,
+                  y: window.innerHeight / 2 - cardActionBurst.startRect.h / 2 - 20,
+                  scale: 1.25,
+                  rotateY: 360,
+                }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <motion.div
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: [1, 1, 1, 0] }}
+                  transition={{ duration: 2.3, times: [0, 0.3, 0.7, 1] }}
+                >
+                  <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
+                </motion.div>
+
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center"
+                  initial={{ opacity: 0, scale: 0.5, y: -24 }}
+                  animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.5, 0.5, 1.05, 1, 1, 0.96], y: [-24, -24, 0, 0, 0, 0] }}
+                  transition={{ duration: 2.3, times: [0, 0.25, 0.42, 0.55, 0.78, 1] }}
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <div
+                      className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                      style={{
+                        width: 72, height: 72,
+                        borderColor: cardActionBurst.actionType === 'purchase'
+                          ? 'rgba(99,102,241,0.55)'
+                          : `${GEM_META.flux.glowHex}88`,
+                      }}
+                    >
+                      <img
+                        src={getAvatarForPlayer(cardActionBurst.avatarId ?? session.avatarId).image}
+                        alt={cardActionBurst.playerName}
+                        className="w-full h-full object-cover"
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
+                      {cardActionBurst.playerName}
+                    </div>
+                    {cardActionBurst.actionType === 'purchase' && (
+                      <motion.div
+                        className="flex flex-col items-center gap-1 mt-1"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: [0, 0, 1, 1, 0], y: [8, 8, 0, 0, -16] }}
+                        transition={{ duration: 2.3, times: [0, 0.35, 0.48, 0.72, 1] }}
+                      >
+                        <span className="text-2xl font-serif font-black text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]">
+                          Forged!
+                        </span>
+                        {cardActionBurst.lumens > 0 && (
+                          <span className="flex items-center gap-1.5 text-base font-bold" style={{ color: GEM_META.flux.hex }}>
+                            <Sparkles className="h-4 w-4" /> +{cardActionBurst.lumens} lumens
+                          </span>
+                        )}
+                      </motion.div>
+                    )}
+                    {cardActionBurst.actionType === 'reserve' && (
+                      <motion.div
+                        className="text-xs font-semibold uppercase tracking-wider"
+                        style={{ color: GEM_META.flux.hex }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0, 1, 1, 0] }}
+                        transition={{ duration: 2.3, times: [0, 0.35, 0.48, 0.72, 1] }}
+                      >
+                        Reserved
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            </div>
+
+            {cardActionBurst.gotFlux && (
+              <motion.div
+                className="fixed flex flex-col items-center gap-2"
+                style={{
+                  left: window.innerWidth / 2 + 90,
+                  top: window.innerHeight / 2 - 40,
+                  perspective: '900px',
+                  transformStyle: 'preserve-3d',
+                }}
+                initial={{ opacity: 0, rotateY: 90, scale: 0.6 }}
+                animate={{
+                  opacity: [0, 1, 1, 0],
+                  rotateY: [90, 0, 720, 720],
+                  scale: [0.6, 1, 1, 0.8],
+                }}
+                transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1] }}
+              >
+                <CrystalIcon color="flux" size={52} />
+                <span
+                  className="text-sm font-bold drop-shadow-[0_0_10px_rgba(255,196,61,0.9)]"
+                  style={{ color: GEM_META.flux.hex }}
+                >
+                  +1 Singularity
+                </span>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Purchase Celebration Burst (reserved card purchases only) ── */}
       <AnimatePresence>
         {purchaseBurst && (
           <motion.div
