@@ -142,4 +142,13 @@
   .gem-onyx { color: var(--color-gem-onyx); }
   .gem-pearl { color: var(--color-gem-pearl); }
   .gem-flux { color: var(--color-gem-flux); }
+
+  /* Hide scrollbar while keeping scroll functionality */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
