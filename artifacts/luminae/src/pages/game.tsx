@@ -1732,6 +1732,55 @@ export default function GameBoard() {
               transition={{ duration: 0.3 }}
             />
 
+            {/* Avatar + action label — positioned above the card */}
+            <motion.div
+              className="fixed left-0 right-0 flex flex-col items-center gap-2"
+              style={{ bottom: window.innerHeight / 2 + Math.round(cardActionBurst.startRect.h * 0.625) + 24 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: [0, 0, 1, 1, 0], y: [12, 12, 0, 0, -8] }}
+              transition={{ duration: 3.5, times: [0, 0.17, 0.3, 0.82, 1] }}
+            >
+              <div
+                className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                style={{
+                  width: 72, height: 72,
+                  borderColor: cardActionBurst.actionType === 'purchase'
+                    ? 'rgba(99,102,241,0.55)'
+                    : `${GEM_META.flux.glowHex}88`,
+                }}
+              >
+                <img
+                  src={getAvatarForPlayer(cardActionBurst.avatarId ?? session.avatarId).image}
+                  alt={cardActionBurst.playerName}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              </div>
+              <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
+                {cardActionBurst.playerName}
+              </div>
+              {cardActionBurst.actionType === 'purchase' && (
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
+                    Forged!
+                  </span>
+                  {cardActionBurst.lumens > 0 && (
+                    <span className="flex items-center gap-1.5 text-base font-bold" style={{ color: GEM_META.flux.hex }}>
+                      <Sparkles className="h-4 w-4" /> +{cardActionBurst.lumens} eminence
+                    </span>
+                  )}
+                </div>
+              )}
+              {cardActionBurst.actionType === 'reserve' && (
+                <span
+                  className="text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: GEM_META.flux.hex }}
+                >
+                  Reserved
+                </span>
+              )}
+            </motion.div>
+
             <div style={{ perspective: '900px' }}>
               <motion.div
                 style={{ position: 'fixed', transformStyle: 'preserve-3d', left: 0, top: 0, width: cardActionBurst.startRect.w, height: cardActionBurst.startRect.h }}
@@ -1755,63 +1804,6 @@ export default function GameBoard() {
                   transition={{ duration: 3.5, times: [0, 0.2, 0.78, 1] }}
                 >
                   <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
-                </motion.div>
-
-                <motion.div
-                  className="absolute inset-0 flex items-center justify-center"
-                  initial={{ opacity: 0, scale: 0.5, y: -24 }}
-                  animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.5, 0.5, 1.05, 1, 1, 0.96], y: [-24, -24, 0, 0, 0, 0] }}
-                  transition={{ duration: 3.5, times: [0, 0.17, 0.3, 0.42, 0.82, 1] }}
-                >
-                  <div className="flex flex-col items-center gap-2">
-                    <div
-                      className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
-                      style={{
-                        width: 72, height: 72,
-                        borderColor: cardActionBurst.actionType === 'purchase'
-                          ? 'rgba(99,102,241,0.55)'
-                          : `${GEM_META.flux.glowHex}88`,
-                      }}
-                    >
-                      <img
-                        src={getAvatarForPlayer(cardActionBurst.avatarId ?? session.avatarId).image}
-                        alt={cardActionBurst.playerName}
-                        className="w-full h-full object-cover"
-                        draggable={false}
-                      />
-                    </div>
-                    <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
-                      {cardActionBurst.playerName}
-                    </div>
-                    {cardActionBurst.actionType === 'purchase' && (
-                      <motion.div
-                        className="flex flex-col items-center gap-1 mt-1"
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: [0, 0, 1, 1, 0], y: [8, 8, 0, 0, -16] }}
-                        transition={{ duration: 3.5, times: [0, 0.22, 0.34, 0.78, 1] }}
-                      >
-                        <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
-                          Forged!
-                        </span>
-                        {cardActionBurst.lumens > 0 && (
-                          <span className="flex items-center gap-1.5 text-base font-bold" style={{ color: GEM_META.flux.hex }}>
-                            <Sparkles className="h-4 w-4" /> +{cardActionBurst.lumens} eminence
-                          </span>
-                        )}
-                      </motion.div>
-                    )}
-                    {cardActionBurst.actionType === 'reserve' && (
-                      <motion.div
-                        className="text-xs font-semibold uppercase tracking-wider"
-                        style={{ color: GEM_META.flux.hex }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0, 1, 1, 0] }}
-                        transition={{ duration: 3.5, times: [0, 0.22, 0.34, 0.78, 1] }}
-                      >
-                        Reserved
-                      </motion.div>
-                    )}
-                  </div>
                 </motion.div>
               </motion.div>
             </div>
