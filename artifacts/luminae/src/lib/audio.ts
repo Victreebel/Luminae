@@ -261,6 +261,38 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /** Poker chips cascading — rapid metallic clicks with descending pitch + scatter. */
+  playChipsCollected() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      let offset = 0;
+      for (let i = 0; i < 8; i++) {
+        const gap = 0.045 + Math.random() * 0.03;
+        const vol = 0.09 - i * 0.006;
+        const freq = 3200 - i * 180 + (Math.random() - 0.5) * 300;
+        this.noiseBlip(ctx, t + offset, 0.04, Math.max(0.02, vol), freq, 9);
+        if (i % 2 === 0) {
+          this.osc(ctx, freq * 0.5, 'triangle', t + offset, t + offset + 0.06, vol * 0.3, 0.002);
+        }
+        offset += gap;
+      }
+
+      for (let i = 0; i < 4; i++) {
+        const scatter = offset + 0.02 + Math.random() * 0.12;
+        const freq = 1800 + Math.random() * 800;
+        this.noiseBlip(ctx, t + scatter, 0.03, 0.04, freq, 7);
+      }
+
+      this.noiseBlip(ctx, t + offset + 0.08, 0.1, 0.10, 1400, 4);
+
+      this.osc(ctx, 440, 'sine', t + 0.02, t + 0.6, 0.04, 0.005);
+      this.osc(ctx, 660, 'sine', t + 0.05, t + 0.4, 0.025, 0.004);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   // Kept for backward compat — maps to crystal ting on ruby
   playCrystalPickedLegacy() { this.playCrystalPicked('ruby'); }
 

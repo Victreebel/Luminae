@@ -452,8 +452,12 @@ export default function GameBoard() {
   const [gemBurst, setGemBurst] = useState<{
     key: number;
     gems: GemKey[];
+    playerName: string;
+    avatarId: string | null;
   } | null>(null);
   const gemBurstKeyRef = useRef(0);
+  const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTakeBurstActionRef = useRef<string | null>(null);
   const [reserveBurst, setReserveBurst] = useState<{
     key: number;
     tier: 1 | 2 | 3;
@@ -498,6 +502,7 @@ export default function GameBoard() {
     return () => {
       for (const t of cardAnimTimersRef.current) clearTimeout(t);
       cardAnimTimersRef.current = [];
+      if (gemBurstTimerRef.current) clearTimeout(gemBurstTimerRef.current);
     };
   }, []);
 
@@ -604,6 +609,27 @@ export default function GameBoard() {
         gameAudio.playWin();
       }
 
+      if (action && (action.type === 'take_three_crystals' || action.type === 'take_two_crystals')) {
+        const takeKey = `${action.type}-${action.playerId}-${newState.version}`;
+        if (takeKey !== lastTakeBurstActionRef.current) {
+          lastTakeBurstActionRef.current = takeKey;
+          const actorId = action.playerId as string | undefined;
+          if (actorId && actorId !== session?.playerId) {
+            const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
+            if (player) {
+              let crystals: Partial<CrystalCounts> = {};
+              if (action.type === 'take_three_crystals') {
+                crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
+              } else {
+                const color = action.crystal as string;
+                if (color) crystals = { [color]: 2 };
+              }
+              playGemBurst(crystals, player.playerName, player.avatarId ?? null);
+            }
+          }
+        }
+      }
+
       const lastActionKey = action ? JSON.stringify(action) : null;
       if (lastActionKey && lastActionKey !== reserveBurstActionRef.current) {
         reserveBurstActionRef.current = lastActionKey;
@@ -638,7 +664,7 @@ export default function GameBoard() {
 
   const submitAction = useSubmitAction();
 
-  const playGemBurst = (crystals: Partial<CrystalCounts>) => {
+  const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
     const gems: GemKey[] = [];
     for (const [color, count] of Object.entries(crystals)) {
       if (color === 'flux') continue;
@@ -647,10 +673,16 @@ export default function GameBoard() {
       for (let i = 0; i < total; i += 1) gems.push(gem);
     }
     if (gems.length === 0) return;
+    if (gemBurstTimerRef.current) clearTimeout(gemBurstTimerRef.current);
     gemBurstKeyRef.current += 1;
-    setGemBurst({ key: gemBurstKeyRef.current, gems });
+    const seq = gemBurstKeyRef.current;
+    setGemBurst({ key: seq, gems, playerName, avatarId });
+    gameAudio.playChipsCollected();
     const totalDuration = (gems.length - 1) * 780 + 1250 + 500;
-    setTimeout(() => setGemBurst(null), totalDuration);
+    gemBurstTimerRef.current = setTimeout(() => {
+      if (gemBurstKeyRef.current === seq) setGemBurst(null);
+      gemBurstTimerRef.current = null;
+    }, totalDuration);
   };
 
   if (error) {
@@ -745,12 +777,12 @@ export default function GameBoard() {
   })();
 
   const confirmCrystals = () => {
-    if (!queueLegality.ok) return;
+    if (!queueLegality.ok || !me) return;
     if (queueLegality.actionType === 'take3') {
-      playGemBurst(selectedCrystals);
+      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
     } else if (queueLegality.actionType === 'take2') {
-      playGemBurst(selectedCrystals);
+      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
     }
   };
@@ -1722,15 +1754,22 @@ export default function GameBoard() {
 
       {/* ── Gem Pickup Burst ── */}
       <AnimatePresence>
-        {gemBurst && (
+        {gemBurst && (() => {
+          const burstDuration = (gemBurst.gems.length - 1) * 0.78 + 1.25 + 0.5;
+          return (
           <motion.div
             key={gemBurst.key}
             className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
             initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 3.5, ease: 'easeOut' }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <div className="absolute inset-0 bg-black/25" />
+            <motion.div
+              className="absolute inset-0 bg-black/35"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+            />
             <div className="relative h-72 w-[18rem]">
               {gemBurstView.map(({ gem, index, x, delay }) => {
                 return (
@@ -1759,8 +1798,35 @@ export default function GameBoard() {
                 );
               })}
             </div>
+
+            <motion.div
+              className="fixed left-0 right-0 flex flex-col items-center gap-2"
+              style={{ bottom: '22%' }}
+              initial={{ opacity: 0, scale: 0.5, y: 16 }}
+              animate={{ opacity: [0, 0, 1, 1, 0], scale: [0.5, 0.5, 1.05, 1, 0.96], y: [16, 16, 0, 0, -8] }}
+              transition={{ duration: burstDuration, times: [0, 0.15, 0.3, 0.8, 1] }}
+            >
+              <div
+                className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(99,102,241,0.35)]"
+                style={{ width: 64, height: 64, borderColor: 'rgba(99,102,241,0.45)' }}
+              >
+                <img
+                  src={getAvatarForPlayer(gemBurst.avatarId ?? session.avatarId).image}
+                  alt={gemBurst.playerName}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                />
+              </div>
+              <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
+                {gemBurst.playerName}
+              </div>
+              <span className="text-lg font-serif font-bold text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.6)]">
+                Channeled
+              </span>
+            </motion.div>
           </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Rules Sheet ── */}
