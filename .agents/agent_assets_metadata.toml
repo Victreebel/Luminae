@@ -372,3 +372,9 @@ id = "BGQZuqyiaAZSG9v4TdnSj"
 uri = "file://attached_assets/generated_images/cards_batch_all.png"
 type = "image"
 title = "All 45 card artworks, edge-to-edge, no padding"
+
+[[generated]]
+id = "6-TWzTYZwdWz586cgO9Sg"
+uri = "file://attached_assets/generated_images/luminae_card_back_logo.png"
+type = "image"
+title = "Luminae card back logo"
