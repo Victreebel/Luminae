@@ -1016,7 +1016,7 @@ export default function GameBoard() {
             className={`flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${showEffectiveCost ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-secondary/50 border-border/50 text-muted-foreground'}`}
           >
             {showEffectiveCost ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {showEffectiveCost ? 'My cost' : 'Base cost'}
+            {showEffectiveCost ? 'Planning' : 'Planning'}
           </button>
         </div>
 
