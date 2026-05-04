@@ -787,6 +787,7 @@ export function formatGameState(
       .filter(Boolean)
       .map((c) => withLore(c as ArtifactCard)),
     isConnected: connectedPlayerIds.has(p.playerId),
+    earnedLuminaries: p.luminaries,
   }));
 
   return {

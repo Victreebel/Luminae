@@ -310,6 +310,288 @@ function LuminaryCard({ luminary }: { luminary: Luminary }) {
   );
 }
 
+// ─── Luminary Summoning Cutscene ─────────────────────────────────────────────
+
+type CutscenePhase =
+  | 'zoom' | 'linger1' | 'crack1' | 'linger2'
+  | 'cracking' | 'flash' | 'fade' | 'reveal' | 'done';
+
+const CRACKS: { d: string; phase: 'crack1' | 'cracking' }[] = [
+  { d: 'M 8 92 L 18 74 L 14 60 L 28 44 L 22 30',   phase: 'crack1'   },
+  { d: 'M 62 4 L 54 22 L 60 38 L 48 54 L 53 68',   phase: 'cracking' },
+  { d: 'M 86 58 L 70 46 L 74 30 L 62 16',          phase: 'cracking' },
+  { d: 'M 10 28 L 32 42 L 28 56 L 40 72',          phase: 'cracking' },
+  { d: 'M 72 80 L 58 64 L 64 50 L 52 36',          phase: 'cracking' },
+  { d: 'M 38 8 L 34 28 L 48 44 L 42 62 L 50 78',  phase: 'cracking' },
+  { d: 'M 88 22 L 74 36 L 78 52 L 66 68',          phase: 'cracking' },
+  { d: 'M 4 50 L 22 38 L 26 24 L 40 14',           phase: 'cracking' },
+];
+
+const FRAGS = [
+  { clip: 'inset(0 50% 50% 0)',   tx: -155, ty: -185, rot: -36 },
+  { clip: 'inset(0 0 50% 50%)',   tx:  155, ty: -165, rot:  29 },
+  { clip: 'inset(33% 55% 33% 0)', tx: -205, ty:   18, rot: -19 },
+  { clip: 'inset(33% 0 33% 55%)', tx:  205, ty:   28, rot:  23 },
+  { clip: 'inset(50% 50% 0 0)',   tx: -135, ty:  195, rot: -31 },
+  { clip: 'inset(50% 0 0 50%)',   tx:  140, ty:  198, rot:  26 },
+];
+
+const CUTSCENE_PARTICLES = Array.from({ length: 12 }, (_, i) => {
+  const angle = (i / 12) * 360;
+  const dist = 120 + (i % 4) * 18;
+  return {
+    tx: Math.cos((angle * Math.PI) / 180) * dist,
+    ty: Math.sin((angle * Math.PI) / 180) * dist,
+    delay: 0.3 + i * 0.08,
+    color: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#bfdbfe' : '#ffffff',
+  };
+});
+
+const CUTSCENE_SCHEDULE: [CutscenePhase, number][] = [
+  ['linger1',  1200],
+  ['crack1',   3200],
+  ['linger2',  5700],
+  ['cracking', 7200],
+  ['flash',    8700],
+  ['fade',     9200],
+  ['reveal',   10400],
+  ['done',     13900],
+];
+
+function LuminaryCutscene({
+  luminary, portrait, onComplete,
+}: {
+  luminary: Luminary;
+  portrait: string;
+  onComplete: () => void;
+}) {
+  const [phase, setPhase] = useState<CutscenePhase>('zoom');
+
+  useEffect(() => {
+    gameAudio.playWhoosh();
+    const timers = CUTSCENE_SCHEDULE.map(([p, ms]) => setTimeout(() => setPhase(p), ms));
+    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 9600);
+    timers.push(holyTimer);
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    if (phase === 'done') onComplete();
+  }, [phase, onComplete]);
+
+  const showCard        = !['reveal', 'done'].includes(phase);
+  const showCrack1      = ['crack1', 'linger2', 'cracking', 'flash', 'fade'].includes(phase);
+  const showExtraCracks = ['cracking', 'flash', 'fade'].includes(phase);
+  const showFragments   = ['flash', 'fade'].includes(phase);
+  const showFlash       = phase === 'flash';
+  const showFade        = phase === 'fade';
+  const showReveal      = phase === 'reveal';
+  const cardSize        = 200;
+  const cardScale       = phase === 'zoom' ? 1.1 : 2.4;
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Background — solid black until reveal, then dims to show game */}
+      <motion.div
+        className="absolute inset-0"
+        animate={{ backgroundColor: showReveal ? 'rgba(0,0,0,0.52)' : 'rgba(0,0,0,1)' }}
+        transition={{ duration: 1.0 }}
+      />
+
+      {/* Zoomed card + cracks */}
+      <AnimatePresence>
+        {showCard && (
+          <motion.div
+            key="card"
+            className="relative shrink-0"
+            style={{ width: cardSize, height: cardSize }}
+            initial={{ scale: 0.55, opacity: 0 }}
+            animate={{ scale: cardScale, opacity: 1 }}
+            transition={phase === 'zoom'
+              ? { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
+              : { duration: 0.5, ease: 'easeOut' }}
+            exit={{ opacity: 0, transition: { duration: 0.05 } }}
+          >
+            <img
+              src={portrait} alt={luminary.name}
+              className="w-full h-full object-cover rounded-2xl select-none pointer-events-none"
+              draggable={false}
+            />
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-black/15 via-transparent to-black/85 pointer-events-none" />
+            <div
+              className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{ boxShadow: '0 0 0 2px rgba(255,196,61,0.6), 0 0 40px rgba(255,196,61,0.3), inset 0 0 20px rgba(0,0,0,0.4)' }}
+            />
+            {phase !== 'zoom' && (
+              <motion.div
+                className="absolute bottom-0 inset-x-0 px-2 py-1.5 flex justify-between items-end"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
+              >
+                <span className="text-[8px] font-semibold text-white/60">{luminary.name}</span>
+                <span className="text-sm font-serif font-black drop-shadow-[0_2px_3px_rgba(0,0,0,1)]" style={{ color: GEM_META.flux.hex }}>{luminary.lumens}</span>
+              </motion.div>
+            )}
+            {/* SVG cracks */}
+            <svg
+              viewBox="0 0 100 100" preserveAspectRatio="none"
+              className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+            >
+              {CRACKS.map((crack, i) => {
+                const visible = crack.phase === 'crack1' ? showCrack1 : showExtraCracks;
+                if (!visible) return null;
+                const isFirst = crack.phase === 'crack1';
+                const delay = isFirst ? 0 : (i - 1) * 0.13;
+                return (
+                  <motion.path
+                    key={i} d={crack.d}
+                    stroke="white"
+                    strokeWidth={isFirst ? 0.7 : 0.5}
+                    strokeLinecap="round" strokeLinejoin="round"
+                    fill="none"
+                    style={{
+                      filter: isFirst
+                        ? 'drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 8px rgba(200,230,255,0.9))'
+                        : 'drop-shadow(0 0 2px rgba(255,255,255,0.85))',
+                    }}
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: isFirst ? 0.65 : 0.22, delay, ease: 'easeOut' }}
+                  />
+                );
+              })}
+            </svg>
+            {/* White light at crack origin */}
+            {showCrack1 && (
+              <motion.div
+                className="absolute pointer-events-none"
+                style={{
+                  bottom: '5%', left: '5%', width: 30, height: 30, borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(200,240,255,0.7) 30%, transparent 70%)',
+                }}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: [0, 1, 0.8, 0.95], scale: [0, 1.3, 1.0, 1.15] }}
+                transition={{ duration: 0.5, times: [0, 0.4, 0.7, 1] }}
+              />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fragment pieces */}
+      <AnimatePresence>
+        {showFragments && FRAGS.map((frag, i) => (
+          <motion.div
+            key={`frag-${i}`}
+            className="absolute pointer-events-none"
+            style={{
+              width: cardSize * cardScale, height: cardSize * cardScale,
+              left: '50%', top: '50%',
+              marginLeft: -(cardSize * cardScale) / 2,
+              marginTop: -(cardSize * cardScale) / 2,
+            }}
+            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+            animate={{ x: frag.tx, y: frag.ty, rotate: frag.rot, opacity: 0 }}
+            transition={{ duration: 1.1, ease: [0.4, 0, 0.2, 1], delay: i * 0.04 }}
+          >
+            <div style={{
+              width: '100%', height: '100%',
+              clipPath: frag.clip,
+              backgroundImage: `url(${portrait})`,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              borderRadius: 16,
+            }} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      {/* White flash */}
+      <AnimatePresence>
+        {(showFlash || showFade) && (
+          <motion.div
+            key="flash"
+            className="absolute inset-0 bg-white pointer-events-none"
+            initial={{ opacity: showFlash ? 0 : 1 }}
+            animate={{ opacity: showFlash ? 1 : 0 }}
+            exit={{ opacity: 0, transition: { duration: 0 } }}
+            transition={{ duration: showFlash ? 0.28 : 0.95, ease: showFlash ? 'easeIn' : 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Reveal: floating cutout figure over the game */}
+      <AnimatePresence>
+        {showReveal && (
+          <motion.div
+            key="reveal"
+            className="absolute inset-0 flex flex-col items-center justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.9 }}
+          >
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse 55% 55% at 50% 42%, rgba(255,196,61,0.15) 0%, rgba(200,220,255,0.04) 50%, transparent 70%)' }}
+            />
+            {/* Floating masked portrait */}
+            <motion.div
+              style={{ width: 240, height: 240, marginTop: -40 }}
+              animate={{ opacity: [0.72, 1, 0.72] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <img
+                src={portrait} alt={luminary.name} draggable={false}
+                style={{
+                  width: '100%', height: '100%', objectFit: 'cover',
+                  maskImage: 'radial-gradient(ellipse 78% 90% at 50% 40%, black 18%, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.35) 62%, transparent 78%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 78% 90% at 50% 40%, black 18%, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.35) 62%, transparent 78%)',
+                }}
+              />
+            </motion.div>
+            {/* Name */}
+            <motion.div
+              className="text-center space-y-0.5 mt-2"
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9, duration: 0.7 }}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Luminary Summoned</p>
+              <p className="text-2xl font-serif font-bold drop-shadow-[0_0_18px_rgba(255,196,61,0.75)]" style={{ color: GEM_META.flux.hex }}>
+                {luminary.name}
+              </p>
+              <p className="text-sm text-white/55">+{luminary.lumens} eminence</p>
+            </motion.div>
+            {/* Particle ring */}
+            <div className="absolute" style={{ left: '50%', top: '42%' }}>
+              {CUTSCENE_PARTICLES.map((p, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 rounded-full"
+                  style={{ background: p.color, marginLeft: -2, marginTop: -2 }}
+                  initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
+                  animate={{ x: p.tx, y: p.ty, opacity: [0, 1, 0], scale: [0, 1.8, 0] }}
+                  transition={{ delay: p.delay, duration: 2.2, ease: 'easeOut' }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Skip */}
+      <button
+        type="button" onClick={onComplete}
+        className="absolute bottom-8 right-5 text-[11px] text-white/25 hover:text-white/60 transition-colors z-10"
+      >
+        skip
+      </button>
+    </motion.div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 type ActiveTab = 'board' | 'hand' | 'log';
 
 interface SelectedCard {
@@ -377,6 +659,9 @@ export default function GameBoard() {
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processUpdateRef = useRef<(s: GameState) => void>(() => {});
   const drainQueueFnRef = useRef<() => void>(() => {});
+  const [luminaryCutscene, setLuminaryCutscene] = useState<{ luminary: Luminary; portrait: string } | null>(null);
+  const shownLuminaryIdsRef = useRef<Set<string>>(new Set());
+  const hasInitializedLuminariesRef = useRef(false);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -474,6 +759,17 @@ export default function GameBoard() {
     { sessionToken: session?.sessionToken || '' },
     { query: { enabled: !!roomId && !!session, queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }) } }
   );
+
+  useEffect(() => {
+    if (state && !hasInitializedLuminariesRef.current) {
+      hasInitializedLuminariesRef.current = true;
+      for (const p of state.players) {
+        for (const lumId of (p.earnedLuminaries ?? [])) {
+          shownLuminaryIdsRef.current.add(lumId);
+        }
+      }
+    }
+  }, [state]);
 
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
@@ -579,6 +875,24 @@ export default function GameBoard() {
 
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
+
+      if (prev) {
+        for (const player of newState.players) {
+          const prevPlayer = prev.players.find(pp => pp.playerId === player.playerId);
+          const prevEarned = new Set(prevPlayer?.earnedLuminaries ?? []);
+          for (const lumId of (player.earnedLuminaries ?? [])) {
+            if (!prevEarned.has(lumId) && !shownLuminaryIdsRef.current.has(lumId)) {
+              shownLuminaryIdsRef.current.add(lumId);
+              const luminary = newState.luminaries.find(l => l.id === lumId);
+              if (luminary) {
+                setLuminaryCutscene({ luminary, portrait: pickLuminaryPortrait(luminary) });
+                setAnimEndTime(14500);
+              }
+              break;
+            }
+          }
+        }
+      }
 
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         cancelTurnAnnouncement();
@@ -719,7 +1033,7 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
-  const actionsLocked = !!turnAnnouncement;
+  const actionsLocked = !!turnAnnouncement || !!luminaryCutscene;
   const isMyTurn = !actionsLocked && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
@@ -2362,6 +2676,32 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Luminary Summoning Cutscene ── */}
+      {luminaryCutscene && (
+        <LuminaryCutscene
+          luminary={luminaryCutscene.luminary}
+          portrait={luminaryCutscene.portrait}
+          onComplete={() => setLuminaryCutscene(null)}
+        />
+      )}
+
+      {/* ── Dev: Luminary Cutscene Test Panel ── */}
+      {import.meta.env.DEV && !luminaryCutscene && state.status === 'playing' && (
+        <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1">
+          <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
+          {state.luminaries.map(l => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => setLuminaryCutscene({ luminary: l, portrait: pickLuminaryPortrait(l) })}
+              className="text-[9px] bg-black/70 text-amber-300/80 border border-amber-500/30 rounded px-2 py-0.5 hover:bg-amber-900/40 transition-colors text-left"
+            >
+              ✦ {l.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>
