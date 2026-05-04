@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { saveSession, getSession } from "@/lib/session";
+import { saveSession, getSession, clearSession } from "@/lib/session";
+import { getGameState } from "@workspace/api-client-react";
 import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer, AVATARS } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [activeSession, setActiveSession] = useState(() => getSession());
+  const [sessionGameStatus, setSessionGameStatus] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("home");
   const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -48,6 +50,25 @@ export default function Home() {
   const { refetch: fetchRoom } = useGetRoomByInviteCode(inviteCode, {
     query: { enabled: false, queryKey: getGetRoomByInviteCodeQueryKey(inviteCode) },
   });
+
+  // Validate the saved session — clear it if the game is finished or the room is gone
+  useEffect(() => {
+    const session = getSession();
+    if (!session) return;
+    getGameState(session.roomId, { sessionToken: session.sessionToken })
+      .then((state) => {
+        setSessionGameStatus(state.status);
+        if (state.status === 'finished') {
+          clearSession();
+          setActiveSession(null);
+        }
+      })
+      .catch(() => {
+        // Room gone (404 or network error) — clear the stale session
+        clearSession();
+        setActiveSession(null);
+      });
+  }, []);
 
   // Pre-fill invite code from URL ?invite= param
   useEffect(() => {
@@ -150,7 +171,7 @@ export default function Home() {
           transition={{ delay: 0.28 }}
           className="text-muted-foreground text-sm tracking-wide"
         >
-          Forge cosmic affinities. Claim prestige.
+          Forge cosmic affinities. Claim lumens.
         </motion.p>
 
         {/* Avatar selector — always visible */}
@@ -219,7 +240,13 @@ export default function Home() {
                   <Button
                     size="sm"
                     className="shrink-0"
-                    onClick={() => setLocation(`/lobby/${activeSession.roomId}`)}
+                    onClick={() => {
+                      if (sessionGameStatus === 'playing') {
+                        setLocation(`/game/${activeSession.roomId}`);
+                      } else {
+                        setLocation(`/lobby/${activeSession.roomId}`);
+                      }
+                    }}
                   >
                     Resume <ArrowRight className="h-3.5 w-3.5 ml-1" />
                   </Button>

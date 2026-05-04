@@ -81,7 +81,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
         avatarId: p.avatarId ?? null,
         crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         bonuses: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-        prestige: 0,
+        lumens: 0,
         reservedCards: [],
         purchasedCardIds: [],
         purchasedCards: [],

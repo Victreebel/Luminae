@@ -21,14 +21,14 @@ export interface ArtifactCard {
   id: string;
   tier: 1 | 2 | 3;
   bonusColor: CrystalColor;
-  prestigePoints: number;
+  lumens: number;
   cost: CrystalCounts;
 }
 
 export interface LuminaryDef {
   id: string;
   name: string;
-  prestigePoints: number;
+  lumens: number;
   requirements: CrystalCounts;
 }
 
@@ -37,7 +37,7 @@ export interface PlayerGameState {
   playerName: string;
   crystals: CrystalCounts;
   bonuses: CrystalCounts;
-  prestige: number;
+  lumens: number;
   reservedCardIds: string[];
   purchasedCardIds: string[];
   luminaries: string[];
@@ -108,145 +108,145 @@ function cost(
 export const CARD_CATALOG: ArtifactCard[] = [
   // ─── Tier 1 (40 cards — 8 per gem) ───────────────────────────────────────
   // Ruby bonus
-  { id: "t1r01", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 1, 1, 1) },
-  { id: "t1r02", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 1, 2, 0) },
-  { id: "t1r03", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 1, 1, 0, 1) },
-  { id: "t1r04", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 2, 0, 0, 0) },
-  { id: "t1r05", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 0, 2, 2) },
-  { id: "t1r06", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 2, 1, 0, 0) },
-  { id: "t1r07", tier: 1, bonusColor: "ruby", prestigePoints: 0, cost: cost(0, 0, 2, 2, 0) },
-  { id: "t1r08", tier: 1, bonusColor: "ruby", prestigePoints: 1, cost: cost(0, 0, 0, 0, 4) },
+  { id: "t1r01", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 0, 1, 1, 1) },
+  { id: "t1r02", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 0, 1, 2, 0) },
+  { id: "t1r03", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 1, 1, 0, 1) },
+  { id: "t1r04", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 2, 0, 0, 0) },
+  { id: "t1r05", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 0, 0, 2, 2) },
+  { id: "t1r06", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 2, 1, 0, 0) },
+  { id: "t1r07", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 0, 2, 2, 0) },
+  { id: "t1r08", tier: 1, bonusColor: "ruby", lumens: 1, cost: cost(0, 0, 0, 0, 4) },
   // Sapphire bonus
-  { id: "t1s01", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 1, 0, 1) },
-  { id: "t1s02", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(2, 0, 1, 0, 0) },
-  { id: "t1s03", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 0, 1, 1) },
-  { id: "t1s04", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 0, 0, 2) },
-  { id: "t1s05", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(0, 0, 0, 2, 2) },
-  { id: "t1s06", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(1, 0, 2, 0, 0) },
-  { id: "t1s07", tier: 1, bonusColor: "sapphire", prestigePoints: 0, cost: cost(2, 0, 0, 2, 0) },
-  { id: "t1s08", tier: 1, bonusColor: "sapphire", prestigePoints: 1, cost: cost(0, 0, 4, 0, 0) },
+  { id: "t1s01", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(1, 0, 1, 0, 1) },
+  { id: "t1s02", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(2, 0, 1, 0, 0) },
+  { id: "t1s03", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(1, 0, 0, 1, 1) },
+  { id: "t1s04", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(1, 0, 0, 0, 2) },
+  { id: "t1s05", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(0, 0, 0, 2, 2) },
+  { id: "t1s06", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(1, 0, 2, 0, 0) },
+  { id: "t1s07", tier: 1, bonusColor: "sapphire", lumens: 0, cost: cost(2, 0, 0, 2, 0) },
+  { id: "t1s08", tier: 1, bonusColor: "sapphire", lumens: 1, cost: cost(0, 0, 4, 0, 0) },
   // Emerald bonus
-  { id: "t1e01", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(1, 1, 0, 0, 1) },
-  { id: "t1e02", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 2, 0, 1, 0) },
-  { id: "t1e03", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(1, 1, 0, 1, 0) },
-  { id: "t1e04", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 3, 0, 0, 0) },
-  { id: "t1e05", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(2, 0, 0, 0, 2) },
-  { id: "t1e06", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 1, 0, 1, 2) },
-  { id: "t1e07", tier: 1, bonusColor: "emerald", prestigePoints: 0, cost: cost(0, 0, 0, 2, 1) },
-  { id: "t1e08", tier: 1, bonusColor: "emerald", prestigePoints: 1, cost: cost(0, 0, 0, 4, 0) },
+  { id: "t1e01", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(1, 1, 0, 0, 1) },
+  { id: "t1e02", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(0, 2, 0, 1, 0) },
+  { id: "t1e03", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(1, 1, 0, 1, 0) },
+  { id: "t1e04", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(0, 3, 0, 0, 0) },
+  { id: "t1e05", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(2, 0, 0, 0, 2) },
+  { id: "t1e06", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(0, 1, 0, 1, 2) },
+  { id: "t1e07", tier: 1, bonusColor: "emerald", lumens: 0, cost: cost(0, 0, 0, 2, 1) },
+  { id: "t1e08", tier: 1, bonusColor: "emerald", lumens: 1, cost: cost(0, 0, 0, 4, 0) },
   // Onyx bonus
-  { id: "t1o01", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 1, 1, 0, 1) },
-  { id: "t1o02", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 1, 0, 0, 2) },
-  { id: "t1o03", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(1, 0, 1, 0, 1) },
-  { id: "t1o04", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 0, 2, 1, 0) },
-  { id: "t1o05", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(2, 1, 0, 0, 0) },
-  { id: "t1o06", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(0, 2, 2, 0, 0) },
-  { id: "t1o07", tier: 1, bonusColor: "onyx", prestigePoints: 0, cost: cost(1, 0, 0, 1, 2) },
-  { id: "t1o08", tier: 1, bonusColor: "onyx", prestigePoints: 1, cost: cost(0, 4, 0, 0, 0) },
+  { id: "t1o01", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(0, 1, 1, 0, 1) },
+  { id: "t1o02", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(0, 1, 0, 0, 2) },
+  { id: "t1o03", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(1, 0, 1, 0, 1) },
+  { id: "t1o04", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(0, 0, 2, 1, 0) },
+  { id: "t1o05", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(2, 1, 0, 0, 0) },
+  { id: "t1o06", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(0, 2, 2, 0, 0) },
+  { id: "t1o07", tier: 1, bonusColor: "onyx", lumens: 0, cost: cost(1, 0, 0, 1, 2) },
+  { id: "t1o08", tier: 1, bonusColor: "onyx", lumens: 1, cost: cost(0, 4, 0, 0, 0) },
   // Pearl bonus
-  { id: "t1p01", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(1, 1, 0, 1, 0) },
-  { id: "t1p02", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(0, 1, 0, 2, 0) },
-  { id: "t1p03", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(1, 0, 1, 1, 0) },
-  { id: "t1p04", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(2, 0, 0, 0, 1) },
-  { id: "t1p05", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(0, 2, 0, 0, 2) },
-  { id: "t1p06", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(1, 0, 1, 0, 2) },
-  { id: "t1p07", tier: 1, bonusColor: "pearl", prestigePoints: 0, cost: cost(0, 0, 1, 2, 1) },
-  { id: "t1p08", tier: 1, bonusColor: "pearl", prestigePoints: 1, cost: cost(0, 0, 4, 0, 0) },
+  { id: "t1p01", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(1, 1, 0, 1, 0) },
+  { id: "t1p02", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(0, 1, 0, 2, 0) },
+  { id: "t1p03", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(1, 0, 1, 1, 0) },
+  { id: "t1p04", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(2, 0, 0, 0, 1) },
+  { id: "t1p05", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(0, 2, 0, 0, 2) },
+  { id: "t1p06", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(1, 0, 1, 0, 2) },
+  { id: "t1p07", tier: 1, bonusColor: "pearl", lumens: 0, cost: cost(0, 0, 1, 2, 1) },
+  { id: "t1p08", tier: 1, bonusColor: "pearl", lumens: 1, cost: cost(0, 0, 4, 0, 0) },
 
   // ─── Tier 2 (30 cards — 6 per gem) ───────────────────────────────────────
   // Ruby bonus
-  { id: "t2r01", tier: 2, bonusColor: "ruby", prestigePoints: 1, cost: cost(0, 2, 0, 3, 2) },
-  { id: "t2r02", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(0, 1, 4, 2, 0) },
-  { id: "t2r03", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(3, 0, 0, 0, 3) },
-  { id: "t2r04", tier: 2, bonusColor: "ruby", prestigePoints: 1, cost: cost(2, 0, 2, 0, 2) },
-  { id: "t2r05", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(0, 3, 0, 2, 2) },
-  { id: "t2r06", tier: 2, bonusColor: "ruby", prestigePoints: 2, cost: cost(0, 0, 0, 5, 0) },
+  { id: "t2r01", tier: 2, bonusColor: "ruby", lumens: 1, cost: cost(0, 2, 0, 3, 2) },
+  { id: "t2r02", tier: 2, bonusColor: "ruby", lumens: 2, cost: cost(0, 1, 4, 2, 0) },
+  { id: "t2r03", tier: 2, bonusColor: "ruby", lumens: 2, cost: cost(3, 0, 0, 0, 3) },
+  { id: "t2r04", tier: 2, bonusColor: "ruby", lumens: 1, cost: cost(2, 0, 2, 0, 2) },
+  { id: "t2r05", tier: 2, bonusColor: "ruby", lumens: 2, cost: cost(0, 3, 0, 2, 2) },
+  { id: "t2r06", tier: 2, bonusColor: "ruby", lumens: 2, cost: cost(0, 0, 0, 5, 0) },
   // Sapphire bonus
-  { id: "t2s01", tier: 2, bonusColor: "sapphire", prestigePoints: 1, cost: cost(2, 0, 3, 0, 2) },
-  { id: "t2s02", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(4, 0, 0, 2, 1) },
-  { id: "t2s03", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(0, 3, 0, 0, 3) },
-  { id: "t2s04", tier: 2, bonusColor: "sapphire", prestigePoints: 1, cost: cost(0, 0, 2, 0, 3) },
-  { id: "t2s05", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(5, 0, 0, 0, 0) },
-  { id: "t2s06", tier: 2, bonusColor: "sapphire", prestigePoints: 2, cost: cost(2, 0, 0, 3, 2) },
+  { id: "t2s01", tier: 2, bonusColor: "sapphire", lumens: 1, cost: cost(2, 0, 3, 0, 2) },
+  { id: "t2s02", tier: 2, bonusColor: "sapphire", lumens: 2, cost: cost(4, 0, 0, 2, 1) },
+  { id: "t2s03", tier: 2, bonusColor: "sapphire", lumens: 2, cost: cost(0, 3, 0, 0, 3) },
+  { id: "t2s04", tier: 2, bonusColor: "sapphire", lumens: 1, cost: cost(0, 0, 2, 0, 3) },
+  { id: "t2s05", tier: 2, bonusColor: "sapphire", lumens: 2, cost: cost(5, 0, 0, 0, 0) },
+  { id: "t2s06", tier: 2, bonusColor: "sapphire", lumens: 2, cost: cost(2, 0, 0, 3, 2) },
   // Emerald bonus
-  { id: "t2e01", tier: 2, bonusColor: "emerald", prestigePoints: 1, cost: cost(3, 2, 0, 0, 2) },
-  { id: "t2e02", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(2, 4, 0, 1, 0) },
-  { id: "t2e03", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(0, 0, 3, 3, 0) },
-  { id: "t2e04", tier: 2, bonusColor: "emerald", prestigePoints: 1, cost: cost(0, 2, 0, 2, 2) },
-  { id: "t2e05", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(0, 5, 0, 0, 0) },
-  { id: "t2e06", tier: 2, bonusColor: "emerald", prestigePoints: 2, cost: cost(2, 0, 0, 2, 3) },
+  { id: "t2e01", tier: 2, bonusColor: "emerald", lumens: 1, cost: cost(3, 2, 0, 0, 2) },
+  { id: "t2e02", tier: 2, bonusColor: "emerald", lumens: 2, cost: cost(2, 4, 0, 1, 0) },
+  { id: "t2e03", tier: 2, bonusColor: "emerald", lumens: 2, cost: cost(0, 0, 3, 3, 0) },
+  { id: "t2e04", tier: 2, bonusColor: "emerald", lumens: 1, cost: cost(0, 2, 0, 2, 2) },
+  { id: "t2e05", tier: 2, bonusColor: "emerald", lumens: 2, cost: cost(0, 5, 0, 0, 0) },
+  { id: "t2e06", tier: 2, bonusColor: "emerald", lumens: 2, cost: cost(2, 0, 0, 2, 3) },
   // Onyx bonus
-  { id: "t2o01", tier: 2, bonusColor: "onyx", prestigePoints: 1, cost: cost(0, 2, 2, 0, 3) },
-  { id: "t2o02", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(1, 0, 2, 0, 4) },
-  { id: "t2o03", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(3, 0, 0, 3, 0) },
-  { id: "t2o04", tier: 2, bonusColor: "onyx", prestigePoints: 1, cost: cost(2, 0, 3, 0, 2) },
-  { id: "t2o05", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(0, 0, 5, 0, 0) },
-  { id: "t2o06", tier: 2, bonusColor: "onyx", prestigePoints: 2, cost: cost(2, 3, 0, 0, 2) },
+  { id: "t2o01", tier: 2, bonusColor: "onyx", lumens: 1, cost: cost(0, 2, 2, 0, 3) },
+  { id: "t2o02", tier: 2, bonusColor: "onyx", lumens: 2, cost: cost(1, 0, 2, 0, 4) },
+  { id: "t2o03", tier: 2, bonusColor: "onyx", lumens: 2, cost: cost(3, 0, 0, 3, 0) },
+  { id: "t2o04", tier: 2, bonusColor: "onyx", lumens: 1, cost: cost(2, 0, 3, 0, 2) },
+  { id: "t2o05", tier: 2, bonusColor: "onyx", lumens: 2, cost: cost(0, 0, 5, 0, 0) },
+  { id: "t2o06", tier: 2, bonusColor: "onyx", lumens: 2, cost: cost(2, 3, 0, 0, 2) },
   // Pearl bonus
-  { id: "t2p01", tier: 2, bonusColor: "pearl", prestigePoints: 1, cost: cost(2, 3, 0, 2, 0) },
-  { id: "t2p02", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 2, 1, 4, 0) },
-  { id: "t2p03", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 0, 3, 0, 3) },
-  { id: "t2p04", tier: 2, bonusColor: "pearl", prestigePoints: 1, cost: cost(3, 2, 0, 0, 2) },
-  { id: "t2p05", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 0, 0, 0, 5) },
-  { id: "t2p06", tier: 2, bonusColor: "pearl", prestigePoints: 2, cost: cost(0, 2, 3, 2, 0) },
+  { id: "t2p01", tier: 2, bonusColor: "pearl", lumens: 1, cost: cost(2, 3, 0, 2, 0) },
+  { id: "t2p02", tier: 2, bonusColor: "pearl", lumens: 2, cost: cost(0, 2, 1, 4, 0) },
+  { id: "t2p03", tier: 2, bonusColor: "pearl", lumens: 2, cost: cost(0, 0, 3, 0, 3) },
+  { id: "t2p04", tier: 2, bonusColor: "pearl", lumens: 1, cost: cost(3, 2, 0, 0, 2) },
+  { id: "t2p05", tier: 2, bonusColor: "pearl", lumens: 2, cost: cost(0, 0, 0, 0, 5) },
+  { id: "t2p06", tier: 2, bonusColor: "pearl", lumens: 2, cost: cost(0, 2, 3, 2, 0) },
 
   // ─── Tier 3 (20 cards — 4 per gem) ───────────────────────────────────────
   // Ruby bonus
-  { id: "t3r01", tier: 3, bonusColor: "ruby", prestigePoints: 3, cost: cost(3, 0, 0, 5, 3) },
-  { id: "t3r02", tier: 3, bonusColor: "ruby", prestigePoints: 4, cost: cost(0, 0, 3, 6, 3) },
-  { id: "t3r03", tier: 3, bonusColor: "ruby", prestigePoints: 3, cost: cost(0, 5, 0, 3, 3) },
-  { id: "t3r04", tier: 3, bonusColor: "ruby", prestigePoints: 5, cost: cost(0, 0, 7, 3, 3) },
+  { id: "t3r01", tier: 3, bonusColor: "ruby", lumens: 3, cost: cost(3, 0, 0, 5, 3) },
+  { id: "t3r02", tier: 3, bonusColor: "ruby", lumens: 4, cost: cost(0, 0, 3, 6, 3) },
+  { id: "t3r03", tier: 3, bonusColor: "ruby", lumens: 3, cost: cost(0, 5, 0, 3, 3) },
+  { id: "t3r04", tier: 3, bonusColor: "ruby", lumens: 5, cost: cost(0, 0, 7, 3, 3) },
   // Sapphire bonus
-  { id: "t3s01", tier: 3, bonusColor: "sapphire", prestigePoints: 3, cost: cost(5, 3, 0, 0, 3) },
-  { id: "t3s02", tier: 3, bonusColor: "sapphire", prestigePoints: 4, cost: cost(6, 3, 0, 3, 0) },
-  { id: "t3s03", tier: 3, bonusColor: "sapphire", prestigePoints: 3, cost: cost(3, 0, 5, 3, 0) },
-  { id: "t3s04", tier: 3, bonusColor: "sapphire", prestigePoints: 5, cost: cost(3, 7, 0, 0, 3) },
+  { id: "t3s01", tier: 3, bonusColor: "sapphire", lumens: 3, cost: cost(5, 3, 0, 0, 3) },
+  { id: "t3s02", tier: 3, bonusColor: "sapphire", lumens: 4, cost: cost(6, 3, 0, 3, 0) },
+  { id: "t3s03", tier: 3, bonusColor: "sapphire", lumens: 3, cost: cost(3, 0, 5, 3, 0) },
+  { id: "t3s04", tier: 3, bonusColor: "sapphire", lumens: 5, cost: cost(3, 7, 0, 0, 3) },
   // Emerald bonus
-  { id: "t3e01", tier: 3, bonusColor: "emerald", prestigePoints: 3, cost: cost(0, 5, 3, 0, 3) },
-  { id: "t3e02", tier: 3, bonusColor: "emerald", prestigePoints: 4, cost: cost(3, 6, 0, 3, 0) },
-  { id: "t3e03", tier: 3, bonusColor: "emerald", prestigePoints: 3, cost: cost(0, 3, 0, 5, 3) },
-  { id: "t3e04", tier: 3, bonusColor: "emerald", prestigePoints: 5, cost: cost(3, 3, 7, 0, 0) },
+  { id: "t3e01", tier: 3, bonusColor: "emerald", lumens: 3, cost: cost(0, 5, 3, 0, 3) },
+  { id: "t3e02", tier: 3, bonusColor: "emerald", lumens: 4, cost: cost(3, 6, 0, 3, 0) },
+  { id: "t3e03", tier: 3, bonusColor: "emerald", lumens: 3, cost: cost(0, 3, 0, 5, 3) },
+  { id: "t3e04", tier: 3, bonusColor: "emerald", lumens: 5, cost: cost(3, 3, 7, 0, 0) },
   // Onyx bonus
-  { id: "t3o01", tier: 3, bonusColor: "onyx", prestigePoints: 3, cost: cost(0, 3, 5, 3, 0) },
-  { id: "t3o02", tier: 3, bonusColor: "onyx", prestigePoints: 4, cost: cost(0, 3, 6, 0, 3) },
-  { id: "t3o03", tier: 3, bonusColor: "onyx", prestigePoints: 3, cost: cost(3, 0, 3, 0, 5) },
-  { id: "t3o04", tier: 3, bonusColor: "onyx", prestigePoints: 5, cost: cost(0, 3, 3, 7, 0) },
+  { id: "t3o01", tier: 3, bonusColor: "onyx", lumens: 3, cost: cost(0, 3, 5, 3, 0) },
+  { id: "t3o02", tier: 3, bonusColor: "onyx", lumens: 4, cost: cost(0, 3, 6, 0, 3) },
+  { id: "t3o03", tier: 3, bonusColor: "onyx", lumens: 3, cost: cost(3, 0, 3, 0, 5) },
+  { id: "t3o04", tier: 3, bonusColor: "onyx", lumens: 5, cost: cost(0, 3, 3, 7, 0) },
   // Pearl bonus
-  { id: "t3p01", tier: 3, bonusColor: "pearl", prestigePoints: 3, cost: cost(3, 0, 3, 5, 0) },
-  { id: "t3p02", tier: 3, bonusColor: "pearl", prestigePoints: 4, cost: cost(3, 0, 3, 0, 6) },
-  { id: "t3p03", tier: 3, bonusColor: "pearl", prestigePoints: 3, cost: cost(5, 0, 3, 0, 3) },
-  { id: "t3p04", tier: 3, bonusColor: "pearl", prestigePoints: 5, cost: cost(0, 3, 0, 3, 7) },
+  { id: "t3p01", tier: 3, bonusColor: "pearl", lumens: 3, cost: cost(3, 0, 3, 5, 0) },
+  { id: "t3p02", tier: 3, bonusColor: "pearl", lumens: 4, cost: cost(3, 0, 3, 0, 6) },
+  { id: "t3p03", tier: 3, bonusColor: "pearl", lumens: 3, cost: cost(5, 0, 3, 0, 3) },
+  { id: "t3p04", tier: 3, bonusColor: "pearl", lumens: 5, cost: cost(0, 3, 0, 3, 7) },
 ];
 
 export const LUMINARIES: LuminaryDef[] = [
   {
     id: "lum01",
     name: "The Astral Weaver",
-    prestigePoints: 3,
+    lumens: 3,
     requirements: { ruby: 4, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
   },
   {
     id: "lum02",
     name: "The Runic Forge",
-    prestigePoints: 3,
+    lumens: 3,
     requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 3, pearl: 0, flux: 0 },
   },
   {
     id: "lum03",
     name: "The Crystal Oracle",
-    prestigePoints: 3,
+    lumens: 3,
     requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
   },
   {
     id: "lum04",
     name: "The Void Merchant",
-    prestigePoints: 3,
+    lumens: 3,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
   },
   {
     id: "lum05",
     name: "The Luminary Sage",
-    prestigePoints: 3,
+    lumens: 3,
     requirements: { ruby: 0, sapphire: 3, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
   },
 ];
@@ -313,7 +313,7 @@ export function initializeGame(
     playerName: p.name,
     crystals: zeroCrystals(),
     bonuses: zeroCrystals(),
-    prestige: 0,
+    lumens: 0,
     reservedCardIds: [],
     purchasedCardIds: [],
     luminaries: [],
@@ -419,11 +419,11 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
     );
     if (qualifies) {
       player.luminaries.push(lumId);
-      player.prestige += lum.prestigePoints;
+      player.lumens += lum.lumens;
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
-        summary: `Drew the favor of ${lum.name} (+${lum.prestigePoints})`,
+        summary: `Drew the favor of ${lum.name} (+${lum.lumens} lumens)`,
         turn: state.roundNumber,
       });
     }
@@ -452,7 +452,7 @@ function drawIntoMarket(
 const WIN_THRESHOLD = 15;
 
 function checkWin(state: GameStateData): boolean {
-  return state.players.some((p) => p.prestige >= WIN_THRESHOLD);
+  return state.players.some((p) => p.lumens >= WIN_THRESHOLD);
 }
 
 // ─── Advance Turn ─────────────────────────────────────────────────────────────
@@ -469,17 +469,17 @@ function advanceTurn(state: GameStateData): void {
     // Last round ends when it wraps back around to first player
     if (nextIndex === 0) {
       state.phase = "finished";
-      // Find winner (most prestige, tie-break: fewest cards)
-      let bestPrestige = -1;
+      // Find winner (most lumens, tie-break: fewest cards)
+      let bestLumens = -1;
       let bestCards = Infinity;
       let winnerId: string | null = null;
       for (const p of state.players) {
         const cards = p.purchasedCardIds.length;
         if (
-          p.prestige > bestPrestige ||
-          (p.prestige === bestPrestige && cards < bestCards)
+          p.lumens > bestLumens ||
+          (p.lumens === bestLumens && cards < bestCards)
         ) {
-          bestPrestige = p.prestige;
+          bestLumens = p.lumens;
           bestCards = cards;
           winnerId = p.playerId;
         }
@@ -605,7 +605,7 @@ export function applyAction(
       payForCard(card, player, state.crystalBank);
       player.purchasedCardIds.push(action.cardId);
       player.bonuses[card.bonusColor]++;
-      player.prestige += card.prestigePoints;
+      player.lumens += card.lumens;
       drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       checkLuminaries(state, player);
       break;
@@ -625,7 +625,7 @@ export function applyAction(
       player.reservedCardIds.splice(idx, 1);
       player.purchasedCardIds.push(action.cardId);
       player.bonuses[card.bonusColor]++;
-      player.prestige += card.prestigePoints;
+      player.lumens += card.lumens;
       checkLuminaries(state, player);
       break;
     }
@@ -638,11 +638,11 @@ export function applyAction(
     case "surrender": {
       // Player surrenders; end the game with them as last place
       state.phase = "finished";
-      // Set winner to highest prestige among remaining players (or first if tied)
+      // Set winner to highest lumens among remaining players (or first if tied)
       const others = state.players.filter((p) => p.playerId !== playerId);
       if (others.length > 0) {
         const winner = others.reduce((best, p) =>
-          p.prestige > best.prestige ? p : best
+          p.lumens > best.lumens ? p : best
         );
         state.winnerId = winner.playerId;
       }
@@ -702,8 +702,8 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
         const card = CARD_MAP.get(action.cardId);
         const lore = getCardLore(action.cardId);
         const verb = action.type === "purchase_reserved" ? "Built reserved" : "Forged";
-        const pts = card?.prestigePoints ?? 0;
-        return `${verb} "${lore.name}"${pts ? ` (+${pts})` : ""}`;
+        const pts = card?.lumens ?? 0;
+        return `${verb} "${lore.name}"${pts ? ` (+${pts} lumens)` : ""}`;
       }
       return "Forged a card";
     }
@@ -768,7 +768,7 @@ export function formatGameState(
     avatarId: avatarMap?.get(p.playerId) ?? null,
     crystals: p.crystals,
     bonuses: p.bonuses,
-    prestige: p.prestige,
+    lumens: p.lumens,
     reservedCards: p.reservedCardIds
       .map((id) => CARD_MAP.get(id))
       .filter(Boolean)

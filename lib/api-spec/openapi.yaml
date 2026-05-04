@@ -437,7 +437,7 @@ components:
         bonusColor:
           type: string
           enum: [ruby, sapphire, emerald, onyx, pearl]
-        prestigePoints:
+        lumens:
           type: integer
         cost:
           $ref: "#/components/schemas/CrystalCounts"
@@ -449,7 +449,7 @@ components:
         - id
         - tier
         - bonusColor
-        - prestigePoints
+        - lumens
         - cost
         - name
         - flavor
@@ -478,14 +478,14 @@ components:
           type: string
         name:
           type: string
-        prestigePoints:
+        lumens:
           type: integer
         requirements:
           $ref: "#/components/schemas/CrystalCounts"
       required:
         - id
         - name
-        - prestigePoints
+        - lumens
         - requirements
 
     GamePlayerState:
@@ -501,7 +501,7 @@ components:
           $ref: "#/components/schemas/CrystalCounts"
         bonuses:
           $ref: "#/components/schemas/CrystalCounts"
-        prestige:
+        lumens:
           type: integer
         reservedCards:
           type: array
@@ -522,7 +522,7 @@ components:
         - playerName
         - crystals
         - bonuses
-        - prestige
+        - lumens
         - reservedCards
         - purchasedCardIds
         - purchasedCards

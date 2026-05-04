@@ -295,9 +295,10 @@ export default function Lobby() {
               disabled={addAiPlayer.isPending}
               variant="secondary"
               className="shrink-0 gap-1.5"
+              data-testid="add-ai-btn"
             >
               <Plus className="h-4 w-4" />
-              Add
+              Add AI
             </Button>
           </div>
         )}

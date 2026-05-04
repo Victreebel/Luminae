@@ -249,7 +249,7 @@ export const StartGameResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -267,7 +267,7 @@ export const StartGameResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -285,7 +285,7 @@ export const StartGameResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -307,7 +307,7 @@ export const StartGameResponse = zod.object({
     zod.object({
       id: zod.string(),
       name: zod.string(),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -339,7 +339,7 @@ export const StartGameResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
-      prestige: zod.number(),
+      lumens: zod.number(),
       reservedCards: zod.array(
         zod.object({
           id: zod.string(),
@@ -351,7 +351,7 @@ export const StartGameResponse = zod.object({
             "onyx",
             "pearl",
           ]),
-          prestigePoints: zod.number(),
+          lumens: zod.number(),
           cost: zod.object({
             ruby: zod.number(),
             sapphire: zod.number(),
@@ -376,7 +376,7 @@ export const StartGameResponse = zod.object({
             "onyx",
             "pearl",
           ]),
-          prestigePoints: zod.number(),
+          lumens: zod.number(),
           cost: zod.object({
             ruby: zod.number(),
             sapphire: zod.number(),
@@ -441,7 +441,7 @@ export const GetGameStateResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -459,7 +459,7 @@ export const GetGameStateResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -477,7 +477,7 @@ export const GetGameStateResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -499,7 +499,7 @@ export const GetGameStateResponse = zod.object({
     zod.object({
       id: zod.string(),
       name: zod.string(),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -531,7 +531,7 @@ export const GetGameStateResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
-      prestige: zod.number(),
+      lumens: zod.number(),
       reservedCards: zod.array(
         zod.object({
           id: zod.string(),
@@ -543,7 +543,7 @@ export const GetGameStateResponse = zod.object({
             "onyx",
             "pearl",
           ]),
-          prestigePoints: zod.number(),
+          lumens: zod.number(),
           cost: zod.object({
             ruby: zod.number(),
             sapphire: zod.number(),
@@ -568,7 +568,7 @@ export const GetGameStateResponse = zod.object({
             "onyx",
             "pearl",
           ]),
-          prestigePoints: zod.number(),
+          lumens: zod.number(),
           cost: zod.object({
             ruby: zod.number(),
             sapphire: zod.number(),
@@ -657,7 +657,7 @@ export const SubmitActionResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -675,7 +675,7 @@ export const SubmitActionResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -693,7 +693,7 @@ export const SubmitActionResponse = zod.object({
       id: zod.string(),
       tier: zod.number(),
       bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       cost: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -715,7 +715,7 @@ export const SubmitActionResponse = zod.object({
     zod.object({
       id: zod.string(),
       name: zod.string(),
-      prestigePoints: zod.number(),
+      lumens: zod.number(),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -747,7 +747,7 @@ export const SubmitActionResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
-      prestige: zod.number(),
+      lumens: zod.number(),
       reservedCards: zod.array(
         zod.object({
           id: zod.string(),
@@ -759,7 +759,7 @@ export const SubmitActionResponse = zod.object({
             "onyx",
             "pearl",
           ]),
-          prestigePoints: zod.number(),
+          lumens: zod.number(),
           cost: zod.object({
             ruby: zod.number(),
             sapphire: zod.number(),
@@ -784,7 +784,7 @@ export const SubmitActionResponse = zod.object({
             "onyx",
             "pearl",
           ]),
-          prestigePoints: zod.number(),
+          lumens: zod.number(),
           cost: zod.object({
             ruby: zod.number(),
             sapphire: zod.number(),

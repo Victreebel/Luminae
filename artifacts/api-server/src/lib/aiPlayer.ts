@@ -42,14 +42,14 @@ function getMarket(state: GameStateData): ArtifactCard[] {
   return ids.map((id) => CARD_MAP.get(id)).filter(Boolean) as ArtifactCard[];
 }
 
-// Score: how much we want a card (prestige + bonus utility for luminaries)
+// Score: how much we want a card (lumens + bonus utility for luminaries)
 function scoreCard(
   card: ArtifactCard,
   player: PlayerGameState,
   state: GameStateData,
   difficulty: AiDifficulty,
 ): number {
-  let score = card.prestigePoints * 3;
+  let score = card.lumens * 3;
 
   if (difficulty !== "easy") {
     // Bonus value: helps build engine for affordability

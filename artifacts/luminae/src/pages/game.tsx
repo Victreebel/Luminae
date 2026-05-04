@@ -123,11 +123,15 @@ function CrystalIcon({
   selectable?: boolean; selected?: boolean; size?: number;
 }) {
   const meta = GEM_META[color];
+  const Tag = selectable ? motion.button : motion.div;
   return (
-    <motion.div
+    <Tag
+      type={selectable ? 'button' : undefined}
       whileTap={selectable ? { scale: 0.92 } : {}}
       onClick={selectable ? onClick : undefined}
       title={meta.name}
+      aria-label={`${meta.name} gem${count !== undefined ? `, ${count} available` : ''}`}
+      data-testid={`gem-${color}`}
       className={`relative rounded-full flex items-center justify-center font-bold text-white ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}`}
       style={{
         width: size, height: size,
@@ -135,7 +139,7 @@ function CrystalIcon({
       }}
     >
       <img
-        src={meta.image} alt={meta.name}
+        src={meta.image} alt=""
         className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
         draggable={false}
       />
@@ -147,7 +151,7 @@ function CrystalIcon({
           {count}
         </span>
       )}
-    </motion.div>
+    </Tag>
   );
 }
 
@@ -194,7 +198,7 @@ function ArtifactCardView({
       <div className="relative z-10 h-full p-2 flex flex-col justify-between">
         <div className="flex justify-between items-start">
           <span className="text-lg font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-            {card.prestigePoints > 0 ? card.prestigePoints : ''}
+            {card.lumens > 0 ? card.lumens : ''}
           </span>
           <div className="w-5 h-5 rounded-full shadow-md ring-2 ring-black/60 overflow-hidden" title={bonusMeta?.name}>
             <img src={bonusMeta?.image} alt="" className="w-full h-full object-contain" draggable={false} />
@@ -291,7 +295,7 @@ function LuminaryCard({ luminary }: { luminary: Luminary }) {
         className="absolute top-1 right-2 text-xl font-serif font-bold drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
         style={{ color: GEM_META.flux.hex }}
       >
-        {luminary.prestigePoints}
+        {luminary.lumens}
       </span>
       <div className="relative z-10 flex flex-wrap justify-center gap-0.5 max-w-full">
         {CRYSTALS.map((c) => {
@@ -337,7 +341,7 @@ export default function GameBoard() {
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
-  const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; prestige: number; name: string } | null>(null);
+  const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
   const [reserveBurst, setReserveBurst] = useState<{
     key: number;
@@ -478,10 +482,10 @@ export default function GameBoard() {
       setSelectedCard(null);
       if (payload.type === 'purchase_card' || payload.type === 'purchase_reserved') {
         gameAudio.playCardPurchased();
-        const prestige = payload.cardRef?.prestigePoints ?? 0;
+        const lumens = payload.cardRef?.lumens ?? 0;
         const name = payload.cardRef?.name ?? 'Artifact';
         burstKeyRef.current += 1;
-        setPurchaseBurst({ key: burstKeyRef.current, prestige, name });
+        setPurchaseBurst({ key: burstKeyRef.current, lumens, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
       } else if (payload.type === 'reserve_card') {
         gameAudio.playCardReserved();
@@ -576,7 +580,7 @@ export default function GameBoard() {
       {/* ── My Holdings strip ── */}
       {me && (
         <div className={`rounded-2xl border px-3 py-2.5 bg-card/70 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}>
-          {/* top row: avatar + name + prestige */}
+          {/* top row: avatar + name + lumens */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 min-w-0">
               <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={26} />
@@ -585,8 +589,9 @@ export default function GameBoard() {
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
             <div className="flex items-center gap-0.5 shrink-0 ml-2">
-              <span className="font-serif font-black text-lg text-primary leading-none">{me.prestige}</span>
+              <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
               <Sparkles className="h-3 w-3 text-primary" />
+              <span className="text-[9px] text-primary/60 font-mono uppercase tracking-wide ml-0.5">lumens</span>
             </div>
           </div>
           {/* stats row */}
@@ -696,6 +701,7 @@ export default function GameBoard() {
               <div key={c} className="flex flex-col items-center gap-1.5">
                 <CrystalIcon
                   color={c} size={50}
+                  count={count}
                   selectable={selectable}
                   selected={queued > 0}
                   onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
@@ -742,7 +748,7 @@ export default function GameBoard() {
                   key={p.playerId}
                   className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* Row 1: avatar + name + prestige */}
+                  {/* Row 1: avatar + name + lumens */}
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-1.5">
                       <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={26} />
@@ -751,7 +757,7 @@ export default function GameBoard() {
                       {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className="font-serif font-black text-xl text-primary">{p.prestige}</span>
+                      <span className="font-serif font-black text-xl text-primary">{p.lumens}</span>
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
                     </div>
                   </div>
@@ -809,7 +815,7 @@ export default function GameBoard() {
 
   const HandTab = () => (
     <div className="flex flex-col gap-5 p-4 pb-6">
-      {/* Prestige + name */}
+      {/* Lumens + name */}
       <div className={`rounded-2xl border p-4 bg-card/80 backdrop-blur flex items-center justify-between ${isMyTurn ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-border'}`}>
         <div>
           <div className="text-lg font-bold">{me?.playerName}</div>
@@ -818,9 +824,9 @@ export default function GameBoard() {
           </div>
         </div>
         <div className="text-center">
-          <div className="text-4xl font-serif font-bold text-primary">{me?.prestige}</div>
+          <div className="text-4xl font-serif font-bold text-primary">{me?.lumens}</div>
           <div className="text-xs text-primary flex items-center gap-0.5 justify-center">
-            <Sparkles className="h-3 w-3" /> prestige
+            <Sparkles className="h-3 w-3" /> lumens
           </div>
         </div>
       </div>
@@ -925,7 +931,7 @@ export default function GameBoard() {
                 key={p.playerId}
                 className={`rounded-2xl border p-4 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/60 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-border/50'}`}
               >
-                {/* Header: avatar + name + prestige */}
+                {/* Header: avatar + name + lumens */}
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={30} />
@@ -934,7 +940,7 @@ export default function GameBoard() {
                     {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
                   </div>
                   <div className="flex items-center gap-1 font-serif font-bold text-primary">
-                    <span className="text-2xl">{p.prestige}</span>
+                    <span className="text-2xl">{p.lumens}</span>
                     <Sparkles className="h-4 w-4" />
                   </div>
                 </div>
@@ -1066,6 +1072,7 @@ export default function GameBoard() {
       <AnimatePresence>
         {crystalQueueActive && (
           <motion.div
+            data-testid="gem-confirm-bar"
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
@@ -1095,10 +1102,11 @@ export default function GameBoard() {
                 <Button
                   size="sm"
                   className="h-9 px-4"
+                  data-testid="gem-confirm-btn"
                   onClick={confirmCrystals}
                   disabled={!queueLegality.ok}
                 >
-                  Confirm
+                  Take Gems
                 </Button>
               </div>
             </div>
@@ -1171,10 +1179,10 @@ export default function GameBoard() {
                     <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
                     <span className="text-xs font-semibold capitalize">{selectedCard.card.bonusColor}</span>
                   </div>
-                  {(selectedCard.card.prestigePoints ?? 0) > 0 && (
+                  {(selectedCard.card.lumens ?? 0) > 0 && (
                     <div className="flex items-center gap-1">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-sm font-bold text-primary">{selectedCard.card.prestigePoints} prestige</span>
+                      <span className="text-sm font-bold text-primary">{selectedCard.card.lumens} lumens</span>
                     </div>
                   )}
                 </div>
@@ -1252,9 +1260,9 @@ export default function GameBoard() {
               <span className="text-3xl font-serif font-black text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]">
                 Forged!
               </span>
-              {purchaseBurst.prestige > 0 && (
+              {purchaseBurst.lumens > 0 && (
                 <span className="flex items-center gap-1.5 text-lg font-bold" style={{ color: GEM_META.flux.hex }}>
-                  <Sparkles className="h-4 w-4" /> +{purchaseBurst.prestige} prestige
+                  <Sparkles className="h-4 w-4" /> +{purchaseBurst.lumens} lumens
                 </span>
               )}
             </motion.div>
@@ -1296,7 +1304,7 @@ export default function GameBoard() {
                   {
                     icon: '💎',
                     title: 'Goal',
-                    body: 'Be the first to reach 15 prestige points. The round completes so every player gets equal turns, then the highest score wins.',
+                    body: 'Be the first to reach 15 lumens. The round completes so every player gets equal turns, then the highest score wins.',
                   },
                   {
                     icon: '🪙',
@@ -1310,8 +1318,8 @@ export default function GameBoard() {
                   },
                   {
                     icon: '✨',
-                    title: 'Prestige',
-                    body: 'Some cards award prestige when forged. Luminaries (the top row) grant bonus prestige to the first player whose bonuses meet their requirements — claimed automatically.',
+                    title: 'Lumens',
+                    body: 'Some cards award lumens when forged. Luminaries (the top row) grant bonus lumens to the first player whose bonuses meet their requirements — claimed automatically.',
                   },
                   {
                     icon: '✋',
@@ -1476,7 +1484,7 @@ export default function GameBoard() {
 
               {/* Final scores — staggered in */}
               <div className="flex flex-col gap-2 pt-1">
-                {[...state.players].sort((a, b) => b.prestige - a.prestige).map((p, i) => {
+                {[...state.players].sort((a, b) => b.lumens - a.lumens).map((p, i) => {
                   const isMe = p.playerId === session.playerId;
                   const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
                   return (
@@ -1493,7 +1501,7 @@ export default function GameBoard() {
                       {p.playerName}
                     </span>
                     <span className="font-bold text-primary flex items-center gap-1">
-                      {p.prestige} <Sparkles className="h-3.5 w-3.5" />
+                      {p.lumens} <Sparkles className="h-3.5 w-3.5" />
                     </span>
                   </motion.div>
                   );

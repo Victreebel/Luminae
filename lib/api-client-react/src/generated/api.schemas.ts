@@ -134,7 +134,7 @@ export interface ArtifactCard {
   id: string;
   tier: number;
   bonusColor: ArtifactCardBonusColor;
-  prestigePoints: number;
+  lumens: number;
   cost: CrystalCounts;
   name: string;
   flavor: string;
@@ -150,7 +150,7 @@ export interface ActionLogEntry {
 export interface Luminary {
   id: string;
   name: string;
-  prestigePoints: number;
+  lumens: number;
   requirements: CrystalCounts;
 }
 
@@ -161,7 +161,7 @@ export interface GamePlayerState {
   avatarId?: string | null;
   crystals: CrystalCounts;
   bonuses: CrystalCounts;
-  prestige: number;
+  lumens: number;
   reservedCards: ArtifactCard[];
   purchasedCardIds: string[];
   purchasedCards: ArtifactCard[];
