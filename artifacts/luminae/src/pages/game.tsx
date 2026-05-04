@@ -807,7 +807,7 @@ export default function GameBoard() {
     const seq = gemBurstKeyRef.current;
     setGemBurst({ key: seq, gems, playerName, avatarId });
     gameAudio.playChipsCollected();
-    const totalDuration = (gems.length - 1) * 780 + 1250 + 500 + 250;
+    const totalDuration = (gems.length - 1) * 780 + 1250 + 500 + 50;
     setAnimEndTime(totalDuration);
     gemBurstTimerRef.current = setTimeout(() => {
       if (gemBurstKeyRef.current === seq) setGemBurst(null);
@@ -932,7 +932,7 @@ export default function GameBoard() {
       gem,
       index,
       x: index * spacing - offset,
-      delay: index * 0.78 + 0.25,
+      delay: index * 0.78 + 0.05,
     };
   }) ?? [];
 
@@ -1884,7 +1884,7 @@ export default function GameBoard() {
       {/* ── Gem Pickup Burst ── */}
       <AnimatePresence>
         {gemBurst && (() => {
-          const burstDuration = (gemBurst.gems.length - 1) * 0.78 + 1.25 + 0.5 + 0.25;
+          const burstDuration = (gemBurst.gems.length - 1) * 0.78 + 1.25 + 0.5 + 0.05;
           const avatarFadeIn = 0.5 / burstDuration;
           const avatarVisible = 0.55 / burstDuration;
           return (
