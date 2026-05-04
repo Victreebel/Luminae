@@ -130,7 +130,7 @@ function CrystalIcon({
       whileTap={selectable ? { scale: 0.92 } : {}}
       onClick={selectable ? onClick : undefined}
       title={meta.name}
-      aria-label={`${meta.name} gem${count !== undefined ? `, ${count} available` : ''}`}
+      aria-label={`${meta.name} affinity${count !== undefined ? `, ${count} available` : ''}`}
       data-testid={`gem-${color}`}
       className={`relative rounded-full flex items-center justify-center font-bold text-white ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}`}
       style={{
@@ -735,11 +735,11 @@ export default function GameBoard() {
     if (handTotal + total > 10) return { ok: false, reason: `Hand limit is 10 (you'd have ${handTotal + total})`, actionType: null };
     if (distinct.length === 1 && (selectedCrystals[distinct[0] as keyof CrystalCounts] ?? 0) === 2) {
       const c = distinct[0] as keyof CrystalCounts;
-      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Take 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
-      return { ok: false, reason: `Need 4+ in bank to take 2`, actionType: null };
+      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Channel 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
+      return { ok: false, reason: `Need 4+ in well to channel 2`, actionType: null };
     }
     if (distinct.every(c => (selectedCrystals[c as keyof CrystalCounts] ?? 0) === 1) && distinct.length <= 3) {
-      return { ok: true, reason: distinct.length === 3 ? 'Take 3 different' : `Take ${distinct.length}`, actionType: 'take3' };
+      return { ok: true, reason: distinct.length === 3 ? 'Channel 3 different' : `Channel ${distinct.length}`, actionType: 'take3' };
     }
     return { ok: false, reason: 'Invalid combination', actionType: null };
   })();
@@ -925,7 +925,7 @@ export default function GameBoard() {
       {/* Crystal Bank */}
       <div className="rounded-2xl bg-secondary/40 border border-border/50 backdrop-blur overflow-hidden">
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Gem Bank</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Essence Well</p>
           {(() => {
             const fluxCount = state.crystalBank.flux ?? 0;
             return (
@@ -990,7 +990,7 @@ export default function GameBoard() {
                     onClick={(e) => { e.stopPropagation(); promoteToTake2(c); }}
                     className="mt-0.5 text-[9px] font-bold text-primary/80 hover:text-primary bg-primary/10 rounded-full px-2 py-0.5 active:bg-primary/25 transition-colors"
                   >
-                    take 2
+                    channel 2
                   </motion.button>
                 )}
               </div>
@@ -1015,7 +1015,7 @@ export default function GameBoard() {
                       </div>
                     ))}
                     <span className={`text-[10px] font-medium ${queueLegality.ok ? 'text-green-400' : 'text-amber-400'}`}>
-                      {queueLegality.reason || 'Pick gems'}
+                      {queueLegality.reason || 'Pick affinities'}
                     </span>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
@@ -1033,7 +1033,7 @@ export default function GameBoard() {
                       onClick={confirmCrystals}
                       disabled={!queueLegality.ok}
                     >
-                      Take
+                      Channel
                     </Button>
                   </div>
                 </div>
@@ -1044,7 +1044,7 @@ export default function GameBoard() {
         {isMyTurn && !crystalQueueActive && (
           <div className="px-3 pb-2.5">
             <p className="text-[9px] text-muted-foreground text-center italic">
-              Tap to queue gems · up to 3 different or 2 of the same
+              Tap to channel affinities · up to 3 different or 2 of the same
             </p>
           </div>
         )}
@@ -1069,7 +1069,7 @@ export default function GameBoard() {
           </div>
           {/* stats row */}
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
-            <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> gems</span>
+            <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> affinities</span>
             <span>·</span>
             <button type="button" onClick={() => setShowForgedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors active:bg-primary/20 hover:bg-primary/10">
               <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
@@ -1148,7 +1148,7 @@ export default function GameBoard() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-0.5">
-                        <span className="font-semibold text-foreground/80">{totalGems}</span> gems
+                        <span className="font-semibold text-foreground/80">{totalGems}</span> affinities
                       </span>
                       <span>·</span>
                       <span className="flex items-center gap-0.5">
@@ -1185,7 +1185,7 @@ export default function GameBoard() {
         <div>
           <div className="text-lg font-bold">{me?.playerName}</div>
           <div className="text-xs text-muted-foreground">
-            {Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0)} gems in hand
+            {Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0)} affinities in hand
           </div>
         </div>
         <div className="text-center">
@@ -1198,7 +1198,7 @@ export default function GameBoard() {
 
       {/* My Gems */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">My Gems</p>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">My Affinities</p>
         <div className="grid grid-cols-3 gap-2.5">
           {CRYSTALS.map((c) => (
             <div key={c} className="flex items-center gap-2.5 bg-secondary/50 rounded-xl p-2.5">
@@ -1333,7 +1333,7 @@ export default function GameBoard() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>
-                      <span className="font-semibold text-foreground/80">{Object.values(p.crystals).reduce((a, b) => a + b, 0)}</span> gems
+                      <span className="font-semibold text-foreground/80">{Object.values(p.crystals).reduce((a, b) => a + b, 0)}</span> affinities
                     </span>
                     <span>
                       <span className="font-semibold text-foreground/80">{cardCount}</span> forged
@@ -1802,12 +1802,12 @@ export default function GameBoard() {
                   {
                     icon: '🪙',
                     title: 'On your turn — pick one action',
-                    body: 'Take up to 3 gems (1 of each color) · Take 2 gems of the same color (needs 4+ in bank) · Reserve a card (hold up to 3, gain 1 Flux gem) · Forge a card you can afford',
+                    body: 'Channel up to 3 affinities (1 of each type) · Channel 2 of the same (needs 4+ in the well) · Reserve a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
                   },
                   {
                     icon: '🃏',
                     title: 'Cards & bonuses',
-                    body: 'Each forged card gives a permanent gem discount (bonus) of its color. Pay the cost in gems, using bonuses first. Flux gems act as wild cards for any shortfall.',
+                    body: 'Each forged card gives a permanent affinity discount (bonus) of its type. Pay the cost in affinities, using bonuses first. Singularity acts as a wild card for any shortfall.',
                   },
                   {
                     icon: '✨',
@@ -1816,8 +1816,8 @@ export default function GameBoard() {
                   },
                   {
                     icon: '✋',
-                    title: 'Gem limit',
-                    body: 'You may hold at most 10 gems at end of turn. You may hold at most 3 reserved cards at once.',
+                    title: 'Affinity limit',
+                    body: 'You may hold at most 10 affinities at end of turn. You may hold at most 3 reserved cards at once.',
                   },
                 ].map(({ icon, title, body }) => (
                   <div key={title} className="flex gap-3">

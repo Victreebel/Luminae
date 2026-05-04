@@ -35,7 +35,7 @@ export const CARD_LORE: Record<string, CardLore> = {
   t1e05: { name: "Fernwhisper Shard", flavor: "Repeats the last thing a fern ever said." },
   t1e06: { name: "Seedglass Tear", flavor: "Inside: an entire meadow, patiently waiting." },
   t1e07: { name: "Bark Rune", flavor: "Carved by a tree that grew faster than thought." },
-  t1e08: { name: "Thornbound Gem", flavor: "Peace preserved by something that hurts to hold." },
+  t1e08: { name: "Thornbound Essence", flavor: "Peace preserved by something that hurts to hold." },
 
   // ── Tier 1 ─ Onyx (singularity / shadow) ─────────────────────────────────
   t1o01: { name: "Eclipse Husk", flavor: "All that remained when the sun forgot itself." },

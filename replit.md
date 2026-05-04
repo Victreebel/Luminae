@@ -16,7 +16,7 @@ pnpm workspace monorepo using TypeScript.
 
 ## Game Mechanics
 
-- **Crystals (cosmic resources)**: 6 affinities — Radiance, Flare, Continuum, Verdance, Abyss + Singularity (wild). Internal data keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are intentionally retained throughout the API, DB, engine, and AI for backward compatibility. The display layer maps keys → cosmic names via `artifacts/luminae/src/lib/gemMeta.ts`.
+- **Affinities (cosmic resources)**: 6 affinities — Radiance, Flare, Continuum, Verdance, Abyss + Singularity (wild). Internal data keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are intentionally retained throughout the API, DB, engine, and AI for backward compatibility. The display layer maps keys → cosmic names via `artifacts/luminae/src/lib/gemMeta.ts`. User-facing terminology: "affinities" (not "gems"), "Essence Well" (not "Gem Bank"), "Channel" (not "Take"), "Affinity limit" (not "Gem limit"). Server action log uses "Channeled" for crystal-take actions. Error messages also use rebranded terms.
 - **Cosmic Affinity art** (May 2026): All gem tokens, tier card backdrops (3), Luminary portraits (5), home/lobby background, and Luminae logo are AI-generated and stored in `attached_assets/generated_images/`, imported via the Vite `@assets` alias. PNGs compressed via `sharp` (palette + max compression) — total payload ~5 MB.
 - **Per-card art + lore** (May 2026): All 45 Artifact cards have unique 384×384 PNG art in `attached_assets/generated_images/cards/<id>.png` plus a shared `card_back.png`. Lore (`name` + `flavor`) lives in `artifacts/api-server/src/lib/cardLore.ts` and is injected into market/reserved cards by `formatGameState` (server is source of truth — never duplicate the catalog client-side). Client loads art with `import.meta.glob` on the `@assets/generated_images/cards/*.png` pattern.
 - **Action log** (May 2026): `GameState.actionLog` is a capped (20-entry) array of `{ playerId, playerName, summary, turn }` written by `pushLog()` inside `applyAction`. `describeAction` covers all action types, including blind deck reserve and pass.
@@ -31,7 +31,7 @@ The lobby reconciles its local `players` array from two sources: TanStack Query'
 - **Market**: 3 tiers of Artifact cards (20/15/10 cards shuffled into decks, 4 face-up per tier)
 - **Eminence (victory currency)**: Replaces the generic "prestige" concept. Internal data key stays `lumens` throughout the API, DB, engine, and AI for backward compatibility (same pattern as crystal key mapping). The display layer shows "eminence" everywhere players see the score label. Server-side action log descriptions also use "eminence."
 - **Luminaries**: 5 patron cards, playerCount+1 active per game, award 3 eminence for bonus requirements
-- **Actions**: take 3 different crystals, take 2 same (≥4 in bank), reserve card (get flux), purchase card/reserved
+- **Actions**: channel 3 different affinities, channel 2 same (≥4 in well), reserve card (get Singularity), forge card/reserved
 - **Win condition**: 15 eminence; last round completes so all players finish equally; tie-break is fewest purchased cards
 
 ## Stack

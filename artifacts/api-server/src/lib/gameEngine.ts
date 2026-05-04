@@ -233,7 +233,7 @@ export const LUMINARIES: LuminaryDef[] = [
   },
   {
     id: "lum03",
-    name: "The Crystal Oracle",
+    name: "The Cosmic Oracle",
     lumens: 3,
     requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
   },
@@ -517,19 +517,19 @@ export function applyAction(
       const selected = action.crystals ?? {};
       const colors = CRYSTAL_COLORS.filter((c) => (selected[c] ?? 0) > 0);
       if (colors.length < 1 || colors.length > 3)
-        return { success: false, error: "Must select 1–3 different crystal colors" };
+        return { success: false, error: "Must select 1–3 different affinities" };
       if (new Set(colors).size !== colors.length)
-        return { success: false, error: "Must be different colors" };
+        return { success: false, error: "Must be different affinities" };
       for (const c of colors) {
         if ((selected[c] ?? 0) !== 1)
-          return { success: false, error: "Take exactly 1 of each color" };
+          return { success: false, error: "Channel exactly 1 of each affinity" };
         if (state.crystalBank[c] < 1)
-          return { success: false, error: `No ${c} crystals available` };
+          return { success: false, error: `No ${COLOR_LABEL[c]} available` };
       }
       // Hand limit: 10 total
       const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
       if (totalHeld + colors.length > 10) {
-        return { success: false, error: "Would exceed 10 crystal limit" };
+        return { success: false, error: "Would exceed 10 affinity limit" };
       }
       for (const c of colors) {
         player.crystals[c]++;
@@ -541,12 +541,12 @@ export function applyAction(
     case "take_two_crystals": {
       const color = action.crystal;
       if (!color || !CRYSTAL_COLORS.includes(color))
-        return { success: false, error: "Invalid crystal color" };
+        return { success: false, error: "Invalid affinity" };
       if (state.crystalBank[color] < 4)
-        return { success: false, error: "Need at least 4 in bank to take 2" };
+        return { success: false, error: "Need at least 4 in the well to channel 2" };
       const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
       if (totalHeld + 2 > 10)
-        return { success: false, error: "Would exceed 10 crystal limit" };
+        return { success: false, error: "Would exceed 10 affinity limit" };
       player.crystals[color] += 2;
       state.crystalBank[color] -= 2;
       break;
@@ -680,13 +680,13 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
         .filter((c) => (sel[c] ?? 0) > 0)
         .map((c) => `${sel[c]} ${COLOR_LABEL[c]}`);
       return parts.length === 0
-        ? "Took no crystals"
-        : `Took ${parts.join(", ")}`;
+        ? "Channeled nothing"
+        : `Channeled ${parts.join(", ")}`;
     }
     case "take_two_crystals":
       return action.crystal
-        ? `Took 2 ${COLOR_LABEL[action.crystal]}`
-        : "Took 2 crystals";
+        ? `Channeled 2 ${COLOR_LABEL[action.crystal]}`
+        : "Channeled 2 affinities";
     case "reserve_card": {
       if (action.cardId) {
         const lore = getCardLore(action.cardId);
