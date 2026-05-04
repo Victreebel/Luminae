@@ -1091,22 +1091,22 @@ export default function GameBoard() {
                 >
                   <img
                     src={meta.image} alt={meta.name}
-                    className="w-10 h-10 object-contain pointer-events-none select-none"
-                    style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 4px ${meta.glowHex}66)` }}
+                    className="w-14 h-14 object-contain pointer-events-none select-none"
+                    style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 6px ${meta.glowHex}66)` }}
                     draggable={false}
                   />
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    <span className={`text-sm font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count}</span>
+                  <div className="flex items-center gap-0.5 mt-1">
+                    <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count}</span>
                     {queued > 0 && (
                       <motion.span
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="text-[10px] font-bold text-primary leading-none"
+                        className="text-xs font-bold text-primary leading-none"
                       >+{queued}</motion.span>
                     )}
                   </div>
                 </motion.button>
-                <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground mt-1 leading-none" style={{ color: `${meta.glowHex}88` }}>
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-1.5 leading-none" style={{ color: `${meta.glowHex}88` }}>
                   {meta.shortName}
                 </span>
                 {canTake2 && (
