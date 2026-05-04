@@ -1028,11 +1028,7 @@ export default function GameBoard() {
                         ? 'bg-white/[0.03] opacity-40'
                         : 'bg-white/[0.06] active:bg-white/[0.12]'
                   }`}
-                  style={{
-                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)',
-                    backgroundSize: '8px 8px',
-                    ...(queued > 0 ? { boxShadow: `0 0 16px ${meta.glowHex}40` } : {}),
-                  }}
+                  style={queued > 0 ? { boxShadow: `0 0 16px ${meta.glowHex}40` } : {}}
                 >
                   <img
                     src={meta.image} alt={meta.name}
@@ -1491,7 +1487,6 @@ export default function GameBoard() {
                         background: reservedCount > 0 ? `${meta.hex}CC` : 'transparent',
                         border: `1.5px solid ${meta.hex}`,
                         boxShadow: reservedCount > 0 ? `0 0 6px ${meta.hex}55` : 'none',
-                        backgroundImage: reservedCount > 0 ? 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px)' : undefined,
                       }}
                     >
                       <span className="text-[10px] font-black leading-none" style={{ color: reservedCount > 0 ? '#111' : meta.glowHex }}>
@@ -1509,7 +1504,6 @@ export default function GameBoard() {
                         background: forgedCount > 0 ? `${meta.hex}CC` : 'transparent',
                         border: `1.5px solid ${forgedCount > 0 ? meta.hex : meta.hex + '44'}`,
                         boxShadow: forgedCount > 0 ? `0 0 6px ${meta.hex}55` : 'none',
-                        backgroundImage: forgedCount > 0 ? 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px)' : undefined,
                       }}
                     >
                       <span className="text-[10px] font-black leading-none" style={{ color: forgedCount > 0 ? '#fff' : meta.hex + '55' }}>
