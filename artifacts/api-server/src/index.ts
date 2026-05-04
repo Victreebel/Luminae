@@ -3,6 +3,18 @@ import app from "./app";
 import { setupWebSocket } from "./lib/websocket";
 import { logger } from "./lib/logger";
 
+// ── Global safety net ────────────────────────────────────────────────────────
+// Catch any unhandled promise rejection or uncaught exception so a single
+// rogue async path can't kill the whole process.
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "Unhandled promise rejection — server kept alive");
+});
+
+process.on("uncaughtException", (err) => {
+  logger.error({ err }, "Uncaught exception — server kept alive");
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
