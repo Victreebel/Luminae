@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, ShoppingCart, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, Flag, X
+  ChevronDown, ChevronUp, Flag, X, HelpCircle
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -339,6 +339,7 @@ export default function GameBoard() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; prestige: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
+  const [showRules, setShowRules] = useState(false);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -1007,6 +1008,9 @@ export default function GameBoard() {
         </div>
 
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setShowRules(true)} title="Rules">
+            <HelpCircle className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
@@ -1218,6 +1222,77 @@ export default function GameBoard() {
                   <Sparkles className="h-4 w-4" /> +{purchaseBurst.prestige} prestige
                 </span>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Rules Sheet ── */}
+      <AnimatePresence>
+        {showRules && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-end"
+            onClick={() => setShowRules(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+            >
+              {/* Handle bar */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+              <div className="px-5 pb-2 flex items-center justify-between">
+                <h2 className="text-lg font-serif font-bold">How to Play</h2>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowRules(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="px-5 overflow-y-auto max-h-[60vh] space-y-4 pb-4">
+                {[
+                  {
+                    icon: '💎',
+                    title: 'Goal',
+                    body: 'Be the first to reach 15 prestige points. The round completes so every player gets equal turns, then the highest score wins.',
+                  },
+                  {
+                    icon: '🪙',
+                    title: 'On your turn — pick one action',
+                    body: 'Take up to 3 gems (1 of each color) · Take 2 gems of the same color (needs 4+ in bank) · Reserve a card (hold up to 3, gain 1 Flux gem) · Forge a card you can afford',
+                  },
+                  {
+                    icon: '🃏',
+                    title: 'Cards & bonuses',
+                    body: 'Each forged card gives a permanent gem discount (bonus) of its color. Pay the cost in gems, using bonuses first. Flux gems act as wild cards for any shortfall.',
+                  },
+                  {
+                    icon: '✨',
+                    title: 'Prestige',
+                    body: 'Some cards award prestige when forged. Luminaries (the top row) grant bonus prestige to the first player whose bonuses meet their requirements — claimed automatically.',
+                  },
+                  {
+                    icon: '✋',
+                    title: 'Gem limit',
+                    body: 'You may hold at most 10 gems at end of turn. You may hold at most 3 reserved cards at once.',
+                  },
+                ].map(({ icon, title, body }) => (
+                  <div key={title} className="flex gap-3">
+                    <span className="text-xl shrink-0 mt-0.5">{icon}</span>
+                    <div>
+                      <div className="font-semibold text-sm mb-0.5">{title}</div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           </motion.div>
         )}
