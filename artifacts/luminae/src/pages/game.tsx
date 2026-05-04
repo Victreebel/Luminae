@@ -470,6 +470,7 @@ export default function GameBoard() {
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
+  const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
@@ -1562,45 +1563,72 @@ export default function GameBoard() {
       {/* ── Player Info Panel (pinned above nav) ── */}
       {me && (
         <div className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}>
-          <div className="flex items-center gap-3">
-            {/* Avatar + name + turn badge */}
+          {/* Top row: identity + lumens */}
+          <div className="flex items-center gap-3 mb-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={24} />
+              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={22} />
               {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
               <span className="text-xs font-semibold truncate">{me.playerName}</span>
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
-            {/* Stats */}
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground shrink-0">
-              <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> aff</span>
-              <button type="button" onClick={() => setShowForgedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1 -mx-1 transition-colors active:bg-primary/20">
-                <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
-                <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-              </button>
-              {me.reservedCards.length > 0 && (
-                <button type="button" onClick={() => setShowReservedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1 -mx-1 transition-colors active:bg-primary/20">
-                  <span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> reserved
-                  <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
-                </button>
-              )}
-            </div>
-            {/* Lumens */}
             <div className="flex items-center gap-0.5 shrink-0">
               <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
               <Sparkles className="h-3 w-3 text-primary" />
             </div>
           </div>
-          {/* Gem row */}
-          <div className="flex gap-1 mt-1.5">
+          {/* Gem columns: card chip + token + bonus */}
+          <div className="flex gap-1">
             {CRYSTALS.map((c) => {
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
               const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
+              const meta = GEM_META[c as GemKey];
+              const isFlux = c === 'flux';
+              const forgedCount = isFlux
+                ? 0
+                : (me.purchasedCards ?? []).filter((card) => card.bonusColor === c).length;
+              const reservedCount = me.reservedCards.length;
               return (
-                <div key={c} className="flex flex-col items-center gap-0.5 flex-1">
+                <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
+                  {/* Chip */}
+                  {isFlux ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowReservedOverlay(true)}
+                      className="w-full flex items-center justify-center rounded-[4px] transition-opacity active:opacity-70"
+                      style={{
+                        height: 18,
+                        background: reservedCount > 0 ? `${meta.hex}CC` : 'transparent',
+                        border: `1.5px solid ${meta.hex}`,
+                        boxShadow: reservedCount > 0 ? `0 0 6px ${meta.hex}55` : 'none',
+                      }}
+                    >
+                      <span className="text-[10px] font-black leading-none" style={{ color: reservedCount > 0 ? '#111' : meta.glowHex }}>
+                        {reservedCount}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={forgedCount === 0}
+                      onClick={() => { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }}
+                      className="w-full flex items-center justify-center rounded-[4px] transition-opacity active:opacity-70 disabled:cursor-default"
+                      style={{
+                        height: 18,
+                        background: forgedCount > 0 ? `${meta.hex}CC` : 'transparent',
+                        border: `1.5px solid ${forgedCount > 0 ? meta.hex : meta.hex + '44'}`,
+                        boxShadow: forgedCount > 0 ? `0 0 6px ${meta.hex}55` : 'none',
+                      }}
+                    >
+                      <span className="text-[10px] font-black leading-none" style={{ color: forgedCount > 0 ? '#fff' : meta.hex + '55' }}>
+                        {forgedCount}
+                      </span>
+                    </button>
+                  )}
+                  {/* Token */}
                   <MiniGem color={c as GemKey} size={11} />
                   <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
                   {bonus > 0 && (
-                    <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
+                    <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
                   )}
                 </div>
               );
@@ -2271,37 +2299,67 @@ export default function GameBoard() {
               <div className="px-5 pb-2 flex items-center justify-between">
                 <h2 className="text-lg font-serif font-bold flex items-center gap-2">
                   <Package className="h-5 w-5 text-muted-foreground" />
-                  Forged Artifacts ({me.purchasedCards?.length ?? 0})
+                  {forgedFilter
+                    ? <>{GEM_META[forgedFilter].name} Artifacts</>
+                    : <>Forged Artifacts ({me.purchasedCards?.length ?? 0})</>
+                  }
                 </h2>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForgedOverlay(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="px-5 overflow-y-auto max-h-[60vh] pb-4">
-                <div className="flex gap-1.5 flex-wrap mb-3">
-                  {CRYSTALS.filter(c => c !== 'flux').map((c) => {
-                    const count = me.bonuses[c as keyof CrystalCounts] ?? 0;
-                    if (count === 0) return null;
-                    return (
-                      <div key={c} className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5">
-                        <MiniGem color={c as GemKey} size={12} />
-                        <span className="text-xs font-bold text-white">×{count}</span>
-                      </div>
-                    );
-                  })}
-                  {Object.values(me.bonuses).every(v => v === 0) && (
-                    <span className="text-xs text-muted-foreground italic">No bonuses yet</span>
+                <div className="flex items-center gap-1">
+                  {forgedFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setForgedFilter(null)}
+                      className="text-[10px] text-muted-foreground underline underline-offset-2 px-2 py-1"
+                    >
+                      show all
+                    </button>
                   )}
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                {(me.purchasedCards?.length ?? 0) === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {(me.purchasedCards ?? []).map((c) => (
-                      <ArtifactCardView key={c.id} card={c} tier={c.tier} />
-                    ))}
-                  </div>
-                )}
+              </div>
+              {/* Color filter pills */}
+              <div className="px-5 pb-2 flex gap-1.5 flex-wrap">
+                {CRYSTALS.filter(c => c !== 'flux').map((c) => {
+                  const count = (me.purchasedCards ?? []).filter(card => card.bonusColor === c).length;
+                  if (count === 0) return null;
+                  const meta = GEM_META[c as GemKey];
+                  const active = forgedFilter === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setForgedFilter(active ? null : c as GemKey)}
+                      className="flex items-center gap-1 rounded-full px-2 py-0.5 transition-all"
+                      style={{
+                        background: active ? `${meta.hex}CC` : 'rgba(0,0,0,0.35)',
+                        border: `1.5px solid ${active ? meta.hex : meta.hex + '55'}`,
+                      }}
+                    >
+                      <MiniGem color={c as GemKey} size={11} />
+                      <span className="text-[11px] font-bold" style={{ color: active ? '#fff' : meta.glowHex }}>×{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="px-5 overflow-y-auto max-h-[55vh] pb-4">
+                {(() => {
+                  const cards = forgedFilter
+                    ? (me.purchasedCards ?? []).filter(card => card.bonusColor === forgedFilter)
+                    : (me.purchasedCards ?? []);
+                  return cards.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">
+                      {forgedFilter ? `No ${GEM_META[forgedFilter].name} artifacts forged yet.` : 'No cards forged yet.'}
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {cards.map((c) => (
+                        <ArtifactCardView key={c.id} card={c} tier={c.tier} />
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>
