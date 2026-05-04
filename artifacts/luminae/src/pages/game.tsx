@@ -347,15 +347,28 @@ const CUTSCENE_PARTICLES = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
+const CRACK_ORIGINS = [
+  { x:  8, y: 92, r: 7 },  // crack1 — bottom-left
+  { x: 62, y:  4, r: 5 },  // crack2
+  { x: 86, y: 58, r: 5 },  // crack3
+  { x: 10, y: 28, r: 5 },  // crack4
+  { x: 72, y: 80, r: 5 },  // crack5
+  { x: 38, y:  8, r: 5 },  // crack6
+  { x: 88, y: 22, r: 5 },  // crack7
+  { x:  4, y: 50, r: 5 },  // crack8
+] as const;
+
+const RAY_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+
 const CUTSCENE_SCHEDULE: [CutscenePhase, number][] = [
   ['linger1',  1200],
   ['crack1',   3200],
   ['linger2',  5700],
-  ['cracking', 7200],
-  ['flash',    8700],
-  ['fade',     9200],
-  ['reveal',   10400],
-  ['done',     13900],
+  ['cracking', 6500],
+  ['flash',    8000],
+  ['fade',     8500],
+  ['reveal',   9700],
+  ['done',     13200],
 ];
 
 function LuminaryCutscene({
@@ -370,7 +383,7 @@ function LuminaryCutscene({
   useEffect(() => {
     gameAudio.playWhoosh();
     const timers = CUTSCENE_SCHEDULE.map(([p, ms]) => setTimeout(() => setPhase(p), ms));
-    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 9600);
+    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 8900);
     timers.push(holyTimer);
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -396,12 +409,8 @@ function LuminaryCutscene({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Background — solid black until reveal, then dims to show game */}
-      <motion.div
-        className="absolute inset-0"
-        animate={{ backgroundColor: showReveal ? 'rgba(0,0,0,0.52)' : 'rgba(0,0,0,1)' }}
-        transition={{ duration: 1.0 }}
-      />
+      {/* Solid black background throughout */}
+      <div className="absolute inset-0 bg-black" />
 
       {/* Zoomed card + cracks */}
       <AnimatePresence>
@@ -436,48 +445,66 @@ function LuminaryCutscene({
                 <span className="text-sm font-serif font-black drop-shadow-[0_2px_3px_rgba(0,0,0,1)]" style={{ color: GEM_META.flux.hex }}>{luminary.lumens}</span>
               </motion.div>
             )}
-            {/* SVG cracks */}
+            {/* SVG cracks + light rays */}
             <svg
               viewBox="0 0 100 100" preserveAspectRatio="none"
               className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
             >
+              <defs>
+                <filter id="ray-glow" x="-80%" y="-80%" width="260%" height="260%">
+                  <feGaussianBlur stdDeviation="1.8" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+                <filter id="crack-glow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="1.2" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+
               {CRACKS.map((crack, i) => {
                 const visible = crack.phase === 'crack1' ? showCrack1 : showExtraCracks;
                 if (!visible) return null;
                 const isFirst = crack.phase === 'crack1';
-                const delay = isFirst ? 0 : (i - 1) * 0.13;
+                const crackDelay = isFirst ? 0 : (i - 1) * 0.13;
+                const origin = CRACK_ORIGINS[i];
                 return (
-                  <motion.path
-                    key={i} d={crack.d}
-                    stroke="white"
-                    strokeWidth={isFirst ? 0.7 : 0.5}
-                    strokeLinecap="round" strokeLinejoin="round"
-                    fill="none"
-                    style={{
-                      filter: isFirst
-                        ? 'drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 8px rgba(200,230,255,0.9))'
-                        : 'drop-shadow(0 0 2px rgba(255,255,255,0.85))',
-                    }}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: isFirst ? 0.65 : 0.22, delay, ease: 'easeOut' }}
-                  />
+                  <g key={i}>
+                    {/* Light rays radiating from crack origin */}
+                    {RAY_ANGLES.map((angle, ri) => {
+                      const rad = (angle * Math.PI) / 180;
+                      const x2 = origin.x + Math.cos(rad) * origin.r;
+                      const y2 = origin.y + Math.sin(rad) * origin.r;
+                      return (
+                        <motion.path
+                          key={`ray-${i}-${ri}`}
+                          d={`M ${origin.x} ${origin.y} L ${x2} ${y2}`}
+                          stroke={isFirst ? 'rgba(220,240,255,0.95)' : 'rgba(255,255,255,0.85)'}
+                          strokeWidth={isFirst ? 0.55 : 0.38}
+                          strokeLinecap="round"
+                          fill="none"
+                          filter="url(#ray-glow)"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0.55] }}
+                          transition={{ duration: isFirst ? 0.55 : 0.38, delay: crackDelay + ri * 0.02, ease: 'easeOut' }}
+                        />
+                      );
+                    })}
+                    {/* The crack itself */}
+                    <motion.path
+                      d={crack.d}
+                      stroke="white"
+                      strokeWidth={isFirst ? 0.7 : 0.5}
+                      strokeLinecap="round" strokeLinejoin="round"
+                      fill="none"
+                      filter="url(#crack-glow)"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: isFirst ? 0.65 : 0.22, delay: crackDelay, ease: 'easeOut' }}
+                    />
+                  </g>
                 );
               })}
             </svg>
-            {/* White light at crack origin */}
-            {showCrack1 && (
-              <motion.div
-                className="absolute pointer-events-none"
-                style={{
-                  bottom: '5%', left: '5%', width: 30, height: 30, borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(200,240,255,0.7) 30%, transparent 70%)',
-                }}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: [0, 1, 0.8, 0.95], scale: [0, 1.3, 1.0, 1.15] }}
-                transition={{ duration: 0.5, times: [0, 0.4, 0.7, 1] }}
-              />
-            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -523,7 +550,7 @@ function LuminaryCutscene({
         )}
       </AnimatePresence>
 
-      {/* Reveal: floating cutout figure over the game */}
+      {/* Reveal: figure floats where the card was, slowly zooming in */}
       <AnimatePresence>
         {showReveal && (
           <motion.div
@@ -533,20 +560,24 @@ function LuminaryCutscene({
           >
             <div
               className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse 55% 55% at 50% 42%, rgba(255,196,61,0.15) 0%, rgba(200,220,255,0.04) 50%, transparent 70%)' }}
+              style={{ background: 'radial-gradient(ellipse 55% 55% at 50% 45%, rgba(255,196,61,0.16) 0%, rgba(200,220,255,0.05) 50%, transparent 70%)' }}
             />
-            {/* Floating masked portrait */}
+            {/* Masked portrait — starts at card size then slowly zooms in */}
             <motion.div
-              style={{ width: 240, height: 240, marginTop: -40 }}
-              animate={{ opacity: [0.72, 1, 0.72] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+              initial={{ scale: 0.88, opacity: 0 }}
+              animate={{ scale: [0.88, 1.45], opacity: [0, 0.8, 1, 0.85, 1] }}
+              transition={{
+                scale:   { duration: 3.8, ease: [0.22, 0.6, 0.36, 1] },
+                opacity: { duration: 3.5, times: [0, 0.15, 0.4, 0.7, 1], ease: 'easeInOut' },
+              }}
+              style={{ width: 200, height: 200 }}
             >
               <img
                 src={portrait} alt={luminary.name} draggable={false}
                 style={{
                   width: '100%', height: '100%', objectFit: 'cover',
-                  maskImage: 'radial-gradient(ellipse 78% 90% at 50% 40%, black 18%, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.35) 62%, transparent 78%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse 78% 90% at 50% 40%, black 18%, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.35) 62%, transparent 78%)',
+                  maskImage: 'radial-gradient(ellipse 76% 88% at 50% 40%, black 16%, rgba(0,0,0,0.88) 38%, rgba(0,0,0,0.32) 60%, transparent 76%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 76% 88% at 50% 40%, black 16%, rgba(0,0,0,0.88) 38%, rgba(0,0,0,0.32) 60%, transparent 76%)',
                 }}
               />
             </motion.div>
