@@ -20,6 +20,25 @@ if (Number.isNaN(port) || port <= 0) {
 const server = createServer(app);
 setupWebSocket(server);
 
-server.listen(port, () => {
-  logger.info({ port }, "Server listening");
+const MAX_RETRIES = 10;
+const RETRY_DELAY = 2000;
+let attempt = 0;
+
+function tryListen() {
+  attempt++;
+  server.listen(port, () => {
+    logger.info({ port }, "Server listening");
+  });
+}
+
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE" && attempt < MAX_RETRIES) {
+    logger.warn({ port, attempt, maxRetries: MAX_RETRIES }, "Port in use, retrying...");
+    setTimeout(tryListen, RETRY_DELAY);
+  } else {
+    logger.fatal({ err, port }, "Failed to start server");
+    process.exit(1);
+  }
 });
+
+tryListen();
