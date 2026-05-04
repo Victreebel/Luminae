@@ -470,10 +470,10 @@ export default function GameBoard() {
                 const t2 = setTimeout(() => {
                   if (cardActionBurstKeyRef.current !== seq) return;
                   setFlippingCards(new Set());
-                }, 700);
+                }, 800);
                 cardAnimTimersRef.current.push(t2);
               }
-            }, 2300);
+            }, 3500);
             cardAnimTimersRef.current.push(t1);
             break;
           }
@@ -511,7 +511,7 @@ export default function GameBoard() {
               avatarId: player.avatarId ?? null,
             });
             if (gotFlux) gameAudio.playFluxCoin();
-            setTimeout(() => setReserveBurst(null), 2300);
+            setTimeout(() => setReserveBurst(null), 3500);
           }
         }
       }
@@ -1393,12 +1393,12 @@ export default function GameBoard() {
                   scale: 1.25,
                   rotateY: 360,
                 }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               >
                 <motion.div
                   initial={{ opacity: 1 }}
                   animate={{ opacity: [1, 1, 1, 0] }}
-                  transition={{ duration: 2.3, times: [0, 0.3, 0.7, 1] }}
+                  transition={{ duration: 3.5, times: [0, 0.2, 0.78, 1] }}
                 >
                   <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
                 </motion.div>
@@ -1407,7 +1407,7 @@ export default function GameBoard() {
                   className="absolute inset-0 flex items-center justify-center"
                   initial={{ opacity: 0, scale: 0.5, y: -24 }}
                   animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.5, 0.5, 1.05, 1, 1, 0.96], y: [-24, -24, 0, 0, 0, 0] }}
-                  transition={{ duration: 2.3, times: [0, 0.25, 0.42, 0.55, 0.78, 1] }}
+                  transition={{ duration: 3.5, times: [0, 0.17, 0.3, 0.42, 0.82, 1] }}
                 >
                   <div className="flex flex-col items-center gap-2">
                     <div
@@ -1434,7 +1434,7 @@ export default function GameBoard() {
                         className="flex flex-col items-center gap-1 mt-1"
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: [0, 0, 1, 1, 0], y: [8, 8, 0, 0, -16] }}
-                        transition={{ duration: 2.3, times: [0, 0.35, 0.48, 0.72, 1] }}
+                        transition={{ duration: 3.5, times: [0, 0.22, 0.34, 0.78, 1] }}
                       >
                         <span className="text-2xl font-serif font-black text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]">
                           Forged!
@@ -1452,7 +1452,7 @@ export default function GameBoard() {
                         style={{ color: GEM_META.flux.hex }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0, 1, 1, 0] }}
-                        transition={{ duration: 2.3, times: [0, 0.35, 0.48, 0.72, 1] }}
+                        transition={{ duration: 3.5, times: [0, 0.22, 0.34, 0.78, 1] }}
                       >
                         Reserved
                       </motion.div>
@@ -1477,7 +1477,7 @@ export default function GameBoard() {
                   rotateY: [90, 0, 720, 720],
                   scale: [0.6, 1, 1, 0.8],
                 }}
-                transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1] }}
+                transition={{ duration: 3.0, times: [0, 0.12, 0.72, 1] }}
               >
                 <CrystalIcon color="flux" size={52} />
                 <span
@@ -1631,7 +1631,7 @@ export default function GameBoard() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0, 1, 1, 0] }}
-                    transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1] }}
+                    transition={{ duration: 3.2, times: [0, 0.12, 0.72, 1] }}
                   >
                     <CardBack tier={reserveBurst.tier} size="md" />
                   </motion.div>
@@ -1641,7 +1641,7 @@ export default function GameBoard() {
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ opacity: 0, scale: 0.55, y: -32 }}
                     animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.55, 0.55, 1.05, 1, 1, 0.96], y: [-32, -32, 0, 0, 0, 0] }}
-                    transition={{ duration: 2.35, times: [0, 0.22, 0.42, 0.62, 0.82, 1] }}
+                    transition={{ duration: 3.5, times: [0, 0.14, 0.28, 0.42, 0.82, 1] }}
                   >
                     <div className="flex flex-col items-center gap-2">
                       <div
@@ -1677,7 +1677,7 @@ export default function GameBoard() {
                     rotateY: [90, 0, 720, 720],
                     scale: [0.6, 1, 1, 0.8],
                   }}
-                  transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1] }}
+                  transition={{ duration: 3.0, times: [0, 0.12, 0.72, 1] }}
                 >
                   <CrystalIcon color="flux" size={64} />
                   <span
