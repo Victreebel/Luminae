@@ -325,6 +325,112 @@ interface SelectedCard {
   effectiveCosts?: Partial<Record<GemKey, number>>;
 }
 
+let DevAnimSandbox: React.FC<{
+  session: { playerId: string; playerName: string; avatarId?: string | null };
+  state: GameState;
+  cardActionBurstKeyRef: React.MutableRefObject<number>;
+  reserveBurstKeyRef: React.MutableRefObject<number>;
+  burstKeyRef: React.MutableRefObject<number>;
+  cardAnimTimersRef: React.MutableRefObject<ReturnType<typeof setTimeout>[]>;
+  setCardActionBurst: (v: any) => void;
+  setReserveBurst: (v: any) => void;
+  setPurchaseBurst: (v: any) => void;
+  setFlippingCards: (v: Set<string>) => void;
+}> = () => null;
+
+if (import.meta.env.DEV) {
+  const DEV_MOCK_CARD: ArtifactCard = {
+    id: 't2r03', tier: 2, bonusColor: 'ruby', lumens: 2,
+    cost: { ruby: 3, sapphire: 0, emerald: 0, onyx: 0, pearl: 3, flux: 0 },
+    name: "Pyrelord's Sigil", flavor: 'Brands the sky with a single command.',
+  };
+
+  DevAnimSandbox = function DevAnimSandboxImpl({
+    session, state, cardActionBurstKeyRef, reserveBurstKeyRef, burstKeyRef,
+    cardAnimTimersRef, setCardActionBurst, setReserveBurst, setPurchaseBurst, setFlippingCards,
+  }) {
+    const [open, setOpen] = useState(false);
+    const mockRect = { x: 60, y: 200, w: 112, h: 160 };
+
+    const firePurchase = () => {
+      cardActionBurstKeyRef.current += 1;
+      const seq = cardActionBurstKeyRef.current;
+      setCardActionBurst({
+        key: seq, card: DEV_MOCK_CARD, tier: 2, actionType: 'purchase',
+        playerName: session.playerName, avatarId: session.avatarId ?? null,
+        lumens: 2, gotFlux: false, startRect: mockRect,
+      });
+      const t = setTimeout(() => { if (cardActionBurstKeyRef.current === seq) setCardActionBurst(null); }, 3500);
+      cardAnimTimersRef.current.push(t);
+    };
+
+    const fireReserve = () => {
+      cardActionBurstKeyRef.current += 1;
+      const seq = cardActionBurstKeyRef.current;
+      setCardActionBurst({
+        key: seq, card: DEV_MOCK_CARD, tier: 2, actionType: 'reserve',
+        playerName: session.playerName, avatarId: session.avatarId ?? null,
+        lumens: 0, gotFlux: true, startRect: mockRect,
+      });
+      const t = setTimeout(() => { if (cardActionBurstKeyRef.current === seq) setCardActionBurst(null); }, 3500);
+      cardAnimTimersRef.current.push(t);
+    };
+
+    const fireDeckReserve = () => {
+      reserveBurstKeyRef.current += 1;
+      setReserveBurst({
+        key: reserveBurstKeyRef.current, tier: 2, gotFlux: true,
+        playerId: session.playerId, playerName: session.playerName,
+        avatarId: session.avatarId ?? null,
+      });
+      const t = setTimeout(() => setReserveBurst(null), 3500);
+      cardAnimTimersRef.current.push(t);
+    };
+
+    const fireCelebration = () => {
+      burstKeyRef.current += 1;
+      setPurchaseBurst({ key: burstKeyRef.current, lumens: 3, name: "Pyrelord's Sigil" });
+      const t = setTimeout(() => setPurchaseBurst(null), 1400);
+      cardAnimTimersRef.current.push(t);
+    };
+
+    const fireFlipIn = () => {
+      const firstCard = state.marketTier1?.[0];
+      if (firstCard) {
+        setFlippingCards(new Set([firstCard.id]));
+        const t = setTimeout(() => setFlippingCards(new Set()), 800);
+        cardAnimTimersRef.current.push(t);
+      }
+    };
+
+    const BTN = "w-full text-left text-xs font-semibold text-white rounded-lg px-3 py-2 transition-colors";
+
+    return (
+      <div className="fixed bottom-24 left-2 z-[60]">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="h-8 w-8 rounded-full bg-yellow-500/80 text-black text-xs font-black flex items-center justify-center shadow-lg border-2 border-yellow-300/60"
+          title="Dev Animation Sandbox"
+          aria-label="Dev Animation Sandbox"
+        >
+          {open ? '\u00d7' : '\u26a1'}
+        </button>
+        {open && (
+          <div className="absolute bottom-10 left-0 w-52 bg-black/90 border border-yellow-500/50 rounded-xl p-3 shadow-2xl backdrop-blur space-y-2">
+            <div className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest mb-1">Anim Sandbox</div>
+            <button type="button" className={`${BTN} bg-indigo-600/60 hover:bg-indigo-600/80`} onClick={firePurchase}>Purchase Burst</button>
+            <button type="button" className={`${BTN} bg-amber-600/60 hover:bg-amber-600/80`} onClick={fireReserve}>Reserve Burst (+ Flux)</button>
+            <button type="button" className={`${BTN} bg-purple-600/60 hover:bg-purple-600/80`} onClick={fireDeckReserve}>Deck Reserve Burst</button>
+            <button type="button" className={`${BTN} bg-pink-600/60 hover:bg-pink-600/80`} onClick={fireCelebration}>Purchase Celebration</button>
+            <button type="button" className={`${BTN} bg-teal-600/60 hover:bg-teal-600/80`} onClick={fireFlipIn}>Card Flip-in</button>
+          </div>
+        )}
+      </div>
+    );
+  };
+}
+
 // --- Main Page ---
 
 export default function GameBoard() {
@@ -1784,6 +1890,21 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {import.meta.env.DEV && (
+        <DevAnimSandbox
+          session={session}
+          state={state}
+          cardActionBurstKeyRef={cardActionBurstKeyRef}
+          reserveBurstKeyRef={reserveBurstKeyRef}
+          burstKeyRef={burstKeyRef}
+          cardAnimTimersRef={cardAnimTimersRef}
+          setCardActionBurst={setCardActionBurst}
+          setReserveBurst={setReserveBurst}
+          setPurchaseBurst={setPurchaseBurst}
+          setFlippingCards={setFlippingCards}
+        />
+      )}
     </div>
   );
 }
