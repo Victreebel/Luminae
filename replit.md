@@ -2,116 +2,46 @@
 
 ## Overview
 
-**Luminae** is an original browser-based multiplayer tabletop engine-building game inspired by gem-market tableau mechanics (original names, artwork, and rules — not a copy of any commercial game). 2–4 players collect colored crystals, acquire Artifact cards that generate permanent bonus crystals, and race to **15 Eminence** while competing for Luminary patron bonuses.
+**Luminae** is an original browser-based multiplayer tabletop engine-building game. It draws inspiration from gem-market tableau mechanics, focusing on collecting colored crystals, acquiring Artifact cards for permanent bonuses, and racing to 15 Eminence. Players also compete for Luminary patron bonuses. The project aims to deliver a polished, real-time multiplayer experience with unique artwork and game mechanics.
 
-pnpm workspace monorepo using TypeScript.
+## User Preferences
 
-## Architecture
+The user prefers that all development and communication adhere to the established terminology for game mechanics (e.g., "affinities" instead of "gems," "Eminence" instead of "prestige"). The user also wants to ensure that all generated images are properly compressed and integrated, and that new art and lore for cards are correctly injected server-side. Additionally, the user wants to prioritize robust animation sequencing and error handling, particularly for state updates and game events. The user prefers that all development-only features, such as the animation sandbox, are fully tree-shaken from production builds.
 
-- **Frontend**: React + Vite (artifacts/luminae) — at path `/`
-- **Backend**: Express 5 API server (artifacts/api-server) — at path `/api`
-- **WebSocket**: Real-time multiplayer at `/ws` (same api-server, attached to HTTP server)
-- **Database**: PostgreSQL + Drizzle ORM
-- **API contract**: OpenAPI spec → Orval codegen → typed hooks + Zod schemas
+## System Architecture
 
-## Game Mechanics
+**Luminae** is a pnpm workspace monorepo utilizing TypeScript.
 
-- **Affinities (cosmic resources)**: 6 affinities — Radiance, Flare, Continuum, Verdance, Abyss + Singularity (wild). Internal data keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are intentionally retained throughout the API, DB, engine, and AI for backward compatibility. The display layer maps keys → cosmic names via `artifacts/luminae/src/lib/gemMeta.ts`. User-facing terminology: "affinities" (not "gems"), "Essence Well" (not "Gem Bank"), "Harvest" (not "Take"/"Channel"), "Affinity limit" (not "Gem limit"). Server action log uses "Harvested" for crystal-take actions. Error messages also use rebranded terms.
-- **Cosmic Affinity art** (May 2026): All gem tokens, tier card backdrops (3), Luminary portraits (5), home/lobby background, and Luminae logo are AI-generated and stored in `attached_assets/generated_images/`, imported via the Vite `@assets` alias. PNGs compressed via `sharp` (palette + max compression) — total payload ~5 MB.
-- **Per-card art + lore** (May 2026): All 45 Artifact cards have unique 384×384 PNG art in `attached_assets/generated_images/cards/<id>.png` plus a shared `card_back.png`. Lore (`name` + `flavor`) lives in `artifacts/api-server/src/lib/cardLore.ts` and is injected into market/reserved cards by `formatGameState` (server is source of truth — never duplicate the catalog client-side). Client loads art with `import.meta.glob` on the `@assets/generated_images/cards/*.png` pattern.
-- **Action log** (May 2026): `GameState.actionLog` is a capped (20-entry) array of `{ playerId, playerName, summary, turn }` written by `pushLog()` inside `applyAction`. `describeAction` covers all action types, including blind deck reserve and pass.
-- **Turn timer** (May 2026): Optional per-room turn limit (`rooms.turn_timer_seconds`, nullable). Set at create time via the `turnTimerSeconds` field on `CreateRoomBody`. `artifacts/api-server/src/lib/turnTimer.ts` arms a per-room `setTimeout` keyed by `state.version`; on expiry it submits `pass` (which counts as a no-op turn). Re-armed after every action and after each AI turn. `state.turnDeadline` (epoch ms) drives the client countdown.
-- **Reserve from deck**: `applyAction("reserve_card")` accepts either `cardId` (face-up market reserve) or `tier` alone (blind deck reserve). The client deck-pile button submits `{ type: "reserve_card", tier }`. Awards 1 flux if available.
-- **Card market animations** (May 2026): When a face-up market card is purchased or reserved, a `cardActionBurst` overlay animates the card flipping from its slot position to center screen, with the acting player's avatar fading in over it ("Forged!" for purchases, "Reserved" for reserves). The market slot shows as empty during the animation (`hiddenSlots` state). After 2.3s the overlay fades and the replacement card (if any) flips face-up into the empty slot (`flippingCards` state, 0.55s rotateY animation). Timer lifecycle is managed via `cardAnimTimersRef` with sequence-token gating (`cardActionBurstKeyRef`) to prevent stale callbacks from interfering with newer animations. The existing `purchaseBurst` only fires for `purchase_reserved` (from hand); `reserveBurst` only fires for blind deck reserves.
-- **Turn announcement overlay** (May 2026): At the start of each turn, a full-screen overlay (z-50, pointer-events-none, 1800ms) flashes the current player's avatar (80px circle), name pill, and "Your Turn" / "{Name}'s Turn" text. While visible, `actionsLocked=true` gates `isMyTurn=false`, disabling all game actions. Fires on initial game load via `useEffect` and on WS turn changes. Uses dedupe key (`lastAnnouncedTurnRef` keyed by `currentPlayerIndex-version`) to prevent double-announcing, sequence-guarded timer (`turnAnnounceKeyRef` + `turnAnnounceTimerRef`), and cancels immediately on game finish (`cancelTurnAnnouncement` in the finished-state handler). "Your Turn" gets a primary-colored radial glow; other players get a subtle white glow. The announcement itself extends `animationEndTimeRef` by `TURN_ANNOUNCE_DURATION` so the queue waits for it to finish.
-- **State update queue** (May 2026): WebSocket `state_update` events are processed through a FIFO queue (`stateQueueRef`) to ensure animation sequencing. When a state update arrives while animations are active (`animationEndTimeRef > Date.now()`) or the queue already has pending items, it is buffered. `drainQueueFnRef` processes one queued item at a time after animations (including turn announcements) complete. `processUpdateRef` holds the actual state processing logic (extracted from the old inline `onStateUpdate`). Key invariants: (1) strict FIFO — if queue is non-empty, new updates always enqueue rather than bypassing; (2) monotonic version guard — stale states (`version <= prev.version`) are skipped; (3) pending turn announcement awareness — drain waits for `pendingTurnAnnounceRef` before processing next item. All refs use the `.current` pattern updated every render to avoid stale closures in setTimeout callbacks.
-- **Affinity bonus sounds** (May 2026): When a card is purchased, a bonus sound plays as the card animation fades — each of the 5 affinities has a unique synthesized effect: Abyss (deep abyssal rumble), Radiance (bright crackling embers), Flare (fiery crackle), Continuum (ocean wave wash), Verdance (ascending vine growth arpeggio). Market purchases play at 2500ms into the 3500ms card animation; reserved card purchases play at 800ms. Timer tracked in `cardAnimTimersRef` for cleanup. Dispatcher: `gameAudio.playBonusSound(color)`.
-- **Affinity harvesting animation** (May 2026): When any player harvests affinities (takes tokens), a full-screen burst overlay shows the spinning affinity icons plus the acting player's avatar circle, name badge, and "Harvested" text fading in/out at the bottom. A synthesized poker-chips-cascading sound (`playChipsCollected`) plays via Web Audio API. Local player bursts fire immediately from `confirmCrystals`; remote player bursts are triggered via the WS `state_update` handler with action-key deduplication (`lastTakeBurstActionRef` keyed by `type-playerId-version`). Timer lifecycle uses `gemBurstTimerRef` + sequence-token gating (`gemBurstKeyRef`) to prevent stale callbacks, cleaned up on unmount.
-- **Dev animation sandbox** (May 2026): A collapsible floating panel (yellow ⚡ button, bottom-left of the game screen) that lets you trigger all 5 animation types with mock data without playing a full game: Purchase Burst, Reserve Burst (+Flux), Deck Reserve Burst, Purchase Celebration, Card Flip-in. Gated behind `import.meta.env.DEV` at both declaration and render level — the entire `DevAnimSandbox` component and its mock card constant are inside an `if (import.meta.env.DEV)` block, so Vite fully tree-shakes them from production builds. All dev-triggered timers are tracked in `cardAnimTimersRef` for proper cleanup.
+**Frontend:**
+-   Developed with React and Vite, located at `/` (artifacts/luminae).
+-   UI/UX features include AI-generated cosmic affinity art, per-card art, and lore. All art assets are compressed PNGs and loaded efficiently.
+-   Animations are critical, including card market animations (purchase/reserve bursts, card flips), turn announcement overlays, affinity bonus sounds, and affinity harvesting animations. These are managed with a state update queue to ensure proper sequencing and prevent conflicts.
+-   A `DevAnimSandbox` component allows triggering animations for testing, gated behind `import.meta.env.DEV` for production tree-shaking.
 
-## Lobby state sync (important)
+**Backend:**
+-   An Express 5 API server (artifacts/api-server) runs at `/api`.
+-   Real-time multiplayer functionality is provided via WebSocket at `/ws`, integrated with the same API server.
+-   Game logic resides in `gameEngine.ts`, handling all core mechanics, card catalog, and state transitions.
+-   AI players (`aiPlayer.ts`, `aiTurnRunner.ts`) with configurable difficulties (easy, medium, hard) are supported, utilizing a per-room async mutex (`roomLock.ts`) for concurrency control.
+-   Session management stores player data in `localStorage` and validates it against the server, with auto-clearing for invalid sessions.
 
-The lobby reconciles its local `players` array from two sources: TanStack Query's `roomInfo` (authoritative) and WebSocket events (live deltas). Critical rule: the `roomInfo` populate effect must re-merge on **every** `roomInfo` change, not just when `players.length === 0`. Earlier code gated on `length === 0`, which was a bug: the server's `player_connected` WS event arrives before the initial query resolves and only carries `{ playerId, playerName, isConnected }` — no `isHost`. The WS handler would insert a host stub with `isHost: false` (default fallback), and the populate effect would then skip the API truth, leaving the host trapped in non-host UI (no "Start Game", no "Add AI"). Fix lives at `artifacts/luminae/src/pages/lobby.tsx` in the roomInfo merge effect — do not re-introduce a length guard.
-- **Market**: 3 tiers of Artifact cards (20/15/10 cards shuffled into decks, 4 face-up per tier)
-- **Eminence (victory currency)**: Replaces the generic "prestige" concept. Internal data key stays `lumens` throughout the API, DB, engine, and AI for backward compatibility (same pattern as crystal key mapping). The display layer shows "eminence" everywhere players see the score label. Server-side action log descriptions also use "eminence."
-- **Luminaries**: 5 patron cards, playerCount+1 active per game, award 3 eminence for bonus requirements
-- **Actions**: harvest 3 different affinities, harvest 2 same (≥4 in well), reserve card (get Singularity), forge card/reserved
-- **Win condition**: 15 eminence; last round completes so all players finish equally; tie-break is fewest purchased cards
+**Game Mechanics & Features:**
+-   **Affinities:** 6 types (Radiance, Flare, Continuum, Verdance, Abyss, Singularity). Internal keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are consistent across the stack.
+-   **Card Market:** 3 tiers of Artifact cards (20/15/10 cards per deck, 4 face-up per tier).
+-   **Eminence:** The victory currency, replacing "prestige" (internal key `lumens`).
+-   **Luminaries:** 5 patron cards, `playerCount+1` active per game, awarding Eminence bonuses.
+-   **Actions:** Harvest affinities, reserve cards (from market or deck), forge cards.
+-   **Win Condition:** First to 15 Eminence; tie-break by fewest purchased cards.
+-   **Turn Timer:** Optional per-room timer that automatically passes turns on expiry.
+-   **Action Log:** Capped 20-entry array within `GameState.actionLog` for tracking player actions.
+-   **Lobby State Sync:** Critical reconciliation of lobby player data from TanStack Query and WebSocket events, ensuring `isHost` status is accurately reflected.
+-   **Error Handling:** React `ErrorBoundary` for UI crashes, API server `EADDRINUSE` retry logic, and `strictPort` for Vite.
 
-## Stability & Error Handling
+## External Dependencies
 
-- **React ErrorBoundary**: Wraps the entire app tree in `App.tsx`. Catches rendering/lifecycle errors and shows a recovery UI ("Something went wrong" + "Return Home" button) instead of a white screen. Does NOT catch async/event-handler errors (React limitation).
-- **Lobby self-connected**: The lobby treats `session.playerId` as always "Connected" visually, avoiding a brief "Disconnected" flash before the WebSocket handshake completes.
-- **strictPort**: `artifacts/mockup-sandbox/vite.config.ts` uses `strictPort: true` to prevent Vite from silently binding to incrementing ports behind the proxy.
-- **API server retry**: `artifacts/api-server/src/index.ts` has internal EADDRINUSE retry logic (10 retries, 2s delay).
-- **Dev scripts**: Both API server (`pnpm run build && pnpm run start`) and Luminae (`vite --config vite.config.ts --host 0.0.0.0`) use simple direct commands — no external retry wrappers.
-
-## Stack
-
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Real-time**: WebSocket (ws package) on `/ws`
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (zod/v4), drizzle-zod
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
-- **Frontend**: React + Vite + Tailwind + framer-motion + wouter
-- **PWA / offline caching**: `vite-plugin-pwa` with Workbox. In production builds, a Service Worker precaches all built assets (JS, CSS, HTML, images including all 45 card art PNGs, gem tokens, avatars, backgrounds). Google Fonts are runtime-cached with CacheFirst strategy (1-year expiry). API (`/api`) and WebSocket (`/ws`) routes are excluded from navigation fallback. The SW auto-updates on new deployments. After first visit, repeat loads serve entirely from cache — only API calls and WebSocket need network.
-
-## Database Schema
-
-- `rooms` — room metadata (id, invite_code, host_player_id, status, max_players)
-- `players` — player records (id, room_id, name, session_token, is_host, order_index, is_connected, is_ai, ai_difficulty)
-- `game_states` — full game state as JSONB blob (room_id PK, state, version)
-
-## Key Files
-
-- `lib/api-spec/openapi.yaml` — API contract
-- `lib/db/src/schema/` — Drizzle table definitions
-- `artifacts/api-server/src/lib/gameEngine.ts` — Complete game logic + card catalog
-- `artifacts/api-server/src/lib/aiPlayer.ts` — AI brain (easy/medium/hard difficulty)
-- `artifacts/api-server/src/lib/aiTurnRunner.ts` — Background loop that auto-plays AI turns
-- `artifacts/api-server/src/lib/roomLock.ts` — Per-room async mutex + AI runner inflight guard
-- `artifacts/api-server/src/lib/websocket.ts` — WebSocket server and connection tracking
-- `artifacts/api-server/src/routes/rooms.ts` — Room creation, join, start, kick, add AI player
-- `artifacts/api-server/src/routes/game.ts` — Game state + action submission (lock-protected)
-- `artifacts/luminae/src/` — React frontend
-
-## Session Management
-
-Players store their session in localStorage under `"luminae_session"`:
-```json
-{ "roomId": "...", "inviteCode": "...", "playerId": "...", "sessionToken": "...", "playerName": "...", "isHost": true }
-```
-On home page load, the saved session is validated against the server. If the game is finished or the room no longer exists, the session is auto-cleared so users see a clean home screen. The Resume button navigates to `/game/` when the game is in progress, `/lobby/` when it's still in the lobby.
-
-## Key Commands
-
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
-
-## Invite Code Flow
-
-1. Host: POST /api/rooms → gets back roomId + inviteCode + sessionToken
-2. Share invite link: `https://<domain>/lobby/<inviteCode>`
-3. Guest: GET /api/rooms/:inviteCode → POST /api/rooms/:roomId/join → gets sessionToken
-4. Host: POST /api/rooms/:roomId/start (when ≥2 players)
-5. All players connect to WebSocket: `/ws?roomId=X&sessionToken=Y`
-6. Actions: POST /api/rooms/:roomId/actions with sessionToken
-7. Server broadcasts state_update to all WS connections after each action
-
-## AI Players
-
-- Host can add AI opponents in the lobby via POST `/api/rooms/:roomId/ai-players` with `{ sessionToken, difficulty: "easy"|"medium"|"hard" }`
-- AI players have `is_ai=true` and a deterministic-ish brain in `aiPlayer.ts`:
-  - **easy** — random valid action (mostly take crystals)
-  - **medium** — greedy: purchase best affordable card, otherwise take crystals weighted by what we need
-  - **hard** — greedy + targets bonuses required for active Luminaries, prefers higher tiers
-- After game start and after every human action, `runAiTurnsIfNeeded(roomId)` fires in the background. It loops while the current player is an AI, with a ~1.5s delay between turns so humans can see what's happening.
-- **Concurrency**: `roomLock.ts` provides a per-room async mutex that wraps both human action handlers and the AI loop. An inflight flag ensures only one AI runner exists per room at a time. The DB write also uses optimistic concurrency on `game_states.version` as a safety net.
+-   **Database:** PostgreSQL with Drizzle ORM for schema definition and interaction.
+-   **API Contract:** OpenAPI specification for defining API endpoints, with Orval for codegen into typed hooks and Zod schemas.
+-   **Validation:** Zod for data schema validation.
+-   **Real-time:** `ws` package for WebSocket implementation.
+-   **Frontend Libraries:** React, Vite, Tailwind CSS, `framer-motion` for animations, `wouter` for routing.
+-   **PWA/Offline Caching:** `vite-plugin-pwa` with Workbox for Service Worker generation, precaching assets (including all card art), and runtime caching for fonts.

@@ -807,7 +807,7 @@ export default function GameBoard() {
     const seq = gemBurstKeyRef.current;
     setGemBurst({ key: seq, gems, playerName, avatarId });
     gameAudio.playChipsCollected();
-    const totalDuration = (gems.length - 1) * 780 + 1250 + 500;
+    const totalDuration = (gems.length - 1) * 780 + 1250 + 500 + 600;
     setAnimEndTime(totalDuration);
     gemBurstTimerRef.current = setTimeout(() => {
       if (gemBurstKeyRef.current === seq) setGemBurst(null);
@@ -932,7 +932,7 @@ export default function GameBoard() {
       gem,
       index,
       x: index * spacing - offset,
-      delay: index * 0.78,
+      delay: index * 0.78 + 0.6,
     };
   }) ?? [];
 
@@ -1892,7 +1892,9 @@ export default function GameBoard() {
       {/* ── Gem Pickup Burst ── */}
       <AnimatePresence>
         {gemBurst && (() => {
-          const burstDuration = (gemBurst.gems.length - 1) * 0.78 + 1.25 + 0.5;
+          const burstDuration = (gemBurst.gems.length - 1) * 0.78 + 1.25 + 0.5 + 0.6;
+          const avatarFadeIn = 0.5 / burstDuration;
+          const avatarVisible = 0.55 / burstDuration;
           return (
           <motion.div
             key={gemBurst.key}
@@ -1940,8 +1942,8 @@ export default function GameBoard() {
               className="fixed left-0 right-0 flex flex-col items-center gap-2"
               style={{ bottom: '22%' }}
               initial={{ opacity: 0, scale: 0.5, y: 16 }}
-              animate={{ opacity: [0, 0, 1, 1, 0], scale: [0.5, 0.5, 1.05, 1, 0.96], y: [16, 16, 0, 0, -8] }}
-              transition={{ duration: burstDuration, times: [0, 0.15, 0.3, 0.8, 1] }}
+              animate={{ opacity: [0, 1, 1, 0], scale: [0.5, 1.05, 1, 0.96], y: [16, 0, 0, -8] }}
+              transition={{ duration: burstDuration, times: [0, avatarFadeIn, avatarVisible + (1 - avatarVisible) * 0.75, 1] }}
             >
               <div
                 className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(99,102,241,0.35)]"
