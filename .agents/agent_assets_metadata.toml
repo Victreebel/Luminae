@@ -630,3 +630,9 @@ id = "5ES5gLJkuKFV9K08sGY8x"
 uri = "file://artifacts/luminae/src/assets/cards/t2e06.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "4_7iaeUQvQyvTyrbfn-pT"
+uri = "file://attached_assets/generated_images/generated_image.png"
+type = "image"
+title = "generated_image"

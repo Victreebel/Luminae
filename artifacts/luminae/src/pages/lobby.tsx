@@ -17,6 +17,7 @@ import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle
 import { gameAudio } from "@/lib/audio";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
+const gemIcon = "/icon_gem.svg";
 
 type AiDifficulty = "easy" | "medium" | "hard";
 
@@ -169,7 +170,10 @@ export default function Lobby() {
         <button type="button" onClick={handleLeave} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" /> Leave
         </button>
-        <img src={logoLuminae} alt="Luminae" className="h-8 w-auto drop-shadow-[0_0_12px_rgba(255,196,61,0.3)]" draggable={false} />
+        <div className="flex items-center gap-2">
+          <img src={gemIcon} alt="" className="h-7 w-7 drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" draggable={false} />
+          <img src={logoLuminae} alt="Luminae" className="h-6 w-auto drop-shadow-[0_0_12px_rgba(255,196,61,0.3)]" draggable={false} />
+        </div>
         <div className="w-16" />
       </header>
 

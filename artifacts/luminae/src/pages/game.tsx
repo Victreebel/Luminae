@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -34,6 +34,7 @@ import luminaryCultivator from '@assets/generated_images/luminary_cultivator.png
 import luminaryVoidcaller from '@assets/generated_images/luminary_voidcaller.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import cardBackLogo from '@assets/generated_images/luminae_card_back_logo.png';
+const gemIcon = "/icon_gem.svg";
 
 const CARD_ART_MODULES = import.meta.glob(
   '../assets/cards/*.png',
@@ -317,6 +318,8 @@ export default function GameBoard() {
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
+  const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; prestige: number; name: string } | null>(null);
+  const burstKeyRef = useRef(0);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -380,7 +383,7 @@ export default function GameBoard() {
 
     if (actionMode === 'take2') {
       if (selectedCrystals[color] === 2) { setSelectedCrystals({}); setActionMode('none'); }
-      else if (inBank >= 4) { setSelectedCrystals({ [color]: 2 }); gameAudio.playCrystalPicked(); }
+      else if (inBank >= 4) { setSelectedCrystals({ [color]: 2 }); gameAudio.playCrystalPicked(color as GemKey); }
       return;
     }
 
@@ -399,14 +402,14 @@ export default function GameBoard() {
     if (distinctCount >= 3) return;
     setSelectedCrystals({ ...selectedCrystals, [color]: 1 });
     setActionMode(actionMode === 'none' ? 'take3' : actionMode);
-    gameAudio.playCrystalPicked();
+    gameAudio.playCrystalPicked(color as GemKey);
   };
 
   const promoteToTake2 = (color: GemKey) => {
     if (!state || (state.crystalBank[color] ?? 0) < 4) return;
     setSelectedCrystals({ [color]: 2 });
     setActionMode('take2');
-    gameAudio.playCrystalPicked();
+    gameAudio.playCrystalPicked(color);
   };
 
   const executeAction = async (payload: any) => {
@@ -421,6 +424,13 @@ export default function GameBoard() {
       setSelectedCard(null);
       if (payload.type === 'purchase_card' || payload.type === 'purchase_reserved') {
         gameAudio.playCardPurchased();
+        const prestige = payload.cardRef?.prestigePoints ?? 0;
+        const name = payload.cardRef?.name ?? 'Artifact';
+        burstKeyRef.current += 1;
+        setPurchaseBurst({ key: burstKeyRef.current, prestige, name });
+        setTimeout(() => setPurchaseBurst(null), 1400);
+      } else if (payload.type === 'reserve_card' || payload.type === 'reserve_deck') {
+        gameAudio.playCardReserved();
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Action failed', description: err.message });
@@ -472,7 +482,7 @@ export default function GameBoard() {
 
   const handleBuy = (card: ArtifactCard, fromReserve = false) => {
     if (!isMyTurn) return;
-    executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id });
+    executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id, cardRef: card });
   };
   const handleReserveCard = (card: ArtifactCard) => {
     if (!isMyTurn) return;
@@ -801,7 +811,10 @@ export default function GameBoard() {
 
       {/* ── Header ── */}
       <header className="shrink-0 h-14 px-4 flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">
-        <h1 className="text-base font-serif font-bold text-primary tracking-wide">Luminae</h1>
+        <div className="flex items-center gap-2">
+          <img src={gemIcon} alt="" className="h-7 w-7 drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" draggable={false} />
+          <h1 className="text-base font-serif font-bold text-primary tracking-wide">Luminae</h1>
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Turn pill */}
@@ -987,37 +1000,131 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
+      {/* ── Purchase Celebration Burst ── */}
+      <AnimatePresence>
+        {purchaseBurst && (
+          <motion.div
+            key={purchaseBurst.key}
+            className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 1.3, ease: 'easeOut' }}
+          >
+            {/* Expanding ring */}
+            <motion.div
+              className="absolute rounded-full border-2 border-primary"
+              initial={{ width: 60, height: 60, opacity: 0.9 }}
+              animate={{ width: 340, height: 340, opacity: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            />
+            <motion.div
+              className="absolute rounded-full border border-primary/50"
+              initial={{ width: 40, height: 40, opacity: 0.7 }}
+              animate={{ width: 240, height: 240, opacity: 0 }}
+              transition={{ duration: 0.65, ease: 'easeOut', delay: 0.08 }}
+            />
+            {/* Floating label */}
+            <motion.div
+              className="flex flex-col items-center gap-1"
+              initial={{ y: 0, opacity: 1, scale: 0.8 }}
+              animate={{ y: -80, opacity: 0, scale: 1.1 }}
+              transition={{ duration: 1.1, ease: 'easeOut' }}
+            >
+              <span className="text-3xl font-serif font-black text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]">
+                Forged!
+              </span>
+              {purchaseBurst.prestige > 0 && (
+                <span className="flex items-center gap-1.5 text-lg font-bold" style={{ color: GEM_META.flux.hex }}>
+                  <Sparkles className="h-4 w-4" /> +{purchaseBurst.prestige} prestige
+                </span>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Win Overlay ── */}
       <AnimatePresence>
         {state.status === 'finished' && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm p-6"
+            transition={{ duration: 0.6 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-background/92 backdrop-blur-md p-6"
           >
+            {/* Radial glow behind card */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, hsl(var(--primary) / 0.18) 0%, transparent 70%)' }} />
+
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="w-full max-w-sm text-center space-y-6 p-8 rounded-3xl border border-primary/30 bg-card shadow-[0_0_80px_rgba(var(--primary),0.2)]"
+              initial={{ scale: 0.75, y: 40, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
+              className="w-full max-w-sm text-center space-y-5 p-8 rounded-3xl border border-primary/40 bg-card/95 shadow-[0_0_100px_rgba(99,102,241,0.25)]"
             >
-              <h2 className="text-5xl font-serif font-bold text-primary gem-glow">Game Over</h2>
               {state.winnerId === session.playerId ? (
-                <div className="text-2xl font-bold" style={{ color: GEM_META.flux.hex }}>Victory is yours!</div>
+                <>
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 18, delay: 0.3 }}
+                    className="text-6xl"
+                  >✨</motion.div>
+                  <motion.h2
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 }}
+                    className="text-4xl font-serif font-bold text-primary gem-glow"
+                  >
+                    Victory!
+                  </motion.h2>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="text-lg font-semibold"
+                    style={{ color: GEM_META.flux.hex }}
+                  >
+                    The cosmos bends to your will.
+                  </motion.p>
+                </>
               ) : (
-                <div className="text-xl text-foreground">
-                  Winner: <span className="font-bold text-primary">{state.players.find(p => p.playerId === state.winnerId)?.playerName}</span>
-                </div>
-              )}
-              {/* Final scores */}
-              <div className="flex flex-col gap-2">
-                {[...state.players].sort((a, b) => b.prestige - a.prestige).map(p => (
-                  <div key={p.playerId} className={`flex justify-between items-center px-3 py-2 rounded-xl ${p.playerId === state.winnerId ? 'bg-primary/20 border border-primary/40' : 'bg-secondary/50'}`}>
-                    <span className="font-medium text-sm">{p.playerName}</span>
-                    <span className="font-bold text-primary flex items-center gap-1">{p.prestige} <Sparkles className="h-3.5 w-3.5" /></span>
+                <>
+                  <div className="text-5xl">🌌</div>
+                  <h2 className="text-4xl font-serif font-bold text-primary">Game Over</h2>
+                  <div className="text-base text-foreground">
+                    Winner: <span className="font-bold text-primary">{state.players.find(p => p.playerId === state.winnerId)?.playerName}</span>
                   </div>
+                </>
+              )}
+
+              {/* Final scores — staggered in */}
+              <div className="flex flex-col gap-2 pt-1">
+                {[...state.players].sort((a, b) => b.prestige - a.prestige).map((p, i) => (
+                  <motion.div
+                    key={p.playerId}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.55 + i * 0.1 }}
+                    className={`flex justify-between items-center px-3 py-2 rounded-xl ${p.playerId === state.winnerId ? 'bg-primary/20 border border-primary/40' : 'bg-secondary/50'}`}
+                  >
+                    <span className="font-medium text-sm flex items-center gap-1.5">
+                      {p.playerId === state.winnerId && <span className="text-xs">🏆</span>}
+                      {p.playerName}
+                    </span>
+                    <span className="font-bold text-primary flex items-center gap-1">
+                      {p.prestige} <Sparkles className="h-3.5 w-3.5" />
+                    </span>
+                  </motion.div>
                 ))}
               </div>
-              <Button size="lg" className="w-full" onClick={() => setLocation('/')}>Back to Home</Button>
+
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 }}
+              >
+                <Button size="lg" className="w-full" onClick={() => setLocation('/')}>Back to Home</Button>
+              </motion.div>
             </motion.div>
           </motion.div>
         )}

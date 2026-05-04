@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, ArrowRight, Timer, Clock } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
+const gemIcon = "/icon_gem.svg";
 
 type Mode = "home" | "create" | "join";
 
@@ -111,21 +112,32 @@ export default function Home() {
       />
 
       {/* Logo area */}
-      <div className="relative z-10 flex-none pt-16 pb-8 flex flex-col items-center">
+      <div className="relative z-10 flex-none pt-14 pb-6 flex flex-col items-center gap-3">
+        {/* Gem icon */}
         <motion.img
-          initial={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.45, type: 'spring', stiffness: 200, damping: 18 }}
+          src={gemIcon}
+          alt=""
+          className="w-20 h-20 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
+          draggable={false}
+        />
+        {/* Wordmark */}
+        <motion.img
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.45, delay: 0.12 }}
           src={logoLuminae}
           alt="Luminae"
-          className="w-64 h-auto drop-shadow-[0_0_30px_rgba(255,196,61,0.35)]"
+          className="w-52 h-auto drop-shadow-[0_0_22px_rgba(255,196,61,0.3)]"
           draggable={false}
         />
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-muted-foreground text-sm mt-2 tracking-wide"
+          transition={{ delay: 0.28 }}
+          className="text-muted-foreground text-sm tracking-wide"
         >
           Forge cosmic affinities. Claim prestige.
         </motion.p>
