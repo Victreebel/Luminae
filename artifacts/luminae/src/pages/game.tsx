@@ -623,6 +623,82 @@ export default function GameBoard() {
           </p>
         )}
       </div>
+
+      {/* ── Opponents (always visible on Board tab) ── */}
+      {state.players.filter(p => p.playerId !== session?.playerId).length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Opponents</p>
+          <div className="flex flex-col gap-2">
+            {state.players.map((p, i) => {
+              if (p.playerId === session?.playerId) return null;
+              const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
+              const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
+              const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
+              return (
+                <div
+                  key={p.playerId}
+                  className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                >
+                  {/* Row 1: name + prestige */}
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-1.5">
+                      {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                      <span className="font-semibold text-sm truncate max-w-[140px]">{p.playerName}</span>
+                      {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="font-serif font-black text-xl text-primary">{p.prestige}</span>
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                  </div>
+
+                  {/* Row 2: per-color gem counts */}
+                  <div className="flex gap-1 mb-2">
+                    {CRYSTALS.map((c) => {
+                      const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                      const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                      return (
+                        <div key={c} className="flex flex-col items-center gap-0.5 flex-1">
+                          <MiniGem color={c as GemKey} size={13} />
+                          <span className="text-[11px] font-bold text-white leading-none">{n}</span>
+                          {bonus > 0 && (
+                            <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Row 3: totals + reserved */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-0.5">
+                        <span className="font-semibold text-foreground/80">{totalGems}</span> gems
+                      </span>
+                      <span>·</span>
+                      <span className="flex items-center gap-0.5">
+                        <span className="font-semibold text-foreground/80">{cardCount}</span> forged
+                      </span>
+                    </div>
+                    <div className="flex gap-1 items-center">
+                      {p.reservedCards.length > 0 ? (
+                        <>
+                          <span className="text-[11px] text-muted-foreground mr-0.5">reserved:</span>
+                          {p.reservedCards.map((card, idx) => (
+                            <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
+                          ))}
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">no reserve</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -738,38 +814,62 @@ export default function GameBoard() {
           {state.players.map((p, i) => {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
+            const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
             return (
               <div
                 key={p.playerId}
-                className={`rounded-2xl border p-4 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/60 shadow-[0_0_15px_rgba(var(--primary),0.2)]' : 'border-border/50 opacity-80'}`}
+                className={`rounded-2xl border p-4 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/60 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-border/50'}`}
               >
-                <div className="flex justify-between items-center mb-2">
+                {/* Header: name + prestige */}
+                <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
                     {isCurrent && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
-                    <span className="font-bold truncate text-sm">{p.playerName}</span>
+                    <span className="font-bold text-sm">{p.playerName}</span>
+                    {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
                   </div>
                   <div className="flex items-center gap-1 font-serif font-bold text-primary">
-                    <span className="text-xl">{p.prestige}</span>
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <span className="text-2xl">{p.prestige}</span>
+                    <Sparkles className="h-4 w-4" />
                   </div>
                 </div>
-                <div className="flex gap-1 flex-wrap mb-2">
-                  {CRYSTALS.map((c) =>
-                    p.bonuses[c as keyof CrystalCounts] > 0 ? (
-                      <div key={`b-${c}`} className="flex items-center gap-0.5 bg-black/40 rounded px-1.5 py-0.5">
-                        <MiniGem color={c} size={11} />
-                        <span className="text-[10px] font-bold text-white">{p.bonuses[c as keyof CrystalCounts]}</span>
+
+                {/* Per-color gems + bonuses grid */}
+                <div className="grid grid-cols-6 gap-1 mb-3">
+                  {CRYSTALS.map((c) => {
+                    const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                    const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                    return (
+                      <div key={c} className="flex flex-col items-center gap-0.5 bg-black/30 rounded-lg py-1.5">
+                        <MiniGem color={c as GemKey} size={14} />
+                        <span className="text-[12px] font-black text-white leading-none">{n}</span>
+                        {bonus > 0 ? (
+                          <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
+                        ) : (
+                          <span className="text-[9px] text-muted-foreground/40 leading-none">—</span>
+                        )}
                       </div>
-                    ) : null
-                  )}
+                    );
+                  })}
                 </div>
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>{Object.values(p.crystals).reduce((a, b) => a + b, 0)} gems</span>
+
+                {/* Footer: totals + reserved cards */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>
+                      <span className="font-semibold text-foreground/80">{Object.values(p.crystals).reduce((a, b) => a + b, 0)}</span> gems
+                    </span>
+                    <span>
+                      <span className="font-semibold text-foreground/80">{cardCount}</span> forged
+                    </span>
+                  </div>
                   <div className="flex gap-1 items-center">
-                    {p.reservedCards.map((card, idx) => (
-                      <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
-                    ))}
-                    {p.reservedCards.length === 0 && <span>No reserved</span>}
+                    {p.reservedCards.length > 0 ? (
+                      p.reservedCards.map((card, idx) => (
+                        <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">no reserve</span>
+                    )}
                   </div>
                 </div>
               </div>
