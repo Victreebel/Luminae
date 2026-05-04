@@ -1501,7 +1501,7 @@ export default function GameBoard() {
                 />
                 <div className="text-xs leading-relaxed">
                   <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{entry.playerName}</span>
-                  <span className="text-foreground/60"> · {entry.summary}</span>
+                  <span className="text-foreground/80"> · {entry.summary}</span>
                   <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
                 </div>
               </div>
@@ -1748,7 +1748,7 @@ export default function GameBoard() {
                         animate={{ opacity: [0, 0, 1, 1, 0], y: [8, 8, 0, 0, -16] }}
                         transition={{ duration: 3.5, times: [0, 0.22, 0.34, 0.78, 1] }}
                       >
-                        <span className="text-2xl font-serif font-black text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]">
+                        <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
                           Forged!
                         </span>
                         {cardActionBurst.lumens > 0 && (
@@ -1834,7 +1834,7 @@ export default function GameBoard() {
               animate={{ y: -80, opacity: 0, scale: 1.1 }}
               transition={{ duration: 1.1, ease: 'easeOut' }}
             >
-              <span className="text-3xl font-serif font-black text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.8)]">
+              <span className="text-3xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
                 Forged!
               </span>
               {purchaseBurst.lumens > 0 && (
@@ -1915,7 +1915,7 @@ export default function GameBoard() {
               <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
                 {gemBurst.playerName}
               </div>
-              <span className="text-lg font-serif font-bold text-primary drop-shadow-[0_0_12px_rgba(99,102,241,0.6)]">
+              <span className="text-lg font-serif font-bold text-emerald-300 drop-shadow-[0_0_12px_rgba(110,231,183,0.7)]">
                 Harvested
               </span>
             </motion.div>
