@@ -400,7 +400,7 @@ title = "generated_image"
 id = "31nqzr6CYaDQ7hVmr9wpR"
 uri = "file://artifacts/luminae/src/assets/cards/t1r08.png"
 type = "image"
-title = "generated_image"
+title = "ignition glyph fire rune"
 
 [[generated]]
 id = "tm3Hecin86FqCSd8yawcH"
@@ -418,7 +418,7 @@ title = "generated_image"
 id = "oq7R9SAKyIfphaAwFz3M5"
 uri = "file://artifacts/luminae/src/assets/cards/t1s07.png"
 type = "image"
-title = "generated_image"
+title = "undertow bead sapphire tide"
 
 [[generated]]
 id = "pDuK0yZ_3_AUKwKOLoyYz"
@@ -695,6 +695,42 @@ id = "vmrLX6jGC3ezOb30l4Rwb"
 uri = "file://artifacts/luminae/src/assets/avatars/avatar_voidcaller.png"
 type = "image"
 title = "Voidcaller avatar portrait"
+
+[[generated]]
+id = "Dy5sapbapkpMJRMTAJR0k"
+uri = "file://artifacts/luminae/src/assets/cards/t1r04.png"
+type = "image"
+title = "pyre glyph rune fire"
+
+[[generated]]
+id = "1LW3wpKsDivU26DfR32-T"
+uri = "file://artifacts/luminae/src/assets/cards/t1s02.png"
+type = "image"
+title = "abyss mote deep sea orb"
+
+[[generated]]
+id = "ZVAQ_2phO2DmlfsSrZtbU"
+uri = "file://artifacts/luminae/src/assets/cards/t1o03.png"
+type = "image"
+title = "shadowleaf dark void leaf"
+
+[[generated]]
+id = "7sPIPN6Nq-cMiFXOhl6Em"
+uri = "file://artifacts/luminae/src/assets/cards/t1p02.png"
+type = "image"
+title = "lumen veil glowing cloth"
+
+[[generated]]
+id = "ESlBETZxb-3RrEx0L2sZ6"
+uri = "file://artifacts/luminae/src/assets/cards/t2o01.png"
+type = "image"
+title = "eclipsewright forge shadow anvil clean"
+
+[[generated]]
+id = "a1g4U0qBLW8OPVDsyPFNF"
+uri = "file://artifacts/luminae/src/assets/cards/t2p02.png"
+type = "image"
+title = "aurora reliquary glowing box"
 
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
