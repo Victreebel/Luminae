@@ -470,6 +470,7 @@ export default function GameBoard() {
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
+  const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -1577,7 +1578,10 @@ export default function GameBoard() {
                 <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
               </button>
               {me.reservedCards.length > 0 && (
-                <span><span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</span>
+                <button type="button" onClick={() => setShowReservedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1 -mx-1 transition-colors active:bg-primary/20">
+                  <span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> reserved
+                  <ChevronRight className="h-3 w-3 text-muted-foreground/50" />
+                </button>
               )}
             </div>
             {/* Lumens */}
@@ -2146,6 +2150,96 @@ export default function GameBoard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Reserved Cards Overlay ── */}
+      <AnimatePresence>
+        {showReservedOverlay && me && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-end"
+            onClick={() => setShowReservedOverlay(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+              <div className="px-5 pb-2 flex items-center justify-between">
+                <h2 className="text-lg font-serif font-bold flex items-center gap-2">
+                  <Bookmark className="h-5 w-5 text-muted-foreground" />
+                  Reserved Artifacts ({me.reservedCards.length}/3)
+                </h2>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowReservedOverlay(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="px-5 overflow-y-auto max-h-[60vh] pb-4">
+                {me.reservedCards.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No cards reserved.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {me.reservedCards.map((c) => {
+                      const ec = showEffectiveCost ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined;
+                      const canBuy = canAffordCard(c, me);
+                      return (
+                        <div key={c.id} className="flex gap-4 items-center bg-secondary/30 rounded-2xl p-3">
+                          <ArtifactCardView
+                            card={c}
+                            tier={c.tier}
+                            effectiveCosts={ec}
+                            onTap={() => {
+                              setShowReservedOverlay(false);
+                              openCardSheet(c, true);
+                            }}
+                            tapped={false}
+                          />
+                          <div className="flex-1 flex flex-col gap-2 min-w-0">
+                            <div className="font-bold text-sm leading-tight">{c.name}</div>
+                            {c.flavor && (
+                              <p className="text-[11px] text-muted-foreground italic leading-relaxed line-clamp-2">"{c.flavor}"</p>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <MiniGem color={c.bonusColor as GemKey} size={13} />
+                              <span className="text-xs text-muted-foreground">{GEM_META[c.bonusColor as GemKey]?.name ?? c.bonusColor} bonus</span>
+                            </div>
+                            {(c.lumens ?? 0) > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Sparkles className="h-3 w-3 text-primary" />
+                                <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
+                              </div>
+                            )}
+                            <Button
+                              size="sm"
+                              className="mt-1 w-full"
+                              disabled={!isMyTurn || !canBuy}
+                              onClick={() => {
+                                setShowReservedOverlay(false);
+                                handleBuy(c, true);
+                              }}
+                            >
+                              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                              {!isMyTurn ? 'Not your turn' : canBuy ? 'Forge Now' : 'Cannot afford'}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
