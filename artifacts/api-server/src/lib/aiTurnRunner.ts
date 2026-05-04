@@ -11,7 +11,8 @@ import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 
-const AI_TURN_DELAY_MS = 1500;
+const AI_TURN_DELAY_MS = 1800;
+const AI_TURN_DELAY_CARD_ANIM_MS = 4500;
 
 // Run consecutive AI turns until the active player is human or the game ends.
 // Fire-and-forget: runs in the background. At most one runner per room is
@@ -20,8 +21,22 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
   if (!tryClaimAiRunner(roomId)) return;
 
   try {
-    // Initial delay so humans can see the previous action
-    await new Promise((resolve) => setTimeout(resolve, AI_TURN_DELAY_MS));
+    // Read last action to decide delay — card animations need more time
+    const initialDelay = await withRoomLock(roomId, async () => {
+      const [gs] = await db
+        .select()
+        .from(gameStatesTable)
+        .where(eq(gameStatesTable.roomId, roomId))
+        .limit(1);
+      if (!gs) return AI_TURN_DELAY_MS;
+      const s = gs.state as unknown as GameStateData;
+      const lastType = (s.lastAction as Record<string, unknown> | null)?.type;
+      if (lastType === "purchase_card" || lastType === "reserve_card") {
+        return AI_TURN_DELAY_CARD_ANIM_MS;
+      }
+      return AI_TURN_DELAY_MS;
+    });
+    await new Promise((resolve) => setTimeout(resolve, initialDelay));
 
     for (let i = 0; i < 50; i++) {
       // All read-modify-write happens inside the lock so it can't interleave
@@ -148,15 +163,17 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         broadcastToRoom(roomId, { type: "state_update", state: formatted });
         armTurnTimer(roomId, state);
 
-        if (isFinished) return { kind: "stop" as const };
-        return { kind: "continue" as const };
+        if (isFinished) return { kind: "stop" as const, actionType: action.type };
+        return { kind: "continue" as const, actionType: action.type };
       });
 
       if (outcome.kind === "stop") return;
 
-      // Pause between AI turns so the action is visible (outside the lock so
-      // human actions can interleave during the delay)
-      await new Promise((resolve) => setTimeout(resolve, AI_TURN_DELAY_MS));
+      const betweenDelay =
+        outcome.actionType === "purchase_card" || outcome.actionType === "reserve_card"
+          ? AI_TURN_DELAY_CARD_ANIM_MS
+          : AI_TURN_DELAY_MS;
+      await new Promise((resolve) => setTimeout(resolve, betweenDelay));
     }
   } catch (err) {
     logger.error({ err, roomId }, "Error in AI turn runner");
