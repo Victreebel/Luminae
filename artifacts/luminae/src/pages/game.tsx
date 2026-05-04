@@ -788,54 +788,6 @@ export default function GameBoard() {
     return (
     <div className="flex flex-col gap-5 p-3 pb-6">
 
-      {/* ── My Holdings strip ── */}
-      {me && (
-        <div className={`rounded-2xl border px-3 py-2.5 bg-card/70 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}>
-          {/* top row: avatar + name + lumens */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={26} />
-              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-              <span className="text-xs font-semibold truncate">{me.playerName}</span>
-              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
-            </div>
-            <div className="flex items-center gap-0.5 shrink-0 ml-2">
-              <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
-              <Sparkles className="h-3 w-3 text-primary" />
-              <span className="text-[9px] text-primary/60 font-mono uppercase tracking-wide ml-0.5">eminence</span>
-            </div>
-          </div>
-          {/* stats row */}
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
-            <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> gems</span>
-            <span>·</span>
-            <button type="button" onClick={() => setShowForgedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors active:bg-primary/20 hover:bg-primary/10">
-              <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
-              <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
-            </button>
-            {me.reservedCards.length > 0 && (
-              <><span>·</span><span><span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</span></>
-            )}
-          </div>
-          {/* gem + bonus grid */}
-          <div className="flex gap-1">
-            {CRYSTALS.map((c) => {
-              const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
-              const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
-              return (
-                <div key={c} className="flex flex-col items-center gap-0.5 flex-1">
-                  <MiniGem color={c as GemKey} size={12} />
-                  <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
-                  {bonus > 0 && (
-                    <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Luminaries */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Luminaries</p>
@@ -976,6 +928,54 @@ export default function GameBoard() {
           </p>
         )}
       </div>
+
+      {/* ── My Holdings strip ── */}
+      {me && (
+        <div className={`rounded-2xl border px-3 py-2.5 bg-card/70 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}>
+          {/* top row: avatar + name + lumens */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={26} />
+              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+              <span className="text-xs font-semibold truncate">{me.playerName}</span>
+              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
+            </div>
+            <div className="flex items-center gap-0.5 shrink-0 ml-2">
+              <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
+              <Sparkles className="h-3 w-3 text-primary" />
+              <span className="text-[9px] text-primary/60 font-mono uppercase tracking-wide ml-0.5">eminence</span>
+            </div>
+          </div>
+          {/* stats row */}
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
+            <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> gems</span>
+            <span>·</span>
+            <button type="button" onClick={() => setShowForgedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors active:bg-primary/20 hover:bg-primary/10">
+              <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
+              <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+            </button>
+            {me.reservedCards.length > 0 && (
+              <><span>·</span><span><span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</span></>
+            )}
+          </div>
+          {/* gem + bonus grid */}
+          <div className="flex gap-1">
+            {CRYSTALS.map((c) => {
+              const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
+              const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
+              return (
+                <div key={c} className="flex flex-col items-center gap-0.5 flex-1">
+                  <MiniGem color={c as GemKey} size={12} />
+                  <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
+                  {bonus > 0 && (
+                    <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Opponents (always visible on Board tab) ── */}
       {state.players.filter(p => p.playerId !== session?.playerId).length > 0 && (
