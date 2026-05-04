@@ -24,8 +24,6 @@ function findPidsOnPort() {
       if (cols.length < 10) continue;
       const localPort = cols[1]?.split(":").pop();
       if (localPort !== hexPort) continue;
-      const state = cols[3];
-      if (state !== "0A") continue;
       const inode = cols[9];
       if (inode && inode !== "0") {
         inodes.add(inode);
@@ -39,7 +37,7 @@ function findPidsOnPort() {
     const entries = readdirSync("/proc").filter((e) => /^\d+$/.test(e));
     for (const pid of entries) {
       const pidNum = Number(pid);
-      if (pidNum === myPid || pidNum === myPpid) continue;
+      if (pidNum === myPid || pidNum === myPpid || pidNum <= 10) continue;
       try {
         const fds = readdirSync(`/proc/${pid}/fd`);
         for (const fd of fds) {
@@ -63,16 +61,18 @@ function isPortFree(p) {
   return new Promise((resolve) => {
     const srv = createServer();
     srv.once("error", () => {
-      srv.close();
+      try { srv.close(); } catch {}
       resolve(false);
     });
-    srv.listen(p, "::", () => {
+    srv.listen({ port: p, host: "::", ipv6Only: false }, () => {
       srv.close(() => resolve(true));
     });
   });
 }
 
 async function run() {
+  if (await isPortFree(port)) return;
+
   const maxWait = 15000;
   const interval = 500;
   let waited = 0;
@@ -82,14 +82,29 @@ async function run() {
     try { process.kill(pid, 9); } catch {}
   }
 
+  if (pids.size === 0) {
+    try {
+      const entries = readdirSync("/proc").filter((e) => /^\d+$/.test(e));
+      for (const pid of entries) {
+        const pidNum = Number(pid);
+        if (pidNum === myPid || pidNum === myPpid || pidNum <= 10) continue;
+        try {
+          const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8").replace(/\0/g, " ");
+          if (cmdline.includes("index.mjs") || cmdline.includes("vite") || cmdline.includes("esbuild")) {
+            try { process.kill(pidNum, 9); } catch {}
+          }
+        } catch {}
+      }
+    } catch {}
+  }
+
   while (waited < maxWait) {
-    if (await isPortFree(port)) {
-      return;
-    }
     await new Promise((r) => setTimeout(r, interval));
     waited += interval;
 
-    if (waited % 2000 === 0) {
+    if (await isPortFree(port)) return;
+
+    if (waited % 3000 === 0) {
       const morePids = findPidsOnPort();
       for (const pid of morePids) {
         try { process.kill(pid, 9); } catch {}
