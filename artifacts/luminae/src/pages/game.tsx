@@ -21,7 +21,7 @@ import { gameAudio } from '@/lib/audio';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText, Bookmark, ShoppingCart } from 'lucide-react';
+import { Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText, Bookmark, ShoppingCart, Eye, EyeOff, Package } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier2Bg from '@assets/generated_images/card_tier2.png';
@@ -150,6 +150,7 @@ function ArtifactCardView({
   canReserve,
   reserved,
   tier,
+  effectiveCosts,
 }: {
   card: ArtifactCard;
   onBuy?: () => void;
@@ -158,6 +159,8 @@ function ArtifactCardView({
   canReserve?: boolean;
   reserved?: boolean;
   tier?: number;
+  /** When provided, renders the reduced cost with strikethrough for discounted gems */
+  effectiveCosts?: Partial<Record<GemKey, number>>;
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
   const backdrop = TIER_BACKDROPS[tier ?? card.tier ?? 1] ?? cardTier1Bg;
@@ -208,16 +211,27 @@ function ArtifactCardView({
           </div>
           <div className="flex flex-wrap gap-0.5 justify-end">
             {CRYSTALS.map((c) => {
-              const cost = card.cost[c as keyof CrystalCounts];
-              if (cost > 0) {
-                return (
-                  <div key={c} className="flex items-center gap-0.5 bg-black/55 backdrop-blur-sm rounded px-1 py-0.5">
-                    <span className="text-xs font-bold text-white">{cost}</span>
-                    <MiniGem color={c} size={11} />
-                  </div>
-                );
-              }
-              return null;
+              const baseCost = card.cost[c as keyof CrystalCounts];
+              if (baseCost <= 0) return null;
+              const effCost = effectiveCosts !== undefined ? (effectiveCosts[c] ?? 0) : baseCost;
+              const isReduced = effectiveCosts !== undefined && effCost < baseCost;
+              const isFree = isReduced && effCost === 0;
+              return (
+                <div
+                  key={c}
+                  className={`flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 ${
+                    isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'
+                  }`}
+                >
+                  {isReduced && !isFree && (
+                    <span className="text-[8px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>
+                  )}
+                  <span className={`text-xs font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>
+                    {isFree ? '✓' : effCost}
+                  </span>
+                  <MiniGem color={c} size={11} />
+                </div>
+              );
             })}
           </div>
         </div>
@@ -357,6 +371,8 @@ export default function GameBoard() {
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
+  const [showEffectiveCost, setShowEffectiveCost] = useState(true);
+  const [showPurchased, setShowPurchased] = useState(false);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -681,6 +697,22 @@ export default function GameBoard() {
 
           {/* Market */}
           <div className="flex flex-col gap-4 items-center">
+            {/* Cost toggle */}
+            <div className="self-end">
+              <button
+                type="button"
+                onClick={() => setShowEffectiveCost(v => !v)}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                  showEffectiveCost
+                    ? 'bg-primary/20 border-primary/50 text-primary'
+                    : 'bg-secondary/50 border-border/50 text-muted-foreground hover:text-foreground'
+                }`}
+                title={showEffectiveCost ? 'Showing MY cost (reduced by bonuses) — click for base cost' : 'Showing BASE cost — click to see my cost'}
+              >
+                {showEffectiveCost ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                {showEffectiveCost ? 'My cost' : 'Base cost'}
+              </button>
+            </div>
             {[
               { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3 },
               { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2 },
@@ -722,6 +754,7 @@ export default function GameBoard() {
                     onReserve={() => handleReserveCard(c)}
                     canBuy={isMyTurn && !!me && canAffordCard(c, me)}
                     canReserve={isMyTurn && !!me && canReserveMore(me)}
+                    effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
                   />
                 ) : (
                   <div key={`empty-${i}`} className="w-32 h-44 rounded-xl border-2 border-dashed border-border/30 opacity-50" />
@@ -887,10 +920,60 @@ export default function GameBoard() {
                           reserved
                           onBuy={() => handleBuy(c, true)}
                           canBuy={isMyTurn && canAffordCard(c, me)}
+                          effectiveCosts={showEffectiveCost ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
                         />
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Purchased cards */}
+              {me && (
+                <div className="pt-4 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => setShowPurchased(v => !v)}
+                    className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground mb-2 transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5 uppercase tracking-wider">
+                      <Package className="h-3.5 w-3.5" />
+                      Forged ({me.purchasedCards?.length ?? 0})
+                    </span>
+                    <span className="text-xs">{showPurchased ? '▲ hide' : '▼ show'}</span>
+                  </button>
+                  {showPurchased && (
+                    <>
+                      {/* Bonus summary by color */}
+                      <div className="flex gap-1.5 flex-wrap mb-3">
+                        {CRYSTALS.filter(c => c !== 'flux').map((c) => {
+                          const count = me.bonuses[c as keyof CrystalCounts] ?? 0;
+                          if (count === 0) return null;
+                          return (
+                            <div key={c} className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5">
+                              <MiniGem color={c as GemKey} size={12} />
+                              <span className="text-xs font-bold text-white">×{count}</span>
+                            </div>
+                          );
+                        })}
+                        {Object.values(me.bonuses).every(v => v === 0) && (
+                          <span className="text-xs text-muted-foreground italic">No bonuses yet</span>
+                        )}
+                      </div>
+                      {/* Card grid */}
+                      {(me.purchasedCards?.length ?? 0) === 0 ? (
+                        <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto pb-1">
+                          {(me.purchasedCards ?? []).map((c) => (
+                            <div key={c.id} className="shrink-0">
+                              <ArtifactCardView card={c} tier={c.tier} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               )}
             </CardContent>

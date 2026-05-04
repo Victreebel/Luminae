@@ -727,6 +727,10 @@ export function formatGameState(
       .filter(Boolean)
       .map((c) => withLore(c as ArtifactCard)),
     purchasedCardIds: p.purchasedCardIds,
+    purchasedCards: p.purchasedCardIds
+      .map((id) => CARD_MAP.get(id))
+      .filter(Boolean)
+      .map((c) => withLore(c as ArtifactCard)),
     isConnected: connectedPlayerIds.has(p.playerId),
   }));
 

@@ -501,6 +501,10 @@ components:
           type: array
           items:
             type: string
+        purchasedCards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtifactCard"
         isConnected:
           type: boolean
       required:
@@ -511,6 +515,7 @@ components:
         - prestige
         - reservedCards
         - purchasedCardIds
+        - purchasedCards
         - isConnected
 
     GameState:

@@ -150,6 +150,7 @@ export interface GamePlayerState {
   prestige: number;
   reservedCards: ArtifactCard[];
   purchasedCardIds: string[];
+  purchasedCards: ArtifactCard[];
   isConnected: boolean;
 }
 
