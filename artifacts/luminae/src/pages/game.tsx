@@ -195,7 +195,7 @@ function ArtifactCardView({
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
-      <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+      <div className="relative z-10 h-full p-2 flex flex-col justify-between overflow-hidden">
         <div className="flex justify-between items-start">
           <span className="text-lg font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
             {card.lumens > 0 ? card.lumens : ''}
@@ -205,8 +205,8 @@ function ArtifactCardView({
           </div>
         </div>
 
-        <div className="space-y-1">
-          <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+        <div className="space-y-1 overflow-hidden">
+          <div className="text-[8px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-1 overflow-hidden text-ellipsis">
             {card.name}
           </div>
           <div className="flex flex-wrap gap-0.5 justify-end">
