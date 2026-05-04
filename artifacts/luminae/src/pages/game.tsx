@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, ShoppingCart, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, Flag, X, HelpCircle
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -460,6 +460,7 @@ export default function GameBoard() {
   const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [showForgedOverlay, setShowForgedOverlay] = useState(false);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -808,7 +809,10 @@ export default function GameBoard() {
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-2">
             <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> gems</span>
             <span>·</span>
-            <span><span className="font-semibold text-foreground/80">{myCardCount}</span> forged</span>
+            <button type="button" onClick={() => setShowForgedOverlay(true)} className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-colors active:bg-primary/20 hover:bg-primary/10">
+              <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
+              <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+            </button>
             {me.reservedCards.length > 0 && (
               <><span>·</span><span><span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</span></>
             )}
@@ -1706,6 +1710,68 @@ export default function GameBoard() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Forged Cards Overlay ── */}
+      <AnimatePresence>
+        {showForgedOverlay && me && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-end"
+            onClick={() => setShowForgedOverlay(false)}
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+            >
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+              <div className="px-5 pb-2 flex items-center justify-between">
+                <h2 className="text-lg font-serif font-bold flex items-center gap-2">
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                  Forged Artifacts ({me.purchasedCards?.length ?? 0})
+                </h2>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForgedOverlay(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="px-5 overflow-y-auto max-h-[60vh] pb-4">
+                <div className="flex gap-1.5 flex-wrap mb-3">
+                  {CRYSTALS.filter(c => c !== 'flux').map((c) => {
+                    const count = me.bonuses[c as keyof CrystalCounts] ?? 0;
+                    if (count === 0) return null;
+                    return (
+                      <div key={c} className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5">
+                        <MiniGem color={c as GemKey} size={12} />
+                        <span className="text-xs font-bold text-white">×{count}</span>
+                      </div>
+                    );
+                  })}
+                  {Object.values(me.bonuses).every(v => v === 0) && (
+                    <span className="text-xs text-muted-foreground italic">No bonuses yet</span>
+                  )}
+                </div>
+                {(me.purchasedCards?.length ?? 0) === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {(me.purchasedCards ?? []).map((c) => (
+                      <ArtifactCardView key={c.id} card={c} tier={c.tier} />
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
