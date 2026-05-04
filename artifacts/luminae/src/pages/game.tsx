@@ -205,11 +205,7 @@ function ArtifactCardView({
           </div>
         </div>
 
-        <div className="space-y-1 overflow-hidden">
-          <div className="text-[8px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-1 overflow-hidden text-ellipsis">
-            {card.name}
-          </div>
-          <div className="flex flex-wrap gap-0.5 justify-end">
+        <div className="flex flex-wrap gap-0.5 justify-end">
             {CRYSTALS.map((c) => {
               const baseCost = card.cost[c as keyof CrystalCounts];
               if (baseCost <= 0) return null;
@@ -231,7 +227,6 @@ function ArtifactCardView({
                 </div>
               );
             })}
-          </div>
         </div>
       </div>
     </motion.div>
