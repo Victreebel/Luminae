@@ -1458,9 +1458,14 @@ export default function GameBoard() {
               <span className="text-xs font-semibold truncate">{me.playerName}</span>
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
-              <Sparkles className="h-3 w-3 text-primary" />
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                <span className="font-bold text-foreground/70">{myTotalGems}</span> aff
+              </span>
+              <div className="flex items-center gap-0.5">
+                <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
+                <Sparkles className="h-3 w-3 text-primary" />
+              </div>
             </div>
           </div>
           {/* Gem columns: card chip + token + bonus */}
