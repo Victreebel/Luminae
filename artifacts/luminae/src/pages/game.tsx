@@ -1037,14 +1037,7 @@ export default function GameBoard() {
                     draggable={false}
                   />
                   <div className="flex items-center gap-0.5 mt-1">
-                    <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count}</span>
-                    {queued > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="text-xs font-bold text-primary leading-none"
-                      >+{queued}</motion.span>
-                    )}
+                    <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count - queued}</span>
                   </div>
                 </motion.button>
                 <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-1.5 leading-none" style={{ color: `${meta.glowHex}88` }}>
@@ -1521,6 +1514,17 @@ export default function GameBoard() {
                   {/* Token */}
                   <MiniGem color={c as GemKey} size={11} />
                   <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
+                  {(() => {
+                    const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+                    return pending > 0 ? (
+                      <motion.span
+                        key={pending}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="text-[9px] font-black leading-none text-primary"
+                      >+{pending}</motion.span>
+                    ) : null;
+                  })()}
                 </div>
               );
             })}
