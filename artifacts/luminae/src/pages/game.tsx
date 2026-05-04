@@ -1676,6 +1676,57 @@ export default function GameBoard() {
                 </div>
               </div>
 
+              {/* My Cost breakdown — shortfall per gem */}
+              {showEffectiveCost && selectedCard.effectiveCosts && me && (() => {
+                const rows: { gem: GemKey; need: number; have: number; short: number }[] = [];
+                let totalShort = 0;
+                for (const c of CRYSTALS) {
+                  if (c === 'flux') continue;
+                  const need = selectedCard.effectiveCosts[c] ?? 0;
+                  if (need <= 0) continue;
+                  const have = Math.min(need, me.crystals[c as keyof CrystalCounts] ?? 0);
+                  const short = Math.max(0, need - have);
+                  totalShort += short;
+                  rows.push({ gem: c as GemKey, need, have, short });
+                }
+                const fluxHave = me.crystals.flux ?? 0;
+                const fluxNeeded = Math.max(0, totalShort);
+                const fluxCovers = fluxNeeded <= fluxHave;
+                const canAfford = fluxNeeded === 0 || fluxCovers;
+                if (rows.length === 0) return null;
+                return (
+                  <div className="mb-3 rounded-xl border border-border/50 bg-secondary/30 px-3 py-2.5 flex flex-col gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">What you still need</p>
+                    <div className="flex flex-wrap gap-2">
+                      {rows.map(({ gem, need, have, short }) => (
+                        <div key={gem} className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${short === 0 ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>
+                          <MiniGem color={gem} size={12} />
+                          {short === 0
+                            ? <span className="text-green-400">✓ {have}/{need}</span>
+                            : <span>−{short} <span className="text-white/40 font-normal">({have}/{need})</span></span>
+                          }
+                        </div>
+                      ))}
+                      {fluxNeeded > 0 && (
+                        <div className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${fluxCovers ? 'bg-amber-900/40 text-amber-300' : 'bg-red-900/50 text-red-300'}`}>
+                          <MiniGem color="flux" size={12} />
+                          {fluxCovers
+                            ? <span>{fluxNeeded} singularity covers gap</span>
+                            : <span>need {fluxNeeded}, have {fluxHave}</span>
+                          }
+                        </div>
+                      )}
+                    </div>
+                    {canAfford && (
+                      <p className="text-[10px] font-semibold text-green-400">You can forge this now</p>
+                    )}
+                    {!canAfford && (
+                      <p className="text-[10px] font-semibold text-red-400">Still short — keep harvesting</p>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Action buttons */}
               <div className="flex flex-col gap-2.5">
                 {isMyTurn ? (
