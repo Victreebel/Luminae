@@ -47,6 +47,7 @@ The lobby reconciles its local `players` array from two sources: TanStack Query'
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 - **Frontend**: React + Vite + Tailwind + framer-motion + wouter
+- **PWA / offline caching**: `vite-plugin-pwa` with Workbox. In production builds, a Service Worker precaches all built assets (JS, CSS, HTML, images including all 45 card art PNGs, gem tokens, avatars, backgrounds). Google Fonts are runtime-cached with CacheFirst strategy (1-year expiry). API (`/api`) and WebSocket (`/ws`) routes are excluded from navigation fallback. The SW auto-updates on new deployments. After first visit, repeat loads serve entirely from cache — only API calls and WebSocket need network.
 
 ## Database Schema
 
