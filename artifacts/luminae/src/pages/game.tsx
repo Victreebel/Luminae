@@ -389,7 +389,7 @@ export default function GameBoard() {
         reserveBurstActionRef.current = lastActionKey;
         if (newState.lastAction?.type === 'reserve_card') {
           const playerId = newState.lastAction.playerId as string | undefined;
-          const player = newState.players.find((p) => p.playerId === playerId);
+          const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === playerId);
           if (player) {
             const gotFlux = (newState.crystalBank.flux ?? 0) < (state?.crystalBank.flux ?? 0);
             const tier = Number(newState.lastAction.tier ?? 1) as 1 | 2 | 3;
@@ -400,7 +400,7 @@ export default function GameBoard() {
               gotFlux,
               playerId: player.playerId,
               playerName: player.playerName,
-              avatarId: session?.playerId === player.playerId ? session.avatarId : null,
+              avatarId: player.avatarId ?? null,
             });
             if (gotFlux) gameAudio.playFluxCoin();
             setTimeout(() => setReserveBurst(null), 2300);
@@ -745,7 +745,7 @@ export default function GameBoard() {
                   {/* Row 1: avatar + name + prestige */}
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-1.5">
-                      <PlayerAvatar avatarId={null} name={p.playerName} size={26} />
+                      <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={26} />
                       {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
                       <span className="font-semibold text-sm truncate max-w-[120px]">{p.playerName}</span>
                       {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
@@ -928,7 +928,7 @@ export default function GameBoard() {
                 {/* Header: avatar + name + prestige */}
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
-                    <PlayerAvatar avatarId={null} name={p.playerName} size={30} />
+                    <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={30} />
                     {isCurrent && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
                     <span className="font-bold text-sm">{p.playerName}</span>
                     {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
@@ -993,10 +993,11 @@ export default function GameBoard() {
           ) : (
             [...(state.actionLog ?? [])].reverse().slice(0, 12).map((entry, i) => {
               const isMe = entry.playerId === session.playerId;
+              const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
               return (
               <div key={i} className="flex items-start gap-2.5 px-3 py-2.5">
                 <PlayerAvatar
-                  avatarId={isMe ? session.avatarId : null}
+                  avatarId={logPlayer?.avatarId ?? (isMe ? session.avatarId : null)}
                   name={entry.playerName}
                   size={22}
                 />
@@ -1477,7 +1478,7 @@ export default function GameBoard() {
               <div className="flex flex-col gap-2 pt-1">
                 {[...state.players].sort((a, b) => b.prestige - a.prestige).map((p, i) => {
                   const isMe = p.playerId === session.playerId;
-                  const avatarIdForPlayer = isMe ? session.avatarId : null;
+                  const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
                   return (
                   <motion.div
                     key={p.playerId}

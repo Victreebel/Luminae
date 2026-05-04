@@ -78,6 +78,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
       players: players.map((p) => ({
         playerId: p.id,
         playerName: p.name,
+        avatarId: p.avatarId ?? null,
         crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         bonuses: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         prestige: 0,
@@ -108,11 +109,19 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
   }
 
   const connectedIds = getConnectedPlayerIds(rawId);
+  const allPlayers = await db
+    .select()
+    .from(playersTable)
+    .where(eq(playersTable.roomId, rawId));
+  const avatarMap = new Map<string, string | null>(
+    allPlayers.map((p) => [p.id, p.avatarId ?? null]),
+  );
   const formatted = formatGameState(
     rawId,
     room.status,
     gs.state as unknown as GameStateData,
     connectedIds,
+    avatarMap,
   );
 
   res.json(formatted);
@@ -232,7 +241,10 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     for (const p of allPlayers) {
       if (p.isAi) connectedIds.add(p.id);
     }
-    const formatted = formatGameState(rawId, room.status, stateData, connectedIds);
+    const avatarMap = new Map<string, string | null>(
+      allPlayers.map((p) => [p.id, p.avatarId ?? null]),
+    );
+    const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap);
 
     broadcastToRoom(rawId, { type: "state_update", state: formatted });
     armTurnTimer(rawId, stateData);

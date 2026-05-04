@@ -744,6 +744,7 @@ export function formatGameState(
   status: string,
   stateData: GameStateData,
   connectedPlayerIds: Set<string>,
+  avatarMap?: Map<string, string | null>,
 ) {
   const marketTier1 = stateData.marketTier1
     .map((id) => CARD_MAP.get(id))
@@ -764,6 +765,7 @@ export function formatGameState(
   const players = stateData.players.map((p) => ({
     playerId: p.playerId,
     playerName: p.playerName,
+    avatarId: avatarMap?.get(p.playerId) ?? null,
     crystals: p.crystals,
     bonuses: p.bonuses,
     prestige: p.prestige,

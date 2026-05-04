@@ -40,6 +40,7 @@ function serializePlayer(p: DbPlayer) {
     orderIndex: p.orderIndex,
     isAi: p.isAi,
     aiDifficulty: p.aiDifficulty,
+    avatarId: p.avatarId ?? null,
   };
 }
 
@@ -86,7 +87,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { hostName, maxPlayers, turnTimerSeconds } = parsed.data;
+  const { hostName, maxPlayers, turnTimerSeconds, avatarId: hostAvatarId } = parsed.data;
 
   const inviteCode = generateInviteCode();
   const sessionToken = generateSessionToken();
@@ -111,6 +112,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
       orderIndex: 0,
       isConnected: false,
       isAi: false,
+      avatarId: hostAvatarId ?? null,
     })
     .returning();
 
@@ -193,7 +195,7 @@ router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { playerName } = parsed.data;
+  const { playerName, avatarId: joiningAvatarId } = parsed.data;
 
   const [room] = await db
     .select()
@@ -233,6 +235,7 @@ router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
       orderIndex,
       isConnected: false,
       isAi: false,
+      avatarId: joiningAvatarId ?? null,
     })
     .returning();
 
@@ -493,8 +496,11 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   for (const p of players) {
     if (p.isAi) connectedIds.add(p.id);
   }
+  const avatarMap = new Map<string, string | null>(
+    players.map((p) => [p.id, p.avatarId ?? null]),
+  );
 
-  const formatted = formatGameState(rawId, "playing", gameData, connectedIds);
+  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap);
 
   broadcastToRoom(rawId, { type: "game_started", state: formatted });
   armTurnTimer(rawId, gameData);

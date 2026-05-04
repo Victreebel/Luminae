@@ -21,10 +21,20 @@ export interface CreateRoomBody {
    * @nullable
    */
   turnTimerSeconds?: number | null;
+  /**
+   * Avatar identifier chosen by the host
+   * @nullable
+   */
+  avatarId?: string | null;
 }
 
 export interface JoinRoomBody {
   playerName: string;
+  /**
+   * Avatar identifier chosen by the joining player
+   * @nullable
+   */
+  avatarId?: string | null;
 }
 
 export interface RejoinRoomBody {
@@ -71,6 +81,8 @@ export interface RoomPlayer {
   isAi: boolean;
   /** @nullable */
   aiDifficulty?: RoomPlayerAiDifficulty;
+  /** @nullable */
+  avatarId?: string | null;
 }
 
 export type RoomInfoStatus =
@@ -145,6 +157,8 @@ export interface Luminary {
 export interface GamePlayerState {
   playerId: string;
   playerName: string;
+  /** @nullable */
+  avatarId?: string | null;
   crystals: CrystalCounts;
   bonuses: CrystalCounts;
   prestige: number;

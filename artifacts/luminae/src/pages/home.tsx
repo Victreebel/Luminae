@@ -63,7 +63,7 @@ export default function Home() {
     if (!hostName.trim()) return;
     try {
       const res = await createRoom.mutateAsync({
-        data: { hostName, maxPlayers, turnTimerSeconds: parseInt(turnTimer) || null },
+        data: { hostName, maxPlayers, turnTimerSeconds: parseInt(turnTimer) || null, avatarId },
       });
       saveSession({
         roomId: res.room.id,
@@ -92,7 +92,7 @@ export default function Home() {
       const res =
         isPlaying || alreadyMember
           ? await rejoinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName } })
-          : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName } });
+          : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName, avatarId } });
       saveSession({
         roomId: res.room.id,
         inviteCode: res.room.inviteCode,

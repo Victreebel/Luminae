@@ -291,6 +291,9 @@ components:
         turnTimerSeconds:
           type: ["integer", "null"]
           description: Optional per-turn time limit in seconds (null = no timer)
+        avatarId:
+          type: ["string", "null"]
+          description: Avatar identifier chosen by the host
       required:
         - hostName
         - maxPlayers
@@ -300,6 +303,9 @@ components:
       properties:
         playerName:
           type: string
+        avatarId:
+          type: ["string", "null"]
+          description: Avatar identifier chosen by the joining player
       required:
         - playerName
 
@@ -349,6 +355,8 @@ components:
         aiDifficulty:
           type: ["string", "null"]
           enum: [easy, medium, hard, null]
+        avatarId:
+          type: ["string", "null"]
       required:
         - id
         - name
@@ -487,6 +495,8 @@ components:
           type: string
         playerName:
           type: string
+        avatarId:
+          type: ["string", "null"]
         crystals:
           $ref: "#/components/schemas/CrystalCounts"
         bonuses:

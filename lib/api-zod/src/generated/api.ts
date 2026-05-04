@@ -30,6 +30,10 @@ export const CreateRoomBody = zod.object({
     .number()
     .nullish()
     .describe("Optional per-turn time limit in seconds (null = no timer)"),
+  avatarId: zod
+    .string()
+    .nullish()
+    .describe("Avatar identifier chosen by the host"),
 });
 
 /**
@@ -61,6 +65,7 @@ export const GetRoomByInviteCodeResponse = zod.object({
           zod.literal(null),
         ])
         .nullish(),
+      avatarId: zod.string().nullish(),
     }),
   ),
 });
@@ -74,6 +79,10 @@ export const JoinRoomParams = zod.object({
 
 export const JoinRoomBody = zod.object({
   playerName: zod.string(),
+  avatarId: zod
+    .string()
+    .nullish()
+    .describe("Avatar identifier chosen by the joining player"),
 });
 
 export const JoinRoomResponse = zod.object({
@@ -99,6 +108,7 @@ export const JoinRoomResponse = zod.object({
             zod.literal(null),
           ])
           .nullish(),
+        avatarId: zod.string().nullish(),
       }),
     ),
   }),
@@ -117,6 +127,7 @@ export const JoinRoomResponse = zod.object({
         zod.literal(null),
       ])
       .nullish(),
+    avatarId: zod.string().nullish(),
   }),
   sessionToken: zod.string(),
 });
@@ -155,6 +166,7 @@ export const RejoinRoomResponse = zod.object({
             zod.literal(null),
           ])
           .nullish(),
+        avatarId: zod.string().nullish(),
       }),
     ),
   }),
@@ -173,6 +185,7 @@ export const RejoinRoomResponse = zod.object({
         zod.literal(null),
       ])
       .nullish(),
+    avatarId: zod.string().nullish(),
   }),
   sessionToken: zod.string(),
 });
@@ -204,6 +217,7 @@ export const AddAiPlayerResponse = zod.object({
       zod.literal(null),
     ])
     .nullish(),
+  avatarId: zod.string().nullish(),
 });
 
 /**
@@ -308,6 +322,7 @@ export const StartGameResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      avatarId: zod.string().nullish(),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -499,6 +514,7 @@ export const GetGameStateResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      avatarId: zod.string().nullish(),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -714,6 +730,7 @@ export const SubmitActionResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      avatarId: zod.string().nullish(),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),

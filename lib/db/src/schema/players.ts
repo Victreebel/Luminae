@@ -12,6 +12,7 @@ export const playersTable = pgTable("players", {
   isConnected: boolean("is_connected").notNull().default(false),
   isAi: boolean("is_ai").notNull().default(false),
   aiDifficulty: text("ai_difficulty"),
+  avatarId: text("avatar_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

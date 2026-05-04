@@ -105,11 +105,15 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       for (const p of allPlayers) {
         if (p.isAi) connectedIds.add(p.id);
       }
+      const avatarMap = new Map<string, string | null>(
+        allPlayers.map((p) => [p.id, p.avatarId ?? null]),
+      );
       const formatted = formatGameState(
         roomId,
         isFinished ? "finished" : "playing",
         state,
         connectedIds,
+        avatarMap,
       );
       broadcastToRoom(roomId, { type: "state_update", state: formatted });
 
