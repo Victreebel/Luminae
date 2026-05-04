@@ -183,13 +183,15 @@ function ArtifactCardView({
       <img src={backdrop} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none scale-[1.06]" draggable={false} />
       {/* Card art (full background, dimmed behind info) */}
       {art && (
-        <img
-          src={art}
-          alt={card.name}
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none scale-[1.08]"
-          style={{ objectFit: 'cover', backgroundColor: 'transparent', imageRendering: 'auto' }}
-          draggable={false}
-        />
+        <div className="absolute inset-0 overflow-hidden">
+          <img
+            src={art}
+            alt={card.name}
+            className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none scale-[1.22]"
+            style={{ objectFit: 'cover', backgroundColor: 'transparent', imageRendering: 'auto' }}
+            draggable={false}
+          />
+        </div>
       )}
       {/* Dark overlay so text is readable */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
