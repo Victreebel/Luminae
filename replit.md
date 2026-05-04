@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Luminae** is an original browser-based multiplayer tabletop engine-building game inspired by gem-market tableau mechanics (original names, artwork, and rules — not a copy of any commercial game). 2–4 players collect colored crystals, acquire Artifact cards that generate permanent bonus crystals, and race to **15 Lumens** while competing for Luminary patron bonuses.
+**Luminae** is an original browser-based multiplayer tabletop engine-building game inspired by gem-market tableau mechanics (original names, artwork, and rules — not a copy of any commercial game). 2–4 players collect colored crystals, acquire Artifact cards that generate permanent bonus crystals, and race to **15 Eminence** while competing for Luminary patron bonuses.
 
 pnpm workspace monorepo using TypeScript.
 
@@ -29,9 +29,10 @@ pnpm workspace monorepo using TypeScript.
 
 The lobby reconciles its local `players` array from two sources: TanStack Query's `roomInfo` (authoritative) and WebSocket events (live deltas). Critical rule: the `roomInfo` populate effect must re-merge on **every** `roomInfo` change, not just when `players.length === 0`. Earlier code gated on `length === 0`, which was a bug: the server's `player_connected` WS event arrives before the initial query resolves and only carries `{ playerId, playerName, isConnected }` — no `isHost`. The WS handler would insert a host stub with `isHost: false` (default fallback), and the populate effect would then skip the API truth, leaving the host trapped in non-host UI (no "Start Game", no "Add AI"). Fix lives at `artifacts/luminae/src/pages/lobby.tsx` in the roomInfo merge effect — do not re-introduce a length guard.
 - **Market**: 3 tiers of Artifact cards (20/15/10 cards shuffled into decks, 4 face-up per tier)
-- **Luminaries**: 5 patron cards, playerCount+1 active per game, award 3 lumens for bonus requirements
+- **Eminence (victory currency)**: Replaces the generic "prestige" concept. Internal data key stays `lumens` throughout the API, DB, engine, and AI for backward compatibility (same pattern as crystal key mapping). The display layer shows "eminence" everywhere players see the score label. Server-side action log descriptions also use "eminence."
+- **Luminaries**: 5 patron cards, playerCount+1 active per game, award 3 eminence for bonus requirements
 - **Actions**: take 3 different crystals, take 2 same (≥4 in bank), reserve card (get flux), purchase card/reserved
-- **Win condition**: 15 lumens; last round completes so all players finish equally; tie-break is fewest purchased cards
+- **Win condition**: 15 eminence; last round completes so all players finish equally; tie-break is fewest purchased cards
 
 ## Stack
 

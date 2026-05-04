@@ -801,7 +801,7 @@ export default function GameBoard() {
             <div className="flex items-center gap-0.5 shrink-0 ml-2">
               <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
               <Sparkles className="h-3 w-3 text-primary" />
-              <span className="text-[9px] text-primary/60 font-mono uppercase tracking-wide ml-0.5">lumens</span>
+              <span className="text-[9px] text-primary/60 font-mono uppercase tracking-wide ml-0.5">eminence</span>
             </div>
           </div>
           {/* stats row */}
@@ -1066,7 +1066,7 @@ export default function GameBoard() {
         <div className="text-center">
           <div className="text-4xl font-serif font-bold text-primary">{me?.lumens}</div>
           <div className="text-xs text-primary flex items-center gap-0.5 justify-center">
-            <Sparkles className="h-3 w-3" /> lumens
+            <Sparkles className="h-3 w-3" /> eminence
           </div>
         </div>
       </div>
@@ -1422,7 +1422,7 @@ export default function GameBoard() {
                   {(selectedCard.card.lumens ?? 0) > 0 && (
                     <div className="flex items-center gap-1">
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-sm font-bold text-primary">{selectedCard.card.lumens} lumens</span>
+                      <span className="text-sm font-bold text-primary">{selectedCard.card.lumens} eminence</span>
                     </div>
                   )}
                 </div>
@@ -1547,7 +1547,7 @@ export default function GameBoard() {
                         </span>
                         {cardActionBurst.lumens > 0 && (
                           <span className="flex items-center gap-1.5 text-base font-bold" style={{ color: GEM_META.flux.hex }}>
-                            <Sparkles className="h-4 w-4" /> +{cardActionBurst.lumens} lumens
+                            <Sparkles className="h-4 w-4" /> +{cardActionBurst.lumens} eminence
                           </span>
                         )}
                       </motion.div>
@@ -1633,7 +1633,7 @@ export default function GameBoard() {
               </span>
               {purchaseBurst.lumens > 0 && (
                 <span className="flex items-center gap-1.5 text-lg font-bold" style={{ color: GEM_META.flux.hex }}>
-                  <Sparkles className="h-4 w-4" /> +{purchaseBurst.lumens} lumens
+                  <Sparkles className="h-4 w-4" /> +{purchaseBurst.lumens} eminence
                 </span>
               )}
             </motion.div>
@@ -1675,7 +1675,7 @@ export default function GameBoard() {
                   {
                     icon: '💎',
                     title: 'Goal',
-                    body: 'Be the first to reach 15 lumens. The round completes so every player gets equal turns, then the highest score wins.',
+                    body: 'Be the first to reach 15 eminence. The round completes so every player gets equal turns, then the highest score wins.',
                   },
                   {
                     icon: '🪙',
@@ -1689,8 +1689,8 @@ export default function GameBoard() {
                   },
                   {
                     icon: '✨',
-                    title: 'Lumens',
-                    body: 'Some cards award lumens when forged. Luminaries (the top row) grant bonus lumens to the first player whose bonuses meet their requirements — claimed automatically.',
+                    title: 'Eminence',
+                    body: 'Some cards award eminence when forged. Luminaries (the top row) grant bonus eminence to the first player whose bonuses meet their requirements — claimed automatically.',
                   },
                   {
                     icon: '✋',

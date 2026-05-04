@@ -171,7 +171,7 @@ export default function Home() {
           transition={{ delay: 0.28 }}
           className="text-muted-foreground text-sm tracking-wide"
         >
-          Forge cosmic affinities. Claim lumens.
+          Forge cosmic affinities. Claim eminence.
         </motion.p>
 
         {/* Avatar selector — always visible */}

@@ -703,7 +703,7 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
         const lore = getCardLore(action.cardId);
         const verb = action.type === "purchase_reserved" ? "Built reserved" : "Forged";
         const pts = card?.lumens ?? 0;
-        return `${verb} "${lore.name}"${pts ? ` (+${pts} lumens)` : ""}`;
+        return `${verb} "${lore.name}"${pts ? ` (+${pts} eminence)` : ""}`;
       }
       return "Forged a card";
     }
