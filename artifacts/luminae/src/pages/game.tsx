@@ -649,7 +649,8 @@ export default function GameBoard() {
     if (gems.length === 0) return;
     gemBurstKeyRef.current += 1;
     setGemBurst({ key: gemBurstKeyRef.current, gems });
-    setTimeout(() => setGemBurst(null), 3800);
+    const totalDuration = (gems.length - 1) * 780 + 1250 + 500;
+    setTimeout(() => setGemBurst(null), totalDuration);
   };
 
   if (error) {
@@ -754,12 +755,17 @@ export default function GameBoard() {
     }
   };
 
-  const gemBurstView = gemBurst?.gems.map((gem, index) => ({
-    gem,
-    index,
-    x: (index - 1) * 74,
-    delay: index * 0.78,
-  })) ?? [];
+  const gemBurstView = gemBurst?.gems.map((gem, index) => {
+    const count = gemBurst.gems.length;
+    const spacing = 74;
+    const offset = ((count - 1) / 2) * spacing;
+    return {
+      gem,
+      index,
+      x: index * spacing - offset,
+      delay: index * 0.78,
+    };
+  }) ?? [];
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
     const out: Record<string, number> = {};

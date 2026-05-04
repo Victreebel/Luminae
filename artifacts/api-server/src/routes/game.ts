@@ -113,6 +113,9 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     .select()
     .from(playersTable)
     .where(eq(playersTable.roomId, rawId));
+  for (const p of allPlayers) {
+    if (p.isAi) connectedIds.add(p.id);
+  }
   const avatarMap = new Map<string, string | null>(
     allPlayers.map((p) => [p.id, p.avatarId ?? null]),
   );
