@@ -320,6 +320,14 @@ export default function GameBoard() {
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
+  // Start ambient music when the game board mounts (user has already
+  // interacted via buttons to get here, so AudioContext is allowed).
+  // Stop and clean up when they leave the game.
+  useEffect(() => {
+    gameAudio.startMusic();
+    return () => { gameAudio.stopMusic(); };
+  }, []);
+
   useEffect(() => {
     if (!session || session.roomId !== roomId) setLocation('/');
   }, [session, roomId, setLocation]);
