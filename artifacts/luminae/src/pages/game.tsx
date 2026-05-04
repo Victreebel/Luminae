@@ -1127,60 +1127,59 @@ export default function GameBoard() {
                   key={p.playerId}
                   className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* Row 1: avatar + name + lumens */}
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={26} />
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
                       {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                      <span className="font-semibold text-sm truncate max-w-[120px]">{p.playerName}</span>
-                      {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
+                      <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                      {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="font-serif font-black text-xl text-primary">{p.lumens}</span>
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
+                      <span>
+                        <span className="font-semibold text-foreground/80">{totalGems}</span> Affinity
+                      </span>
+                      <span className="font-serif font-black text-lg text-primary leading-none">{p.lumens}</span>
+                      <Sparkles className="h-3 w-3 text-primary" />
                     </div>
                   </div>
-
-                  {/* Row 2: per-color gem counts */}
-                  <div className="flex gap-1 mb-2">
+                  <div className="flex gap-1">
                     {CRYSTALS.map((c) => {
                       const n = p.crystals[c as keyof CrystalCounts] ?? 0;
                       const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                      const meta = GEM_META[c as GemKey];
                       return (
-                        <div key={c} className="flex flex-col items-center gap-0.5 flex-1">
-                          <MiniGem color={c as GemKey} size={13} />
-                          <span className="text-[11px] font-bold text-white leading-none">{n}</span>
-                          {bonus > 0 && (
-                            <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
+                        <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
+                          <div
+                            className="w-full flex flex-col items-center justify-end rounded-[5px] relative overflow-hidden pb-[3px]"
+                            style={{
+                              height: 34,
+                              background: `linear-gradient(180deg, #080808 0%, ${meta.hex}22 100%)`,
+                              border: `1px solid ${meta.hex}33`,
+                              boxShadow: n > 0 ? `inset 0 0 10px ${meta.hex}18, 0 0 8px ${meta.hex}22` : 'none',
+                            }}
+                          >
+                            {n > 0 && (
+                              <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                            )}
+                            <span
+                              className="text-[13px] font-black leading-none tracking-tight"
+                              style={{
+                                color: n > 0 ? '#fff' : meta.hex + '22',
+                                textShadow: n > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
+                              }}
+                            >
+                              {n}
+                            </span>
+                          </div>
+                          <MiniGem color={c as GemKey} size={11} />
+                          {bonus > 0 ? (
+                            <span className="text-[9px] font-black leading-none text-primary">+{bonus}</span>
+                          ) : (
+                            <span className="text-[9px] text-muted-foreground/40 leading-none">—</span>
                           )}
                         </div>
                       );
                     })}
-                  </div>
-
-                  {/* Row 3: totals + reserved */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="flex items-center gap-0.5">
-                        <span className="font-semibold text-foreground/80">{totalGems}</span> affinities
-                      </span>
-                      <span>·</span>
-                      <span className="flex items-center gap-0.5">
-                        <span className="font-semibold text-foreground/80">{cardCount}</span> forged
-                      </span>
-                    </div>
-                    <div className="flex gap-1 items-center">
-                      {p.reservedCards.length > 0 ? (
-                        <>
-                          <span className="text-[11px] text-muted-foreground mr-0.5">reserved:</span>
-                          {p.reservedCards.map((card, idx) => (
-                            <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
-                          ))}
-                        </>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">no reserve</span>
-                      )}
-                    </div>
                   </div>
                 </div>
               );
