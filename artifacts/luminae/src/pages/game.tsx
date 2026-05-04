@@ -923,46 +923,130 @@ export default function GameBoard() {
       </div>
 
       {/* Crystal Bank */}
-      <div className="rounded-2xl bg-secondary/40 border border-border/50 p-4 backdrop-blur">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 text-center">Gem Bank</p>
-        <div className="flex justify-between gap-1">
-          {CRYSTALS.map((c) => {
+      <div className="rounded-2xl bg-secondary/40 border border-border/50 backdrop-blur overflow-hidden">
+        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Gem Bank</p>
+          {(() => {
+            const fluxCount = state.crystalBank.flux ?? 0;
+            return (
+              <div className="flex items-center gap-1.5 opacity-80">
+                <MiniGem color="flux" size={14} />
+                <span className="text-[10px] font-mono font-bold text-amber-300/80">{fluxCount}</span>
+                <span className="text-[9px] text-muted-foreground">wild</span>
+              </div>
+            );
+          })()}
+        </div>
+        <div className="px-3 pb-3 grid grid-cols-5 gap-1">
+          {CRYSTALS.filter(c => c !== 'flux').map((c) => {
+            const meta = GEM_META[c];
             const count = state.crystalBank[c as keyof CrystalCounts] ?? 0;
             const queued = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-            const selectable = isMyTurn && c !== 'flux';
+            const selectable = isMyTurn;
+            const isEmpty = count === 0 && queued === 0;
+            const canTake2 = selectable && count >= 4 && queued !== 2;
             return (
-              <div key={c} className="flex flex-col items-center gap-1.5">
-                <CrystalIcon
-                  color={c} size={50}
-                  count={count}
-                  selectable={selectable}
-                  selected={queued > 0}
+              <div key={c} className="flex flex-col items-center">
+                <motion.button
+                  type="button"
+                  disabled={!selectable || isEmpty}
+                  whileTap={selectable && !isEmpty ? { scale: 0.9 } : {}}
+                  animate={queued > 0 ? { scale: [1, 1.08, 1], transition: { duration: 0.3 } } : {}}
                   onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-                />
-                <div
-                  className="min-w-[40px] px-1.5 py-0.5 rounded-full bg-black/90 border border-white/20 text-center shadow-lg"
-                  style={{ boxShadow: `0 0 8px ${GEM_META[c].glowHex}33` }}
+                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-center transition-all ${
+                    queued > 0
+                      ? 'bg-primary/20 ring-2 ring-primary shadow-lg'
+                      : isEmpty
+                        ? 'bg-white/[0.03] opacity-40'
+                        : 'bg-white/[0.06] active:bg-white/[0.12]'
+                  }`}
+                  style={queued > 0 ? { boxShadow: `0 0 16px ${meta.glowHex}40` } : {}}
                 >
-                  <span className="text-base font-black font-mono text-white">{count}</span>
-                  {queued > 0 && <span className="ml-0.5 text-[10px] font-bold text-primary">+{queued}</span>}
-                </div>
-                {selectable && count >= 4 && queued !== 2 && (
-                  <button
+                  <img
+                    src={meta.image} alt={meta.name}
+                    className="w-10 h-10 object-contain pointer-events-none select-none"
+                    style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 4px ${meta.glowHex}66)` }}
+                    draggable={false}
+                  />
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    <span className={`text-sm font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count}</span>
+                    {queued > 0 && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="text-[10px] font-bold text-primary leading-none"
+                      >+{queued}</motion.span>
+                    )}
+                  </div>
+                </motion.button>
+                <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground mt-1 leading-none" style={{ color: `${meta.glowHex}88` }}>
+                  {meta.shortName}
+                </span>
+                {canTake2 && (
+                  <motion.button
                     type="button"
-                    onClick={() => promoteToTake2(c)}
-                    className="text-[9px] font-bold text-primary/70 hover:text-primary"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={(e) => { e.stopPropagation(); promoteToTake2(c); }}
+                    className="mt-0.5 text-[9px] font-bold text-primary/80 hover:text-primary bg-primary/10 rounded-full px-2 py-0.5 active:bg-primary/25 transition-colors"
                   >
-                    ×2
-                  </button>
+                    take 2
+                  </motion.button>
                 )}
               </div>
             );
           })}
         </div>
+        <AnimatePresence>
+          {crystalQueueActive && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 pt-1 border-t border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5 flex-1 items-center flex-wrap">
+                    {Object.entries(selectedCrystals).map(([c, n]) => (
+                      <div key={c} className="flex items-center gap-1 bg-black/50 rounded-full pl-1.5 pr-2 py-0.5 border border-white/10">
+                        <MiniGem color={c as GemKey} size={12} />
+                        <span className="text-xs font-bold text-white">×{n}</span>
+                      </div>
+                    ))}
+                    <span className={`text-[10px] font-medium ${queueLegality.ok ? 'text-green-400' : 'text-amber-400'}`}>
+                      {queueLegality.reason || 'Pick gems'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 p-0 rounded-lg"
+                      onClick={() => { setActionMode('none'); setSelectedCrystals({}); }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 px-3 rounded-lg text-xs font-bold"
+                      onClick={confirmCrystals}
+                      disabled={!queueLegality.ok}
+                    >
+                      Take
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {isMyTurn && !crystalQueueActive && (
-          <p className="text-[10px] text-muted-foreground text-center mt-3 italic">
-            Tap gems to queue · tap ×2 to take a pair
-          </p>
+          <div className="px-3 pb-2.5">
+            <p className="text-[9px] text-muted-foreground text-center italic">
+              Tap to queue gems · up to 3 different or 2 of the same
+            </p>
+          </div>
         )}
       </div>
 
@@ -1348,52 +1432,6 @@ export default function GameBoard() {
         {activeTab === 'hand' && <HandTab />}
         {activeTab === 'log' && <LogTab />}
       </main>
-
-      {/* ── Crystal Confirm Bar (floats above nav) ── */}
-      <AnimatePresence>
-        {crystalQueueActive && (
-          <motion.div
-            data-testid="gem-confirm-bar"
-            initial={{ y: 60, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 60, opacity: 0 }}
-            className="shrink-0 z-20 bg-card/95 border-t border-primary/40 backdrop-blur px-4 py-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex gap-2 flex-1 flex-wrap">
-                {Object.entries(selectedCrystals).map(([c, n]) => (
-                  <div key={c} className="flex items-center gap-1 bg-black/50 rounded-full px-2.5 py-1">
-                    <MiniGem color={c as GemKey} size={14} />
-                    <span className="text-sm font-bold text-white">×{n}</span>
-                  </div>
-                ))}
-                <span className={`text-xs self-center ${queueLegality.ok ? 'text-green-400' : 'text-amber-400'}`}>
-                  {queueLegality.reason || 'Pick gems'}
-                </span>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-3"
-                  onClick={() => { setActionMode('none'); setSelectedCrystals({}); }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-9 px-4"
-                  data-testid="gem-confirm-btn"
-                  onClick={confirmCrystals}
-                  disabled={!queueLegality.ok}
-                >
-                  Take Gems
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Bottom Navigation ── */}
       <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
