@@ -54,11 +54,29 @@ const AI_NAME_POOL = [
   "Thalia",
 ];
 
+const AI_AVATAR_POOL = [
+  "stargazer",
+  "forgemaster",
+  "voidcaller",
+  "archivist",
+  "cultivator",
+  "sentinel",
+  "oracle",
+  "sovereign",
+];
+
 function pickAiName(existing: string[]): string {
   const taken = new Set(existing);
   const free = AI_NAME_POOL.filter((n) => !taken.has(n));
   if (free.length > 0) return free[Math.floor(Math.random() * free.length)];
   return `AI-${Math.floor(Math.random() * 10000)}`;
+}
+
+function pickAiAvatar(existing: string[]): string {
+  const taken = new Set(existing);
+  const free = AI_AVATAR_POOL.filter((id) => !taken.has(id));
+  if (free.length > 0) return free[Math.floor(Math.random() * free.length)];
+  return AI_AVATAR_POOL[Math.floor(Math.random() * AI_AVATAR_POOL.length)];
 }
 
 // POST /api/rooms — create room
@@ -359,6 +377,7 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
   }
 
   const aiName = pickAiName(players.map((p) => p.name));
+  const aiAvatarId = pickAiAvatar(players.map((p) => p.avatarId).filter((v): v is string => !!v));
   const orderIndex = players.length;
   const aiSessionToken = `ai-${randomBytes(16).toString("hex")}`;
 
@@ -372,6 +391,7 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
       orderIndex,
       isConnected: true,
       isAi: true,
+      avatarId: aiAvatarId,
       aiDifficulty: difficulty,
     })
     .returning();
