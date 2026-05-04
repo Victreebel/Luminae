@@ -1000,7 +1000,7 @@ export default function GameBoard() {
               <div className="flex items-center gap-1.5 opacity-80">
                 <MiniGem color="flux" size={14} />
                 <span className="text-[10px] font-mono font-bold text-amber-300/80">{fluxCount}</span>
-                <span className="text-[9px] text-muted-foreground">wild</span>
+                <span className="text-[9px] text-muted-foreground">Singularity</span>
               </div>
             );
           })()}
