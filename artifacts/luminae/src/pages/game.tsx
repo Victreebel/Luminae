@@ -596,6 +596,7 @@ export default function GameBoard() {
 
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
+    if (prev && newState.version <= prev.version) return;
       const action = newState.lastAction;
       const isMarketAction = action && (
         action.type === 'purchase_card' ||
@@ -750,8 +751,9 @@ export default function GameBoard() {
     queueTimerRef.current = null;
     if (stateQueueRef.current.length === 0) return;
     const remaining = animationEndTimeRef.current - Date.now();
-    if (remaining > 50) {
-      queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), remaining + 100);
+    if (remaining > 50 || pendingTurnAnnounceRef.current) {
+      const delay = remaining > 50 ? remaining + 100 : 200;
+      queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
       return;
     }
     const next = stateQueueRef.current.shift()!;
@@ -770,10 +772,12 @@ export default function GameBoard() {
     sessionToken: session?.sessionToken || '',
     onStateUpdate: (newState) => {
       const remaining = animationEndTimeRef.current - Date.now();
-      if (remaining > 50) {
+      const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
+      if (remaining > 50 || queueBusy) {
         stateQueueRef.current.push(newState);
         if (!queueTimerRef.current) {
-          queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), remaining + 100);
+          const delay = remaining > 50 ? remaining + 100 : 100;
+          queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
         }
       } else {
         processUpdateRef.current(newState);
