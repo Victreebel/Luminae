@@ -32,10 +32,7 @@ import luminaryArchivist from '@assets/generated_images/luminary_archivist.png';
 import luminaryCultivator from '@assets/generated_images/luminary_cultivator.png';
 import luminaryVoidcaller from '@assets/generated_images/luminary_voidcaller.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import cardBackImg from '@assets/generated_images/card_back.png';
-import cardBackTier1 from '@assets/generated_images/card_back_tier1.png';
-import cardBackTier2 from '@assets/generated_images/card_back_tier2.png';
-import cardBackTier3 from '@assets/generated_images/card_back_tier3.png';
+import cardBackLogo from '@assets/generated_images/luminae_card_back_logo.png';
 
 // Vite glob: bundle every per-card art image and key by id (filename w/o ext).
 const CARD_ART_MODULES = import.meta.glob(
@@ -284,18 +281,18 @@ function TurnCountdown({ deadline, active }: { deadline: number | null; active: 
 
 function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: number; tier?: 1 | 2 | 3 }) {
   const sz = size === 'sm' ? 'w-10 h-14' : 'w-32 h-44';
-  const tierBackMap: Record<1 | 2 | 3, string> = {
-    1: cardBackTier1,
-    2: cardBackTier2,
-    3: cardBackTier3,
+  const tintMap: Record<1 | 2 | 3, string> = {
+    1: 'brightness-105 saturate-125 hue-rotate-0',
+    2: 'brightness-105 saturate-125 hue-rotate-90',
+    3: 'brightness-105 saturate-125 hue-rotate-180',
   };
-  const back = tier ? tierBackMap[tier] : cardBackImg;
+  const tint = tier ? tintMap[tier] : 'brightness-105 saturate-125';
   return (
     <div className={`${sz} relative rounded-xl overflow-hidden border-2 border-border/60 shadow-md bg-secondary`}>
       <img
-        src={back}
+        src={cardBackLogo}
         alt="Card back"
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        className={`absolute inset-0 w-full h-full object-cover pointer-events-none select-none ${tint}`}
         draggable={false}
       />
       {count !== undefined && (
