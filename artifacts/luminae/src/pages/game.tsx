@@ -171,29 +171,28 @@ function ArtifactCardView({
     <motion.div
       whileHover={showActions ? { y: -3 } : {}}
       className={`
-        group relative w-32 h-44 rounded-xl overflow-hidden border-2 shadow-xl
-        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)]' : 'border-black/20'}
+        group relative w-32 h-44 rounded-xl overflow-hidden shadow-xl bg-black
+        ${reserved ? 'shadow-[0_0_15px_rgba(255,196,61,0.35)] ring-2 ring-[color:var(--flux)]' : 'ring-1 ring-black/30'}
       `}
       style={{
         transformStyle: 'preserve-3d',
-        borderColor: reserved ? GEM_META.flux.hex : undefined,
       }}
       title={card.flavor || card.name}
     >
       {/* Tier backdrop */}
-      <img src={backdrop} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
+      <img src={backdrop} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none scale-[1.06]" draggable={false} />
       {/* Card art (full background, dimmed behind info) */}
       {art && (
         <img
           src={art}
           alt={card.name}
-          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none scale-[1.02]"
-          style={{ objectFit: 'cover', backgroundColor: 'transparent' }}
+          className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none scale-[1.08]"
+          style={{ objectFit: 'cover', backgroundColor: 'transparent', imageRendering: 'auto' }}
           draggable={false}
         />
       )}
       {/* Dark overlay so text is readable */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/15 to-black/90 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
       <div className="relative z-10 h-full p-2 flex flex-col justify-between">
         <div className="flex justify-between items-start">
