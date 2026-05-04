@@ -636,3 +636,51 @@ id = "4_7iaeUQvQyvTyrbfn-pT"
 uri = "file://attached_assets/generated_images/generated_image.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "9JI5sONO9m_4w_B8nNFO_"
+uri = "file://attached_assets/generated_images/avatars/avatar_stargazer.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "A7ecfmjfqeCvtlAimf2ta"
+uri = "file://attached_assets/generated_images/avatars/avatar_forgemaster.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3NwmK2Gvopa3yDbP5x4hG"
+uri = "file://attached_assets/generated_images/avatars/avatar_voidcaller.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Vv3iSt0sNpnzw0zLGcWxz"
+uri = "file://attached_assets/generated_images/avatars/avatar_archivist.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HQdD4huNSnpX3PFJi_PIc"
+uri = "file://attached_assets/generated_images/avatars/avatar_cultivator.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "oLRHUCeLE-QHbEmr9NANF"
+uri = "file://attached_assets/generated_images/avatars/avatar_sentinel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "LnrJUTPKal2jqlZSPP3ei"
+uri = "file://attached_assets/generated_images/avatars/avatar_oracle.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "e9LlSev9jZcPV8eor_AjT"
+uri = "file://attached_assets/generated_images/avatars/avatar_sovereign.png"
+type = "image"
+title = "generated_image"

@@ -12,9 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveSession, getSession } from "@/lib/session";
+import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer, AVATARS } from "@/lib/avatars";
+import { AvatarPicker } from "@/components/AvatarPicker";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Timer, Clock } from "lucide-react";
+import { Users, Plus, ArrowRight, Timer, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
@@ -26,12 +28,19 @@ export default function Home() {
   const { toast } = useToast();
   const [activeSession, setActiveSession] = useState(() => getSession());
   const [mode, setMode] = useState<Mode>("home");
+  const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState(2);
   const [turnTimer, setTurnTimer] = useState<string>("0");
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+
+  const handleAvatarSelect = (id: string) => {
+    setAvatarId(id);
+    saveAvatarId(id);
+  };
 
   const createRoom = useCreateRoom();
   const joinRoom = useJoinRoom();
@@ -63,6 +72,7 @@ export default function Home() {
         sessionToken: res.sessionToken,
         playerName: res.player.name,
         isHost: true,
+        avatarId,
       });
       setLocation(`/lobby/${res.room.id}`);
     } catch (err: any) {
@@ -90,6 +100,7 @@ export default function Home() {
         sessionToken: res.sessionToken,
         playerName: res.player.name,
         isHost: res.player.isHost,
+        avatarId,
       });
       if (res.room.status !== "lobby") setLocation(`/game/${res.room.id}`);
       else setLocation(`/lobby/${res.room.id}`);
@@ -112,7 +123,7 @@ export default function Home() {
       />
 
       {/* Logo area */}
-      <div className="relative z-10 flex-none pt-14 pb-6 flex flex-col items-center gap-3">
+      <div className="relative z-10 flex-none pt-10 pb-4 flex flex-col items-center gap-3">
         {/* Gem icon */}
         <motion.img
           initial={{ opacity: 0, scale: 0.7 }}
@@ -120,7 +131,7 @@ export default function Home() {
           transition={{ duration: 0.45, type: 'spring', stiffness: 200, damping: 18 }}
           src={gemIcon}
           alt=""
-          className="w-20 h-20 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
+          className="w-16 h-16 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
           draggable={false}
         />
         {/* Wordmark */}
@@ -130,7 +141,7 @@ export default function Home() {
           transition={{ duration: 0.45, delay: 0.12 }}
           src={logoLuminae}
           alt="Luminae"
-          className="w-52 h-auto drop-shadow-[0_0_22px_rgba(255,196,61,0.3)]"
+          className="w-44 h-auto drop-shadow-[0_0_22px_rgba(255,196,61,0.3)]"
           draggable={false}
         />
         <motion.p
@@ -141,6 +152,49 @@ export default function Home() {
         >
           Forge cosmic affinities. Claim prestige.
         </motion.p>
+
+        {/* Avatar selector — always visible */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="w-full max-w-sm px-5"
+        >
+          <button
+            type="button"
+            onClick={() => setShowAvatarPicker(v => !v)}
+            className="w-full flex items-center gap-3 rounded-2xl border border-border/50 bg-card/50 backdrop-blur px-3 py-2.5 hover:border-border transition-colors"
+          >
+            <div
+              className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2"
+              style={{ borderColor: `${getAvatarForPlayer(avatarId).accent}88` }}
+            >
+              <img src={getAvatarForPlayer(avatarId).image} alt="" className="w-full h-full object-cover" draggable={false} />
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Your avatar</div>
+              <div className="text-sm font-semibold truncate">{getAvatarForPlayer(avatarId).name}</div>
+            </div>
+            {showAvatarPicker
+              ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+              : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+            }
+          </button>
+          <AnimatePresence>
+            {showAvatarPicker && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-3">
+                  <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Main content — slides between modes */}

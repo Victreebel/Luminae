@@ -25,6 +25,7 @@ import {
   ChevronDown, ChevronUp, Flag, X
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
+import { getAvatarForPlayer } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import luminaryStargazer from '@assets/generated_images/luminary_stargazer.png';
@@ -80,6 +81,24 @@ function pickLuminaryPortrait(luminary: Luminary): string {
 }
 
 // --- Helper Components ---
+
+function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null; name: string; size?: number }) {
+  const avatar = getAvatarForPlayer(avatarId);
+  return (
+    <div
+      className="rounded-full overflow-hidden shrink-0 border-2"
+      style={{ width: size, height: size, borderColor: `${avatar.accent}88` }}
+      title={name}
+    >
+      <img
+        src={avatar.image}
+        alt={name}
+        className="w-full h-full object-cover pointer-events-none select-none"
+        draggable={false}
+      />
+    </div>
+  );
+}
 
 function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
   const meta = GEM_META[color];
@@ -522,9 +541,10 @@ export default function GameBoard() {
       {/* ── My Holdings strip ── */}
       {me && (
         <div className={`rounded-2xl border px-3 py-2.5 bg-card/70 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}>
-          {/* top row: name + prestige */}
+          {/* top row: avatar + name + prestige */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 min-w-0">
+              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={26} />
               {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
               <span className="text-xs font-semibold truncate">{me.playerName}</span>
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
@@ -687,11 +707,12 @@ export default function GameBoard() {
                   key={p.playerId}
                   className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* Row 1: name + prestige */}
+                  {/* Row 1: avatar + name + prestige */}
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-1.5">
+                      <PlayerAvatar avatarId={null} name={p.playerName} size={26} />
                       {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                      <span className="font-semibold text-sm truncate max-w-[140px]">{p.playerName}</span>
+                      <span className="font-semibold text-sm truncate max-w-[120px]">{p.playerName}</span>
                       {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -869,9 +890,10 @@ export default function GameBoard() {
                 key={p.playerId}
                 className={`rounded-2xl border p-4 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/60 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-border/50'}`}
               >
-                {/* Header: name + prestige */}
+                {/* Header: avatar + name + prestige */}
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
+                    <PlayerAvatar avatarId={null} name={p.playerName} size={30} />
                     {isCurrent && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
                     <span className="font-bold text-sm">{p.playerName}</span>
                     {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
@@ -934,15 +956,23 @@ export default function GameBoard() {
           {(state.actionLog ?? []).length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground italic text-center">No actions yet.</div>
           ) : (
-            [...(state.actionLog ?? [])].reverse().slice(0, 12).map((entry, i) => (
-              <div key={i} className="flex items-start gap-3 px-4 py-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/60 mt-1.5 shrink-0" />
-                <div className="text-xs">
-                  <span className="font-semibold text-primary">{entry.playerName}</span>
-                  <span className="text-foreground/70"> · {entry.summary}</span>
+            [...(state.actionLog ?? [])].reverse().slice(0, 12).map((entry, i) => {
+              const isMe = entry.playerId === session.playerId;
+              return (
+              <div key={i} className="flex items-start gap-2.5 px-3 py-2.5">
+                <PlayerAvatar
+                  avatarId={isMe ? session.avatarId : null}
+                  name={entry.playerName}
+                  size={22}
+                />
+                <div className="text-xs leading-relaxed">
+                  <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{entry.playerName}</span>
+                  <span className="text-foreground/60"> · {entry.summary}</span>
+                  <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -967,8 +997,9 @@ export default function GameBoard() {
 
         <div className="flex items-center gap-2 min-w-0">
           {/* Turn pill */}
-          <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground animate-pulse" />}
+          <div className={`pl-1 pr-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+            <PlayerAvatar avatarId={session.avatarId} name={session.playerName} size={22} />
+            {!isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
             <span className="truncate max-w-[80px]">{isMyTurn ? 'Your turn' : currentPlayerName}</span>
           </div>
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
@@ -1248,7 +1279,10 @@ export default function GameBoard() {
 
               {/* Final scores — staggered in */}
               <div className="flex flex-col gap-2 pt-1">
-                {[...state.players].sort((a, b) => b.prestige - a.prestige).map((p, i) => (
+                {[...state.players].sort((a, b) => b.prestige - a.prestige).map((p, i) => {
+                  const isMe = p.playerId === session.playerId;
+                  const avatarIdForPlayer = isMe ? session.avatarId : null;
+                  return (
                   <motion.div
                     key={p.playerId}
                     initial={{ opacity: 0, x: -16 }}
@@ -1256,15 +1290,17 @@ export default function GameBoard() {
                     transition={{ delay: 0.55 + i * 0.1 }}
                     className={`flex justify-between items-center px-3 py-2 rounded-xl ${p.playerId === state.winnerId ? 'bg-primary/20 border border-primary/40' : 'bg-secondary/50'}`}
                   >
-                    <span className="font-medium text-sm flex items-center gap-1.5">
+                    <span className="font-medium text-sm flex items-center gap-2">
                       {p.playerId === state.winnerId && <span className="text-xs">🏆</span>}
+                      <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={24} />
                       {p.playerName}
                     </span>
                     <span className="font-bold text-primary flex items-center gap-1">
                       {p.prestige} <Sparkles className="h-3.5 w-3.5" />
                     </span>
                   </motion.div>
-                ))}
+                  );
+                })}
               </div>
 
               <motion.div

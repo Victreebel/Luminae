@@ -5,6 +5,7 @@ export interface Session {
   sessionToken: string;
   playerName: string;
   isHost: boolean;
+  avatarId?: string;
 }
 
 const SESSION_KEY = "luminae_session";
