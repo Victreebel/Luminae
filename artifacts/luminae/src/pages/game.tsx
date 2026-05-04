@@ -513,8 +513,56 @@ export default function GameBoard() {
 
   // ---- TABS ----
 
-  const BoardTab = () => (
+  const BoardTab = () => {
+    const myTotalGems = Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0);
+    const myCardCount = (me as any)?.purchasedCards?.length ?? (me as any)?.purchasedCardIds?.length ?? 0;
+    return (
     <div className="flex flex-col gap-5 p-3 pb-6">
+
+      {/* ── My Holdings strip ── */}
+      {me && (
+        <div className={`rounded-2xl border px-3 py-2.5 bg-card/70 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}>
+          {/* top row: name + prestige */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+              <span className="text-xs font-semibold truncate max-w-[140px]">{me.playerName}</span>
+              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">your turn</span>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-muted-foreground">
+                <span className="font-semibold text-foreground/80">{myTotalGems}</span> gems
+                {' · '}
+                <span className="font-semibold text-foreground/80">{myCardCount}</span> forged
+                {me.reservedCards.length > 0 && (
+                  <> · <span className="font-semibold text-foreground/80">{me.reservedCards.length}</span> held</>
+                )}
+              </span>
+              <div className="flex items-center gap-0.5">
+                <span className="font-serif font-black text-lg text-primary leading-none">{me.prestige}</span>
+                <Sparkles className="h-3 w-3 text-primary" />
+              </div>
+            </div>
+          </div>
+          {/* gem + bonus grid */}
+          <div className="flex gap-1">
+            {CRYSTALS.map((c) => {
+              const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
+              const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
+              return (
+                <div key={c} className="flex flex-col items-center gap-0.5 flex-1">
+                  <MiniGem color={c as GemKey} size={12} />
+                  <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
+                  {bonus > 0 && (
+                    <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Luminaries */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Luminaries</p>
@@ -635,7 +683,6 @@ export default function GameBoard() {
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
               const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
               const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
-              const heldColors = CRYSTALS.filter((c) => (p.crystals[c as keyof CrystalCounts] ?? 0) > 0).slice(0, 3);
               return (
                 <div
                   key={p.playerId}
@@ -673,29 +720,14 @@ export default function GameBoard() {
 
                   {/* Row 3: totals + reserved */}
                   <div className="flex items-center justify-between">
-                    <div className="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center gap-0.5">
-                          <span className="font-semibold text-foreground/80">{totalGems}</span> gems
-                        </span>
-                        <span>·</span>
-                        <span className="flex items-center gap-0.5">
-                          <span className="font-semibold text-foreground/80">{cardCount}</span> forged
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-muted-foreground/70">holds:</span>
-                        {heldColors.length > 0 ? (
-                          heldColors.map((c) => (
-                            <MiniGem key={c} color={c as GemKey} size={11} />
-                          ))
-                        ) : (
-                          <span className="italic">no gems</span>
-                        )}
-                        {CRYSTALS.some((c) => (p.crystals[c as keyof CrystalCounts] ?? 0) > 0) && totalGems > heldColors.length && (
-                          <span className="text-muted-foreground/70">+{totalGems - heldColors.length}</span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-0.5">
+                        <span className="font-semibold text-foreground/80">{totalGems}</span> gems
+                      </span>
+                      <span>·</span>
+                      <span className="flex items-center gap-0.5">
+                        <span className="font-semibold text-foreground/80">{cardCount}</span> forged
+                      </span>
                     </div>
                     <div className="flex gap-1 items-center">
                       {p.reservedCards.length > 0 ? (
@@ -718,6 +750,7 @@ export default function GameBoard() {
       )}
     </div>
   );
+  };
 
   const HandTab = () => (
     <div className="flex flex-col gap-5 p-4 pb-6">
