@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "IChmP_eJUnGZFBi61-vbx"
@@ -696,3 +695,9 @@ id = "vmrLX6jGC3ezOb30l4Rwb"
 uri = "file://artifacts/luminae/src/assets/avatars/avatar_voidcaller.png"
 type = "image"
 title = "Voidcaller avatar portrait"
+
+[[outputs]]
+id = "ZPWXinhoCjaB5iqAGx_z5"
+uri = "file://card_gallery.png"
+type = "image"
+title = "Luminae Card Art Gallery - All 90 Cards"
