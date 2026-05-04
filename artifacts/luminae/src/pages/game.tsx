@@ -1476,20 +1476,30 @@ export default function GameBoard() {
               const reservedCount = me.reservedCards.length;
               return (
                 <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                  {/* Chip */}
+                  {/* Mini card chip */}
                   {isFlux ? (
                     <button
                       type="button"
                       onClick={() => setShowReservedOverlay(true)}
-                      className="w-full flex items-center justify-center rounded-[4px] transition-opacity active:opacity-70"
+                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] relative overflow-hidden"
                       style={{
-                        height: 18,
-                        background: reservedCount > 0 ? `${meta.hex}CC` : 'transparent',
-                        border: `1.5px solid ${meta.hex}`,
-                        boxShadow: reservedCount > 0 ? `0 0 6px ${meta.hex}55` : 'none',
+                        height: 36,
+                        background: reservedCount > 0
+                          ? `linear-gradient(180deg, #0a0802 0%, ${meta.hex}55 100%)`
+                          : 'linear-gradient(180deg, #080808 0%, #141408 100%)',
+                        border: `1px solid ${reservedCount > 0 ? meta.hex + 'AA' : meta.hex + '33'}`,
+                        boxShadow: reservedCount > 0
+                          ? `inset 0 0 10px ${meta.hex}22, 0 0 10px ${meta.hex}44`
+                          : 'none',
                       }}
                     >
-                      <span className="text-[10px] font-black leading-none" style={{ color: reservedCount > 0 ? '#111' : meta.glowHex }}>
+                      {reservedCount > 0 && (
+                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                      )}
+                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
+                        color: reservedCount > 0 ? meta.glowHex : meta.hex + '33',
+                        textShadow: reservedCount > 0 ? `0 0 8px ${meta.hex}` : 'none',
+                      }}>
                         {reservedCount}
                       </span>
                     </button>
@@ -1498,15 +1508,25 @@ export default function GameBoard() {
                       type="button"
                       disabled={forgedCount === 0}
                       onClick={() => { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }}
-                      className="w-full flex items-center justify-center rounded-[4px] transition-opacity active:opacity-70 disabled:cursor-default"
+                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] disabled:cursor-default relative overflow-hidden"
                       style={{
-                        height: 18,
-                        background: forgedCount > 0 ? `${meta.hex}CC` : 'transparent',
-                        border: `1.5px solid ${forgedCount > 0 ? meta.hex : meta.hex + '44'}`,
-                        boxShadow: forgedCount > 0 ? `0 0 6px ${meta.hex}55` : 'none',
+                        height: 36,
+                        background: forgedCount > 0
+                          ? `linear-gradient(180deg, #050510 0%, ${meta.hex}44 100%)`
+                          : 'linear-gradient(180deg, #080808 0%, #101010 100%)',
+                        border: `1px solid ${forgedCount > 0 ? meta.hex + 'AA' : meta.hex + '22'}`,
+                        boxShadow: forgedCount > 0
+                          ? `inset 0 0 10px ${meta.hex}22, 0 0 8px ${meta.hex}33`
+                          : 'none',
                       }}
                     >
-                      <span className="text-[10px] font-black leading-none" style={{ color: forgedCount > 0 ? '#fff' : meta.hex + '55' }}>
+                      {forgedCount > 0 && (
+                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                      )}
+                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
+                        color: forgedCount > 0 ? '#fff' : meta.hex + '22',
+                        textShadow: forgedCount > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
+                      }}>
                         {forgedCount}
                       </span>
                     </button>
