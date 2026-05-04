@@ -339,8 +339,16 @@ export default function GameBoard() {
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; prestige: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
-  const [reserveBurst, setReserveBurst] = useState<{ key: number; tier: 1 | 2 | 3; gotFlux: boolean } | null>(null);
+  const [reserveBurst, setReserveBurst] = useState<{
+    key: number;
+    tier: 1 | 2 | 3;
+    gotFlux: boolean;
+    playerId: string;
+    playerName: string;
+    avatarId?: string | null;
+  } | null>(null);
   const reserveBurstKeyRef = useRef(0);
+  const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
@@ -375,6 +383,29 @@ export default function GameBoard() {
       }
       if (newState.status === 'finished' && state?.status !== 'finished') {
         gameAudio.playWin();
+      }
+      const lastActionKey = newState.lastAction ? JSON.stringify(newState.lastAction) : null;
+      if (lastActionKey && lastActionKey !== reserveBurstActionRef.current) {
+        reserveBurstActionRef.current = lastActionKey;
+        if (newState.lastAction?.type === 'reserve_card') {
+          const playerId = newState.lastAction.playerId as string | undefined;
+          const player = newState.players.find((p) => p.playerId === playerId);
+          if (player) {
+            const gotFlux = (newState.crystalBank.flux ?? 0) < (state?.crystalBank.flux ?? 0);
+            const tier = Number(newState.lastAction.tier ?? 1) as 1 | 2 | 3;
+            reserveBurstKeyRef.current += 1;
+            setReserveBurst({
+              key: reserveBurstKeyRef.current,
+              tier,
+              gotFlux,
+              playerId: player.playerId,
+              playerName: player.playerName,
+              avatarId: session?.playerId === player.playerId ? session.avatarId : null,
+            });
+            if (gotFlux) gameAudio.playFluxCoin();
+            setTimeout(() => setReserveBurst(null), 2300);
+          }
+        }
       }
     },
     onPlayerKicked: (playerId) => {
@@ -435,9 +466,6 @@ export default function GameBoard() {
   };
 
   const executeAction = async (payload: any) => {
-    const isReserve = payload.type === 'reserve_card';
-    const gotFlux = isReserve && (state?.crystalBank.flux ?? 0) > 0;
-    const reserveTier = (payload._tier as 1 | 2 | 3) ?? 1;
     try {
       const normalized = { ...payload };
       delete normalized._tier;
@@ -455,12 +483,8 @@ export default function GameBoard() {
         burstKeyRef.current += 1;
         setPurchaseBurst({ key: burstKeyRef.current, prestige, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
-      } else if (isReserve) {
+      } else if (payload.type === 'reserve_card') {
         gameAudio.playCardReserved();
-        if (gotFlux) gameAudio.playFluxCoin();
-        reserveBurstKeyRef.current += 1;
-        setReserveBurst({ key: reserveBurstKeyRef.current, tier: reserveTier, gotFlux });
-        setTimeout(() => setReserveBurst(null), 2100);
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Action failed', description: err.message });
@@ -516,7 +540,7 @@ export default function GameBoard() {
   };
   const handleReserveCard = (card: ArtifactCard) => {
     if (!isMyTurn) return;
-    executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier });
+    executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
   };
   const handleReserveDeck = (tier: number) => {
     if (!isMyTurn) return;
@@ -1342,22 +1366,27 @@ export default function GameBoard() {
                   <motion.div
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ opacity: 0, scale: 0.55, y: -32 }}
-                    animate={{ opacity: [0, 0, 1, 1, 0], scale: [0.55, 0.55, 1.05, 1, 0.9], y: [-32, -32, 0, 0, 0] }}
-                    transition={{ duration: 2.0, times: [0, 0.26, 0.48, 0.62, 1] }}
+                    animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.55, 0.55, 1.05, 1, 1, 0.96], y: [-32, -32, 0, 0, 0, 0] }}
+                    transition={{ duration: 2.35, times: [0, 0.22, 0.42, 0.62, 0.82, 1] }}
                   >
-                    <div
-                      className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
-                      style={{
-                        width: 72, height: 72,
-                        borderColor: `${GEM_META.flux.glowHex}88`,
-                      }}
-                    >
-                      <img
-                        src={getAvatarForPlayer(session.avatarId).image}
-                        alt={session.playerName}
-                        className="w-full h-full object-cover"
-                        draggable={false}
-                      />
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                        style={{
+                          width: 72, height: 72,
+                          borderColor: `${GEM_META.flux.glowHex}88`,
+                        }}
+                      >
+                        <img
+                          src={getAvatarForPlayer(reserveBurst.avatarId ?? session.avatarId).image}
+                          alt={reserveBurst.playerName}
+                          className="w-full h-full object-cover"
+                          draggable={false}
+                        />
+                      </div>
+                      <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
+                        {reserveBurst.playerName}
+                      </div>
                     </div>
                   </motion.div>
                 </motion.div>
