@@ -662,7 +662,7 @@ export function LuminaryPanelArt({
 //   establish   600ms  → board visible (overlay 0→0.44); spotlight pulses at card location
 //   focusing    800ms  → overlay 0.44→0.82; spotlight tightens; card awakens at board scale
 //   intro       350ms  → vessel locked at board position, opacity ramping
-//   zooming     650ms  → vessel glides from board position to cinematic center, scales up
+//   zooming     650ms  → camera/view glides toward the board card target
 //   pressure    500ms  → vessel breathes with colored glow — no cracks yet
 //   firstcrack  600ms  → primary vertical fault draws across the vessel face
 //   leaking     550ms  → white-gold light bleeds through the crack; dwell/hold
@@ -676,7 +676,7 @@ export function LuminaryPanelArt({
 //   done              → callback fires
 //
 // Board staging: cardRect carries the actual viewport coordinates of the Luminary card.
-//   The vessel starts at board position/scale and zooms to cinematic center.
+//   The board stays in view while the camera/view zooms toward that location.
 //   If cardRect is absent (e.g. dev panel in lobby), falls back to graceful approximate.
 //
 // Entity: entityCutout (transparent bg, no frame) rendered at 1.65× card size.
@@ -809,13 +809,15 @@ export function LuminarySummonCutscene({
     (isRevealedActive || isFlashing) && !isFading ? 0.62 :
     0.90;
 
-  // ── Board-relative vessel start position ───────────────────────────────────
+  // ── Board-relative camera target ───────────────────────────────────────────
   // Convert cardRect viewport coords → offset from screen center
   const vw = typeof window !== 'undefined' ? window.innerWidth  : 375;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
   const vcx = cardRect ? cardRect.cx - vw / 2 : 0;
   const vcy = cardRect ? cardRect.cy - vh / 2 : 55;
-  const boardScale = cardRect ? cardRect.w / CARD_W : BOARD_W / CARD_W;
+  const targetScale = cardRect ? Math.max(1.75, 340 / Math.max(1, cardRect.w)) : 2.6;
+  const targetX = cardRect ? -vcx : 0;
+  const targetY = cardRect ? -vcy : 0;
 
   // ── Vessel glow — ramps up through crack phases ─────────────────────────────
   const vesselGlow: [string, string, string] = isPressure
@@ -867,21 +869,64 @@ export function LuminarySummonCutscene({
         tap to skip
       </div>
 
-      {/* ── Cinematic stage ─────────────────────────────────────────────────── */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* ── Camera plane / board overlay ─────────────────────────────────────── */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{ transformOrigin: '50% 50%' }}
+        animate={{
+          x: isIntro ? 0 : targetX,
+          y: isIntro ? 0 : targetY,
+          scale: isIntro ? 1 : targetScale,
+        }}
+        transition={{
+          x: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+          y: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+          scale: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+        }}
+      >
+        {(isEstablish || isFocusing) && cardRect && (
+          <motion.div
+            className="absolute pointer-events-none"
+            animate={{
+              opacity: [0.25, 0.85, 0.45, 0.9],
+              rotate: [0, -0.4, 0.4, 0],
+              x: [0, -1, 1, 0],
+              y: [0, 1, -1, 0],
+            }}
+            transition={{ repeat: Infinity, duration: 0.55, ease: 'easeInOut' }}
+            style={{
+              left: cardRect.cx - cardRect.w / 2,
+              top: cardRect.cy - (cardRect.w * CARD_H) / CARD_W / 2,
+              width: cardRect.w,
+              height: (cardRect.w * CARD_H) / CARD_W,
+              boxShadow: `0 0 0 1px ${primaryColor}66, 0 0 18px ${primaryColor}55, 0 0 42px ${primaryColor}33`,
+              background: `radial-gradient(ellipse at center, ${primaryColor}22 0%, transparent 72%)`,
+              borderRadius: 14,
+              filter: 'blur(1px)',
+            }}
+          />
+        )}
 
+        {/* ── Cinematic stage ─────────────────────────────────────────────────── */}
+        <div className="absolute inset-0 flex items-center justify-center">
         {/* ── Sealed vessel — card face, starting at board position ────────── */}
         <AnimatePresence>
           {isVessel && (
             <motion.div
               key="vessel"
               className="relative overflow-hidden"
-              style={{ width: CARD_W, height: CARD_H, borderRadius: 14, border: `2px solid ${primaryColor}70` }}
-              initial={{ scale: boardScale, x: vcx, y: vcy, opacity: 0 }}
+              style={{
+                width: CARD_W,
+                height: CARD_H,
+                borderRadius: 14,
+                border: `2px solid ${primaryColor}70`,
+                opacity: isIntro || isZooming ? 1 : 0.0001,
+              }}
+              initial={{ scale: 1, x: 0, y: 0, opacity: 1 }}
               animate={{
-                scale: isIntro ? boardScale : isZooming ? 1.0 : ([1, 1.026, 1] as number[]),
-                x:     isIntro ? vcx : 0,
-                y:     isIntro ? vcy : 0,
+                scale: isIntro ? 1 : isZooming ? 1.0 : ([1, 1.026, 1] as number[]),
+                x: 0,
+                y: 0,
                 opacity: 1,
                 boxShadow: isZooming
                   ? `0 0 12px ${primaryColor}40`
@@ -889,27 +934,32 @@ export function LuminarySummonCutscene({
               }}
               exit={{ scale: 2.8, opacity: 0, transition: { duration: 0.42, ease: 'easeIn' } }}
               transition={{
-                scale:    isZooming ? { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
-                        : (isPressure || hasCracks) ? { repeat: Infinity, duration: 1.15, ease: 'easeInOut' }
-                        : { duration: 0.28 },
-                x:       { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
-                y:       { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+                scale: isZooming ? { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
+                  : (isPressure || hasCracks) ? { repeat: Infinity, duration: 1.15, ease: 'easeInOut' }
+                  : { duration: 0.28 },
                 opacity: { duration: 0.30 },
                 boxShadow: { repeat: Infinity, duration: 1.15, ease: 'easeInOut' },
               }}
             >
               {panelArt ? (
-                <img src={panelArt} alt={luminaryName} className="w-full h-full"
+                <img
+                  src={panelArt}
+                  alt={luminaryName}
+                  className="w-full h-full"
                   style={{ objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
-                  draggable={false} />
+                  draggable={false}
+                />
               ) : (
                 <LuminaryPanelArt luminaryId={luminaryId} size={CARD_W} />
               )}
 
               {/* ── Crack-light SVG overlay ─────────────────────────────────── */}
               {hasCracks && (
-                <svg className="absolute inset-0 w-full h-full pointer-events-none"
-                  viewBox={`0 0 ${CARD_W} ${CARD_H}`} style={{ overflow: 'visible' }}>
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox={`0 0 ${CARD_W} ${CARD_H}`}
+                  style={{ overflow: 'visible' }}
+                >
                   <defs>
                     <filter id="cg" x="-60%" y="-60%" width="220%" height="220%">
                       <feGaussianBlur stdDeviation="2.8" result="b" />
@@ -917,32 +967,45 @@ export function LuminarySummonCutscene({
                     </filter>
                   </defs>
 
-                  {/* Primary vertical fault — draws in firstcrack, stays throughout */}
                   <motion.path
                     d={`M${FX},0 L${FX-9},${Math.round(FY*.67)} L${FX},${FY} L${FX+9},${Math.round(FY*1.64)} L${FX-5},${CARD_H}`}
-                    stroke="white" strokeWidth="2.1" fill="none" filter="url(#cg)"
+                    stroke="white"
+                    strokeWidth="2.1"
+                    fill="none"
+                    filter="url(#cg)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.84, 0.94] }}
                     transition={{ duration: 0.60, ease: 'easeOut' }}
                   />
-                  {/* Wide warm-gold halo on primary crack */}
                   <motion.path
                     d={`M${FX},0 L${FX-9},${Math.round(FY*.67)} L${FX},${FY} L${FX+9},${Math.round(FY*1.64)} L${FX-5},${CARD_H}`}
-                    stroke="#ffe8a0" strokeWidth="7" fill="none" strokeLinecap="round"
+                    stroke="#ffe8a0"
+                    strokeWidth="7"
+                    fill="none"
+                    strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.24, 0.42] }}
                     transition={{ duration: 0.60, delay: 0.07, ease: 'easeOut' }}
                   />
 
-                  {/* Light-bleed node at intersection — leaking + cracking */}
                   {(isLeaking || isCracking) && (
                     <>
-                      <motion.circle cx={FX} cy={FY} r="10" fill="white"
+                      <motion.circle
+                        cx={FX}
+                        cy={FY}
+                        r="10"
+                        fill="white"
                         initial={{ opacity: 0, scale: 0.2 }}
                         animate={{ opacity: [0, 0.75, 1.0, 0.65], scale: [0.2, 1.25, 1.0] }}
                         transition={{ duration: 0.48, ease: 'easeOut' }}
                       />
-                      <motion.circle cx={FX} cy={FY} r="24" fill="none" stroke="#ffe8a0" strokeWidth="3"
+                      <motion.circle
+                        cx={FX}
+                        cy={FY}
+                        r="24"
+                        fill="none"
+                        stroke="#ffe8a0"
+                        strokeWidth="3"
                         initial={{ opacity: 0, scale: 0.1 }}
                         animate={{ opacity: [0, 0.55, 0.3, 0], scale: [0.1, 1.9, 2.6] }}
                         transition={{ duration: 0.88, ease: 'easeOut', delay: 0.1 }}
@@ -950,40 +1013,61 @@ export function LuminarySummonCutscene({
                     </>
                   )}
 
-                  {/* Secondary fault lines — cracking phase only */}
                   {isCracking && (
                     <>
                       <motion.path
                         d={`M0,${FY+1} L${FX-41},${FY-18} L${FX},${FY} L${FX+43},${FY+19} L${CARD_W},${FY+7}`}
-                        stroke="white" strokeWidth="1.4" fill="none" filter="url(#cg)"
+                        stroke="white"
+                        strokeWidth="1.4"
+                        fill="none"
+                        filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.32, 0.58] }}
                         transition={{ duration: 0.88, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M${CARD_W},50 L${FX+44},${FY-32} L${FX},${FY}`}
-                        stroke="white" strokeWidth="0.95" fill="none" filter="url(#cg)"
+                        stroke="white"
+                        strokeWidth="0.95"
+                        fill="none"
+                        filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.20, 0.44] }}
                         transition={{ duration: 0.72, delay: 0.18, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M0,${CARD_H-58} L${FX-36},${FY+68} L${FX-5},${CARD_H}`}
-                        stroke="white" strokeWidth="0.9" fill="none" filter="url(#cg)"
+                        stroke="white"
+                        strokeWidth="0.9"
+                        fill="none"
+                        filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.17, 0.38] }}
                         transition={{ duration: 0.68, delay: 0.30, ease: 'easeOut' }}
                       />
-                      {/* Pulsing ray burst at intersection */}
-                      <motion.circle cx={FX} cy={FY} r="5" fill="white"
+                      <motion.circle
+                        cx={FX}
+                        cy={FY}
+                        r="5"
+                        fill="white"
                         animate={{ opacity: [0.5, 1.0, 0.55, 1.0], scale: [1, 1.6, 1] }}
                         transition={{ repeat: Infinity, duration: 0.52 }}
                       />
-                      <motion.circle cx={FX} cy={FY} r="16" fill="none" stroke="#ffe8a0" strokeWidth="2.5"
+                      <motion.circle
+                        cx={FX}
+                        cy={FY}
+                        r="16"
+                        fill="none"
+                        stroke="#ffe8a0"
+                        strokeWidth="2.5"
                         animate={{ opacity: [0, 0.62, 0], scale: [0.4, 1.9] }}
                         transition={{ repeat: Infinity, duration: 0.68, delay: 0.1 }}
                       />
-                      <motion.circle cx={FX-9} cy={Math.round(FY*.67)} r="3.5" fill="white"
+                      <motion.circle
+                        cx={FX-9}
+                        cy={Math.round(FY*.67)}
+                        r="3.5"
+                        fill="white"
                         animate={{ opacity: [0, 0.52, 0.88, 0.4] }}
                         transition={{ repeat: Infinity, duration: 0.72, delay: 0.22 }}
                       />
@@ -994,6 +1078,26 @@ export function LuminarySummonCutscene({
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
+
+        {/* ── Board-card suppressor — hides original board card during reveal ─── */}
+        {cardRect && isRevealed && (
+          <motion.div
+            className="absolute pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              left: cardRect.cx - cardRect.w / 2 - 2,
+              top: cardRect.cy - (cardRect.w * CARD_H) / CARD_W / 2 - 2,
+              width: cardRect.w + 4,
+              height: (cardRect.w * CARD_H) / CARD_W + 4,
+              borderRadius: 14,
+              background: 'rgba(4,2,16,0.74)',
+              boxShadow: `0 0 0 1px ${primaryColor}44`,
+            }}
+          />
+        )}
 
         {/* ── Pure cosmic-light layer beneath the panel pieces ───────────────── */}
         {/* Light only — never a card or portrait image. Centered on the card. */}
