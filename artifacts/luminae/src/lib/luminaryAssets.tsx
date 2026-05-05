@@ -1078,7 +1078,6 @@ export function LuminarySummonCutscene({
             </motion.div>
           )}
         </AnimatePresence>
-        </div>
 
         {/* ── Board-card suppressor — hides original board card during reveal ─── */}
         {cardRect && isRevealed && (
@@ -1311,7 +1310,8 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
