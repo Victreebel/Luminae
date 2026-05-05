@@ -283,6 +283,7 @@ function LuminaryCard({ luminary }: { luminary: Luminary }) {
     <div
       className="relative w-24 h-24 rounded-xl overflow-hidden border-2 p-2 flex flex-col items-center justify-end gap-1 shadow-[0_0_18px_rgba(255,196,61,0.18)] shrink-0"
       style={{ borderColor: `${GEM_META.flux.hex}55` }}
+      data-luminary-card={luminary.id}
     >
       <img src={portrait} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/90 pointer-events-none" />
@@ -313,7 +314,7 @@ function LuminaryCard({ luminary }: { luminary: Luminary }) {
 // ─── Luminary Summoning Cutscene ─────────────────────────────────────────────
 
 type CutscenePhase =
-  | 'zoom' | 'linger1' | 'crack1' | 'linger2'
+  | 'board' | 'zoomin' | 'linger1' | 'crack1' | 'linger2'
   | 'cracking' | 'flash' | 'fade' | 'reveal' | 'done';
 
 // ── Fault-line geometry (viewBox 0 0 100 100) ────────────────────────────────
@@ -386,17 +387,18 @@ const CUTSCENE_PARTICLES = Array.from({ length: 16 }, (_, i) => {
 });
 
 // Total duration of one cutscene (ms) — used to size the action lock.
-const CUTSCENE_DONE_MS = 11000;
+const CUTSCENE_DONE_MS = 9900;
 
 const CUTSCENE_SCHEDULE: [CutscenePhase, number][] = [
-  ['linger1',   950],
-  ['crack1',   2500],
-  ['linger2',  4400],
-  ['cracking', 5600],
-  ['flash',    6900],
-  ['fade',     7350],
-  ['reveal',   8300],
-  ['done',    11000],
+  ['zoomin',   700],   // board context shown 700ms, then card zooms in
+  ['linger1', 2000],   // 1300ms zoom travel → card settles at center
+  ['crack1',  2850],   // 850ms breathing room → first crack draws
+  ['linger2', 3700],   // 850ms tension linger (was 1900ms)
+  ['cracking',4700],   // 1000ms rapid multi-crack burst
+  ['flash',   5800],   // SHATTER
+  ['fade',    6250],   // flash fades over 850ms
+  ['reveal',  7100],   // figure emerges over game board
+  ['done',    9900],
 ];
 
 function LuminaryCutscene({
@@ -406,20 +408,40 @@ function LuminaryCutscene({
   portrait: string;
   onComplete: () => void;
 }) {
-  const [phase, setPhase] = useState<CutscenePhase>('zoom');
+  const [phase, setPhase] = useState<CutscenePhase>('board');
+  const [boardCenter, setBoardCenter] = useState<{
+    offsetX: number; offsetY: number; boardScale: number;
+    screenX: number; screenY: number;
+  } | null>(null);
 
   useEffect(() => {
+    // Measure board card DOM position — board phase lasts 700ms so there's plenty of time.
+    const el = document.querySelector(`[data-luminary-card="${luminary.id}"]`);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      setBoardCenter({
+        screenX:    rect.left + rect.width  / 2,
+        screenY:    rect.top  + rect.height / 2,
+        offsetX:    rect.left + rect.width  / 2 - vw / 2,
+        offsetY:    rect.top  + rect.height / 2 - vh / 2,
+        boardScale: rect.width / 480, // 480 = cardSize(200) × zoom(2.4)
+      });
+    }
     gameAudio.playWhoosh();
-    const timers = CUTSCENE_SCHEDULE.map(([p, ms]) => setTimeout(() => setPhase(p), ms));
-    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 7600);
+    const timers    = CUTSCENE_SCHEDULE.map(([p, ms]) => setTimeout(() => setPhase(p), ms));
+    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 6450);
     timers.push(holyTimer);
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [luminary.id]);
 
   useEffect(() => {
     if (phase === 'done') onComplete();
   }, [phase, onComplete]);
 
+  const isBoard         = phase === 'board';
+  const isZoomin        = phase === 'zoomin';
   // Card unmounts instantly at flash — shards + cosmic light replace it.
   const showCard        = !['flash', 'fade', 'reveal', 'done'].includes(phase);
   // Cracks only live on the card, so they only show while the card is mounted.
@@ -431,8 +453,14 @@ function LuminaryCutscene({
   const showFade        = phase === 'fade';
   const showReveal      = phase === 'reveal';
   const cardSize        = 200;
-  const cardScale       = phase === 'zoom' ? 1.1 : 2.4;
-  const renderedSize    = cardSize * 2.4; // 480 px — shard containers are fixed at shatter scale
+  const renderedSize    = cardSize * 2.4; // 480 px — shard containers fixed at shatter scale
+
+  const bc = boardCenter;
+  // Board-aware card position: starts at board element, zooms to screen center.
+  const cardAnimX     = (isBoard && bc) ? bc.offsetX : 0;
+  const cardAnimY     = (isBoard && bc) ? bc.offsetY : 0;
+  const cardAnimScale = (isBoard && bc) ? bc.boardScale : 2.4;
+  const cardAnimOp    = isBoard ? 0 : 1; // invisible during board phase — real card shows through
 
   return (
     <motion.div
@@ -442,11 +470,52 @@ function LuminaryCutscene({
       exit={{ opacity: 0, transition: { duration: 0.55, ease: 'easeIn' } }}
       transition={{ duration: 0.35 }}
     >
-      {/* ── Background ── */}
+      {/* ── Background — semi-transparent during board phase so game board shows through ── */}
       <motion.div className="absolute inset-0"
-        animate={{ backgroundColor: showReveal ? 'rgba(0,0,0,0.68)' : 'rgba(0,0,0,1)' }}
-        transition={{ duration: 1.2 }}
+        animate={{
+          backgroundColor: showReveal ? 'rgba(0,0,0,0.68)'
+            : isBoard       ? 'rgba(0,0,0,0.52)'
+            : 'rgba(0,0,0,1)',
+        }}
+        transition={{ duration: isZoomin ? 1.3 : 1.2 }}
       />
+
+      {/* ── Board phase: cinematic spotlight on the luminary's board location ── */}
+      {(isBoard || isZoomin) && bc && (
+        <>
+          {/* Radial vignette — darkens everything except the card's position */}
+          <motion.div className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(circle 170px at ${bc.screenX}px ${bc.screenY}px, transparent 0%, rgba(0,0,0,0.45) 85%, rgba(0,0,0,0.72) 100%)`,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isZoomin ? 0 : 1 }}
+            transition={{ duration: isZoomin ? 0.55 : 0.4 }}
+          />
+          {/* Gold glow halo centred on the board card */}
+          <motion.div className="absolute pointer-events-none"
+            style={{
+              width: 128, height: 128,
+              left: bc.screenX - 64, top: bc.screenY - 64,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle at center, rgba(255,196,61,0.28) 0%, rgba(255,196,61,0.08) 55%, transparent 75%)',
+              boxShadow: '0 0 24px rgba(255,196,61,0.32), 0 0 48px rgba(255,196,61,0.10)',
+            }}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: isZoomin ? 0 : 1, scale: isZoomin ? 0.5 : [1, 1.08, 1] }}
+            transition={{ duration: isZoomin ? 0.4 : 0.5, scale: { repeat: Infinity, duration: 1.4, ease: 'easeInOut' } }}
+          />
+          {/* "Summoning" label below the card */}
+          <motion.div className="absolute pointer-events-none text-center"
+            style={{ left: bc.screenX, top: bc.screenY + 58, transform: 'translateX(-50%)' }}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: isZoomin ? 0 : 1, y: isZoomin ? 5 : 0 }}
+            transition={{ duration: 0.35, delay: isZoomin ? 0 : 0.2 }}
+          >
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-amber-300/70 whitespace-nowrap">Summoning</p>
+          </motion.div>
+        </>
+      )}
 
       {/* ── Cosmic light source — lives beneath the card shell, blooms at shatter ── */}
       <AnimatePresence>
@@ -468,16 +537,17 @@ function LuminaryCutscene({
         )}
       </AnimatePresence>
 
-      {/* ── Zoomed card with fault-line cracks ── */}
+      {/* ── Card — zooms from board card location to screen centre ── */}
       <AnimatePresence>
         {showCard && (
           <motion.div key="card" className="relative shrink-0"
             style={{ width: cardSize, height: cardSize }}
-            initial={{ scale: 0.55, opacity: 0 }}
-            animate={{ scale: cardScale, opacity: 1 }}
-            transition={phase === 'zoom'
-              ? { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
-              : { duration: 0.5, ease: 'easeOut' }}
+            animate={{ x: cardAnimX, y: cardAnimY, scale: cardAnimScale, opacity: cardAnimOp }}
+            transition={
+              isBoard   ? { duration: 0 }
+              : isZoomin ? { duration: 1.3, ease: [0.2, 0.05, 0.32, 1] }
+              : { duration: 0.5, ease: 'easeOut' }
+            }
             exit={{ opacity: 0, transition: { duration: 0 } }}
           >
             <img src={portrait} alt={luminary.name}
@@ -485,8 +555,8 @@ function LuminaryCutscene({
               draggable={false} />
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-black/15 via-transparent to-black/80 pointer-events-none" />
             <div className="absolute inset-0 rounded-2xl pointer-events-none"
-              style={{ boxShadow: '0 0 0 2px rgba(255,196,61,0.6), 0 0 40px rgba(255,196,61,0.3), inset 0 0 20px rgba(0,0,0,0.4)' }} />
-            {phase !== 'zoom' && (
+              style={{ boxShadow: '0 0 0 2px rgba(255,196,61,0.55), 0 0 40px rgba(255,196,61,0.28), inset 0 0 20px rgba(0,0,0,0.4)' }} />
+            {!['board', 'zoomin', 'linger1'].includes(phase) && (
               <motion.div className="absolute bottom-0 inset-x-0 px-2 py-1.5 flex justify-between items-end"
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
                 <span className="text-[8px] font-semibold text-white/60">{luminary.name}</span>
@@ -698,38 +768,26 @@ function LuminaryCutscene({
                     transform: 'scale(1.4)',
                     filter: 'blur(12px)',
                   }} />
-                  {/* Figure portrait — aggressively masked so only the central subject reads */}
-                  <img src={portrait} alt={luminary.name} draggable={false} style={{
-                    width: '100%', height: '100%', objectFit: 'cover',
-                    objectPosition: 'center 20%',
-                    // Two-stop radial mask: sharp centre, fast fade, fully transparent edges
-                    // Eliminates the rectangular portrait boundary — board shows through
-                    maskImage: [
-                      'radial-gradient(ellipse 66% 80% at 50% 34%,',
-                      '  black 0%,',
-                      '  black 18%,',
-                      '  rgba(0,0,0,0.88) 32%,',
-                      '  rgba(0,0,0,0.55) 48%,',
-                      '  rgba(0,0,0,0.18) 60%,',
-                      '  rgba(0,0,0,0.04) 70%,',
-                      '  transparent 76%)',
-                    ].join(''),
-                    WebkitMaskImage: [
-                      'radial-gradient(ellipse 66% 80% at 50% 34%,',
-                      '  black 0%,',
-                      '  black 18%,',
-                      '  rgba(0,0,0,0.88) 32%,',
-                      '  rgba(0,0,0,0.55) 48%,',
-                      '  rgba(0,0,0,0.18) 60%,',
-                      '  rgba(0,0,0,0.04) 70%,',
-                      '  transparent 76%)',
-                    ].join(''),
-                    filter: [
-                      'drop-shadow(0 0 16px rgba(255,200,60,0.60))',
-                      'drop-shadow(0 0 36px rgba(255,145,25,0.32))',
-                      'drop-shadow(0 0 60px rgba(255,100,10,0.14))',
-                    ].join(' '),
-                  }} />
+                  {/* Figure portrait — hardest feasible CSS cutout without source alpha:
+                      1. Tight radial mask cuts the entire element to transparent at edges.
+                      2. Dark vignette overlay on top burns portrait background to near-black
+                         before the mask reaches it, so the feather zone fades portrait → dark → transparent.
+                      3. drop-shadow on the img element follows the mask shape (not the rectangle). */}
+                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                    <img src={portrait} alt={luminary.name} draggable={false} style={{
+                      width: '100%', height: '100%', objectFit: 'cover',
+                      objectPosition: 'center 15%',
+                      maskImage: 'radial-gradient(ellipse 58% 72% at 50% 30%, black 0%, black 14%, rgba(0,0,0,0.88) 28%, rgba(0,0,0,0.48) 44%, rgba(0,0,0,0.10) 56%, transparent 66%)',
+                      WebkitMaskImage: 'radial-gradient(ellipse 58% 72% at 50% 30%, black 0%, black 14%, rgba(0,0,0,0.88) 28%, rgba(0,0,0,0.48) 44%, rgba(0,0,0,0.10) 56%, transparent 66%)',
+                      filter: 'drop-shadow(0 0 18px rgba(255,200,60,0.70)) drop-shadow(0 0 40px rgba(255,145,25,0.38)) drop-shadow(0 0 70px rgba(255,100,10,0.16))',
+                    }} />
+                    {/* Edge-burn vignette — pushes portrait background toward pure black
+                        in the feather zone so the mask fades to dark, not coloured portrait */}
+                    <div style={{
+                      position: 'absolute', inset: 0, pointerEvents: 'none',
+                      background: 'radial-gradient(ellipse 52% 64% at 50% 30%, transparent 0%, transparent 26%, rgba(0,0,0,0.58) 50%, rgba(0,0,0,0.92) 64%, rgba(0,0,0,0.99) 76%, black 86%)',
+                    }} />
+                  </div>
                 </motion.div>
               </motion.div>
             </motion.div>
