@@ -328,18 +328,16 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
                   <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
                     {req}
                   </span>
-                  {/* Bonus-card badge — matches the bonus icon on ArtifactCardView */}
+                  {/* Solid color dot = "card bonus type required" — visually distinct
+                      from gem-image cost chips used everywhere else in the UI */}
                   <div
-                    className="w-4 h-4 rounded-full shadow-md ring-2 ring-black/60 overflow-hidden bg-black/40 flex items-center justify-center"
-                    title={`${req} ${meta.name} bonus${req === 1 ? '' : 'es'} required`}
-                  >
-                    <img
-                      src={meta.image}
-                      alt=""
-                      className="w-full h-full object-contain pointer-events-none select-none"
-                      draggable={false}
-                    />
-                  </div>
+                    className="w-4 h-4 rounded-full shadow-md ring-2 ring-black/60 shrink-0"
+                    style={{
+                      background: meta.hex,
+                      boxShadow: `0 0 5px ${meta.hex}88`,
+                    }}
+                    title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
+                  />
                 </div>
               );
             })}

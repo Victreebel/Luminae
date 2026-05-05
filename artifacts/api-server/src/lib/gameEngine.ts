@@ -343,10 +343,10 @@ export const LUMINARIES: LuminaryDef[] = [
     name: "The Stellar Guide",
     domain: "Fate",
     lumens: 4,
-    requirements: { ruby: 0, sapphire: 3, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
+    requirements: { ruby: 0, sapphire: 3, emerald: 3, onyx: 0, pearl: 3, flux: 0 },
     flavor: "She does not choose your path. She simply makes certain you cannot pretend you didn't see it.",
     summonColor: "#3d6bff",
-    summonSecondaryColor: "#a8b8e8",
+    summonSecondaryColor: "#2ecc71",
     auraStyle: "cosmic",
   },
 
