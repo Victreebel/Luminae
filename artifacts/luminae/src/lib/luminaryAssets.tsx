@@ -684,13 +684,13 @@ const CARD_W = 210;
 const CARD_H = 300;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
-  intro:      500,
-  zooming:    620,
-  glowing:    720,
-  shattering: 500,
-  flashing:   300,
-  revealed:   1900,
-  fading:     650,
+  intro:      800,
+  zooming:    1100,
+  glowing:    3450,
+  shattering: 1200,
+  flashing:   450,
+  revealed:   3200,
+  fading:     700,
   done:       0,
 };
 
@@ -739,7 +739,7 @@ export function LuminarySummonCutscene({
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
   const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
-
+  const isZooming = phase === 'zooming';
   useEffect(() => {
     let idx = 0;
     let cancelled = false;
@@ -759,7 +759,6 @@ export function LuminarySummonCutscene({
   }, [onComplete]);
 
   const isIntro      = phase === 'intro';
-  const isZooming    = phase === 'zooming';
   const isGlowing    = phase === 'glowing';
   const isVessel     = isIntro || isZooming || isGlowing;
   const isShattering = phase === 'shattering' || phase === 'flashing';
@@ -798,14 +797,14 @@ export function LuminarySummonCutscene({
           {isVessel && (
             <motion.div
               key="vessel"
-              initial={{ scale: 0.22, y: 75, opacity: 0 }}
+            initial={{ scale: 0.18, y: 92, opacity: 0 }}
               animate={{
                 scale: isIntro
-                  ? 0.22
+                  ? 0.18
                   : isZooming
                     ? 1.0
-                    : ([1, 1.045, 1] as number[]),
-                y: isIntro ? 75 : 0,
+                    : ([1, 1.03, 1] as number[]),
+                y: isIntro ? 92 : 0,
                 opacity: 1,
                 boxShadow: isGlowing
                   ? [
@@ -815,20 +814,16 @@ export function LuminarySummonCutscene({
                     ]
                   : `0 0 18px ${primaryColor}55`,
               }}
-              exit={{
-                scale: 2.9,
-                opacity: 0,
-                transition: { duration: 0.32, ease: 'easeIn' },
-              }}
+              exit={{ scale: 3.2, opacity: 0, transition: { duration: 0.5, ease: 'easeIn' } }}
               transition={{
                 scale: isZooming
-                  ? { duration: 0.62, ease: [0.22, 1, 0.36, 1] }
+                  ? { duration: 1.1, ease: [0.16, 1, 0.3, 1] }
                   : isGlowing
-                    ? { repeat: Infinity, duration: 0.72, ease: 'easeInOut' }
-                    : { duration: 0.28 },
-                y: { duration: 0.62, ease: [0.22, 1, 0.36, 1] },
-                opacity: { duration: 0.22 },
-                boxShadow: { repeat: Infinity, duration: 0.72, ease: 'easeInOut' },
+                    ? { repeat: Infinity, duration: 0.95, ease: 'easeInOut' }
+                    : { duration: 0.3 },
+                y: { duration: 1.1, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.35 },
+                boxShadow: { repeat: Infinity, duration: 0.95, ease: 'easeInOut' },
               }}
               className="relative overflow-hidden"
               style={{
@@ -862,48 +857,48 @@ export function LuminarySummonCutscene({
                   <motion.path
                     d={`M105,0 L96,78 L105,118 L114,192 L99,${CARD_H}`}
                     stroke="white" strokeWidth="1.8" fill="none" opacity={0.72}
-                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.26, delay: 0 }}
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1, opacity: [0, 0.72, 0.82] }}
+                    transition={{ duration: 0.65, delay: 0, ease: 'easeOut' }}
                   />
                   {/* Horizontal fault crossing the vertical */}
                   <motion.path
                     d={`M0,118 L64,100 L105,118 L148,136 L${CARD_W},124`}
                     stroke="white" strokeWidth="1.1" fill="none" opacity={0.52}
-                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.28, delay: 0.16 }}
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1, opacity: [0, 0.24, 0.52] }}
+                    transition={{ duration: 1.2, delay: 0.64, ease: 'easeOut' }}
                   />
                   {/* Upper-right diagonal — toward shard scatter direction */}
                   <motion.path
                     d={`M${CARD_W},58 L149,86 L105,118`}
                     stroke="white" strokeWidth="0.9" fill="none" opacity={0.42}
-                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.22, delay: 0.26 }}
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1, opacity: [0, 0.14, 0.42] }}
+                    transition={{ duration: 1.2, delay: 1.08, ease: 'easeOut' }}
                   />
                   {/* Lower-left spur */}
                   <motion.path
                     d={`M36,194 L80,224 L68,${CARD_H}`}
                     stroke="white" strokeWidth="0.8" fill="none" opacity={0.36}
-                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.20, delay: 0.34 }}
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1, opacity: [0, 0.12, 0.36] }}
+                    transition={{ duration: 1.2, delay: 1.38, ease: 'easeOut' }}
                   />
                   {/* Upper-left spur */}
                   <motion.path
                     d={`M0,80 L62,96 L96,78`}
                     stroke="white" strokeWidth="0.7" fill="none" opacity={0.3}
-                    initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.18, delay: 0.38 }}
+                    initial={{ pathLength: 0 }} animate={{ pathLength: 1, opacity: [0, 0.1, 0.3] }}
+                    transition={{ duration: 1.0, delay: 1.55, ease: 'easeOut' }}
                   />
                   {/* Light bleed at main crack intersection */}
                   <motion.circle cx="105" cy="118" r="7"
                     fill="white"
-                    animate={{ opacity: [0, 0.6, 0] }}
-                    transition={{ repeat: Infinity, duration: 0.55, delay: 0.3 }}
+                    animate={{ opacity: [0, 0.45, 0.95, 0.55] }}
+                    transition={{ repeat: Infinity, duration: 0.8, delay: 0.45 }}
                   />
                   {/* Secondary bleed at upper intersection */}
                   <motion.circle cx="96" cy="78" r="4"
                     fill="white"
-                    animate={{ opacity: [0, 0.4, 0] }}
-                    transition={{ repeat: Infinity, duration: 0.6, delay: 0.45 }}
+                    animate={{ opacity: [0, 0.18, 0.7, 0.3] }}
+                    transition={{ repeat: Infinity, duration: 0.95, delay: 1.1 }}
                   />
                 </svg>
               )}
@@ -930,7 +925,7 @@ export function LuminarySummonCutscene({
               }}
               initial={{ x: 0, y: 0, rotate: 0, opacity: 1, scale: 1 }}
               animate={{ x: s.x, y: s.y, rotate: s.r, opacity: 0, scale: 0.12 }}
-              transition={{ duration: 0.5, ease: 'easeOut', delay: i * 0.013 }}
+              transition={{ duration: 1.2, ease: [0.12, 0.9, 0.18, 1], delay: i * 0.03 }}
             />
           ))}
         </AnimatePresence>
@@ -943,7 +938,7 @@ export function LuminarySummonCutscene({
               className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.45 }}
               style={{
                 background: 'radial-gradient(ellipse at center, #ffffff 0%, #ffe9a0 32%, #ffd060 58%, transparent 82%)',
               }}
@@ -1021,7 +1016,7 @@ export function LuminarySummonCutscene({
                     `drop-shadow(0 0 16px ${glowColor}) drop-shadow(0 0 6px ${primaryColor}99)`,
                   ],
                 }}
-                transition={{ repeat: Infinity, duration: 2.6, ease: 'easeInOut' }}
+                transition={{ repeat: Infinity, duration: 3.2, ease: 'easeInOut' }}
               >
                 {entityCutout ? (
                   <img

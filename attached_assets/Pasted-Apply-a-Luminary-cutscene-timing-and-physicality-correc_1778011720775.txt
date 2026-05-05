@@ -1,0 +1,39 @@
+Apply a Luminary cutscene timing and physicality correction.
+
+Preserve gameplay rules, multiplayer, reconnect/resume, persistence, forge logic, card economy, Luminary requirements/scoring, player/opponent UI, scroll/touch behavior, asset manifest, dev summon test panel, cutscene queue, and unrelated UI.
+
+Current issue:
+The latest Luminary cutscene technically has phases, but visually it still does not read as the card physically shattering. The timing is too fast, especially the zoom, crack buildup, shatter, and reveal. The cinematic preview should play the same full sequence as a real summon, and it currently feels like a quick flash transition instead of a summoning ritual.
+
+Do not redesign the entire cutscene. Keep the current portrait/card sizing correction and asset manifest. This is a timing, easing, crack visibility, and shard physicality pass.
+
+Required timing changes:
+- Board establish / intro: 800ms
+- Camera zoom / focus: 1100ms
+- Pressure glow before first crack: 600ms
+- First crack draw: 650ms
+- First crack hold with light leak: 700ms
+- Secondary crack spread: 1200ms
+- Shard separation / shatter: 1200ms
+- Flash bloom: 450ms
+- Entity reveal / presence: 3200ms
+- Exit fade: 700ms
+
+Total target duration: about 10–11 seconds.
+
+Visual requirements:
+1. The first crack must be clearly visible before the rest appear.
+2. Cracks should spread sequentially, not all at once.
+3. Light should visibly leak from cracks before shatter.
+4. The light leak should intensify during the crack hold and secondary crack spread.
+5. Shards should separate along visible fault lines and travel long enough to feel physical.
+6. Do not let shards simply vanish in a 500ms burst.
+7. Beneath the broken card must remain pure white-gold/cosmic light, not a duplicate panel or portrait.
+8. The entity reveal should begin only after the shatter/flash has clearly completed.
+9. The entity should use entityCutout + aura when available.
+10. The entity should have subtle hover, breathing scale, aura shimmer, and depth pulse.
+11. Dev summon preview must play the same full sequence.
+12. Skip/completion must clear animation locks.
+
+The desired feel:
+This should feel ceremonial and physical. The Luminary panel is a sealed vessel. It should visibly strain, crack, leak light, fracture, shatter, and release the entity. It should not feel like a fast card zoom + flash.
