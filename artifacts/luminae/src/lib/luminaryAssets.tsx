@@ -657,90 +657,81 @@ export function LuminaryPanelArt({
 }
 
 // ─── Summoning Cutscene ───────────────────────────────────────────────────────
-// Phase sequence (total ≈ 9.2s):
-//   intro       900ms  → overlay fades in, card appears at board scale
-//   zooming     600ms  → card glides to cinematic center
-//   pressure    600ms  → vessel breathes with glow — no cracks yet, tension builds
-//   firstcrack  650ms  → primary vertical fault line draws across the vessel face
-//   leaking     650ms  → white-gold light bleeds through the first crack, hold/dwell
-//   cracking   1000ms  → secondary fault lines branch; light intensifies at intersections
-//   shattering 1100ms  → four panel pieces (containing the actual artwork) fly outward,
-//                         brightening then fading as they go; pure cosmic-light layer visible beneath
-//   flashing    450ms  → full white-gold bloom fills the stage
-//   revealed   3200ms  → freed entity rises over live board: hover, depth-push, aura shimmer
-//   fading      600ms  → entity ascends and dissolves
+// Phase sequence (total ≈ 9.7s):
+//
+//   establish   600ms  → board visible (overlay 0→0.44); spotlight pulses at card location
+//   focusing    800ms  → overlay 0.44→0.82; spotlight tightens; card awakens at board scale
+//   intro       350ms  → vessel locked at board position, opacity ramping
+//   zooming     650ms  → vessel glides from board position to cinematic center, scales up
+//   pressure    500ms  → vessel breathes with colored glow — no cracks yet
+//   firstcrack  600ms  → primary vertical fault draws across the vessel face
+//   leaking     550ms  → white-gold light bleeds through the crack; dwell/hold
+//   cracking    900ms  → horizontal + diagonal branches; ray burst at intersection
+//   shattering 1000ms  → four panel pieces fly outward, brightening to white, fading out;
+//                         pure cosmic-light layer visible beneath — no card art, only light
+//   flashing    500ms  → full white-gold bloom; entity begins emerging during this
+//   revealed   2700ms  → freed entity over live board (overlay 0.60, board visible);
+//                         entity larger than original frame, aura extends beyond card bounds
+//   fading      550ms  → entity ascends and dissolves
 //   done              → callback fires
 //
-// Card dimensions: CARD_W × CARD_H = 210×300 (7:10 portrait — matches board w-28 h-40).
-// Fault-line intersection (FX, FY) = (105px, 117px) = (50%, 39%) of card.
-//   Fault-line SVG paths AND panel-piece clip polygons both reference this same junction.
+// Board staging: cardRect carries the actual viewport coordinates of the Luminary card.
+//   The vessel starts at board position/scale and zooms to cinematic center.
+//   If cardRect is absent (e.g. dev panel in lobby), falls back to graceful approximate.
 //
-// Panel pieces: four clip-path divs each containing the full panel art image at the same
-//   size/position — they ARE the front shell. Brightness ramps up then fades so the artwork
-//   reads as giving way to the light beneath, not as a duplicate card.
-// Light layer: pure white-gold radial gradient between the overlay and the pieces.
-//   Never a card, portrait, or entity image — only light.
-// Entity: entityCutout (must have transparent bg, no frame) or procedural SVG.
-//   Revealed with a slow push-forward scale, breathing hover, and aura shimmer.
+// Entity: entityCutout (transparent bg, no frame) rendered at 1.65× card size.
+//   Aura extends 600px — well beyond card bounds — so no rectangular cutoff is visible.
+//   The entity starts rendering during 'flashing', fading in through the bloom light.
+//   Overlay lightens to 0.60 during 'revealed' so the live board is the entity's background.
 
 type CutscenePhase =
-  | 'intro' | 'zooming' | 'pressure' | 'firstcrack'
-  | 'leaking' | 'cracking' | 'shattering' | 'flashing'
-  | 'revealed' | 'fading' | 'done';
+  | 'establish' | 'focusing' | 'intro' | 'zooming'
+  | 'pressure' | 'firstcrack' | 'leaking' | 'cracking'
+  | 'shattering' | 'flashing' | 'revealed' | 'fading' | 'done';
 
-// Portrait card dimensions — 7:10, matching board LuminaryCard (w-28 h-40)
+// Portrait card — 7:10, matching board LuminaryCard (w-28 h-40 = 112×160px)
 const CARD_W = 210;
 const CARD_H = 300;
+// Cinematic entity size — 1.65× the original panel frame
+const ENT_W  = Math.round(CARD_W * 1.65);
+const ENT_H  = Math.round(CARD_H * 1.65);
+// Board card size (Tailwind w-28 h-40)
+const BOARD_W = 112;
 
-// Fault-line junction point (shared by SVG crack paths and panel piece clip polygons)
+// Fault-line junction point — shared by SVG paths AND panel-piece clip polygons
 const FX = 105; // 50% of CARD_W
 const FY = 117; // 39% of CARD_H
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
-  intro:      900,
-  zooming:    600,
-  pressure:   600,
-  firstcrack: 650,
-  leaking:    650,
-  cracking:   1000,
-  shattering: 1100,
-  flashing:   450,
-  revealed:   3200,
-  fading:     600,
+  establish:  600,
+  focusing:   800,
+  intro:      350,
+  zooming:    650,
+  pressure:   500,
+  firstcrack: 600,
+  leaking:    550,
+  cracking:   900,
+  shattering: 1000,
+  flashing:   500,
+  revealed:   2700,
+  fading:     550,
   done:       0,
 };
 
 const PHASES: CutscenePhase[] = [
-  'intro', 'zooming', 'pressure', 'firstcrack', 'leaking',
-  'cracking', 'shattering', 'flashing', 'revealed', 'fading', 'done',
+  'establish', 'focusing', 'intro', 'zooming',
+  'pressure', 'firstcrack', 'leaking', 'cracking',
+  'shattering', 'flashing', 'revealed', 'fading', 'done',
 ];
 
-// Panel pieces — four regions that tile the full card face exactly.
-// clip-path polygons are in % of card width/height.
-// Fault junction: 50% wide / 39% tall.  Bottom-right of BL piece uses 47% wide to
-// follow the slight downward drift of the vertical fault toward the bottom edge.
-// Scatter dx/dy in px from center; dr in degrees of rotation.
+// Panel pieces — four quadrant regions that tile the full card face exactly.
+// Clip polygons reference the fault junction at (50%, 39%) = (FX, FY).
+// Scatter: dx/dy in px from center; dr in degrees.
 const PANEL_PIECES = [
-  // Top-left quadrant (scatters upper-left)
-  {
-    clip: 'polygon(0% 0%, 50% 0%, 50% 39%, 0% 39%)',
-    dx: -148, dy: -108, dr: 44,
-  },
-  // Top-right quadrant (scatters upper-right)
-  {
-    clip: 'polygon(50% 0%, 100% 0%, 100% 41%, 50% 39%)',
-    dx: 142, dy: -122, dr: -40,
-  },
-  // Bottom-left quadrant (scatters lower-left)
-  {
-    clip: 'polygon(0% 39%, 50% 39%, 47% 100%, 0% 100%)',
-    dx: -152, dy: 128, dr: 54,
-  },
-  // Bottom-right quadrant (scatters lower-right)
-  {
-    clip: 'polygon(50% 39%, 100% 41%, 100% 100%, 47% 100%)',
-    dx: 148, dy: 140, dr: -50,
-  },
+  { clip: 'polygon(0% 0%, 50% 0%, 50% 39%, 0% 39%)',         dx: -148, dy: -108, dr:  44 },
+  { clip: 'polygon(50% 0%, 100% 0%, 100% 41%, 50% 39%)',     dx:  142, dy: -122, dr: -40 },
+  { clip: 'polygon(0% 39%, 50% 39%, 47% 100%, 0% 100%)',     dx: -152, dy:  128, dr:  54 },
+  { clip: 'polygon(50% 39%, 100% 41%, 100% 100%, 47% 100%)', dx:  148, dy:  140, dr: -50 },
 ] as const;
 
 export interface SummonQueueItem {
@@ -749,6 +740,8 @@ export interface SummonQueueItem {
   domain: string;
   lumens: number;
   flavor: string;
+  /** Viewport coordinates of the Luminary card's center + width at trigger time */
+  cardRect?: { cx: number; cy: number; w: number };
 }
 
 export function LuminarySummonCutscene({
@@ -757,6 +750,7 @@ export function LuminarySummonCutscene({
   domain,
   lumens,
   flavor,
+  cardRect,
   onComplete,
 }: {
   luminaryId: string;
@@ -764,9 +758,10 @@ export function LuminarySummonCutscene({
   domain: string;
   lumens: number;
   flavor: string;
+  cardRect?: { cx: number; cy: number; w: number };
   onComplete: () => void;
 }) {
-  const [phase, setPhase] = useState<CutscenePhase>('intro');
+  const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
   const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
@@ -785,10 +780,13 @@ export function LuminarySummonCutscene({
         setTimeout(onComplete, 80);
       }
     }
-    const t = setTimeout(advance, PHASE_DURATIONS['intro']);
+    const t = setTimeout(advance, PHASE_DURATIONS['establish']);
     return () => { cancelled = true; clearTimeout(t); };
   }, [onComplete]);
 
+  // ── Phase booleans ──────────────────────────────────────────────────────────
+  const isEstablish  = phase === 'establish';
+  const isFocusing   = phase === 'focusing';
   const isIntro      = phase === 'intro';
   const isZooming    = phase === 'zooming';
   const isPressure   = phase === 'pressure';
@@ -797,192 +795,197 @@ export function LuminarySummonCutscene({
   const isCracking   = phase === 'cracking';
   const isShattering = phase === 'shattering' || phase === 'flashing';
   const isFlashing   = phase === 'flashing';
-  const isRevealed   = phase === 'revealed' || phase === 'fading';
+  // Entity starts appearing during the flash so it fades in through the light
+  const isRevealed   = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
+  const isRevealedActive = phase === 'revealed';
   const isFading     = phase === 'fading';
+  const isVessel     = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
+  const hasCracks    = isFirstCrack || isLeaking || isCracking;
 
-  // Vessel visible while the card face is intact
-  const isVessel = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
-  // Any crack overlay active
-  const hasCracks = isFirstCrack || isLeaking || isCracking;
+  // ── Overlay opacity: board visible during establish/focusing and entity reveal ─
+  const overlayOpacity =
+    isEstablish                                ? 0.44 :
+    isFocusing                                 ? 0.82 :
+    (isRevealedActive || isFlashing) && !isFading ? 0.62 :
+    0.90;
 
-  // Vessel glow ramps up across crack phases
+  // ── Board-relative vessel start position ───────────────────────────────────
+  // Convert cardRect viewport coords → offset from screen center
+  const vw = typeof window !== 'undefined' ? window.innerWidth  : 375;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
+  const vcx = cardRect ? cardRect.cx - vw / 2 : 0;
+  const vcy = cardRect ? cardRect.cy - vh / 2 : 55;
+  const boardScale = cardRect ? cardRect.w / CARD_W : BOARD_W / CARD_W;
+
+  // ── Vessel glow — ramps up through crack phases ─────────────────────────────
   const vesselGlow: [string, string, string] = isPressure
-    ? [`0 0 22px ${primaryColor}66`, `0 0 44px ${primaryColor}aa`, `0 0 22px ${primaryColor}66`]
+    ? [`0 0 20px ${primaryColor}60`, `0 0 42px ${primaryColor}99`, `0 0 20px ${primaryColor}60`]
     : isFirstCrack
-      ? [`0 0 30px ${primaryColor}88`, `0 0 55px ${primaryColor}bb`, `0 0 30px ${primaryColor}88`]
+      ? [`0 0 28px ${primaryColor}80`, `0 0 52px ${primaryColor}b0`, `0 0 28px ${primaryColor}80`]
       : isLeaking
-        ? [`0 0 38px ${primaryColor}aa`, `0 0 66px ${primaryColor}dd, 0 0 24px #ffe8a055`, `0 0 38px ${primaryColor}aa`]
-        : [`0 0 46px ${primaryColor}cc`, `0 0 80px ${primaryColor}ff, 0 0 32px #ffe8a088`, `0 0 46px ${primaryColor}cc`];
+        ? [`0 0 36px ${primaryColor}a0`, `0 0 64px ${primaryColor}d0, 0 0 22px #ffe8a050`, `0 0 36px ${primaryColor}a0`]
+        : [`0 0 44px ${primaryColor}c0`, `0 0 78px ${primaryColor}f0, 0 0 30px #ffe8a080`, `0 0 44px ${primaryColor}c0`];
 
   return (
-    <div
-      className="fixed inset-0 z-[9000] cursor-pointer"
-      onClick={onComplete}
-    >
-      {/* Dark overlay — fades in so the live board briefly shows context */}
+    <div className="fixed inset-0 z-[9000] cursor-pointer" onClick={onComplete}>
+
+      {/* ── Dark overlay — animates opacity per phase ───────────────────────── */}
       <motion.div
         className="absolute inset-0 pointer-events-none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        style={{ background: 'rgba(4,2,16,0.90)' }}
+        animate={{ opacity: overlayOpacity }}
+        transition={{ duration: 0.55, ease: 'easeInOut' }}
+        style={{ background: 'rgba(4,2,16,1)' }}
       />
+
+      {/* ── Spotlight — pulses at card location during establish/focusing ─────── */}
+      {/* Gives the "camera finds the panel" feeling before zooming in */}
+      {(isEstablish || isFocusing) && (
+        <motion.div
+          className="absolute pointer-events-none"
+          initial={{ opacity: 0, scale: 2.2 }}
+          animate={isFocusing
+            ? { opacity: [0.6, 0.9, 0.7], scale: [1.4, 1.0, 0.85] }
+            : { opacity: [0, 0.5, 0.7],   scale: [2.2, 1.8, 1.5]  }
+          }
+          transition={{ duration: isFocusing ? 0.8 : 0.6, ease: 'easeOut' }}
+          style={{
+            width: 260,
+            height: 360,
+            left: cardRect ? cardRect.cx - 130 : '50%',
+            top:  cardRect ? cardRect.cy - 180 : '50%',
+            marginLeft: cardRect ? 0 : -130,
+            marginTop:  cardRect ? 0 : -180,
+            borderRadius: '50%',
+            background: `radial-gradient(ellipse at center, ${primaryColor}44 0%, ${primaryColor}18 45%, transparent 75%)`,
+            filter: 'blur(22px)',
+          }}
+        />
+      )}
 
       {/* Skip hint */}
       <div className="absolute bottom-8 left-0 right-0 text-center text-xs text-white/28 tracking-widest uppercase pointer-events-none select-none">
         tap to skip
       </div>
 
-      {/* ── Centered cinematic stage ─────────────────────────────────────────── */}
+      {/* ── Cinematic stage ─────────────────────────────────────────────────── */}
       <div className="absolute inset-0 flex items-center justify-center">
 
-        {/* ── Sealed vessel — panel art as intact card face ─────────────────── */}
+        {/* ── Sealed vessel — card face, starting at board position ────────── */}
         <AnimatePresence>
           {isVessel && (
             <motion.div
               key="vessel"
-              initial={{ scale: 0.18, y: 88, opacity: 0 }}
+              className="relative overflow-hidden"
+              style={{ width: CARD_W, height: CARD_H, borderRadius: 14, border: `2px solid ${primaryColor}70` }}
+              initial={{ scale: boardScale, x: vcx, y: vcy, opacity: 0 }}
               animate={{
-                scale: isIntro ? 0.18 : isZooming ? 1.0 : ([1, 1.028, 1] as number[]),
-                y: isIntro ? 88 : 0,
+                scale: isIntro ? boardScale : isZooming ? 1.0 : ([1, 1.026, 1] as number[]),
+                x:     isIntro ? vcx : 0,
+                y:     isIntro ? vcy : 0,
                 opacity: 1,
                 boxShadow: isZooming
-                  ? `0 0 14px ${primaryColor}44`
+                  ? `0 0 12px ${primaryColor}40`
                   : (vesselGlow as unknown as string),
               }}
-              exit={{ scale: 2.6, opacity: 0, transition: { duration: 0.38, ease: 'easeIn' } }}
+              exit={{ scale: 2.8, opacity: 0, transition: { duration: 0.42, ease: 'easeIn' } }}
               transition={{
-                scale: isZooming
-                  ? { duration: 0.6, ease: [0.16, 1, 0.3, 1] }
-                  : hasCracks
-                    ? { repeat: Infinity, duration: 1.1, ease: 'easeInOut' }
-                    : isPressure
-                      ? { repeat: Infinity, duration: 1.1, ease: 'easeInOut' }
-                      : { duration: 0.3 },
-                y:        { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
-                opacity:  { duration: 0.32 },
-                boxShadow: { repeat: Infinity, duration: 1.1, ease: 'easeInOut' },
-              }}
-              className="relative overflow-hidden"
-              style={{
-                width: CARD_W,
-                height: CARD_H,
-                borderRadius: 14,
-                border: `2px solid ${primaryColor}77`,
+                scale:    isZooming ? { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
+                        : (isPressure || hasCracks) ? { repeat: Infinity, duration: 1.15, ease: 'easeInOut' }
+                        : { duration: 0.28 },
+                x:       { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+                y:       { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.30 },
+                boxShadow: { repeat: Infinity, duration: 1.15, ease: 'easeInOut' },
               }}
             >
-              {/* Panel art — portrait fill */}
               {panelArt ? (
-                <img
-                  src={panelArt}
-                  alt={luminaryName}
-                  className="w-full h-full"
+                <img src={panelArt} alt={luminaryName} className="w-full h-full"
                   style={{ objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
-                  draggable={false}
-                />
+                  draggable={false} />
               ) : (
                 <LuminaryPanelArt luminaryId={luminaryId} size={CARD_W} />
               )}
 
-              {/* ── Crack-light overlay — drawn sequentially across crack phases ── */}
+              {/* ── Crack-light SVG overlay ─────────────────────────────────── */}
               {hasCracks && (
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  viewBox={`0 0 ${CARD_W} ${CARD_H}`}
-                  style={{ overflow: 'visible' }}
-                >
-                  {/* Glow filter for cracks */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox={`0 0 ${CARD_W} ${CARD_H}`} style={{ overflow: 'visible' }}>
                   <defs>
-                    <filter id="crackglow" x="-50%" y="-50%" width="200%" height="200%">
-                      <feGaussianBlur stdDeviation="2.5" result="blur" />
-                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    <filter id="cg" x="-60%" y="-60%" width="220%" height="220%">
+                      <feGaussianBlur stdDeviation="2.8" result="b" />
+                      <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                     </filter>
                   </defs>
 
-                  {/* ── Primary vertical fault — always first ── */}
-                  {/* Jagged but passes through FX,FY = 105,117 */}
+                  {/* Primary vertical fault — draws in firstcrack, stays throughout */}
                   <motion.path
-                    d={`M${FX},0 L${FX - 9},${FY * 0.67} L${FX},${FY} L${FX + 9},${FY * 1.64} L${FX - 5},${CARD_H}`}
-                    stroke="white"
-                    strokeWidth="2.0"
-                    fill="none"
-                    filter="url(#crackglow)"
+                    d={`M${FX},0 L${FX-9},${Math.round(FY*.67)} L${FX},${FY} L${FX+9},${Math.round(FY*1.64)} L${FX-5},${CARD_H}`}
+                    stroke="white" strokeWidth="2.1" fill="none" filter="url(#cg)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.82, 0.92] }}
-                    transition={{ duration: 0.62, delay: 0, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0.84, 0.94] }}
+                    transition={{ duration: 0.60, ease: 'easeOut' }}
                   />
-                  {/* Faint wider glow halo on the primary crack */}
+                  {/* Wide warm-gold halo on primary crack */}
                   <motion.path
-                    d={`M${FX},0 L${FX - 9},${FY * 0.67} L${FX},${FY} L${FX + 9},${FY * 1.64} L${FX - 5},${CARD_H}`}
-                    stroke="#ffe8a0"
-                    strokeWidth="6"
-                    fill="none"
+                    d={`M${FX},0 L${FX-9},${Math.round(FY*.67)} L${FX},${FY} L${FX+9},${Math.round(FY*1.64)} L${FX-5},${CARD_H}`}
+                    stroke="#ffe8a0" strokeWidth="7" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.22, 0.38] }}
-                    transition={{ duration: 0.62, delay: 0.06, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0.24, 0.42] }}
+                    transition={{ duration: 0.60, delay: 0.07, ease: 'easeOut' }}
                   />
 
-                  {/* ── Light-bleed node at the fault intersection — appears during leaking ── */}
+                  {/* Light-bleed node at intersection — leaking + cracking */}
                   {(isLeaking || isCracking) && (
                     <>
-                      <motion.circle cx={FX} cy={FY} r="9"
-                        fill="white"
+                      <motion.circle cx={FX} cy={FY} r="10" fill="white"
                         initial={{ opacity: 0, scale: 0.2 }}
-                        animate={{ opacity: [0, 0.7, 1.0, 0.65], scale: [0.2, 1.2, 1.0] }}
-                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        animate={{ opacity: [0, 0.75, 1.0, 0.65], scale: [0.2, 1.25, 1.0] }}
+                        transition={{ duration: 0.48, ease: 'easeOut' }}
                       />
-                      <motion.circle cx={FX} cy={FY} r="22"
-                        fill="none" stroke="#ffe8a0" strokeWidth="3"
+                      <motion.circle cx={FX} cy={FY} r="24" fill="none" stroke="#ffe8a0" strokeWidth="3"
                         initial={{ opacity: 0, scale: 0.1 }}
-                        animate={{ opacity: [0, 0.5, 0.3, 0], scale: [0.1, 1.8, 2.4] }}
-                        transition={{ duration: 0.9, ease: 'easeOut', delay: 0.1 }}
+                        animate={{ opacity: [0, 0.55, 0.3, 0], scale: [0.1, 1.9, 2.6] }}
+                        transition={{ duration: 0.88, ease: 'easeOut', delay: 0.1 }}
                       />
                     </>
                   )}
 
-                  {/* ── Secondary fault lines — appear only in cracking phase ── */}
+                  {/* Secondary fault lines — cracking phase only */}
                   {isCracking && (
                     <>
-                      {/* Horizontal fault crossing the vertical at FX,FY */}
                       <motion.path
-                        d={`M0,${FY + 1} L${FX - 41},${FY - 18} L${FX},${FY} L${FX + 43},${FY + 19} L${CARD_W},${FY + 7}`}
-                        stroke="white" strokeWidth="1.3" fill="none" filter="url(#crackglow)"
+                        d={`M0,${FY+1} L${FX-41},${FY-18} L${FX},${FY} L${FX+43},${FY+19} L${CARD_W},${FY+7}`}
+                        stroke="white" strokeWidth="1.4" fill="none" filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.3, 0.55] }}
-                        transition={{ duration: 0.9, delay: 0, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.32, 0.58] }}
+                        transition={{ duration: 0.88, ease: 'easeOut' }}
                       />
-                      {/* Upper-right diagonal spur toward TR piece */}
                       <motion.path
-                        d={`M${CARD_W},52 L${FX + 44},${FY - 31} L${FX},${FY}`}
-                        stroke="white" strokeWidth="0.9" fill="none" filter="url(#crackglow)"
+                        d={`M${CARD_W},50 L${FX+44},${FY-32} L${FX},${FY}`}
+                        stroke="white" strokeWidth="0.95" fill="none" filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.18, 0.42] }}
-                        transition={{ duration: 0.75, delay: 0.18, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.20, 0.44] }}
+                        transition={{ duration: 0.72, delay: 0.18, ease: 'easeOut' }}
                       />
-                      {/* Lower-left spur toward BL piece */}
                       <motion.path
-                        d={`M0,${CARD_H - 60} L${FX - 36},${FY + 68} L${FX - 5},${CARD_H}`}
-                        stroke="white" strokeWidth="0.85" fill="none" filter="url(#crackglow)"
+                        d={`M0,${CARD_H-58} L${FX-36},${FY+68} L${FX-5},${CARD_H}`}
+                        stroke="white" strokeWidth="0.9" fill="none" filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.16, 0.36] }}
-                        transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.17, 0.38] }}
+                        transition={{ duration: 0.68, delay: 0.30, ease: 'easeOut' }}
                       />
-                      {/* Ray burst at intersection — light building up */}
-                      <motion.circle cx={FX} cy={FY} r="5"
-                        fill="white"
-                        animate={{ opacity: [0.5, 1.0, 0.6, 1.0], scale: [1, 1.5, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.55 }}
+                      {/* Pulsing ray burst at intersection */}
+                      <motion.circle cx={FX} cy={FY} r="5" fill="white"
+                        animate={{ opacity: [0.5, 1.0, 0.55, 1.0], scale: [1, 1.6, 1] }}
+                        transition={{ repeat: Infinity, duration: 0.52 }}
                       />
-                      <motion.circle cx={FX} cy={FY} r="14"
-                        fill="none" stroke="#ffe8a0" strokeWidth="2.5"
-                        animate={{ opacity: [0, 0.6, 0], scale: [0.5, 1.8] }}
-                        transition={{ repeat: Infinity, duration: 0.7, delay: 0.1 }}
+                      <motion.circle cx={FX} cy={FY} r="16" fill="none" stroke="#ffe8a0" strokeWidth="2.5"
+                        animate={{ opacity: [0, 0.62, 0], scale: [0.4, 1.9] }}
+                        transition={{ repeat: Infinity, duration: 0.68, delay: 0.1 }}
                       />
-                      {/* Upper fault-junction node */}
-                      <motion.circle cx={FX - 9} cy={Math.round(FY * 0.67)} r="3.5"
-                        fill="white"
-                        animate={{ opacity: [0, 0.5, 0.85, 0.4] }}
-                        transition={{ repeat: Infinity, duration: 0.75, delay: 0.22 }}
+                      <motion.circle cx={FX-9} cy={Math.round(FY*.67)} r="3.5" fill="white"
+                        animate={{ opacity: [0, 0.52, 0.88, 0.4] }}
+                        transition={{ repeat: Infinity, duration: 0.72, delay: 0.22 }}
                       />
                     </>
                   )}
@@ -992,89 +995,54 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-        {/* ── Pure cosmic-light layer — visible beneath the panel pieces ─────── */}
-        {/* This is light only — never a card, portrait, or entity image. */}
+        {/* ── Pure cosmic-light layer beneath the panel pieces ───────────────── */}
+        {/* Light only — never a card or portrait image. Centered on the card. */}
         <AnimatePresence>
           {isShattering && (
-            <motion.div
-              key="cosmiclight"
-              className="absolute pointer-events-none"
+            <motion.div key="cosmiclight" className="absolute pointer-events-none"
               initial={{ opacity: 0 }}
-              animate={{ opacity: isFlashing ? 0 : [0, 0.72, 0.88] }}
-              exit={{ opacity: 0, transition: { duration: 0.15 } }}
-              transition={{ duration: 0.45, ease: 'easeOut' }}
+              animate={{ opacity: isFlashing ? 0 : [0, 0.75, 0.92] }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}
+              transition={{ duration: 0.44, ease: 'easeOut' }}
               style={{
-                width: CARD_W * 2.2,
-                height: CARD_H * 2.2,
-                left: '50%',
-                top: '50%',
-                marginLeft: -(CARD_W * 1.1),
-                marginTop: -(CARD_H * 1.1),
-                background: [
-                  'radial-gradient(ellipse 38% 44% at 50% 39%,',
-                  '  #ffffff 0%,',
-                  '  #fff8e0 18%,',
-                  '  #ffe566 40%,',
-                  '  #ffa52088 62%,',
-                  '  transparent 80%)',
-                ].join(''),
-                filter: 'blur(6px)',
+                width: CARD_W * 2.4, height: CARD_H * 2.4,
+                left: '50%', top: '50%',
+                marginLeft: -(CARD_W * 1.2), marginTop: -(CARD_H * 1.2),
+                background: 'radial-gradient(ellipse 40% 44% at 50% 39%, #ffffff 0%, #fff8e0 16%, #ffe566 38%, #ffa52088 60%, transparent 80%)',
+                filter: 'blur(8px)',
                 borderRadius: '50%',
               }}
             />
           )}
         </AnimatePresence>
 
-        {/* ── Panel pieces — four clip-path regions of the actual panel art ─── */}
-        {/* Each piece IS the front shell. Brightness ramps up then fades out — */}
-        {/* the artwork gives way to the light beneath, not a second copy of it. */}
+        {/* ── Panel pieces — actual artwork, clipped to quadrant regions ─────── */}
+        {/* Brightness ramps to white then fades: the shell gives way to the light. */}
         <AnimatePresence>
           {isShattering && PANEL_PIECES.map((piece, i) => (
-            <motion.div
-              key={`piece-${i}`}
-              className="absolute pointer-events-none"
+            <motion.div key={`piece-${i}`} className="absolute pointer-events-none"
               style={{
-                width: CARD_W,
-                height: CARD_H,
-                left: '50%',
-                top: '50%',
-                marginLeft: -CARD_W / 2,
-                marginTop: -CARD_H / 2,
-                clipPath: piece.clip,
-                borderRadius: 14,
+                width: CARD_W, height: CARD_H,
+                left: '50%', top: '50%',
+                marginLeft: -CARD_W / 2, marginTop: -CARD_H / 2,
+                clipPath: piece.clip, borderRadius: 14,
               }}
               initial={{ x: 0, y: 0, rotate: 0, opacity: 1, filter: 'brightness(1)' }}
               animate={{
-                x: piece.dx,
-                y: piece.dy,
-                rotate: piece.dr,
-                opacity: [1, 1, 0.6, 0],
-                filter: ['brightness(1)', 'brightness(2.4)', 'brightness(3.8)', 'brightness(5)'],
+                x: piece.dx, y: piece.dy, rotate: piece.dr,
+                opacity: [1, 1, 0.55, 0],
+                filter: ['brightness(1)', 'brightness(2.6)', 'brightness(4.2)', 'brightness(6)'],
               }}
               transition={{
-                duration: 1.1,
-                ease: [0.18, 0.85, 0.32, 1],
-                delay: i * 0.04,
-                opacity:  { duration: 1.1, times: [0, 0.25, 0.65, 1] },
-                filter:   { duration: 1.1, times: [0, 0.3, 0.65, 1] },
+                duration: 1.0, ease: [0.18, 0.85, 0.32, 1], delay: i * 0.04,
+                opacity: { duration: 1.0, times: [0, 0.22, 0.62, 1] },
+                filter:  { duration: 1.0, times: [0, 0.28, 0.62, 1] },
               }}
             >
-              {/* Full-size panel art inside the clip region */}
               {panelArt ? (
-                <img
-                  src={panelArt}
-                  alt=""
-                  aria-hidden
-                  style={{
-                    width: CARD_W,
-                    height: CARD_H,
-                    objectFit: 'cover',
-                    objectPosition: 'center top',
-                    display: 'block',
-                    borderRadius: 14,
-                  }}
-                  draggable={false}
-                />
+                <img src={panelArt} alt="" aria-hidden
+                  style={{ width: CARD_W, height: CARD_H, objectFit: 'cover', objectPosition: 'center top', display: 'block', borderRadius: 14 }}
+                  draggable={false} />
               ) : (
                 <LuminaryPanelArt luminaryId={luminaryId} size={CARD_W} />
               )}
@@ -1082,158 +1050,150 @@ export function LuminarySummonCutscene({
           ))}
         </AnimatePresence>
 
-        {/* ── Full-stage white-gold bloom flash ─────────────────────────────── */}
+        {/* ── Full-stage white-gold bloom ─────────────────────────────────────── */}
         <AnimatePresence>
           {isFlashing && (
-            <motion.div
-              key="flash"
-              className="absolute inset-0 pointer-events-none"
+            <motion.div key="flash" className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: 'easeOut' }}
+              transition={{ duration: 0.50, ease: 'easeOut' }}
               style={{
-                background: [
-                  'radial-gradient(ellipse at 50% 44%,',
-                  '  #ffffff 0%,',
-                  '  #fff8dc 22%,',
-                  '  #ffe566 46%,',
-                  '  #ffaa22 66%,',
-                  '  transparent 84%)',
-                ].join(''),
+                background: 'radial-gradient(ellipse at 50% 44%, #ffffff 0%, #fff8dc 20%, #ffe566 44%, #ffaa22 64%, transparent 84%)',
               }}
             />
           )}
         </AnimatePresence>
 
-        {/* ── Freed entity — rises over the live board ──────────────────────── */}
-        {/* Uses entityCutout (transparent bg, no border/frame). Scale push forward */}
-        {/* gives the sense of the entity pressing toward the viewer then hovering. */}
+        {/* ── Freed entity ────────────────────────────────────────────────────── */}
+        {/* Starts rendering during 'flashing' (opacity 0) so it fades in through */}
+        {/* the bloom light — no gap between flash and entity.                    */}
+        {/* Entity is ENT_W × ENT_H (1.65× card), aura 600px — no rectangular    */}
+        {/* cutoff. The lightened overlay lets the live board read as background. */}
         <AnimatePresence>
           {isRevealed && (
-            <motion.div
-              key="entity"
+            <motion.div key="entity"
               className="relative flex flex-col items-center gap-4"
-              initial={{ scale: 0.55, opacity: 0, y: 30 }}
+              style={{ overflow: 'visible' }}
+              initial={{ scale: 0.52, opacity: 0, y: 22 }}
               animate={isFading
-                ? { scale: 1.08, opacity: 0, y: -28 }
+                ? { scale: 1.10, opacity: 0, y: -30 }
                 : {
-                    scale: [0.55, 1.12, 1.04, 1.0],
-                    opacity: 1,
-                    y: [30, -6, 0],
+                    scale:   [0.52, 1.14, 1.05, 1.0],
+                    opacity: isFlashing ? [0, 0, 0.15] : 1,
+                    y:       [22, -4, 0],
                   }
               }
               transition={isFading
-                ? { duration: 0.6, ease: 'easeIn' }
+                ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 1.8, times: [0, 0.55, 0.78, 1], ease: 'easeOut' },
-                    opacity: { duration: 0.55 },
-                    y:       { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
+                    scale:   { duration: 1.85, times: [0, 0.52, 0.78, 1], ease: 'easeOut' },
+                    opacity: { duration: isFlashing ? 0.5 : 0.50, ease: 'easeOut' },
+                    y:       { duration: 1.45, ease: [0.22, 1, 0.36, 1] },
                   }
               }
             >
-              {/* Slow breathing hover after the push-in settles */}
-              <motion.div
-                className="relative flex flex-col items-center gap-4"
-                animate={isFading ? {} : {
-                  y: [0, -10, 0],
-                  scale: [1, 1.022, 1],
-                }}
+              {/* Breathing hover — starts after push-in settles */}
+              <motion.div className="relative flex flex-col items-center gap-4"
+                style={{ overflow: 'visible' }}
+                animate={isFading ? {} : { y: [0, -10, 0], scale: [1, 1.020, 1] }}
                 transition={isFading ? {} : {
-                  y:     { repeat: Infinity, duration: 3.2, ease: 'easeInOut', delay: 1.8 },
-                  scale: { repeat: Infinity, duration: 3.8, ease: 'easeInOut', delay: 1.8 },
+                  y:     { repeat: Infinity, duration: 3.3, ease: 'easeInOut', delay: 1.9 },
+                  scale: { repeat: Infinity, duration: 3.9, ease: 'easeInOut', delay: 1.9 },
                 }}
               >
-                {/* Aura layer — behind entity, blended screen */}
+                {/* ── Oversized aura — extends 600px, feathered, no hard edges ── */}
                 {auraLayer ? (
-                  <motion.img
-                    src={auraLayer}
-                    alt=""
-                    aria-hidden
+                  <motion.img src={auraLayer} alt="" aria-hidden
                     className="absolute pointer-events-none"
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: isFading ? 0 : [0, 0.82, 0.52, 0.78] }}
-                    transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.3, 0.6, 1] }}
+                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.78, 0.50, 0.72]) }}
+                    transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
                     style={{
-                      width: 420,
-                      height: 420,
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -54%)',
+                      width: 600, height: 600,
+                      position: 'absolute',
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -55%)',
                       objectFit: 'contain',
                       mixBlendMode: 'screen',
                     }}
                     draggable={false}
                   />
                 ) : (
-                  <motion.div
-                    className="absolute pointer-events-none"
+                  <motion.div className="absolute pointer-events-none"
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: isFading ? 0 : [0, 0.7, 0.38, 0.65] }}
-                    transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.3, 0.6, 1] }}
+                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.68, 0.36, 0.60]) }}
+                    transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
                     style={{
-                      width: 360,
-                      height: 360,
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -54%)',
+                      width: 600, height: 600,
+                      position: 'absolute',
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -55%)',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at center, ${primaryColor}55 0%, ${secondaryColor}28 42%, transparent 72%)`,
-                      filter: 'blur(28px)',
+                      background: `radial-gradient(ellipse at center, ${primaryColor}50 0%, ${secondaryColor}26 38%, transparent 68%)`,
+                      filter: 'blur(36px)',
                     }}
                   />
                 )}
 
-                {/* Entity — depth-pulse glow, no card border, no rectangular background */}
+                {/* ── Inner glow ring — second feathered halo layer ─────────── */}
+                <motion.div className="absolute pointer-events-none"
+                  initial={{ opacity: 0 }}
+                  animate={{
+                    opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.55, 0.30, 0.48]),
+                    scale:   isFading ? 1.2 : [0.8, 1.0, 0.95],
+                  }}
+                  transition={{ duration: 2.2, ease: 'easeInOut' }}
+                  style={{
+                    width: 350, height: 420,
+                    position: 'absolute',
+                    top: '50%', left: '50%',
+                    transform: 'translate(-50%, -52%)',
+                    borderRadius: '50%',
+                    background: `radial-gradient(ellipse at center, ${glowColor}40 0%, ${primaryColor}20 50%, transparent 78%)`,
+                    filter: 'blur(20px)',
+                  }}
+                />
+
+                {/* ── Entity image — transparent cutout, no border/frame ─────── */}
                 <motion.div
                   animate={isFading ? {} : {
-                    filter: [
-                      `drop-shadow(0 0 14px ${glowColor}88) drop-shadow(0 0 5px ${primaryColor}66)`,
-                      `drop-shadow(0 0 32px ${glowColor}cc) drop-shadow(0 0 12px ${primaryColor}aa)`,
-                      `drop-shadow(0 0 14px ${glowColor}88) drop-shadow(0 0 5px ${primaryColor}66)`,
+                    filter: isFlashing ? 'none' : [
+                      `drop-shadow(0 0 12px ${glowColor}80) drop-shadow(0 0 4px ${primaryColor}60)`,
+                      `drop-shadow(0 0 30px ${glowColor}c8) drop-shadow(0 0 10px ${primaryColor}a0)`,
+                      `drop-shadow(0 0 12px ${glowColor}80) drop-shadow(0 0 4px ${primaryColor}60)`,
                     ],
                   }}
-                  transition={{ repeat: Infinity, duration: 3.4, ease: 'easeInOut', delay: 1.8 }}
+                  transition={{ repeat: Infinity, duration: 3.5, ease: 'easeInOut', delay: 1.9 }}
                 >
                   {entityCutout ? (
-                    <img
-                      src={entityCutout}
-                      alt={luminaryName}
+                    <img src={entityCutout} alt={luminaryName}
                       style={{
-                        width: CARD_W,
-                        height: CARD_H * 1.44,
-                        objectFit: 'contain',
-                        objectPosition: 'center',
-                        display: 'block',
-                        background: 'transparent',
+                        width: ENT_W, height: ENT_H,
+                        objectFit: 'contain', objectPosition: 'center',
+                        display: 'block', background: 'transparent',
                       }}
-                      draggable={false}
-                    />
+                      draggable={false} />
                   ) : (
-                    <EntityArt size={CARD_W} />
+                    <EntityArt size={ENT_W} />
                   )}
                 </motion.div>
 
                 {/* Name / domain / eminence badge */}
-                <div className="relative flex flex-col items-center gap-1 text-center">
+                <motion.div
+                  className="relative flex flex-col items-center gap-1 text-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: isFlashing ? 0 : (isFading ? 0 : 1) }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                >
                   {domain && (
-                    <div
-                      className="text-[10px] font-bold tracking-[0.22em] uppercase"
-                      style={{ color: primaryColor }}
-                    >
-                      {domain}
-                    </div>
+                    <div className="text-[10px] font-bold tracking-[0.22em] uppercase"
+                      style={{ color: primaryColor }}>{domain}</div>
                   )}
                   <div className="text-xl font-serif font-bold text-white drop-shadow-lg">
                     {luminaryName}
                   </div>
-                  <div
-                    className="text-base font-bold px-3 py-0.5 rounded-full"
-                    style={{
-                      background: `${primaryColor}28`,
-                      color: primaryColor,
-                      border: `1px solid ${primaryColor}55`,
-                    }}
-                  >
+                  <div className="text-base font-bold px-3 py-0.5 rounded-full"
+                    style={{ background: `${primaryColor}28`, color: primaryColor, border: `1px solid ${primaryColor}55` }}>
                     +{lumens} Eminence
                   </div>
                   {flavor && (
@@ -1241,7 +1201,7 @@ export function LuminarySummonCutscene({
                       &ldquo;{flavor}&rdquo;
                     </div>
                   )}
-                </div>
+                </motion.div>
               </motion.div>
             </motion.div>
           )}

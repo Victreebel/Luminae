@@ -269,6 +269,7 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
+      data-luminary-id={luminary.id}
       className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
         isClaimed ? 'ring-2 ring-amber-300/70 shadow-[0_0_20px_rgba(251,191,36,0.4)]' : 'ring-1 ring-black/30'
       }`}
@@ -402,6 +403,7 @@ export default function GameBoard() {
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [summonQueue, setSummonQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
+    cardRect?: { cx: number; cy: number; w: number };
   }>>([]);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
@@ -703,7 +705,10 @@ export default function GameBoard() {
               const lumFlavor = (lum as { flavor?: string } | undefined)?.flavor ?? '';
               const isMe = newPlayer.playerId === session?.playerId;
               if (isMe) {
-                setSummonQueue(q => [...q, { id: lumId, name: lumName, domain: lumDomain, lumens: lumLumens, flavor: lumFlavor }]);
+                const el = document.querySelector(`[data-luminary-id="${lumId}"]`);
+              const rect = el?.getBoundingClientRect();
+              const cardRectVal = rect ? { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width } : undefined;
+              setSummonQueue(q => [...q, { id: lumId, name: lumName, domain: lumDomain, lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal }]);
               } else {
                 toast({
                   title: `${newPlayer.playerName} claimed a Luminary`,
@@ -2689,6 +2694,7 @@ export default function GameBoard() {
             domain={summonQueue[0].domain}
             lumens={summonQueue[0].lumens}
             flavor={summonQueue[0].flavor}
+            cardRect={summonQueue[0].cardRect}
             onComplete={() => setSummonQueue(q => q.slice(1))}
           />
         )}
@@ -2704,13 +2710,19 @@ export default function GameBoard() {
                 key={v.id}
                 className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                 style={{ borderLeft: `3px solid ${v.primaryColor}` }}
-                onClick={() => setSummonQueue(q => [...q, {
-                  id: v.id,
-                  name: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                  domain: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                  lumens: 3,
-                  flavor: 'Test summon preview.',
-                }])}
+                onClick={() => {
+                  const el = document.querySelector(`[data-luminary-id="${v.id}"]`);
+                  const rect = el?.getBoundingClientRect();
+                  const cardRect = rect ? { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width } : undefined;
+                  setSummonQueue(q => [...q, {
+                    id: v.id,
+                    name: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                    domain: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                    lumens: 3,
+                    flavor: 'Test summon preview.',
+                    cardRect,
+                  }]);
+                }}
               >
                 {v.id}
               </button>
