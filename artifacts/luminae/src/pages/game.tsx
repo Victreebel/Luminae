@@ -887,6 +887,7 @@ export default function GameBoard() {
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
+  const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -1445,6 +1446,15 @@ export default function GameBoard() {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
 
+  const toggleOpponent = (playerId: string) => {
+    setExpandedOpponents(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  };
+
   const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
   const myReservedCount = me?.reservedCards.length ?? 0;
   const myTotalGems = Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0);
@@ -1675,7 +1685,7 @@ export default function GameBoard() {
       </div>
 
 
-      {/* ── Opponents (always visible on Board tab) ── */}
+      {/* ── Opponents (always visible on Board tab; details collapsible) ── */}
       {state.players.filter(p => p.playerId !== session?.playerId).length > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Opponents</p>
@@ -1683,67 +1693,79 @@ export default function GameBoard() {
             {state.players.map((p, i) => {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
-              const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
+              const isExpanded = expandedOpponents.has(p.playerId);
               const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
+              const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
               return (
                 <div
                   key={p.playerId}
-                  className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                  className={`rounded-2xl border bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
-                      {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                      <span className="text-xs font-semibold truncate">{p.playerName}</span>
-                      {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
-                      <span>
-                        <span className="font-semibold text-foreground/80">{totalGems}</span> Affinity
-                      </span>
-                      <span className="font-serif font-black text-lg text-primary leading-none">{p.lumens}</span>
+                  {/* Header: avatar + name + lumen score + expand toggle */}
+                  <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-2">
+                    <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
+                    {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                    <span className="text-xs font-semibold truncate flex-1">{p.playerName}</span>
+                    {isCurrent && <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="font-serif font-black text-base text-primary leading-none">{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleOpponent(p.playerId)}
+                      className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded ml-0.5"
+                      aria-label={isExpanded ? 'Collapse opponent details' : 'Expand opponent details'}
+                    >
+                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
                   </div>
-                  <div className="flex gap-1">
+                  {/* Compact gem row — always visible: symbol → count → +bonus */}
+                  <div className="px-3 pb-2.5 flex gap-1">
                     {CRYSTALS.map((c) => {
                       const n = p.crystals[c as keyof CrystalCounts] ?? 0;
                       const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                      const meta = GEM_META[c as GemKey];
                       return (
                         <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                          <div
-                            className="w-full flex flex-col items-center justify-end rounded-[5px] relative overflow-hidden pb-[3px]"
-                            style={{
-                              height: 34,
-                              background: `linear-gradient(180deg, #080808 0%, ${meta.hex}22 100%)`,
-                              border: `1px solid ${meta.hex}33`,
-                              boxShadow: n > 0 ? `inset 0 0 10px ${meta.hex}18, 0 0 8px ${meta.hex}22` : 'none',
-                            }}
-                          >
-                            {n > 0 && (
-                              <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
-                            )}
-                            <span
-                              className="text-[13px] font-black leading-none tracking-tight"
-                              style={{
-                                color: n > 0 ? '#fff' : meta.hex + '22',
-                                textShadow: n > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
-                              }}
-                            >
-                              {n}
-                            </span>
-                          </div>
-                          <MiniGem color={c as GemKey} size={11} />
+                          <MiniGem color={c as GemKey} size={12} />
+                          <span className="text-[12px] font-black text-white leading-none">{n}</span>
                           {bonus > 0 ? (
-                            <span className="text-[9px] font-black leading-none text-primary">+{bonus}</span>
+                            <span className="text-[9px] font-bold text-primary leading-none">+{bonus}</span>
                           ) : (
-                            <span className="text-[9px] text-muted-foreground/40 leading-none">—</span>
+                            <span className="text-[9px] text-muted-foreground/25 leading-none">—</span>
                           )}
                         </div>
                       );
                     })}
                   </div>
+                  {/* Expandable detail row */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="overflow-hidden border-t border-border/30"
+                      >
+                        <div className="px-3 py-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                          <div className="flex gap-3">
+                            <span><span className="font-semibold text-foreground/80">{totalGems}</span> affinities</span>
+                            <span><span className="font-semibold text-foreground/80">{cardCount}</span> forged</span>
+                          </div>
+                          <div className="flex gap-1 items-center">
+                            {p.reservedCards.length > 0 ? (
+                              p.reservedCards.map((card, idx) => (
+                                <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground/50">no reserve</span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
@@ -2009,105 +2031,80 @@ export default function GameBoard() {
         {activeTab === 'log' && LogTab()}
       </main>
 
-      {/* ── Player Info Panel (pinned above nav) ── */}
+      {/* ── Your Resources Panel (pinned above nav) ── */}
       {me && (
-        <div className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}>
-          {/* Top row: identity + lumens */}
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={22} />
-              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-              <span className="text-xs font-semibold truncate">{me.playerName}</span>
-              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
-            </div>
-            <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
-              <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> Affinity</span>
+        <div className={`shrink-0 z-20 border-t px-3 pt-2 pb-2.5 bg-card/95 backdrop-blur transition-all ${isMyTurn ? 'border-primary/70 shadow-[0_0_16px_rgba(99,102,241,0.32)]' : 'border-border/60'}`}>
+          {/* Identity + lumen score row */}
+          <div className="flex items-center gap-2 mb-2">
+            <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={20} />
+            {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+            <span className="text-[11px] font-bold truncate text-foreground/90 flex-1">{me.playerName}</span>
+            {isMyTurn && (
+              <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
+            )}
+            <div className="flex items-center gap-1 shrink-0">
               <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
               <Sparkles className="h-3 w-3 text-primary" />
             </div>
           </div>
-          {/* Gem columns: card chip + token + bonus */}
+          {/* Compact gem columns: symbol → held count (+ pending) → +bonus */}
           <div className="flex gap-1">
             {CRYSTALS.map((c) => {
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
               const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
-              const meta = GEM_META[c as GemKey];
               const isFlux = c === 'flux';
               const forgedCount = isFlux
                 ? 0
                 : (me.purchasedCards ?? []).filter((card) => card.bonusColor === c).length;
               const reservedCount = me.reservedCards.length;
+              const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
               return (
                 <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                  {/* Mini card chip */}
+                  {/* Tappable gem icon — opens reserved/forged overlay */}
                   {isFlux ? (
                     <button
                       type="button"
                       onClick={() => setShowReservedOverlay(true)}
-                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] relative overflow-hidden"
-                      style={{
-                        height: 36,
-                        background: reservedCount > 0
-                          ? `linear-gradient(180deg, #0a0802 0%, ${meta.hex}55 100%)`
-                          : 'linear-gradient(180deg, #080808 0%, #141408 100%)',
-                        border: `1px solid ${reservedCount > 0 ? meta.hex + 'AA' : meta.hex + '33'}`,
-                        boxShadow: reservedCount > 0
-                          ? `inset 0 0 10px ${meta.hex}22, 0 0 10px ${meta.hex}44`
-                          : 'none',
-                      }}
+                      className="transition-opacity active:opacity-60 relative"
+                      aria-label="View reserved cards"
                     >
+                      <MiniGem color={c as GemKey} size={14} />
                       {reservedCount > 0 && (
-                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                        <span className="absolute -top-1 -right-1.5 text-[8px] font-black text-amber-300 leading-none">{reservedCount}</span>
                       )}
-                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
-                        color: reservedCount > 0 ? meta.glowHex : meta.hex + '33',
-                        textShadow: reservedCount > 0 ? `0 0 8px ${meta.hex}` : 'none',
-                      }}>
-                        {reservedCount}
-                      </span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       disabled={forgedCount === 0}
                       onClick={() => { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }}
-                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] disabled:cursor-default relative overflow-hidden"
-                      style={{
-                        height: 36,
-                        background: forgedCount > 0
-                          ? `linear-gradient(180deg, #050510 0%, ${meta.hex}44 100%)`
-                          : 'linear-gradient(180deg, #080808 0%, #101010 100%)',
-                        border: `1px solid ${forgedCount > 0 ? meta.hex + 'AA' : meta.hex + '22'}`,
-                        boxShadow: forgedCount > 0
-                          ? `inset 0 0 10px ${meta.hex}22, 0 0 8px ${meta.hex}33`
-                          : 'none',
-                      }}
+                      className="disabled:cursor-default transition-opacity active:opacity-60 relative"
+                      aria-label={forgedCount > 0 ? `View ${forgedCount} forged cards` : undefined}
                     >
+                      <MiniGem color={c as GemKey} size={14} />
                       {forgedCount > 0 && (
-                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                        <span className="absolute -top-1 -right-1.5 text-[8px] font-black text-white/70 leading-none">{forgedCount}</span>
                       )}
-                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
-                        color: forgedCount > 0 ? '#fff' : meta.hex + '22',
-                        textShadow: forgedCount > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
-                      }}>
-                        {forgedCount}
-                      </span>
                     </button>
                   )}
-                  {/* Token */}
-                  <MiniGem color={c as GemKey} size={11} />
-                  <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
-                  {(() => {
-                    const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-                    return pending > 0 ? (
+                  {/* Held token count + queued intake */}
+                  <div className="flex items-baseline gap-[2px]">
+                    <span className="text-[13px] font-black leading-none text-white">{gems}</span>
+                    {pending > 0 && (
                       <motion.span
                         key={pending}
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         className="text-[9px] font-black leading-none text-primary"
                       >+{pending}</motion.span>
-                    ) : null;
-                  })()}
+                    )}
+                  </div>
+                  {/* Permanent bonus from forged cards */}
+                  {bonus > 0 ? (
+                    <span className="text-[9px] font-bold text-primary leading-none">+{bonus}</span>
+                  ) : (
+                    <span className="text-[9px] text-muted-foreground/25 leading-none">—</span>
+                  )}
                 </div>
               );
             })}
