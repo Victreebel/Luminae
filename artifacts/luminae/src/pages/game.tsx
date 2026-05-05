@@ -418,6 +418,7 @@ export default function GameBoard() {
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLElement>(null);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -427,6 +428,24 @@ export default function GameBoard() {
   useEffect(() => {
     gameAudio.startMusic();
     return () => { gameAudio.stopMusic(); };
+  }, []);
+
+  // Scroll-passthrough fix: attach a native touchstart listener to the main
+  // scroll container so iOS Safari releases panel button focus at the exact
+  // moment a touch gesture begins in the board area — before the browser
+  // decides the scroll context. React's synthetic onPointerDown alone is not
+  // early enough on iOS.
+  useEffect(() => {
+    const el = mainScrollRef.current;
+    if (!el) return;
+    const releasePanelFocus = () => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && playerPanelRef.current?.contains(active)) {
+        active.blur();
+      }
+    };
+    el.addEventListener('touchstart', releasePanelFocus, { passive: true });
+    return () => el.removeEventListener('touchstart', releasePanelFocus);
   }, []);
 
   const TURN_ANNOUNCE_DURATION = 1800;
@@ -1574,10 +1593,11 @@ export default function GameBoard() {
 
       {/* ── Tab Content ── */}
       <main
+        ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         className="flex-1 overflow-y-auto overflow-x-hidden z-10"
         onPointerDown={() => {
-          // If a player-panel element has focus, release it immediately so the
-          // scroll gesture isn't consumed by a stale focus blur event first.
+          // Fallback for non-iOS (Android Chrome, desktop): blur any focused
+          // panel element as soon as a pointer gesture starts in the board.
           const active = document.activeElement as HTMLElement | null;
           if (active && playerPanelRef.current?.contains(active)) {
             active.blur();
@@ -1591,7 +1611,20 @@ export default function GameBoard() {
 
       {/* ── Player Info Panel (pinned above nav) ── */}
       {me && (
-        <div ref={playerPanelRef} className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}>
+        <div
+          ref={playerPanelRef}
+          className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}
+          onClickCapture={() => {
+            // Proactively release focus after any panel tap so the NEXT gesture
+            // in the board area starts clean without a defocus-first event.
+            requestAnimationFrame(() => {
+              const active = document.activeElement as HTMLElement | null;
+              if (active && playerPanelRef.current?.contains(active)) {
+                active.blur();
+              }
+            });
+          }}
+        >
           {/* Top row: identity + lumens */}
           <div className="flex items-center gap-3 mb-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
