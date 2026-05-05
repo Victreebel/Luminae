@@ -1368,19 +1368,50 @@ export default function GameBoard() {
                   </div>
                 </div>
 
-                {/* Per-color gems + bonuses grid */}
-                <div className="grid grid-cols-6 gap-1 mb-3">
+                {/* Per-color tall gem boxes — token count + bonus beneath */}
+                <div className="grid grid-cols-6 gap-1.5 mb-3">
                   {CRYSTALS.map((c) => {
                     const n = p.crystals[c as keyof CrystalCounts] ?? 0;
                     const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                    const meta = GEM_META[c as GemKey];
+                    const isFlux = c === 'flux';
+                    const reservedCount = p.reservedCards.length;
+                    const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0);
                     return (
-                      <div key={c} className="flex flex-col items-center gap-0.5 bg-black/30 rounded-lg py-1.5">
-                        <MiniGem color={c as GemKey} size={14} />
-                        <span className="text-[12px] font-black text-white leading-none">{n}</span>
-                        {bonus > 0 ? (
-                          <span className="text-[9px] font-bold leading-none" style={{ color: GEM_META[c as GemKey].glowHex }}>+{bonus}</span>
-                        ) : (
-                          <span className="text-[9px] text-muted-foreground/40 leading-none">—</span>
+                      <div
+                        key={c}
+                        className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
+                        style={{
+                          background: hasContent
+                            ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                            : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                          border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                          boxShadow: hasContent
+                            ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33`
+                            : 'none',
+                        }}
+                      >
+                        {hasContent && (
+                          <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+                        )}
+                        <span
+                          className="text-2xl font-black leading-none tracking-tight"
+                          style={{
+                            color: hasContent ? '#fff' : meta.hex + '40',
+                            textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
+                          }}
+                        >
+                          {n}
+                        </span>
+                        {!isFlux && bonus > 0 && (
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
+                            +{bonus} bonus
+                          </span>
+                        )}
+                        {isFlux && reservedCount > 0 && (
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
+                            {reservedCount} reserved
+                          </span>
                         )}
                       </div>
                     );
@@ -1508,89 +1539,68 @@ export default function GameBoard() {
               <Sparkles className="h-3 w-3 text-primary" />
             </div>
           </div>
-          {/* Gem columns: card chip + token + bonus */}
-          <div className="flex gap-1">
+          {/* Gem columns: tall box with token count + bonus beneath */}
+          <div className="flex gap-1.5">
             {CRYSTALS.map((c) => {
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
               const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
               const meta = GEM_META[c as GemKey];
               const isFlux = c === 'flux';
-              const forgedCount = isFlux
-                ? 0
-                : (me.purchasedCards ?? []).filter((card) => card.bonusColor === c).length;
               const reservedCount = me.reservedCards.length;
+              const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+              const hasContent = isFlux ? (gems > 0 || reservedCount > 0) : (gems > 0 || bonus > 0);
+              const clickable = isFlux ? reservedCount > 0 : bonus > 0;
               return (
-                <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                  {/* Mini card chip */}
-                  {isFlux ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowReservedOverlay(true)}
-                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] relative overflow-hidden"
-                      style={{
-                        height: 36,
-                        background: reservedCount > 0
-                          ? `linear-gradient(180deg, #0a0802 0%, ${meta.hex}55 100%)`
-                          : 'linear-gradient(180deg, #080808 0%, #141408 100%)',
-                        border: `1px solid ${reservedCount > 0 ? meta.hex + 'AA' : meta.hex + '33'}`,
-                        boxShadow: reservedCount > 0
-                          ? `inset 0 0 10px ${meta.hex}22, 0 0 10px ${meta.hex}44`
-                          : 'none',
-                      }}
-                    >
-                      {reservedCount > 0 && (
-                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
-                      )}
-                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
-                        color: reservedCount > 0 ? meta.glowHex : meta.hex + '33',
-                        textShadow: reservedCount > 0 ? `0 0 8px ${meta.hex}` : 'none',
-                      }}>
-                        {reservedCount}
-                      </span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={forgedCount === 0}
-                      onClick={() => { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }}
-                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] disabled:cursor-default relative overflow-hidden"
-                      style={{
-                        height: 36,
-                        background: forgedCount > 0
-                          ? `linear-gradient(180deg, #050510 0%, ${meta.hex}44 100%)`
-                          : 'linear-gradient(180deg, #080808 0%, #101010 100%)',
-                        border: `1px solid ${forgedCount > 0 ? meta.hex + 'AA' : meta.hex + '22'}`,
-                        boxShadow: forgedCount > 0
-                          ? `inset 0 0 10px ${meta.hex}22, 0 0 8px ${meta.hex}33`
-                          : 'none',
-                      }}
-                    >
-                      {forgedCount > 0 && (
-                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
-                      )}
-                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
-                        color: forgedCount > 0 ? '#fff' : meta.hex + '22',
-                        textShadow: forgedCount > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
-                      }}>
-                        {forgedCount}
-                      </span>
-                    </button>
+                <button
+                  key={c}
+                  type="button"
+                  disabled={!clickable}
+                  onClick={() => {
+                    if (isFlux) setShowReservedOverlay(true);
+                    else { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }
+                  }}
+                  className="flex-1 h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden transition-all active:scale-95 disabled:cursor-default"
+                  style={{
+                    background: hasContent
+                      ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                      : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                    border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                    boxShadow: hasContent
+                      ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33`
+                      : 'none',
+                  }}
+                >
+                  {hasContent && (
+                    <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
                   )}
-                  {/* Token */}
-                  <MiniGem color={c as GemKey} size={11} />
-                  <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
-                  {(() => {
-                    const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-                    return pending > 0 ? (
-                      <motion.span
-                        key={pending}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="text-[9px] font-black leading-none text-primary"
-                      >+{pending}</motion.span>
-                    ) : null;
-                  })()}
-                </div>
+                  <span
+                    className="text-2xl font-black leading-none tracking-tight"
+                    style={{
+                      color: hasContent ? '#fff' : meta.hex + '40',
+                      textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
+                    }}
+                  >
+                    {gems}
+                  </span>
+                  {!isFlux && bonus > 0 && (
+                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
+                      +{bonus} bonus
+                    </span>
+                  )}
+                  {isFlux && reservedCount > 0 && (
+                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
+                      {reservedCount} reserved
+                    </span>
+                  )}
+                  {pending > 0 && (
+                    <motion.span
+                      key={pending}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-1 right-1.5 text-[10px] font-black leading-none text-primary bg-primary/25 px-1 py-0.5 rounded"
+                    >+{pending}</motion.span>
+                  )}
+                </button>
               );
             })}
           </div>
