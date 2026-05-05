@@ -2696,9 +2696,9 @@ export default function GameBoard() {
 
       {/* Dev test panel — visible in development to preview each Luminary cutscene */}
       {import.meta.env.DEV && (
-        <details className="fixed bottom-16 left-2 z-[8000] text-[10px]">
-          <summary className="cursor-pointer text-white/30 hover:text-white/60 select-none px-1">⚗ Summon Test</summary>
-          <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 max-h-60 overflow-y-auto">
+        <details className="fixed bottom-16 right-2 z-[8000] text-[10px]" open>
+          <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">⚗ Summon Test</summary>
+          <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 max-h-60 overflow-y-auto min-w-36">
             {Object.values(LUMINARY_VISUALS).map(v => (
               <button
                 key={v.id}
