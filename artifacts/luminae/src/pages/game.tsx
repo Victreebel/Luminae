@@ -400,9 +400,9 @@ export default function GameBoard() {
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
-  const [summoningLum, setSummoningLum] = useState<{
+  const [summonQueue, setSummonQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
-  } | null>(null);
+  }>>([]);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -703,7 +703,7 @@ export default function GameBoard() {
               const lumFlavor = (lum as { flavor?: string } | undefined)?.flavor ?? '';
               const isMe = newPlayer.playerId === session?.playerId;
               if (isMe) {
-                setSummoningLum({ id: lumId, name: lumName, domain: lumDomain, lumens: lumLumens, flavor: lumFlavor });
+                setSummonQueue(q => [...q, { id: lumId, name: lumName, domain: lumDomain, lumens: lumLumens, flavor: lumFlavor }]);
               } else {
                 toast({
                   title: `${newPlayer.playerName} claimed a Luminary`,
@@ -2679,17 +2679,17 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* Luminary summoning cutscene — fires when local player claims a Luminary */}
+      {/* Luminary summoning cutscene queue — plays one cutscene at a time */}
       <AnimatePresence>
-        {summoningLum && (
+        {summonQueue.length > 0 && summonQueue[0] && (
           <LuminarySummonCutscene
-            key={summoningLum.id + summoningLum.lumens}
-            luminaryId={summoningLum.id}
-            luminaryName={summoningLum.name}
-            domain={summoningLum.domain}
-            lumens={summoningLum.lumens}
-            flavor={summoningLum.flavor}
-            onComplete={() => setSummoningLum(null)}
+            key={summonQueue[0].id + '-' + summonQueue[0].lumens + '-' + summonQueue.length}
+            luminaryId={summonQueue[0].id}
+            luminaryName={summonQueue[0].name}
+            domain={summonQueue[0].domain}
+            lumens={summonQueue[0].lumens}
+            flavor={summonQueue[0].flavor}
+            onComplete={() => setSummonQueue(q => q.slice(1))}
           />
         )}
       </AnimatePresence>
@@ -2704,13 +2704,13 @@ export default function GameBoard() {
                 key={v.id}
                 className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                 style={{ borderLeft: `3px solid ${v.primaryColor}` }}
-                onClick={() => setSummoningLum({
+                onClick={() => setSummonQueue(q => [...q, {
                   id: v.id,
                   name: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                  domain: '',
+                  domain: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
                   lumens: 3,
                   flavor: 'Test summon preview.',
-                })}
+                }])}
               >
                 {v.id}
               </button>
