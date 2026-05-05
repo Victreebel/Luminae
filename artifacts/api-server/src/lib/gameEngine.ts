@@ -872,9 +872,25 @@ export function normalizeState(raw: unknown): GameStateData {
   }
   // filter activeLuminaries to only known IDs (backward compat for old saves)
   if (Array.isArray(state.activeLuminaries)) {
-    state.activeLuminaries = (state.activeLuminaries as string[]).filter((id) =>
-      LUMINARY_MAP.has(id),
-    );
+    const original = state.activeLuminaries as string[];
+    const valid = original.filter((id) => LUMINARY_MAP.has(id));
+    // If the saved game predates the redesign (all old IDs got dropped),
+    // re-roll fresh Luminaries from the new pantheon so the panel isn't empty.
+    if (valid.length === 0 && original.length > 0) {
+      const playerCount = Array.isArray(state.players)
+        ? (state.players as unknown[]).length
+        : 2;
+      const lumCount = Math.min(
+        Math.max(playerCount + 1, original.length),
+        LUMINARIES.length,
+      );
+      state.activeLuminaries = shuffle(LUMINARIES.map((l) => l.id)).slice(
+        0,
+        lumCount,
+      );
+    } else {
+      state.activeLuminaries = valid;
+    }
   }
   return state as unknown as GameStateData;
 }

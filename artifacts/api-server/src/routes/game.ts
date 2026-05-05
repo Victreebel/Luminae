@@ -120,10 +120,30 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
   const avatarMap = new Map<string, string | null>(
     allPlayers.map((p) => [p.id, p.avatarId ?? null]),
   );
+  // Snapshot stored value BEFORE normalizeState (it mutates in place).
+  const storedLuminaries = JSON.stringify(
+    (gs.state as { activeLuminaries?: unknown }).activeLuminaries ?? [],
+  );
+  const normalized = normalizeState(gs.state);
+
+  // Persist normalized state if it diverged from what's stored. This bakes
+  // in any backward-compat migrations (e.g. re-rolled Luminaries from the
+  // pre-redesign pantheon) so subsequent reads are deterministic.
+  const normalizedLuminaries = JSON.stringify(normalized.activeLuminaries);
+  if (storedLuminaries !== normalizedLuminaries) {
+    await db
+      .update(gameStatesTable)
+      .set({
+        state: normalized as unknown as Record<string, unknown>,
+        updatedAt: new Date(),
+      })
+      .where(eq(gameStatesTable.roomId, rawId));
+  }
+
   const formatted = formatGameState(
     rawId,
     room.status,
-    normalizeState(gs.state),
+    normalized,
     connectedIds,
     avatarMap,
   );
