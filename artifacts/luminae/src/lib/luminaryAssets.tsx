@@ -802,22 +802,35 @@ export function LuminarySummonCutscene({
   const isVessel     = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
   const hasCracks    = isFirstCrack || isLeaking || isCracking;
 
-  // ── Overlay opacity: board visible during establish/focusing and entity reveal ─
+  // ── Overlay opacity ─────────────────────────────────────────────────────────
+  // establish → board fully visible (0), focusing → darkens as camera zooms in,
+  // crack phases → nearly opaque, reveal → lightened so board reads as backdrop.
   const overlayOpacity =
-    isEstablish                                ? 0.44 :
-    isFocusing                                 ? 0.82 :
-    (isRevealedActive || isFlashing) && !isFading ? 0.62 :
+    isEstablish      ? 0    :
+    isFocusing       ? 0.72 :
+    isFlashing       ? 0.40 :
+    isRevealedActive ? 0.55 :
+    isFading         ? 0    :
     0.90;
 
-  // ── Board-relative camera target ───────────────────────────────────────────
-  // Convert cardRect viewport coords → offset from screen center
+  // ── Camera: zoom toward card position using transformOrigin ─────────────────
+  // Setting transformOrigin to the card's viewport centre means a pure scale()
+  // keeps the card stationary while the world zooms in — no translate needed.
   const vw = typeof window !== 'undefined' ? window.innerWidth  : 375;
   const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
-  const vcx = cardRect ? cardRect.cx - vw / 2 : 0;
-  const vcy = cardRect ? cardRect.cy - vh / 2 : 55;
-  const targetScale = cardRect ? Math.max(1.75, 340 / Math.max(1, cardRect.w)) : 2.6;
-  const targetX = cardRect ? -vcx : 0;
-  const targetY = cardRect ? -vcy : 0;
+  // Card's viewport centre (transformOrigin point)
+  const originX = cardRect ? cardRect.cx : vw / 2;
+  const originY = cardRect ? cardRect.cy : vh / 2;
+  // Cinematic card's absolute top-left inside the camera plane
+  const cardX = cardRect ? cardRect.cx - CARD_W / 2 : vw / 2 - CARD_W / 2;
+  const cardY = cardRect ? cardRect.cy - CARD_H / 2 : vh / 2 - CARD_H / 2;
+  // Zoom level so the cinematic card fills ~70 % of the shorter viewport axis
+  const targetScale = Math.min(vw / CARD_W * 0.70, vh / CARD_H * 0.70, 3.5);
+  // Camera is zoomed in during all phases from focusing through cracking;
+  // zooms back out for shattering/flash/reveal so the entity floats over the board.
+  const cameraZoomedIn =
+    !isEstablish && !isShattering && !isFlashing && !isRevealedActive && !isFading;
+  const cameraScale = cameraZoomedIn ? targetScale : 1;
 
   // ── Vessel glow — ramps up through crack phases ─────────────────────────────
   const vesselGlow: [string, string, string] = isPressure
@@ -831,113 +844,74 @@ export function LuminarySummonCutscene({
   return (
     <div className="fixed inset-0 z-[9000] cursor-pointer" onClick={onComplete}>
 
-      {/* ── Dark overlay — animates opacity per phase ───────────────────────── */}
+      {/* ── Dark overlay — fades board as camera zooms in ────────────────────── */}
       <motion.div
         className="absolute inset-0 pointer-events-none"
         animate={{ opacity: overlayOpacity }}
-        transition={{ duration: 0.55, ease: 'easeInOut' }}
+        transition={{ duration: 0.65, ease: 'easeInOut' }}
         style={{ background: 'rgba(4,2,16,1)' }}
       />
 
-      {/* ── Spotlight — pulses at card location during establish/focusing ─────── */}
-      {/* Gives the "camera finds the panel" feeling before zooming in */}
-      {(isEstablish || isFocusing) && (
-        <motion.div
-          className="absolute pointer-events-none"
-          initial={{ opacity: 0, scale: 2.2 }}
-          animate={isFocusing
-            ? { opacity: [0.6, 0.9, 0.7], scale: [1.4, 1.0, 0.85] }
-            : { opacity: [0, 0.5, 0.7],   scale: [2.2, 1.8, 1.5]  }
-          }
-          transition={{ duration: isFocusing ? 0.8 : 0.6, ease: 'easeOut' }}
-          style={{
-            width: 260,
-            height: 360,
-            left: cardRect ? cardRect.cx - 130 : '50%',
-            top:  cardRect ? cardRect.cy - 180 : '50%',
-            marginLeft: cardRect ? 0 : -130,
-            marginTop:  cardRect ? 0 : -180,
-            borderRadius: '50%',
-            background: `radial-gradient(ellipse at center, ${primaryColor}44 0%, ${primaryColor}18 45%, transparent 75%)`,
-            filter: 'blur(22px)',
-          }}
-        />
-      )}
-
-      {/* Skip hint */}
-      <div className="absolute bottom-8 left-0 right-0 text-center text-xs text-white/28 tracking-widest uppercase pointer-events-none select-none">
-        tap to skip
-      </div>
-
-      {/* ── Camera plane / board overlay ─────────────────────────────────────── */}
+      {/* ── Camera plane ─────────────────────────────────────────────────────── */}
+      {/* transformOrigin is pinned to the card's viewport centre so scale()     */}
+      {/* alone creates a "zoom into the card" effect — no translate needed.      */}
       <motion.div
         className="absolute inset-0 pointer-events-none"
-        style={{ transformOrigin: '50% 50%' }}
-        animate={{
-          x: isIntro ? 0 : targetX,
-          y: isIntro ? 0 : targetY,
-          scale: isIntro ? 1 : targetScale,
-        }}
-        transition={{
-          x: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
-          y: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
-          scale: { duration: 0.65, ease: [0.16, 1, 0.3, 1] },
-        }}
+        style={{ transformOrigin: `${originX}px ${originY}px` }}
+        animate={{ scale: cameraScale }}
+        transition={{ duration: 0.80, ease: [0.16, 1, 0.3, 1] }}
       >
-        {(isEstablish || isFocusing) && cardRect && (
+
+        {/* ── Board-card glow / tremble during establish + focusing ────────── */}
+        {(isEstablish || isFocusing) && (
           <motion.div
             className="absolute pointer-events-none"
             animate={{
-              opacity: [0.25, 0.85, 0.45, 0.9],
-              rotate: [0, -0.4, 0.4, 0],
-              x: [0, -1, 1, 0],
-              y: [0, 1, -1, 0],
+              opacity: [0.35, 0.95, 0.50, 0.90],
+              x: [0, -1.5, 1.5, -1, 1, 0],
+              y: [0, 1, -1.5, 1, -0.5, 0],
             }}
-            transition={{ repeat: Infinity, duration: 0.55, ease: 'easeInOut' }}
+            transition={{ repeat: Infinity, duration: 0.48, ease: 'easeInOut' }}
             style={{
-              left: cardRect.cx - cardRect.w / 2,
-              top: cardRect.cy - (cardRect.w * CARD_H) / CARD_W / 2,
-              width: cardRect.w,
-              height: (cardRect.w * CARD_H) / CARD_W,
-              boxShadow: `0 0 0 1px ${primaryColor}66, 0 0 18px ${primaryColor}55, 0 0 42px ${primaryColor}33`,
-              background: `radial-gradient(ellipse at center, ${primaryColor}22 0%, transparent 72%)`,
-              borderRadius: 14,
-              filter: 'blur(1px)',
+              left: cardX - 4,
+              top:  cardY - 4,
+              width:  CARD_W + 8,
+              height: CARD_H + 8,
+              borderRadius: 16,
+              boxShadow: `0 0 0 2px ${primaryColor}88, 0 0 22px ${primaryColor}66, 0 0 55px ${primaryColor}33`,
+              background: `radial-gradient(ellipse at center, ${primaryColor}18 0%, transparent 70%)`,
             }}
           />
         )}
 
-        {/* ── Cinematic stage ─────────────────────────────────────────────────── */}
-        <div className="absolute inset-0 flex items-center justify-center">
-        {/* ── Sealed vessel — card face, starting at board position ────────── */}
+        {/* ── Sealed vessel — cinematic proxy card at the board card's spot ─── */}
         <AnimatePresence>
           {isVessel && (
             <motion.div
               key="vessel"
-              className="relative overflow-hidden"
+              className="absolute overflow-hidden"
               style={{
+                left: cardX,
+                top:  cardY,
                 width: CARD_W,
                 height: CARD_H,
                 borderRadius: 14,
                 border: `2px solid ${primaryColor}70`,
-                opacity: isIntro || isZooming ? 1 : 0.0001,
               }}
-              initial={{ scale: 1, x: 0, y: 0, opacity: 1 }}
+              initial={{ opacity: 0 }}
               animate={{
-                scale: isIntro ? 1 : isZooming ? 1.0 : ([1, 1.026, 1] as number[]),
-                x: 0,
-                y: 0,
                 opacity: 1,
-                boxShadow: isZooming
-                  ? `0 0 12px ${primaryColor}40`
-                  : (vesselGlow as unknown as string),
+                scale:     (isPressure || hasCracks) ? ([1, 1.026, 1] as number[]) : 1,
+                boxShadow: (isPressure || hasCracks)
+                  ? (vesselGlow as unknown as string)
+                  : `0 0 12px ${primaryColor}40`,
               }}
               exit={{ scale: 2.8, opacity: 0, transition: { duration: 0.42, ease: 'easeIn' } }}
               transition={{
-                scale: isZooming ? { duration: 0.65, ease: [0.16, 1, 0.3, 1] }
-                  : (isPressure || hasCracks) ? { repeat: Infinity, duration: 1.15, ease: 'easeInOut' }
+                scale:     (isPressure || hasCracks)
+                  ? { repeat: Infinity, duration: 1.15, ease: 'easeInOut' }
                   : { duration: 0.28 },
-                opacity: { duration: 0.30 },
+                opacity:   { duration: 0.30 },
                 boxShadow: { repeat: Infinity, duration: 1.15, ease: 'easeInOut' },
               }}
             >
@@ -953,7 +927,7 @@ export function LuminarySummonCutscene({
                 <LuminaryPanelArt luminaryId={luminaryId} size={CARD_W} />
               )}
 
-              {/* ── Crack-light SVG overlay ─────────────────────────────────── */}
+              {/* Crack-light SVG overlay */}
               {hasCracks && (
                 <svg
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -969,20 +943,14 @@ export function LuminarySummonCutscene({
 
                   <motion.path
                     d={`M${FX},0 L${FX-9},${Math.round(FY*.67)} L${FX},${FY} L${FX+9},${Math.round(FY*1.64)} L${FX-5},${CARD_H}`}
-                    stroke="white"
-                    strokeWidth="2.1"
-                    fill="none"
-                    filter="url(#cg)"
+                    stroke="white" strokeWidth="2.1" fill="none" filter="url(#cg)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.84, 0.94] }}
                     transition={{ duration: 0.60, ease: 'easeOut' }}
                   />
                   <motion.path
                     d={`M${FX},0 L${FX-9},${Math.round(FY*.67)} L${FX},${FY} L${FX+9},${Math.round(FY*1.64)} L${FX-5},${CARD_H}`}
-                    stroke="#ffe8a0"
-                    strokeWidth="7"
-                    fill="none"
-                    strokeLinecap="round"
+                    stroke="#ffe8a0" strokeWidth="7" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.24, 0.42] }}
                     transition={{ duration: 0.60, delay: 0.07, ease: 'easeOut' }}
@@ -990,22 +958,12 @@ export function LuminarySummonCutscene({
 
                   {(isLeaking || isCracking) && (
                     <>
-                      <motion.circle
-                        cx={FX}
-                        cy={FY}
-                        r="10"
-                        fill="white"
+                      <motion.circle cx={FX} cy={FY} r="10" fill="white"
                         initial={{ opacity: 0, scale: 0.2 }}
                         animate={{ opacity: [0, 0.75, 1.0, 0.65], scale: [0.2, 1.25, 1.0] }}
                         transition={{ duration: 0.48, ease: 'easeOut' }}
                       />
-                      <motion.circle
-                        cx={FX}
-                        cy={FY}
-                        r="24"
-                        fill="none"
-                        stroke="#ffe8a0"
-                        strokeWidth="3"
+                      <motion.circle cx={FX} cy={FY} r="24" fill="none" stroke="#ffe8a0" strokeWidth="3"
                         initial={{ opacity: 0, scale: 0.1 }}
                         animate={{ opacity: [0, 0.55, 0.3, 0], scale: [0.1, 1.9, 2.6] }}
                         transition={{ duration: 0.88, ease: 'easeOut', delay: 0.1 }}
@@ -1017,57 +975,34 @@ export function LuminarySummonCutscene({
                     <>
                       <motion.path
                         d={`M0,${FY+1} L${FX-41},${FY-18} L${FX},${FY} L${FX+43},${FY+19} L${CARD_W},${FY+7}`}
-                        stroke="white"
-                        strokeWidth="1.4"
-                        fill="none"
-                        filter="url(#cg)"
+                        stroke="white" strokeWidth="1.4" fill="none" filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.32, 0.58] }}
                         transition={{ duration: 0.88, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M${CARD_W},50 L${FX+44},${FY-32} L${FX},${FY}`}
-                        stroke="white"
-                        strokeWidth="0.95"
-                        fill="none"
-                        filter="url(#cg)"
+                        stroke="white" strokeWidth="0.95" fill="none" filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.20, 0.44] }}
                         transition={{ duration: 0.72, delay: 0.18, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M0,${CARD_H-58} L${FX-36},${FY+68} L${FX-5},${CARD_H}`}
-                        stroke="white"
-                        strokeWidth="0.9"
-                        fill="none"
-                        filter="url(#cg)"
+                        stroke="white" strokeWidth="0.9" fill="none" filter="url(#cg)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.17, 0.38] }}
                         transition={{ duration: 0.68, delay: 0.30, ease: 'easeOut' }}
                       />
-                      <motion.circle
-                        cx={FX}
-                        cy={FY}
-                        r="5"
-                        fill="white"
+                      <motion.circle cx={FX} cy={FY} r="5" fill="white"
                         animate={{ opacity: [0.5, 1.0, 0.55, 1.0], scale: [1, 1.6, 1] }}
                         transition={{ repeat: Infinity, duration: 0.52 }}
                       />
-                      <motion.circle
-                        cx={FX}
-                        cy={FY}
-                        r="16"
-                        fill="none"
-                        stroke="#ffe8a0"
-                        strokeWidth="2.5"
+                      <motion.circle cx={FX} cy={FY} r="16" fill="none" stroke="#ffe8a0" strokeWidth="2.5"
                         animate={{ opacity: [0, 0.62, 0], scale: [0.4, 1.9] }}
                         transition={{ repeat: Infinity, duration: 0.68, delay: 0.1 }}
                       />
-                      <motion.circle
-                        cx={FX-9}
-                        cy={Math.round(FY*.67)}
-                        r="3.5"
-                        fill="white"
+                      <motion.circle cx={FX-9} cy={Math.round(FY*.67)} r="3.5" fill="white"
                         animate={{ opacity: [0, 0.52, 0.88, 0.4] }}
                         transition={{ repeat: Infinity, duration: 0.72, delay: 0.22 }}
                       />
@@ -1079,27 +1014,7 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-        {/* ── Board-card suppressor — hides original board card during reveal ─── */}
-        {cardRect && isRevealed && (
-          <motion.div
-            className="absolute pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              left: cardRect.cx - cardRect.w / 2 - 2,
-              top: cardRect.cy - (cardRect.w * CARD_H) / CARD_W / 2 - 2,
-              width: cardRect.w + 4,
-              height: (cardRect.w * CARD_H) / CARD_W + 4,
-              borderRadius: 14,
-              background: 'rgba(4,2,16,0.74)',
-              boxShadow: `0 0 0 1px ${primaryColor}44`,
-            }}
-          />
-        )}
-
-        {/* ── Pure cosmic-light layer beneath the panel pieces ───────────────── */}
-        {/* Light only — never a card or portrait image. Centered on the card. */}
+        {/* ── Cosmic-light layer — centred on card ─────────────────────────── */}
         <AnimatePresence>
           {isShattering && (
             <motion.div key="cosmiclight" className="absolute pointer-events-none"
@@ -1109,8 +1024,8 @@ export function LuminarySummonCutscene({
               transition={{ duration: 0.44, ease: 'easeOut' }}
               style={{
                 width: CARD_W * 2.4, height: CARD_H * 2.4,
-                left: '50%', top: '50%',
-                marginLeft: -(CARD_W * 1.2), marginTop: -(CARD_H * 1.2),
+                left: cardX + CARD_W / 2 - CARD_W * 1.2,
+                top:  cardY + CARD_H / 2 - CARD_H * 1.2,
                 background: 'radial-gradient(ellipse 40% 44% at 50% 39%, #ffffff 0%, #fff8e0 16%, #ffe566 38%, #ffa52088 60%, transparent 80%)',
                 filter: 'blur(8px)',
                 borderRadius: '50%',
@@ -1119,15 +1034,13 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-        {/* ── Panel pieces — actual artwork, clipped to quadrant regions ─────── */}
-        {/* Brightness ramps to white then fades: the shell gives way to the light. */}
+        {/* ── Panel pieces — artwork clipped to quadrant regions ───────────── */}
         <AnimatePresence>
           {isShattering && PANEL_PIECES.map((piece, i) => (
             <motion.div key={`piece-${i}`} className="absolute pointer-events-none"
               style={{
                 width: CARD_W, height: CARD_H,
-                left: '50%', top: '50%',
-                marginLeft: -CARD_W / 2, marginTop: -CARD_H / 2,
+                left: cardX, top: cardY,
                 clipPath: piece.clip, borderRadius: 14,
               }}
               initial={{ x: 0, y: 0, rotate: 0, opacity: 1, filter: 'brightness(1)' }}
@@ -1153,30 +1066,18 @@ export function LuminarySummonCutscene({
           ))}
         </AnimatePresence>
 
-        {/* ── Full-stage white-gold bloom ─────────────────────────────────────── */}
-        <AnimatePresence>
-          {isFlashing && (
-            <motion.div key="flash" className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: 0 }}
-              transition={{ duration: 0.50, ease: 'easeOut' }}
-              style={{
-                background: 'radial-gradient(ellipse at 50% 44%, #ffffff 0%, #fff8dc 20%, #ffe566 44%, #ffaa22 64%, transparent 84%)',
-              }}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* ── Freed entity ────────────────────────────────────────────────────── */}
-        {/* Starts rendering during 'flashing' (opacity 0) so it fades in through */}
-        {/* the bloom light — no gap between flash and entity.                    */}
-        {/* Entity is ENT_W × ENT_H (1.65× card), aura 600px — no rectangular    */}
-        {/* cutoff. The lightened overlay lets the live board read as background. */}
+        {/* ── Freed entity — anchored at card's board position ─────────────── */}
+        {/* Camera is back at scale 1 during reveal, so viewport coords match.  */}
         <AnimatePresence>
           {isRevealed && (
-            <motion.div key="entity"
-              className="relative flex flex-col items-center gap-4"
-              style={{ overflow: 'visible' }}
+            <motion.div
+              key="entity"
+              className="absolute pointer-events-none"
+              style={{
+                left: cardX + CARD_W / 2 - ENT_W / 2,
+                top:  cardY + CARD_H / 2 - ENT_H / 2,
+                overflow: 'visible',
+              }}
               initial={{ scale: 0.52, opacity: 0, y: 22 }}
               animate={isFading
                 ? { scale: 1.10, opacity: 0, y: -30 }
@@ -1190,13 +1091,14 @@ export function LuminarySummonCutscene({
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
                     scale:   { duration: 1.85, times: [0, 0.52, 0.78, 1], ease: 'easeOut' },
-                    opacity: { duration: isFlashing ? 0.5 : 0.50, ease: 'easeOut' },
+                    opacity: { duration: 0.50, ease: 'easeOut' },
                     y:       { duration: 1.45, ease: [0.22, 1, 0.36, 1] },
                   }
               }
             >
-              {/* Breathing hover — starts after push-in settles */}
-              <motion.div className="relative flex flex-col items-center gap-4"
+              {/* Breathing hover */}
+              <motion.div
+                className="flex flex-col items-center gap-4"
                 style={{ overflow: 'visible' }}
                 animate={isFading ? {} : { y: [0, -10, 0], scale: [1, 1.020, 1] }}
                 transition={isFading ? {} : {
@@ -1204,7 +1106,7 @@ export function LuminarySummonCutscene({
                   scale: { repeat: Infinity, duration: 3.9, ease: 'easeInOut', delay: 1.9 },
                 }}
               >
-                {/* ── Oversized aura — extends 600px, feathered, no hard edges ── */}
+                {/* Oversized aura */}
                 {auraLayer ? (
                   <motion.img src={auraLayer} alt="" aria-hidden
                     className="absolute pointer-events-none"
@@ -1213,11 +1115,9 @@ export function LuminarySummonCutscene({
                     transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
                     style={{
                       width: 600, height: 600,
-                      position: 'absolute',
-                      top: '50%', left: '50%',
+                      position: 'absolute', top: '50%', left: '50%',
                       transform: 'translate(-50%, -55%)',
-                      objectFit: 'contain',
-                      mixBlendMode: 'screen',
+                      objectFit: 'contain', mixBlendMode: 'screen',
                     }}
                     draggable={false}
                   />
@@ -1228,8 +1128,7 @@ export function LuminarySummonCutscene({
                     transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
                     style={{
                       width: 600, height: 600,
-                      position: 'absolute',
-                      top: '50%', left: '50%',
+                      position: 'absolute', top: '50%', left: '50%',
                       transform: 'translate(-50%, -55%)',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at center, ${primaryColor}50 0%, ${secondaryColor}26 38%, transparent 68%)`,
@@ -1238,7 +1137,7 @@ export function LuminarySummonCutscene({
                   />
                 )}
 
-                {/* ── Inner glow ring — second feathered halo layer ─────────── */}
+                {/* Inner glow ring */}
                 <motion.div className="absolute pointer-events-none"
                   initial={{ opacity: 0 }}
                   animate={{
@@ -1248,8 +1147,7 @@ export function LuminarySummonCutscene({
                   transition={{ duration: 2.2, ease: 'easeInOut' }}
                   style={{
                     width: 350, height: 420,
-                    position: 'absolute',
-                    top: '50%', left: '50%',
+                    position: 'absolute', top: '50%', left: '50%',
                     transform: 'translate(-50%, -52%)',
                     borderRadius: '50%',
                     background: `radial-gradient(ellipse at center, ${glowColor}40 0%, ${primaryColor}20 50%, transparent 78%)`,
@@ -1257,7 +1155,7 @@ export function LuminarySummonCutscene({
                   }}
                 />
 
-                {/* ── Entity image — transparent cutout, no border/frame ─────── */}
+                {/* Entity image */}
                 <motion.div
                   animate={isFading ? {} : {
                     filter: isFlashing ? 'none' : [
@@ -1275,7 +1173,8 @@ export function LuminarySummonCutscene({
                         objectFit: 'contain', objectPosition: 'center',
                         display: 'block', background: 'transparent',
                       }}
-                      draggable={false} />
+                      draggable={false}
+                    />
                   ) : (
                     <EntityArt size={ENT_W} />
                   )}
@@ -1283,7 +1182,7 @@ export function LuminarySummonCutscene({
 
                 {/* Name / domain / eminence badge */}
                 <motion.div
-                  className="relative flex flex-col items-center gap-1 text-center"
+                  className="flex flex-col items-center gap-1 text-center"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: isFlashing ? 0 : (isFading ? 0 : 1) }}
                   transition={{ duration: 0.6, delay: 0.4 }}
@@ -1310,8 +1209,28 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-        </div>
       </motion.div>
+      {/* ── end camera plane ─────────────────────────────────────────────────── */}
+
+      {/* ── Full-stage bloom flash — outside camera plane so it fills viewport ── */}
+      <AnimatePresence>
+        {isFlashing && (
+          <motion.div key="flash" className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.50, ease: 'easeOut' }}
+            style={{
+              background: 'radial-gradient(ellipse at 50% 44%, #ffffff 0%, #fff8dc 20%, #ffe566 44%, #ffaa22 64%, transparent 84%)',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Skip hint ─────────────────────────────────────────────────────────── */}
+      <div className="absolute bottom-8 left-0 right-0 text-center text-xs text-white/28 tracking-widest uppercase pointer-events-none select-none">
+        tap to skip
+      </div>
+
     </div>
   );
 }
