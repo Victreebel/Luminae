@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles } from 'lucide-react';
+import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -367,24 +369,43 @@ export function LuminaryPanelArt({
   claimed?: boolean;
 }) {
   const vis = getLuminaryVisuals(luminaryId);
-  const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
+  const { primaryColor, secondaryColor, glowColor } = vis;
   return (
-    <div
-      className="absolute inset-0 flex items-center justify-center overflow-hidden"
-      style={{
-        background: `radial-gradient(ellipse at 50% 30%, ${primaryColor}33 0%, ${secondaryColor}22 50%, #030712 100%)`,
-      }}
-    >
-      {/* Decorative corner lines */}
-      <div className="absolute inset-1 pointer-events-none" style={{ border: `1px solid ${primaryColor}30`, borderRadius: 8 }} />
-      {/* Entity silhouette (slightly cropped to fill card) */}
-      <div className="relative flex items-center justify-center" style={{ filter: `drop-shadow(0 0 8px ${glowColor})` }}>
-        <EntityArt size={size * 0.88} />
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Tier-3 cosmic backdrop — same artwork pool as artifact cards */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url(${cardTier3Bg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      />
+      {/* Color-of-the-Luminary tint */}
+      <div
+        className="absolute inset-0 mix-blend-screen opacity-70"
+        style={{
+          background: `radial-gradient(ellipse at 50% 30%, ${primaryColor}88 0%, ${secondaryColor}55 45%, transparent 80%)`,
+        }}
+      />
+      {/* Centerpiece sigil */}
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        style={{ filter: `drop-shadow(0 0 10px ${glowColor})` }}
+      >
+        <Sparkles
+          className="opacity-80"
+          style={{ color: primaryColor, width: size * 0.45, height: size * 0.45 }}
+          strokeWidth={1.25}
+        />
       </div>
       {/* Claimed gold tint */}
-      {claimed && <div className="absolute inset-0 bg-amber-400/10 pointer-events-none" />}
-      {/* Vignette */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.7) 0%, transparent 60%)' }} />
+      {claimed && <div className="absolute inset-0 bg-amber-400/15 pointer-events-none" />}
+      {/* Bottom vignette to keep the requirement row legible */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.85) 0%, transparent 65%)' }}
+      />
     </div>
   );
 }

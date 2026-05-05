@@ -315,17 +315,31 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
           <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
             {luminary.name}
           </div>
-          <div className="flex flex-wrap gap-0.5 justify-end">
+          <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+            Bonuses Required
+          </div>
+          <div className="flex flex-wrap gap-1 justify-end items-center">
             {CRYSTALS.map((c) => {
               const req = luminary.requirements[c as keyof CrystalCounts];
               if (req <= 0) return null;
+              const meta = GEM_META[c];
               return (
-                <div
-                  key={c}
-                  className="flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 bg-black/55"
-                >
-                  <span className="text-[10px] font-bold text-white">{req}</span>
-                  <MiniGem color={c} size={10} />
+                <div key={c} className="flex items-center gap-0.5">
+                  <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+                    {req}
+                  </span>
+                  {/* Bonus-card badge — matches the bonus icon on ArtifactCardView */}
+                  <div
+                    className="w-4 h-4 rounded-full shadow-md ring-2 ring-black/60 overflow-hidden bg-black/40 flex items-center justify-center"
+                    title={`${req} ${meta.name} bonus${req === 1 ? '' : 'es'} required`}
+                  >
+                    <img
+                      src={meta.image}
+                      alt=""
+                      className="w-full h-full object-contain pointer-events-none select-none"
+                      draggable={false}
+                    />
+                  </div>
                 </div>
               );
             })}
