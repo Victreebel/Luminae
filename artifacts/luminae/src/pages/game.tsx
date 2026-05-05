@@ -420,9 +420,11 @@ function LuminaryCutscene({
     if (phase === 'done') onComplete();
   }, [phase, onComplete]);
 
-  const showCard        = !['reveal', 'done'].includes(phase);
-  const showCrack1      = ['crack1', 'linger2', 'cracking', 'flash', 'fade'].includes(phase);
-  const showExtraCracks = ['cracking', 'flash', 'fade'].includes(phase);
+  // Card unmounts instantly at flash — shards + cosmic light replace it.
+  const showCard        = !['flash', 'fade', 'reveal', 'done'].includes(phase);
+  // Cracks only live on the card, so they only show while the card is mounted.
+  const showCrack1      = ['crack1', 'linger2', 'cracking'].includes(phase);
+  const showExtraCracks = phase === 'cracking';
   const showShards      = ['flash', 'fade'].includes(phase);
   const showCosmicLight = ['flash', 'fade'].includes(phase);
   const showFlash       = phase === 'flash';
@@ -476,7 +478,7 @@ function LuminaryCutscene({
             transition={phase === 'zoom'
               ? { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
               : { duration: 0.5, ease: 'easeOut' }}
-            exit={{ opacity: 0, transition: { duration: 0.06 } }}
+            exit={{ opacity: 0, transition: { duration: 0 } }}
           >
             <img src={portrait} alt={luminary.name}
               className="w-full h-full object-cover rounded-2xl select-none pointer-events-none"
@@ -586,7 +588,8 @@ function LuminaryCutscene({
         )}
       </AnimatePresence>
 
-      {/* ── Shard fragments — card-shell pieces fly away, light pours out ── */}
+      {/* ── Shard fragments — dark card-shell debris flying away from the light ── */}
+      {/* The original card unmounts at the flash frame; these shards are pure debris. */}
       <AnimatePresence>
         {showShards && SHARDS.map((shard, i) => (
           <motion.div key={`shard-${i}`} className="absolute pointer-events-none"
@@ -596,26 +599,28 @@ function LuminaryCutscene({
               marginLeft: -renderedSize / 2,
               marginTop:  -renderedSize / 2,
             }}
-            initial={{ x: 0, y: 0, rotate: 0 }}
-            animate={{ x: shard.tx, y: shard.ty, rotate: shard.rot }}
-            transition={{ duration: 1.15, ease: [0.15, 0, 0.3, 1], delay: shard.delay }}>
-            {/* Portrait layer — bleaches to transparent immediately so light shines through */}
-            <motion.div style={{
-              position: 'absolute', inset: 0, clipPath: shard.clip,
-              backgroundImage: `url(${portrait})`,
-              backgroundSize: '100% 100%', backgroundPosition: 'center',
-              borderRadius: 16,
-            }}
-              initial={{ opacity: 1, filter: 'brightness(1)' }}
-              animate={{ opacity: 0, filter: 'brightness(5)' }}
-              transition={{ duration: 0.26, delay: shard.delay, ease: 'easeIn' }}
-            />
-            {/* Dark card-back — visible once portrait burns away */}
+            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
+            animate={{ x: shard.tx, y: shard.ty, rotate: shard.rot, opacity: 0 }}
+            transition={{
+              x: { duration: 1.1, ease: [0.12, 0, 0.28, 1], delay: shard.delay },
+              y: { duration: 1.1, ease: [0.12, 0, 0.28, 1], delay: shard.delay },
+              rotate: { duration: 1.1, ease: [0.12, 0, 0.28, 1], delay: shard.delay },
+              opacity: { duration: 0.65, delay: shard.delay + 0.38, ease: 'easeIn' },
+            }}>
+            {/* Dark card-shell slab — no portrait, just the destroyed backing */}
             <div style={{
               position: 'absolute', inset: 0, clipPath: shard.clip,
-              background: 'linear-gradient(148deg, rgba(7,10,25,0.97) 0%, rgba(16,20,42,0.99) 100%)',
+              background: 'linear-gradient(148deg, rgba(6,9,22,0.98) 0%, rgba(14,18,38,0.99) 60%, rgba(22,12,30,0.97) 100%)',
               borderRadius: 16,
-              boxShadow: 'inset 0 0 8px rgba(255,195,65,0.3), inset 0 0 2px rgba(255,255,255,0.15)',
+              boxShadow: 'inset 0 0 10px rgba(255,195,65,0.25), inset 0 0 2px rgba(255,255,255,0.12)',
+            }} />
+            {/* Edge-lit crack seams on each shard — gold rim where it broke */}
+            <div style={{
+              position: 'absolute', inset: 0, clipPath: shard.clip,
+              background: 'transparent',
+              borderRadius: 16,
+              outline: '1px solid rgba(255,190,60,0.28)',
+              filter: 'drop-shadow(0 0 3px rgba(255,200,70,0.35))',
             }} />
           </motion.div>
         ))}
@@ -636,56 +641,107 @@ function LuminaryCutscene({
         )}
       </AnimatePresence>
 
-      {/* ── Reveal — entity emerges from the dissipating light ── */}
+      {/* ── Reveal — freed entity emerges; game board is the background ── */}
       <AnimatePresence>
         {showReveal && (
           <motion.div key="reveal" className="absolute inset-0 flex flex-col items-center justify-center"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.85 }}>
-            {/* Rotating conic rays */}
+
+            {/* Rotating conic light rays behind entity */}
             <motion.div className="absolute inset-0 pointer-events-none"
               style={{
-                background: [
-                  'conic-gradient(from 0deg at 50% 42%',
-                  ...Array.from({ length: 24 }, (_, j) => {
-                    const base = j * 15;
-                    return `transparent ${base}deg, rgba(255,215,80,0.05) ${base + 5}deg, transparent ${base + 10}deg`;
-                  }),
-                  ')',
-                ].join(', '),
+                background: 'conic-gradient(from 0deg at 50% 40%, transparent 0deg, rgba(255,215,80,0.055) 6deg, transparent 12deg, rgba(255,215,80,0.04) 18deg, transparent 24deg, rgba(255,215,80,0.055) 30deg, transparent 36deg, rgba(255,215,80,0.04) 42deg, transparent 48deg, rgba(255,215,80,0.055) 54deg, transparent 60deg, rgba(255,215,80,0.04) 66deg, transparent 72deg, rgba(255,215,80,0.055) 78deg, transparent 84deg, rgba(255,215,80,0.04) 90deg, transparent 96deg, rgba(255,215,80,0.055) 102deg, transparent 108deg, rgba(255,215,80,0.04) 114deg, transparent 120deg, rgba(255,215,80,0.055) 126deg, transparent 132deg, rgba(255,215,80,0.04) 138deg, transparent 144deg, rgba(255,215,80,0.055) 150deg, transparent 156deg, rgba(255,215,80,0.04) 162deg, transparent 168deg, rgba(255,215,80,0.055) 174deg, transparent 180deg, rgba(255,215,80,0.04) 186deg, transparent 192deg, rgba(255,215,80,0.055) 198deg, transparent 204deg, rgba(255,215,80,0.04) 210deg, transparent 216deg, rgba(255,215,80,0.055) 222deg, transparent 228deg, rgba(255,215,80,0.04) 234deg, transparent 240deg, rgba(255,215,80,0.055) 246deg, transparent 252deg, rgba(255,215,80,0.04) 258deg, transparent 264deg, rgba(255,215,80,0.055) 270deg, transparent 276deg, rgba(255,215,80,0.04) 282deg, transparent 288deg, rgba(255,215,80,0.055) 294deg, transparent 300deg, rgba(255,215,80,0.04) 306deg, transparent 312deg, rgba(255,215,80,0.055) 318deg, transparent 324deg, rgba(255,215,80,0.04) 330deg, transparent 336deg, rgba(255,215,80,0.055) 342deg, transparent 348deg, rgba(255,215,80,0.04) 354deg, transparent 360deg)',
               }}
               animate={{ rotate: [0, 360] }}
-              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
             />
-            {/* Ambient halo */}
+
+            {/* Ambient radial halo */}
             <div className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse 48% 48% at 50% 40%, rgba(255,196,61,0.13) 0%, rgba(200,220,255,0.04) 52%, transparent 72%)' }}
+              style={{ background: 'radial-gradient(ellipse 46% 46% at 50% 38%, rgba(255,196,61,0.10) 0%, rgba(200,220,255,0.03) 55%, transparent 74%)' }}
             />
-            {/* Figure — pushes toward the viewer with a scale surge */}
-            <motion.div style={{ width: 260, height: 260, marginTop: -52, position: 'relative', zIndex: 1 }}
-              initial={{ scale: 0.82, opacity: 0 }}
-              animate={{ scale: [0.82, 1.07, 0.97, 1.01], opacity: [0, 1, 0.94, 1] }}
-              transition={{ duration: 2.1, times: [0, 0.36, 0.64, 1], ease: 'easeOut' }}>
-              {/* Halo bloom behind figure */}
-              <div className="absolute inset-0 pointer-events-none" style={{
-                background: 'radial-gradient(ellipse 80% 80% at 50% 44%, rgba(255,210,75,0.20) 0%, rgba(255,180,40,0.08) 48%, transparent 70%)',
-                transform: 'scale(1.35)', filter: 'blur(10px)',
-              }} />
-              <img src={portrait} alt={luminary.name} draggable={false} style={{
-                width: '100%', height: '100%', objectFit: 'cover',
-                maskImage: 'radial-gradient(ellipse 84% 94% at 50% 37%, black 10%, rgba(0,0,0,0.9) 32%, rgba(0,0,0,0.52) 54%, rgba(0,0,0,0.14) 70%, transparent 83%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 84% 94% at 50% 37%, black 10%, rgba(0,0,0,0.9) 32%, rgba(0,0,0,0.52) 54%, rgba(0,0,0,0.14) 70%, transparent 83%)',
-                filter: 'drop-shadow(0 0 18px rgba(255,200,60,0.55)) drop-shadow(0 0 38px rgba(255,150,30,0.30))',
-              }} />
+
+            {/* Aura shimmer ring — pulsing glow around where the entity stands */}
+            <motion.div className="absolute pointer-events-none"
+              style={{
+                width: 340, height: 340,
+                left: '50%', top: '50%',
+                marginLeft: -170, marginTop: -170,
+                borderRadius: '50%',
+                background: 'radial-gradient(ellipse 72% 72% at 50% 44%, rgba(255,205,65,0.13) 0%, rgba(255,160,30,0.06) 45%, transparent 68%)',
+              }}
+              animate={{ opacity: [0.5, 1.0, 0.6, 0.9, 0.5], scale: [0.92, 1.06, 0.97, 1.04, 0.92] }}
+              transition={{ duration: 5.0, repeat: Infinity, ease: 'easeInOut', delay: 1.8 }}
+            />
+
+            {/* ── Entity figure ──────────────────────────────────────────── */}
+            {/* Outer: entry surge (one-shot) */}
+            <motion.div
+              style={{ width: 300, height: 300, marginTop: -55, position: 'relative', zIndex: 1 }}
+              initial={{ scale: 0.80, opacity: 0 }}
+              animate={{ scale: 1.0, opacity: 1 }}
+              transition={{ duration: 2.0, ease: [0.18, 0.8, 0.32, 1] }}
+            >
+              {/* Inner: breathing scale + vertical hover (starts after entry settles) */}
+              <motion.div style={{ width: '100%', height: '100%' }}
+                animate={{ scale: [1, 1.030, 1.008, 1.024, 1], y: [0, -9, -2, -7, 0] }}
+                transition={{ duration: 5.8, repeat: Infinity, ease: 'easeInOut', delay: 2.0, times: [0, 0.28, 0.52, 0.76, 1] }}
+              >
+                {/* Subtle horizontal sway — parallax drift */}
+                <motion.div style={{ width: '100%', height: '100%' }}
+                  animate={{ x: [0, 4, 0, -3, 0] }}
+                  transition={{ duration: 8.5, repeat: Infinity, ease: 'easeInOut', delay: 2.5 }}
+                >
+                  {/* Cosmic bloom behind figure — expands/contracts with breathing */}
+                  <div className="absolute inset-0 pointer-events-none" style={{
+                    background: 'radial-gradient(ellipse 78% 78% at 50% 42%, rgba(255,210,75,0.22) 0%, rgba(255,175,35,0.09) 46%, transparent 68%)',
+                    transform: 'scale(1.4)',
+                    filter: 'blur(12px)',
+                  }} />
+                  {/* Figure portrait — aggressively masked so only the central subject reads */}
+                  <img src={portrait} alt={luminary.name} draggable={false} style={{
+                    width: '100%', height: '100%', objectFit: 'cover',
+                    objectPosition: 'center 20%',
+                    // Two-stop radial mask: sharp centre, fast fade, fully transparent edges
+                    // Eliminates the rectangular portrait boundary — board shows through
+                    maskImage: [
+                      'radial-gradient(ellipse 66% 80% at 50% 34%,',
+                      '  black 0%,',
+                      '  black 18%,',
+                      '  rgba(0,0,0,0.88) 32%,',
+                      '  rgba(0,0,0,0.55) 48%,',
+                      '  rgba(0,0,0,0.18) 60%,',
+                      '  rgba(0,0,0,0.04) 70%,',
+                      '  transparent 76%)',
+                    ].join(''),
+                    WebkitMaskImage: [
+                      'radial-gradient(ellipse 66% 80% at 50% 34%,',
+                      '  black 0%,',
+                      '  black 18%,',
+                      '  rgba(0,0,0,0.88) 32%,',
+                      '  rgba(0,0,0,0.55) 48%,',
+                      '  rgba(0,0,0,0.18) 60%,',
+                      '  rgba(0,0,0,0.04) 70%,',
+                      '  transparent 76%)',
+                    ].join(''),
+                    filter: [
+                      'drop-shadow(0 0 16px rgba(255,200,60,0.60))',
+                      'drop-shadow(0 0 36px rgba(255,145,25,0.32))',
+                      'drop-shadow(0 0 60px rgba(255,100,10,0.14))',
+                    ].join(' '),
+                  }} />
+                </motion.div>
+              </motion.div>
             </motion.div>
-            {/* Breathing pulse after entry */}
-            <motion.div className="absolute pointer-events-none" style={{
-              width: 260, height: 260, marginTop: -52,
-              background: 'radial-gradient(ellipse 68% 72% at 50% 44%, rgba(255,210,70,0.11) 0%, transparent 70%)',
-              borderRadius: '50%',
-            }}
-              animate={{ opacity: [0.3, 1, 0.3], scale: [0.94, 1.09, 0.94] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 1.6 }}
+            {/* ── End entity figure ── */}
+
+            {/* Forward depth pulse — occasional subtle lunge toward viewer */}
+            <motion.div className="absolute pointer-events-none"
+              style={{ width: 300, height: 300, marginTop: -55 }}
+              animate={{ scale: [1, 1.018, 1] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 3.5, repeatDelay: 1.5 }}
             />
+
             {/* Name plate */}
             <motion.div className="text-center space-y-0.5 mt-3"
               initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
@@ -695,8 +751,9 @@ function LuminaryCutscene({
                 style={{ color: GEM_META.flux.hex }}>{luminary.name}</p>
               <p className="text-sm text-white/50">+{luminary.lumens} eminence</p>
             </motion.div>
+
             {/* Particle ring */}
-            <div className="absolute" style={{ left: '50%', top: '40%' }}>
+            <div className="absolute" style={{ left: '50%', top: '38%' }}>
               {CUTSCENE_PARTICLES.map((p, i) => (
                 <motion.div key={i} className="absolute rounded-full"
                   style={{ background: p.color, width: p.size, height: p.size, marginLeft: -(p.size / 2), marginTop: -(p.size / 2) }}
