@@ -316,34 +316,72 @@ type CutscenePhase =
   | 'zoom' | 'linger1' | 'crack1' | 'linger2'
   | 'cracking' | 'flash' | 'fade' | 'reveal' | 'done';
 
-const CRACKS: { d: string; phase: 'crack1' | 'cracking' }[] = [
-  { d: 'M 8 92 L 18 74 L 14 60 L 28 44 L 22 30',   phase: 'crack1'   },
-  { d: 'M 62 4 L 54 22 L 60 38 L 48 54 L 53 68',   phase: 'cracking' },
-  { d: 'M 86 58 L 70 46 L 74 30 L 62 16',          phase: 'cracking' },
-  { d: 'M 10 28 L 32 42 L 28 56 L 40 72',          phase: 'cracking' },
-  { d: 'M 72 80 L 58 64 L 64 50 L 52 36',          phase: 'cracking' },
-  { d: 'M 38 8 L 34 28 L 48 44 L 42 62 L 50 78',  phase: 'cracking' },
-  { d: 'M 88 22 L 74 36 L 78 52 L 66 68',          phase: 'cracking' },
-  { d: 'M 4 50 L 22 38 L 26 24 L 40 14',           phase: 'cracking' },
+// ── Fault-line geometry (viewBox 0 0 100 100) ────────────────────────────────
+// Interior fault nodes: C(44,28) B(30,48) A(22,68) D(66,22) E(66,54) F(52,74)
+// Card-edge exits: T1(10,0) L1(0,40) L2(0,65) R1(100,30) R2(100,58) Bo1(46,100) Bo2(78,100)
+//
+// Cracks are drawn along shared shard edges. Shards tile the full 100×100 card exactly.
+
+const CRACK_PATHS: { d: string; phase: 'crack1' | 'cracking'; glow: number }[] = [
+  // CRACK1 — main diagonal: bottom-left corner → A → B → C → T1
+  { d: 'M 0,100 L 22,68 L 30,48 L 44,28 L 10,0', phase: 'crack1',   glow: 7 },
+  // CRACKING — upper-right branch: C → D → R1
+  { d: 'M 44,28 L 66,22 L 100,30',               phase: 'cracking', glow: 5 },
+  // CRACKING — left exit from B: B → L1
+  { d: 'M 30,48 L 0,40',                          phase: 'cracking', glow: 4 },
+  // CRACKING — lower-left exit: A → L2
+  { d: 'M 22,68 L 0,65',                          phase: 'cracking', glow: 4 },
+  // CRACKING — right vertical: D → E
+  { d: 'M 66,22 L 66,54',                         phase: 'cracking', glow: 5 },
+  // CRACKING — right exit: E → R2
+  { d: 'M 66,54 L 100,58',                        phase: 'cracking', glow: 4 },
+  // CRACKING — lower horizontal: A → F → E
+  { d: 'M 22,68 L 52,74 L 66,54',                phase: 'cracking', glow: 5 },
+  // CRACKING — bottom exits: F → Bo1, E → Bo2
+  { d: 'M 52,74 L 46,100',                        phase: 'cracking', glow: 4 },
+  { d: 'M 66,54 L 78,100',                        phase: 'cracking', glow: 4 },
 ];
 
-const FRAGS = [
-  { clip: 'inset(0 50% 50% 0)',   tx: -155, ty: -185, rot: -36 },
-  { clip: 'inset(0 0 50% 50%)',   tx:  155, ty: -165, rot:  29 },
-  { clip: 'inset(33% 55% 33% 0)', tx: -205, ty:   18, rot: -19 },
-  { clip: 'inset(33% 0 33% 55%)', tx:  205, ty:   28, rot:  23 },
-  { clip: 'inset(50% 50% 0 0)',   tx: -135, ty:  195, rot: -31 },
-  { clip: 'inset(50% 0 0 50%)',   tx:  140, ty:  198, rot:  26 },
+// 8 shards derived from the fault-line graph — clip-path polygons using % of card size.
+// Shard edges match the crack SVG paths above exactly.
+const SHARDS: { clip: string; tx: number; ty: number; rot: number; delay: number }[] = [
+  // S1 TL:     (0,0)→T1→C→B→L1
+  { clip: 'polygon(0% 0%, 10% 0%, 44% 28%, 30% 48%, 0% 40%)',            tx: -190, ty: -215, rot: -44, delay: 0.00 },
+  // S2 TR:     T1→(100,0)→R1→D→C
+  { clip: 'polygon(10% 0%, 100% 0%, 100% 30%, 66% 22%, 44% 28%)',        tx:  178, ty: -198, rot:  40, delay: 0.04 },
+  // S3 LM:     L1→B→A→L2
+  { clip: 'polygon(0% 40%, 30% 48%, 22% 68%, 0% 65%)',                   tx: -245, ty:   8,  rot: -28, delay: 0.06 },
+  // S4 CENTER: B→C→D→E→F→A
+  { clip: 'polygon(30% 48%, 44% 28%, 66% 22%, 66% 54%, 52% 74%, 22% 68%)', tx: 8,  ty:  22,  rot:  5,  delay: 0.02 },
+  // S5 R:      D→R1→R2→E
+  { clip: 'polygon(66% 22%, 100% 30%, 100% 58%, 66% 54%)',               tx:  238, ty:   2,  rot:  34, delay: 0.05 },
+  // S6 BL:     L2→A→F→Bo1→(0,100)
+  { clip: 'polygon(0% 65%, 22% 68%, 52% 74%, 46% 100%, 0% 100%)',        tx: -162, ty:  208, rot: -38, delay: 0.07 },
+  // S7 BC:     F→E→Bo2→Bo1
+  { clip: 'polygon(52% 74%, 66% 54%, 78% 100%, 46% 100%)',               tx:  10,  ty:  232, rot:  9,  delay: 0.09 },
+  // S8 BR:     E→R2→(100,100)→Bo2
+  { clip: 'polygon(66% 54%, 100% 58%, 100% 100%, 78% 100%)',             tx:  212, ty:  202, rot:  30, delay: 0.08 },
 ];
 
-const CUTSCENE_PARTICLES = Array.from({ length: 12 }, (_, i) => {
-  const angle = (i / 12) * 360;
-  const dist = 120 + (i % 4) * 18;
+// Light nodes that pulse at each crack junction when cracking starts.
+const CRACK_NODES = [
+  { cx: 44, cy: 28, r: 5.5 }, // C — main upper junction
+  { cx: 30, cy: 48, r: 4.0 }, // B
+  { cx: 22, cy: 68, r: 3.5 }, // A
+  { cx: 66, cy: 22, r: 4.5 }, // D
+  { cx: 66, cy: 54, r: 4.5 }, // E
+  { cx: 52, cy: 74, r: 3.5 }, // F
+];
+
+const CUTSCENE_PARTICLES = Array.from({ length: 16 }, (_, i) => {
+  const angle = (i / 16) * 360;
+  const dist  = 108 + (i % 5) * 16;
   return {
-    tx: Math.cos((angle * Math.PI) / 180) * dist,
-    ty: Math.sin((angle * Math.PI) / 180) * dist,
-    delay: 0.3 + i * 0.08,
+    tx:    Math.cos((angle * Math.PI) / 180) * dist,
+    ty:    Math.sin((angle * Math.PI) / 180) * dist,
+    delay: 0.2 + i * 0.06,
     color: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#bfdbfe' : '#ffffff',
+    size:  i % 4 === 0 ? 5 : i % 4 === 2 ? 3 : 4,
   };
 });
 
@@ -351,13 +389,13 @@ const CUTSCENE_PARTICLES = Array.from({ length: 12 }, (_, i) => {
 const CUTSCENE_DONE_MS = 11000;
 
 const CUTSCENE_SCHEDULE: [CutscenePhase, number][] = [
-  ['linger1',   950],   // card settles at full scale
-  ['crack1',   2500],   // first crack draws in
-  ['linger2',  4400],   // linger on single crack
-  ['cracking', 5600],   // rapid multi-crack burst
-  ['flash',    6900],   // shatter + screen flash
-  ['fade',     7350],   // flash fades
-  ['reveal',   8300],   // figure floats over game
+  ['linger1',   950],
+  ['crack1',   2500],
+  ['linger2',  4400],
+  ['cracking', 5600],
+  ['flash',    6900],
+  ['fade',     7350],
+  ['reveal',   8300],
   ['done',    11000],
 ];
 
@@ -385,12 +423,14 @@ function LuminaryCutscene({
   const showCard        = !['reveal', 'done'].includes(phase);
   const showCrack1      = ['crack1', 'linger2', 'cracking', 'flash', 'fade'].includes(phase);
   const showExtraCracks = ['cracking', 'flash', 'fade'].includes(phase);
-  const showFragments   = ['flash', 'fade'].includes(phase);
+  const showShards      = ['flash', 'fade'].includes(phase);
+  const showCosmicLight = ['flash', 'fade'].includes(phase);
   const showFlash       = phase === 'flash';
   const showFade        = phase === 'fade';
   const showReveal      = phase === 'reveal';
   const cardSize        = 200;
   const cardScale       = phase === 'zoom' ? 1.1 : 2.4;
+  const renderedSize    = cardSize * 2.4; // 480 px — shard containers are fixed at shatter scale
 
   return (
     <motion.div
@@ -400,182 +440,269 @@ function LuminaryCutscene({
       exit={{ opacity: 0, transition: { duration: 0.55, ease: 'easeIn' } }}
       transition={{ duration: 0.35 }}
     >
-      {/* Background — solid black until reveal, then dims to show game */}
-      <motion.div
-        className="absolute inset-0"
+      {/* ── Background ── */}
+      <motion.div className="absolute inset-0"
         animate={{ backgroundColor: showReveal ? 'rgba(0,0,0,0.68)' : 'rgba(0,0,0,1)' }}
-        transition={{ duration: 1.1 }}
+        transition={{ duration: 1.2 }}
       />
 
-      {/* Zoomed card + cracks */}
+      {/* ── Cosmic light source — lives beneath the card shell, blooms at shatter ── */}
+      <AnimatePresence>
+        {showCosmicLight && (
+          <motion.div key="cosmic" className="absolute pointer-events-none"
+            style={{
+              width: renderedSize * 1.5, height: renderedSize * 1.5,
+              left: '50%', top: '50%',
+              marginLeft: -(renderedSize * 1.5) / 2,
+              marginTop:  -(renderedSize * 1.5) / 2,
+              borderRadius: '50%',
+              background: 'radial-gradient(ellipse 58% 54% at 50% 44%, rgba(255,255,255,1) 0%, rgba(255,235,130,0.96) 14%, rgba(255,195,60,0.72) 34%, rgba(255,140,30,0.32) 54%, rgba(255,100,20,0.08) 72%, transparent 86%)',
+            }}
+            initial={{ opacity: 0, scale: 0.22 }}
+            animate={{ opacity: showFade ? 0.55 : 1, scale: showFade ? 0.65 : 1 }}
+            exit={{ opacity: 0, transition: { duration: 1.0, ease: 'easeIn' } }}
+            transition={{ duration: showFlash ? 0.16 : 1.5, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Zoomed card with fault-line cracks ── */}
       <AnimatePresence>
         {showCard && (
-          <motion.div
-            key="card"
-            className="relative shrink-0"
+          <motion.div key="card" className="relative shrink-0"
             style={{ width: cardSize, height: cardSize }}
             initial={{ scale: 0.55, opacity: 0 }}
             animate={{ scale: cardScale, opacity: 1 }}
             transition={phase === 'zoom'
               ? { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
               : { duration: 0.5, ease: 'easeOut' }}
-            exit={{ opacity: 0, scale: 2.6, transition: { duration: 0.3, ease: 'easeIn' } }}
+            exit={{ opacity: 0, transition: { duration: 0.06 } }}
           >
-            <img
-              src={portrait} alt={luminary.name}
+            <img src={portrait} alt={luminary.name}
               className="w-full h-full object-cover rounded-2xl select-none pointer-events-none"
-              draggable={false}
-            />
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-black/15 via-transparent to-black/85 pointer-events-none" />
-            <div
-              className="absolute inset-0 rounded-2xl pointer-events-none"
-              style={{ boxShadow: '0 0 0 2px rgba(255,196,61,0.6), 0 0 40px rgba(255,196,61,0.3), inset 0 0 20px rgba(0,0,0,0.4)' }}
-            />
+              draggable={false} />
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-black/15 via-transparent to-black/80 pointer-events-none" />
+            <div className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{ boxShadow: '0 0 0 2px rgba(255,196,61,0.6), 0 0 40px rgba(255,196,61,0.3), inset 0 0 20px rgba(0,0,0,0.4)' }} />
             {phase !== 'zoom' && (
-              <motion.div
-                className="absolute bottom-0 inset-x-0 px-2 py-1.5 flex justify-between items-end"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}
-              >
+              <motion.div className="absolute bottom-0 inset-x-0 px-2 py-1.5 flex justify-between items-end"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
                 <span className="text-[8px] font-semibold text-white/60">{luminary.name}</span>
-                <span className="text-sm font-serif font-black drop-shadow-[0_2px_3px_rgba(0,0,0,1)]" style={{ color: GEM_META.flux.hex }}>{luminary.lumens}</span>
+                <span className="text-sm font-serif font-black drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
+                  style={{ color: GEM_META.flux.hex }}>{luminary.lumens}</span>
               </motion.div>
             )}
-            {/* SVG cracks */}
-            <svg
-              viewBox="0 0 100 100" preserveAspectRatio="none"
-              className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
-            >
-              {CRACKS.map((crack, i) => {
+
+            {/* ── Crack SVG — fault lines with gold-white light rays ── */}
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+              className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+              {CRACK_PATHS.map((crack, i) => {
                 const visible = crack.phase === 'crack1' ? showCrack1 : showExtraCracks;
                 if (!visible) return null;
-                const isFirst = crack.phase === 'crack1';
-                const delay = isFirst ? 0 : (i - 1) * 0.13;
+                const isFirst    = crack.phase === 'crack1';
+                const crackDelay = isFirst ? 0 : (i - 1) * 0.11;
+                const glowOpacity = showExtraCracks ? 0.72 : 0.48;
                 return (
-                  <motion.path
-                    key={i} d={crack.d}
-                    stroke="white"
-                    strokeWidth={isFirst ? 0.7 : 0.5}
-                    strokeLinecap="round" strokeLinejoin="round"
-                    fill="none"
-                    style={{
-                      filter: isFirst
-                        ? 'drop-shadow(0 0 4px rgba(255,255,255,1)) drop-shadow(0 0 8px rgba(200,230,255,0.9))'
-                        : 'drop-shadow(0 0 2px rgba(255,255,255,0.85))',
-                    }}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: isFirst ? 0.65 : 0.22, delay, ease: 'easeOut' }}
-                  />
+                  <React.Fragment key={i}>
+                    {/* Blurred gold halo — light pouring through the crevice */}
+                    <motion.path d={crack.d} fill="none"
+                      stroke="rgba(255,215,80,1)" strokeWidth={crack.glow} strokeLinecap="round"
+                      style={{ filter: 'blur(3px)' }}
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: glowOpacity }}
+                      transition={{ duration: isFirst ? 0.72 : 0.26, delay: crackDelay, ease: 'easeOut' }}
+                    />
+                    {/* Narrower inner white corona */}
+                    <motion.path d={crack.d} fill="none"
+                      stroke="rgba(255,245,200,1)" strokeWidth={crack.glow * 0.35} strokeLinecap="round"
+                      style={{ filter: 'blur(1px)' }}
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: showExtraCracks ? 0.9 : 0.6 }}
+                      transition={{ duration: isFirst ? 0.72 : 0.26, delay: crackDelay, ease: 'easeOut' }}
+                    />
+                    {/* Sharp bright core */}
+                    <motion.path d={crack.d} fill="none"
+                      stroke="white" strokeWidth={isFirst ? 0.8 : 0.55}
+                      strokeLinecap="round" strokeLinejoin="round"
+                      style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,1))' }}
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 1 }}
+                      transition={{ duration: isFirst ? 0.72 : 0.22, delay: crackDelay, ease: 'easeOut' }}
+                    />
+                  </React.Fragment>
                 );
               })}
+
+              {/* Light nodes at crack junctions */}
+              {showExtraCracks && CRACK_NODES.map((node, i) => (
+                <React.Fragment key={i}>
+                  <motion.circle cx={node.cx} cy={node.cy} r={node.r * 2.2}
+                    fill="rgba(255,200,60,0.5)"
+                    style={{ filter: 'blur(2.5px)' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.8, 0.5] }}
+                    transition={{ duration: 0.4, delay: i * 0.09 }}
+                  />
+                  <motion.circle cx={node.cx} cy={node.cy} r={node.r}
+                    fill="rgba(255,245,180,1)"
+                    style={{ filter: 'blur(0.8px)' }}
+                    initial={{ opacity: 0, r: 0 }}
+                    animate={{ opacity: [0, 1, 0.75], r: node.r }}
+                    transition={{ duration: 0.3, delay: i * 0.09 }}
+                  />
+                </React.Fragment>
+              ))}
             </svg>
-            {/* White light at crack origin */}
+
+            {/* Crack-origin bloom (bottom-left corner) */}
             {showCrack1 && (
-              <motion.div
-                className="absolute pointer-events-none"
+              <motion.div className="absolute pointer-events-none"
                 style={{
-                  bottom: '5%', left: '5%', width: 30, height: 30, borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(200,240,255,0.7) 30%, transparent 70%)',
+                  bottom: '-4%', left: '-4%', width: 60, height: 60, borderRadius: '50%',
+                  background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,225,100,0.88) 22%, rgba(255,175,40,0.45) 52%, transparent 74%)',
                 }}
                 initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: [0, 1, 0.8, 0.95], scale: [0, 1.3, 1.0, 1.15] }}
-                transition={{ duration: 0.5, times: [0, 0.4, 0.7, 1] }}
+                animate={{
+                  opacity: showExtraCracks ? [0.85, 1.0, 0.88] : [0, 0.78, 0.68],
+                  scale:   showExtraCracks ? [1.5, 2.2, 1.7]   : [0, 1.25, 1.05],
+                }}
+                transition={{ duration: 0.6 }}
               />
+            )}
+
+            {/* Inner radiance building during cracking — light contained inside the card */}
+            {showExtraCracks && (
+              <motion.div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden"
+                style={{ mixBlendMode: 'screen' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.3, 0.62] }}
+                transition={{ duration: 1.0, ease: 'easeIn' }}>
+                <div className="absolute inset-0" style={{
+                  background: 'radial-gradient(ellipse 62% 62% at 50% 46%, rgba(255,255,255,0.98) 0%, rgba(255,220,90,0.65) 28%, rgba(255,155,30,0.22) 58%, transparent 78%)',
+                }} />
+              </motion.div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Fragment pieces */}
+      {/* ── Shard fragments — card-shell pieces fly away, light pours out ── */}
       <AnimatePresence>
-        {showFragments && FRAGS.map((frag, i) => (
-          <motion.div
-            key={`frag-${i}`}
-            className="absolute pointer-events-none"
+        {showShards && SHARDS.map((shard, i) => (
+          <motion.div key={`shard-${i}`} className="absolute pointer-events-none"
             style={{
-              width: cardSize * cardScale, height: cardSize * cardScale,
+              width: renderedSize, height: renderedSize,
               left: '50%', top: '50%',
-              marginLeft: -(cardSize * cardScale) / 2,
-              marginTop: -(cardSize * cardScale) / 2,
+              marginLeft: -renderedSize / 2,
+              marginTop:  -renderedSize / 2,
             }}
-            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-            animate={{ x: frag.tx, y: frag.ty, rotate: frag.rot, opacity: 0 }}
-            transition={{ duration: 1.1, ease: [0.4, 0, 0.2, 1], delay: i * 0.04 }}
-          >
-            <div style={{
-              width: '100%', height: '100%',
-              clipPath: frag.clip,
+            initial={{ x: 0, y: 0, rotate: 0 }}
+            animate={{ x: shard.tx, y: shard.ty, rotate: shard.rot }}
+            transition={{ duration: 1.15, ease: [0.15, 0, 0.3, 1], delay: shard.delay }}>
+            {/* Portrait layer — bleaches to transparent immediately so light shines through */}
+            <motion.div style={{
+              position: 'absolute', inset: 0, clipPath: shard.clip,
               backgroundImage: `url(${portrait})`,
-              backgroundSize: 'cover', backgroundPosition: 'center',
+              backgroundSize: '100% 100%', backgroundPosition: 'center',
               borderRadius: 16,
+            }}
+              initial={{ opacity: 1, filter: 'brightness(1)' }}
+              animate={{ opacity: 0, filter: 'brightness(5)' }}
+              transition={{ duration: 0.26, delay: shard.delay, ease: 'easeIn' }}
+            />
+            {/* Dark card-back — visible once portrait burns away */}
+            <div style={{
+              position: 'absolute', inset: 0, clipPath: shard.clip,
+              background: 'linear-gradient(148deg, rgba(7,10,25,0.97) 0%, rgba(16,20,42,0.99) 100%)',
+              borderRadius: 16,
+              boxShadow: 'inset 0 0 8px rgba(255,195,65,0.3), inset 0 0 2px rgba(255,255,255,0.15)',
             }} />
           </motion.div>
         ))}
       </AnimatePresence>
 
-      {/* White flash */}
+      {/* ── Radial gold-white flash — not a flat white cover ── */}
       <AnimatePresence>
         {(showFlash || showFade) && (
-          <motion.div
-            key="flash"
-            className="absolute inset-0 bg-white pointer-events-none"
+          <motion.div key="flash" className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 72% 68% at 50% 47%, rgba(255,255,255,1) 0%, rgba(255,245,165,0.98) 16%, rgba(255,205,70,0.82) 38%, rgba(255,145,30,0.38) 60%, rgba(255,85,10,0.10) 78%, transparent 92%)',
+            }}
             initial={{ opacity: showFlash ? 0 : 1 }}
             animate={{ opacity: showFlash ? 1 : 0 }}
             exit={{ opacity: 0, transition: { duration: 0 } }}
-            transition={{ duration: showFlash ? 0.28 : 0.95, ease: showFlash ? 'easeIn' : 'easeOut' }}
+            transition={{ duration: showFlash ? 0.24 : 1.05, ease: showFlash ? 'easeOut' : 'easeIn' }}
           />
         )}
       </AnimatePresence>
 
-      {/* Reveal: floating cutout figure over the game */}
+      {/* ── Reveal — entity emerges from the dissipating light ── */}
       <AnimatePresence>
         {showReveal && (
-          <motion.div
-            key="reveal"
-            className="absolute inset-0 flex flex-col items-center justify-center"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.9 }}
-          >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse 55% 55% at 50% 42%, rgba(255,196,61,0.15) 0%, rgba(200,220,255,0.04) 50%, transparent 70%)' }}
+          <motion.div key="reveal" className="absolute inset-0 flex flex-col items-center justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.85 }}>
+            {/* Rotating conic rays */}
+            <motion.div className="absolute inset-0 pointer-events-none"
+              style={{
+                background: [
+                  'conic-gradient(from 0deg at 50% 42%',
+                  ...Array.from({ length: 24 }, (_, j) => {
+                    const base = j * 15;
+                    return `transparent ${base}deg, rgba(255,215,80,0.05) ${base + 5}deg, transparent ${base + 10}deg`;
+                  }),
+                  ')',
+                ].join(', '),
+              }}
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
             />
-            {/* Floating masked portrait */}
-            <motion.div
-              style={{ width: 240, height: 240, marginTop: -40 }}
-              animate={{ opacity: [0.72, 1, 0.72] }}
-              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <img
-                src={portrait} alt={luminary.name} draggable={false}
-                style={{
-                  width: '100%', height: '100%', objectFit: 'cover',
-                  maskImage: 'radial-gradient(ellipse 78% 90% at 50% 40%, black 18%, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.35) 62%, transparent 78%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse 78% 90% at 50% 40%, black 18%, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.35) 62%, transparent 78%)',
-                }}
-              />
+            {/* Ambient halo */}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse 48% 48% at 50% 40%, rgba(255,196,61,0.13) 0%, rgba(200,220,255,0.04) 52%, transparent 72%)' }}
+            />
+            {/* Figure — pushes toward the viewer with a scale surge */}
+            <motion.div style={{ width: 260, height: 260, marginTop: -52, position: 'relative', zIndex: 1 }}
+              initial={{ scale: 0.82, opacity: 0 }}
+              animate={{ scale: [0.82, 1.07, 0.97, 1.01], opacity: [0, 1, 0.94, 1] }}
+              transition={{ duration: 2.1, times: [0, 0.36, 0.64, 1], ease: 'easeOut' }}>
+              {/* Halo bloom behind figure */}
+              <div className="absolute inset-0 pointer-events-none" style={{
+                background: 'radial-gradient(ellipse 80% 80% at 50% 44%, rgba(255,210,75,0.20) 0%, rgba(255,180,40,0.08) 48%, transparent 70%)',
+                transform: 'scale(1.35)', filter: 'blur(10px)',
+              }} />
+              <img src={portrait} alt={luminary.name} draggable={false} style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                maskImage: 'radial-gradient(ellipse 84% 94% at 50% 37%, black 10%, rgba(0,0,0,0.9) 32%, rgba(0,0,0,0.52) 54%, rgba(0,0,0,0.14) 70%, transparent 83%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 84% 94% at 50% 37%, black 10%, rgba(0,0,0,0.9) 32%, rgba(0,0,0,0.52) 54%, rgba(0,0,0,0.14) 70%, transparent 83%)',
+                filter: 'drop-shadow(0 0 18px rgba(255,200,60,0.55)) drop-shadow(0 0 38px rgba(255,150,30,0.30))',
+              }} />
             </motion.div>
-            {/* Name */}
-            <motion.div
-              className="text-center space-y-0.5 mt-2"
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.7 }}
-            >
+            {/* Breathing pulse after entry */}
+            <motion.div className="absolute pointer-events-none" style={{
+              width: 260, height: 260, marginTop: -52,
+              background: 'radial-gradient(ellipse 68% 72% at 50% 44%, rgba(255,210,70,0.11) 0%, transparent 70%)',
+              borderRadius: '50%',
+            }}
+              animate={{ opacity: [0.3, 1, 0.3], scale: [0.94, 1.09, 0.94] }}
+              transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut', delay: 1.6 }}
+            />
+            {/* Name plate */}
+            <motion.div className="text-center space-y-0.5 mt-3"
+              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0, duration: 0.7 }}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Luminary Summoned</p>
-              <p className="text-2xl font-serif font-bold drop-shadow-[0_0_18px_rgba(255,196,61,0.75)]" style={{ color: GEM_META.flux.hex }}>
-                {luminary.name}
-              </p>
-              <p className="text-sm text-white/55">+{luminary.lumens} eminence</p>
+              <p className="text-2xl font-serif font-bold drop-shadow-[0_0_20px_rgba(255,196,61,0.82)]"
+                style={{ color: GEM_META.flux.hex }}>{luminary.name}</p>
+              <p className="text-sm text-white/50">+{luminary.lumens} eminence</p>
             </motion.div>
             {/* Particle ring */}
-            <div className="absolute" style={{ left: '50%', top: '42%' }}>
+            <div className="absolute" style={{ left: '50%', top: '40%' }}>
               {CUTSCENE_PARTICLES.map((p, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-1 h-1 rounded-full"
-                  style={{ background: p.color, marginLeft: -2, marginTop: -2 }}
+                <motion.div key={i} className="absolute rounded-full"
+                  style={{ background: p.color, width: p.size, height: p.size, marginLeft: -(p.size / 2), marginTop: -(p.size / 2) }}
                   initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
-                  animate={{ x: p.tx, y: p.ty, opacity: [0, 1, 0], scale: [0, 1.8, 0] }}
-                  transition={{ delay: p.delay, duration: 2.2, ease: 'easeOut' }}
+                  animate={{ x: p.tx, y: p.ty, opacity: [0, 1, 0], scale: [0, 1.9, 0] }}
+                  transition={{ delay: p.delay, duration: 2.0, ease: 'easeOut' }}
                 />
               ))}
             </div>
@@ -584,10 +711,8 @@ function LuminaryCutscene({
       </AnimatePresence>
 
       {/* Skip */}
-      <button
-        type="button" onClick={onComplete}
-        className="absolute bottom-8 right-5 text-[11px] text-white/25 hover:text-white/60 transition-colors z-10"
-      >
+      <button type="button" onClick={onComplete}
+        className="absolute bottom-8 right-5 text-[11px] text-white/25 hover:text-white/60 transition-colors z-10">
         skip
       </button>
     </motion.div>
