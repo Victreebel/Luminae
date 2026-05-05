@@ -13,6 +13,7 @@ import { randomBytes } from "crypto";
 import {
   initializeGame,
   formatGameState,
+  normalizeState,
   type GameStateData,
 } from "../lib/gameEngine";
 import { broadcastToRoom, getConnectedPlayerIds } from "../lib/websocket";

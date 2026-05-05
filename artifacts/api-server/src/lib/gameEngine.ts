@@ -732,6 +732,30 @@ function getDeckForTier(state: GameStateData, tier: 1 | 2 | 3): string[] {
   return state.deckTier3;
 }
 
+// ─── State Normalization (backwards-compat) ───────────────────────────────────
+
+/**
+ * Normalise a GameStateData object loaded from the DB.
+ * Handles field renames that happened during development so stale rows
+ * don't silently break in-flight games.
+ */
+export function normalizeState(raw: unknown): GameStateData {
+  const state = raw as Record<string, unknown>;
+  if (Array.isArray(state.players)) {
+    state.players = (state.players as Record<string, unknown>[]).map((p) => {
+      // prestige → lumens rename
+      if (typeof p.lumens === "undefined" && typeof p.prestige === "number") {
+        p = { ...p, lumens: p.prestige };
+        delete p.prestige;
+      }
+      // ensure luminaries array exists
+      if (!Array.isArray(p.luminaries)) p = { ...p, luminaries: [] };
+      return p;
+    });
+  }
+  return state as unknown as GameStateData;
+}
+
 // ─── State to API format ──────────────────────────────────────────────────────
 
 function withLore(card: ArtifactCard) {
@@ -779,6 +803,7 @@ export function formatGameState(
       .filter(Boolean)
       .map((c) => withLore(c as ArtifactCard)),
     isConnected: connectedPlayerIds.has(p.playerId),
+    claimedLuminaryIds: p.luminaries ?? [],
   }));
 
   return {

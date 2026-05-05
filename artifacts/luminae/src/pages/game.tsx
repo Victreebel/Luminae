@@ -282,21 +282,38 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
   );
 }
 
-function LuminaryCard({ luminary }: { luminary: Luminary }) {
+function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; claimedByNames?: string[] }) {
   const portrait = pickLuminaryPortrait(luminary);
+  const isClaimed = claimedByNames.length > 0;
   return (
     <div
-      className="relative w-24 h-24 rounded-xl overflow-hidden border-2 p-2 flex flex-col items-center justify-end gap-1 shadow-[0_0_18px_rgba(255,196,61,0.18)] shrink-0"
-      style={{ borderColor: `${GEM_META.flux.hex}55` }}
+      className="relative w-24 h-24 rounded-xl overflow-hidden border-2 p-2 flex flex-col items-center justify-end gap-1 shrink-0"
+      style={{
+        borderColor: isClaimed ? `${GEM_META.flux.hex}cc` : `${GEM_META.flux.hex}55`,
+        boxShadow: isClaimed
+          ? `0 0 18px rgba(255,196,61,0.55), 0 0 6px rgba(255,196,61,0.3)`
+          : `0 0 18px rgba(255,196,61,0.18)`,
+      }}
     >
       <img src={portrait} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/90 pointer-events-none" />
+      <div className={`absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/90 pointer-events-none ${isClaimed ? 'opacity-70' : ''}`} />
+      {isClaimed && (
+        <div className="absolute inset-0 bg-amber-400/10 pointer-events-none" />
+      )}
       <span
         className="absolute top-1 right-2 text-xl font-serif font-bold drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
         style={{ color: GEM_META.flux.hex }}
       >
         {luminary.lumens}
       </span>
+      {isClaimed && (
+        <div className="absolute top-1 left-1.5 flex items-center gap-0.5 bg-black/70 rounded px-1 py-0.5">
+          <Sparkles className="h-2.5 w-2.5" style={{ color: GEM_META.flux.hex }} />
+          <span className="text-[8px] font-bold leading-none" style={{ color: GEM_META.flux.hex }}>
+            {claimedByNames[0]?.length > 6 ? claimedByNames[0].slice(0, 6) + '…' : claimedByNames[0]}
+          </span>
+        </div>
+      )}
       <div className="relative z-10 flex flex-wrap justify-center gap-0.5 max-w-full">
         {CRYSTALS.map((c) => {
           const req = luminary.requirements[c as keyof CrystalCounts];
@@ -588,6 +605,29 @@ export default function GameBoard() {
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         cancelTurnAnnouncement();
         gameAudio.playWin();
+      }
+
+      // Detect newly claimed luminaries and toast the player
+      if (prev && newState.players) {
+        for (const newPlayer of newState.players) {
+          const prevPlayer = prev.players.find(p => p.playerId === newPlayer.playerId);
+          const prevClaimed = prevPlayer?.claimedLuminaryIds ?? [];
+          const newClaimed = newPlayer.claimedLuminaryIds ?? [];
+          for (const lumId of newClaimed) {
+            if (!prevClaimed.includes(lumId)) {
+              const lum = newState.luminaries.find(l => l.id === lumId);
+              const lumName = lum?.name ?? 'a Luminary';
+              const lumLumens = lum?.lumens ?? 0;
+              const isMe = newPlayer.playerId === session?.playerId;
+              toast({
+                title: isMe ? `✦ Luminary Claimed!` : `${newPlayer.playerName} claimed a Luminary`,
+                description: isMe
+                  ? `You drew the favor of ${lumName} (+${lumLumens} eminence)`
+                  : `${newPlayer.playerName} drew the favor of ${lumName} (+${lumLumens} eminence)`,
+              });
+            }
+          }
+        }
       }
 
       if (action && (action.type === 'take_three_crystals' || action.type === 'take_two_crystals')) {
@@ -897,7 +937,12 @@ export default function GameBoard() {
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Luminaries</p>
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-          {state.luminaries.map(l => <LuminaryCard key={l.id} luminary={l} />)}
+          {state.luminaries.map(l => {
+            const claimedByNames = state.players
+              .filter(p => (p.claimedLuminaryIds ?? []).includes(l.id))
+              .map(p => p.playerName);
+            return <LuminaryCard key={l.id} luminary={l} claimedByNames={claimedByNames} />;
+          })}
         </div>
       </div>
 

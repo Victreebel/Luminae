@@ -5,6 +5,7 @@ import { SubmitActionBody } from "@workspace/api-zod";
 import {
   applyAction,
   formatGameState,
+  normalizeState,
   type GameStateData,
   type ActionPayload,
   type CrystalColor,
@@ -122,7 +123,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
   const formatted = formatGameState(
     rawId,
     room.status,
-    gs.state as unknown as GameStateData,
+    normalizeState(gs.state),
     connectedIds,
     avatarMap,
   );
@@ -194,7 +195,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       return { ok: false as const, status: 404, error: "Game state not found" };
     }
 
-    const stateData = gs.state as unknown as GameStateData;
+    const stateData = normalizeState(gs.state);
     const expectedVersion = stateData.version;
 
     const result = applyAction(stateData, player.id, action);

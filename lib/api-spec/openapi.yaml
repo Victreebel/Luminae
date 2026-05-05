@@ -517,6 +517,11 @@ components:
             $ref: "#/components/schemas/ArtifactCard"
         isConnected:
           type: boolean
+        claimedLuminaryIds:
+          type: array
+          items:
+            type: string
+          description: IDs of luminaries this player has claimed
       required:
         - playerId
         - playerName
@@ -527,6 +532,7 @@ components:
         - purchasedCardIds
         - purchasedCards
         - isConnected
+        - claimedLuminaryIds
 
     GameState:
       type: object

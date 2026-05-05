@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import {
   applyAction,
   formatGameState,
+  normalizeState,
   type GameStateData,
 } from "./gameEngine";
 import { chooseAiAction, type AiDifficulty } from "./aiPlayer";
@@ -29,7 +30,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         .where(eq(gameStatesTable.roomId, roomId))
         .limit(1);
       if (!gs) return AI_TURN_DELAY_MS;
-      const s = gs.state as unknown as GameStateData;
+      const s = normalizeState(gs.state);
       const lastType = (s.lastAction as Record<string, unknown> | null)?.type;
       if (lastType === "purchase_card" || lastType === "reserve_card") {
         return AI_TURN_DELAY_CARD_ANIM_MS;
@@ -58,7 +59,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           .limit(1);
         if (!gs) return { kind: "stop" as const };
 
-        const state = gs.state as unknown as GameStateData;
+        const state = normalizeState(gs.state);
         if ((state.phase as string) === "finished") return { kind: "stop" as const };
 
         const currentPlayerIdx = state.currentPlayerIndex;
