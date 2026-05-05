@@ -430,22 +430,63 @@ export default function GameBoard() {
     return () => { gameAudio.stopMusic(); };
   }, []);
 
-  // Scroll-passthrough fix: attach a native touchstart listener to the main
-  // scroll container so iOS Safari releases panel button focus at the exact
-  // moment a touch gesture begins in the board area — before the browser
-  // decides the scroll context. React's synthetic onPointerDown alone is not
-  // early enough on iOS.
+  // Scroll-passthrough fix.
+  // Problem: the player panel and the main board area are siblings, not
+  // parent/child. When a swipe gesture *starts* on the panel and moves up
+  // into the board area, iOS/Android never delivers that gesture to <main>
+  // because the touch origin is outside <main>'s bounds.
+  //
+  // Fix: attach native touchstart + touchmove listeners to the panel.
+  // Once the gesture exceeds a small threshold (8 px) we treat it as a
+  // deliberate scroll and forward each incremental delta to <main>.scrollBy.
+  // Passive listeners are used throughout so we never block the browser's
+  // default scroll handling for gestures that originate inside <main>.
   useEffect(() => {
-    const el = mainScrollRef.current;
-    if (!el) return;
-    const releasePanelFocus = () => {
-      const active = document.activeElement as HTMLElement | null;
-      if (active && playerPanelRef.current?.contains(active)) {
-        active.blur();
-      }
+    const panel = playerPanelRef.current;
+    const main  = mainScrollRef.current;
+    if (!panel || !main) return;
+
+    let startY    = 0;
+    let lastY     = 0;
+    let forwarding = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startY     = e.touches[0].clientY;
+      lastY      = startY;
+      forwarding = false;
     };
-    el.addEventListener('touchstart', releasePanelFocus, { passive: true });
-    return () => el.removeEventListener('touchstart', releasePanelFocus);
+
+    const onTouchMove = (e: TouchEvent) => {
+      const currentY   = e.touches[0].clientY;
+      const totalDelta = startY - currentY; // +ve = swipe up
+
+      // Only commit to forwarding once the gesture is clearly intentional.
+      if (!forwarding && Math.abs(totalDelta) > 8) forwarding = true;
+
+      if (forwarding) {
+        const step = lastY - currentY; // +ve = scroll content up
+        main.scrollBy(0, step);
+      }
+
+      lastY = currentY;
+    };
+
+    // Also release any focused panel element the moment a touch begins
+    // inside <main>, so a board-area swipe is never blocked by a prior tap.
+    const onMainTouchStart = () => {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && panel.contains(active)) active.blur();
+    };
+
+    panel.addEventListener('touchstart', onTouchStart, { passive: true });
+    panel.addEventListener('touchmove',  onTouchMove,  { passive: true });
+    main .addEventListener('touchstart', onMainTouchStart, { passive: true });
+
+    return () => {
+      panel.removeEventListener('touchstart', onTouchStart);
+      panel.removeEventListener('touchmove',  onTouchMove);
+      main .removeEventListener('touchstart', onMainTouchStart);
+    };
   }, []);
 
   const TURN_ANNOUNCE_DURATION = 1800;
