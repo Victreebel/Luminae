@@ -1705,38 +1705,34 @@ export default function GameBoard() {
                   <button
                     type="button"
                     onClick={() => toggleOpponent(p.playerId)}
-                    className="w-full px-3 pt-2.5 pb-2 flex items-center gap-2 text-left active:opacity-75 transition-opacity"
+                    className="w-full px-3 py-2.5 flex items-center gap-2 text-left active:opacity-75 transition-opacity"
                     aria-label={isExpanded ? 'Collapse opponent details' : 'Expand opponent details'}
                   >
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
                     {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                    <span className="text-xs font-semibold truncate max-w-[5rem]">{p.playerName}</span>
-                    {/* Prominent board-view pill — the main visual CTA */}
-                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 transition-colors ${
+                    <span className="text-xs font-semibold truncate flex-1">{p.playerName}</span>
+                    {/* Inline summary: aff · forged · reserved — always visible */}
+                    <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+                      <span className="font-semibold text-foreground/70">{totalGems}</span><span>aff</span>
+                      <span className="text-border/50 mx-0.5">·</span>
+                      <span className="font-semibold text-foreground/70">{cardCount}</span><span>fgd</span>
+                      <span className="text-border/50 mx-0.5">·</span>
+                      <span className="font-semibold text-foreground/70">{p.reservedCards.length}</span><span>rsv</span>
+                    </span>
+                    {/* Board expand pill */}
+                    <span className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 transition-colors ${
                       isExpanded
                         ? 'bg-primary/20 border-primary/40 text-primary'
                         : 'bg-secondary/70 border-border/60 text-foreground/70'
                     }`}>
                       {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      {isExpanded ? 'Hide' : 'View Board'}
+                      Board
                     </span>
-                    <div className="flex-1" />
-                    {isCurrent && <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     <div className="flex items-center gap-1 shrink-0">
                       <span className="font-serif font-black text-base text-primary leading-none">{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
                   </button>
-                  {/* Always-visible summary: affinities · forged · reserved */}
-                  <div className="px-3 pb-2.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                    <span><span className="font-semibold text-foreground/75">{totalGems}</span> affinities</span>
-                    <span className="text-border/60">·</span>
-                    <span><span className="font-semibold text-foreground/75">{cardCount}</span> forged</span>
-                    <span className="text-border/60">·</span>
-                    <span>
-                      <span className="font-semibold text-foreground/75">{p.reservedCards.length}</span> reserved
-                    </span>
-                  </div>
                   {/* Expandable section: gem grid only */}
                   <AnimatePresence>
                     {isExpanded && (
@@ -2041,6 +2037,26 @@ export default function GameBoard() {
             <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={20} />
             {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
             <span className="text-[11px] font-bold truncate text-foreground/90 flex-1">{me.playerName}</span>
+            {/* Inline summary: aff · forged (tappable) · reserved (tappable) */}
+            <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+              <span className="font-semibold text-foreground/70">{myTotalGems}</span><span>aff</span>
+              <span className="text-border/50 mx-0.5">·</span>
+              <button
+                type="button"
+                onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
+                className="flex items-center gap-0.5 font-semibold text-foreground/70 hover:text-foreground active:opacity-60 transition-colors"
+              >
+                {myCardCount}<span>fgd</span>
+              </button>
+              <span className="text-border/50 mx-0.5">·</span>
+              <button
+                type="button"
+                onClick={() => setShowReservedOverlay(true)}
+                className={`flex items-center gap-0.5 font-semibold active:opacity-60 transition-colors ${myReservedCount > 0 ? 'text-amber-400 hover:text-amber-300' : 'text-foreground/70 hover:text-foreground'}`}
+              >
+                {myReservedCount}<span>rsv</span>
+              </button>
+            </span>
             {isMyTurn && (
               <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
             )}
@@ -2084,28 +2100,6 @@ export default function GameBoard() {
                 </div>
               );
             })}
-          </div>
-          {/* Summary row: affinities · forged (tappable) · reserved (tappable) */}
-          <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground">
-            <span><span className="font-semibold text-foreground/75">{myTotalGems}</span> affinities</span>
-            <span className="text-border/60">·</span>
-            <button
-              type="button"
-              onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
-              className="flex items-center gap-1 font-semibold text-foreground/75 hover:text-foreground active:opacity-60 transition-colors underline-offset-2 hover:underline"
-            >
-              <Package className="h-2.5 w-2.5" />
-              <span className="font-semibold text-foreground/75">{myCardCount}</span> forged
-            </button>
-            <span className="text-border/60">·</span>
-            <button
-              type="button"
-              onClick={() => setShowReservedOverlay(true)}
-              className="flex items-center gap-1 font-semibold text-foreground/75 hover:text-foreground active:opacity-60 transition-colors underline-offset-2 hover:underline"
-            >
-              <Bookmark className="h-2.5 w-2.5" />
-              <span className={myReservedCount > 0 ? 'text-amber-400 font-black' : 'font-semibold text-foreground/75'}>{myReservedCount}</span> reserved
-            </button>
           </div>
         </div>
       )}
