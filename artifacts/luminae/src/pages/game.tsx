@@ -317,7 +317,7 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
             {luminary.name}
           </div>
           <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
-            Bonuses Required
+            Artifacts Required:
           </div>
           <div className="flex flex-wrap gap-1 justify-end items-center">
             {CRYSTALS.map((c) => {
