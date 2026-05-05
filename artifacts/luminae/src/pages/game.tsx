@@ -1711,13 +1711,13 @@ export default function GameBoard() {
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
                     {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
                     <span className="text-xs font-semibold truncate flex-1">{p.playerName}</span>
-                    {/* Inline summary: aff · forged · reserved — always visible */}
+                    {/* Inline summary: affinities · forged · reserved — always visible */}
                     <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
-                      <span className="font-semibold text-foreground/70">{totalGems}</span><span>aff</span>
+                      <span className="font-semibold text-foreground/70">{totalGems}</span><span>affinities</span>
                       <span className="text-border/50 mx-0.5">·</span>
-                      <span className="font-semibold text-foreground/70">{cardCount}</span><span>fgd</span>
+                      <span className="font-semibold text-foreground/70">{cardCount}</span><span>forged</span>
                       <span className="text-border/50 mx-0.5">·</span>
-                      <span className="font-semibold text-foreground/70">{p.reservedCards.length}</span><span>rsv</span>
+                      <span className="font-semibold text-foreground/70">{p.reservedCards.length}</span><span>reserved</span>
                     </span>
                     {/* Board expand pill */}
                     <span className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 transition-colors ${
@@ -2037,16 +2037,16 @@ export default function GameBoard() {
             <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={20} />
             {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
             <span className="text-[11px] font-bold truncate text-foreground/90 flex-1">{me.playerName}</span>
-            {/* Inline summary: aff · forged (tappable) · reserved (tappable) */}
+            {/* Inline summary: affinities · forged (tappable) · reserved (tappable) */}
             <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
-              <span className="font-semibold text-foreground/70">{myTotalGems}</span><span>aff</span>
+              <span className="font-semibold text-foreground/70">{myTotalGems}</span><span>affinities</span>
               <span className="text-border/50 mx-0.5">·</span>
               <button
                 type="button"
                 onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
                 className="flex items-center gap-0.5 font-semibold text-foreground/70 hover:text-foreground active:opacity-60 transition-colors"
               >
-                {myCardCount}<span>fgd</span>
+                {myCardCount}<span>forged</span>
               </button>
               <span className="text-border/50 mx-0.5">·</span>
               <button
@@ -2054,7 +2054,7 @@ export default function GameBoard() {
                 onClick={() => setShowReservedOverlay(true)}
                 className={`flex items-center gap-0.5 font-semibold active:opacity-60 transition-colors ${myReservedCount > 0 ? 'text-amber-400 hover:text-amber-300' : 'text-foreground/70 hover:text-foreground'}`}
               >
-                {myReservedCount}<span>rsv</span>
+                {myReservedCount}<span>reserved</span>
               </button>
             </span>
             {isMyTurn && (
