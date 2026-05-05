@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -347,15 +347,18 @@ const CUTSCENE_PARTICLES = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
+// Total duration of one cutscene (ms) — used to size the action lock.
+const CUTSCENE_DONE_MS = 11000;
+
 const CUTSCENE_SCHEDULE: [CutscenePhase, number][] = [
-  ['linger1',  1200],
-  ['crack1',   3200],
-  ['linger2',  5700],
-  ['cracking', 7200],
-  ['flash',    8700],
-  ['fade',     9200],
-  ['reveal',   10400],
-  ['done',     13900],
+  ['linger1',   950],   // card settles at full scale
+  ['crack1',   2500],   // first crack draws in
+  ['linger2',  4400],   // linger on single crack
+  ['cracking', 5600],   // rapid multi-crack burst
+  ['flash',    6900],   // shatter + screen flash
+  ['fade',     7350],   // flash fades
+  ['reveal',   8300],   // figure floats over game
+  ['done',    11000],
 ];
 
 function LuminaryCutscene({
@@ -370,7 +373,7 @@ function LuminaryCutscene({
   useEffect(() => {
     gameAudio.playWhoosh();
     const timers = CUTSCENE_SCHEDULE.map(([p, ms]) => setTimeout(() => setPhase(p), ms));
-    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 9600);
+    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 7600);
     timers.push(holyTimer);
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -394,13 +397,14 @@ function LuminaryCutscene({
       className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      exit={{ opacity: 0, transition: { duration: 0.55, ease: 'easeIn' } }}
+      transition={{ duration: 0.35 }}
     >
       {/* Background — solid black until reveal, then dims to show game */}
       <motion.div
         className="absolute inset-0"
-        animate={{ backgroundColor: showReveal ? 'rgba(0,0,0,0.52)' : 'rgba(0,0,0,1)' }}
-        transition={{ duration: 1.0 }}
+        animate={{ backgroundColor: showReveal ? 'rgba(0,0,0,0.68)' : 'rgba(0,0,0,1)' }}
+        transition={{ duration: 1.1 }}
       />
 
       {/* Zoomed card + cracks */}
@@ -415,7 +419,7 @@ function LuminaryCutscene({
             transition={phase === 'zoom'
               ? { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
               : { duration: 0.5, ease: 'easeOut' }}
-            exit={{ opacity: 0, transition: { duration: 0.05 } }}
+            exit={{ opacity: 0, scale: 2.6, transition: { duration: 0.3, ease: 'easeIn' } }}
           >
             <img
               src={portrait} alt={luminary.name}
@@ -659,7 +663,7 @@ export default function GameBoard() {
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processUpdateRef = useRef<(s: GameState) => void>(() => {});
   const drainQueueFnRef = useRef<() => void>(() => {});
-  const [luminaryCutscene, setLuminaryCutscene] = useState<{ luminary: Luminary; portrait: string } | null>(null);
+  const [cutsceneQueue, setCutsceneQueue] = useState<Array<{ luminary: Luminary; portrait: string }>>([]);
   const shownLuminaryIdsRef = useRef<Set<string>>(new Set());
   const hasInitializedLuminariesRef = useRef(false);
 
@@ -681,6 +685,12 @@ export default function GameBoard() {
   const prevStateRef = useRef<GameState | null>(null);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
+
+  const handleCutsceneComplete = useCallback(() => {
+    // Release the animation lock immediately so turn banners fire right away.
+    animationEndTimeRef.current = Date.now();
+    setCutsceneQueue(q => q.slice(1));
+  }, []);
 
   // Start ambient music when the game board mounts (user has already
   // interacted via buttons to get here, so AudioContext is allowed).
@@ -770,6 +780,11 @@ export default function GameBoard() {
       }
     }
   }, [state]);
+
+  // Extend the action lock each time a new cutscene enters the front of the queue.
+  useEffect(() => {
+    if (cutsceneQueue.length > 0) setAnimEndTime(CUTSCENE_DONE_MS + 500);
+  }, [cutsceneQueue.length]);
 
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
@@ -877,6 +892,7 @@ export default function GameBoard() {
       prevStateRef.current = newState;
 
       if (prev) {
+        const incoming: Array<{ luminary: Luminary; portrait: string }> = [];
         for (const player of newState.players) {
           const prevPlayer = prev.players.find(pp => pp.playerId === player.playerId);
           const prevEarned = new Set(prevPlayer?.earnedLuminaries ?? []);
@@ -884,14 +900,11 @@ export default function GameBoard() {
             if (!prevEarned.has(lumId) && !shownLuminaryIdsRef.current.has(lumId)) {
               shownLuminaryIdsRef.current.add(lumId);
               const luminary = newState.luminaries.find(l => l.id === lumId);
-              if (luminary) {
-                setLuminaryCutscene({ luminary, portrait: pickLuminaryPortrait(luminary) });
-                setAnimEndTime(14500);
-              }
-              break;
+              if (luminary) incoming.push({ luminary, portrait: pickLuminaryPortrait(luminary) });
             }
           }
         }
+        if (incoming.length > 0) setCutsceneQueue(q => [...q, ...incoming]);
       }
 
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
@@ -1033,7 +1046,8 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
-  const actionsLocked = !!turnAnnouncement || !!luminaryCutscene;
+  const actionsLocked = !!turnAnnouncement || cutsceneQueue.length > 0;
+  const currentCutscene = cutsceneQueue[0] ?? null;
   const isMyTurn = !actionsLocked && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
@@ -2678,23 +2692,26 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Luminary Summoning Cutscene ── */}
-      {luminaryCutscene && (
-        <LuminaryCutscene
-          luminary={luminaryCutscene.luminary}
-          portrait={luminaryCutscene.portrait}
-          onComplete={() => setLuminaryCutscene(null)}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {currentCutscene && (
+          <LuminaryCutscene
+            key={currentCutscene.luminary.id}
+            luminary={currentCutscene.luminary}
+            portrait={currentCutscene.portrait}
+            onComplete={handleCutsceneComplete}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Dev: Luminary Cutscene Test Panel ── */}
-      {import.meta.env.DEV && !luminaryCutscene && state.status === 'playing' && (
+      {import.meta.env.DEV && cutsceneQueue.length === 0 && state.status === 'playing' && (
         <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1">
           <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
           {state.luminaries.map(l => (
             <button
               key={l.id}
               type="button"
-              onClick={() => setLuminaryCutscene({ luminary: l, portrait: pickLuminaryPortrait(l) })}
+              onClick={() => setCutsceneQueue(q => [...q, { luminary: l, portrait: pickLuminaryPortrait(l) }])}
               className="text-[9px] bg-black/70 text-amber-300/80 border border-amber-500/30 rounded px-2 py-0.5 hover:bg-amber-900/40 transition-colors text-left"
             >
               ✦ {l.name}
