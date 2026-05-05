@@ -417,6 +417,7 @@ export default function GameBoard() {
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const prevStateRef = useRef<GameState | null>(null);
+  const playerPanelRef = useRef<HTMLDivElement>(null);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -1572,7 +1573,17 @@ export default function GameBoard() {
       </header>
 
       {/* ── Tab Content ── */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden z-10">
+      <main
+        className="flex-1 overflow-y-auto overflow-x-hidden z-10"
+        onPointerDown={() => {
+          // If a player-panel element has focus, release it immediately so the
+          // scroll gesture isn't consumed by a stale focus blur event first.
+          const active = document.activeElement as HTMLElement | null;
+          if (active && playerPanelRef.current?.contains(active)) {
+            active.blur();
+          }
+        }}
+      >
         {activeTab === 'board' && BoardTab()}
         {activeTab === 'hand' && HandTab()}
         {activeTab === 'log' && LogTab()}
@@ -1580,7 +1591,7 @@ export default function GameBoard() {
 
       {/* ── Player Info Panel (pinned above nav) ── */}
       {me && (
-        <div className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}>
+        <div ref={playerPanelRef} className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}>
           {/* Top row: identity + lumens */}
           <div className="flex items-center gap-3 mb-2">
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
