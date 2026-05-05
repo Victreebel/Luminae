@@ -1710,8 +1710,8 @@ export default function GameBoard() {
                   >
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
                     {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                    <span className="text-xs font-semibold truncate flex-1">{p.playerName}</span>
-                    {/* Inline summary: affinities · forged · reserved — always visible */}
+                    <span className="text-xs font-semibold truncate max-w-[5rem] shrink-0">{p.playerName}</span>
+                    {/* Inline summary: affinities · forged · reserved — hugs the name */}
                     <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
                       <span className="font-semibold text-foreground/70">{totalGems}</span><span>affinities</span>
                       <span className="text-border/50 mx-0.5">·</span>
@@ -1719,6 +1719,7 @@ export default function GameBoard() {
                       <span className="text-border/50 mx-0.5">·</span>
                       <span className="font-semibold text-foreground/70">{p.reservedCards.length}</span><span>reserved</span>
                     </span>
+                    <div className="flex-1" />
                     {/* Board expand pill */}
                     <span className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 transition-colors ${
                       isExpanded
@@ -2036,15 +2037,15 @@ export default function GameBoard() {
           <div className="flex items-center gap-2 mb-2">
             <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={20} />
             {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-            <span className="text-[11px] font-bold truncate text-foreground/90 flex-1">{me.playerName}</span>
-            {/* Inline summary: affinities · forged (tappable) · reserved (tappable) */}
+            <span className="text-[11px] font-bold truncate max-w-[5rem] shrink-0 text-foreground/90">{me.playerName}</span>
+            {/* Inline summary: affinities · forged (tappable) · reserved (tappable) — hugs the name */}
             <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
               <span className="font-semibold text-foreground/70">{myTotalGems}</span><span>affinities</span>
               <span className="text-border/50 mx-0.5">·</span>
               <button
                 type="button"
                 onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
-                className="flex items-center gap-0.5 font-semibold text-foreground/70 hover:text-foreground active:opacity-60 transition-colors"
+                className="flex items-center gap-0.5 font-semibold text-foreground/70 underline underline-offset-2 decoration-border/50 hover:text-foreground hover:decoration-foreground/50 active:opacity-60 transition-colors"
               >
                 {myCardCount}<span>forged</span>
               </button>
@@ -2052,11 +2053,12 @@ export default function GameBoard() {
               <button
                 type="button"
                 onClick={() => setShowReservedOverlay(true)}
-                className={`flex items-center gap-0.5 font-semibold active:opacity-60 transition-colors ${myReservedCount > 0 ? 'text-amber-400 hover:text-amber-300' : 'text-foreground/70 hover:text-foreground'}`}
+                className={`flex items-center gap-0.5 font-semibold underline underline-offset-2 active:opacity-60 transition-colors ${myReservedCount > 0 ? 'text-amber-400 decoration-amber-400/50 hover:text-amber-300' : 'text-foreground/70 decoration-border/50 hover:text-foreground hover:decoration-foreground/50'}`}
               >
                 {myReservedCount}<span>reserved</span>
               </button>
             </span>
+            <div className="flex-1" />
             {isMyTurn && (
               <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
             )}
