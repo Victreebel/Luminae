@@ -1727,7 +1727,17 @@ export default function GameBoard() {
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
                   </button>
-                  {/* Expandable section: gem grid + details */}
+                  {/* Always-visible summary: affinities · forged · reserved */}
+                  <div className="px-3 pb-2.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                    <span><span className="font-semibold text-foreground/75">{totalGems}</span> affinities</span>
+                    <span className="text-border/60">·</span>
+                    <span><span className="font-semibold text-foreground/75">{cardCount}</span> forged</span>
+                    <span className="text-border/60">·</span>
+                    <span>
+                      <span className="font-semibold text-foreground/75">{p.reservedCards.length}</span> reserved
+                    </span>
+                  </div>
+                  {/* Expandable section: gem grid only */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -1738,7 +1748,7 @@ export default function GameBoard() {
                         className="overflow-hidden border-t border-border/30"
                       >
                         {/* Gem columns: symbol → count → +bonus */}
-                        <div className="px-3 pt-2.5 pb-2 flex gap-1">
+                        <div className="px-3 pt-2.5 pb-2.5 flex gap-1">
                           {CRYSTALS.map((c) => {
                             const n = p.crystals[c as keyof CrystalCounts] ?? 0;
                             const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
@@ -1754,22 +1764,6 @@ export default function GameBoard() {
                               </div>
                             );
                           })}
-                        </div>
-                        {/* Summary: affinity total, forged count, reserved backs */}
-                        <div className="px-3 pb-2.5 flex items-center justify-between gap-3 text-xs text-muted-foreground border-t border-border/20">
-                          <div className="flex gap-3 pt-2">
-                            <span><span className="font-semibold text-foreground/80">{totalGems}</span> affinities</span>
-                            <span><span className="font-semibold text-foreground/80">{cardCount}</span> forged</span>
-                          </div>
-                          <div className="flex gap-1 items-center pt-2">
-                            {p.reservedCards.length > 0 ? (
-                              p.reservedCards.map((card, idx) => (
-                                <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground/50">no reserve</span>
-                            )}
-                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -2091,29 +2085,26 @@ export default function GameBoard() {
               );
             })}
           </div>
-          {/* Explicit card-access buttons */}
-          <div className="flex gap-1.5 mt-2">
+          {/* Summary row: affinities · forged (tappable) · reserved (tappable) */}
+          <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground">
+            <span><span className="font-semibold text-foreground/75">{myTotalGems}</span> affinities</span>
+            <span className="text-border/60">·</span>
             <button
               type="button"
               onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-secondary/40 py-1.5 text-[10px] font-semibold text-foreground/70 hover:text-foreground hover:bg-secondary/70 active:scale-95 transition-all"
+              className="flex items-center gap-1 font-semibold text-foreground/75 hover:text-foreground active:opacity-60 transition-colors underline-offset-2 hover:underline"
             >
-              <Package className="h-3 w-3 shrink-0" />
-              My Cards
-              {myCardCount > 0 && (
-                <span className="font-black text-foreground/90">{myCardCount}</span>
-              )}
+              <Package className="h-2.5 w-2.5" />
+              <span className="font-semibold text-foreground/75">{myCardCount}</span> forged
             </button>
+            <span className="text-border/60">·</span>
             <button
               type="button"
               onClick={() => setShowReservedOverlay(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-secondary/40 py-1.5 text-[10px] font-semibold text-foreground/70 hover:text-foreground hover:bg-secondary/70 active:scale-95 transition-all"
+              className="flex items-center gap-1 font-semibold text-foreground/75 hover:text-foreground active:opacity-60 transition-colors underline-offset-2 hover:underline"
             >
-              <Bookmark className="h-3 w-3 shrink-0" />
-              Reserved
-              {myReservedCount > 0 && (
-                <span className="font-black text-amber-400">{myReservedCount}</span>
-              )}
+              <Bookmark className="h-2.5 w-2.5" />
+              <span className={myReservedCount > 0 ? 'text-amber-400 font-black' : 'font-semibold text-foreground/75'}>{myReservedCount}</span> reserved
             </button>
           </div>
         </div>
