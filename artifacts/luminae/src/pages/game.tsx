@@ -1720,25 +1720,7 @@ export default function GameBoard() {
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
                   </div>
-                  {/* Compact gem row — always visible: symbol → count → +bonus */}
-                  <div className="px-3 pb-2.5 flex gap-1">
-                    {CRYSTALS.map((c) => {
-                      const n = p.crystals[c as keyof CrystalCounts] ?? 0;
-                      const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                      return (
-                        <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                          <MiniGem color={c as GemKey} size={12} />
-                          <span className="text-[12px] font-black text-white leading-none">{n}</span>
-                          {bonus > 0 ? (
-                            <span className="text-[9px] font-bold text-primary leading-none">+{bonus}</span>
-                          ) : (
-                            <span className="text-[9px] text-muted-foreground/25 leading-none">—</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Expandable detail row */}
+                  {/* Expandable section: gem grid + details */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -1748,12 +1730,31 @@ export default function GameBoard() {
                         transition={{ duration: 0.18 }}
                         className="overflow-hidden border-t border-border/30"
                       >
-                        <div className="px-3 py-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                          <div className="flex gap-3">
+                        {/* Gem columns: symbol → count → +bonus */}
+                        <div className="px-3 pt-2.5 pb-2 flex gap-1">
+                          {CRYSTALS.map((c) => {
+                            const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                            const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                            return (
+                              <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
+                                <MiniGem color={c as GemKey} size={12} />
+                                <span className="text-[12px] font-black text-white leading-none">{n}</span>
+                                {bonus > 0 ? (
+                                  <span className="text-[9px] font-bold text-primary leading-none">+{bonus}</span>
+                                ) : (
+                                  <span className="text-[9px] text-muted-foreground/25 leading-none">—</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Summary: affinity total, forged count, reserved backs */}
+                        <div className="px-3 pb-2.5 flex items-center justify-between gap-3 text-xs text-muted-foreground border-t border-border/20">
+                          <div className="flex gap-3 pt-2">
                             <span><span className="font-semibold text-foreground/80">{totalGems}</span> affinities</span>
                             <span><span className="font-semibold text-foreground/80">{cardCount}</span> forged</span>
                           </div>
-                          <div className="flex gap-1 items-center">
+                          <div className="flex gap-1 items-center pt-2">
                             {p.reservedCards.length > 0 ? (
                               p.reservedCards.map((card, idx) => (
                                 <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
@@ -2060,33 +2061,7 @@ export default function GameBoard() {
               const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
               return (
                 <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                  {/* Tappable gem icon — opens reserved/forged overlay */}
-                  {isFlux ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowReservedOverlay(true)}
-                      className="transition-opacity active:opacity-60 relative"
-                      aria-label="View reserved cards"
-                    >
-                      <MiniGem color={c as GemKey} size={14} />
-                      {reservedCount > 0 && (
-                        <span className="absolute -top-1 -right-1.5 text-[8px] font-black text-amber-300 leading-none">{reservedCount}</span>
-                      )}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={forgedCount === 0}
-                      onClick={() => { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }}
-                      className="disabled:cursor-default transition-opacity active:opacity-60 relative"
-                      aria-label={forgedCount > 0 ? `View ${forgedCount} forged cards` : undefined}
-                    >
-                      <MiniGem color={c as GemKey} size={14} />
-                      {forgedCount > 0 && (
-                        <span className="absolute -top-1 -right-1.5 text-[8px] font-black text-white/70 leading-none">{forgedCount}</span>
-                      )}
-                    </button>
-                  )}
+                  <MiniGem color={c as GemKey} size={14} />
                   {/* Held token count + queued intake */}
                   <div className="flex items-baseline gap-[2px]">
                     <span className="text-[13px] font-black leading-none text-white">{gems}</span>
@@ -2108,6 +2083,31 @@ export default function GameBoard() {
                 </div>
               );
             })}
+          </div>
+          {/* Explicit card-access buttons */}
+          <div className="flex gap-1.5 mt-2">
+            <button
+              type="button"
+              onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-secondary/40 py-1.5 text-[10px] font-semibold text-foreground/70 hover:text-foreground hover:bg-secondary/70 active:scale-95 transition-all"
+            >
+              <Package className="h-3 w-3 shrink-0" />
+              My Cards
+              {myCardCount > 0 && (
+                <span className="font-black text-foreground/90">{myCardCount}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReservedOverlay(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-secondary/40 py-1.5 text-[10px] font-semibold text-foreground/70 hover:text-foreground hover:bg-secondary/70 active:scale-95 transition-all"
+            >
+              <Bookmark className="h-3 w-3 shrink-0" />
+              Reserved
+              {myReservedCount > 0 && (
+                <span className="font-black text-amber-400">{myReservedCount}</span>
+              )}
+            </button>
           </div>
         </div>
       )}
