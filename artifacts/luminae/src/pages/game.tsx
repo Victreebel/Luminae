@@ -1701,8 +1701,13 @@ export default function GameBoard() {
                   key={p.playerId}
                   className={`rounded-2xl border bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* Header: avatar + name + lumen score + expand toggle */}
-                  <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-2">
+                  {/* Header: full row is tappable to expand/collapse */}
+                  <button
+                    type="button"
+                    onClick={() => toggleOpponent(p.playerId)}
+                    className="w-full px-3 pt-2.5 pb-2 flex items-center gap-2 text-left active:opacity-75 transition-opacity"
+                    aria-label={isExpanded ? 'Collapse opponent details' : 'Expand opponent details'}
+                  >
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
                     {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
                     <span className="text-xs font-semibold truncate flex-1">{p.playerName}</span>
@@ -1711,15 +1716,14 @@ export default function GameBoard() {
                       <span className="font-serif font-black text-base text-primary leading-none">{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleOpponent(p.playerId)}
-                      className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded ml-0.5"
-                      aria-label={isExpanded ? 'Collapse opponent details' : 'Expand opponent details'}
-                    >
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
+                    <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0 ml-1">
+                      {isExpanded ? (
+                        <>hide <ChevronUp className="h-3 w-3" /></>
+                      ) : (
+                        <>view <ChevronDown className="h-3 w-3" /></>
+                      )}
+                    </span>
+                  </button>
                   {/* Expandable section: gem grid + details */}
                   <AnimatePresence>
                     {isExpanded && (
