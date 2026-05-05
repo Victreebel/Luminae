@@ -924,6 +924,8 @@ export default function GameBoard() {
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const prevStateRef = useRef<GameState | null>(null);
+  const mainScrollRef = useRef<HTMLElement>(null);
+  const playerPanelRef = useRef<HTMLDivElement>(null);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -1455,6 +1457,19 @@ export default function GameBoard() {
     });
   };
 
+  // Defocus player-panel elements when a touch starts clearly above the panel,
+  // so the browser re-routes the subsequent scroll to <main> without needing
+  // an extra tap on blank board space first.
+  const handleOuterTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (!playerPanelRef.current) return;
+    const panelTop = playerPanelRef.current.getBoundingClientRect().top;
+    const touchY = e.touches[0]?.clientY ?? 0;
+    if (touchY < panelTop) {
+      const active = document.activeElement as HTMLElement | null;
+      if (active && active !== document.body) active.blur();
+    }
+  }, []);
+
   const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
   const myReservedCount = me?.reservedCards.length ?? 0;
   const myTotalGems = Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0);
@@ -1984,7 +1999,7 @@ export default function GameBoard() {
   );
 
   return (
-    <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
+    <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative" onTouchStart={handleOuterTouchStart}>
       {/* Cosmic background */}
       <div
         className="absolute inset-0 pointer-events-none opacity-20"
@@ -2024,7 +2039,7 @@ export default function GameBoard() {
       </header>
 
       {/* ── Tab Content ── */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden z-10">
+      <main ref={mainScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden z-10" style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
         {activeTab === 'board' && BoardTab()}
         {activeTab === 'hand' && HandTab()}
         {activeTab === 'log' && LogTab()}
@@ -2032,7 +2047,7 @@ export default function GameBoard() {
 
       {/* ── Your Resources Panel (pinned above nav) ── */}
       {me && (
-        <div className={`shrink-0 z-20 border-t px-3 pt-2 pb-2.5 bg-card/95 backdrop-blur transition-all ${isMyTurn ? 'border-primary/70 shadow-[0_0_16px_rgba(99,102,241,0.32)]' : 'border-border/60'}`}>
+        <div ref={playerPanelRef} style={{ touchAction: 'pan-y' }} className={`shrink-0 z-20 border-t px-3 pt-2 pb-2.5 bg-card/95 backdrop-blur transition-all ${isMyTurn ? 'border-primary/70 shadow-[0_0_16px_rgba(99,102,241,0.32)]' : 'border-border/60'}`}>
           {/* Identity + lumen score row */}
           <div className="flex items-center gap-2 mb-2">
             <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={20} />
