@@ -390,9 +390,6 @@ export const StartGameResponse = zod.object({
         }),
       ),
       isConnected: zod.boolean(),
-      earnedLuminaries: zod
-        .array(zod.string())
-        .describe("IDs of luminaries this player has earned"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -585,9 +582,6 @@ export const GetGameStateResponse = zod.object({
         }),
       ),
       isConnected: zod.boolean(),
-      earnedLuminaries: zod
-        .array(zod.string())
-        .describe("IDs of luminaries this player has earned"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -804,9 +798,6 @@ export const SubmitActionResponse = zod.object({
         }),
       ),
       isConnected: zod.boolean(),
-      earnedLuminaries: zod
-        .array(zod.string())
-        .describe("IDs of luminaries this player has earned"),
     }),
   ),
   winnerId: zod.string().nullable(),

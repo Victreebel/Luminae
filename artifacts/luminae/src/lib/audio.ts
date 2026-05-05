@@ -407,51 +407,6 @@ class GameAudio {
     }
   }
 
-  /** Deep space whoosh — rising noise sweep with sub rumble, for Luminary zoom. */
-  playWhoosh() {
-    if (this.muted) return;
-    try {
-      const ctx = this.initCtx();
-      const t = ctx.currentTime;
-      // Sub rumble
-      this.osc(ctx, 40, 'sine', t, t + 1.8, 0.20, 0.05);
-      this.osc(ctx, 60, 'sine', t + 0.1, t + 1.6, 0.12, 0.06);
-      // Wide rising noise sweep — low to high
-      this.noiseSweep(ctx, t, 1.4, 0.22, 80, 3200);
-      this.noiseSweep(ctx, t + 0.15, 1.2, 0.14, 120, 2000);
-      // High shimmer tail
-      this.osc(ctx, 1760, 'sine', t + 0.8, t + 2.0, 0.04, 0.1);
-      this.osc(ctx, 2349, 'sine', t + 1.0, t + 2.0, 0.025, 0.08);
-    } catch (e) { console.warn('SFX failed', e); }
-  }
-
-  /** Holy/in-awe summoning sound — ethereal choir-like pad with celestial shimmer. */
-  playLuminarySummoned() {
-    if (this.muted) return;
-    try {
-      const ctx = this.initCtx();
-      const t = ctx.currentTime;
-      // Deep resonant bass foundation
-      this.osc(ctx, 55,  'sine', t, t + 5.0, 0.15, 0.4);
-      this.osc(ctx, 82.5,'sine', t + 0.2, t + 4.8, 0.10, 0.5);
-      // Choir-like pad: stacked slow-attack sines in a maj7 chord
-      const choirNotes = [220, 261.6, 329.6, 392.0, 493.9, 523.3];
-      choirNotes.forEach((f, i) => {
-        this.osc(ctx, f, 'sine', t + i * 0.12, t + 5.5, 0.055, 0.5 + i * 0.05);
-        this.osc(ctx, f * 2, 'sine', t + 0.3 + i * 0.1, t + 4.5, 0.018, 0.4);
-      });
-      // Celestial shimmer — high bell overtones
-      const shimmer = [1046.5, 1318.5, 1568.0, 2093.0, 2349.3];
-      shimmer.forEach((f, i) => {
-        const at = t + 0.6 + i * 0.22;
-        this.osc(ctx, f, 'sine', at, at + 2.5, 0.028, 0.05);
-      });
-      // Soft noise aura
-      this.noiseBlip(ctx, t + 0.5, 2.5, 0.06, 800, 1);
-      this.noiseBlip(ctx, t + 1.5, 2.0, 0.04, 1600, 1.5);
-    } catch (e) { console.warn('SFX failed', e); }
-  }
-
   // Kept for backward compat — maps to crystal ting on ruby
   playCrystalPickedLegacy() { this.playCrystalPicked('ruby'); }
 

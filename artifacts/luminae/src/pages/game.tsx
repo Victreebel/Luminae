@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -195,7 +195,7 @@ function ArtifactCardView({
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
-      <div className="relative z-10 h-full p-2 flex flex-col justify-between overflow-hidden">
+      <div className="relative z-10 h-full p-2 flex flex-col justify-between">
         <div className="flex justify-between items-start">
           <span className="text-lg font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
             {card.lumens > 0 ? card.lumens : ''}
@@ -205,7 +205,11 @@ function ArtifactCardView({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-0.5 justify-end">
+        <div className="space-y-1">
+          <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+            {card.name}
+          </div>
+          <div className="flex flex-wrap gap-0.5 justify-end">
             {CRYSTALS.map((c) => {
               const baseCost = card.cost[c as keyof CrystalCounts];
               if (baseCost <= 0) return null;
@@ -227,6 +231,7 @@ function ArtifactCardView({
                 </div>
               );
             })}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -283,7 +288,6 @@ function LuminaryCard({ luminary }: { luminary: Luminary }) {
     <div
       className="relative w-24 h-24 rounded-xl overflow-hidden border-2 p-2 flex flex-col items-center justify-end gap-1 shadow-[0_0_18px_rgba(255,196,61,0.18)] shrink-0"
       style={{ borderColor: `${GEM_META.flux.hex}55` }}
-      data-luminary-card={luminary.id}
     >
       <img src={portrait} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/90 pointer-events-none" />
@@ -310,531 +314,6 @@ function LuminaryCard({ luminary }: { luminary: Luminary }) {
     </div>
   );
 }
-
-// ─── Luminary Summoning Cutscene ─────────────────────────────────────────────
-
-type CutscenePhase =
-  | 'board' | 'zoomin' | 'linger1' | 'crack1' | 'linger2'
-  | 'cracking' | 'flash' | 'fade' | 'reveal' | 'done';
-
-// ── Fault-line geometry (viewBox 0 0 100 100) ────────────────────────────────
-// Interior fault nodes: C(44,28) B(30,48) A(22,68) D(66,22) E(66,54) F(52,74)
-// Card-edge exits: T1(10,0) L1(0,40) L2(0,65) R1(100,30) R2(100,58) Bo1(46,100) Bo2(78,100)
-//
-// Cracks are drawn along shared shard edges. Shards tile the full 100×100 card exactly.
-
-const CRACK_PATHS: { d: string; phase: 'crack1' | 'cracking'; glow: number }[] = [
-  // CRACK1 — main diagonal: bottom-left corner → A → B → C → T1
-  { d: 'M 0,100 L 22,68 L 30,48 L 44,28 L 10,0', phase: 'crack1',   glow: 7 },
-  // CRACKING — upper-right branch: C → D → R1
-  { d: 'M 44,28 L 66,22 L 100,30',               phase: 'cracking', glow: 5 },
-  // CRACKING — left exit from B: B → L1
-  { d: 'M 30,48 L 0,40',                          phase: 'cracking', glow: 4 },
-  // CRACKING — lower-left exit: A → L2
-  { d: 'M 22,68 L 0,65',                          phase: 'cracking', glow: 4 },
-  // CRACKING — right vertical: D → E
-  { d: 'M 66,22 L 66,54',                         phase: 'cracking', glow: 5 },
-  // CRACKING — right exit: E → R2
-  { d: 'M 66,54 L 100,58',                        phase: 'cracking', glow: 4 },
-  // CRACKING — lower horizontal: A → F → E
-  { d: 'M 22,68 L 52,74 L 66,54',                phase: 'cracking', glow: 5 },
-  // CRACKING — bottom exits: F → Bo1, E → Bo2
-  { d: 'M 52,74 L 46,100',                        phase: 'cracking', glow: 4 },
-  { d: 'M 66,54 L 78,100',                        phase: 'cracking', glow: 4 },
-];
-
-// 8 shards derived from the fault-line graph — clip-path polygons using % of card size.
-// Shard edges match the crack SVG paths above exactly.
-const SHARDS: { clip: string; tx: number; ty: number; rot: number; delay: number }[] = [
-  // S1 TL:     (0,0)→T1→C→B→L1
-  { clip: 'polygon(0% 0%, 10% 0%, 44% 28%, 30% 48%, 0% 40%)',            tx: -190, ty: -215, rot: -44, delay: 0.00 },
-  // S2 TR:     T1→(100,0)→R1→D→C
-  { clip: 'polygon(10% 0%, 100% 0%, 100% 30%, 66% 22%, 44% 28%)',        tx:  178, ty: -198, rot:  40, delay: 0.04 },
-  // S3 LM:     L1→B→A→L2
-  { clip: 'polygon(0% 40%, 30% 48%, 22% 68%, 0% 65%)',                   tx: -245, ty:   8,  rot: -28, delay: 0.06 },
-  // S4 CENTER: B→C→D→E→F→A
-  { clip: 'polygon(30% 48%, 44% 28%, 66% 22%, 66% 54%, 52% 74%, 22% 68%)', tx: 8,  ty:  22,  rot:  5,  delay: 0.02 },
-  // S5 R:      D→R1→R2→E
-  { clip: 'polygon(66% 22%, 100% 30%, 100% 58%, 66% 54%)',               tx:  238, ty:   2,  rot:  34, delay: 0.05 },
-  // S6 BL:     L2→A→F→Bo1→(0,100)
-  { clip: 'polygon(0% 65%, 22% 68%, 52% 74%, 46% 100%, 0% 100%)',        tx: -162, ty:  208, rot: -38, delay: 0.07 },
-  // S7 BC:     F→E→Bo2→Bo1
-  { clip: 'polygon(52% 74%, 66% 54%, 78% 100%, 46% 100%)',               tx:  10,  ty:  232, rot:  9,  delay: 0.09 },
-  // S8 BR:     E→R2→(100,100)→Bo2
-  { clip: 'polygon(66% 54%, 100% 58%, 100% 100%, 78% 100%)',             tx:  212, ty:  202, rot:  30, delay: 0.08 },
-];
-
-// Light nodes that pulse at each crack junction when cracking starts.
-const CRACK_NODES = [
-  { cx: 44, cy: 28, r: 5.5 }, // C — main upper junction
-  { cx: 30, cy: 48, r: 4.0 }, // B
-  { cx: 22, cy: 68, r: 3.5 }, // A
-  { cx: 66, cy: 22, r: 4.5 }, // D
-  { cx: 66, cy: 54, r: 4.5 }, // E
-  { cx: 52, cy: 74, r: 3.5 }, // F
-];
-
-const CUTSCENE_PARTICLES = Array.from({ length: 16 }, (_, i) => {
-  const angle = (i / 16) * 360;
-  const dist  = 108 + (i % 5) * 16;
-  return {
-    tx:    Math.cos((angle * Math.PI) / 180) * dist,
-    ty:    Math.sin((angle * Math.PI) / 180) * dist,
-    delay: 0.2 + i * 0.06,
-    color: i % 3 === 0 ? '#fbbf24' : i % 3 === 1 ? '#bfdbfe' : '#ffffff',
-    size:  i % 4 === 0 ? 5 : i % 4 === 2 ? 3 : 4,
-  };
-});
-
-// Total duration of one cutscene (ms) — used to size the action lock.
-const CUTSCENE_DONE_MS = 9900;
-
-const CUTSCENE_SCHEDULE: [CutscenePhase, number][] = [
-  ['zoomin',   700],   // board context shown 700ms, then card zooms in
-  ['linger1', 2000],   // 1300ms zoom travel → card settles at center
-  ['crack1',  2850],   // 850ms breathing room → first crack draws
-  ['linger2', 3700],   // 850ms tension linger (was 1900ms)
-  ['cracking',4700],   // 1000ms rapid multi-crack burst
-  ['flash',   5800],   // SHATTER
-  ['fade',    6250],   // flash fades over 850ms
-  ['reveal',  7100],   // figure emerges over game board
-  ['done',    9900],
-];
-
-function LuminaryCutscene({
-  luminary, portrait, onComplete,
-}: {
-  luminary: Luminary;
-  portrait: string;
-  onComplete: () => void;
-}) {
-  const [phase, setPhase] = useState<CutscenePhase>('board');
-  const [boardCenter, setBoardCenter] = useState<{
-    offsetX: number; offsetY: number; boardScale: number;
-    screenX: number; screenY: number;
-  } | null>(null);
-
-  useEffect(() => {
-    // Measure board card DOM position — board phase lasts 700ms so there's plenty of time.
-    const el = document.querySelector(`[data-luminary-card="${luminary.id}"]`);
-    if (el) {
-      const rect = el.getBoundingClientRect();
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      setBoardCenter({
-        screenX:    rect.left + rect.width  / 2,
-        screenY:    rect.top  + rect.height / 2,
-        offsetX:    rect.left + rect.width  / 2 - vw / 2,
-        offsetY:    rect.top  + rect.height / 2 - vh / 2,
-        boardScale: rect.width / 480, // 480 = cardSize(200) × zoom(2.4)
-      });
-    }
-    gameAudio.playWhoosh();
-    const timers    = CUTSCENE_SCHEDULE.map(([p, ms]) => setTimeout(() => setPhase(p), ms));
-    const holyTimer = setTimeout(() => gameAudio.playLuminarySummoned(), 6450);
-    timers.push(holyTimer);
-    return () => timers.forEach(clearTimeout);
-  }, [luminary.id]);
-
-  useEffect(() => {
-    if (phase === 'done') onComplete();
-  }, [phase, onComplete]);
-
-  const isBoard         = phase === 'board';
-  const isZoomin        = phase === 'zoomin';
-  // Card unmounts instantly at flash — shards + cosmic light replace it.
-  const showCard        = !['flash', 'fade', 'reveal', 'done'].includes(phase);
-  // Cracks only live on the card, so they only show while the card is mounted.
-  const showCrack1      = ['crack1', 'linger2', 'cracking'].includes(phase);
-  const showExtraCracks = phase === 'cracking';
-  const showShards      = ['flash', 'fade'].includes(phase);
-  const showCosmicLight = ['flash', 'fade'].includes(phase);
-  const showFlash       = phase === 'flash';
-  const showFade        = phase === 'fade';
-  const showReveal      = phase === 'reveal';
-  const cardSize        = 200;
-  const renderedSize    = cardSize * 2.4; // 480 px — shard containers fixed at shatter scale
-
-  const bc = boardCenter;
-  // Board-aware card position: starts at board element, zooms to screen center.
-  const cardAnimX     = (isBoard && bc) ? bc.offsetX : 0;
-  const cardAnimY     = (isBoard && bc) ? bc.offsetY : 0;
-  const cardAnimScale = (isBoard && bc) ? bc.boardScale : 2.4;
-  const cardAnimOp    = isBoard ? 0 : 1; // invisible during board phase — real card shows through
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, transition: { duration: 0.55, ease: 'easeIn' } }}
-      transition={{ duration: 0.35 }}
-    >
-      {/* ── Background — semi-transparent during board phase so game board shows through ── */}
-      <motion.div className="absolute inset-0"
-        animate={{
-          backgroundColor: showReveal ? 'rgba(0,0,0,0.68)'
-            : isBoard       ? 'rgba(0,0,0,0.52)'
-            : 'rgba(0,0,0,1)',
-        }}
-        transition={{ duration: isZoomin ? 1.3 : 1.2 }}
-      />
-
-      {/* ── Board phase: cinematic spotlight on the luminary's board location ── */}
-      {(isBoard || isZoomin) && bc && (
-        <>
-          {/* Radial vignette — darkens everything except the card's position */}
-          <motion.div className="absolute inset-0 pointer-events-none"
-            style={{
-              background: `radial-gradient(circle 170px at ${bc.screenX}px ${bc.screenY}px, transparent 0%, rgba(0,0,0,0.45) 85%, rgba(0,0,0,0.72) 100%)`,
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isZoomin ? 0 : 1 }}
-            transition={{ duration: isZoomin ? 0.55 : 0.4 }}
-          />
-          {/* Gold glow halo centred on the board card */}
-          <motion.div className="absolute pointer-events-none"
-            style={{
-              width: 128, height: 128,
-              left: bc.screenX - 64, top: bc.screenY - 64,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at center, rgba(255,196,61,0.28) 0%, rgba(255,196,61,0.08) 55%, transparent 75%)',
-              boxShadow: '0 0 24px rgba(255,196,61,0.32), 0 0 48px rgba(255,196,61,0.10)',
-            }}
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: isZoomin ? 0 : 1, scale: isZoomin ? 0.5 : [1, 1.08, 1] }}
-            transition={{ duration: isZoomin ? 0.4 : 0.5, scale: { repeat: Infinity, duration: 1.4, ease: 'easeInOut' } }}
-          />
-          {/* "Summoning" label below the card */}
-          <motion.div className="absolute pointer-events-none text-center"
-            style={{ left: bc.screenX, top: bc.screenY + 58, transform: 'translateX(-50%)' }}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: isZoomin ? 0 : 1, y: isZoomin ? 5 : 0 }}
-            transition={{ duration: 0.35, delay: isZoomin ? 0 : 0.2 }}
-          >
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-amber-300/70 whitespace-nowrap">Summoning</p>
-          </motion.div>
-        </>
-      )}
-
-      {/* ── Cosmic light source — lives beneath the card shell, blooms at shatter ── */}
-      <AnimatePresence>
-        {showCosmicLight && (
-          <motion.div key="cosmic" className="absolute pointer-events-none"
-            style={{
-              width: renderedSize * 1.5, height: renderedSize * 1.5,
-              left: '50%', top: '50%',
-              marginLeft: -(renderedSize * 1.5) / 2,
-              marginTop:  -(renderedSize * 1.5) / 2,
-              borderRadius: '50%',
-              background: 'radial-gradient(ellipse 58% 54% at 50% 44%, rgba(255,255,255,1) 0%, rgba(255,235,130,0.96) 14%, rgba(255,195,60,0.72) 34%, rgba(255,140,30,0.32) 54%, rgba(255,100,20,0.08) 72%, transparent 86%)',
-            }}
-            initial={{ opacity: 0, scale: 0.22 }}
-            animate={{ opacity: showFade ? 0.55 : 1, scale: showFade ? 0.65 : 1 }}
-            exit={{ opacity: 0, transition: { duration: 1.0, ease: 'easeIn' } }}
-            transition={{ duration: showFlash ? 0.16 : 1.5, ease: 'easeOut' }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Card — zooms from board card location to screen centre ── */}
-      <AnimatePresence>
-        {showCard && (
-          <motion.div key="card" className="relative shrink-0"
-            style={{ width: cardSize, height: cardSize }}
-            animate={{ x: cardAnimX, y: cardAnimY, scale: cardAnimScale, opacity: cardAnimOp }}
-            transition={
-              isBoard   ? { duration: 0 }
-              : isZoomin ? { duration: 1.3, ease: [0.2, 0.05, 0.32, 1] }
-              : { duration: 0.5, ease: 'easeOut' }
-            }
-            exit={{ opacity: 0, transition: { duration: 0 } }}
-          >
-            <img src={portrait} alt={luminary.name}
-              className="w-full h-full object-cover rounded-2xl select-none pointer-events-none"
-              draggable={false} />
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-black/15 via-transparent to-black/80 pointer-events-none" />
-            <div className="absolute inset-0 rounded-2xl pointer-events-none"
-              style={{ boxShadow: '0 0 0 2px rgba(255,196,61,0.55), 0 0 40px rgba(255,196,61,0.28), inset 0 0 20px rgba(0,0,0,0.4)' }} />
-            {!['board', 'zoomin', 'linger1'].includes(phase) && (
-              <motion.div className="absolute bottom-0 inset-x-0 px-2 py-1.5 flex justify-between items-end"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-                <span className="text-[8px] font-semibold text-white/60">{luminary.name}</span>
-                <span className="text-sm font-serif font-black drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
-                  style={{ color: GEM_META.flux.hex }}>{luminary.lumens}</span>
-              </motion.div>
-            )}
-
-            {/* ── Crack SVG — fault lines with gold-white light rays ── */}
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none"
-              className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-              {CRACK_PATHS.map((crack, i) => {
-                const visible = crack.phase === 'crack1' ? showCrack1 : showExtraCracks;
-                if (!visible) return null;
-                const isFirst    = crack.phase === 'crack1';
-                const crackDelay = isFirst ? 0 : (i - 1) * 0.11;
-                const glowOpacity = showExtraCracks ? 0.72 : 0.48;
-                return (
-                  <React.Fragment key={i}>
-                    {/* Blurred gold halo — light pouring through the crevice */}
-                    <motion.path d={crack.d} fill="none"
-                      stroke="rgba(255,215,80,1)" strokeWidth={crack.glow} strokeLinecap="round"
-                      style={{ filter: 'blur(3px)' }}
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      animate={{ pathLength: 1, opacity: glowOpacity }}
-                      transition={{ duration: isFirst ? 0.72 : 0.26, delay: crackDelay, ease: 'easeOut' }}
-                    />
-                    {/* Narrower inner white corona */}
-                    <motion.path d={crack.d} fill="none"
-                      stroke="rgba(255,245,200,1)" strokeWidth={crack.glow * 0.35} strokeLinecap="round"
-                      style={{ filter: 'blur(1px)' }}
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      animate={{ pathLength: 1, opacity: showExtraCracks ? 0.9 : 0.6 }}
-                      transition={{ duration: isFirst ? 0.72 : 0.26, delay: crackDelay, ease: 'easeOut' }}
-                    />
-                    {/* Sharp bright core */}
-                    <motion.path d={crack.d} fill="none"
-                      stroke="white" strokeWidth={isFirst ? 0.8 : 0.55}
-                      strokeLinecap="round" strokeLinejoin="round"
-                      style={{ filter: 'drop-shadow(0 0 2px rgba(255,255,255,1))' }}
-                      initial={{ pathLength: 0, opacity: 0 }}
-                      animate={{ pathLength: 1, opacity: 1 }}
-                      transition={{ duration: isFirst ? 0.72 : 0.22, delay: crackDelay, ease: 'easeOut' }}
-                    />
-                  </React.Fragment>
-                );
-              })}
-
-              {/* Light nodes at crack junctions */}
-              {showExtraCracks && CRACK_NODES.map((node, i) => (
-                <React.Fragment key={i}>
-                  <motion.circle cx={node.cx} cy={node.cy} r={node.r * 2.2}
-                    fill="rgba(255,200,60,0.5)"
-                    style={{ filter: 'blur(2.5px)' }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0, 0.8, 0.5] }}
-                    transition={{ duration: 0.4, delay: i * 0.09 }}
-                  />
-                  <motion.circle cx={node.cx} cy={node.cy} r={node.r}
-                    fill="rgba(255,245,180,1)"
-                    style={{ filter: 'blur(0.8px)' }}
-                    initial={{ opacity: 0, r: 0 }}
-                    animate={{ opacity: [0, 1, 0.75], r: node.r }}
-                    transition={{ duration: 0.3, delay: i * 0.09 }}
-                  />
-                </React.Fragment>
-              ))}
-            </svg>
-
-            {/* Crack-origin bloom (bottom-left corner) */}
-            {showCrack1 && (
-              <motion.div className="absolute pointer-events-none"
-                style={{
-                  bottom: '-4%', left: '-4%', width: 60, height: 60, borderRadius: '50%',
-                  background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,225,100,0.88) 22%, rgba(255,175,40,0.45) 52%, transparent 74%)',
-                }}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{
-                  opacity: showExtraCracks ? [0.85, 1.0, 0.88] : [0, 0.78, 0.68],
-                  scale:   showExtraCracks ? [1.5, 2.2, 1.7]   : [0, 1.25, 1.05],
-                }}
-                transition={{ duration: 0.6 }}
-              />
-            )}
-
-            {/* Inner radiance building during cracking — light contained inside the card */}
-            {showExtraCracks && (
-              <motion.div className="absolute inset-0 rounded-2xl pointer-events-none overflow-hidden"
-                style={{ mixBlendMode: 'screen' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.3, 0.62] }}
-                transition={{ duration: 1.0, ease: 'easeIn' }}>
-                <div className="absolute inset-0" style={{
-                  background: 'radial-gradient(ellipse 62% 62% at 50% 46%, rgba(255,255,255,0.98) 0%, rgba(255,220,90,0.65) 28%, rgba(255,155,30,0.22) 58%, transparent 78%)',
-                }} />
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Shard fragments — dark card-shell debris flying away from the light ── */}
-      {/* The original card unmounts at the flash frame; these shards are pure debris. */}
-      <AnimatePresence>
-        {showShards && SHARDS.map((shard, i) => (
-          <motion.div key={`shard-${i}`} className="absolute pointer-events-none"
-            style={{
-              width: renderedSize, height: renderedSize,
-              left: '50%', top: '50%',
-              marginLeft: -renderedSize / 2,
-              marginTop:  -renderedSize / 2,
-            }}
-            initial={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-            animate={{ x: shard.tx, y: shard.ty, rotate: shard.rot, opacity: 0 }}
-            transition={{
-              x: { duration: 1.1, ease: [0.12, 0, 0.28, 1], delay: shard.delay },
-              y: { duration: 1.1, ease: [0.12, 0, 0.28, 1], delay: shard.delay },
-              rotate: { duration: 1.1, ease: [0.12, 0, 0.28, 1], delay: shard.delay },
-              opacity: { duration: 0.65, delay: shard.delay + 0.38, ease: 'easeIn' },
-            }}>
-            {/* Dark card-shell slab — no portrait, just the destroyed backing */}
-            <div style={{
-              position: 'absolute', inset: 0, clipPath: shard.clip,
-              background: 'linear-gradient(148deg, rgba(6,9,22,0.98) 0%, rgba(14,18,38,0.99) 60%, rgba(22,12,30,0.97) 100%)',
-              borderRadius: 16,
-              boxShadow: 'inset 0 0 10px rgba(255,195,65,0.25), inset 0 0 2px rgba(255,255,255,0.12)',
-            }} />
-            {/* Edge-lit crack seams on each shard — gold rim where it broke */}
-            <div style={{
-              position: 'absolute', inset: 0, clipPath: shard.clip,
-              background: 'transparent',
-              borderRadius: 16,
-              outline: '1px solid rgba(255,190,60,0.28)',
-              filter: 'drop-shadow(0 0 3px rgba(255,200,70,0.35))',
-            }} />
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* ── Radial gold-white flash — not a flat white cover ── */}
-      <AnimatePresence>
-        {(showFlash || showFade) && (
-          <motion.div key="flash" className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 72% 68% at 50% 47%, rgba(255,255,255,1) 0%, rgba(255,245,165,0.98) 16%, rgba(255,205,70,0.82) 38%, rgba(255,145,30,0.38) 60%, rgba(255,85,10,0.10) 78%, transparent 92%)',
-            }}
-            initial={{ opacity: showFlash ? 0 : 1 }}
-            animate={{ opacity: showFlash ? 1 : 0 }}
-            exit={{ opacity: 0, transition: { duration: 0 } }}
-            transition={{ duration: showFlash ? 0.24 : 1.05, ease: showFlash ? 'easeOut' : 'easeIn' }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Reveal — freed entity emerges; game board is the background ── */}
-      <AnimatePresence>
-        {showReveal && (
-          <motion.div key="reveal" className="absolute inset-0 flex flex-col items-center justify-center"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.85 }}>
-
-            {/* Rotating conic light rays behind entity */}
-            <motion.div className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'conic-gradient(from 0deg at 50% 40%, transparent 0deg, rgba(255,215,80,0.055) 6deg, transparent 12deg, rgba(255,215,80,0.04) 18deg, transparent 24deg, rgba(255,215,80,0.055) 30deg, transparent 36deg, rgba(255,215,80,0.04) 42deg, transparent 48deg, rgba(255,215,80,0.055) 54deg, transparent 60deg, rgba(255,215,80,0.04) 66deg, transparent 72deg, rgba(255,215,80,0.055) 78deg, transparent 84deg, rgba(255,215,80,0.04) 90deg, transparent 96deg, rgba(255,215,80,0.055) 102deg, transparent 108deg, rgba(255,215,80,0.04) 114deg, transparent 120deg, rgba(255,215,80,0.055) 126deg, transparent 132deg, rgba(255,215,80,0.04) 138deg, transparent 144deg, rgba(255,215,80,0.055) 150deg, transparent 156deg, rgba(255,215,80,0.04) 162deg, transparent 168deg, rgba(255,215,80,0.055) 174deg, transparent 180deg, rgba(255,215,80,0.04) 186deg, transparent 192deg, rgba(255,215,80,0.055) 198deg, transparent 204deg, rgba(255,215,80,0.04) 210deg, transparent 216deg, rgba(255,215,80,0.055) 222deg, transparent 228deg, rgba(255,215,80,0.04) 234deg, transparent 240deg, rgba(255,215,80,0.055) 246deg, transparent 252deg, rgba(255,215,80,0.04) 258deg, transparent 264deg, rgba(255,215,80,0.055) 270deg, transparent 276deg, rgba(255,215,80,0.04) 282deg, transparent 288deg, rgba(255,215,80,0.055) 294deg, transparent 300deg, rgba(255,215,80,0.04) 306deg, transparent 312deg, rgba(255,215,80,0.055) 318deg, transparent 324deg, rgba(255,215,80,0.04) 330deg, transparent 336deg, rgba(255,215,80,0.055) 342deg, transparent 348deg, rgba(255,215,80,0.04) 354deg, transparent 360deg)',
-              }}
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
-            />
-
-            {/* Ambient radial halo */}
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse 46% 46% at 50% 38%, rgba(255,196,61,0.10) 0%, rgba(200,220,255,0.03) 55%, transparent 74%)' }}
-            />
-
-            {/* Aura shimmer ring — pulsing glow around where the entity stands */}
-            <motion.div className="absolute pointer-events-none"
-              style={{
-                width: 340, height: 340,
-                left: '50%', top: '50%',
-                marginLeft: -170, marginTop: -170,
-                borderRadius: '50%',
-                background: 'radial-gradient(ellipse 72% 72% at 50% 44%, rgba(255,205,65,0.13) 0%, rgba(255,160,30,0.06) 45%, transparent 68%)',
-              }}
-              animate={{ opacity: [0.5, 1.0, 0.6, 0.9, 0.5], scale: [0.92, 1.06, 0.97, 1.04, 0.92] }}
-              transition={{ duration: 5.0, repeat: Infinity, ease: 'easeInOut', delay: 1.8 }}
-            />
-
-            {/* ── Entity figure ──────────────────────────────────────────── */}
-            {/* Outer: entry surge (one-shot) */}
-            <motion.div
-              style={{ width: 300, height: 300, marginTop: -55, position: 'relative', zIndex: 1 }}
-              initial={{ scale: 0.80, opacity: 0 }}
-              animate={{ scale: 1.0, opacity: 1 }}
-              transition={{ duration: 2.0, ease: [0.18, 0.8, 0.32, 1] }}
-            >
-              {/* Inner: breathing scale + vertical hover (starts after entry settles) */}
-              <motion.div style={{ width: '100%', height: '100%' }}
-                animate={{ scale: [1, 1.030, 1.008, 1.024, 1], y: [0, -9, -2, -7, 0] }}
-                transition={{ duration: 5.8, repeat: Infinity, ease: 'easeInOut', delay: 2.0, times: [0, 0.28, 0.52, 0.76, 1] }}
-              >
-                {/* Subtle horizontal sway — parallax drift */}
-                <motion.div style={{ width: '100%', height: '100%' }}
-                  animate={{ x: [0, 4, 0, -3, 0] }}
-                  transition={{ duration: 8.5, repeat: Infinity, ease: 'easeInOut', delay: 2.5 }}
-                >
-                  {/* Cosmic bloom behind figure — expands/contracts with breathing */}
-                  <div className="absolute inset-0 pointer-events-none" style={{
-                    background: 'radial-gradient(ellipse 78% 78% at 50% 42%, rgba(255,210,75,0.22) 0%, rgba(255,175,35,0.09) 46%, transparent 68%)',
-                    transform: 'scale(1.4)',
-                    filter: 'blur(12px)',
-                  }} />
-                  {/* Figure portrait — hardest feasible CSS cutout without source alpha:
-                      1. Tight radial mask cuts the entire element to transparent at edges.
-                      2. Dark vignette overlay on top burns portrait background to near-black
-                         before the mask reaches it, so the feather zone fades portrait → dark → transparent.
-                      3. drop-shadow on the img element follows the mask shape (not the rectangle). */}
-                  <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                    <img src={portrait} alt={luminary.name} draggable={false} style={{
-                      width: '100%', height: '100%', objectFit: 'cover',
-                      objectPosition: 'center 15%',
-                      maskImage: 'radial-gradient(ellipse 58% 72% at 50% 30%, black 0%, black 14%, rgba(0,0,0,0.88) 28%, rgba(0,0,0,0.48) 44%, rgba(0,0,0,0.10) 56%, transparent 66%)',
-                      WebkitMaskImage: 'radial-gradient(ellipse 58% 72% at 50% 30%, black 0%, black 14%, rgba(0,0,0,0.88) 28%, rgba(0,0,0,0.48) 44%, rgba(0,0,0,0.10) 56%, transparent 66%)',
-                      filter: 'drop-shadow(0 0 18px rgba(255,200,60,0.70)) drop-shadow(0 0 40px rgba(255,145,25,0.38)) drop-shadow(0 0 70px rgba(255,100,10,0.16))',
-                    }} />
-                    {/* Edge-burn vignette — pushes portrait background toward pure black
-                        in the feather zone so the mask fades to dark, not coloured portrait */}
-                    <div style={{
-                      position: 'absolute', inset: 0, pointerEvents: 'none',
-                      background: 'radial-gradient(ellipse 52% 64% at 50% 30%, transparent 0%, transparent 26%, rgba(0,0,0,0.58) 50%, rgba(0,0,0,0.92) 64%, rgba(0,0,0,0.99) 76%, black 86%)',
-                    }} />
-                  </div>
-                </motion.div>
-              </motion.div>
-            </motion.div>
-            {/* ── End entity figure ── */}
-
-            {/* Forward depth pulse — occasional subtle lunge toward viewer */}
-            <motion.div className="absolute pointer-events-none"
-              style={{ width: 300, height: 300, marginTop: -55 }}
-              animate={{ scale: [1, 1.018, 1] }}
-              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 3.5, repeatDelay: 1.5 }}
-            />
-
-            {/* Name plate */}
-            <motion.div className="text-center space-y-0.5 mt-3"
-              initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0, duration: 0.7 }}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">Luminary Summoned</p>
-              <p className="text-2xl font-serif font-bold drop-shadow-[0_0_20px_rgba(255,196,61,0.82)]"
-                style={{ color: GEM_META.flux.hex }}>{luminary.name}</p>
-              <p className="text-sm text-white/50">+{luminary.lumens} eminence</p>
-            </motion.div>
-
-            {/* Particle ring */}
-            <div className="absolute" style={{ left: '50%', top: '38%' }}>
-              {CUTSCENE_PARTICLES.map((p, i) => (
-                <motion.div key={i} className="absolute rounded-full"
-                  style={{ background: p.color, width: p.size, height: p.size, marginLeft: -(p.size / 2), marginTop: -(p.size / 2) }}
-                  initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
-                  animate={{ x: p.tx, y: p.ty, opacity: [0, 1, 0], scale: [0, 1.9, 0] }}
-                  transition={{ delay: p.delay, duration: 2.0, ease: 'easeOut' }}
-                />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Skip */}
-      <button type="button" onClick={onComplete}
-        className="absolute bottom-8 right-5 text-[11px] text-white/25 hover:text-white/60 transition-colors z-10">
-        skip
-      </button>
-    </motion.div>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 type ActiveTab = 'board' | 'hand' | 'log';
 
@@ -887,7 +366,6 @@ export default function GameBoard() {
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
-  const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -904,9 +382,6 @@ export default function GameBoard() {
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processUpdateRef = useRef<(s: GameState) => void>(() => {});
   const drainQueueFnRef = useRef<() => void>(() => {});
-  const [cutsceneQueue, setCutsceneQueue] = useState<Array<{ luminary: Luminary; portrait: string }>>([]);
-  const shownLuminaryIdsRef = useRef<Set<string>>(new Set());
-  const hasInitializedLuminariesRef = useRef(false);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -924,16 +399,8 @@ export default function GameBoard() {
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const prevStateRef = useRef<GameState | null>(null);
-  const mainScrollRef = useRef<HTMLElement>(null);
-  const playerPanelRef = useRef<HTMLDivElement>(null);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
-
-  const handleCutsceneComplete = useCallback(() => {
-    // Release the animation lock immediately so turn banners fire right away.
-    animationEndTimeRef.current = Date.now();
-    setCutsceneQueue(q => q.slice(1));
-  }, []);
 
   // Start ambient music when the game board mounts (user has already
   // interacted via buttons to get here, so AudioContext is allowed).
@@ -1012,22 +479,6 @@ export default function GameBoard() {
     { sessionToken: session?.sessionToken || '' },
     { query: { enabled: !!roomId && !!session, queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }) } }
   );
-
-  useEffect(() => {
-    if (state && !hasInitializedLuminariesRef.current) {
-      hasInitializedLuminariesRef.current = true;
-      for (const p of state.players) {
-        for (const lumId of (p.earnedLuminaries ?? [])) {
-          shownLuminaryIdsRef.current.add(lumId);
-        }
-      }
-    }
-  }, [state]);
-
-  // Extend the action lock each time a new cutscene enters the front of the queue.
-  useEffect(() => {
-    if (cutsceneQueue.length > 0) setAnimEndTime(CUTSCENE_DONE_MS + 500);
-  }, [cutsceneQueue.length]);
 
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
@@ -1133,22 +584,6 @@ export default function GameBoard() {
 
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
-
-      if (prev) {
-        const incoming: Array<{ luminary: Luminary; portrait: string }> = [];
-        for (const player of newState.players) {
-          const prevPlayer = prev.players.find(pp => pp.playerId === player.playerId);
-          const prevEarned = new Set(prevPlayer?.earnedLuminaries ?? []);
-          for (const lumId of (player.earnedLuminaries ?? [])) {
-            if (!prevEarned.has(lumId) && !shownLuminaryIdsRef.current.has(lumId)) {
-              shownLuminaryIdsRef.current.add(lumId);
-              const luminary = newState.luminaries.find(l => l.id === lumId);
-              if (luminary) incoming.push({ luminary, portrait: pickLuminaryPortrait(luminary) });
-            }
-          }
-        }
-        if (incoming.length > 0) setCutsceneQueue(q => [...q, ...incoming]);
-      }
 
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         cancelTurnAnnouncement();
@@ -1289,8 +724,7 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
-  const actionsLocked = !!turnAnnouncement || cutsceneQueue.length > 0;
-  const currentCutscene = cutsceneQueue[0] ?? null;
+  const actionsLocked = !!turnAnnouncement;
   const isMyTurn = !actionsLocked && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
@@ -1447,28 +881,6 @@ export default function GameBoard() {
   const handleSurrender = () => {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
-
-  const toggleOpponent = (playerId: string) => {
-    setExpandedOpponents(prev => {
-      const next = new Set(prev);
-      if (next.has(playerId)) next.delete(playerId);
-      else next.add(playerId);
-      return next;
-    });
-  };
-
-  // Defocus player-panel elements when a touch starts clearly above the panel,
-  // so the browser re-routes the subsequent scroll to <main> without needing
-  // an extra tap on blank board space first.
-  const handleOuterTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (!playerPanelRef.current) return;
-    const panelTop = playerPanelRef.current.getBoundingClientRect().top;
-    const touchY = e.touches[0]?.clientY ?? 0;
-    if (touchY < panelTop) {
-      const active = document.activeElement as HTMLElement | null;
-      if (active && active !== document.body) active.blur();
-    }
-  }, []);
 
   const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
   const myReservedCount = me?.reservedCards.length ?? 0;
@@ -1700,7 +1112,7 @@ export default function GameBoard() {
       </div>
 
 
-      {/* ── Opponents (always visible on Board tab; details collapsible) ── */}
+      {/* ── Opponents (always visible on Board tab) ── */}
       {state.players.filter(p => p.playerId !== session?.playerId).length > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Opponents</p>
@@ -1708,78 +1120,67 @@ export default function GameBoard() {
             {state.players.map((p, i) => {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
-              const isExpanded = expandedOpponents.has(p.playerId);
-              const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
               const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
+              const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
               return (
                 <div
                   key={p.playerId}
-                  className={`rounded-2xl border bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                  className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* Header: full row is tappable to expand/collapse */}
-                  <button
-                    type="button"
-                    onClick={() => toggleOpponent(p.playerId)}
-                    className="w-full px-3 py-2.5 flex items-center gap-2 text-left active:opacity-75 transition-opacity"
-                    aria-label={isExpanded ? 'Collapse opponent details' : 'Expand opponent details'}
-                  >
-                    <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
-                    {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                    <span className="text-xs font-semibold truncate max-w-[5rem] shrink-0">{p.playerName}</span>
-                    {/* Inline summary: affinities · forged · reserved — hugs the name */}
-                    <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
-                      <span className="font-semibold text-foreground/70">{totalGems}</span><span>affinities</span>
-                      <span className="text-border/50 mx-0.5">·</span>
-                      <span className="font-semibold text-foreground/70">{cardCount}</span><span>forged</span>
-                      <span className="text-border/50 mx-0.5">·</span>
-                      <span className="font-semibold text-foreground/70">{p.reservedCards.length}</span><span>reserved</span>
-                    </span>
-                    <div className="flex-1" />
-                    {/* Board expand pill */}
-                    <span className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 transition-colors ${
-                      isExpanded
-                        ? 'bg-primary/20 border-primary/40 text-primary'
-                        : 'bg-secondary/70 border-border/60 text-foreground/70'
-                    }`}>
-                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      Board
-                    </span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="font-serif font-black text-base text-primary leading-none">{p.lumens}</span>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
+                      {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                      <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                      {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
+                      <span>
+                        <span className="font-semibold text-foreground/80">{totalGems}</span> Affinity
+                      </span>
+                      <span className="font-serif font-black text-lg text-primary leading-none">{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
-                  </button>
-                  {/* Expandable section: gem grid only */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        className="overflow-hidden border-t border-border/30"
-                      >
-                        {/* Gem columns: symbol → count → +bonus */}
-                        <div className="px-3 pt-2.5 pb-2.5 flex gap-1">
-                          {CRYSTALS.map((c) => {
-                            const n = p.crystals[c as keyof CrystalCounts] ?? 0;
-                            const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                            return (
-                              <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                                <MiniGem color={c as GemKey} size={12} />
-                                <span className="text-[12px] font-black text-white leading-none">{n}</span>
-                                {bonus > 0 ? (
-                                  <span className="text-[9px] font-bold text-primary leading-none">+{bonus}</span>
-                                ) : (
-                                  <span className="text-[9px] text-muted-foreground/25 leading-none">—</span>
-                                )}
-                              </div>
-                            );
-                          })}
+                  </div>
+                  <div className="flex gap-1">
+                    {CRYSTALS.map((c) => {
+                      const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                      const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                      const meta = GEM_META[c as GemKey];
+                      return (
+                        <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
+                          <div
+                            className="w-full flex flex-col items-center justify-end rounded-[5px] relative overflow-hidden pb-[3px]"
+                            style={{
+                              height: 34,
+                              background: `linear-gradient(180deg, #080808 0%, ${meta.hex}22 100%)`,
+                              border: `1px solid ${meta.hex}33`,
+                              boxShadow: n > 0 ? `inset 0 0 10px ${meta.hex}18, 0 0 8px ${meta.hex}22` : 'none',
+                            }}
+                          >
+                            {n > 0 && (
+                              <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                            )}
+                            <span
+                              className="text-[13px] font-black leading-none tracking-tight"
+                              style={{
+                                color: n > 0 ? '#fff' : meta.hex + '22',
+                                textShadow: n > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
+                              }}
+                            >
+                              {n}
+                            </span>
+                          </div>
+                          <MiniGem color={c as GemKey} size={11} />
+                          {bonus > 0 ? (
+                            <span className="text-[9px] font-black leading-none text-primary">+{bonus}</span>
+                          ) : (
+                            <span className="text-[9px] text-muted-foreground/40 leading-none">—</span>
+                          )}
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
@@ -1999,7 +1400,7 @@ export default function GameBoard() {
   );
 
   return (
-    <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative" onTouchStart={handleOuterTouchStart}>
+    <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
       {/* Cosmic background */}
       <div
         className="absolute inset-0 pointer-events-none opacity-20"
@@ -2039,81 +1440,111 @@ export default function GameBoard() {
       </header>
 
       {/* ── Tab Content ── */}
-      <main ref={mainScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden z-10" style={{ touchAction: 'pan-y', overscrollBehavior: 'contain' }}>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden z-10">
         {activeTab === 'board' && BoardTab()}
         {activeTab === 'hand' && HandTab()}
         {activeTab === 'log' && LogTab()}
       </main>
 
-      {/* ── Your Resources Panel (pinned above nav) ── */}
+      {/* ── Player Info Panel (pinned above nav) ── */}
       {me && (
-        <div ref={playerPanelRef} style={{ touchAction: 'pan-y' }} className={`shrink-0 z-20 border-t px-3 pt-2 pb-2.5 bg-card/95 backdrop-blur transition-all ${isMyTurn ? 'border-primary/70 shadow-[0_0_16px_rgba(99,102,241,0.32)]' : 'border-border/60'}`}>
-          {/* Identity + lumen score row */}
-          <div className="flex items-center gap-2 mb-2">
-            <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={20} />
-            {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-            <span className="text-[11px] font-bold truncate max-w-[5rem] shrink-0 text-foreground/90">{me.playerName}</span>
-            {/* Inline summary: affinities · forged (tappable) · reserved (tappable) — hugs the name */}
-            <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
-              <span className="font-semibold text-foreground/70">{myTotalGems}</span><span>affinities</span>
-              <span className="text-border/50 mx-0.5">·</span>
-              <button
-                type="button"
-                onClick={() => { setForgedFilter(null); setShowForgedOverlay(true); }}
-                className="flex items-center gap-0.5 font-semibold text-foreground/70 underline underline-offset-2 decoration-border/50 hover:text-foreground hover:decoration-foreground/50 active:opacity-60 transition-colors"
-              >
-                {myCardCount}<span>forged</span>
-              </button>
-              <span className="text-border/50 mx-0.5">·</span>
-              <button
-                type="button"
-                onClick={() => setShowReservedOverlay(true)}
-                className={`flex items-center gap-0.5 font-semibold underline underline-offset-2 active:opacity-60 transition-colors ${myReservedCount > 0 ? 'text-amber-400 decoration-amber-400/50 hover:text-amber-300' : 'text-foreground/70 decoration-border/50 hover:text-foreground hover:decoration-foreground/50'}`}
-              >
-                {myReservedCount}<span>reserved</span>
-              </button>
-            </span>
-            <div className="flex-1" />
-            {isMyTurn && (
-              <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
-            )}
-            <div className="flex items-center gap-1 shrink-0">
+        <div className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}>
+          {/* Top row: identity + lumens */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={22} />
+              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+              <span className="text-xs font-semibold truncate">{me.playerName}</span>
+              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
+            </div>
+            <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
+              <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> Affinity</span>
               <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
               <Sparkles className="h-3 w-3 text-primary" />
             </div>
           </div>
-          {/* Compact gem columns: symbol → held count (+ pending) → +bonus */}
+          {/* Gem columns: card chip + token + bonus */}
           <div className="flex gap-1">
             {CRYSTALS.map((c) => {
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
               const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
+              const meta = GEM_META[c as GemKey];
               const isFlux = c === 'flux';
               const forgedCount = isFlux
                 ? 0
                 : (me.purchasedCards ?? []).filter((card) => card.bonusColor === c).length;
               const reservedCount = me.reservedCards.length;
-              const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
               return (
                 <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                  <MiniGem color={c as GemKey} size={14} />
-                  {/* Held token count + queued intake */}
-                  <div className="flex items-baseline gap-[2px]">
-                    <span className="text-[13px] font-black leading-none text-white">{gems}</span>
-                    {pending > 0 && (
+                  {/* Mini card chip */}
+                  {isFlux ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowReservedOverlay(true)}
+                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] relative overflow-hidden"
+                      style={{
+                        height: 36,
+                        background: reservedCount > 0
+                          ? `linear-gradient(180deg, #0a0802 0%, ${meta.hex}55 100%)`
+                          : 'linear-gradient(180deg, #080808 0%, #141408 100%)',
+                        border: `1px solid ${reservedCount > 0 ? meta.hex + 'AA' : meta.hex + '33'}`,
+                        boxShadow: reservedCount > 0
+                          ? `inset 0 0 10px ${meta.hex}22, 0 0 10px ${meta.hex}44`
+                          : 'none',
+                      }}
+                    >
+                      {reservedCount > 0 && (
+                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                      )}
+                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
+                        color: reservedCount > 0 ? meta.glowHex : meta.hex + '33',
+                        textShadow: reservedCount > 0 ? `0 0 8px ${meta.hex}` : 'none',
+                      }}>
+                        {reservedCount}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={forgedCount === 0}
+                      onClick={() => { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }}
+                      className="w-full flex flex-col items-center justify-end rounded-[5px] transition-all active:scale-95 pb-[3px] disabled:cursor-default relative overflow-hidden"
+                      style={{
+                        height: 36,
+                        background: forgedCount > 0
+                          ? `linear-gradient(180deg, #050510 0%, ${meta.hex}44 100%)`
+                          : 'linear-gradient(180deg, #080808 0%, #101010 100%)',
+                        border: `1px solid ${forgedCount > 0 ? meta.hex + 'AA' : meta.hex + '22'}`,
+                        boxShadow: forgedCount > 0
+                          ? `inset 0 0 10px ${meta.hex}22, 0 0 8px ${meta.hex}33`
+                          : 'none',
+                      }}
+                    >
+                      {forgedCount > 0 && (
+                        <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
+                      )}
+                      <span className="text-[13px] font-black leading-none tracking-tight" style={{
+                        color: forgedCount > 0 ? '#fff' : meta.hex + '22',
+                        textShadow: forgedCount > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
+                      }}>
+                        {forgedCount}
+                      </span>
+                    </button>
+                  )}
+                  {/* Token */}
+                  <MiniGem color={c as GemKey} size={11} />
+                  <span className="text-[11px] font-bold text-white leading-none">{gems}</span>
+                  {(() => {
+                    const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+                    return pending > 0 ? (
                       <motion.span
                         key={pending}
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         className="text-[9px] font-black leading-none text-primary"
                       >+{pending}</motion.span>
-                    )}
-                  </div>
-                  {/* Permanent bonus from forged cards */}
-                  {bonus > 0 ? (
-                    <span className="text-[9px] font-bold text-primary leading-none">+{bonus}</span>
-                  ) : (
-                    <span className="text-[9px] text-muted-foreground/25 leading-none">—</span>
-                  )}
+                    ) : null;
+                  })()}
                 </div>
               );
             })}
@@ -2936,35 +2367,6 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── Luminary Summoning Cutscene ── */}
-      <AnimatePresence mode="wait">
-        {currentCutscene && (
-          <LuminaryCutscene
-            key={currentCutscene.luminary.id}
-            luminary={currentCutscene.luminary}
-            portrait={currentCutscene.portrait}
-            onComplete={handleCutsceneComplete}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Dev: Luminary Cutscene Test Panel ── */}
-      {import.meta.env.DEV && cutsceneQueue.length === 0 && state.status === 'playing' && (
-        <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1">
-          <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
-          {state.luminaries.map(l => (
-            <button
-              key={l.id}
-              type="button"
-              onClick={() => setCutsceneQueue(q => [...q, { luminary: l, portrait: pickLuminaryPortrait(l) }])}
-              className="text-[9px] bg-black/70 text-amber-300/80 border border-amber-500/30 rounded px-2 py-0.5 hover:bg-amber-900/40 transition-colors text-left"
-            >
-              ✦ {l.name}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>

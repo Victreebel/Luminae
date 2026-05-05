@@ -430,14 +430,6 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
   }
 }
 
-function awardLuminaries(state: GameStateData, player: PlayerGameState): void {
-  const before = new Set(player.luminaries);
-  checkLuminaries(state, player);
-  if (player.luminaries.length !== before.size) {
-    player.luminaries = [...new Set(player.luminaries)];
-  }
-}
-
 // ─── Draw Card ───────────────────────────────────────────────────────────────
 
 function drawIntoMarket(
@@ -615,7 +607,7 @@ export function applyAction(
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
-      awardLuminaries(state, player);
+      checkLuminaries(state, player);
       break;
     }
 
@@ -634,7 +626,7 @@ export function applyAction(
       player.purchasedCardIds.push(action.cardId);
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
-      awardLuminaries(state, player);
+      checkLuminaries(state, player);
       break;
     }
 
@@ -787,7 +779,6 @@ export function formatGameState(
       .filter(Boolean)
       .map((c) => withLore(c as ArtifactCard)),
     isConnected: connectedPlayerIds.has(p.playerId),
-    earnedLuminaries: p.luminaries,
   }));
 
   return {

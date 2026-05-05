@@ -166,8 +166,6 @@ export interface GamePlayerState {
   purchasedCardIds: string[];
   purchasedCards: ArtifactCard[];
   isConnected: boolean;
-  /** IDs of luminaries this player has earned */
-  earnedLuminaries: string[];
 }
 
 export type GameStateStatus =
