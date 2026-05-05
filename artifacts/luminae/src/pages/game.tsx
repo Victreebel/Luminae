@@ -264,61 +264,75 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; claimedByNames?: string[] }) {
   const isClaimed = claimedByNames.length > 0;
   const vis = LUMINARY_VISUALS[luminary.id];
-  const borderColor = vis ? (isClaimed ? `${vis.primaryColor}dd` : `${vis.primaryColor}55`) : (isClaimed ? `${GEM_META.flux.hex}cc` : `${GEM_META.flux.hex}55`);
-  const glowColor = vis?.glowColor ?? 'rgba(255,196,61,0.18)';
+  const accentColor = vis?.primaryColor ?? GEM_META.flux.hex;
+  const claimedName = claimedByNames[0];
   return (
-    <div
-      className="relative w-24 h-24 rounded-xl overflow-hidden border-2 flex flex-col items-end justify-end shrink-0"
-      style={{
-        borderColor,
-        boxShadow: isClaimed
-          ? `0 0 22px ${glowColor}, 0 0 6px ${glowColor}`
-          : `0 0 12px ${glowColor}`,
-      }}
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
+        isClaimed ? 'ring-2 ring-amber-300/70 shadow-[0_0_20px_rgba(251,191,36,0.4)]' : 'ring-1 ring-black/30'
+      }`}
+      title={luminary.flavor || luminary.name}
     >
-      <LuminaryPanelArt luminaryId={luminary.id} size={96} claimed={isClaimed} />
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/85 pointer-events-none" />
-      {/* Lumen reward — top-right */}
-      <span
-        className="absolute top-1 right-2 text-xl font-serif font-bold drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
-        style={{ color: vis ? vis.primaryColor : GEM_META.flux.hex }}
-      >
-        +{luminary.lumens}
-      </span>
-      {/* Domain label — top-left */}
-      {luminary.domain && (
-        <span
-          className="absolute top-1 left-1.5 text-[7px] font-bold tracking-widest uppercase opacity-80 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
-          style={{ color: vis ? vis.primaryColor : GEM_META.flux.hex }}
-        >
-          {luminary.domain}
-        </span>
-      )}
-      {/* Claimed badge */}
-      {isClaimed && (
-        <div className="absolute top-6 left-1.5 flex items-center gap-0.5 bg-black/70 rounded px-1 py-0.5">
-          <Sparkles className="h-2.5 w-2.5" style={{ color: GEM_META.flux.hex }} />
-          <span className="text-[8px] font-bold leading-none" style={{ color: GEM_META.flux.hex }}>
-            {claimedByNames[0]?.length > 6 ? claimedByNames[0].slice(0, 6) + '…' : claimedByNames[0]}
-          </span>
-        </div>
-      )}
-      {/* Requirements — bottom */}
-      <div className="relative z-10 flex flex-wrap justify-center gap-0.5 max-w-full pb-1 px-1">
-        {CRYSTALS.map((c) => {
-          const req = luminary.requirements[c as keyof CrystalCounts];
-          if (req > 0) {
-            return (
-              <div key={c} className="flex items-center gap-0.5 bg-black/70 px-1 py-0.5 rounded">
-                <span className="text-[9px] font-bold text-white">{req}</span>
-                <MiniGem color={c} size={9} />
-              </div>
-            );
-          }
-          return null;
-        })}
+      {/* Background art layer — procedural entity portrait fills the card */}
+      <div className="absolute inset-0 pointer-events-none">
+        <LuminaryPanelArt luminaryId={luminary.id} size={112} claimed={isClaimed} />
       </div>
-    </div>
+
+      {/* Same dark gradient as artifact cards */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
+
+      <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+        {/* Top row — lumens (left) + accent dot (right), mirroring ArtifactCardView */}
+        <div className="flex justify-between items-start">
+          <span
+            className="text-lg font-serif font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,1)]"
+            style={{ color: accentColor }}
+          >
+            +{luminary.lumens}
+          </span>
+          <div
+            className="w-5 h-5 rounded-full shadow-md ring-2 ring-black/60 flex items-center justify-center"
+            title={luminary.domain}
+            style={{
+              background: `radial-gradient(circle at 35% 30%, ${vis?.primaryColor ?? accentColor}, ${vis?.secondaryColor ?? '#000'})`,
+            }}
+          >
+            <Sparkles className="h-2.5 w-2.5 text-white/90" />
+          </div>
+        </div>
+
+        {/* Bottom — name + requirement gems */}
+        <div className="space-y-1">
+          {isClaimed && claimedName && (
+            <div className="flex items-center gap-0.5 bg-black/70 rounded px-1 py-0.5 self-start w-fit">
+              <Sparkles className="h-2.5 w-2.5 text-amber-300" />
+              <span className="text-[8px] font-bold leading-none text-amber-200">
+                {claimedName.length > 8 ? claimedName.slice(0, 8) + '…' : claimedName}
+              </span>
+            </div>
+          )}
+          <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+            {luminary.name}
+          </div>
+          <div className="flex flex-wrap gap-0.5 justify-end">
+            {CRYSTALS.map((c) => {
+              const req = luminary.requirements[c as keyof CrystalCounts];
+              if (req <= 0) return null;
+              return (
+                <div
+                  key={c}
+                  className="flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 bg-black/55"
+                >
+                  <span className="text-[10px] font-bold text-white">{req}</span>
+                  <MiniGem color={c} size={10} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
