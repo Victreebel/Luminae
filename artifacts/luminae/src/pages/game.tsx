@@ -1166,13 +1166,24 @@ export default function GameBoard() {
             {state.players.map((p, i) => {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
-              const totalGems = Object.values(p.crystals).reduce((a, b) => a + b, 0);
+              const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
               const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
+              const reservedCount = p.reservedCards.length;
+              const isExpanded = expandedOpponents.has(p.playerId);
+              const toggleExpanded = () => {
+                setExpandedOpponents((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(p.playerId)) next.delete(p.playerId);
+                  else next.add(p.playerId);
+                  return next;
+                });
+              };
               return (
                 <div
                   key={p.playerId}
                   className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
+                  {/* Header: identity + lumens */}
                   <div className="flex items-center gap-3 mb-2">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
@@ -1180,53 +1191,115 @@ export default function GameBoard() {
                       <span className="text-xs font-semibold truncate">{p.playerName}</span>
                       {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     </div>
-                    <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
-                      <span>
-                        <span className="font-semibold text-foreground/80">{totalGems}</span> Affinity
-                      </span>
-                      <span className="font-serif font-black text-lg text-primary leading-none">{p.lumens}</span>
+                    <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-primary leading-none">
+                      <span>{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    {CRYSTALS.map((c) => {
-                      const n = p.crystals[c as keyof CrystalCounts] ?? 0;
-                      const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                      const meta = GEM_META[c as GemKey];
+
+                  {/* Compressed face: 3 stat boxes */}
+                  <div className="grid grid-cols-3 gap-1.5 mb-2">
+                    {([
+                      { label: 'Affinity', value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
+                      { label: 'Artifacts', value: cardCount,    hex: '#c084fc', glow: '#e0baff' },
+                      { label: 'Reserved', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                    ] as const).map(({ label, value, hex, glow }) => {
+                      const has = value > 0;
                       return (
-                        <div key={c} className="flex flex-col items-center gap-[3px] flex-1">
-                          <div
-                            className="w-full flex flex-col items-center justify-end rounded-[5px] relative overflow-hidden pb-[3px]"
-                            style={{
-                              height: 34,
-                              background: `linear-gradient(180deg, #080808 0%, ${meta.hex}22 100%)`,
-                              border: `1px solid ${meta.hex}33`,
-                              boxShadow: n > 0 ? `inset 0 0 10px ${meta.hex}18, 0 0 8px ${meta.hex}22` : 'none',
-                            }}
-                          >
-                            {n > 0 && (
-                              <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}88, transparent)` }} />
-                            )}
-                            <span
-                              className="text-[13px] font-black leading-none tracking-tight"
-                              style={{
-                                color: n > 0 ? '#fff' : meta.hex + '22',
-                                textShadow: n > 0 ? `0 0 6px ${meta.glowHex}` : 'none',
-                              }}
-                            >
-                              {n}
-                            </span>
-                          </div>
-                          <MiniGem color={c as GemKey} size={11} />
-                          {bonus > 0 ? (
-                            <span className="text-[9px] font-black leading-none text-primary">+{bonus}</span>
-                          ) : (
-                            <span className="text-[9px] text-muted-foreground/40 leading-none">—</span>
+                        <div
+                          key={label}
+                          className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
+                          style={{
+                            background: has
+                              ? `linear-gradient(180deg, #060611 0%, ${hex}33 100%)`
+                              : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                            border: `1px solid ${has ? hex + 'AA' : hex + '22'}`,
+                            boxShadow: has ? `inset 0 0 14px ${hex}22, 0 0 8px ${hex}33` : 'none',
+                          }}
+                        >
+                          {has && (
+                            <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${glow}AA, transparent)` }} />
                           )}
+                          <span
+                            className="text-2xl font-black leading-none tracking-tight"
+                            style={{ color: has ? '#fff' : hex + '40', textShadow: has ? `0 0 10px ${glow}` : 'none' }}
+                          >
+                            {value}
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider leading-none" style={{ color: has ? glow : hex + '55' }}>
+                            {label}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
+
+                  {/* View button */}
+                  <button
+                    type="button"
+                    onClick={toggleExpanded}
+                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors text-[11px] font-semibold text-primary"
+                  >
+                    {isExpanded ? (
+                      <><ChevronUp className="h-3 w-3" />Hide details</>
+                    ) : (
+                      <><Eye className="h-3 w-3" />View details</>
+                    )}
+                  </button>
+
+                  {/* Expanded per-color detail */}
+                  <AnimatePresence initial={false}>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-2">
+                          <div className="grid grid-cols-6 gap-1.5">
+                            {CRYSTALS.map((c) => {
+                              const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                              const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                              const meta = GEM_META[c as GemKey];
+                              const isFlux = c === 'flux';
+                              const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0);
+                              return (
+                                <div
+                                  key={c}
+                                  className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
+                                  style={{
+                                    background: hasContent
+                                      ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                                      : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                                    border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                                    boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
+                                  }}
+                                >
+                                  {hasContent && (
+                                    <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+                                  )}
+                                  <span
+                                    className="text-2xl font-black leading-none tracking-tight"
+                                    style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
+                                  >
+                                    {n}
+                                  </span>
+                                  {!isFlux && bonus > 0 && (
+                                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus} bonus</span>
+                                  )}
+                                  {isFlux && reservedCount > 0 && (
+                                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} reserved</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
@@ -1350,17 +1423,7 @@ export default function GameBoard() {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
             const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
-            const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
             const reservedCount = p.reservedCards.length;
-            const isExpanded = expandedOpponents.has(p.playerId);
-            const toggleExpanded = () => {
-              setExpandedOpponents((prev) => {
-                const next = new Set(prev);
-                if (next.has(p.playerId)) next.delete(p.playerId);
-                else next.add(p.playerId);
-                return next;
-              });
-            };
             return (
               <div
                 key={p.playerId}
@@ -1380,137 +1443,57 @@ export default function GameBoard() {
                   </div>
                 </div>
 
-                {/* Compressed face: 3 stat boxes — affinity / artifacts / reserved */}
-                <div className="grid grid-cols-3 gap-1.5 mb-3">
-                  {[
-                    { label: 'Affinity', value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
-                    { label: 'Artifacts', value: cardCount,    hex: '#c084fc', glow: '#e0baff' },
-                    { label: 'Reserved', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
-                  ].map(({ label, value, hex, glow }) => {
-                    const has = value > 0;
+                {/* Per-color tall gem boxes */}
+                <div className="grid grid-cols-6 gap-1.5 mb-3">
+                  {CRYSTALS.map((c) => {
+                    const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                    const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                    const meta = GEM_META[c as GemKey];
+                    const isFlux = c === 'flux';
+                    const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0);
                     return (
                       <div
-                        key={label}
+                        key={c}
                         className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
                         style={{
-                          background: has
-                            ? `linear-gradient(180deg, #060611 0%, ${hex}33 100%)`
+                          background: hasContent
+                            ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
                             : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                          border: `1px solid ${has ? hex + 'AA' : hex + '22'}`,
-                          boxShadow: has ? `inset 0 0 14px ${hex}22, 0 0 8px ${hex}33` : 'none',
+                          border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                          boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
                         }}
                       >
-                        {has && (
-                          <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${glow}AA, transparent)` }} />
+                        {hasContent && (
+                          <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
                         )}
                         <span
                           className="text-2xl font-black leading-none tracking-tight"
-                          style={{ color: has ? '#fff' : hex + '40', textShadow: has ? `0 0 10px ${glow}` : 'none' }}
+                          style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
                         >
-                          {value}
+                          {n}
                         </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider leading-none" style={{ color: has ? glow : hex + '55' }}>
-                          {label}
-                        </span>
+                        {!isFlux && bonus > 0 && (
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus} bonus</span>
+                        )}
+                        {isFlux && reservedCount > 0 && (
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} reserved</span>
+                        )}
                       </div>
                     );
                   })}
                 </div>
 
-                {/* View button */}
-                <button
-                  type="button"
-                  onClick={toggleExpanded}
-                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 transition-colors text-xs font-semibold text-primary"
-                >
-                  {isExpanded ? (
-                    <>
-                      <ChevronUp className="h-3.5 w-3.5" />
-                      Hide details
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-3.5 w-3.5" />
-                      View per-color & reserve
-                    </>
-                  )}
-                </button>
-
-                {/* Expanded detail */}
-                <AnimatePresence initial={false}>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-3">
-                        {/* Per-color tall gem boxes */}
-                        <div className="grid grid-cols-6 gap-1.5 mb-3">
-                          {CRYSTALS.map((c) => {
-                            const n = p.crystals[c as keyof CrystalCounts] ?? 0;
-                            const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                            const meta = GEM_META[c as GemKey];
-                            const isFlux = c === 'flux';
-                            const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0);
-                            return (
-                              <div
-                                key={c}
-                                className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
-                                style={{
-                                  background: hasContent
-                                    ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
-                                    : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                                  border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
-                                  boxShadow: hasContent
-                                    ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33`
-                                    : 'none',
-                                }}
-                              >
-                                {hasContent && (
-                                  <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
-                                )}
-                                <span
-                                  className="text-2xl font-black leading-none tracking-tight"
-                                  style={{
-                                    color: hasContent ? '#fff' : meta.hex + '40',
-                                    textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
-                                  }}
-                                >
-                                  {n}
-                                </span>
-                                {!isFlux && bonus > 0 && (
-                                  <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
-                                    +{bonus} bonus
-                                  </span>
-                                )}
-                                {isFlux && reservedCount > 0 && (
-                                  <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
-                                    {reservedCount} reserved
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Reserved card backs */}
-                        {reservedCount > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Reserve:</span>
-                            <div className="flex gap-1 items-center">
-                              {p.reservedCards.map((card, idx) => (
-                                <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Footer: reserved card backs */}
+                {reservedCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Reserve:</span>
+                    <div className="flex gap-1 items-center">
+                      {p.reservedCards.map((card, idx) => (
+                        <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
