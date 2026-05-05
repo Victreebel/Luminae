@@ -1710,19 +1710,22 @@ export default function GameBoard() {
                   >
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={20} />
                     {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                    <span className="text-xs font-semibold truncate flex-1">{p.playerName}</span>
+                    <span className="text-xs font-semibold truncate max-w-[5rem]">{p.playerName}</span>
+                    {/* Prominent board-view pill — the main visual CTA */}
+                    <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold shrink-0 transition-colors ${
+                      isExpanded
+                        ? 'bg-primary/20 border-primary/40 text-primary'
+                        : 'bg-secondary/70 border-border/60 text-foreground/70'
+                    }`}>
+                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      {isExpanded ? 'Hide' : 'View Board'}
+                    </span>
+                    <div className="flex-1" />
                     {isCurrent && <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     <div className="flex items-center gap-1 shrink-0">
                       <span className="font-serif font-black text-base text-primary leading-none">{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
-                    <span className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0 ml-1">
-                      {isExpanded ? (
-                        <>hide <ChevronUp className="h-3 w-3" /></>
-                      ) : (
-                        <>view <ChevronDown className="h-3 w-3" /></>
-                      )}
-                    </span>
                   </button>
                   {/* Expandable section: gem grid + details */}
                   <AnimatePresence>
