@@ -29,7 +29,7 @@ The user prefers that all development and communication adhere to the establishe
 -   **Affinities:** 6 types (Radiance, Flare, Continuum, Verdance, Abyss, Singularity). Internal keys (`ruby/sapphire/emerald/onyx/pearl/flux`) are consistent across the stack.
 -   **Card Market:** 3 tiers of Artifact cards (20/15/10 cards per deck, 4 face-up per tier).
 -   **Eminence:** The victory currency, replacing "prestige" (internal key `lumens`).
--   **Luminaries:** 5 patron cards, `playerCount+1` active per game, awarding Eminence bonuses.
+-   **Luminaries:** 12 unique patron entities (expanded from 5), `playerCount+1` active per game, awarding tiered Eminence bonuses (2/3/4 lumens). Each Luminary has full metadata: id, name, domain, flavor text, summonColor, summonSecondaryColor, auraStyle. Pool divided into mono-color (2L), dual-color (3L), and triple-color (4L) tiers. Procedural SVG entity art in `luminaryAssets.tsx`. Backward compat: old lum01-lum05 IDs filtered out in `normalizeState`.
 -   **Actions:** Harvest affinities, reserve cards (from market or deck), forge cards.
 -   **Win Condition:** First to 15 Eminence; tie-break by fewest purchased cards.
 -   **Turn Timer:** Optional per-room timer that automatically passes turns on expiry.

@@ -28,12 +28,8 @@ import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
-import luminaryStargazer from '@assets/generated_images/luminary_stargazer.png';
-import luminaryForgemaster from '@assets/generated_images/luminary_forgemaster.png';
-import luminaryArchivist from '@assets/generated_images/luminary_archivist.png';
-import luminaryCultivator from '@assets/generated_images/luminary_cultivator.png';
-import luminaryVoidcaller from '@assets/generated_images/luminary_voidcaller.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
+import { LuminaryPanelArt, LuminarySummonCutscene, LUMINARY_VISUALS } from '@/lib/luminaryAssets';
 import cardBackLogo from '@assets/generated_images/luminae_card_back_logo.png';
 const gemIcon = "/icon_gem.svg";
 
@@ -62,23 +58,6 @@ const GEM_CARD_GRADIENTS: Record<string, string> = {
   pearl:    'linear-gradient(175deg, #06061a 0%, #10103a 35%, #0a0a28 70%, #050516 100%)',
   flux:     'linear-gradient(175deg, #0a0a02 0%, #282808 35%, #181804 70%, #0a0a02 100%)',
 };
-
-const LUMINARY_PORTRAITS = [
-  luminaryStargazer,
-  luminaryForgemaster,
-  luminaryArchivist,
-  luminaryCultivator,
-  luminaryVoidcaller,
-];
-
-function pickLuminaryPortrait(luminary: Luminary): string {
-  const dominant = (Object.entries(luminary.requirements) as [GemKey, number][])
-    .sort((a, b) => b[1] - a[1])[0]?.[0];
-  const idx: Record<GemKey, number> = {
-    pearl: 0, ruby: 1, sapphire: 2, emerald: 3, onyx: 4, flux: 0,
-  };
-  return LUMINARY_PORTRAITS[idx[dominant ?? "pearl"] % LUMINARY_PORTRAITS.length];
-}
 
 // --- Helper Components ---
 
@@ -283,38 +262,49 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 }
 
 function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; claimedByNames?: string[] }) {
-  const portrait = pickLuminaryPortrait(luminary);
   const isClaimed = claimedByNames.length > 0;
+  const vis = LUMINARY_VISUALS[luminary.id];
+  const borderColor = vis ? (isClaimed ? `${vis.primaryColor}dd` : `${vis.primaryColor}55`) : (isClaimed ? `${GEM_META.flux.hex}cc` : `${GEM_META.flux.hex}55`);
+  const glowColor = vis?.glowColor ?? 'rgba(255,196,61,0.18)';
   return (
     <div
-      className="relative w-24 h-24 rounded-xl overflow-hidden border-2 p-2 flex flex-col items-center justify-end gap-1 shrink-0"
+      className="relative w-24 h-24 rounded-xl overflow-hidden border-2 flex flex-col items-end justify-end shrink-0"
       style={{
-        borderColor: isClaimed ? `${GEM_META.flux.hex}cc` : `${GEM_META.flux.hex}55`,
+        borderColor,
         boxShadow: isClaimed
-          ? `0 0 18px rgba(255,196,61,0.55), 0 0 6px rgba(255,196,61,0.3)`
-          : `0 0 18px rgba(255,196,61,0.18)`,
+          ? `0 0 22px ${glowColor}, 0 0 6px ${glowColor}`
+          : `0 0 12px ${glowColor}`,
       }}
     >
-      <img src={portrait} alt="" className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" draggable={false} />
-      <div className={`absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/90 pointer-events-none ${isClaimed ? 'opacity-70' : ''}`} />
-      {isClaimed && (
-        <div className="absolute inset-0 bg-amber-400/10 pointer-events-none" />
-      )}
+      <LuminaryPanelArt luminaryId={luminary.id} size={96} claimed={isClaimed} />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/85 pointer-events-none" />
+      {/* Lumen reward — top-right */}
       <span
         className="absolute top-1 right-2 text-xl font-serif font-bold drop-shadow-[0_2px_3px_rgba(0,0,0,1)]"
-        style={{ color: GEM_META.flux.hex }}
+        style={{ color: vis ? vis.primaryColor : GEM_META.flux.hex }}
       >
-        {luminary.lumens}
+        +{luminary.lumens}
       </span>
+      {/* Domain label — top-left */}
+      {luminary.domain && (
+        <span
+          className="absolute top-1 left-1.5 text-[7px] font-bold tracking-widest uppercase opacity-80 drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
+          style={{ color: vis ? vis.primaryColor : GEM_META.flux.hex }}
+        >
+          {luminary.domain}
+        </span>
+      )}
+      {/* Claimed badge */}
       {isClaimed && (
-        <div className="absolute top-1 left-1.5 flex items-center gap-0.5 bg-black/70 rounded px-1 py-0.5">
+        <div className="absolute top-6 left-1.5 flex items-center gap-0.5 bg-black/70 rounded px-1 py-0.5">
           <Sparkles className="h-2.5 w-2.5" style={{ color: GEM_META.flux.hex }} />
           <span className="text-[8px] font-bold leading-none" style={{ color: GEM_META.flux.hex }}>
             {claimedByNames[0]?.length > 6 ? claimedByNames[0].slice(0, 6) + '…' : claimedByNames[0]}
           </span>
         </div>
       )}
-      <div className="relative z-10 flex flex-wrap justify-center gap-0.5 max-w-full">
+      {/* Requirements — bottom */}
+      <div className="relative z-10 flex flex-wrap justify-center gap-0.5 max-w-full pb-1 px-1">
         {CRYSTALS.map((c) => {
           const req = luminary.requirements[c as keyof CrystalCounts];
           if (req > 0) {
@@ -384,6 +374,9 @@ export default function GameBoard() {
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
+  const [summoningLum, setSummoningLum] = useState<{
+    id: string; name: string; domain: string; lumens: number; flavor: string;
+  } | null>(null);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -680,13 +673,17 @@ export default function GameBoard() {
               const lum = newState.luminaries.find(l => l.id === lumId);
               const lumName = lum?.name ?? 'a Luminary';
               const lumLumens = lum?.lumens ?? 0;
+              const lumDomain = (lum as { domain?: string } | undefined)?.domain ?? '';
+              const lumFlavor = (lum as { flavor?: string } | undefined)?.flavor ?? '';
               const isMe = newPlayer.playerId === session?.playerId;
-              toast({
-                title: isMe ? `✦ Luminary Claimed!` : `${newPlayer.playerName} claimed a Luminary`,
-                description: isMe
-                  ? `You drew the favor of ${lumName} (+${lumLumens} eminence)`
-                  : `${newPlayer.playerName} drew the favor of ${lumName} (+${lumLumens} eminence)`,
-              });
+              if (isMe) {
+                setSummoningLum({ id: lumId, name: lumName, domain: lumDomain, lumens: lumLumens, flavor: lumFlavor });
+              } else {
+                toast({
+                  title: `${newPlayer.playerName} claimed a Luminary`,
+                  description: `${newPlayer.playerName} drew the favor of ${lumName} (+${lumLumens} eminence)`,
+                });
+              }
             }
           }
         }
@@ -2655,6 +2652,46 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Luminary summoning cutscene — fires when local player claims a Luminary */}
+      <AnimatePresence>
+        {summoningLum && (
+          <LuminarySummonCutscene
+            key={summoningLum.id + summoningLum.lumens}
+            luminaryId={summoningLum.id}
+            luminaryName={summoningLum.name}
+            domain={summoningLum.domain}
+            lumens={summoningLum.lumens}
+            flavor={summoningLum.flavor}
+            onComplete={() => setSummoningLum(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Dev test panel — visible in development to preview each Luminary cutscene */}
+      {import.meta.env.DEV && (
+        <details className="fixed bottom-16 left-2 z-[8000] text-[10px]">
+          <summary className="cursor-pointer text-white/30 hover:text-white/60 select-none px-1">⚗ Summon Test</summary>
+          <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 max-h-60 overflow-y-auto">
+            {Object.values(LUMINARY_VISUALS).map(v => (
+              <button
+                key={v.id}
+                className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+                style={{ borderLeft: `3px solid ${v.primaryColor}` }}
+                onClick={() => setSummoningLum({
+                  id: v.id,
+                  name: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                  domain: '',
+                  lumens: 3,
+                  flavor: 'Test summon preview.',
+                })}
+              >
+                {v.id}
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
 
     </div>
   );

@@ -307,6 +307,11 @@ export const StartGameResponse = zod.object({
     zod.object({
       id: zod.string(),
       name: zod.string(),
+      domain: zod
+        .string()
+        .describe(
+          "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
+        ),
       lumens: zod.number(),
       requirements: zod.object({
         ruby: zod.number(),
@@ -316,6 +321,18 @@ export const StartGameResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      flavor: zod
+        .string()
+        .describe("Short lore\/flavor text shown on the Luminary card"),
+      summonColor: zod
+        .string()
+        .describe("Primary hex color used for glow and aura effects"),
+      summonSecondaryColor: zod
+        .string()
+        .describe("Secondary hex color used for aura gradient"),
+      auraStyle: zod
+        .string()
+        .describe("Named aura style for the summoning cutscene"),
     }),
   ),
   players: zod.array(
@@ -502,6 +519,11 @@ export const GetGameStateResponse = zod.object({
     zod.object({
       id: zod.string(),
       name: zod.string(),
+      domain: zod
+        .string()
+        .describe(
+          "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
+        ),
       lumens: zod.number(),
       requirements: zod.object({
         ruby: zod.number(),
@@ -511,6 +533,18 @@ export const GetGameStateResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      flavor: zod
+        .string()
+        .describe("Short lore\/flavor text shown on the Luminary card"),
+      summonColor: zod
+        .string()
+        .describe("Primary hex color used for glow and aura effects"),
+      summonSecondaryColor: zod
+        .string()
+        .describe("Secondary hex color used for aura gradient"),
+      auraStyle: zod
+        .string()
+        .describe("Named aura style for the summoning cutscene"),
     }),
   ),
   players: zod.array(
@@ -721,6 +755,11 @@ export const SubmitActionResponse = zod.object({
     zod.object({
       id: zod.string(),
       name: zod.string(),
+      domain: zod
+        .string()
+        .describe(
+          "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
+        ),
       lumens: zod.number(),
       requirements: zod.object({
         ruby: zod.number(),
@@ -730,6 +769,18 @@ export const SubmitActionResponse = zod.object({
         pearl: zod.number(),
         flux: zod.number(),
       }),
+      flavor: zod
+        .string()
+        .describe("Short lore\/flavor text shown on the Luminary card"),
+      summonColor: zod
+        .string()
+        .describe("Primary hex color used for glow and aura effects"),
+      summonSecondaryColor: zod
+        .string()
+        .describe("Secondary hex color used for aura gradient"),
+      auraStyle: zod
+        .string()
+        .describe("Named aura style for the summoning cutscene"),
     }),
   ),
   players: zod.array(

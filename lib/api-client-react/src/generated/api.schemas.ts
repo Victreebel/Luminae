@@ -150,8 +150,18 @@ export interface ActionLogEntry {
 export interface Luminary {
   id: string;
   name: string;
+  /** Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars) */
+  domain: string;
   lumens: number;
   requirements: CrystalCounts;
+  /** Short lore/flavor text shown on the Luminary card */
+  flavor: string;
+  /** Primary hex color used for glow and aura effects */
+  summonColor: string;
+  /** Secondary hex color used for aura gradient */
+  summonSecondaryColor: string;
+  /** Named aura style for the summoning cutscene */
+  auraStyle: string;
 }
 
 export interface GamePlayerState {

@@ -478,15 +478,35 @@ components:
           type: string
         name:
           type: string
+        domain:
+          type: string
+          description: Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)
         lumens:
           type: integer
         requirements:
           $ref: "#/components/schemas/CrystalCounts"
+        flavor:
+          type: string
+          description: Short lore/flavor text shown on the Luminary card
+        summonColor:
+          type: string
+          description: Primary hex color used for glow and aura effects
+        summonSecondaryColor:
+          type: string
+          description: Secondary hex color used for aura gradient
+        auraStyle:
+          type: string
+          description: Named aura style for the summoning cutscene
       required:
         - id
         - name
+        - domain
         - lumens
         - requirements
+        - flavor
+        - summonColor
+        - summonSecondaryColor
+        - auraStyle
 
     GamePlayerState:
       type: object

@@ -28,8 +28,13 @@ export interface ArtifactCard {
 export interface LuminaryDef {
   id: string;
   name: string;
+  domain: string;
   lumens: number;
   requirements: CrystalCounts;
+  flavor: string;
+  summonColor: string;
+  summonSecondaryColor: string;
+  auraStyle: string;
 }
 
 export interface PlayerGameState {
@@ -219,35 +224,140 @@ export const CARD_CATALOG: ArtifactCard[] = [
 ];
 
 export const LUMINARIES: LuminaryDef[] = [
+  // ─── Mono-color (2 lumens) — easiest threshold ──────────────────────────────
   {
-    id: "lum01",
+    id: "lum_ember",
+    name: "The Ember Sovereign",
+    domain: "Flame",
+    lumens: 2,
+    requirements: { ruby: 4, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Born of the first stellar ignition, she feeds on the light of dying suns and leaves only cinders where empires once stood.",
+    summonColor: "#ef4444",
+    summonSecondaryColor: "#f97316",
+    auraStyle: "fire",
+  },
+  {
+    id: "lum_tide",
+    name: "The Tide Architect",
+    domain: "Time",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Every river bends to his design. Every moment flows through channels only he can see.",
+    summonColor: "#3b82f6",
+    summonSecondaryColor: "#06b6d4",
+    auraStyle: "water",
+  },
+  {
+    id: "lum_root",
+    name: "The Root Ancient",
+    domain: "Growth",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Older than any forest, she remembers the first seed and the darkness before the first dawn.",
+    summonColor: "#22c55e",
+    summonSecondaryColor: "#84cc16",
+    auraStyle: "nature",
+  },
+  {
+    id: "lum_void",
+    name: "The Void Warden",
+    domain: "Entropy",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
+    flavor: "He does not destroy. He simply waits for all things to return to the stillness from which they came.",
+    summonColor: "#6b7280",
+    summonSecondaryColor: "#374151",
+    auraStyle: "void",
+  },
+  {
+    id: "lum_radiant",
+    name: "The Radiant Keeper",
+    domain: "Memory",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
+    flavor: "She holds every forgotten name, every erased memory, every light that thought it had gone out forever.",
+    summonColor: "#c084fc",
+    summonSecondaryColor: "#e879f9",
+    auraStyle: "light",
+  },
+  // ─── Dual-color (3 lumens) — medium threshold ───────────────────────────────
+  {
+    id: "lum_astral",
     name: "The Astral Weaver",
+    domain: "Stars",
     lumens: 3,
-    requirements: { ruby: 4, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    requirements: { ruby: 3, sapphire: 3, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "She stitched the first constellations from stolen fire and frozen sea, and the sky has never been empty since.",
+    summonColor: "#f43f5e",
+    summonSecondaryColor: "#8b5cf6",
+    auraStyle: "stars",
   },
   {
-    id: "lum02",
-    name: "The Runic Forge",
+    id: "lum_forge",
+    name: "The Iron Harbinger",
+    domain: "Ruin",
     lumens: 3,
-    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 3, pearl: 0, flux: 0 },
+    requirements: { ruby: 0, sapphire: 0, emerald: 3, onyx: 3, pearl: 0, flux: 0 },
+    flavor: "What he builds he eventually unmakes. Creation and ruin are the same song played in different keys.",
+    summonColor: "#16a34a",
+    summonSecondaryColor: "#292524",
+    auraStyle: "storm",
   },
   {
-    id: "lum03",
-    name: "The Cosmic Oracle",
-    lumens: 3,
-    requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
-  },
-  {
-    id: "lum04",
-    name: "The Void Merchant",
+    id: "lum_pale",
+    name: "The Pale Merchant",
+    domain: "Secrets",
     lumens: 3,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
+    flavor: "She trades in truths that cannot be unlearned and bargains sealed in silence, never in blood.",
+    summonColor: "#a855f7",
+    summonSecondaryColor: "#e2e8f0",
+    auraStyle: "shadow",
   },
   {
-    id: "lum05",
-    name: "The Luminary Sage",
+    id: "lum_bloom",
+    name: "The Bloom Tyrant",
+    domain: "Wildfire",
     lumens: 3,
-    requirements: { ruby: 0, sapphire: 3, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
+    requirements: { ruby: 2, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Life and destruction share the same root. He is both the flood and the first flower after it recedes.",
+    summonColor: "#dc2626",
+    summonSecondaryColor: "#16a34a",
+    auraStyle: "bloom",
+  },
+  {
+    id: "lum_compass",
+    name: "The Stellar Guide",
+    domain: "Fate",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 2, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
+    flavor: "She does not choose your path. She simply makes certain you cannot pretend you didn't see it.",
+    summonColor: "#2563eb",
+    summonSecondaryColor: "#d946ef",
+    auraStyle: "cosmic",
+  },
+  // ─── Triple-color (4 lumens) — hardest threshold ─────────────────────────────
+  {
+    id: "lum_oracle",
+    name: "The Cosmic Oracle",
+    domain: "Cosmos",
+    lumens: 4,
+    requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Three minds, three voices, one unbroken gaze that spans every age simultaneously. Ask carefully. It always answers.",
+    summonColor: "#f59e0b",
+    summonSecondaryColor: "#6366f1",
+    auraStyle: "cosmic",
+  },
+  {
+    id: "lum_null",
+    name: "The Null Sovereign",
+    domain: "Transcendence",
+    lumens: 4,
+    requirements: { ruby: 0, sapphire: 2, emerald: 0, onyx: 4, pearl: 3, flux: 0 },
+    flavor: "Beyond the final star, past the edge of the last dark, something waits that was never born and cannot die.",
+    summonColor: "#4338ca",
+    summonSecondaryColor: "#0f172a",
+    auraStyle: "null",
   },
 ];
 
@@ -750,8 +860,21 @@ export function normalizeState(raw: unknown): GameStateData {
       }
       // ensure luminaries array exists
       if (!Array.isArray(p.luminaries)) p = { ...p, luminaries: [] };
+      // filter out old luminary IDs (lum01-lum05) no longer in the pantheon
+      p = {
+        ...p,
+        luminaries: (p.luminaries as string[]).filter((id: string) =>
+          LUMINARY_MAP.has(id),
+        ),
+      };
       return p;
     });
+  }
+  // filter activeLuminaries to only known IDs (backward compat for old saves)
+  if (Array.isArray(state.activeLuminaries)) {
+    state.activeLuminaries = (state.activeLuminaries as string[]).filter((id) =>
+      LUMINARY_MAP.has(id),
+    );
   }
   return state as unknown as GameStateData;
 }
