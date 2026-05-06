@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 
@@ -827,9 +827,16 @@ export function LuminarySummonCutscene({
   const isRevealed   = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
   const isRevealedActive = phase === 'revealed';
   const isFading     = phase === 'fading';
-  // Vessel appears at focusing — by then the board has already panned the card to centre
-  const isVessel     = isFocusing || isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
+  // Vessel appears at intro — camera has fully arrived at the card by then.
+  // Keeping it out of focusing prevents the proxy from overlapping the real card
+  // during board-camera travel, which caused the "duplicate panning" artifact.
+  const isVessel     = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
   const hasCracks    = isFirstCrack || isLeaking || isCracking;
+
+  // Stores the board element's NATURAL top (before any pan transform is applied).
+  // Needed to compute a correct transform-origin during the focusing scale phase,
+  // since getBoundingClientRect() returns the panned position at that point.
+  const mainTopNaturalRef = useRef<number>(0);
 
   // ── Viewport + board-card geometry ───────────────────────────────────────
   // Declared early so geometry values are available in the useEffects below.
@@ -863,24 +870,25 @@ export function LuminarySummonCutscene({
     const panX = vw / 2 - boardCx;
     const panY = vh / 2 - boardCy;
 
-    // Transform-origin for scale: card's position in the element's coordinate
-    // space so scale keeps the card fixed at (vw/2, vh/2) in the viewport.
-    const mainTop = el.getBoundingClientRect().top;
-    const originX = boardCx;            // element has no x offset
-    const originY = boardCy - mainTop;  // adjust for element top offset
     const ts = Math.min((vw * 0.65) / BOARD_CARD_W, (vh * 0.65) / BOARD_CARD_H, 3.8);
+    const originX = boardCx; // element has no x offset
 
     if (phase === 'establish' || phase === 'done') {
       el.style.transition      = '';
       el.style.transform       = '';
       el.style.transformOrigin = '';
     } else if (phase === 'panning') {
+      // No transform on element yet — getBoundingClientRect gives the natural top.
+      mainTopNaturalRef.current = el.getBoundingClientRect().top;
+      const originY = boardCy - mainTopNaturalRef.current;
       el.style.transition      = 'transform 0.75s cubic-bezier(0.16, 1, 0.3, 1)';
       el.style.transformOrigin = `${originX}px ${originY}px`;
       el.style.transform       = `translate(${panX}px, ${panY}px)`;
     } else if (phase === 'focusing') {
-      // Zoom the whole board toward the card — camera pushes in over 0.7s.
-      // Overlay stays at 0 so the full board context is visible during zoom.
+      // At this point the panning translate is already on the element, so
+      // getBoundingClientRect().top = mainTop_natural + panY.
+      // Use the ref (measured during panning) for the correct natural top.
+      const originY = boardCy - mainTopNaturalRef.current;
       el.style.transition      = 'transform 0.70s cubic-bezier(0.16, 1, 0.3, 1)';
       el.style.transformOrigin = `${originX}px ${originY}px`;
       el.style.transform       = `translate(${panX}px, ${panY}px) scale(${ts})`;
@@ -890,6 +898,7 @@ export function LuminarySummonCutscene({
       el.style.transformOrigin = '';
     } else {
       // intro through cracking: hold at panned+zoomed position
+      const originY = boardCy - mainTopNaturalRef.current;
       el.style.transition      = '';
       el.style.transformOrigin = `${originX}px ${originY}px`;
       el.style.transform       = `translate(${panX}px, ${panY}px) scale(${ts})`;
