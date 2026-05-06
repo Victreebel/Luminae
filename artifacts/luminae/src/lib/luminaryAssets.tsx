@@ -826,12 +826,14 @@ export function LuminarySummonCutscene({
   const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
   const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
 
-  // Keep a ref so the phase-advance closure always sees the latest callback
+  // Keep refs so the phase-advance closure always sees the latest callbacks
   // without the effect needing to re-run (which would reset the timer chain).
   const onFlashRef = useRef(onFlash);
   useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
-  // Phase timer chain
+  // Phase timer chain — empty dep array: runs exactly once on mount.
   useEffect(() => {
     let idx = 0;
     let cancelled = false;
@@ -842,11 +844,11 @@ export function LuminarySummonCutscene({
       setPhase(next);
       if (next === 'flashing') onFlashRef.current?.();
       if (next !== 'done') setTimeout(advance, PHASE_DURATIONS[next]);
-      else setTimeout(onComplete, 80);
+      else setTimeout(() => onCompleteRef.current(), 80);
     }
     const t = setTimeout(advance, PHASE_DURATIONS['establish']);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [onComplete]);
+  }, []);
 
   // ── Phase booleans ────────────────────────────────────────────────────────
   const isEstablish  = phase === 'establish';
