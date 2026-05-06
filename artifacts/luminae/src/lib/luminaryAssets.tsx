@@ -1797,6 +1797,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
 
   const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
   const [isIdle, setIsIdle] = useState(false);
+  // False when the card has been scrolled outside the <main> scroller's visible
+  // area (e.g. user scrolled down and the Luminary row is above the fold).
+  // The overlay is hidden while out-of-bounds so it doesn't paint over the header.
+  const [isWithinScroller, setIsWithinScroller] = useState(true);
 
   // Viewport centre captured the moment cardPos first becomes non-null.
   // This is where the cutscene entity was sitting, so it's the correct
@@ -1827,6 +1831,15 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       if (!el) return;
       const r = el.getBoundingClientRect();
       if (r.width === 0) return;
+      // Check whether the card overlaps the scroll container's visible bounds.
+      // When scrolled above the header the overlay must be hidden so it doesn't
+      // paint over fixed chrome.
+      const mainEl = document.querySelector('[data-game-board]') as HTMLElement | null;
+      const mainRect = mainEl?.getBoundingClientRect();
+      const withinScroller = mainRect
+        ? r.bottom > mainRect.top && r.top < mainRect.bottom
+        : true;
+      setIsWithinScroller(withinScroller);
       setCardPos(prev => {
         if (!prev && !startViewRef.current) {
           startViewRef.current = {
@@ -1887,7 +1900,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
     <div
       className="fixed pointer-events-none"
       style={{ zIndex: 8500, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
-               opacity: hidden ? 0 : 1, transition: hidden ? 'none' : 'opacity 0.4s ease-in' }}
+               opacity: (hidden || !isWithinScroller) ? 0 : 1,
+               transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in' }}
     >
       {/* ── Return flight: centre of viewport → card position ── */}
       <motion.div
