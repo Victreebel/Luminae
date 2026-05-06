@@ -423,6 +423,8 @@ export default function GameBoard() {
   }>>([]);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
+  // True once the active cutscene's flash has fired; resets to false on each new cutscene.
+  const [cutscenePostFlash, setCutscenePostFlash] = useState(false);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -2732,9 +2734,11 @@ export default function GameBoard() {
             lumens={summonQueue[0].lumens}
             flavor={summonQueue[0].flavor}
             cardRect={summonQueue[0].cardRect}
+            onFlash={() => setCutscenePostFlash(true)}
             onComplete={(() => {
               const completedId = summonQueue[0].id;
               return () => {
+                setCutscenePostFlash(false);
                 setSummonQueue(q => q.slice(1));
                 setClaimedThisSession(prev =>
                   prev.includes(completedId) ? prev : [...prev, completedId]
@@ -2749,7 +2753,12 @@ export default function GameBoard() {
           Each overlay flies from the viewport centre back to its panel card
           and then idles there with breathing / floating animations. */}
       {claimedThisSession.map(lumId => (
-        <LuminaryIdleOverlay key={lumId} luminaryId={lumId} frozen={summonQueue.length > 0} />
+        <LuminaryIdleOverlay
+          key={lumId}
+          luminaryId={lumId}
+          frozen={summonQueue.length > 0}
+          hidden={summonQueue.length > 0 && !cutscenePostFlash}
+        />
       ))}
 
       {/* Dev test panel — visible in development to preview each Luminary cutscene */}

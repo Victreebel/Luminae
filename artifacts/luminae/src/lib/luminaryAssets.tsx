@@ -810,6 +810,7 @@ export function LuminarySummonCutscene({
   flavor,
   cardRect,
   onComplete,
+  onFlash,
 }: {
   luminaryId: string;
   luminaryName: string;
@@ -818,11 +819,17 @@ export function LuminarySummonCutscene({
   flavor: string;
   cardRect?: { cx: number; cy: number; w: number };
   onComplete: () => void;
+  onFlash?: () => void;
 }) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
   const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
+
+  // Keep a ref so the phase-advance closure always sees the latest callback
+  // without the effect needing to re-run (which would reset the timer chain).
+  const onFlashRef = useRef(onFlash);
+  useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
 
   // Phase timer chain
   useEffect(() => {
@@ -833,6 +840,7 @@ export function LuminarySummonCutscene({
       idx++;
       const next = PHASES[idx] ?? 'done';
       setPhase(next);
+      if (next === 'flashing') onFlashRef.current?.();
       if (next !== 'done') setTimeout(advance, PHASE_DURATIONS[next]);
       else setTimeout(onComplete, 80);
     }
@@ -1778,7 +1786,7 @@ export function LuminarySummonCutscene({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export function LuminaryIdleOverlay({ luminaryId, frozen = false }: { luminaryId: string; frozen?: boolean }) {
+export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false }: { luminaryId: string; frozen?: boolean; hidden?: boolean }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor } = vis;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
@@ -1874,7 +1882,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false }: { luminaryId
   return (
     <div
       className="fixed pointer-events-none"
-      style={{ zIndex: 8500, left: destX, top: destY, width: IDLE_W, height: IDLE_H }}
+      style={{ zIndex: 8500, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
+               opacity: hidden ? 0 : 1, transition: hidden ? 'none' : 'opacity 0.4s ease-in' }}
     >
       {/* ── Return flight: centre of viewport → card position ── */}
       <motion.div
