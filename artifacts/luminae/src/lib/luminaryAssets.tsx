@@ -1434,6 +1434,25 @@ export function LuminarySummonCutscene({
         )}
       </AnimatePresence>
 
+      {/* ── Board vignette dimmer — dims edges, keeps entity focal ─────────────── */}
+      {/* Radial gradient: lighter at center (entity zone), darker at edges.      */}
+      {/* Hides any residual semi-transparent tint from baked-in asset glow.      */}
+      <AnimatePresence>
+        {isRevealed && (
+          <motion.div
+            key="boarddim"
+            className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : 1) }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: 'easeOut' }}
+            style={{
+              background: 'radial-gradient(ellipse 54% 58% at 50% 42%, rgba(0,0,10,0.22) 0%, rgba(0,0,10,0.70) 100%)',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Freed entity — centred in viewport over live board ───────────────── */}
       {/* The board is at scale=1 and visible through the partial overlay.       */}
       {/* Entity is larger than the original card frame; aura extends 560 px.   */}
@@ -1543,6 +1562,17 @@ export function LuminarySummonCutscene({
                         width: ENT_W, height: ENT_H,
                         objectFit: 'contain', objectPosition: 'center',
                         display: 'block', background: 'transparent',
+                        // Runtime edge-fade mask: entity.webp assets contain a baked-in
+                        // rectangular semi-transparent glow that reaches all four edges
+                        // (measured alpha ≈ 43–70% at corners/edges). This radial mask
+                        // fades the outermost ~20% of the image to transparent so the
+                        // entity reads as a floating form rather than a portrait inside
+                        // a card-shaped rectangle.
+                        // TODO: regenerate entity assets as true transparent-background
+                        // cutouts (no baked-in glow rectangle, no background fill) to
+                        // make this mask unnecessary and preserve edge detail fully.
+                        maskImage: 'radial-gradient(ellipse 84% 90% at 50% 44%, black 55%, rgba(0,0,0,0.55) 73%, transparent 91%)',
+                        WebkitMaskImage: 'radial-gradient(ellipse 84% 90% at 50% 44%, black 55%, rgba(0,0,0,0.55) 73%, transparent 91%)',
                       }}
                       draggable={false}
                     />
