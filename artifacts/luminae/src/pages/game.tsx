@@ -261,19 +261,20 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
   );
 }
 
-function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; claimedByNames?: string[] }) {
+function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { luminary: Luminary; claimedByNames?: string[]; isReleased?: boolean }) {
   const isClaimed = claimedByNames.length > 0;
   const vis = LUMINARY_VISUALS[luminary.id];
   const accentColor = vis?.primaryColor ?? GEM_META.flux.hex;
   const claimedName = claimedByNames[0];
   return (
     <motion.div
-      whileHover={{ scale: 1.02 }}
+      whileHover={isReleased ? {} : { scale: 1.02 }}
       data-luminary-id={luminary.id}
       className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
         isClaimed ? 'ring-2 ring-amber-300/70 shadow-[0_0_20px_rgba(251,191,36,0.4)]' : 'ring-1 ring-black/30'
       }`}
       title={luminary.flavor || luminary.name}
+      style={isReleased ? { opacity: 0, pointerEvents: 'none' } : undefined}
     >
       {/* Background art layer — procedural entity portrait fills the card */}
       <div className="absolute inset-0 pointer-events-none">
@@ -1048,7 +1049,7 @@ export default function GameBoard() {
             const claimedByNames = state.players
               .filter(p => (p.claimedLuminaryIds ?? []).includes(l.id))
               .map(p => p.playerName);
-            return <LuminaryCard key={l.id} luminary={l} claimedByNames={claimedByNames} />;
+            return <LuminaryCard key={l.id} luminary={l} claimedByNames={claimedByNames} isReleased={claimedThisSession.includes(l.id)} />;
           })}
         </div>
       </div>
