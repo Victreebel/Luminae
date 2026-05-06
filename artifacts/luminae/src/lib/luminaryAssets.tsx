@@ -1597,18 +1597,17 @@ export function LuminarySummonCutscene({
                         width: ENT_W, height: ENT_H,
                         objectFit: 'contain', objectPosition: 'center',
                         display: 'block', background: 'transparent',
-                        // Edge-fade mask: entity.webp assets have a baked-in rectangular
-                        // semi-transparent glow at the edges. We use a radial mask whose
-                        // radii exactly match the element half-dimensions (50% × 52% →
-                        // 160 × 238 px for a 320×458 entity), so the fade stops actually
-                        // land at the image boundary rather than far outside it.
-                        // The gradient: fully opaque core, soft fade over the outer 50%,
-                        // fully transparent at the image edge → whites are gone, the
-                        // parent's drop-shadow filter recreates a glowing organic silhouette.
+                        // Runtime edge-fade mask: entity.webp assets contain a baked-in
+                        // rectangular semi-transparent glow that reaches all four edges
+                        // (measured alpha ≈ 43–70% at corners/edges). This radial mask
+                        // fades the outermost ~20% of the image to transparent so the
+                        // entity reads as a floating form rather than a portrait inside
+                        // a card-shaped rectangle.
                         // TODO: regenerate entity assets as true transparent-background
-                        // cutouts to remove the need for this mask entirely.
-                        maskImage: 'radial-gradient(ellipse 50% 52% at 50% 44%, black 48%, rgba(0,0,0,0.30) 74%, transparent 96%)',
-                        WebkitMaskImage: 'radial-gradient(ellipse 50% 52% at 50% 44%, black 48%, rgba(0,0,0,0.30) 74%, transparent 96%)',
+                        // cutouts (no baked-in glow rectangle, no background fill) to
+                        // make this mask unnecessary and preserve edge detail fully.
+                        maskImage: 'radial-gradient(ellipse 84% 90% at 50% 44%, black 55%, rgba(0,0,0,0.55) 73%, transparent 91%)',
+                        WebkitMaskImage: 'radial-gradient(ellipse 84% 90% at 50% 44%, black 55%, rgba(0,0,0,0.55) 73%, transparent 91%)',
                       }}
                       draggable={false}
                     />
