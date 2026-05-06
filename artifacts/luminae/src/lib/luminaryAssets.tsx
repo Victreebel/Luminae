@@ -863,11 +863,16 @@ export function LuminarySummonCutscene({
     const panX = vw / 2 - boardCx;
     const panY = vh / 2 - boardCy;
 
-    // Transform-origin for scale: card's position in the element's coordinate
-    // space so scale keeps the card fixed at (vw/2, vh/2) in the viewport.
-    const mainTop = el.getBoundingClientRect().top;
-    const originX = boardCx;            // element has no x offset
-    const originY = boardCy - mainTop;  // adjust for element top offset
+    // Transform-origin for scale: card's position in the element's *natural*
+    // (pre-transform) coordinate space so scale keeps the card at (vw/2, vh/2).
+    // getBoundingClientRect() includes the current translate, so we subtract
+    // panY (and panX) to recover the natural layout position of the element.
+    const renderedTop  = el.getBoundingClientRect().top;
+    const naturalTop   = renderedTop - panY;   // undo the panning translate
+    const renderedLeft = el.getBoundingClientRect().left;
+    const naturalLeft  = renderedLeft - panX;
+    const originX = boardCx - naturalLeft;  // card x in element's natural space
+    const originY = boardCy - naturalTop;   // card y in element's natural space
     const ts = Math.min((vw * 0.65) / BOARD_CARD_W, (vh * 0.65) / BOARD_CARD_H, 3.8);
 
     if (phase === 'establish' || phase === 'done') {
