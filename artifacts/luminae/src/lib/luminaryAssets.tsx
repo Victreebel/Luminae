@@ -1053,7 +1053,7 @@ export function LuminarySummonCutscene({
         className="absolute inset-0 pointer-events-none"
         style={{ transformOrigin: `${vw / 2}px ${vh / 2}px` }}
         animate={{ scale: camScale }}
-        transition={{ duration: (isSecondCrack || isCracking) ? 0.11 : 0.88, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.88, ease: [0.16, 1, 0.3, 1] }}
       >
 
         {/* ── Sealed vessel — board-card sized, anchored at its board spot ── */}
