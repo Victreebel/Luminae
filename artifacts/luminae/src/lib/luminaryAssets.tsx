@@ -666,10 +666,10 @@ export function LuminaryPanelArt({
 //   establish   600ms  Board fully visible (overlay=0). Card glows/trembles at
 //                       its real board position. Board layer pre-pans if the
 //                       card is near or past a viewport edge.
-//   focusing    800ms  Board camera (scale+translate) animates toward the card,
-//                       bringing it to viewport centre. Overlay fades to 0.50.
-//   intro       350ms  Vessel fades in at the board-card position (already
-//                       centred by the camera). Real card suppressed.
+//   focusing    800ms  Board camera scales toward the card's board position
+//                       (transformOrigin pinned to card). Vessel fades in at
+//                       the card's location. Board darkens (0→0.52). Card hidden.
+//   intro       350ms  Camera at target scale; vessel lit and settling.
 //   zooming     650ms  Camera holds; vessel locked and lit.
 //   pressure    500ms  Vessel breathes with coloured glow — no cracks yet.
 //   firstcrack  600ms  Primary vertical fault draws across the vessel.
@@ -685,17 +685,19 @@ export function LuminaryPanelArt({
 //   done              → onComplete callback fires.
 //
 // Key invariants:
-//   • The board camera layer uses transformOrigin='0 0' and animates scale +
-//     x + y together so any card position maps cleanly to viewport centre.
-//   • Glow lives OUTSIDE the camera layer so it matches the real card 1:1
-//     during establish/focusing without scaling artefacts.
-//   • Vessel is sized to the actual board card (112×160 px, Tailwind w-28 h-40).
-//     The camera zoom enlarges it cinematically — no separate "cinematic proxy".
-//   • During shattering the camera returns to scale=1 so shards scatter in
-//     normal viewport space and the entity appears over the whole board.
-//   • The real [data-luminary-id] card is opacity=0 from intro→fading so the
-//     original panel does not show through during the vessel/shatter/entity reveal.
-//   • Entity is outside the camera layer, centred in the viewport, larger than
+//   • The board camera layer uses transformOrigin='${boardCx}px ${boardCy}px'
+//     (the card's exact viewport position) and animates ONLY scale — no x/y.
+//     The card is therefore FIXED at (boardCx,boardCy) throughout the zoom;
+//     the rest of the board scales away from it. No card-slides-to-centre.
+//   • Glow lives INSIDE the camera layer so it scales with the card and stays
+//     properly aligned as the camera pushes in.
+//   • Vessel appears during focusing so the user sees the card growing in place
+//     as the camera zooms — the board expands away from the card's position.
+//   • Real [data-luminary-id] card is opacity=0 from focusing→fading (never
+//     doubles with the vessel).
+//   • During shattering the camera returns to scale=1; shards scatter from
+//     the card's board position; entity appears centred in viewport.
+//   • Entity is outside the camera layer, centred in viewport, larger than
 //     the original card frame. Aura extends 560 px — no rectangular clipping.
 
 type CutscenePhase =
@@ -823,17 +825,19 @@ export function LuminarySummonCutscene({
   const isRevealed   = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
   const isRevealedActive = phase === 'revealed';
   const isFading     = phase === 'fading';
-  const isVessel     = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
+  // Vessel visible from focusing onward so the card is seen growing in-place
+  const isVessel     = isFocusing || isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
   const hasCracks    = isFirstCrack || isLeaking || isCracking;
 
   // ── Suppress the real board Luminary card during vessel/shatter/entity ───
-  // From 'intro' through 'fading', the vessel proxy and entity replace it.
+  // Hidden from 'focusing' onward — vessel appears simultaneously so there
+  // is never a gap where the card is invisible without the vessel in its place.
   useEffect(() => {
     const el = document.querySelector(
       `[data-luminary-id="${luminaryId}"]`
     ) as HTMLElement | null;
     if (!el) return;
-    const hide = phase !== 'establish' && phase !== 'focusing' && phase !== 'done';
+    const hide = phase !== 'establish' && phase !== 'done';
     el.style.opacity = hide ? '0' : '';
     return () => { el.style.opacity = ''; };
   }, [phase, luminaryId]);
@@ -860,26 +864,13 @@ export function LuminarySummonCutscene({
     3.8,
   );
 
-  // Camera translate so the card ends up at viewport centre after scaling.
-  // With transformOrigin='0 0': screen_pos = element_pos * scale + translate
-  // → boardCx * targetScale + zoomTx = vw/2
-  const zoomTx = vw / 2 - boardCx * targetScale;
-  const zoomTy = vh / 2 - boardCy * targetScale;
-
-  // Pre-pan: nudge board layer during establish if card is near/past an edge
-  const PAD = 72;
-  const prePanX = boardCx < PAD ? PAD - boardCx :
-                  boardCx > vw - PAD ? (vw - PAD) - boardCx : 0;
-  const prePanY = boardCy < PAD ? PAD - boardCy :
-                  boardCy > vh - PAD ? (vh - PAD) - boardCy : 0;
-
-  // Camera zoomed = card is at viewport centre
+  // Camera: pure scale only — transformOrigin is pinned to the card's viewport
+  // position so the card stays fixed at (boardCx, boardCy) throughout the zoom
+  // while every other board element scales away from that anchor point.
   const camZoomed =
     isFocusing || isIntro || isZooming ||
     isPressure || isFirstCrack || isLeaking || isCracking;
   const camScale = camZoomed ? targetScale : 1;
-  const camX     = isEstablish ? prePanX : camZoomed ? zoomTx : 0;
-  const camY     = isEstablish ? prePanY : camZoomed ? zoomTy : 0;
 
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
   const vesselGlow: [string, string, string] = isPressure
@@ -905,44 +896,45 @@ export function LuminarySummonCutscene({
         style={{ background: 'rgba(4,2,16,1)' }}
       />
 
-      {/* ── Glow on real board card — OUTSIDE camera layer ────────────────── */}
-      {/* Lives at the card's true viewport coordinates during establish/focusing
-          so it perfectly overlays the real board card without camera scaling.   */}
-      <AnimatePresence>
-        {(isEstablish || isFocusing) && (
-          <motion.div
-            key="boardglow"
-            className="absolute pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0.28, 0.90, 0.42, 0.90],
-              x: [0, -1.2, 1.8, -0.8, 0],
-              y: [0,  1.0, -1.4, 0.6, 0],
-            }}
-            exit={{ opacity: 0, transition: { duration: 0.25 } }}
-            transition={{ repeat: Infinity, duration: 0.50, ease: 'easeInOut' }}
-            style={{
-              left: boardCx - BOARD_CARD_W / 2 - 8,
-              top:  boardCy - BOARD_CARD_H / 2 - 8,
-              width:  BOARD_CARD_W + 16,
-              height: BOARD_CARD_H + 16,
-              borderRadius: 14,
-              boxShadow: `0 0 0 2px ${primaryColor}88, 0 0 18px ${primaryColor}66, 0 0 42px ${primaryColor}33`,
-              background: `radial-gradient(ellipse at center, ${primaryColor}20 0%, transparent 72%)`,
-            }}
-          />
-        )}
-      </AnimatePresence>
-
       {/* ── Board camera layer ────────────────────────────────────────────── */}
-      {/* transformOrigin='0 0' so scale(s) + translate(x,y) together bring   */}
-      {/* any card position to viewport centre without per-case special casing. */}
+      {/* transformOrigin is pinned to the card's exact viewport position.      */}
+      {/* Animating scale alone keeps the card FIXED at (boardCx,boardCy) —    */}
+      {/* the rest of the board zooms away from it. No translate, no sliding.  */}
       <motion.div
         className="absolute inset-0 pointer-events-none"
-        style={{ transformOrigin: '0 0' }}
-        animate={{ scale: camScale, x: camX, y: camY }}
+        style={{ transformOrigin: `${boardCx}px ${boardCy}px` }}
+        animate={{ scale: camScale }}
         transition={{ duration: 0.88, ease: [0.16, 1, 0.3, 1] }}
       >
+
+        {/* ── Glow on board card — inside camera layer so it scales with it ── */}
+        {/* During establish (scale=1) it sits exactly over the real card.      */}
+        {/* During focusing it grows with the camera, matching the vessel size. */}
+        <AnimatePresence>
+          {(isEstablish || isFocusing) && (
+            <motion.div
+              key="boardglow"
+              className="absolute pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{
+                opacity: [0.28, 0.90, 0.42, 0.90],
+                x: [0, -1.2, 1.8, -0.8, 0],
+                y: [0,  1.0, -1.4, 0.6, 0],
+              }}
+              exit={{ opacity: 0, transition: { duration: 0.25 } }}
+              transition={{ repeat: Infinity, duration: 0.50, ease: 'easeInOut' }}
+              style={{
+                left: vesselLeft - 8,
+                top:  vesselTop  - 8,
+                width:  BOARD_CARD_W + 16,
+                height: BOARD_CARD_H + 16,
+                borderRadius: 14,
+                boxShadow: `0 0 0 2px ${primaryColor}88, 0 0 18px ${primaryColor}66, 0 0 42px ${primaryColor}33`,
+                background: `radial-gradient(ellipse at center, ${primaryColor}20 0%, transparent 72%)`,
+              }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* ── Sealed vessel — board-card sized, anchored at its board spot ── */}
         <AnimatePresence>
@@ -966,7 +958,7 @@ export function LuminarySummonCutscene({
                   ? (vesselGlow as unknown as string)
                   : `0 0 8px ${primaryColor}40`,
               }}
-              exit={{ scale: 2.5, opacity: 0, transition: { duration: 0.38, ease: 'easeIn' } }}
+              exit={{ scale: 1.12, opacity: 0, transition: { duration: 0.30, ease: 'easeIn' } }}
               transition={{
                 scale:     (isPressure || hasCracks)
                   ? { repeat: Infinity, duration: 1.12, ease: 'easeInOut' }
