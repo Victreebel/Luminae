@@ -161,6 +161,23 @@
   50%       { opacity: 0.62; }
 }
 
+/* ── Luminary internal-pressure trembling ────────────────────────────────────
+   Uses individual CSS transform properties (translate, rotate) so they compose
+   additively with Framer Motion's transform shorthand on the same element.    */
+@keyframes luminary-tremble {
+  0%,100% { translate: 0px 0px;      rotate: 0deg;     }
+  10%     { translate: -2px 0.8px;   rotate: -0.35deg; }
+  22%     { translate: 1.5px -1.6px; rotate:  0.28deg; }
+  35%     { translate: -0.8px 1.4px; rotate: -0.45deg; }
+  48%     { translate: 2.2px -0.6px; rotate:  0.38deg; }
+  60%     { translate: -1.5px 1px;   rotate: -0.25deg; }
+  72%     { translate: 0.8px -1.5px; rotate:  0.40deg; }
+  85%     { translate: -1.2px 0.7px; rotate: -0.20deg; }
+}
+.luminary-tremble {
+  animation: luminary-tremble 0.28s linear infinite;
+}
+
 .gem-pop  { animation: gem-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .float-score { animation: float-score 0.9s ease-out forwards; }
 

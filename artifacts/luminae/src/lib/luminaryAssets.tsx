@@ -845,19 +845,25 @@ export function LuminarySummonCutscene({
   const boardCx = cardRect ? cardRect.cx : vw / 2;
   const boardCy = cardRect ? cardRect.cy : vh / 2;
 
-  // ── Suppress the real board Luminary card during vessel/shatter/entity ───
-  // Visible during establish + panning (board is the star), hidden from focusing
-  // onward when the vessel proxy takes over at viewport centre.
+  // ── Suppress + tremble the real board Luminary card ─────────────────────
+  // Visible during establish + panning + focusing (board is the star).
+  // Hidden from intro onward when the vessel proxy takes over.
+  // Tremble class (CSS individual translate/rotate) applies during those
+  // visible phases so the card shakes from the very first frame.
   useEffect(() => {
     const el = document.querySelector(
       `[data-luminary-id="${luminaryId}"]`
     ) as HTMLElement | null;
     if (!el) return;
-    // Real card stays visible through focusing so the board zoom has context.
-    // Vessel fades in on top during focusing; card is suppressed at intro.
     const hide = phase !== 'establish' && phase !== 'panning' && phase !== 'focusing' && phase !== 'done';
     el.style.opacity = hide ? '0' : '';
-    return () => { el.style.opacity = ''; };
+    // Tremble during board-visible phases; vessel's own shake takes over at intro
+    const tremble = phase === 'establish' || phase === 'panning' || phase === 'focusing';
+    el.classList.toggle('luminary-tremble', tremble);
+    return () => {
+      el.style.opacity = '';
+      el.classList.remove('luminary-tremble');
+    };
   }, [phase, luminaryId]);
 
   // ── Board DOM pan — travels the real game board toward the Luminary ───────
@@ -937,6 +943,39 @@ export function LuminarySummonCutscene({
     isPressure || isFirstCrack || isLeaking || isCracking;
   const camScale = camZoomed ? targetScale : 1;
 
+  // ── Shake profile (internal-pressure trembling, replaces scale-pulse) ───────
+  // Five intensity levels: intro/zooming → pressure → firstcrack → leaking → cracking.
+  // Irregular keyframe arrays make the motion feel non-rhythmic / organic.
+  const shakeDur = isCracking ? 0.09 : isLeaking ? 0.10 : isFirstCrack ? 0.11 : isPressure ? 0.12 : 0.13;
+  const glowDur  = isCracking ? 0.45 : isLeaking ? 0.55 : isFirstCrack ? 0.65 : isPressure ? 0.75 : 0.80;
+  const shakeX: number[] = isCracking
+    ? [-4, 2.5, -1.8, 4.2, -2.2, 1.5, -3, 0]
+    : isLeaking
+      ? [-3, 2, -1.5, 3.5, -1.8, 1.2, 0]
+      : isFirstCrack
+        ? [-2.5, 1.8, -1, 2.8, -1.5, 0.8, 0]
+        : isPressure
+          ? [-2, 1.5, -0.9, 2.2, -1.2, 0.7, 0]
+          : [-1.5, 1, -0.8, 1.8, -1, 0.5, 0];
+  const shakeY: number[] = isCracking
+    ? [1.5, -2.5, 2, -1, 2.5, -1.5, 1, 0]
+    : isLeaking
+      ? [1, -2, 1.5, -0.8, 2, -1.2, 0]
+      : isFirstCrack
+        ? [0.8, -1.5, 1.2, -0.6, 1.5, -1, 0]
+        : isPressure
+          ? [0.6, -1.2, 1, -0.5, 1.3, -0.8, 0]
+          : [0.5, -1, 0.8, -0.4, 1, -0.6, 0];
+  const shakeR: number[] = isCracking
+    ? [-0.8, 0.5, -1, 0.6, -0.5, 0.4, -0.7, 0]
+    : isLeaking
+      ? [-0.6, 0.4, -0.8, 0.5, -0.4, 0.3, 0]
+      : isFirstCrack
+        ? [-0.5, 0.3, -0.6, 0.4, -0.3, 0.2, 0]
+        : isPressure
+          ? [-0.35, 0.25, -0.45, 0.3, -0.2, 0.15, 0]
+          : [-0.25, 0.18, -0.3, 0.2, -0.15, 0.12, 0];
+
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
   const vesselGlow: [string, string, string] = isPressure
     ? [`0 0 10px ${primaryColor}60`, `0 0 24px ${primaryColor}90`, `0 0 10px ${primaryColor}60`]
@@ -972,12 +1011,13 @@ export function LuminarySummonCutscene({
             className="absolute pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{
-              opacity: [0.28, 0.90, 0.42, 0.90],
-              x: [0, -1.2, 1.8, -0.8, 0],
-              y: [0,  1.0, -1.4, 0.6, 0],
+              opacity: [0.50, 0.85, 0.40, 0.92, 0.45, 0.88, 0.55],
+              x: [0, -2.5, 1.5, -1.0, 2.8, -1.5,  0.8, 0],
+              y: [0,  1.2, -1.8, 0.5, -1.5, 1.8, -0.8, 0],
+              rotate: [0, -0.4, 0.3, -0.5, 0.2, -0.4, 0.3, 0],
             }}
-            exit={{ opacity: 0, transition: { duration: 0.18 } }}
-            transition={{ repeat: Infinity, duration: 0.50, ease: 'easeInOut' }}
+            exit={{ opacity: 0, rotate: 0, transition: { duration: 0.18 } }}
+            transition={{ repeat: Infinity, duration: 0.28, ease: 'linear' }}
             style={{
               left: (cardRect ? cardRect.cx : vw / 2) - BOARD_CARD_W / 2 - 8,
               top:  (cardRect ? cardRect.cy : vh / 2) - BOARD_CARD_H / 2 - 8,
@@ -1018,21 +1058,25 @@ export function LuminarySummonCutscene({
                 height: BOARD_CARD_H,
                 borderRadius: 12,
               }}
-              initial={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.97 }}
               animate={{
                 opacity: 1,
-                scale: (isPressure || hasCracks) ? ([1, 1.022, 1] as number[]) : 1,
+                scale: 1,
+                x: shakeX,
+                y: shakeY,
+                rotate: shakeR,
                 boxShadow: (isPressure || hasCracks)
                   ? (vesselGlow as unknown as string)
                   : '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
               }}
-              exit={{ scale: 1.12, opacity: 0, transition: { duration: 0.30, ease: 'easeIn' } }}
+              exit={{ scale: 1.12, opacity: 0, x: 0, y: 0, rotate: 0, transition: { duration: 0.30, ease: 'easeIn' } }}
               transition={{
-                scale:     (isPressure || hasCracks)
-                  ? { repeat: Infinity, duration: 1.12, ease: 'easeInOut' }
-                  : { duration: 0.26 },
+                scale:     { duration: 0.26 },
                 opacity:   { duration: 0.28 },
-                boxShadow: { repeat: Infinity, duration: 1.12, ease: 'easeInOut' },
+                x:         { repeat: Infinity, duration: shakeDur, ease: 'linear' },
+                y:         { repeat: Infinity, duration: shakeDur, ease: 'linear' },
+                rotate:    { repeat: Infinity, duration: shakeDur, ease: 'linear' },
+                boxShadow: { repeat: Infinity, duration: glowDur,  ease: 'easeInOut' },
               }}
             >
               {/* Identical interior to LuminaryCard — same component, same props */}
