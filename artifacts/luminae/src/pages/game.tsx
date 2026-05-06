@@ -2012,7 +2012,7 @@ export default function GameBoard() {
             </div>
             <span className="text-[10px] font-semibold">{label}</span>
             {activeTab === tab && (
-              <div className="absolute top-0 inset-x-4 h-0.5 bg-primary rounded-b-full" />
+              <div className="absolute -top-2 inset-x-4 h-0.5 bg-primary rounded-full" />
             )}
           </button>
         ))}
