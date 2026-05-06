@@ -1488,6 +1488,64 @@ export function LuminarySummonCutscene({
         )}
       </AnimatePresence>
 
+      {/* ── Aura glow — own plain-div layer, no parent opacity/will-change ─────── */}
+      {/* A motion.div parent with animated opacity < 1 creates a compositing     */}
+      {/* stacking context that breaks child mix-blend-mode and makes gradients   */}
+      {/* vanish. Using a plain conditional div means no isolation; each child    */}
+      {/* motion.div animates its own opacity directly against the board.         */}
+      {(isRevealed && !isFlashing) && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ overflow: 'visible' }}>
+          {/* Outer aura cloud — 560px, centred on entity torso */}
+          {auraLayer ? (
+            <motion.img src={auraLayer} alt="" aria-hidden
+              className="absolute pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isFading ? 0 : 0.92 }}
+              transition={{ duration: 1.4, ease: 'easeOut' }}
+              style={{
+                width: 560, height: 560,
+                objectFit: 'contain',
+                mixBlendMode: 'screen',
+                transform: 'translateY(-14%)',
+              }}
+              draggable={false}
+            />
+          ) : (
+            <motion.div className="absolute pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: isFading ? 0 : 0.92 }}
+              transition={{ duration: 1.4, ease: 'easeOut' }}
+              style={{
+                width: 560, height: 560,
+                borderRadius: '50%',
+                background: `radial-gradient(ellipse at center, ${primaryColor}cc 0%, ${primaryColor}88 28%, ${secondaryColor}55 54%, transparent 76%)`,
+                filter: 'blur(28px)',
+                transform: 'translateY(-14%)',
+              }}
+            />
+          )}
+          {/* Inner glow ring — breathing pulse */}
+          <motion.div className="absolute pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: isFading ? 0 : 0.85,
+              scale: isFading ? 1 : [0.94, 1.04, 0.96, 1.0],
+            }}
+            transition={{
+              opacity: { duration: 1.2, ease: 'easeOut' },
+              scale:   { repeat: Infinity, duration: 3.8, ease: 'easeInOut', delay: 0.6 },
+            }}
+            style={{
+              width: 320, height: 400,
+              borderRadius: '50%',
+              background: `radial-gradient(ellipse at center, ${glowColor}bb 0%, ${glowColor}66 36%, ${primaryColor}33 62%, transparent 82%)`,
+              filter: 'blur(16px)',
+              transform: 'translateY(-12%)',
+            }}
+          />
+        </div>
+      )}
+
       {/* ── Freed entity — centred in viewport over live board ───────────────── */}
       {/* The board is at scale=1 and visible through the partial overlay.       */}
       {/* Entity is larger than the original card frame; aura extends 560 px.   */}
@@ -1529,55 +1587,6 @@ export function LuminarySummonCutscene({
                   scale: { repeat: Infinity, duration: 4.0, ease: 'easeInOut', delay: 1.9 },
                 }}
               >
-                {/* Wide aura — 560 px, well beyond card bounds, no clipping */}
-                {auraLayer ? (
-                  <motion.img src={auraLayer} alt="" aria-hidden
-                    className="absolute pointer-events-none"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.95, 0.68, 0.88]) }}
-                    transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
-                    style={{
-                      width: 560, height: 560,
-                      position: 'absolute', top: '50%', left: '50%',
-                      transform: 'translate(-50%, -56%)',
-                      objectFit: 'contain', mixBlendMode: 'screen',
-                    }}
-                    draggable={false}
-                  />
-                ) : (
-                  <motion.div className="absolute pointer-events-none"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.94, 0.64, 0.84]) }}
-                    transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
-                    style={{
-                      width: 560, height: 560,
-                      position: 'absolute', top: '50%', left: '50%',
-                      transform: 'translate(-50%, -56%)',
-                      borderRadius: '50%',
-                      background: `radial-gradient(ellipse at center, ${primaryColor}cc 0%, ${primaryColor}77 30%, ${secondaryColor}44 58%, transparent 76%)`,
-                      filter: 'blur(26px)',
-                    }}
-                  />
-                )}
-
-                {/* Inner glow ring — radial only, no rectangular clip */}
-                <motion.div className="absolute pointer-events-none"
-                  initial={{ opacity: 0 }}
-                  animate={{
-                    opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.88, 0.56, 0.76]),
-                    scale:   isFading ? 1.28 : [0.82, 1.02, 0.96],
-                  }}
-                  transition={{ duration: 2.2, ease: 'easeInOut' }}
-                  style={{
-                    width: 320, height: 400,
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%, -53%)',
-                    borderRadius: '50%',
-                    background: `radial-gradient(ellipse at center, ${glowColor}aa 0%, ${glowColor}55 38%, ${primaryColor}33 62%, transparent 82%)`,
-                    filter: 'blur(16px)',
-                  }}
-                />
-
                 {/* Entity image — must be a transparent-background cutout */}
                 {/* If the asset contains a baked-in rectangular glow, regenerate */}
                 {/* it as a true transparent silhouette PNG/WebP (see asset notes). */}
