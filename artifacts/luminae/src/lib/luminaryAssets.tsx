@@ -1106,11 +1106,16 @@ export function LuminarySummonCutscene({
                   style={{ overflow: 'visible' }}
                 >
                   <defs>
+                    {/* Tight bloom: on crisp crack lines */}
                     <filter id="cgb" x="-60%" y="-60%" width="220%" height="220%">
                       <feGaussianBlur stdDeviation="1.8" result="b" />
                       <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                     </filter>
-                    {/* Ray gradients defined once secondcrack starts and persist */}
+                    {/* Wide wound glow: seam ambience + diffuse blob — no crisp edge */}
+                    <filter id="crackglow" x="-100%" y="-100%" width="300%" height="300%">
+                      <feGaussianBlur stdDeviation="10" />
+                    </filter>
+                    {/* Ray gradients: defined once secondcrack starts and persist */}
                     {(isSecondCrack || isCracking) && (
                       <>
                         <linearGradient id="rayUp" x1="0" y1="1" x2="0" y2="0">
@@ -1133,8 +1138,27 @@ export function LuminarySummonCutscene({
                     )}
                   </defs>
 
+                  {/* ── Seam wound glow — wide diffuse warmth along the fault lines ── */}
+                  {/* Painted first (below crack lines) so it reads as heat/pressure    */}
+                  {/* escaping through the vessel wall, not an overlay placed on top.   */}
+                  <motion.path
+                    d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
+                    stroke="#ffe8a0" strokeWidth="26" fill="none" strokeLinecap="round"
+                    filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.09, 0.14, 0.10] }}
+                    transition={{ duration: 0.90, ease: 'easeOut' }}
+                  />
+                  <motion.path
+                    d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
+                    stroke="#ffe8a0" strokeWidth="18" fill="none" strokeLinecap="round"
+                    filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.07, 0.11] }}
+                    transition={{ duration: 0.65, delay: 0.22, ease: 'easeOut' }}
+                  />
+
                   {/* ── Primary vertical fault — thick, prominent (firstcrack+) ── */}
-                  {/* White core crack */}
                   <motion.path
                     d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
                     stroke="white" strokeWidth="2.4" fill="none" filter="url(#cgb)"
@@ -1142,7 +1166,6 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 0.92, 1.0] }}
                     transition={{ duration: 0.72, ease: 'easeOut' }}
                   />
-                  {/* Gold glow halo */}
                   <motion.path
                     d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
                     stroke="#ffe8a0" strokeWidth="9" fill="none" strokeLinecap="round"
@@ -1167,18 +1190,49 @@ export function LuminarySummonCutscene({
                     transition={{ duration: 0.58, delay: 0.24, ease: 'easeOut' }}
                   />
 
-                  {/* ── Energy node at fault junction (leaking+) — settles and holds ── */}
+                  {/* ── Organic light leaking through crack crevices (leaking+) ── */}
+                  {/* No crisp circles or radar rings. A diffuse, heavily blurred blob  */}
+                  {/* at the junction reads as trapped radiance, not a UI indicator.     */}
+                  {/* Ember motes (r≤1.5) at irregular positions with long staggered     */}
+                  {/* flicker cycles (2.5–3.6 s) shimmer like embers, not a pulse.      */}
                   {(isLeaking || isSecondCrack || isCracking) && (
                     <>
-                      <motion.circle cx={FX} cy={FY} r="5" fill="white"
-                        initial={{ opacity: 0, scale: 0.2 }}
-                        animate={{ opacity: 0.85, scale: 1.0 }}
-                        transition={{ duration: 0.40, ease: 'easeOut' }}
+                      {/* Diffuse light pool — r=22 + stdDeviation=10 ≈ 42 px soft edge */}
+                      <motion.circle cx={FX} cy={FY} r="22" fill="#fff6e0"
+                        filter="url(#crackglow)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.22, 0.14, 0.28, 0.16, 0.24] }}
+                        transition={{ duration: 3.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
                       />
-                      <motion.circle cx={FX} cy={FY} r="14" fill="none" stroke="#ffe8a0" strokeWidth="1.8"
-                        initial={{ opacity: 0, scale: 0.1 }}
-                        animate={{ opacity: [0.65, 0], scale: [0.4, 2.6] }}
-                        transition={{ duration: 0.75, ease: 'easeOut', repeat: Infinity, delay: 0.07 }}
+                      {/* Mote 1 — upper crack */}
+                      <motion.circle cx={FX-3} cy={18} r="1.2" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.70, 0.10, 0.85, 0.20, 0.60, 0] }}
+                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.00 }}
+                      />
+                      {/* Mote 2 — upper-mid crack */}
+                      <motion.circle cx={FX+2} cy={38} r="0.9" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.50, 0.80, 0.10, 0.70, 0.30, 0] }}
+                        transition={{ duration: 3.2, ease: 'easeInOut', repeat: Infinity, delay: 0.35 }}
+                      />
+                      {/* Mote 3 — junction */}
+                      <motion.circle cx={FX} cy={FY} r="1.5" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.90, 0.30, 0.65, 0.10, 0.80, 0] }}
+                        transition={{ duration: 2.5, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
+                      />
+                      {/* Mote 4 — lower-mid crack */}
+                      <motion.circle cx={FX+4} cy={98} r="1.0" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.40, 0.90, 0.20, 0.70, 0.10, 0] }}
+                        transition={{ duration: 3.6, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
+                      />
+                      {/* Mote 5 — lower crack */}
+                      <motion.circle cx={FX-2} cy={138} r="1.1" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.60, 0.10, 0.80, 0.30, 0.50, 0] }}
+                        transition={{ duration: 2.9, ease: 'easeInOut', repeat: Infinity, delay: 0.80 }}
                       />
                     </>
                   )}
@@ -1186,6 +1240,15 @@ export function LuminarySummonCutscene({
                   {/* ── Branch 2: lower-left diagonal from junction (secondcrack+) ── */}
                   {(isSecondCrack || isCracking) && (
                     <>
+                      {/* Seam wound glow for branch 2 */}
+                      <motion.path
+                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
+                        stroke="#ffe8a0" strokeWidth="18" fill="none" strokeLinecap="round"
+                        filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.07, 0.11] }}
+                        transition={{ duration: 0.60, ease: 'easeOut' }}
+                      />
                       <motion.path
                         d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
                         stroke="white" strokeWidth="1.5" fill="none" filter="url(#cgb)"
@@ -1199,6 +1262,17 @@ export function LuminarySummonCutscene({
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.20, 0.36] }}
                         transition={{ duration: 0.55, delay: 0.05, ease: 'easeOut' }}
+                      />
+                      {/* Ember motes along branch 2 */}
+                      <motion.circle cx={Math.round(BOARD_CARD_W*0.44)} cy={Math.round(BOARD_CARD_H*0.52)} r="1.0" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.60, 0.10, 0.75, 0.20, 0] }}
+                        transition={{ duration: 3.0, ease: 'easeInOut', repeat: Infinity, delay: 0.10 }}
+                      />
+                      <motion.circle cx={Math.round(BOARD_CARD_W*0.26)} cy={Math.round(BOARD_CARD_H*0.72)} r="0.8" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.40, 0.80, 0.15, 0.60, 0] }}
+                        transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.50 }}
                       />
                       {/* Faint rays seeping through at secondcrack */}
                       <motion.line x1={FX} y1={FY} x2={FX} y2={0}
@@ -1266,14 +1340,13 @@ export function LuminarySummonCutscene({
                         animate={{ opacity: [0, 0.36, 0.16, 0.48, 0.14] }}
                         transition={{ repeat: Infinity, duration: 0.54, ease: 'easeInOut', delay: 0.34 }}
                       />
-                      {/* Pulsing junction orb */}
-                      <motion.circle cx={FX} cy={FY} r="3" fill="white"
-                        animate={{ opacity: [0.5, 1.0, 0.52, 1.0], scale: [1, 1.5, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.48 }}
-                      />
-                      <motion.circle cx={FX} cy={FY} r="9" fill="none" stroke="#ffe8a0" strokeWidth="1.5"
-                        animate={{ opacity: [0, 0.58, 0], scale: [0.4, 1.8] }}
-                        transition={{ repeat: Infinity, duration: 0.62, delay: 0.07 }}
+                      {/* Non-repeating junction flare: fires once on cracking entry.   */}
+                      {/* A burst of convergent light — organic, not a pulsing marker.  */}
+                      <motion.circle cx={FX} cy={FY} r="16" fill="#fff6e0"
+                        filter="url(#crackglow)"
+                        initial={{ opacity: 0, scale: 0.3 }}
+                        animate={{ opacity: [0, 0.50, 0.22], scale: [0.3, 1.6, 1.0] }}
+                        transition={{ duration: 0.65, ease: 'easeOut' }}
                       />
                     </>
                   )}
