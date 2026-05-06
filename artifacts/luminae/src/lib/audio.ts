@@ -10,6 +10,16 @@
 
 type GemKey = 'ruby'|'sapphire'|'emerald'|'onyx'|'pearl'|'flux';
 
+// Luminary summon cutscene — pre-built MP3 assets, played at their phase beat times.
+// Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
+const LUMINARY_SFX = {
+  firstCrack:       new URL('../assets/audio/luminary/First Crackmp3.mp3',     import.meta.url).href,
+  secondCrack:      new URL('../assets/audio/luminary/Second Crack.mp3',       import.meta.url).href,
+  deepImpact:       new URL('../assets/audio/luminary/Deep Impact.mp3',        import.meta.url).href,
+  glassShatter:     new URL('../assets/audio/luminary/Glass Shatter.mp3',      import.meta.url).href,
+  cosmicPortalBoom: new URL('../assets/audio/luminary/Cosmic Portal Boom.mp3', import.meta.url).href,
+};
+
 // Pentatonic-adjacent frequencies per gem — each has its own "voice"
 const GEM_FREQS: Record<GemKey, number> = {
   ruby:     659.25,  // E5 — bright, fiery
@@ -438,6 +448,33 @@ class GameAudio {
     o.stop(startTime + dur + 0.05);
   }
 
+  /**
+   * Fetch, decode, and play an MP3 at an absolute AudioContext time.
+   * Fire-and-forget: await not required at the call site.
+   * Returns silently if the scheduled window has already passed or audio is muted.
+   */
+  private async scheduleMp3(url: string, scheduledTime: number, volume: number): Promise<void> {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const resp = await fetch(url);
+      const arrayBuf = await resp.arrayBuffer();
+      const audioBuf = await ctx.decodeAudioData(arrayBuf);
+      if (this.muted) return; // re-check after async gap
+      const now = ctx.currentTime;
+      if (now > scheduledTime + 0.6) return; // missed the window; skip silently
+      const src  = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      src.buffer = audioBuf;
+      gain.gain.value = volume;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(Math.max(now, scheduledTime));
+    } catch (e) {
+      console.warn('[Luminae] MP3 schedule failed', e);
+    }
+  }
+
   // ── Luminary Summon Cutscene ─────────────────────────────────────────────
   // All sounds are pre-scheduled at AudioContext times matching the visual
   // phase durations in LuminarySummonCutscene.  Routed through a shared
@@ -599,6 +636,16 @@ class GameAudio {
         const dur = Math.max(200, 1600 - i * 80);
         this.osc(ctx, f, 'sine', s(at), s(at + dur), Math.max(0.008, 0.036 - i * 0.004), 0.012, D);
       });
+
+      // ── MP3 sound effects — fired at their exact phase beat times ───────
+      // Each file is fetched+decoded async and scheduled precisely on the
+      // AudioContext timeline. Decode typically completes well within the
+      // ~3.4 s gap before the first beat (CRACK1).
+      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,        0.80);
+      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,        0.76);
+      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,        0.90);
+      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,  0.82);
+      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,        0.88);
 
     } catch (e) {
       console.warn('[Luminae] Summon cutscene audio failed', e);
