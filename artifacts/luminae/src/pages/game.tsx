@@ -355,15 +355,86 @@ function LuminaryClaimedPortal({
       onClick={canToggle ? handleToggle : undefined}
       {...(canToggle ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
     >
-      {/* ── Opening spiral burst */}
+      {/* ── Opening spiral burst ── */}
       {fresh && (
-        <motion.div
-          className="absolute pointer-events-none"
-          style={{ inset: -24, background: conic, filter: 'blur(22px)' }}
-          initial={{ opacity: 0, rotate: 0, scale: 0.1 }}
-          animate={{ opacity: [0, 0.72, 0], rotate: 540, scale: [0.1, 1.5, 1.0] }}
-          transition={{ duration: 0.96, ease: [0.16, 0.8, 0.3, 1] }}
-        />
+        <>
+          {/* Conic vortex bloom */}
+          <motion.div
+            className="absolute pointer-events-none"
+            style={{ inset: -24, background: conic, filter: 'blur(22px)' }}
+            initial={{ opacity: 0, rotate: 0, scale: 0.1 }}
+            animate={{ opacity: [0, 0.72, 0], rotate: 540, scale: [0.1, 1.5, 1.0] }}
+            transition={{ duration: 0.96, ease: [0.16, 0.8, 0.3, 1] }}
+          />
+
+          {/* Reality crack lines — lightning SVG appearing at impact then fading */}
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 1, 0] }}
+            transition={{ duration: 0.82, times: [0, 0.04, 0.38, 1], ease: 'easeOut' }}
+          >
+            <svg width="112" height="160" viewBox="0 0 112 160" className="w-full h-full overflow-visible">
+              {/* Main lightning bolt — thick, upward, pronounced zigzag */}
+              <polyline
+                points="56,70 50,54 62,40 53,24 61,10 49,0"
+                stroke={g2} strokeWidth="1.6" fill="none"
+                strokeLinecap="round" strokeLinejoin="round"
+                style={{ filter: `drop-shadow(0 0 4px white) drop-shadow(0 0 8px ${g1})` }}
+              />
+              {/* Branch off the main bolt */}
+              <polyline points="62,40 74,32 82,18" stroke={g2} strokeWidth="0.9" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
+              <polyline points="53,24 44,20 36,12" stroke={g2} strokeWidth="0.7" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
+              {/* Right radial crack */}
+              <polyline points="56,70 70,64 82,70 98,62 112,66" stroke="white" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75, filter: `drop-shadow(0 0 2px ${g1})` }} />
+              {/* Left radial crack */}
+              <polyline points="56,70 42,76 28,70 12,75 0,72" stroke="white" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, filter: `drop-shadow(0 0 2px ${g1})` }} />
+              {/* Down-right crack */}
+              <polyline points="56,70 66,84 60,102 70,122 63,148 70,160" stroke="white" strokeWidth="0.65" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.65, filter: `drop-shadow(0 0 2px ${g1})` }} />
+              {/* Down-left crack */}
+              <polyline points="56,70 44,86 50,106 42,132 48,160" stroke="white" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, filter: `drop-shadow(0 0 2px ${g1})` }} />
+              {/* Upper-right diagonal */}
+              <polyline points="56,70 66,56 74,44 70,28 80,14 88,0" stroke="white" strokeWidth="0.65" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, filter: `drop-shadow(0 0 2px ${g1})` }} />
+              {/* Thin hairline cracks */}
+              <polyline points="56,70 64,72 74,68 86,74 100,70" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.45 }} />
+              <polyline points="56,70 48,62 38,66 24,62 8,65" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.45 }} />
+              <polyline points="56,70 60,82 56,96 62,114 58,136" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.4 }} />
+              <polyline points="56,70 50,76 40,72 26,78 10,75" stroke="white" strokeWidth="0.3" fill="none" style={{ opacity: 0.35 }} />
+              <polyline points="56,70 68,78 80,74 96,80" stroke="white" strokeWidth="0.3" fill="none" style={{ opacity: 0.35 }} />
+              {/* Spider-web micro-cracks near the bolt tip */}
+              <polyline points="61,10 56,6 64,2" stroke="white" strokeWidth="0.4" fill="none" style={{ opacity: 0.5 }} />
+              <polyline points="49,0 43,4 38,0" stroke="white" strokeWidth="0.4" fill="none" style={{ opacity: 0.4 }} />
+            </svg>
+          </motion.div>
+
+          {/* Falling glass shards */}
+          {([
+            { x: 46, y: 52, dx: -20, dy: 58, rot: -50, w: 9,  h: 7,  clip: '0% 0%,100% 20%,80% 100%', delay: 0.06 },
+            { x: 60, y: 46, dx:  25, dy: 72, rot:  65, w: 11, h: 8,  clip: '50% 0%,100% 90%,0% 100%', delay: 0.10 },
+            { x: 50, y: 36, dx:  -6, dy: 88, rot: -28, w: 7,  h: 5,  clip: '20% 0%,100% 40%,0% 100%', delay: 0.05 },
+            { x: 60, y: 57, dx:  32, dy: 56, rot:  82, w: 8,  h: 6,  clip: '0% 10%,100% 0%,90% 100%', delay: 0.14 },
+            { x: 42, y: 62, dx: -28, dy: 50, rot: -72, w: 10, h: 7,  clip: '50% 0%,100% 80%,10% 100%', delay: 0.09 },
+            { x: 66, y: 60, dx:  20, dy: 78, rot:  48, w: 7,  h: 6,  clip: '0% 0%,100% 30%,70% 100%', delay: 0.17 },
+            { x: 48, y: 40, dx: -38, dy: 66, rot: -58, w: 6,  h: 5,  clip: '30% 0%,100% 60%,0% 100%', delay: 0.08 },
+            { x: 62, y: 65, dx:  14, dy: 90, rot:  38, w: 9,  h: 7,  clip: '10% 0%,100% 20%,60% 100%', delay: 0.13 },
+          ] as const).map((s, i) => (
+            <motion.div
+              key={i}
+              className="absolute pointer-events-none z-20"
+              style={{
+                left: s.x, top: s.y,
+                width: s.w, height: s.h,
+                clipPath: `polygon(${s.clip})`,
+                background: `linear-gradient(135deg, #ffffffcc 0%, ${g1}cc 55%, ${g2}66 100%)`,
+                boxShadow: `0 0 ${s.w + 2}px ${g1}88`,
+              }}
+              initial={{ opacity: 0, x: 0, y: 0, rotate: 0, scale: 1 }}
+              animate={{ opacity: [0, 1, 0.8, 0], x: s.dx, y: s.dy, rotate: s.rot, scale: 0.2 }}
+              transition={{ duration: 0.88, delay: s.delay, ease: 'easeIn',
+                opacity: { duration: 0.88, delay: s.delay, times: [0, 0.08, 0.5, 1] } }}
+            />
+          ))}
+        </>
       )}
       {/* Outer rotating colour ring */}
       <motion.div
