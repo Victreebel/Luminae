@@ -713,11 +713,11 @@ const BOARD_CARD_H = 160;
 const ENT_W = 320;
 const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 
-// Idle-state entity overlay: hovers above the claimed Luminary panel card.
+// Idle-state entity overlay: sits directly over the claimed Luminary panel card.
 // Width matches the card; height is 1.25× the card so the full portrait figure
-// is visible.  The overlay is anchored so ~80 % of IDLE_H sits above the card
-// top edge and only the bottom ~20 % (the feet / base) overlaps the card art
-// — a mask gradient fades that overlap to transparent.
+// is visible without cropping.  The overlay is centred on the card centre so
+// the entity fills the card area; a mask gradient fades the lower portion so
+// the card's name / requirements row remains legible underneath.
 const IDLE_W = BOARD_CARD_W;                     // 112
 const IDLE_H = Math.round(BOARD_CARD_H * 1.25);  // ≈ 200
 
@@ -1873,11 +1873,9 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
 
   if (!cardPos || !startViewRef.current) return null;
 
-  // Outer div is fixed; entity floats above the card.
-  // Anchor: bottom of overlay sits ~20 % of IDLE_H below the card's top edge
-  // so the entity hovers above the panel with only its feet/base overlapping.
+  // Outer div is fixed, centred on the card so the entity sits directly over it.
   const destX = cardPos.x - IDLE_W / 2;
-  const destY = cardPos.y - BOARD_CARD_H / 2 - Math.round(IDLE_H * 0.80);
+  const destY = cardPos.y - IDLE_H / 2;
 
   // Inner motion.div initial offset: visually centres the entity at the
   // viewport centre (where the cutscene entity was), relative to the outer div.
@@ -1945,10 +1943,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 objectFit: 'cover',
                 objectPosition: 'center top',
                 display: 'block',
-                // Fade to transparent near the bottom so the feet/base blend
-                // smoothly into the card art below; ~80% of entity is opaque.
-                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 38%, black 20%, rgba(0,0,0,0.92) 52%, rgba(0,0,0,0.55) 72%, rgba(0,0,0,0.12) 86%, transparent 95%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 38%, black 20%, rgba(0,0,0,0.92) 52%, rgba(0,0,0,0.55) 72%, rgba(0,0,0,0.12) 86%, transparent 95%)',
+                // Fade to transparent in the lower third so the card's name /
+                // requirements row stays legible underneath the entity.
+                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
               }}
             />
           ) : (
