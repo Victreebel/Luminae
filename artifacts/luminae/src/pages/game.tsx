@@ -29,7 +29,7 @@ import { getAvatarForPlayer } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LUMINARY_VISUALS } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS } from '@/lib/luminaryAssets';
 import cardBackLogo from '@assets/generated_images/luminae_card_back_logo.png';
 const gemIcon = "/icon_gem.svg";
 
@@ -420,6 +420,8 @@ export default function GameBoard() {
     id: string; name: string; domain: string; lumens: number; flavor: string;
     cardRect?: { cx: number; cy: number; w: number };
   }>>([]);
+  // IDs of luminaries claimed in this session — their entity overlay persists.
+  const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -2729,10 +2731,25 @@ export default function GameBoard() {
             lumens={summonQueue[0].lumens}
             flavor={summonQueue[0].flavor}
             cardRect={summonQueue[0].cardRect}
-            onComplete={() => setSummonQueue(q => q.slice(1))}
+            onComplete={(() => {
+              const completedId = summonQueue[0].id;
+              return () => {
+                setSummonQueue(q => q.slice(1));
+                setClaimedThisSession(prev =>
+                  prev.includes(completedId) ? prev : [...prev, completedId]
+                );
+              };
+            })()}
           />
         )}
       </AnimatePresence>
+
+      {/* Persistent entity overlays — one per luminary claimed this session.
+          Each overlay flies from the viewport centre back to its panel card
+          and then idles there with breathing / floating animations. */}
+      {claimedThisSession.map(lumId => (
+        <LuminaryIdleOverlay key={lumId} luminaryId={lumId} />
+      ))}
 
       {/* Dev test panel — visible in development to preview each Luminary cutscene */}
       {import.meta.env.DEV && (

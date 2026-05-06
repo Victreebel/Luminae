@@ -713,6 +713,12 @@ const BOARD_CARD_H = 160;
 const ENT_W = 320;
 const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 
+// Idle-state entity overlay: settles back onto the claimed Luminary panel card.
+// Matches card width exactly; height covers ~70 % of card so the name/claim
+// row at the bottom stays legible beneath the transparent edge of the mask.
+const IDLE_W = BOARD_CARD_W;                    // 112
+const IDLE_H = Math.round(BOARD_CARD_H * 0.72); // ≈ 115
+
 // Fault-line junction pixel coords inside the vessel's SVG viewBox
 // (viewBox matches BOARD_CARD_W × BOARD_CARD_H)
 const FX = Math.round(BOARD_CARD_W * 0.50); // 56 — junction x
@@ -1753,6 +1759,179 @@ export function LuminarySummonCutscene({
         tap to skip
       </div>
 
+    </div>
+  );
+}
+
+// ── LuminaryIdleOverlay ──────────────────────────────────────────────────────
+// After the summon cutscene completes the entity flies back to its panel card
+// and remains there as a living guardian for the rest of the game.
+//
+// Mount lifecycle:
+//   1. Component mounts with cardPos=null → renders nothing.
+//   2. useEffect measures [data-luminary-id] immediately; sets cardPos.
+//   3. Component renders: outer <div> is fixed at the card's viewport position.
+//      Inner <motion.div> starts at a large offset (viewport centre − card pos)
+//      and at ENT_W/IDLE_W scale, then animates to (0,0) scale=1 — the return flight.
+//   4. After 1.2 s the idle loop begins: gentle y-float and aura pulse.
+//   5. Scroll/resize listeners keep the outer div tracking the card.
+//
+// The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
+// of the card (name, claim tag) stays legible underneath the transparent edge.
+export function LuminaryIdleOverlay({ luminaryId }: { luminaryId: string }) {
+  const vis = getLuminaryVisuals(luminaryId);
+  const { EntityArt, primaryColor, glowColor } = vis;
+  const { entityCutout } = getLuminaryImageAssets(luminaryId);
+
+  const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
+  const [isIdle, setIsIdle] = useState(false);
+
+  // Viewport centre captured the moment cardPos first becomes non-null.
+  // This is where the cutscene entity was sitting, so it's the correct
+  // start-point of the return-flight animation.
+  const startViewRef = useRef<{ x: number; y: number } | null>(null);
+
+  // One-shot idle timer — started when cardPos first arrives, not retriggered
+  // by subsequent scroll-induced cardPos updates.
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let animFrame = 0;
+    const scrollTargets: Element[] = [];
+
+    const measure = () => {
+      const el = document.querySelector(
+        `[data-luminary-id="${luminaryId}"]`
+      ) as HTMLElement | null;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) return;
+      setCardPos(prev => {
+        if (!prev && !startViewRef.current) {
+          startViewRef.current = {
+            x: window.innerWidth  / 2,
+            y: window.innerHeight / 2,
+          };
+        }
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+    };
+
+    const onScroll = () => {
+      cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(measure);
+    };
+
+    measure();
+    const t = setTimeout(measure, 60); // re-check after render flush
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    document.querySelectorAll('[data-game-board], main').forEach(el => {
+      el.addEventListener('scroll', onScroll, { passive: true });
+      scrollTargets.push(el);
+    });
+
+    return () => {
+      clearTimeout(t);
+      cancelAnimationFrame(animFrame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      scrollTargets.forEach(el => el.removeEventListener('scroll', onScroll));
+    };
+  }, [luminaryId]);
+
+  // Start the idle loop 1.2 s after cardPos first arrives (once only).
+  useEffect(() => {
+    if (!cardPos || idleTimerRef.current) return;
+    idleTimerRef.current = setTimeout(() => setIsIdle(true), 1200);
+  }, [cardPos]);
+
+  useEffect(() => () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+  }, []);
+
+  if (!cardPos || !startViewRef.current) return null;
+
+  // Outer div is fixed at card position; tracks scroll instantly.
+  const destX = cardPos.x - IDLE_W / 2;
+  const destY = cardPos.y - IDLE_H / 2;
+
+  // Inner motion.div initial offset: visually centres the entity at the
+  // viewport centre (where the cutscene entity was), relative to the outer div.
+  const initX = startViewRef.current.x - destX - IDLE_W / 2;
+  const initY = startViewRef.current.y - destY - IDLE_H / 2;
+  const initScale = ENT_W / IDLE_W; // ≈ 2.86 — matches cutscene entity visual size
+
+  return (
+    <div
+      className="fixed pointer-events-none"
+      style={{ zIndex: 8500, left: destX, top: destY, width: IDLE_W, height: IDLE_H }}
+    >
+      {/* ── Return flight: centre of viewport → card position ── */}
+      <motion.div
+        style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
+        initial={{ x: initX, y: initY, scale: initScale, opacity: 0 }}
+        animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+        transition={{
+          x:       { duration: 1.15, ease: [0.16, 1, 0.3, 1] },
+          y:       { duration: 1.15, ease: [0.16, 1, 0.3, 1] },
+          scale:   { duration: 1.20, ease: [0.16, 1, 0.3, 1] },
+          opacity: { duration: 0.40, ease: 'easeOut' },
+        }}
+      >
+        {/* Colored aura — pulses once idle */}
+        <motion.div
+          style={{
+            position: 'absolute',
+            inset: -10,
+            borderRadius: 14,
+            background: `radial-gradient(ellipse at 50% 38%, ${glowColor}55 0%, ${primaryColor}28 55%, transparent 80%)`,
+            filter: 'blur(12px)',
+          }}
+          animate={isIdle
+            ? { opacity: [0.55, 0.92, 0.55], scale: [1, 1.12, 1] }
+            : { opacity: 0.75 }
+          }
+          transition={isIdle ? {
+            opacity: { repeat: Infinity, duration: 3.8, ease: 'easeInOut' },
+            scale:   { repeat: Infinity, duration: 4.6, ease: 'easeInOut' },
+          } : {}}
+        />
+
+        {/* Entity art — floats and breathes once idle */}
+        <motion.div
+          style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
+          animate={isIdle
+            ? { y: [0, -5, 0], scale: [1, 1.022, 1] }
+            : {}
+          }
+          transition={isIdle ? {
+            y:     { repeat: Infinity, duration: 3.3, ease: 'easeInOut', delay: 0.3 },
+            scale: { repeat: Infinity, duration: 3.9, ease: 'easeInOut', delay: 0.1 },
+          } : {}}
+        >
+          {entityCutout ? (
+            <img
+              src={entityCutout}
+              alt=""
+              draggable={false}
+              style={{
+                width: IDLE_W,
+                height: IDLE_H,
+                objectFit: 'cover',
+                objectPosition: 'center top',
+                display: 'block',
+                // Fade to transparent toward the bottom so the card's name/
+                // claim row remains legible underneath.
+                maskImage: 'radial-gradient(ellipse 88% 95% at 50% 34%, black 18%, rgba(0,0,0,0.90) 44%, rgba(0,0,0,0.42) 66%, transparent 84%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 88% 95% at 50% 34%, black 18%, rgba(0,0,0,0.90) 44%, rgba(0,0,0,0.42) 66%, transparent 84%)',
+              }}
+            />
+          ) : (
+            <EntityArt size={IDLE_W} />
+          )}
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
