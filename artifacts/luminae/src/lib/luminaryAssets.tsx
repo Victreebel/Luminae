@@ -702,7 +702,7 @@ export function LuminaryPanelArt({
 
 type CutscenePhase =
   | 'establish' | 'panning' | 'focusing' | 'intro' | 'zooming'
-  | 'pressure' | 'firstcrack' | 'leaking' | 'cracking'
+  | 'pressure' | 'firstcrack' | 'leaking' | 'secondcrack' | 'cracking'
   | 'shattering' | 'flashing' | 'revealed' | 'fading' | 'done';
 
 // Board-card dimensions: Tailwind w-28 h-40 = 112 × 160 px
@@ -742,25 +742,26 @@ const PANEL_PIECES = [
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
-  establish:  600,
-  panning:    750,  // board DOM pans as a unit toward the card (overlay=0)
-  focusing:   600,  // camera layer zooms in on the now-centred card
-  intro:      350,
-  zooming:    650,
-  pressure:   500,
-  firstcrack: 600,
-  leaking:    550,
-  cracking:   900,
+  establish:    600,
+  panning:      750,  // board DOM pans as a unit toward the card (overlay=0)
+  focusing:     600,  // camera layer zooms in on the now-centred card
+  intro:        350,
+  zooming:      650,
+  pressure:     500,
+  firstcrack:   750,  // primary fault + branch draw, then hold for suspense
+  leaking:      850,  // energy bleeds through; sustained quiet-before-storm
+  secondcrack:  650,  // second branch crack appears; faint rays start seeping
+  cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
   shattering: 1000,
-  flashing:   500,
+  flashing:    500,
   revealed:   2700,
-  fading:     550,
-  done:       0,
+  fading:      550,
+  done:           0,
 };
 
 const PHASES: CutscenePhase[] = [
   'establish', 'panning', 'focusing', 'intro', 'zooming',
-  'pressure', 'firstcrack', 'leaking', 'cracking',
+  'pressure', 'firstcrack', 'leaking', 'secondcrack', 'cracking',
   'shattering', 'flashing', 'revealed', 'fading', 'done',
 ];
 
@@ -819,19 +820,20 @@ export function LuminarySummonCutscene({
   const isIntro      = phase === 'intro';
   const isZooming    = phase === 'zooming';
   const isPressure   = phase === 'pressure';
-  const isFirstCrack = phase === 'firstcrack';
-  const isLeaking    = phase === 'leaking';
-  const isCracking   = phase === 'cracking';
-  const isShattering = phase === 'shattering' || phase === 'flashing';
-  const isFlashing   = phase === 'flashing';
-  const isRevealed   = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
+  const isFirstCrack  = phase === 'firstcrack';
+  const isLeaking     = phase === 'leaking';
+  const isSecondCrack = phase === 'secondcrack';
+  const isCracking    = phase === 'cracking';
+  const isShattering  = phase === 'shattering' || phase === 'flashing';
+  const isFlashing    = phase === 'flashing';
+  const isRevealed    = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
   const isRevealedActive = phase === 'revealed';
-  const isFading     = phase === 'fading';
+  const isFading      = phase === 'fading';
   // Vessel appears at intro — camera has fully arrived at the card by then.
   // Keeping it out of focusing prevents the proxy from overlapping the real card
   // during board-camera travel, which caused the "duplicate panning" artifact.
-  const isVessel     = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
-  const hasCracks    = isFirstCrack || isLeaking || isCracking;
+  const isVessel  = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
+  const hasCracks = isFirstCrack || isLeaking || isSecondCrack || isCracking;
 
   // Stores the board element's NATURAL top (before any pan transform is applied).
   // Needed to compute a correct transform-origin during the focusing scale phase,
@@ -856,12 +858,16 @@ export function LuminarySummonCutscene({
     ) as HTMLElement | null;
     if (!el) return;
     const hide = phase !== 'establish' && phase !== 'panning' && phase !== 'focusing' && phase !== 'done';
+    // Smooth cross-fade with vessel: a CSS transition prevents the hard blink
+    // that occurs when the real card disappears and the vessel fades in at intro.
+    el.style.transition = hide ? 'opacity 0.24s ease' : 'opacity 0s';
     el.style.opacity = hide ? '0' : '';
     // Tremble during board-visible phases; vessel's own shake takes over at intro
     const tremble = phase === 'establish' || phase === 'panning' || phase === 'focusing';
     el.classList.toggle('luminary-tremble', tremble);
     return () => {
       el.style.opacity = '';
+      el.style.transition = '';
       el.classList.remove('luminary-tremble');
     };
   }, [phase, luminaryId]);
@@ -944,37 +950,43 @@ export function LuminarySummonCutscene({
   const camScale = camZoomed ? targetScale : 1;
 
   // ── Shake profile (internal-pressure trembling, replaces scale-pulse) ───────
-  // Five intensity levels: intro/zooming → pressure → firstcrack → leaking → cracking.
+  // Six intensity levels: intro/zooming → pressure → firstcrack → leaking → secondcrack → cracking.
   // Irregular keyframe arrays make the motion feel non-rhythmic / organic.
-  const shakeDur = isCracking ? 0.09 : isLeaking ? 0.10 : isFirstCrack ? 0.11 : isPressure ? 0.12 : 0.13;
-  const glowDur  = isCracking ? 0.45 : isLeaking ? 0.55 : isFirstCrack ? 0.65 : isPressure ? 0.75 : 0.80;
+  const shakeDur = isCracking ? 0.08 : isSecondCrack ? 0.09 : isLeaking ? 0.10 : isFirstCrack ? 0.11 : isPressure ? 0.12 : 0.13;
+  const glowDur  = isCracking ? 0.40 : isSecondCrack ? 0.48 : isLeaking ? 0.55 : isFirstCrack ? 0.65 : isPressure ? 0.75 : 0.80;
   const shakeX: number[] = isCracking
     ? [-4, 2.5, -1.8, 4.2, -2.2, 1.5, -3, 0]
-    : isLeaking
-      ? [-3, 2, -1.5, 3.5, -1.8, 1.2, 0]
-      : isFirstCrack
-        ? [-2.5, 1.8, -1, 2.8, -1.5, 0.8, 0]
-        : isPressure
-          ? [-2, 1.5, -0.9, 2.2, -1.2, 0.7, 0]
-          : [-1.5, 1, -0.8, 1.8, -1, 0.5, 0];
+    : isSecondCrack
+      ? [-3.5, 2.2, -1.5, 3.8, -2, 1.3, -2.5, 0]
+      : isLeaking
+        ? [-3, 2, -1.5, 3.5, -1.8, 1.2, 0]
+        : isFirstCrack
+          ? [-2.5, 1.8, -1, 2.8, -1.5, 0.8, 0]
+          : isPressure
+            ? [-2, 1.5, -0.9, 2.2, -1.2, 0.7, 0]
+            : [-1.5, 1, -0.8, 1.8, -1, 0.5, 0];
   const shakeY: number[] = isCracking
     ? [1.5, -2.5, 2, -1, 2.5, -1.5, 1, 0]
-    : isLeaking
-      ? [1, -2, 1.5, -0.8, 2, -1.2, 0]
-      : isFirstCrack
-        ? [0.8, -1.5, 1.2, -0.6, 1.5, -1, 0]
-        : isPressure
-          ? [0.6, -1.2, 1, -0.5, 1.3, -0.8, 0]
-          : [0.5, -1, 0.8, -0.4, 1, -0.6, 0];
+    : isSecondCrack
+      ? [1.2, -2.2, 1.8, -0.9, 2.2, -1.4, 0.8, 0]
+      : isLeaking
+        ? [1, -2, 1.5, -0.8, 2, -1.2, 0]
+        : isFirstCrack
+          ? [0.8, -1.5, 1.2, -0.6, 1.5, -1, 0]
+          : isPressure
+            ? [0.6, -1.2, 1, -0.5, 1.3, -0.8, 0]
+            : [0.5, -1, 0.8, -0.4, 1, -0.6, 0];
   const shakeR: number[] = isCracking
     ? [-0.8, 0.5, -1, 0.6, -0.5, 0.4, -0.7, 0]
-    : isLeaking
-      ? [-0.6, 0.4, -0.8, 0.5, -0.4, 0.3, 0]
-      : isFirstCrack
-        ? [-0.5, 0.3, -0.6, 0.4, -0.3, 0.2, 0]
-        : isPressure
-          ? [-0.35, 0.25, -0.45, 0.3, -0.2, 0.15, 0]
-          : [-0.25, 0.18, -0.3, 0.2, -0.15, 0.12, 0];
+    : isSecondCrack
+      ? [-0.7, 0.45, -0.9, 0.55, -0.45, 0.35, -0.6, 0]
+      : isLeaking
+        ? [-0.6, 0.4, -0.8, 0.5, -0.4, 0.3, 0]
+        : isFirstCrack
+          ? [-0.5, 0.3, -0.6, 0.4, -0.3, 0.2, 0]
+          : isPressure
+            ? [-0.35, 0.25, -0.45, 0.3, -0.2, 0.15, 0]
+            : [-0.25, 0.18, -0.3, 0.2, -0.15, 0.12, 0];
 
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
   const vesselGlow: [string, string, string] = isPressure
@@ -983,7 +995,9 @@ export function LuminarySummonCutscene({
       ? [`0 0 14px ${primaryColor}80`, `0 0 32px ${primaryColor}b0`, `0 0 14px ${primaryColor}80`]
       : isLeaking
         ? [`0 0 20px ${primaryColor}a0`, `0 0 42px ${primaryColor}d0, 0 0 12px #ffe8a050`, `0 0 20px ${primaryColor}a0`]
-        : [`0 0 26px ${primaryColor}c0`, `0 0 52px ${primaryColor}f0, 0 0 18px #ffe8a080`, `0 0 26px ${primaryColor}c0`];
+        : isSecondCrack
+          ? [`0 0 22px ${primaryColor}b0`, `0 0 48px ${primaryColor}e0, 0 0 16px #ffe8a068`, `0 0 22px ${primaryColor}b0`]
+          : [`0 0 26px ${primaryColor}c0`, `0 0 52px ${primaryColor}f0, 0 0 18px #ffe8a080`, `0 0 26px ${primaryColor}c0`];
 
   // Vessel is positioned at viewport centre — the board pan brings the card
   // there before the vessel appears, so they perfectly overlap.
@@ -1024,7 +1038,7 @@ export function LuminarySummonCutscene({
               width:  BOARD_CARD_W + 16,
               height: BOARD_CARD_H + 16,
               borderRadius: 14,
-              boxShadow: `0 0 0 2px ${primaryColor}88, 0 0 18px ${primaryColor}66, 0 0 42px ${primaryColor}33`,
+              boxShadow: `0 0 18px ${primaryColor}70, 0 0 42px ${primaryColor}40, 0 0 8px #ffe8a022`,
               background: `radial-gradient(ellipse at center, ${primaryColor}20 0%, transparent 72%)`,
             }}
           />
@@ -1058,7 +1072,7 @@ export function LuminarySummonCutscene({
                 height: BOARD_CARD_H,
                 borderRadius: 12,
               }}
-              initial={{ opacity: 0, scale: 0.97 }}
+              initial={{ opacity: 0 }}
               animate={{
                 opacity: 1,
                 scale: 1,
@@ -1093,10 +1107,11 @@ export function LuminarySummonCutscene({
                 >
                   <defs>
                     <filter id="cgb" x="-60%" y="-60%" width="220%" height="220%">
-                      <feGaussianBlur stdDeviation="1.5" result="b" />
+                      <feGaussianBlur stdDeviation="1.8" result="b" />
                       <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                     </filter>
-                    {isCracking && (
+                    {/* Ray gradients defined once secondcrack starts and persist */}
+                    {(isSecondCrack || isCracking) && (
                       <>
                         <linearGradient id="rayUp" x1="0" y1="1" x2="0" y2="0">
                           <stop offset="0%" stopColor="#ffe8a0" stopOpacity="0.92" />
@@ -1118,75 +1133,125 @@ export function LuminarySummonCutscene({
                     )}
                   </defs>
 
-                  {/* Phase 1: primary vertical fault (firstcrack+) */}
+                  {/* ── Primary vertical fault — thick, prominent (firstcrack+) ── */}
+                  {/* White core crack */}
                   <motion.path
-                    d={`M${FX},0 L${FX-5},${Math.round(FY*0.68)} L${FX},${FY} L${FX+5},${Math.round(FY*1.63)} L${FX-3},${BOARD_CARD_H}`}
-                    stroke="white" strokeWidth="1.1" fill="none" filter="url(#cgb)"
+                    d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
+                    stroke="white" strokeWidth="2.4" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.80, 0.90] }}
-                    transition={{ duration: 0.56, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0.92, 1.0] }}
+                    transition={{ duration: 0.72, ease: 'easeOut' }}
                   />
+                  {/* Gold glow halo */}
                   <motion.path
-                    d={`M${FX},0 L${FX-5},${Math.round(FY*0.68)} L${FX},${FY} L${FX+5},${Math.round(FY*1.63)} L${FX-3},${BOARD_CARD_H}`}
-                    stroke="#ffe8a0" strokeWidth="4" fill="none" strokeLinecap="round"
+                    d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
+                    stroke="#ffe8a0" strokeWidth="9" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.20, 0.36] }}
-                    transition={{ duration: 0.56, delay: 0.06, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0.30, 0.52] }}
+                    transition={{ duration: 0.72, delay: 0.06, ease: 'easeOut' }}
                   />
 
-                  {/* Phase 2: energy node at junction (leaking+) */}
-                  {(isLeaking || isCracking) && (
+                  {/* ── Branch 1: upper-right diagonal from junction (firstcrack+) ── */}
+                  <motion.path
+                    d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
+                    stroke="white" strokeWidth="1.6" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.78, 0.92] }}
+                    transition={{ duration: 0.58, delay: 0.20, ease: 'easeOut' }}
+                  />
+                  <motion.path
+                    d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
+                    stroke="#ffe8a0" strokeWidth="6" fill="none" strokeLinecap="round"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.22, 0.42] }}
+                    transition={{ duration: 0.58, delay: 0.24, ease: 'easeOut' }}
+                  />
+
+                  {/* ── Energy node at fault junction (leaking+) — settles and holds ── */}
+                  {(isLeaking || isSecondCrack || isCracking) && (
                     <>
                       <motion.circle cx={FX} cy={FY} r="5" fill="white"
                         initial={{ opacity: 0, scale: 0.2 }}
-                        animate={{ opacity: [0, 0.70, 0.92, 0.55], scale: [0.2, 1.2, 1.0] }}
-                        transition={{ duration: 0.44, ease: 'easeOut' }}
+                        animate={{ opacity: 0.85, scale: 1.0 }}
+                        transition={{ duration: 0.40, ease: 'easeOut' }}
                       />
-                      <motion.circle cx={FX} cy={FY} r="13" fill="none" stroke="#ffe8a0" strokeWidth="1.8"
+                      <motion.circle cx={FX} cy={FY} r="14" fill="none" stroke="#ffe8a0" strokeWidth="1.8"
                         initial={{ opacity: 0, scale: 0.1 }}
-                        animate={{ opacity: [0, 0.50, 0.25, 0], scale: [0.1, 1.7, 2.4] }}
-                        transition={{ duration: 0.82, ease: 'easeOut', delay: 0.07 }}
+                        animate={{ opacity: [0.65, 0], scale: [0.4, 2.6] }}
+                        transition={{ duration: 0.75, ease: 'easeOut', repeat: Infinity, delay: 0.07 }}
                       />
                     </>
                   )}
 
-                  {/* Phase 3: branch cracks + energy rays (cracking phase) */}
+                  {/* ── Branch 2: lower-left diagonal from junction (secondcrack+) ── */}
+                  {(isSecondCrack || isCracking) && (
+                    <>
+                      <motion.path
+                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
+                        stroke="white" strokeWidth="1.5" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.75, 0.90] }}
+                        transition={{ duration: 0.55, ease: 'easeOut' }}
+                      />
+                      <motion.path
+                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
+                        stroke="#ffe8a0" strokeWidth="6" fill="none" strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.20, 0.36] }}
+                        transition={{ duration: 0.55, delay: 0.05, ease: 'easeOut' }}
+                      />
+                      {/* Faint rays seeping through at secondcrack */}
+                      <motion.line x1={FX} y1={FY} x2={FX} y2={0}
+                        stroke="url(#rayUp)" strokeWidth="1.8"
+                        animate={{ opacity: [0, 0.38, 0.18, 0.44, 0.14] }}
+                        transition={{ repeat: Infinity, duration: 0.58, ease: 'easeOut' }}
+                        style={{ transformOrigin: `${FX}px ${FY}px` }}
+                      />
+                      <motion.line x1={FX} y1={FY} x2={FX} y2={BOARD_CARD_H}
+                        stroke="url(#rayDown)" strokeWidth="1.8"
+                        animate={{ opacity: [0, 0.30, 0.14, 0.38, 0.10] }}
+                        transition={{ repeat: Infinity, duration: 0.66, ease: 'easeOut', delay: 0.14 }}
+                        style={{ transformOrigin: `${FX}px ${FY}px` }}
+                      />
+                    </>
+                  )}
+
+                  {/* ── Multi-crack burst + full energy rays (cracking phase) ── */}
                   {isCracking && (
                     <>
                       {/* Horizontal branch across junction */}
                       <motion.path
-                        d={`M0,${FY} L${Math.round(FX*0.45)},${FY-10} L${FX},${FY} L${FX+Math.round(FX*0.75)},${FY+11} L${BOARD_CARD_W},${FY+4}`}
-                        stroke="white" strokeWidth="0.8" fill="none" filter="url(#cgb)"
+                        d={`M0,${FY} L${Math.round(FX*0.44)},${FY-10} L${FX},${FY} L${FX+Math.round(FX*0.76)},${FY+11} L${BOARD_CARD_W},${FY+4}`}
+                        stroke="white" strokeWidth="0.9" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.28, 0.52] }}
-                        transition={{ duration: 0.82, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.36, 0.58] }}
+                        transition={{ duration: 0.60, ease: 'easeOut' }}
                       />
-                      {/* Top-right diagonal branch */}
-                      <motion.path
-                        d={`M${BOARD_CARD_W},${Math.round(BOARD_CARD_H*0.17)} L${Math.round(FX*1.44)},${Math.round(FY*0.74)} L${FX},${FY}`}
-                        stroke="white" strokeWidth="0.55" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.16, 0.40] }}
-                        transition={{ duration: 0.68, delay: 0.17, ease: 'easeOut' }}
-                      />
-                      {/* Bottom-left diagonal branch */}
+                      {/* Bottom-left diagonal */}
                       <motion.path
                         d={`M0,${Math.round(BOARD_CARD_H*0.80)} L${Math.round(FX*0.68)},${Math.round(FY*1.80)} L${FX-3},${BOARD_CARD_H}`}
-                        stroke="white" strokeWidth="0.50" fill="none" filter="url(#cgb)"
+                        stroke="white" strokeWidth="0.65" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.14, 0.34] }}
-                        transition={{ duration: 0.62, delay: 0.28, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.20, 0.40] }}
+                        transition={{ duration: 0.55, delay: 0.18, ease: 'easeOut' }}
                       />
-
-                      {/* Energy rays shooting through the crevices */}
-                      <motion.line x1={FX} y1={FY} x2={FX-3} y2={0}
-                        stroke="url(#rayUp)" strokeWidth="2.5"
+                      {/* Top-right minor crack */}
+                      <motion.path
+                        d={`M${BOARD_CARD_W},${Math.round(BOARD_CARD_H*0.17)} L${Math.round(FX*1.44)},${Math.round(FY*0.74)} L${FX},${FY}`}
+                        stroke="white" strokeWidth="0.60" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.22, 0.44] }}
+                        transition={{ duration: 0.55, delay: 0.30, ease: 'easeOut' }}
+                      />
+                      {/* Full energy rays */}
+                      <motion.line x1={FX} y1={FY} x2={FX} y2={0}
+                        stroke="url(#rayUp)" strokeWidth="2.8"
                         animate={{ opacity: [0, 0.72, 0.45, 0.78, 0.32], scaleY: [0, 1, 0.9, 1] }}
                         transition={{ repeat: Infinity, duration: 0.46, ease: 'easeOut' }}
                         style={{ transformOrigin: `${FX}px ${FY}px` }}
                       />
-                      <motion.line x1={FX} y1={FY} x2={FX-3} y2={BOARD_CARD_H}
-                        stroke="url(#rayDown)" strokeWidth="2.5"
+                      <motion.line x1={FX} y1={FY} x2={FX} y2={BOARD_CARD_H}
+                        stroke="url(#rayDown)" strokeWidth="2.8"
                         animate={{ opacity: [0, 0.62, 0.40, 0.70, 0.28], scaleY: [0, 1, 0.9, 1] }}
                         transition={{ repeat: Infinity, duration: 0.52, ease: 'easeOut', delay: 0.11 }}
                         style={{ transformOrigin: `${FX}px ${FY}px` }}
@@ -1201,7 +1266,6 @@ export function LuminarySummonCutscene({
                         animate={{ opacity: [0, 0.36, 0.16, 0.48, 0.14] }}
                         transition={{ repeat: Infinity, duration: 0.54, ease: 'easeInOut', delay: 0.34 }}
                       />
-
                       {/* Pulsing junction orb */}
                       <motion.circle cx={FX} cy={FY} r="3" fill="white"
                         animate={{ opacity: [0.5, 1.0, 0.52, 1.0], scale: [1, 1.5, 1] }}
