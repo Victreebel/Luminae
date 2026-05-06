@@ -1662,6 +1662,7 @@ export default function GameBoard() {
 
       {/* ── Tab Content ── */}
       <main
+        data-game-board="true"
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         className="flex-1 overflow-y-auto overflow-x-hidden z-10"
         onPointerDown={() => {
@@ -2711,9 +2712,23 @@ export default function GameBoard() {
                 className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                 style={{ borderLeft: `3px solid ${v.primaryColor}` }}
                 onClick={() => {
+                  // Prefer exact card; fall back to any visible luminary; then
+                  // use a synthetic off-centre rect to demonstrate pan+zoom.
+                  let cardRect: { cx: number; cy: number; w: number } | undefined;
                   const el = document.querySelector(`[data-luminary-id="${v.id}"]`);
                   const rect = el?.getBoundingClientRect();
-                  const cardRect = rect ? { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width } : undefined;
+                  if (rect && rect.width > 0 && rect.height > 0) {
+                    cardRect = { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width };
+                  } else {
+                    const any = document.querySelector('[data-luminary-id]');
+                    const anyR = any?.getBoundingClientRect();
+                    if (anyR && anyR.width > 0) {
+                      cardRect = { cx: anyR.left + anyR.width / 2, cy: anyR.top + anyR.height / 2, w: anyR.width };
+                    } else {
+                      // Synthetic off-centre position so pan+zoom is visible in preview
+                      cardRect = { cx: Math.round(window.innerWidth * 0.22), cy: Math.round(window.innerHeight * 0.60), w: 112 };
+                    }
+                  }
                   setSummonQueue(q => [...q, {
                     id: v.id,
                     name: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),

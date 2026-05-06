@@ -701,7 +701,7 @@ export function LuminaryPanelArt({
 //     the original card frame. Aura extends 560 px — no rectangular clipping.
 
 type CutscenePhase =
-  | 'establish' | 'focusing' | 'intro' | 'zooming'
+  | 'establish' | 'panning' | 'focusing' | 'intro' | 'zooming'
   | 'pressure' | 'firstcrack' | 'leaking' | 'cracking'
   | 'shattering' | 'flashing' | 'revealed' | 'fading' | 'done';
 
@@ -743,7 +743,8 @@ const PANEL_PIECES = [
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   establish:  600,
-  focusing:   800,
+  panning:    750,  // board DOM pans as a unit toward the card (overlay=0)
+  focusing:   600,  // camera layer zooms in on the now-centred card
   intro:      350,
   zooming:    650,
   pressure:   500,
@@ -758,7 +759,7 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
 };
 
 const PHASES: CutscenePhase[] = [
-  'establish', 'focusing', 'intro', 'zooming',
+  'establish', 'panning', 'focusing', 'intro', 'zooming',
   'pressure', 'firstcrack', 'leaking', 'cracking',
   'shattering', 'flashing', 'revealed', 'fading', 'done',
 ];
@@ -813,6 +814,7 @@ export function LuminarySummonCutscene({
 
   // ── Phase booleans ────────────────────────────────────────────────────────
   const isEstablish  = phase === 'establish';
+  const isPanning    = phase === 'panning';
   const isFocusing   = phase === 'focusing';
   const isIntro      = phase === 'intro';
   const isZooming    = phase === 'zooming';
@@ -825,37 +827,70 @@ export function LuminarySummonCutscene({
   const isRevealed   = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
   const isRevealedActive = phase === 'revealed';
   const isFading     = phase === 'fading';
-  // Vessel visible from focusing onward so the card is seen growing in-place
+  // Vessel appears at focusing — by then the board has already panned the card to centre
   const isVessel     = isFocusing || isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isCracking;
   const hasCracks    = isFirstCrack || isLeaking || isCracking;
 
+  // ── Viewport + board-card geometry ───────────────────────────────────────
+  // Declared early so geometry values are available in the useEffects below.
+  const vw = typeof window !== 'undefined' ? window.innerWidth  : 375;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
+  const boardCx = cardRect ? cardRect.cx : vw / 2;
+  const boardCy = cardRect ? cardRect.cy : vh / 2;
+
   // ── Suppress the real board Luminary card during vessel/shatter/entity ───
-  // Hidden from 'focusing' onward — vessel appears simultaneously so there
-  // is never a gap where the card is invisible without the vessel in its place.
+  // Visible during establish + panning (board is the star), hidden from focusing
+  // onward when the vessel proxy takes over at viewport centre.
   useEffect(() => {
     const el = document.querySelector(
       `[data-luminary-id="${luminaryId}"]`
     ) as HTMLElement | null;
     if (!el) return;
-    const hide = phase !== 'establish' && phase !== 'done';
+    const hide = phase !== 'establish' && phase !== 'panning' && phase !== 'done';
     el.style.opacity = hide ? '0' : '';
     return () => { el.style.opacity = ''; };
   }, [phase, luminaryId]);
 
+  // ── Board DOM pan — travels the real game board toward the Luminary ───────
+  // Applies a CSS transform to [data-game-board] so the user sees the entire
+  // board sliding as a unit during 'panning'. Overlay stays at 0 so the real
+  // board is fully visible while the camera travels. Restored during shattering.
+  useEffect(() => {
+    const el = document.querySelector('[data-game-board]') as HTMLElement | null;
+    if (!el) return;
+    const panX = vw / 2 - boardCx;
+    const panY = vh / 2 - boardCy;
+
+    if (phase === 'establish' || phase === 'done') {
+      el.style.transition = '';
+      el.style.transform  = '';
+    } else if (phase === 'panning') {
+      el.style.transition = 'transform 0.75s cubic-bezier(0.16, 1, 0.3, 1)';
+      el.style.transform  = `translate(${panX}px, ${panY}px)`;
+    } else if (isShattering || isRevealed || isFading) {
+      el.style.transition = 'transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)';
+      el.style.transform  = '';
+    } else {
+      // focusing through cracking: hold the panned position, no re-animation
+      el.style.transition = '';
+      el.style.transform  = `translate(${panX}px, ${panY}px)`;
+    }
+
+    return () => {
+      el.style.transform  = '';
+      el.style.transition = '';
+    };
+  }, [phase, boardCx, boardCy, vw, vh, isShattering, isRevealed, isFading]);
+
   // ── Overlay opacity ───────────────────────────────────────────────────────
   const overlayOpacity =
     isEstablish      ? 0    :
+    isPanning        ? 0    :   // board fully visible while camera travels
     isFocusing       ? 0.52 :
     isFlashing       ? 0.32 :
     isRevealedActive ? 0.52 :
     isFading         ? 0    :
     0.88;
-
-  // ── Viewport + board-card geometry ───────────────────────────────────────
-  const vw = typeof window !== 'undefined' ? window.innerWidth  : 375;
-  const vh = typeof window !== 'undefined' ? window.innerHeight : 667;
-  const boardCx = cardRect ? cardRect.cx : vw / 2;
-  const boardCy = cardRect ? cardRect.cy : vh / 2;
 
   // Scale so board card fills ~65 % of shorter viewport axis
   const targetScale = Math.min(
@@ -864,9 +899,10 @@ export function LuminarySummonCutscene({
     3.8,
   );
 
-  // Camera: pure scale only — transformOrigin is pinned to the card's viewport
-  // position so the card stays fixed at (boardCx, boardCy) throughout the zoom
-  // while every other board element scales away from that anchor point.
+  // Camera: pure scale centred on viewport centre.
+  // By the time the camera zooms in, the board has already panned so the card
+  // is at (vw/2, vh/2). Scaling around the viewport centre therefore zooms
+  // directly into the card without any additional translate.
   const camZoomed =
     isFocusing || isIntro || isZooming ||
     isPressure || isFirstCrack || isLeaking || isCracking;
@@ -881,9 +917,10 @@ export function LuminarySummonCutscene({
         ? [`0 0 20px ${primaryColor}a0`, `0 0 42px ${primaryColor}d0, 0 0 12px #ffe8a050`, `0 0 20px ${primaryColor}a0`]
         : [`0 0 26px ${primaryColor}c0`, `0 0 52px ${primaryColor}f0, 0 0 18px #ffe8a080`, `0 0 26px ${primaryColor}c0`];
 
-  // Vessel top-left corner in board-layer coordinate space
-  const vesselLeft = boardCx - BOARD_CARD_W / 2;
-  const vesselTop  = boardCy - BOARD_CARD_H / 2;
+  // Vessel is positioned at viewport centre — the board pan brings the card
+  // there before the vessel appears, so they perfectly overlap.
+  const vesselLeft = vw / 2 - BOARD_CARD_W / 2;
+  const vesselTop  = vh / 2 - BOARD_CARD_H / 2;
 
   return (
     <div className="fixed inset-0 z-[9000] cursor-pointer" onClick={onComplete}>
@@ -896,45 +933,45 @@ export function LuminarySummonCutscene({
         style={{ background: 'rgba(4,2,16,1)' }}
       />
 
+      {/* ── Glow on real board card — outside camera layer ────────────────── */}
+      {/* Anchored at the card's original viewport position during establish.   */}
+      {/* Exits before panning so it doesn't drift from the moving card.        */}
+      <AnimatePresence>
+        {isEstablish && (
+          <motion.div
+            key="boardglow"
+            className="absolute pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{
+              opacity: [0.28, 0.90, 0.42, 0.90],
+              x: [0, -1.2, 1.8, -0.8, 0],
+              y: [0,  1.0, -1.4, 0.6, 0],
+            }}
+            exit={{ opacity: 0, transition: { duration: 0.18 } }}
+            transition={{ repeat: Infinity, duration: 0.50, ease: 'easeInOut' }}
+            style={{
+              left: (cardRect ? cardRect.cx : vw / 2) - BOARD_CARD_W / 2 - 8,
+              top:  (cardRect ? cardRect.cy : vh / 2) - BOARD_CARD_H / 2 - 8,
+              width:  BOARD_CARD_W + 16,
+              height: BOARD_CARD_H + 16,
+              borderRadius: 14,
+              boxShadow: `0 0 0 2px ${primaryColor}88, 0 0 18px ${primaryColor}66, 0 0 42px ${primaryColor}33`,
+              background: `radial-gradient(ellipse at center, ${primaryColor}20 0%, transparent 72%)`,
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Board camera layer ────────────────────────────────────────────── */}
-      {/* transformOrigin is pinned to the card's exact viewport position.      */}
-      {/* Animating scale alone keeps the card FIXED at (boardCx,boardCy) —    */}
-      {/* the rest of the board zooms away from it. No translate, no sliding.  */}
+      {/* transformOrigin is viewport centre — the board pan already brought   */}
+      {/* the card there, so pure scale zooms directly into the card with no   */}
+      {/* additional translate and no card-slides-to-centre behaviour.         */}
       <motion.div
         className="absolute inset-0 pointer-events-none"
-        style={{ transformOrigin: `${boardCx}px ${boardCy}px` }}
+        style={{ transformOrigin: `${vw / 2}px ${vh / 2}px` }}
         animate={{ scale: camScale }}
         transition={{ duration: 0.88, ease: [0.16, 1, 0.3, 1] }}
       >
-
-        {/* ── Glow on board card — inside camera layer so it scales with it ── */}
-        {/* During establish (scale=1) it sits exactly over the real card.      */}
-        {/* During focusing it grows with the camera, matching the vessel size. */}
-        <AnimatePresence>
-          {(isEstablish || isFocusing) && (
-            <motion.div
-              key="boardglow"
-              className="absolute pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: [0.28, 0.90, 0.42, 0.90],
-                x: [0, -1.2, 1.8, -0.8, 0],
-                y: [0,  1.0, -1.4, 0.6, 0],
-              }}
-              exit={{ opacity: 0, transition: { duration: 0.25 } }}
-              transition={{ repeat: Infinity, duration: 0.50, ease: 'easeInOut' }}
-              style={{
-                left: vesselLeft - 8,
-                top:  vesselTop  - 8,
-                width:  BOARD_CARD_W + 16,
-                height: BOARD_CARD_H + 16,
-                borderRadius: 14,
-                boxShadow: `0 0 0 2px ${primaryColor}88, 0 0 18px ${primaryColor}66, 0 0 42px ${primaryColor}33`,
-                background: `radial-gradient(ellipse at center, ${primaryColor}20 0%, transparent 72%)`,
-              }}
-            />
-          )}
-        </AnimatePresence>
 
         {/* ── Sealed vessel — board-card sized, anchored at its board spot ── */}
         <AnimatePresence>
