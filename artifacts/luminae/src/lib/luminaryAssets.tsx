@@ -1275,10 +1275,11 @@ export function LuminarySummonCutscene({
                         transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.50 }}
                       />
 
-                      {/* ── Branch 2b: lower-right snap from junction (secondcrack+) ── */}
+                      {/* ── Branch 2b: branches off near the END of stem 2 (secondcrack+) ── */}
+                      {/* Roots at ~(17%, 86%) — close to stem tip — then shoots lower-right */}
                       {/* Seam wound glow */}
                       <motion.path
-                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.78)},${Math.round(BOARD_CARD_H*0.61)} L${Math.round(BOARD_CARD_W*0.97)},${Math.round(BOARD_CARD_H*0.76)}`}
+                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.44)},${Math.round(BOARD_CARD_H*0.93)} L${Math.round(BOARD_CARD_W*0.62)},${Math.round(BOARD_CARD_H*0.99)}`}
                         stroke="#ffe8a0" strokeWidth="16" fill="none" strokeLinecap="round"
                         filter="url(#crackglow)"
                         initial={{ pathLength: 0, opacity: 0 }}
@@ -1287,7 +1288,7 @@ export function LuminarySummonCutscene({
                       />
                       {/* White crack line */}
                       <motion.path
-                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.78)},${Math.round(BOARD_CARD_H*0.61)} L${Math.round(BOARD_CARD_W*0.97)},${Math.round(BOARD_CARD_H*0.76)}`}
+                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.44)},${Math.round(BOARD_CARD_H*0.93)} L${Math.round(BOARD_CARD_W*0.62)},${Math.round(BOARD_CARD_H*0.99)}`}
                         stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.65, 0.80] }}
@@ -1295,19 +1296,19 @@ export function LuminarySummonCutscene({
                       />
                       {/* Warm inner fill */}
                       <motion.path
-                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.78)},${Math.round(BOARD_CARD_H*0.61)} L${Math.round(BOARD_CARD_W*0.97)},${Math.round(BOARD_CARD_H*0.76)}`}
+                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.44)},${Math.round(BOARD_CARD_H*0.93)} L${Math.round(BOARD_CARD_W*0.62)},${Math.round(BOARD_CARD_H*0.99)}`}
                         stroke="#ffe8a0" strokeWidth="4" fill="none" strokeLinecap="round"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.16, 0.28] }}
                         transition={{ duration: 0.50, delay: 0.13, ease: 'easeOut' }}
                       />
                       {/* Ember motes along branch 2b */}
-                      <motion.circle cx={Math.round(BOARD_CARD_W*0.64)} cy={Math.round(BOARD_CARD_H*0.54)} r="0.9" fill="white" filter="url(#cgb)"
+                      <motion.circle cx={Math.round(BOARD_CARD_W*0.30)} cy={Math.round(BOARD_CARD_H*0.90)} r="0.9" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.55, 0.10, 0.65, 0.15, 0] }}
                         transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.20 }}
                       />
-                      <motion.circle cx={Math.round(BOARD_CARD_W*0.84)} cy={Math.round(BOARD_CARD_H*0.68)} r="0.7" fill="white" filter="url(#cgb)"
+                      <motion.circle cx={Math.round(BOARD_CARD_W*0.52)} cy={Math.round(BOARD_CARD_H*0.96)} r="0.7" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.35, 0.70, 0.12, 0.50, 0] }}
                         transition={{ duration: 3.1, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
