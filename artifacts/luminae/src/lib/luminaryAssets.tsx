@@ -1275,43 +1275,38 @@ export function LuminarySummonCutscene({
                         transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.50 }}
                       />
 
-                      {/* ── Branch 2b: branches off near the END of stem 2 (secondcrack+) ── */}
-                      {/* Roots at ~(17%, 86%) — close to stem tip — then shoots lower-right */}
+                      {/* ── Branch 2b: bent crack off the end of stem 2 (secondcrack+) ── */}
+                      {/* Roots at ~(17%, 86%), bends at (30%, 90%), tips at (24%, 97%) */}
                       {/* Seam wound glow */}
                       <motion.path
-                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.44)},${Math.round(BOARD_CARD_H*0.93)} L${Math.round(BOARD_CARD_W*0.62)},${Math.round(BOARD_CARD_H*0.99)}`}
+                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.30)},${Math.round(BOARD_CARD_H*0.90)} L${Math.round(BOARD_CARD_W*0.24)},${Math.round(BOARD_CARD_H*0.97)}`}
                         stroke="#ffe8a0" strokeWidth="16" fill="none" strokeLinecap="round"
                         filter="url(#crackglow)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.06, 0.10] }}
-                        transition={{ duration: 0.55, delay: 0.09, ease: 'easeOut' }}
+                        transition={{ duration: 0.42, delay: 0.09, ease: 'easeOut' }}
                       />
                       {/* White crack line */}
                       <motion.path
-                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.44)},${Math.round(BOARD_CARD_H*0.93)} L${Math.round(BOARD_CARD_W*0.62)},${Math.round(BOARD_CARD_H*0.99)}`}
+                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.30)},${Math.round(BOARD_CARD_H*0.90)} L${Math.round(BOARD_CARD_W*0.24)},${Math.round(BOARD_CARD_H*0.97)}`}
                         stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.65, 0.80] }}
-                        transition={{ duration: 0.50, delay: 0.09, ease: 'easeOut' }}
+                        transition={{ duration: 0.38, delay: 0.09, ease: 'easeOut' }}
                       />
                       {/* Warm inner fill */}
                       <motion.path
-                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.44)},${Math.round(BOARD_CARD_H*0.93)} L${Math.round(BOARD_CARD_W*0.62)},${Math.round(BOARD_CARD_H*0.99)}`}
+                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.30)},${Math.round(BOARD_CARD_H*0.90)} L${Math.round(BOARD_CARD_W*0.24)},${Math.round(BOARD_CARD_H*0.97)}`}
                         stroke="#ffe8a0" strokeWidth="4" fill="none" strokeLinecap="round"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.16, 0.28] }}
-                        transition={{ duration: 0.50, delay: 0.13, ease: 'easeOut' }}
+                        transition={{ duration: 0.38, delay: 0.13, ease: 'easeOut' }}
                       />
-                      {/* Ember motes along branch 2b */}
+                      {/* Ember mote at the bend */}
                       <motion.circle cx={Math.round(BOARD_CARD_W*0.30)} cy={Math.round(BOARD_CARD_H*0.90)} r="0.9" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.55, 0.10, 0.65, 0.15, 0] }}
-                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.20 }}
-                      />
-                      <motion.circle cx={Math.round(BOARD_CARD_W*0.52)} cy={Math.round(BOARD_CARD_H*0.96)} r="0.7" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.35, 0.70, 0.12, 0.50, 0] }}
-                        transition={{ duration: 3.1, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
+                        animate={{ opacity: [0, 0.60, 0.12, 0.70, 0.18, 0] }}
+                        transition={{ duration: 2.7, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
                       />
 
                       {/* Faint rays seeping through at secondcrack */}
