@@ -2779,12 +2779,13 @@ export default function GameBoard() {
                       cardRect = { cx: Math.round(window.innerWidth * 0.22), cy: Math.round(window.innerHeight * 0.60), w: 112 };
                     }
                   }
+                  const lumData = state.luminaries.find(l => l.id === v.id);
                   setSummonQueue(q => [...q, {
                     id: v.id,
-                    name: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                    domain: v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                    lumens: 3,
-                    flavor: 'Test summon preview.',
+                    name: lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                    domain: (lumData as { domain?: string } | undefined)?.domain ?? '',
+                    lumens: lumData?.lumens ?? 0,
+                    flavor: (lumData as { flavor?: string } | undefined)?.flavor ?? '',
                     cardRect,
                   }]);
                 }}
