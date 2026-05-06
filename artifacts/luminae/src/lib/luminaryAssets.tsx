@@ -1488,68 +1488,12 @@ export function LuminarySummonCutscene({
         )}
       </AnimatePresence>
 
-      {/* ── Aura glow — own plain-div layer, no parent opacity/will-change ─────── */}
-      {/* A motion.div parent with animated opacity < 1 creates a compositing     */}
-      {/* stacking context that breaks child mix-blend-mode and makes gradients   */}
-      {/* vanish. Using a plain conditional div means no isolation; each child    */}
-      {/* motion.div animates its own opacity directly against the board.         */}
-      {(isRevealed && !isFlashing) && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ overflow: 'visible' }}>
-          {/* Outer aura cloud — 560px, centred on entity torso */}
-          {auraLayer ? (
-            <motion.img src={auraLayer} alt="" aria-hidden
-              className="absolute pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isFading ? 0 : 0.92 }}
-              transition={{ duration: 1.4, ease: 'easeOut' }}
-              style={{
-                width: 560, height: 560,
-                objectFit: 'contain',
-                mixBlendMode: 'screen',
-                transform: 'translateY(-14%)',
-              }}
-              draggable={false}
-            />
-          ) : (
-            <motion.div className="absolute pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isFading ? 0 : 0.92 }}
-              transition={{ duration: 1.4, ease: 'easeOut' }}
-              style={{
-                width: 560, height: 560,
-                borderRadius: '50%',
-                background: `radial-gradient(ellipse at center, ${primaryColor}cc 0%, ${primaryColor}88 28%, ${secondaryColor}55 54%, transparent 76%)`,
-                filter: 'blur(28px)',
-                transform: 'translateY(-14%)',
-              }}
-            />
-          )}
-          {/* Inner glow ring — breathing pulse */}
-          <motion.div className="absolute pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: isFading ? 0 : 0.85,
-              scale: isFading ? 1 : [0.94, 1.04, 0.96, 1.0],
-            }}
-            transition={{
-              opacity: { duration: 1.2, ease: 'easeOut' },
-              scale:   { repeat: Infinity, duration: 3.8, ease: 'easeInOut', delay: 0.6 },
-            }}
-            style={{
-              width: 320, height: 400,
-              borderRadius: '50%',
-              background: `radial-gradient(ellipse at center, ${glowColor}bb 0%, ${glowColor}66 36%, ${primaryColor}33 62%, transparent 82%)`,
-              filter: 'blur(16px)',
-              transform: 'translateY(-12%)',
-            }}
-          />
-        </div>
-      )}
-
-      {/* ── Freed entity — centred in viewport over live board ───────────────── */}
-      {/* The board is at scale=1 and visible through the partial overlay.       */}
-      {/* Entity is larger than the original card frame; aura extends 560 px.   */}
-      {/* No rectangular card border, no clip — pure transparent-background art. */}
+      {/* ── Portal-style entity reveal ──────────────────────────────────────────── */}
+      {/* The Luminary manifests inside a large cosmic portal that blooms out of  */}
+      {/* the flash. The portal field is entirely procedural — no asset needed.  */}
+      {/* The entity image is masked with an aggressive radial ellipse so edge   */}
+      {/* artifacts dissolve into the portal and read as designed rim-light.     */}
+      {/* Works correctly even with opaque/imperfect entity assets.              */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
@@ -1560,7 +1504,7 @@ export function LuminarySummonCutscene({
             animate={isFading ? { opacity: 0 } : { opacity: 1 }}
             transition={{ duration: isFading ? 0.55 : 0.42, ease: isFading ? 'easeIn' : 'easeOut' }}
           >
-            {/* Entrance scale + fly-in */}
+            {/* Entrance scale + fly-in — unchanged */}
             <motion.div
               className="relative flex flex-col items-center"
               style={{ overflow: 'visible' }}
@@ -1577,7 +1521,7 @@ export function LuminarySummonCutscene({
                   }
               }
             >
-              {/* Breathing hover (begins after entrance settles) */}
+              {/* Breathing hover — unchanged */}
               <motion.div
                 className="relative flex flex-col items-center gap-4"
                 style={{ overflow: 'visible' }}
@@ -1587,43 +1531,124 @@ export function LuminarySummonCutscene({
                   scale: { repeat: Infinity, duration: 4.0, ease: 'easeInOut', delay: 1.9 },
                 }}
               >
-                {/* Entity image — must be a transparent-background cutout */}
-                {/* If the asset contains a baked-in rectangular glow, regenerate */}
-                {/* it as a true transparent silhouette PNG/WebP (see asset notes). */}
-                <motion.div
-                  animate={isFading ? {} : {
-                    filter: isFlashing ? 'none' : [
-                      `drop-shadow(0 0 10px ${glowColor}80) drop-shadow(0 0 4px ${primaryColor}55)`,
-                      `drop-shadow(0 0 28px ${glowColor}cc) drop-shadow(0 0 10px ${primaryColor}a0)`,
-                      `drop-shadow(0 0 10px ${glowColor}80) drop-shadow(0 0 4px ${primaryColor}55)`,
-                    ],
-                  }}
-                  transition={{ repeat: Infinity, duration: 3.6, ease: 'easeInOut', delay: 1.9 }}
-                >
-                  {entityCutout ? (
-                    <img src={entityCutout} alt={luminaryName}
-                      style={{
-                        width: ENT_W, height: ENT_H,
-                        objectFit: 'contain', objectPosition: 'center',
-                        display: 'block', background: 'transparent',
-                        // Runtime edge-fade mask: entity.webp assets contain a baked-in
-                        // rectangular semi-transparent glow that reaches all four edges
-                        // (measured alpha ≈ 43–70% at corners/edges). This radial mask
-                        // fades the outermost ~20% of the image to transparent so the
-                        // entity reads as a floating form rather than a portrait inside
-                        // a card-shaped rectangle.
-                        // TODO: regenerate entity assets as true transparent-background
-                        // cutouts (no baked-in glow rectangle, no background fill) to
-                        // make this mask unnecessary and preserve edge detail fully.
-                        maskImage: 'radial-gradient(ellipse 84% 90% at 50% 44%, black 55%, rgba(0,0,0,0.55) 73%, transparent 91%)',
-                        WebkitMaskImage: 'radial-gradient(ellipse 84% 90% at 50% 44%, black 55%, rgba(0,0,0,0.55) 73%, transparent 91%)',
-                      }}
-                      draggable={false}
-                    />
-                  ) : (
-                    <EntityArt size={ENT_W} />
-                  )}
-                </motion.div>
+
+                {/* ── Portal composition — relative anchor sized to entity frame ── */}
+                {/* Portal layers extend beyond via overflow:visible on each parent. */}
+                <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'visible', flexShrink: 0 }}>
+
+                  {/* Outer portal bloom (680×740) — blooms from flash via spring */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.22 }}
+                    animate={{
+                      opacity: isFlashing ? 0 : isFading ? 0 : 0.78,
+                      scale:   isFlashing ? 0.22 : isFading ? 1.18 : 1.0,
+                    }}
+                    transition={{
+                      opacity: { duration: 1.8, ease: 'easeOut' },
+                      scale:   { type: 'spring', stiffness: 90, damping: 13, mass: 0.9 },
+                    }}
+                    style={{
+                      position: 'absolute',
+                      width: 680, height: 740,
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -52%)',
+                      borderRadius: '50%',
+                      background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ff 0%, ${primaryColor}cc 12%, ${primaryColor}77 34%, ${secondaryColor}33 58%, transparent 76%)`,
+                      filter: 'blur(38px)',
+                      zIndex: 0,
+                    }}
+                  />
+
+                  {/* Inner portal halo (400×500) — tighter saturated core */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.28 }}
+                    animate={{
+                      opacity: isFlashing ? 0 : isFading ? 0 : 0.90,
+                      scale:   isFlashing ? 0.28 : isFading ? 1.12 : 1.0,
+                    }}
+                    transition={{
+                      opacity: { duration: 1.3, ease: 'easeOut' },
+                      scale:   { type: 'spring', stiffness: 120, damping: 11, mass: 0.7 },
+                    }}
+                    style={{
+                      position: 'absolute',
+                      width: 400, height: 500,
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -52%)',
+                      borderRadius: '50%',
+                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}ff 0%, ${glowColor}dd 14%, ${glowColor}88 32%, ${primaryColor}44 54%, transparent 72%)`,
+                      filter: 'blur(18px)',
+                      zIndex: 1,
+                    }}
+                  />
+
+                  {/* Portal rim ring (480×560) — thin bright event-horizon edge */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{
+                      opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
+                      scale:   isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
+                    }}
+                    transition={{
+                      opacity: { duration: 2.0, ease: 'easeOut' },
+                      scale:   { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
+                    }}
+                    style={{
+                      position: 'absolute',
+                      width: 480, height: 560,
+                      top: '50%', left: '50%',
+                      transform: 'translate(-50%, -52%)',
+                      borderRadius: '50%',
+                      background: 'transparent',
+                      boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
+                      filter: 'blur(4px)',
+                      zIndex: 2,
+                    }}
+                  />
+
+                  {/* Entity — aggressive elliptical mask dissolves edges into portal */}
+                  {/* Any baked-in background or white fringe reads as rim-light.    */}
+                  <motion.div
+                    animate={isFading ? {} : {
+                      filter: isFlashing ? 'none' : [
+                        `drop-shadow(0 0 16px ${glowColor}99) drop-shadow(0 0 6px ${primaryColor}66)`,
+                        `drop-shadow(0 0 38px ${glowColor}ff) drop-shadow(0 0 16px ${primaryColor}cc)`,
+                        `drop-shadow(0 0 16px ${glowColor}99) drop-shadow(0 0 6px ${primaryColor}66)`,
+                      ],
+                    }}
+                    transition={{ repeat: Infinity, duration: 3.6, ease: 'easeInOut', delay: 1.9 }}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      zIndex: 3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {entityCutout ? (
+                      <img src={entityCutout} alt={luminaryName}
+                        style={{
+                          width: ENT_W, height: ENT_H,
+                          objectFit: 'contain', objectPosition: 'center',
+                          display: 'block',
+                          // Aggressive radial mask: opaque centre, fading to transparent
+                          // well before the image edges. Background pixels and rectangular
+                          // glow/fringe are dissolved into the portal field behind, reading
+                          // as designed rim-light rather than asset artifacts.
+                          maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                          WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                        }}
+                        draggable={false}
+                      />
+                    ) : (
+                      // Procedural SVG entity — transparent bg, no mask needed
+                      <EntityArt size={ENT_W} />
+                    )}
+                  </motion.div>
+
+                </div>
+                {/* ── end portal composition ── */}
 
                 {/* Name / domain / Eminence badge */}
                 <motion.div
