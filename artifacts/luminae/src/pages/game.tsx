@@ -497,7 +497,7 @@ function LuminaryClaimedPortal({
               textShadow: `0 0 8px ${g1}cc, 0 0 16px ${g1}55`,
             }}
           >
-            +{luminary.lumens}
+            {luminary.lumens}
           </span>
           {activeKey && (
             <div className="relative" style={{ filter: `drop-shadow(0 0 4px ${g2}cc)` }}>
@@ -620,7 +620,7 @@ function LuminaryCard({
                   textShadow: '-1px -1px 0 rgba(255,255,255,0.92), 1px -1px 0 rgba(255,255,255,0.92), -1px 1px 0 rgba(255,255,255,0.92), 1px 1px 0 rgba(255,255,255,0.92), 0 2px 5px rgba(0,0,0,1)',
                 }}
               >
-                +{luminary.lumens}
+                {luminary.lumens}
               </span>
               {/* Domain card — portrait card shape, Luminary color gradient, inner frame */}
               <div
