@@ -366,10 +366,6 @@ function LuminaryClaimedPortal({
     onToggle(next);
   };
 
-  // activating: I own it, affinity data present, but bonus not yet live this turn
-  // NOTE: uses isLive directly — not !canToggle — so single-affinity luminaries
-  // (canToggle=false but isLive=true) correctly show "+1 active" not "active next turn"
-  const activating = isOwnedByMe && !!luminaryAffinity && !isLive;
   const ownerName = claimedByPlayer?.playerName ?? '';
 
   const Tag = (canToggle ? motion.button : motion.div) as typeof motion.div;
@@ -505,90 +501,31 @@ function LuminaryClaimedPortal({
       ))}
 
       {/* ── UI Overlay ── */}
-      <div className="relative z-10 h-full flex flex-col justify-between p-2 pointer-events-none">
-        {/* Top row: eminence cutout (left) + floating active affinity gem (right) */}
-        <div className="flex justify-between items-start">
-          <span
-            className="text-lg font-serif font-black leading-none select-none"
-            style={{
-              color: '#030308',
-              WebkitTextStroke: `1px ${g2}`,
-              textShadow: `0 0 8px ${g1}cc, 0 0 16px ${g1}55`,
-            }}
-          >
-            {luminary.lumens}
-          </span>
-          {activeKey && (
-            <motion.div
-              className="relative"
-              animate={{ y: [-2, 2, -2] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
-            >
-              <MiniGem color={activeKey} size={16} />
-            </motion.div>
-          )}
-        </div>
-
-        {/* Centre status badge */}
-        {isOwnedByMe && luminaryAffinity && (
-          <div className="flex justify-center">
-            {activating ? (
-              <span
-                className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                style={{ background: `${g1}33`, color: g2, border: `1px solid ${g1}66` }}
-              >
-                active next turn
-              </span>
-            ) : canToggle ? (
-              <span
-                className="text-[7px] font-semibold px-1.5 py-0.5 rounded-full"
-                style={{ background: 'rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.15)' }}
-              >
-                tap to shift ↻
-              </span>
-            ) : isLive ? (
-              <span
-                className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                style={{ background: `${g1}22`, color: `${g2}cc`, border: `1px solid ${g1}44` }}
-              >
-                +1 active
-              </span>
-            ) : null}
-          </div>
-        )}
-
-        {/* Bottom: affinity selector dots + allied strip */}
-        <div className="flex flex-col gap-1">
-          {eligibleKeys.length >= 2 && activeKey && (
-            <div className="flex gap-1 justify-center">
-              {eligibleKeys.map(k => (
-                <div
-                  key={k}
-                  className="rounded-full"
-                  style={{
-                    width: k === activeKey ? 6 : 4,
-                    height: k === activeKey ? 6 : 4,
-                    background: k === activeKey ? GEM_META[k].hex : `${GEM_META[k].hex}66`,
-                    boxShadow: k === activeKey ? `0 0 5px ${GEM_META[k].glowHex}` : 'none',
-                  }}
-                />
-              ))}
-            </div>
-          )}
-          {claimedByPlayer && ownerName && (
-            <div
-              className="flex items-center gap-1 px-1 py-0.5 rounded"
-              style={{ background: 'rgba(3,3,8,0.75)' }}
-            >
-              <span className="text-[7px] font-medium text-white/35 shrink-0">Allied</span>
-              <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={12} />
-              <span className="text-[8px] font-semibold leading-none text-white/80 truncate">{ownerName}</span>
-              {isOwnedByMe && <span className="text-[7px] text-primary/80 font-bold ml-auto shrink-0">you</span>}
-            </div>
-          )}
-        </div>
+      {/* Top-left: eminence value */}
+      <div className="absolute top-2 left-2 z-10 pointer-events-none">
+        <span
+          className="text-lg font-serif font-black leading-none select-none"
+          style={{
+            color: '#030308',
+            WebkitTextStroke: `1px ${g2}`,
+            textShadow: `0 0 8px ${g1}cc, 0 0 16px ${g1}55`,
+          }}
+        >
+          {luminary.lumens}
+        </span>
       </div>
+
+      {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
+      {claimedByPlayer && ownerName && (
+        <div
+          className="absolute bottom-0 left-0 right-0 z-20 flex items-center gap-1.5 px-2 py-1.5 pointer-events-none"
+          style={{ background: 'linear-gradient(to top, rgba(3,3,8,0.90) 0%, rgba(3,3,8,0.45) 65%, transparent 100%)' }}
+        >
+          <span className="text-[8px] font-medium tracking-wide text-white/60 shrink-0">Alliance with</span>
+          <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={14} />
+          <span className="text-[9px] font-semibold leading-none text-white truncate" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{ownerName}</span>
+        </div>
+      )}
 
       {/* Dev debug overlay — tree-shaken in production builds */}
       {import.meta.env.DEV && luminaryAffinity && (
@@ -1503,7 +1440,19 @@ export default function GameBoard() {
 
       {/* Luminaries */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Luminaries</p>
+        <div className="flex items-center justify-between mb-2 px-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Luminaries</p>
+          {(() => {
+            const tc: number = (state as any)?.turnCount ?? 0;
+            const lumAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
+            const hasTogglable = lumAffinities.some(la =>
+              la.ownerId === session?.playerId && tc > la.summonedAtTurnCount && (la.eligibleAffinities?.length ?? 0) >= 2
+            );
+            return hasTogglable
+              ? <span className="text-[9px] text-white/40 italic">tap card to change affinity ↻</span>
+              : null;
+          })()}
+        </div>
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
           {state.luminaries.map(l => {
             const claimedByPlayer = state.players.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
