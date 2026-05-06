@@ -726,38 +726,40 @@ const FY = Math.round(BOARD_CARD_H * 0.39); // 62 — junction y
 //   Lower-left branch : J → (28%,63%) → (14%,100%)
 //   Lower-right branch: J → (53%,62%) → (63%,70%) → (76%,68%) → (100%,60%)
 //   Lower-mid connector:(28%,63%) → (40%,72%) → (63%,70%)
-// 3-D motion: rotateX/Y/Z compose with x/y throw via transformPerspective on each shard.
+// 3-D motion: x/y/z throw + rotateX/Y/Z tilt, rendered via transformPerspective on each shard.
+// dz > 0 = erupts toward the viewer (grows); dz < 0 = recedes away (shrinks).
+// Alternating near/far across adjacent shards creates a volumetric depth separation.
 const PANEL_PIECES = [
-  // S1: Top-left block — flies upper-left, tilts toward viewer L-side
+  // S1: Top-left block — flies upper-left, bursts toward viewer
   { clip: 'polygon(0% 0%, 50% 0%, 45% 20%, 50% 39%, 0% 40%)',
-    dx: -142, dy: -88, rotateX: -14, rotateY:  16, rotateZ:   7 },
-  // S2: Top-center (between vertical fault and upper-right branch) — flies straight up
+    dx: -142, dy:  -88, dz:  110, rotateX: -14, rotateY:  16, rotateZ:   7 },
+  // S2: Top-center — flies straight up, recedes away from viewer
   { clip: 'polygon(50% 0%, 90% 0%, 74% 16%, 50% 39%, 45% 20%)',
-    dx:    8, dy: -148, rotateX: -22, rotateY:  -6, rotateZ:  -5 },
-  // S3: Top-right (right of upper-right branch) — flies upper-right, tilts away R-side
+    dx:    8, dy: -148, dz:  -75, rotateX: -22, rotateY:  -6, rotateZ:  -5 },
+  // S3: Top-right — flies upper-right, toward viewer
   { clip: 'polygon(90% 0%, 100% 0%, 100% 42%, 50% 39%, 74% 16%)',
-    dx:  158, dy: -88, rotateX: -10, rotateY: -22, rotateZ: -14 },
-  // S4: Left column (left of vertical, below horizontal) — flies left, tilts toward viewer
+    dx:  158, dy:  -88, dz:   90, rotateX: -10, rotateY: -22, rotateZ: -14 },
+  // S4: Left column — flies left, punches strongly toward viewer
   { clip: 'polygon(0% 40%, 50% 39%, 28% 63%, 14% 100%, 0% 100%)',
-    dx: -158, dy:  32, rotateX:  13, rotateY:  22, rotateZ:   6 },
-  // S5: Right column (right of vertical, between horizontal and lower-right branch)
+    dx: -158, dy:   32, dz:   85, rotateX:  13, rotateY:  22, rotateZ:   6 },
+  // S5: Right column — flies right, recedes (asymmetric to S4)
   { clip: 'polygon(50% 39%, 100% 42%, 100% 60%, 76% 68%, 63% 70%, 53% 62%)',
-    dx:  158, dy:  26, rotateX:  18, rotateY: -24, rotateZ:  -8 },
-  // S6: Center wedge (between lower branches and lower-mid connector) — erupts forward
+    dx:  158, dy:   26, dz:  -65, rotateX:  18, rotateY: -24, rotateZ:  -8 },
+  // S6: Center wedge — erupts most aggressively toward the viewer
   { clip: 'polygon(50% 39%, 53% 62%, 63% 70%, 40% 72%, 28% 63%)',
-    dx:  -22, dy:  62, rotateX:  32, rotateY:  10, rotateZ:   5 },
-  // S7: Bottom-left shard — tumbles lower-left with rotateZ spin
+    dx:  -22, dy:   62, dz:  250, rotateX:  32, rotateY:  10, rotateZ:   5 },
+  // S7: Bottom-left shard — tumbles lower-left, toward viewer
   { clip: 'polygon(14% 100%, 28% 63%, 40% 72%, 44% 100%)',
-    dx: -108, dy: 148, rotateX:  22, rotateY:  16, rotateZ:  28 },
-  // S8: Bottom-center shard — drops straight down, face-on tilt
+    dx: -108, dy:  148, dz:   95, rotateX:  22, rotateY:  16, rotateZ:  28 },
+  // S8: Bottom-center shard — drops straight down, sinks away
   { clip: 'polygon(44% 100%, 40% 72%, 63% 70%, 66% 100%)',
-    dx:    6, dy: 168, rotateX:  30, rotateY:  -4, rotateZ:  -7 },
-  // S9: Bottom-center-right shard — lower-right tumble
+    dx:    6, dy:  168, dz:  -55, rotateX:  30, rotateY:  -4, rotateZ:  -7 },
+  // S9: Bottom-center-right — lower-right tumble, toward viewer
   { clip: 'polygon(66% 100%, 63% 70%, 76% 68%, 83% 100%)',
-    dx:   72, dy: 150, rotateX:  20, rotateY: -18, rotateZ: -22 },
-  // S10: Bottom-right shard — strong right throw with deep rotateY + rotateZ
+    dx:   72, dy:  150, dz:   75, rotateX:  20, rotateY: -18, rotateZ: -22 },
+  // S10: Bottom-right — strong right throw, sinks away
   { clip: 'polygon(83% 100%, 76% 68%, 100% 60%, 100% 100%)',
-    dx:  138, dy: 142, rotateX:  14, rotateY: -26, rotateZ: -38 },
+    dx:  138, dy:  142, dz:  -85, rotateX:  14, rotateY: -26, rotateZ: -38 },
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
@@ -1482,9 +1484,9 @@ export function LuminarySummonCutscene({
                 clipPath: piece.clip,
                 transformPerspective: 700,
               }}
-              initial={{ x: 0, y: 0, rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1, filter: 'brightness(1)' }}
+              initial={{ x: 0, y: 0, z: 0, rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1, filter: 'brightness(1)' }}
               animate={{
-                x: piece.dx, y: piece.dy,
+                x: piece.dx, y: piece.dy, z: piece.dz,
                 rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
                 opacity: [1, 1, 0.52, 0],
                 filter: ['brightness(1)', 'brightness(2.6)', 'brightness(4.2)', 'brightness(7)'],
