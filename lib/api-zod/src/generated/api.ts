@@ -236,6 +236,11 @@ export const StartGameResponse = zod.object({
   status: zod.enum(["lobby", "playing", "finished"]),
   currentPlayerIndex: zod.number(),
   roundNumber: zod.number(),
+  turnCount: zod
+    .number()
+    .describe(
+      "Monotonically increasing counter incremented each time any player's turn ends",
+    ),
   crystalBank: zod.object({
     ruby: zod.number(),
     sapphire: zod.number(),
@@ -335,6 +340,25 @@ export const StartGameResponse = zod.object({
         .describe("Named aura style for the summoning cutscene"),
     }),
   ),
+  luminaryAffinities: zod
+    .array(
+      zod.object({
+        luminaryId: zod.string(),
+        ownerId: zod.string(),
+        activeAffinity: zod.enum([
+          "ruby",
+          "sapphire",
+          "emerald",
+          "onyx",
+          "pearl",
+        ]),
+        eligibleAffinities: zod.array(
+          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+        ),
+        summonedAtTurnCount: zod.number(),
+      }),
+    )
+    .describe("Active affinity state for each claimed Luminary"),
   players: zod.array(
     zod.object({
       playerId: zod.string(),
@@ -448,6 +472,11 @@ export const GetGameStateResponse = zod.object({
   status: zod.enum(["lobby", "playing", "finished"]),
   currentPlayerIndex: zod.number(),
   roundNumber: zod.number(),
+  turnCount: zod
+    .number()
+    .describe(
+      "Monotonically increasing counter incremented each time any player's turn ends",
+    ),
   crystalBank: zod.object({
     ruby: zod.number(),
     sapphire: zod.number(),
@@ -547,6 +576,25 @@ export const GetGameStateResponse = zod.object({
         .describe("Named aura style for the summoning cutscene"),
     }),
   ),
+  luminaryAffinities: zod
+    .array(
+      zod.object({
+        luminaryId: zod.string(),
+        ownerId: zod.string(),
+        activeAffinity: zod.enum([
+          "ruby",
+          "sapphire",
+          "emerald",
+          "onyx",
+          "pearl",
+        ]),
+        eligibleAffinities: zod.array(
+          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+        ),
+        summonedAtTurnCount: zod.number(),
+      }),
+    )
+    .describe("Active affinity state for each claimed Luminary"),
   players: zod.array(
     zod.object({
       playerId: zod.string(),
@@ -661,6 +709,7 @@ export const SubmitActionBody = zod.object({
     "purchase_reserved",
     "pass",
     "surrender",
+    "toggle_luminary_affinity",
   ]),
   crystals: zod
     .object({
@@ -677,6 +726,14 @@ export const SubmitActionBody = zod.object({
     .optional(),
   cardId: zod.string().optional(),
   tier: zod.number().optional(),
+  luminaryId: zod
+    .string()
+    .optional()
+    .describe("Luminary ID for toggle_luminary_affinity action"),
+  affinity: zod
+    .enum(["ruby", "sapphire", "emerald", "onyx", "pearl"])
+    .optional()
+    .describe("Target affinity for toggle_luminary_affinity action"),
 });
 
 export const SubmitActionResponse = zod.object({
@@ -684,6 +741,11 @@ export const SubmitActionResponse = zod.object({
   status: zod.enum(["lobby", "playing", "finished"]),
   currentPlayerIndex: zod.number(),
   roundNumber: zod.number(),
+  turnCount: zod
+    .number()
+    .describe(
+      "Monotonically increasing counter incremented each time any player's turn ends",
+    ),
   crystalBank: zod.object({
     ruby: zod.number(),
     sapphire: zod.number(),
@@ -783,6 +845,25 @@ export const SubmitActionResponse = zod.object({
         .describe("Named aura style for the summoning cutscene"),
     }),
   ),
+  luminaryAffinities: zod
+    .array(
+      zod.object({
+        luminaryId: zod.string(),
+        ownerId: zod.string(),
+        activeAffinity: zod.enum([
+          "ruby",
+          "sapphire",
+          "emerald",
+          "onyx",
+          "pearl",
+        ]),
+        eligibleAffinities: zod.array(
+          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+        ),
+        summonedAtTurnCount: zod.number(),
+      }),
+    )
+    .describe("Active affinity state for each claimed Luminary"),
   players: zod.array(
     zod.object({
       playerId: zod.string(),

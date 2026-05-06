@@ -180,6 +180,36 @@ export interface GamePlayerState {
   claimedLuminaryIds: string[];
 }
 
+export type LuminaryActiveStateActiveAffinity =
+  (typeof LuminaryActiveStateActiveAffinity)[keyof typeof LuminaryActiveStateActiveAffinity];
+
+export const LuminaryActiveStateActiveAffinity = {
+  ruby: "ruby",
+  sapphire: "sapphire",
+  emerald: "emerald",
+  onyx: "onyx",
+  pearl: "pearl",
+} as const;
+
+export type LuminaryActiveStateEligibleAffinitiesItem =
+  (typeof LuminaryActiveStateEligibleAffinitiesItem)[keyof typeof LuminaryActiveStateEligibleAffinitiesItem];
+
+export const LuminaryActiveStateEligibleAffinitiesItem = {
+  ruby: "ruby",
+  sapphire: "sapphire",
+  emerald: "emerald",
+  onyx: "onyx",
+  pearl: "pearl",
+} as const;
+
+export interface LuminaryActiveState {
+  luminaryId: string;
+  ownerId: string;
+  activeAffinity: LuminaryActiveStateActiveAffinity;
+  eligibleAffinities: LuminaryActiveStateEligibleAffinitiesItem[];
+  summonedAtTurnCount: number;
+}
+
 export type GameStateStatus =
   (typeof GameStateStatus)[keyof typeof GameStateStatus];
 
@@ -205,12 +235,16 @@ export interface GameState {
   status: GameStateStatus;
   currentPlayerIndex: number;
   roundNumber: number;
+  /** Monotonically increasing counter incremented each time any player's turn ends */
+  turnCount: number;
   crystalBank: CrystalCounts;
   marketTier1: ArtifactCard[];
   marketTier2: ArtifactCard[];
   marketTier3: ArtifactCard[];
   deckCounts: GameStateDeckCounts;
   luminaries: Luminary[];
+  /** Active affinity state for each claimed Luminary */
+  luminaryAffinities: LuminaryActiveState[];
   players: GamePlayerState[];
   /** @nullable */
   winnerId: string | null;
@@ -238,12 +272,27 @@ export const ActionRequestType = {
   purchase_reserved: "purchase_reserved",
   pass: "pass",
   surrender: "surrender",
+  toggle_luminary_affinity: "toggle_luminary_affinity",
 } as const;
 
 export type ActionRequestCrystal =
   (typeof ActionRequestCrystal)[keyof typeof ActionRequestCrystal];
 
 export const ActionRequestCrystal = {
+  ruby: "ruby",
+  sapphire: "sapphire",
+  emerald: "emerald",
+  onyx: "onyx",
+  pearl: "pearl",
+} as const;
+
+/**
+ * Target affinity for toggle_luminary_affinity action
+ */
+export type ActionRequestAffinity =
+  (typeof ActionRequestAffinity)[keyof typeof ActionRequestAffinity];
+
+export const ActionRequestAffinity = {
   ruby: "ruby",
   sapphire: "sapphire",
   emerald: "emerald",
@@ -258,6 +307,10 @@ export interface ActionRequest {
   crystal?: ActionRequestCrystal;
   cardId?: string;
   tier?: number;
+  /** Luminary ID for toggle_luminary_affinity action */
+  luminaryId?: string;
+  /** Target affinity for toggle_luminary_affinity action */
+  affinity?: ActionRequestAffinity;
 }
 
 export type GetGameStateParams = {

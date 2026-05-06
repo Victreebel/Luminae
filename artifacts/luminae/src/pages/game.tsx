@@ -11,6 +11,7 @@ import type {
   ArtifactCard, 
   Luminary,
   GamePlayerState,
+  LuminaryActiveState,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession } from '@/lib/session';
@@ -263,25 +264,61 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
-// Fits the same 112×160 footprint; accent colours are derived from the
-// Luminary's affinity requirements so each portal looks distinct.
+// Fits the same 112×160 footprint. The active affinity colour dominates the
+// vortex; a MiniGem icon in the upper-right shows which affinity is linked.
 //
 // isNew=true  → 900ms entrance: collapses from center, spiral burst, spring-settle.
 // isNew=false → skip entrance; portal appears already stabilised (reconnect/load).
-function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { luminary: Luminary; claimedByName?: string; isNew?: boolean }) {
-  // Lock in isNew at mount — never re-read; prevents double-firing on re-renders.
+//
+// When canToggle=true the entire card is a button — clicking it cycles through
+// eligible affinities and calls onToggle with the next affinity key.
+function LuminaryClaimedPortal({
+  luminary, claimedByPlayer, luminaryAffinity,
+  isOwnedByMe, canToggle, onToggle, isNew = false,
+}: {
+  luminary: Luminary;
+  claimedByPlayer?: GamePlayerState | null;
+  luminaryAffinity?: LuminaryActiveState | null;
+  isOwnedByMe?: boolean;
+  canToggle?: boolean;
+  onToggle?: (affinity: string) => void;
+  isNew?: boolean;
+}) {
   const fresh = useRef(isNew).current;
 
+  const activeKey = (luminaryAffinity?.activeAffinity ?? null) as GemKey | null;
+  const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
+  const activeAffinityMeta = activeKey ? GEM_META[activeKey] : null;
+
+  // Fallback accent colours from luminary requirements (used for particles)
   const accentMeta = useMemo(
     () => GEM_KEYS.filter(k => (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => GEM_META[k as GemKey]),
-    // id is stable for the lifetime of the card — requirements won't change
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [luminary.id],
   );
   const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
   const hexes = colors.map(c => c.hex);
 
-  // Stable particle positions seeded from the luminary id — deterministic across re-renders
+  // Active affinity drives the dominant vortex colour
+  const g1 = activeAffinityMeta?.hex ?? hexes[0];
+  const g2 = activeAffinityMeta?.glowHex ?? hexes[0];
+
+  // Build a conic where active affinity owns 270° (75%); others split the rest
+  const conic = useMemo(() => {
+    if (!activeAffinityMeta || hexes.length <= 1) {
+      return `conic-gradient(${g1}, ${g1}88, ${g1})`;
+    }
+    const otherHexes = hexes.filter(h => h !== g1);
+    const slice = otherHexes.length > 0 ? 90 / otherHexes.length : 90;
+    const parts: string[] = [`${g1} 0deg`, `${g1} 270deg`];
+    otherHexes.forEach((h, i) => {
+      parts.push(`${h} ${270 + i * slice}deg`, `${h} ${270 + (i + 1) * slice}deg`);
+    });
+    parts.push(`${g1} 360deg`);
+    return `conic-gradient(from 0deg, ${parts.join(', ')})`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hexes.join(','), g1]);
+
   const particles = useMemo(
     () => Array.from({ length: 7 }, (_, i) => ({
       left: 8  + (i * 19 % 90),
@@ -295,23 +332,30 @@ function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { lum
     [hexes.join(',')],
   );
 
-  const conic = hexes.length === 1
-    ? `conic-gradient(${hexes[0]}, ${hexes[0]}88, ${hexes[0]})`
-    : `conic-gradient(from 0deg, ${hexes.map((h, i) => `${h} ${Math.round(i * 360 / hexes.length)}deg`).join(', ')}, ${hexes[0]} 360deg)`;
-  const g1 = hexes[0];
-  const g2 = hexes.length > 1 ? hexes[1] : hexes[0];
+  const handleToggle = () => {
+    if (!canToggle || !onToggle || eligibleKeys.length < 2 || !activeKey) return;
+    const idx = eligibleKeys.indexOf(activeKey);
+    const next = eligibleKeys[(idx + 1) % eligibleKeys.length];
+    onToggle(next);
+  };
+
+  // "activating" = player owns it but bonus not yet live (same turn as summoning)
+  const activating = isOwnedByMe && !!luminaryAffinity && !canToggle;
+  const ownerName = claimedByPlayer?.playerName ?? '';
+
+  const Tag = (canToggle ? motion.button : motion.div) as typeof motion.div;
 
   return (
-    <motion.div
+    <Tag
       className="absolute inset-0 bg-[#030308]"
-      style={{ transformOrigin: '50% 42%' }}
+      style={{ transformOrigin: '50% 42%', cursor: canToggle ? 'pointer' : 'default' }}
       initial={fresh ? { scale: 0.04, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
+      onClick={canToggle ? handleToggle : undefined}
+      {...(canToggle ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
     >
-      {/* ── Opening spiral burst — fires once on fresh entrance ──────────── */}
-      {/* A wide conic bloom spins 540° then dissolves, giving the impression  */}
-      {/* the board has been scarred open and the portal is tearing into view. */}
+      {/* ── Opening spiral burst */}
       {fresh && (
         <motion.div
           className="absolute pointer-events-none"
@@ -321,7 +365,7 @@ function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { lum
           transition={{ duration: 0.96, ease: [0.16, 0.8, 0.3, 1] }}
         />
       )}
-      {/* Outer rotating colour ring — blurred to paint the rim */}
+      {/* Outer rotating colour ring */}
       <motion.div
         className="absolute"
         style={{ inset: -16, background: conic, filter: 'blur(16px)', opacity: 0.45 }}
@@ -335,19 +379,19 @@ function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { lum
         animate={{ rotate: -360 }}
         transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
       />
-      {/* Deep void centre — occludes the inner swirl core */}
+      {/* Deep void centre */}
       <div
         className="absolute inset-0"
         style={{ background: 'radial-gradient(ellipse 62% 62% at 50% 44%, #030308 0%, #030308 32%, transparent 68%)' }}
       />
-      {/* Pulsing depth aura */}
+      {/* Pulsing depth aura — uses active affinity colour */}
       <motion.div
         className="absolute inset-0"
         style={{ background: `radial-gradient(ellipse 75% 65% at 50% 44%, transparent 28%, ${g1}1a 62%, ${g2}14 80%, transparent 90%)` }}
         animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.07, 1] }}
         transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Centre singularity — tiny bright mote */}
+      {/* Centre singularity mote */}
       <motion.div
         className="absolute"
         style={{
@@ -358,8 +402,7 @@ function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { lum
         animate={{ opacity: [0.5, 1, 0.5], scale: [0.7, 1.5, 0.7] }}
         transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Drifting affinity motes — staggered later on fresh entrance so they */}
-      {/* arrive after the portal ring has already settled into view.          */}
+      {/* Drifting affinity motes */}
       {particles.map((p, i) => (
         <motion.div
           key={i}
@@ -370,21 +413,100 @@ function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { lum
           transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay + (fresh ? 0.46 : 0) }}
         />
       ))}
-    </motion.div>
+
+      {/* ── UI Overlay ──────────────────────────────────────────────────── */}
+      <div className="relative z-10 h-full flex flex-col justify-between p-2 pointer-events-none">
+        {/* Top row: eminence cutout (left) + active affinity gem (right) */}
+        <div className="flex justify-between items-start">
+          <span
+            className="text-lg font-serif font-black leading-none select-none"
+            style={{
+              color: '#030308',
+              WebkitTextStroke: `1px ${g2}`,
+              textShadow: `0 0 8px ${g1}cc, 0 0 16px ${g1}55`,
+            }}
+          >
+            +{luminary.lumens}
+          </span>
+          {activeKey && (
+            <div className="relative" style={{ filter: `drop-shadow(0 0 4px ${g2}cc)` }}>
+              <MiniGem color={activeKey} size={16} />
+              {canToggle && (
+                <div
+                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center"
+                  style={{ background: g1, boxShadow: `0 0 4px ${g1}` }}
+                >
+                  <span className="text-[6px] text-black font-black leading-none">↻</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Centre: "next turn" badge shown when freshly summoned but not yet active */}
+        {activating && (
+          <div className="flex justify-center">
+            <span
+              className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+              style={{ background: `${g1}33`, color: g2, border: `1px solid ${g1}66` }}
+            >
+              next turn
+            </span>
+          </div>
+        )}
+
+        {/* Bottom: affinity selector dots + allied strip */}
+        <div className="flex flex-col gap-1">
+          {eligibleKeys.length >= 2 && activeKey && (
+            <div className="flex gap-1 justify-center">
+              {eligibleKeys.map(k => (
+                <div
+                  key={k}
+                  className="rounded-full"
+                  style={{
+                    width: k === activeKey ? 6 : 4,
+                    height: k === activeKey ? 6 : 4,
+                    background: k === activeKey ? GEM_META[k].hex : `${GEM_META[k].hex}66`,
+                    boxShadow: k === activeKey ? `0 0 5px ${GEM_META[k].glowHex}` : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {claimedByPlayer && ownerName && (
+            <div
+              className="flex items-center gap-1 px-1 py-0.5 rounded"
+              style={{ background: 'rgba(3,3,8,0.72)' }}
+            >
+              <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={12} />
+              <span className="text-[8px] font-semibold leading-none text-white/80 truncate">{ownerName}</span>
+              {isOwnedByMe && <span className="text-[7px] text-primary/80 font-bold ml-auto shrink-0">you</span>}
+            </div>
+          )}
+        </div>
+      </div>
+    </Tag>
   );
 }
 
-function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { luminary: Luminary; claimedByNames?: string[]; isReleased?: boolean }) {
+function LuminaryCard({
+  luminary, claimedByNames = [], isReleased = false,
+  luminaryAffinity, claimedByPlayer, isOwnedByMe, canToggle, onToggle,
+}: {
+  luminary: Luminary;
+  claimedByNames?: string[];
+  isReleased?: boolean;
+  luminaryAffinity?: LuminaryActiveState | null;
+  claimedByPlayer?: GamePlayerState | null;
+  isOwnedByMe?: boolean;
+  canToggle?: boolean;
+  onToggle?: (affinity: string) => void;
+}) {
   const isClaimed = claimedByNames.length > 0;
-  // Capture claimed state at mount. If the luminary was already claimed when
-  // this component first rendered (page load / reconnect), the portal appears
-  // instantly stabilised. If it became claimed while mounted (cutscene completed
-  // or dev portal preview toggled on), the portal plays the entrance animation.
   const initialClaimedRef = useRef(isClaimed);
   const portalIsNew = !initialClaimedRef.current;
   const vis = LUMINARY_VISUALS[luminary.id];
   const accentColor = vis?.primaryColor ?? GEM_META.flux.hex;
-  const claimedName = claimedByNames[0];
   return (
     <motion.div
       whileHover={isClaimed || (isReleased && !isClaimed) ? {} : { scale: 1.02 }}
@@ -393,12 +515,20 @@ function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { l
         isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30'
       }`}
       title={isClaimed
-        ? `Released${claimedName ? ` — claimed by ${claimedName}` : ''}`
+        ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
       style={isReleased && !isClaimed ? { opacity: 0, pointerEvents: 'none' } : undefined}
     >
       {isClaimed ? (
-        <LuminaryClaimedPortal luminary={luminary} claimedByName={claimedName} isNew={portalIsNew} />
+        <LuminaryClaimedPortal
+          luminary={luminary}
+          claimedByPlayer={claimedByPlayer}
+          luminaryAffinity={luminaryAffinity}
+          isOwnedByMe={isOwnedByMe}
+          canToggle={canToggle}
+          onToggle={onToggle}
+          isNew={portalIsNew}
+        />
       ) : (
         <>
           {/* Background art layer — procedural entity portrait fills the card */}
@@ -1174,10 +1304,18 @@ export default function GameBoard() {
   }) ?? [];
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
+    const luminaryAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
+    const turnCount: number = (state as any)?.turnCount ?? 0;
     const out: Record<string, number> = {};
     for (const c of CRYSTALS) {
       if (c === 'flux') continue;
-      out[c] = Math.max(0, (card.cost[c as keyof CrystalCounts] ?? 0) - (p.bonuses[c as keyof CrystalCounts] ?? 0));
+      let bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+      for (const la of luminaryAffinities) {
+        if (la.ownerId === p.playerId && la.activeAffinity === c && turnCount > la.summonedAtTurnCount) {
+          bonus++;
+        }
+      }
+      out[c] = Math.max(0, (card.cost[c as keyof CrystalCounts] ?? 0) - bonus);
     }
     return out;
   };
@@ -1220,6 +1358,17 @@ export default function GameBoard() {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
 
+  const handleToggleLuminaryAffinity = async (luminaryId: string, affinity: string) => {
+    try {
+      await submitAction.mutateAsync({
+        roomId: roomId!,
+        data: { sessionToken: session.sessionToken, type: 'toggle_luminary_affinity', luminaryId, affinity: affinity as any },
+      });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Toggle failed', description: err.message });
+    }
+  };
+
   const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
   const myReservedCount = me?.reservedCards.length ?? 0;
   const myTotalGems = Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0);
@@ -1236,16 +1385,28 @@ export default function GameBoard() {
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Luminaries</p>
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
           {state.luminaries.map(l => {
-            const claimedByNames = state.players
-              .filter(p => (p.claimedLuminaryIds ?? []).includes(l.id))
-              .map(p => p.playerName);
-            // DEV-only: merge local portal preview into the claimed list so
-            // LuminaryCard renders the portal without touching server state.
+            const claimedByPlayer = state.players.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
+            const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
             const effectiveClaimedByNames =
               import.meta.env.DEV && previewedPortals.has(l.id) && claimedByNames.length === 0
                 ? ['[Preview]']
                 : claimedByNames;
-            return <LuminaryCard key={l.id} luminary={l} claimedByNames={effectiveClaimedByNames} isReleased={claimedThisSession.includes(l.id)} />;
+            const lumAffinity = ((state as any).luminaryAffinities as LuminaryActiveState[] ?? []).find(la => la.luminaryId === l.id) ?? null;
+            const isOwnedByMe = claimedByPlayer?.playerId === session?.playerId;
+            const canToggle = isOwnedByMe && !!lumAffinity && ((state as any).turnCount ?? 0) > (lumAffinity?.summonedAtTurnCount ?? Infinity) && (lumAffinity?.eligibleAffinities?.length ?? 0) >= 2;
+            return (
+              <LuminaryCard
+                key={l.id}
+                luminary={l}
+                claimedByNames={effectiveClaimedByNames}
+                isReleased={claimedThisSession.includes(l.id)}
+                luminaryAffinity={lumAffinity}
+                claimedByPlayer={claimedByPlayer}
+                isOwnedByMe={isOwnedByMe}
+                canToggle={canToggle}
+                onToggle={(affinity) => handleToggleLuminaryAffinity(l.id, affinity)}
+              />
+            );
           })}
         </div>
       </div>

@@ -5,7 +5,16 @@
 import { getCardLore } from "./cardLore";
 
 export type CrystalColor = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl";
+
 export type CrystalColorWithFlux = CrystalColor | "flux";
+
+export interface LuminaryAffinity {
+  luminaryId: string;
+  ownerId: string;
+  activeAffinity: CrystalColor;
+  eligibleAffinities: CrystalColor[];
+  summonedAtTurnCount: number;
+}
 
 export type CrystalCounts = Record<CrystalColorWithFlux, number>;
 
@@ -59,6 +68,7 @@ export interface ActionLogEntry {
 export interface GameStateData {
   currentPlayerIndex: number;
   roundNumber: number;
+  turnCount: number;
   phase: "playing" | "last_round" | "finished";
   crystalBank: CrystalCounts;
   marketTier1: string[];
@@ -68,6 +78,7 @@ export interface GameStateData {
   deckTier2: string[];
   deckTier3: string[];
   activeLuminaries: string[];
+  luminaryAffinities: LuminaryAffinity[];
   players: PlayerGameState[];
   winnerId: string | null;
   lastAction: Record<string, unknown> | null;
@@ -447,6 +458,7 @@ export function initializeGame(
   return {
     currentPlayerIndex: 0,
     roundNumber: 1,
+    turnCount: 0,
     phase: "playing",
     crystalBank: crystalBankForPlayerCount(playerCount),
     marketTier1,
@@ -456,6 +468,7 @@ export function initializeGame(
     deckTier2,
     deckTier3,
     activeLuminaries,
+    luminaryAffinities: [],
     players: playerStates,
     winnerId: null,
     lastAction: null,
@@ -475,7 +488,8 @@ export type ActionType =
   | "purchase_card"
   | "purchase_reserved"
   | "pass"
-  | "surrender";
+  | "surrender"
+  | "toggle_luminary_affinity";
 
 export interface ActionPayload {
   type: ActionType;
@@ -483,6 +497,51 @@ export interface ActionPayload {
   crystal?: CrystalColor;
   cardId?: string;
   tier?: 1 | 2 | 3;
+  luminaryId?: string;
+  affinity?: CrystalColor;
+}
+
+// ─── Luminary Affinity Helpers ────────────────────────────────────────────────
+
+// Maps a Luminary's summonColor hex to its closest CrystalColor affinity.
+// Used to pick a sensible default active affinity when claiming a Luminary.
+const SUMMON_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
+  "#f43f5e": "ruby",
+  "#ff5a3c": "ruby",
+  "#3d6bff": "sapphire",
+  "#2ecc71": "emerald",
+  "#7b1fa2": "onyx",
+  "#a8b8e8": "pearl",
+};
+
+function defaultActiveAffinity(
+  lum: LuminaryDef,
+  eligible: CrystalColor[],
+): CrystalColor {
+  if (eligible.length === 0) return "ruby";
+  const mapped = SUMMON_COLOR_TO_AFFINITY[lum.summonColor.toLowerCase()];
+  if (mapped && eligible.includes(mapped)) return mapped;
+  return eligible[0];
+}
+
+/**
+ * Returns the player's effective bonus counts, including any +1 bonuses from
+ * Living Luminary Affinities that have become active (i.e. were claimed on a
+ * prior turn).  Used in place of player.bonuses wherever permanent card bonuses
+ * are normally counted: effectiveCost, canAfford, checkLuminaries.
+ */
+function effectiveBonuses(
+  state: GameStateData,
+  player: PlayerGameState,
+): CrystalCounts {
+  const result = { ...player.bonuses };
+  for (const la of state.luminaryAffinities ?? []) {
+    if (la.ownerId !== player.playerId) continue;
+    // Bonus activates starting the turn AFTER summoning.
+    if (state.turnCount <= la.summonedAtTurnCount) continue;
+    result[la.activeAffinity]++;
+  }
+  return result;
 }
 
 // ─── Effective Cost with Bonuses ──────────────────────────────────────────────
@@ -490,11 +549,12 @@ export interface ActionPayload {
 function effectiveCost(
   card: ArtifactCard,
   player: PlayerGameState,
+  bonusOverride?: CrystalCounts,
 ): CrystalCounts {
+  const bonuses = bonusOverride ?? player.bonuses;
   const result = zeroCrystals();
   for (const color of CRYSTAL_COLORS) {
-    const after = Math.max(0, card.cost[color] - player.bonuses[color]);
-    result[color] = after;
+    result[color] = Math.max(0, card.cost[color] - bonuses[color]);
   }
   return result;
 }
@@ -517,8 +577,9 @@ function payForCard(
   card: ArtifactCard,
   player: PlayerGameState,
   bank: CrystalCounts,
+  bonusOverride?: CrystalCounts,
 ): void {
-  const needed = effectiveCost(card, player);
+  const needed = effectiveCost(card, player, bonusOverride);
   let fluxUsed = 0;
   for (const color of CRYSTAL_COLORS) {
     const fromCrystals = Math.min(needed[color], player.crystals[color]);
@@ -534,16 +595,26 @@ function payForCard(
 // ─── Luminary Check ───────────────────────────────────────────────────────────
 
 function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
+  const liveBonuses = effectiveBonuses(state, player);
   for (const lumId of [...state.activeLuminaries]) {
     if (player.luminaries.includes(lumId)) continue;
     const lum = LUMINARY_MAP.get(lumId);
     if (!lum) continue;
     const qualifies = CRYSTAL_COLORS.every(
-      (c) => player.bonuses[c] >= lum.requirements[c],
+      (c) => liveBonuses[c] >= lum.requirements[c],
     );
     if (qualifies) {
       player.luminaries.push(lumId);
       player.lumens += lum.lumens;
+      const eligible = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
+      const defaultAffinity = defaultActiveAffinity(lum, eligible);
+      state.luminaryAffinities.push({
+        luminaryId: lumId,
+        ownerId: player.playerId,
+        activeAffinity: defaultAffinity,
+        eligibleAffinities: eligible,
+        summonedAtTurnCount: state.turnCount,
+      });
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
@@ -582,6 +653,7 @@ function checkWin(state: GameStateData): boolean {
 // ─── Advance Turn ─────────────────────────────────────────────────────────────
 
 function advanceTurn(state: GameStateData): void {
+  state.turnCount = (state.turnCount ?? 0) + 1;
   const playerCount = state.players.length;
   const nextIndex = (state.currentPlayerIndex + 1) % playerCount;
 
@@ -629,14 +701,40 @@ export function applyAction(
 ): { success: boolean; error?: string } {
   const playerIdx = state.players.findIndex((p) => p.playerId === playerId);
   if (playerIdx === -1) return { success: false, error: "Player not found" };
-  if (state.currentPlayerIndex !== playerIdx)
-    return { success: false, error: "Not your turn" };
   if (state.phase === "finished")
     return { success: false, error: "Game is over" };
+
+  // toggle_luminary_affinity is not turn-gated — any player may reconfigure
+  // their Luminary alliance at any time (it takes effect on their next action).
+  const isTurnGated = action.type !== "toggle_luminary_affinity";
+  if (isTurnGated && state.currentPlayerIndex !== playerIdx)
+    return { success: false, error: "Not your turn" };
 
   const player = state.players[playerIdx];
 
   switch (action.type) {
+    case "toggle_luminary_affinity": {
+      const { luminaryId, affinity } = action;
+      if (!luminaryId || !affinity)
+        return { success: false, error: "luminaryId and affinity required" };
+      if (!player.luminaries.includes(luminaryId))
+        return { success: false, error: "You don't own this Luminary" };
+      const la = state.luminaryAffinities.find(
+        (x) => x.luminaryId === luminaryId,
+      );
+      if (!la)
+        return { success: false, error: "Luminary affinity record not found" };
+      if (state.turnCount <= la.summonedAtTurnCount)
+        return {
+          success: false,
+          error: "Alliance bonus activates on your next turn",
+        };
+      if (!la.eligibleAffinities.includes(affinity))
+        return { success: false, error: "Invalid affinity for this Luminary" };
+      la.activeAffinity = affinity;
+      state.version++;
+      return { success: true };
+    }
     case "take_three_crystals": {
       const selected = action.crystals ?? {};
       const colors = CRYSTAL_COLORS.filter((c) => (selected[c] ?? 0) > 0);
@@ -723,10 +821,11 @@ export function applyAction(
       const market = getMarketForTier(state, card.tier as 1 | 2 | 3);
       if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
-      const eff = effectiveCost(card, player);
+      const liveBonusesPurchase = effectiveBonuses(state, player);
+      const eff = effectiveCost(card, player, liveBonusesPurchase);
       if (!canAfford(eff, player.crystals))
         return { success: false, error: "Cannot afford this card" };
-      payForCard(card, player, state.crystalBank);
+      payForCard(card, player, state.crystalBank, liveBonusesPurchase);
       player.purchasedCardIds.push(action.cardId);
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
@@ -742,10 +841,11 @@ export function applyAction(
         return { success: false, error: "Card not in your reserved pile" };
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Card not found" };
-      const eff = effectiveCost(card, player);
+      const liveBonusesReserved = effectiveBonuses(state, player);
+      const eff = effectiveCost(card, player, liveBonusesReserved);
       if (!canAfford(eff, player.crystals))
         return { success: false, error: "Cannot afford this card" };
-      payForCard(card, player, state.crystalBank);
+      payForCard(card, player, state.crystalBank, liveBonusesReserved);
       player.reservedCardIds.splice(idx, 1);
       player.purchasedCardIds.push(action.cardId);
       player.bonuses[card.bonusColor]++;
@@ -884,6 +984,14 @@ export function normalizeState(raw: unknown): GameStateData {
       return p;
     });
   }
+  // ensure turnCount exists (added in Living Luminary Affinity feature)
+  if (typeof state.turnCount !== "number") {
+    state.turnCount = 0;
+  }
+  // ensure luminaryAffinities array exists (added in Living Luminary Affinity feature)
+  if (!Array.isArray(state.luminaryAffinities)) {
+    state.luminaryAffinities = [];
+  }
   // filter activeLuminaries to only known IDs (backward compat for old saves)
   if (Array.isArray(state.activeLuminaries)) {
     const original = state.activeLuminaries as string[];
@@ -964,6 +1072,7 @@ export function formatGameState(
     status: stateData.phase === "finished" ? "finished" : status,
     currentPlayerIndex: stateData.currentPlayerIndex,
     roundNumber: stateData.roundNumber,
+    turnCount: stateData.turnCount ?? 0,
     crystalBank: stateData.crystalBank,
     marketTier1,
     marketTier2,
@@ -974,6 +1083,7 @@ export function formatGameState(
       tier3: stateData.deckTier3.length,
     },
     luminaries,
+    luminaryAffinities: stateData.luminaryAffinities ?? [],
     players,
     winnerId: stateData.winnerId,
     lastAction: stateData.lastAction,

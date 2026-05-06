@@ -554,6 +554,30 @@ components:
         - isConnected
         - claimedLuminaryIds
 
+    LuminaryActiveState:
+      type: object
+      properties:
+        luminaryId:
+          type: string
+        ownerId:
+          type: string
+        activeAffinity:
+          type: string
+          enum: [ruby, sapphire, emerald, onyx, pearl]
+        eligibleAffinities:
+          type: array
+          items:
+            type: string
+            enum: [ruby, sapphire, emerald, onyx, pearl]
+        summonedAtTurnCount:
+          type: integer
+      required:
+        - luminaryId
+        - ownerId
+        - activeAffinity
+        - eligibleAffinities
+        - summonedAtTurnCount
+
     GameState:
       type: object
       properties:
@@ -566,6 +590,9 @@ components:
           type: integer
         roundNumber:
           type: integer
+        turnCount:
+          type: integer
+          description: Monotonically increasing counter incremented each time any player's turn ends
         crystalBank:
           $ref: "#/components/schemas/CrystalCounts"
         marketTier1:
@@ -597,6 +624,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Luminary"
+        luminaryAffinities:
+          type: array
+          description: Active affinity state for each claimed Luminary
+          items:
+            $ref: "#/components/schemas/LuminaryActiveState"
         players:
           type: array
           items:
@@ -622,12 +654,14 @@ components:
         - status
         - currentPlayerIndex
         - roundNumber
+        - turnCount
         - crystalBank
         - marketTier1
         - marketTier2
         - marketTier3
         - deckCounts
         - luminaries
+        - luminaryAffinities
         - players
         - winnerId
         - lastAction
@@ -649,6 +683,7 @@ components:
             - purchase_reserved
             - pass
             - surrender
+            - toggle_luminary_affinity
         crystals:
           $ref: "#/components/schemas/CrystalCounts"
         crystal:
@@ -658,6 +693,13 @@ components:
           type: string
         tier:
           type: integer
+        luminaryId:
+          type: string
+          description: Luminary ID for toggle_luminary_affinity action
+        affinity:
+          type: string
+          enum: [ruby, sapphire, emerald, onyx, pearl]
+          description: Target affinity for toggle_luminary_affinity action
       required:
         - sessionToken
         - type

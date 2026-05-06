@@ -70,12 +70,14 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
       status: "lobby",
       currentPlayerIndex: 0,
       roundNumber: 0,
+      turnCount: 0,
       crystalBank: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
       marketTier1: [],
       marketTier2: [],
       marketTier3: [],
       deckCounts: { tier1: 0, tier2: 0, tier3: 0 },
       luminaries: [],
+      luminaryAffinities: [],
       players: players.map((p) => ({
         playerId: p.id,
         playerName: p.name,
@@ -87,6 +89,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
         purchasedCardIds: [],
         purchasedCards: [],
         isConnected: p.isAi ? true : p.isConnected,
+        claimedLuminaryIds: [],
       })),
       winnerId: null,
       lastAction: null,
@@ -200,6 +203,8 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     tier: actionData.tier as 1 | 2 | 3 | undefined,
     crystal: actionData.crystal as CrystalColor | undefined,
     crystals: actionData.crystals as Partial<Record<string, number>> | undefined,
+    luminaryId: actionData.luminaryId ?? undefined,
+    affinity: actionData.affinity as CrystalColor | undefined,
   };
 
   // Serialize all read-modify-write on this room's state behind a per-room
@@ -224,8 +229,11 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       return { ok: false as const, status: 400, error: result.error };
     }
 
-    // Refresh per-turn deadline based on configured timer
-    updateTurnDeadline(stateData);
+    // Refresh per-turn deadline based on configured timer.
+    // toggle_luminary_affinity does not advance the turn so the deadline stays.
+    if (action.type !== "toggle_luminary_affinity") {
+      updateTurnDeadline(stateData);
+    }
 
     if (stateData.phase === "finished") {
       await db
@@ -271,7 +279,9 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap);
 
     broadcastToRoom(rawId, { type: "state_update", state: formatted });
-    armTurnTimer(rawId, stateData);
+    if (action.type !== "toggle_luminary_affinity") {
+      armTurnTimer(rawId, stateData);
+    }
     return { ok: true as const, formatted };
   });
 
