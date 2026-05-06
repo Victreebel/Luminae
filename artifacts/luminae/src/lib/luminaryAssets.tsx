@@ -1003,18 +1003,20 @@ export function LuminarySummonCutscene({
       >
 
         {/* ── Sealed vessel — board-card sized, anchored at its board spot ── */}
+        {/* Styled to match LuminaryCard exactly so the switch is seamless:     */}
+        {/*   rounded-xl (12px) · bg-black · LuminaryPanelArt interior ·        */}
+        {/*   from-black/20 via-black/10 to-black/90 gradient · ring+shadow-xl  */}
         <AnimatePresence>
           {isVessel && (
             <motion.div
               key="vessel"
-              className="absolute overflow-hidden"
+              className="absolute overflow-hidden bg-black"
               style={{
                 left: vesselLeft,
                 top:  vesselTop,
                 width:  BOARD_CARD_W,
                 height: BOARD_CARD_H,
-                borderRadius: 10,
-                border: `1.5px solid ${primaryColor}70`,
+                borderRadius: 12,
               }}
               initial={{ opacity: 0 }}
               animate={{
@@ -1022,7 +1024,7 @@ export function LuminarySummonCutscene({
                 scale: (isPressure || hasCracks) ? ([1, 1.022, 1] as number[]) : 1,
                 boxShadow: (isPressure || hasCracks)
                   ? (vesselGlow as unknown as string)
-                  : `0 0 8px ${primaryColor}40`,
+                  : '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
               }}
               exit={{ scale: 1.12, opacity: 0, transition: { duration: 0.30, ease: 'easeIn' } }}
               transition={{
@@ -1033,18 +1035,10 @@ export function LuminarySummonCutscene({
                 boxShadow: { repeat: Infinity, duration: 1.12, ease: 'easeInOut' },
               }}
             >
-              {/* Panel art fill */}
-              {panelArt ? (
-                <img
-                  src={panelArt}
-                  alt={luminaryName}
-                  className="w-full h-full"
-                  style={{ objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
-                  draggable={false}
-                />
-              ) : (
-                <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
-              )}
+              {/* Identical interior to LuminaryCard — same component, same props */}
+              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
+              {/* Same dark gradient the board card overlays for text legibility */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
               {/* ── Crack-light SVG overlay ────────────────────────────── */}
               {hasCracks && (
