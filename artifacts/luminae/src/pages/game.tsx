@@ -292,14 +292,19 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
           >
             +{luminary.lumens}
           </span>
+          {/* Domain card — portrait card shape, Luminary color gradient, inner frame */}
           <div
-            className="w-5 h-5 rounded-full shadow-md ring-2 ring-black/60 flex items-center justify-center"
+            className="relative shrink-0 overflow-hidden flex items-center justify-center"
             title={luminary.domain}
             style={{
-              background: `radial-gradient(circle at 35% 30%, ${vis?.primaryColor ?? accentColor}, ${vis?.secondaryColor ?? '#000'})`,
+              width: 22, height: 30, borderRadius: 3,
+              background: `linear-gradient(145deg, ${vis?.primaryColor ?? accentColor}dd, ${vis?.secondaryColor ?? '#000'}bb)`,
+              boxShadow: `0 0 8px ${vis?.primaryColor ?? accentColor}66, 0 2px 4px rgba(0,0,0,0.85)`,
+              border: `1px solid ${vis?.primaryColor ?? accentColor}66`,
             }}
           >
-            <Sparkles className="h-2.5 w-2.5 text-white/90" />
+            <div className="absolute pointer-events-none" style={{ inset: 2, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1 }} />
+            <Sparkles className="h-3 w-3 text-white/90 relative z-10" />
           </div>
         </div>
 
@@ -319,26 +324,33 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
           <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
             Artifacts Required:
           </div>
-          <div className="flex flex-wrap gap-1 justify-end items-center">
+          {/* Affinity requirement chips — mini card shapes, gem image as texture */}
+          <div className="flex flex-wrap gap-0.5 justify-end items-end">
             {CRYSTALS.map((c) => {
               const req = luminary.requirements[c as keyof CrystalCounts];
               if (req <= 0) return null;
               const meta = GEM_META[c];
               return (
-                <div key={c} className="flex items-center gap-0.5">
-                  <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+                <div
+                  key={c}
+                  className="relative shrink-0 overflow-hidden"
+                  style={{
+                    width: 20, height: 28, borderRadius: 3,
+                    boxShadow: `0 0 7px ${meta.hex}77, 0 2px 4px rgba(0,0,0,0.85)`,
+                    border: `1px solid ${meta.hex}66`,
+                  }}
+                  title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
+                >
+                  {/* Full-bleed gem image as card texture */}
+                  <img src={meta.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                  {/* Bottom-weighted vignette for count readability */}
+                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%)' }} />
+                  {/* Inner frame line */}
+                  <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.hex}33`, borderRadius: 2 }} />
+                  {/* Count number pinned to bottom centre */}
+                  <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
                     {req}
                   </span>
-                  {/* Solid color dot = "card bonus type required" — visually distinct
-                      from gem-image cost chips used everywhere else in the UI */}
-                  <div
-                    className="w-4 h-4 rounded-full shadow-md ring-2 ring-black/60 shrink-0"
-                    style={{
-                      background: meta.hex,
-                      boxShadow: `0 0 5px ${meta.hex}88`,
-                    }}
-                    title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
-                  />
                 </div>
               );
             })}
