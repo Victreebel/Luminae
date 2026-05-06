@@ -833,12 +833,24 @@ export function LuminarySummonCutscene({
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
-  // Scroll the board content area to the top on mount so the Luminary panel
-  // row is in view for the camera pan. [data-game-board] is the only overflow
-  // container — window / body are NOT scrolled (they're h-screen fixed).
+  // Scroll the board content area so the Luminary panel row is near the top
+  // of the viewport for the camera pan. We resolve the first Luminary card's
+  // actual position within [data-game-board] and scroll to that offset minus
+  // a small margin — avoids overshooting past the Luminary row entirely.
   useEffect(() => {
     const board = document.querySelector('[data-game-board]') as HTMLElement | null;
-    board?.scrollTo({ top: 0, behavior: 'smooth' });
+    if (!board) return;
+    const firstCard = document.querySelector('[data-luminary-id]') as HTMLElement | null;
+    if (firstCard) {
+      const boardRect = board.getBoundingClientRect();
+      const cardRect  = firstCard.getBoundingClientRect();
+      // cardRect.top - boardRect.top = current visible distance from board top.
+      // Adding board.scrollTop converts to absolute scroll offset; subtract 12px margin.
+      const target = board.scrollTop + (cardRect.top - boardRect.top) - 12;
+      board.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    } else {
+      board.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
