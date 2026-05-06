@@ -521,6 +521,9 @@ export default function GameBoard() {
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
   const [cutscenePostFlash, setCutscenePostFlash] = useState(false);
+  // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
+  // Client-side only — never written to the server.
+  const [previewedPortals, setPreviewedPortals] = useState<Set<string>>(new Set());
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -1147,7 +1150,13 @@ export default function GameBoard() {
             const claimedByNames = state.players
               .filter(p => (p.claimedLuminaryIds ?? []).includes(l.id))
               .map(p => p.playerName);
-            return <LuminaryCard key={l.id} luminary={l} claimedByNames={claimedByNames} isReleased={claimedThisSession.includes(l.id)} />;
+            // DEV-only: merge local portal preview into the claimed list so
+            // LuminaryCard renders the portal without touching server state.
+            const effectiveClaimedByNames =
+              import.meta.env.DEV && previewedPortals.has(l.id) && claimedByNames.length === 0
+                ? ['[Preview]']
+                : claimedByNames;
+            return <LuminaryCard key={l.id} luminary={l} claimedByNames={effectiveClaimedByNames} isReleased={claimedThisSession.includes(l.id)} />;
           })}
         </div>
       </div>
@@ -2857,50 +2866,92 @@ export default function GameBoard() {
         />
       ))}
 
-      {/* Dev test panel — visible in development to preview each Luminary cutscene */}
+      {/* Dev test panels — visible in development only, tree-shaken from production */}
       {import.meta.env.DEV && (
-        <details className="fixed bottom-16 right-2 z-[8000] text-[10px]" open>
-          <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">⚗ Summon Test</summary>
-          <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 max-h-60 overflow-y-auto min-w-36">
-            {Object.values(LUMINARY_VISUALS).map(v => (
-              <button
-                key={v.id}
-                className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-                style={{ borderLeft: `3px solid ${v.primaryColor}` }}
-                onClick={() => {
-                  // Prefer exact card; fall back to any visible luminary; then
-                  // use a synthetic off-centre rect to demonstrate pan+zoom.
-                  let cardRect: { cx: number; cy: number; w: number } | undefined;
-                  const el = document.querySelector(`[data-luminary-id="${v.id}"]`);
-                  const rect = el?.getBoundingClientRect();
-                  if (rect && rect.width > 0 && rect.height > 0) {
-                    cardRect = { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width };
-                  } else {
-                    const any = document.querySelector('[data-luminary-id]');
-                    const anyR = any?.getBoundingClientRect();
-                    if (anyR && anyR.width > 0) {
-                      cardRect = { cx: anyR.left + anyR.width / 2, cy: anyR.top + anyR.height / 2, w: anyR.width };
+        <>
+          {/* Summon Test — plays the cinematic without touching server state */}
+          <details className="fixed bottom-16 right-2 z-[8000] text-[10px]" open>
+            <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">⚗ Summon Test</summary>
+            <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 max-h-60 overflow-y-auto min-w-36">
+              {Object.values(LUMINARY_VISUALS).map(v => (
+                <button
+                  key={v.id}
+                  className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+                  style={{ borderLeft: `3px solid ${v.primaryColor}` }}
+                  onClick={() => {
+                    let cardRect: { cx: number; cy: number; w: number } | undefined;
+                    const el = document.querySelector(`[data-luminary-id="${v.id}"]`);
+                    const rect = el?.getBoundingClientRect();
+                    if (rect && rect.width > 0 && rect.height > 0) {
+                      cardRect = { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width };
                     } else {
-                      // Synthetic off-centre position so pan+zoom is visible in preview
-                      cardRect = { cx: Math.round(window.innerWidth * 0.22), cy: Math.round(window.innerHeight * 0.60), w: 112 };
+                      const any = document.querySelector('[data-luminary-id]');
+                      const anyR = any?.getBoundingClientRect();
+                      if (anyR && anyR.width > 0) {
+                        cardRect = { cx: anyR.left + anyR.width / 2, cy: anyR.top + anyR.height / 2, w: anyR.width };
+                      } else {
+                        cardRect = { cx: Math.round(window.innerWidth * 0.22), cy: Math.round(window.innerHeight * 0.60), w: 112 };
+                      }
                     }
-                  }
-                  const lumData = state.luminaries.find(l => l.id === v.id);
-                  setSummonQueue(q => [...q, {
-                    id: v.id,
-                    name: lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                    domain: (lumData as { domain?: string } | undefined)?.domain ?? '',
-                    lumens: lumData?.lumens ?? 0,
-                    flavor: (lumData as { flavor?: string } | undefined)?.flavor ?? '',
-                    cardRect,
-                  }]);
-                }}
-              >
-                {v.id}
-              </button>
-            ))}
-          </div>
-        </details>
+                    const lumData = state.luminaries.find(l => l.id === v.id);
+                    setSummonQueue(q => [...q, {
+                      id: v.id,
+                      name: lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                      domain: (lumData as { domain?: string } | undefined)?.domain ?? '',
+                      lumens: lumData?.lumens ?? 0,
+                      flavor: (lumData as { flavor?: string } | undefined)?.flavor ?? '',
+                      cardRect,
+                    }]);
+                  }}
+                >
+                  {v.id}
+                </button>
+              ))}
+            </div>
+          </details>
+
+          {/* Portal Preview — toggles the claimed-portal visual locally, no server write */}
+          <details className="fixed bottom-16 right-40 z-[8000] text-[10px]">
+            <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">🌀 Portal Preview</summary>
+            <div className="mt-1 bg-black/80 rounded p-1.5 border border-white/10 min-w-40">
+              <p className="text-white/40 leading-tight mb-1.5 px-1">
+                Client-only · no server write
+              </p>
+              <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
+                {Object.values(LUMINARY_VISUALS).map(v => {
+                  const isRealClaimed = state.players.some(p => (p.claimedLuminaryIds ?? []).includes(v.id));
+                  const isPreviewed = previewedPortals.has(v.id);
+                  return (
+                    <button
+                      key={v.id}
+                      className={`text-left px-2 py-0.5 rounded text-white/70 hover:text-white flex items-center gap-1.5 ${isPreviewed ? 'bg-white/10' : 'hover:bg-white/10'}`}
+                      style={{ borderLeft: `3px solid ${isPreviewed ? v.primaryColor : 'transparent'}` }}
+                      disabled={isRealClaimed}
+                      title={isRealClaimed ? 'Already claimed in game state' : (isPreviewed ? 'Click to restore panel' : 'Click to preview portal')}
+                      onClick={() => setPreviewedPortals(prev => {
+                        const next = new Set(prev);
+                        if (next.has(v.id)) next.delete(v.id); else next.add(v.id);
+                        return next;
+                      })}
+                    >
+                      <span className={isPreviewed ? 'text-white' : ''}>{v.id}</span>
+                      {isPreviewed && <span className="ml-auto text-white/40">on</span>}
+                      {isRealClaimed && <span className="ml-auto text-amber-400/70">★</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              {previewedPortals.size > 0 && (
+                <button
+                  className="mt-1.5 w-full text-center text-white/40 hover:text-white/70 px-1 py-0.5 rounded hover:bg-white/10"
+                  onClick={() => setPreviewedPortals(new Set())}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          </details>
+        </>
       )}
 
     </div>
