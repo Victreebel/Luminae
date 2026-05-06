@@ -853,21 +853,6 @@ export function LuminarySummonCutscene({
     return () => { el.style.opacity = ''; };
   }, [phase, luminaryId]);
 
-  // ── Suppress ALL OTHER Luminary cards from focusing onward ───────────────
-  // As the board zooms in during focusing, neighbouring Luminary cards sweep
-  // across the viewport and look like a second copy flying in. Hide them from
-  // focusing through fading so only the target + non-Luminary board content
-  // is visible during the zoom.
-  useEffect(() => {
-    const others = document.querySelectorAll(
-      `[data-luminary-id]:not([data-luminary-id="${luminaryId}"])`
-    ) as NodeListOf<HTMLElement>;
-    if (others.length === 0) return;
-    const hide = phase !== 'establish' && phase !== 'panning' && phase !== 'done';
-    others.forEach(el => { el.style.opacity = hide ? '0' : ''; });
-    return () => { others.forEach(el => { el.style.opacity = ''; }); };
-  }, [phase, luminaryId]);
-
   // ── Board DOM pan — travels the real game board toward the Luminary ───────
   // Applies a CSS transform to [data-game-board] so the user sees the entire
   // board sliding as a unit during 'panning'. Overlay stays at 0 so the real
