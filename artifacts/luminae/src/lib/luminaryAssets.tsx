@@ -750,7 +750,7 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   pressure:     500,
   firstcrack:   750,  // primary fault + branch draw, then hold for suspense
   leaking:      850,  // energy bleeds through; sustained quiet-before-storm
-  secondcrack:  650,  // second branch crack appears; faint rays start seeping
+  secondcrack:  420,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
   shattering: 1000,
   flashing:    950,
@@ -1274,6 +1274,45 @@ export function LuminarySummonCutscene({
                         animate={{ opacity: [0, 0.40, 0.80, 0.15, 0.60, 0] }}
                         transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.50 }}
                       />
+
+                      {/* ── Branch 2b: lower-right snap from junction (secondcrack+) ── */}
+                      {/* Seam wound glow */}
+                      <motion.path
+                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.78)},${Math.round(BOARD_CARD_H*0.61)} L${Math.round(BOARD_CARD_W*0.97)},${Math.round(BOARD_CARD_H*0.76)}`}
+                        stroke="#ffe8a0" strokeWidth="16" fill="none" strokeLinecap="round"
+                        filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.06, 0.10] }}
+                        transition={{ duration: 0.55, delay: 0.09, ease: 'easeOut' }}
+                      />
+                      {/* White crack line */}
+                      <motion.path
+                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.78)},${Math.round(BOARD_CARD_H*0.61)} L${Math.round(BOARD_CARD_W*0.97)},${Math.round(BOARD_CARD_H*0.76)}`}
+                        stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.65, 0.80] }}
+                        transition={{ duration: 0.50, delay: 0.09, ease: 'easeOut' }}
+                      />
+                      {/* Warm inner fill */}
+                      <motion.path
+                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.78)},${Math.round(BOARD_CARD_H*0.61)} L${Math.round(BOARD_CARD_W*0.97)},${Math.round(BOARD_CARD_H*0.76)}`}
+                        stroke="#ffe8a0" strokeWidth="4" fill="none" strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.16, 0.28] }}
+                        transition={{ duration: 0.50, delay: 0.13, ease: 'easeOut' }}
+                      />
+                      {/* Ember motes along branch 2b */}
+                      <motion.circle cx={Math.round(BOARD_CARD_W*0.64)} cy={Math.round(BOARD_CARD_H*0.54)} r="0.9" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.55, 0.10, 0.65, 0.15, 0] }}
+                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.20 }}
+                      />
+                      <motion.circle cx={Math.round(BOARD_CARD_W*0.84)} cy={Math.round(BOARD_CARD_H*0.68)} r="0.7" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.35, 0.70, 0.12, 0.50, 0] }}
+                        transition={{ duration: 3.1, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
+                      />
+
                       {/* Faint rays seeping through at secondcrack */}
                       <motion.line x1={FX} y1={FY} x2={FX} y2={0}
                         stroke="url(#rayUp)" strokeWidth="1.8"
