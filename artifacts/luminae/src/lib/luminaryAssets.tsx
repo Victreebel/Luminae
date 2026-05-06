@@ -714,12 +714,12 @@ const ENT_W = 320;
 const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 
 // Idle-state entity overlay: sits directly over the claimed Luminary panel card.
-// Width matches the card; height is 1.25× the card so the full portrait figure
+// Width matches the card; height is 1.1× the card so the full portrait figure
 // is visible without cropping.  The overlay is centred on the card centre so
 // the entity fills the card area; a mask gradient fades the lower portion so
 // the card's name / requirements row remains legible underneath.
 const IDLE_W = BOARD_CARD_W;                     // 112
-const IDLE_H = Math.round(BOARD_CARD_H * 1.25);  // ≈ 200
+const IDLE_H = Math.round(BOARD_CARD_H * 1.1);   // ≈ 176
 
 // Fault-line junction pixel coords inside the vessel's SVG viewBox
 // (viewBox matches BOARD_CARD_W × BOARD_CARD_H)
