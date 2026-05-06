@@ -1622,12 +1622,30 @@ export default function GameBoard() {
 
   return (
     <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
-      {/* Cosmic background */}
+      {/* ── Cosmic background layers ──────────────────────────────────────── */}
+      {/* Star-field photo: opacity pulses slowly so stars appear to breathe   */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-20"
-        style={{ backgroundImage: `url(${backgroundCosmos})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${backgroundCosmos})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          animation: 'cosmic-breathe 12s ease-in-out infinite',
+        }}
       />
-      <div className="absolute inset-0 bg-background/85 pointer-events-none" />
+      {/* Darkening veil — lighter than before so stars show through           */}
+      <div className="absolute inset-0 bg-background/68 pointer-events-none" />
+      {/* Nebula corner glows — affinity-palette tints, barely perceptible     */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse 55% 35% at 100% 0%,   #3D6BFF0F 0%, transparent 70%),' +
+            'radial-gradient(ellipse 45% 30% at 0%   100%, #FF5A3C0C 0%, transparent 70%),' +
+            'radial-gradient(ellipse 40% 28% at 0%   0%,   #7B1FA20C 0%, transparent 65%),' +
+            'radial-gradient(ellipse 42% 30% at 100% 100%, #2ECC710B 0%, transparent 65%)',
+        }}
+      />
 
       {/* ── Header ── */}
       <header className="shrink-0 h-14 px-4 flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">

@@ -156,6 +156,10 @@
   0%, 100% { box-shadow: 0 0 30px 4px rgba(var(--primary-rgb, 99 102 241) / 0.3); }
   50%       { box-shadow: 0 0 60px 12px rgba(var(--primary-rgb, 99 102 241) / 0.6); }
 }
+@keyframes cosmic-breathe {
+  0%, 100% { opacity: 0.46; }
+  50%       { opacity: 0.62; }
+}
 
 .gem-pop  { animation: gem-pop 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 .float-score { animation: float-score 0.9s ease-out forwards; }
