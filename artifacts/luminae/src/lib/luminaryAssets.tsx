@@ -833,6 +833,16 @@ export function LuminarySummonCutscene({
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
+  // Scroll to top on mount so the Luminary panel row is in view for the
+  // camera pan. Runs once during the 600 ms establish phase — smooth scroll
+  // finishes well before the panning/focusing phases begin.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelectorAll('[data-game-board], main').forEach(el => {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }, []);
+
   // Phase timer chain — empty dep array: runs exactly once on mount.
   useEffect(() => {
     let idx = 0;
