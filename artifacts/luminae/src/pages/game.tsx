@@ -526,14 +526,6 @@ function LuminaryClaimedPortal({
               style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
             >
               <MiniGem color={activeKey} size={16} />
-              {canToggle && (
-                <div
-                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
-                  style={{ background: g1, boxShadow: `0 0 4px ${g1}` }}
-                >
-                  <span className="text-[7px] text-black font-black leading-none">↻</span>
-                </div>
-              )}
             </motion.div>
           )}
         </div>
