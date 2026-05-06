@@ -823,10 +823,7 @@ export default function GameBoard() {
               const lumFlavor = (lum as { flavor?: string } | undefined)?.flavor ?? '';
               const isMe = newPlayer.playerId === session?.playerId;
               if (isMe) {
-                const el = document.querySelector(`[data-luminary-id="${lumId}"]`);
-              const rect = el?.getBoundingClientRect();
-              const cardRectVal = rect ? { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width } : undefined;
-              setSummonQueue(q => [...q, { id: lumId, name: lumName, domain: lumDomain, lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal }]);
+                enqueueSummon(lumId, lumName, lumDomain, lumLumens, lumFlavor);
               } else {
                 toast({
                   title: `${newPlayer.playerName} claimed a Luminary`,
@@ -939,6 +936,79 @@ export default function GameBoard() {
   });
 
   const submitAction = useSubmitAction();
+
+  // ── enqueueSummon ─────────────────────────────────────────────────────────
+  // Shared path used by both the real game (WebSocket state diff) and the dev
+  // Summon Test panel.  Guarantees the board tab is rendered, the target
+  // Luminary card is scrolled into the viewport, and the rect is re-measured
+  // before the cutscene entry is pushed into summonQueue.
+  //
+  // Sequence:
+  //   1. setActiveTab('board')          — mount LuminaryCard elements
+  //   2. double rAF                     — let React commit + browser layout
+  //   3. el.scrollIntoView (instant)    — bring card into view on both axes
+  //      (handles main vertical scroller AND horizontal Luminary row overflow)
+  //   4. one rAF                        — let scroll settle
+  //   5. getBoundingClientRect()        — fresh measurement
+  //   6. setSummonQueue                 — start the cutscene
+  //
+  // If the element cannot be found even after switching to the board tab,
+  // the cutscene falls back to viewport-centre (same as the existing behaviour)
+  // and a warning is logged rather than crashing.
+  const enqueueSummon = (
+    lumId: string,
+    lumName: string,
+    lumDomain: string,
+    lumLumens: number,
+    lumFlavor: string,
+  ) => {
+    setActiveTab('board');                           // 1. ensure board tab mounts
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {                  // 2. React commit + layout
+        const el = document.querySelector(
+          `[data-luminary-id="${lumId}"]`
+        ) as HTMLElement | null;
+
+        if (!el) {
+          console.warn(
+            `[Luminae] enqueueSummon: no DOM element for luminary "${lumId}". ` +
+            'Falling back to viewport centre.'
+          );
+          setSummonQueue(q => [
+            ...q,
+            { id: lumId, name: lumName, domain: lumDomain,
+              lumens: lumLumens, flavor: lumFlavor, cardRect: undefined },
+          ]);
+          return;
+        }
+
+        // 3. Scroll into view — browser handles both scroll containers at once.
+        el.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+
+        requestAnimationFrame(() => {               // 4. settle
+          const rect = el.getBoundingClientRect();
+          const cardRectVal = rect.width > 0
+            ? { cx: rect.left + rect.width / 2,
+                cy: rect.top  + rect.height / 2,
+                w:  rect.width }
+            : undefined;
+
+          if (!cardRectVal) {
+            console.warn(
+              `[Luminae] enqueueSummon: element for "${lumId}" has zero width ` +
+              'after scroll. Falling back to viewport centre.'
+            );
+          }
+
+          setSummonQueue(q => [                     // 6. start the cutscene
+            ...q,
+            { id: lumId, name: lumName, domain: lumDomain,
+              lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal },
+          ]);
+        });
+      });
+    });
+  };
 
   const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
     const gems: GemKey[] = [];
@@ -2878,29 +2948,14 @@ export default function GameBoard() {
                   className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                   style={{ borderLeft: `3px solid ${v.primaryColor}` }}
                   onClick={() => {
-                    let cardRect: { cx: number; cy: number; w: number } | undefined;
-                    const el = document.querySelector(`[data-luminary-id="${v.id}"]`);
-                    const rect = el?.getBoundingClientRect();
-                    if (rect && rect.width > 0 && rect.height > 0) {
-                      cardRect = { cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2, w: rect.width };
-                    } else {
-                      const any = document.querySelector('[data-luminary-id]');
-                      const anyR = any?.getBoundingClientRect();
-                      if (anyR && anyR.width > 0) {
-                        cardRect = { cx: anyR.left + anyR.width / 2, cy: anyR.top + anyR.height / 2, w: anyR.width };
-                      } else {
-                        cardRect = { cx: Math.round(window.innerWidth * 0.22), cy: Math.round(window.innerHeight * 0.60), w: 112 };
-                      }
-                    }
                     const lumData = state.luminaries.find(l => l.id === v.id);
-                    setSummonQueue(q => [...q, {
-                      id: v.id,
-                      name: lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                      domain: (lumData as { domain?: string } | undefined)?.domain ?? '',
-                      lumens: lumData?.lumens ?? 0,
-                      flavor: (lumData as { flavor?: string } | undefined)?.flavor ?? '',
-                      cardRect,
-                    }]);
+                    enqueueSummon(
+                      v.id,
+                      lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                      (lumData as { domain?: string } | undefined)?.domain ?? '',
+                      lumData?.lumens ?? 0,
+                      (lumData as { flavor?: string } | undefined)?.flavor ?? '',
+                    );
                   }}
                 >
                   {v.id}
