@@ -742,21 +742,21 @@ const FY = Math.round(BOARD_CARD_H * 0.5125); // 82 — junction y (51.25%)
 // 3-D motion: x/y/z throw + rotateX/Y/Z tilt, rendered via transformPerspective on each chunk.
 // dz > 0 = erupts toward the viewer (grows); dz < 0 = recedes away (shrinks).
 const PANEL_PIECES = [
-  // C1: Top-left — large quadrilateral, erupts upper-left toward viewer
+  // C1: Top-left — drifts upper-left, gentle forward tilt, heavy crystal peel
   { clip: 'polygon(0% 0%, 37.5% 0%, 41.1% 51.25%, 0% 53.75%)',
-    dx: -125, dy:  -90, dz:   95, rotateX: -12, rotateY:  18, rotateZ:   8 },
-  // C2: Top-center — large triangle, shoots straight up and sinks away
+    dx:  -68, dy:  -48, dz:   22, rotateX:  -8, rotateY:  12, rotateZ:   5 },
+  // C2: Top-center — rises slowly straight up, subtle recede, no projectile depth
   { clip: 'polygon(37.5% 0%, 78.6% 0%, 41.1% 51.25%)',
-    dx:   -5, dy: -155, dz:  -80, rotateX: -30, rotateY:   2, rotateZ:  -4 },
-  // C3: Upper-right — large quadrilateral, flies right and up, toward viewer
+    dx:   -4, dy:  -82, dz:  -16, rotateX: -16, rotateY:   2, rotateZ:  -3 },
+  // C3: Upper-right — drifts right and slightly up, gentle tilt, shallow depth
   { clip: 'polygon(78.6% 0%, 100% 0%, 100% 41.25%, 41.1% 51.25%)',
-    dx:  140, dy:  -55, dz:   85, rotateX:  -8, rotateY: -22, rotateZ: -14 },
-  // C4: Bottom-left — large quadrilateral, erupts lower-left, most dramatic toward viewer
+    dx:   74, dy:  -32, dz:   18, rotateX:  -5, rotateY: -14, rotateZ:  -9 },
+  // C4: Bottom-left — sweeps lower-left, slight forward peel, stately and heavy
   { clip: 'polygon(0% 53.75%, 41.1% 51.25%, 50% 100%, 0% 100%)',
-    dx: -115, dy:  125, dz:  140, rotateX:  22, rotateY:  16, rotateZ:  18 },
-  // C5: Bottom-right — large quadrilateral, sweeps lower-right, sinks away
+    dx:  -62, dy:   68, dz:   26, rotateX:  14, rotateY:  10, rotateZ:  11 },
+  // C5: Bottom-right — drifts lower-right, gentle recede, symmetrical balance
   { clip: 'polygon(41.1% 51.25%, 100% 41.25%, 100% 100%, 50% 100%)',
-    dx:  130, dy:  115, dz:  -85, rotateX:  24, rotateY: -20, rotateZ: -16 },
+    dx:   70, dy:   62, dz:  -18, rotateX:  14, rotateY: -13, rotateZ: -10 },
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
@@ -1423,9 +1423,9 @@ export function LuminarySummonCutscene({
                 ],
               }}
               transition={{
-                duration: 1.55 + i * 0.028, ease: [0.18, 0.85, 0.32, 1], delay: i * 0.030,
-                opacity: { duration: 1.55, times: [0, 0.28, 0.68, 1] },
-                filter:  { duration: 1.55, times: [0, 0.24, 0.60, 1] },
+                duration: 2.60 + i * 0.045, ease: [0.04, 0.28, 0.62, 1], delay: i * 0.045,
+                opacity: { duration: 2.60, times: [0, 0.44, 0.82, 1] },
+                filter:  { duration: 2.60, times: [0, 0.32, 0.68, 1] },
               }}
             >
               {/* Panel art fills the full card box; clip-path carves each chunk shape */}
