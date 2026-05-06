@@ -506,35 +506,54 @@ class GameAudio {
       // ── pressure (2950–3450 ms): crystalline rattle + hum + warble ──────
       for (let i = 0; i < 5; i++) {
         const at = s(PRES + i * 82 + Math.random() * 16);
-        this.noiseBlip(ctx, at, 0.034, 0.038 + Math.random() * 0.022, 2300 + Math.random() * 750, 14, D);
+        // Q=9, 500-1400 Hz — physical crystalline stress, not a tonal ping
+        this.noiseBlip(ctx, at, 0.034, 0.038 + Math.random() * 0.022, 500 + Math.random() * 900, 9, D);
       }
       this.osc(ctx, 82, 'sine',   s(PRES), s(CRACK1), 0.08, 0.10, D);
       this.wobble(ctx, s(PRES),   490, 220, 9, 0.05, D);
 
-      // ── firstcrack (3450–4200 ms): sharp snap + glass ping + bass thump ─
-      this.noiseBlip(ctx, s(CRACK1),       0.055, 0.15, 3700, 24, D);
-      this.osc(ctx, 2093, 'sine',  s(CRACK1),       s(CRACK1 + 570), 0.09, 0.003, D);
-      this.osc(ctx, 3520, 'sine',  s(CRACK1 +  8),  s(CRACK1 + 260), 0.04, 0.002, D);
-      this.osc(ctx, 60,   'sine',  s(CRACK1),        s(CRACK1 + 310), 0.16, 0.005, D);
-      this.osc(ctx, 42,   'sine',  s(CRACK1),        s(CRACK1 + 470), 0.10, 0.008, D);
+      // ── firstcrack (3450–4200 ms): structural fracture — snap + crunch + bass ─
+      // Main fracture body: low-mid broadband crack (the primary "crack" sound)
+      this.noiseBlip(ctx, s(CRACK1),       0.090, 0.14,  420, 9, D);
+      // Sharp brittle splinter riding on top
+      this.noiseBlip(ctx, s(CRACK1 +  4),  0.038, 0.11, 1050, 11, D);
+      // Deep structural crunch — the material giving way
+      this.noiseBlip(ctx, s(CRACK1),       0.110, 0.10,  195, 6, D);
+      // Stress creak sweep: the fracture front traveling through the panel
+      this.noiseSweep(ctx, s(CRACK1 + 28), 0.22, 0.052, 90, 480, D);
+      // Low impact weight — preserved from original
+      this.osc(ctx, 60,  'sine', s(CRACK1), s(CRACK1 + 310), 0.15, 0.005, D);
+      this.osc(ctx, 42,  'sine', s(CRACK1), s(CRACK1 + 470), 0.10, 0.008, D);
+      this.osc(ctx, 110, 'sine', s(CRACK1), s(CRACK1 + 200), 0.08, 0.004, D);
 
-      // ── leaking (4200–5050 ms): airy shimmer + rising tension ────────────
-      this.noiseBlip(ctx, s(LEAK),       0.84, 0.058, 4300, 2.5, D);
-      this.osc(ctx, 1568, 'sine', s(LEAK +  60), s(LEAK + 810), 0.048, 0.10, D);
-      this.risingTone(ctx, s(LEAK), 850, 185, 365, 0.058, D);
+      // ── leaking (4200–5050 ms): energy bleed + deep pressure stress ─────
+      // Airy broad energy hiss (Q=2 — very broad, not tonal)
+      this.noiseBlip(ctx, s(LEAK),        0.84, 0.048, 4300, 2.0, D);
+      // Low-frequency pressure moan — the vessel under internal strain
+      this.noiseBlip(ctx, s(LEAK +  40),  0.50, 0.046,  480, 5, D);
+      // Deep pressure build rising through the low end
+      this.noiseSweep(ctx, s(LEAK + 170), 0.65, 0.038,   75, 230, D);
+      // Internal pressure tone: a glide, not a ping
+      this.risingTone(ctx, s(LEAK), 850, 185, 365, 0.055, D);
 
-      // ── secondcrack (5050–5470 ms): staggered pings + sweep ─────────────
+      // ── secondcrack (5050–5470 ms): staggered brittle physical snaps ────
       [0, 110, 240, 370].forEach((off, i) => {
-        this.noiseBlip(ctx, s(CRACK2 + off), 0.038, 0.052 + i * 0.020, 2700 + i * 370, 18, D);
-        this.osc(ctx, 1320 + i * 255, 'sine', s(CRACK2 + off), s(CRACK2 + off + 170), 0.032, 0.002, D);
+        // Crack body: low-mid, low-Q — physical snap, increasing intensity
+        this.noiseBlip(ctx, s(CRACK2 + off),     0.050, 0.048 + i * 0.018, 270 + i * 105, 8, D);
+        // Brittle splinter tail: mid-range but still broad — not tonal
+        this.noiseBlip(ctx, s(CRACK2 + off + 7), 0.026, 0.032 + i * 0.013, 720 + i * 175, 10, D);
       });
       this.noiseSweep(ctx, s(CRACK2), 0.42, 0.088, 360, 3400, D);
 
-      // ── cracking (5470–6570 ms): escalating burst + rising sweep ─────────
+      // ── cracking (5470–6570 ms): escalating fracture burst — physical, no pings ─
       [0, 88, 188, 305, 455, 675, 900].forEach((off, i) => {
-        const vol  = 0.042 + i * 0.017;
-        const freq = 2000 + i * 275 + Math.random() * 340;
-        this.noiseBlip(ctx, s(CRACKS + off), 0.032, Math.min(vol, 0.13), freq, 16 + i, D);
+        const vol = 0.038 + i * 0.016;
+        // Fracture body: low-mid, Q=7 — each crack heavier than the last
+        const bodyFreq   = 175 + i * 68 + Math.random() * 75;
+        this.noiseBlip(ctx, s(CRACKS + off),     0.040, Math.min(vol, 0.12),        bodyFreq,   7, D);
+        // Brittle splinter: mid, Q=9 — the sharp leading edge of each crack
+        const splintFreq = 530 + i * 125 + Math.random() * 150;
+        this.noiseBlip(ctx, s(CRACKS + off + 9), 0.022, Math.min(vol * 0.58, 0.08), splintFreq, 9, D);
       });
       this.noiseSweep(ctx, s(CRACKS), 1.10, 0.10, 270, 5200, D);
       this.osc(ctx, 52, 'sine', s(CRACKS), s(SHATT), 0.09, 0.20, D);
@@ -545,9 +564,13 @@ class GameAudio {
       this.noiseBlip(ctx, s(SHATT +  42), 0.21, 0.07,  760, 1.5, D);
       for (let i = 0; i < 10; i++) {
         const at = s(SHATT + 32 + i * 68 + Math.random() * 32);
+        // Q=4 (broad), 700-2500 Hz — broadband shard scatter, not narrow pings
         this.noiseBlip(ctx, at, 0.028, Math.max(0.008, 0.048 - i * 0.003),
-                       1400 + Math.random() * 3000, 10, D);
+                       700 + Math.random() * 1800, 4, D);
       }
+      // Descending glass scatter sweeps — energy cascading down as the panel falls
+      this.noiseSweep(ctx, s(SHATT +  12), 0.50, 0.062, 3800, 850, D);
+      this.noiseSweep(ctx, s(SHATT +  50), 0.40, 0.046, 2600, 600, D);
       this.osc(ctx, 40, 'sine',  s(SHATT),       s(SHATT + 760), 0.14, 0.010, D);
       this.osc(ctx, 58, 'sine',  s(SHATT),       s(SHATT + 560), 0.08, 0.015, D);
       this.osc(ctx, 80, 'sine',  s(SHATT +  18), s(SHATT + 400), 0.055, 0.020, D);
