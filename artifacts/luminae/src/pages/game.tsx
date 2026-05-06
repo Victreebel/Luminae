@@ -287,8 +287,11 @@ function LuminaryCard({ luminary, claimedByNames = [] }: { luminary: Luminary; c
         {/* Top row — lumens (left) + accent dot (right), mirroring ArtifactCardView */}
         <div className="flex justify-between items-start">
           <span
-            className="text-lg font-serif font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,1)]"
-            style={{ color: accentColor }}
+            className="text-lg font-serif font-bold"
+            style={{
+              color: accentColor,
+              textShadow: '-1px -1px 0 rgba(255,255,255,0.92), 1px -1px 0 rgba(255,255,255,0.92), -1px 1px 0 rgba(255,255,255,0.92), 1px 1px 0 rgba(255,255,255,0.92), 0 2px 5px rgba(0,0,0,1)',
+            }}
           >
             +{luminary.lumens}
           </span>
