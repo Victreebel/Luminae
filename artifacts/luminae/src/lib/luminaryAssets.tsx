@@ -833,14 +833,12 @@ export function LuminarySummonCutscene({
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
-  // Scroll to top on mount so the Luminary panel row is in view for the
-  // camera pan. Runs once during the 600 ms establish phase — smooth scroll
-  // finishes well before the panning/focusing phases begin.
+  // Scroll the board content area to the top on mount so the Luminary panel
+  // row is in view for the camera pan. [data-game-board] is the only overflow
+  // container — window / body are NOT scrolled (they're h-screen fixed).
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    document.querySelectorAll('[data-game-board], main').forEach(el => {
-      el.scrollTo({ top: 0, behavior: 'smooth' });
-    });
+    const board = document.querySelector('[data-game-board]') as HTMLElement | null;
+    board?.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
