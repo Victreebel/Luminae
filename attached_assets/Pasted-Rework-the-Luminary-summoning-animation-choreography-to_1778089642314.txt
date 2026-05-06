@@ -1,0 +1,59 @@
+Rework the Luminary summoning animation choreography to align with the uploaded MP3 sound effects, especially the crack and shatter beats.
+
+Preserve gameplay rules, multiplayer, reconnect/resume, persistence, scoring, forge logic, artifact economy, player/opponent UI, scroll/touch behavior, asset manifest, dev summon test controls, cutscene queue, claimed portal board state, portal/entity reveal concept, and unrelated UI.
+
+Current goal:
+
+The visual crack/shatter animation should be timed and shaped around the actual MP3 sound effects. The cracks and chunks should visually match the sound hits, not feel independent from them.
+
+Use this exact audio mapping:
+
+- First Crack.mp3: play when the first major branched crack appears.
+
+- Second Crack.mp3: play when the second/branching crack appears.
+
+- Deep Impact.mp3: play exactly when large shatter chunks begin separating.
+
+- Glass Shatter.mp3: play with or just after Deep Impact.mp3 as the chunks visibly break apart.
+
+- Cosmic Portal Boom.mp3: play when the flash resolves into the portal/entity reveal.
+
+Required animation changes:
+
+1. Re-time the crack sequence so the first large branched crack appears exactly with First Crack.mp3.
+
+2. Hold the first crack long enough after the sound for suspense and light leak.
+
+3. Re-time the second/branching crack to appear exactly with Second Crack.mp3.
+
+4. The accelerating crack network should visually prepare the large-chunk shatter, but should not complete before the shatter sounds.
+
+5. Deep Impact.mp3 should correspond to the moment the large chunks first break free and begin moving.
+
+6. Glass Shatter.mp3 should correspond to the visible rupture: chunks separating, rotating, and fading into the light.
+
+7. Redraw or adjust crack paths so they align with the final large chunk boundaries. Cracks should be the blueprint for the shatter.
+
+8. Keep the shatter composed of a few large chunks rather than many small shards.
+
+9. Add one prominent hero chunk that moves forward in three-dimensional space toward the viewer/camera, grows slightly with perspective, pans into the middle/center area, and then disappears/fades into the flash/light.
+
+10. The hero chunk should feel like a large fragment passing forward through the screen into the light, not like a projectile shooting at the player.
+
+11. The hero chunk should move slowly enough to be readable and should line up with Deep Impact.mp3 and Glass Shatter.mp3.
+
+12. Other chunks should drift outward more slowly in different directions with 3D rotation and soft fading, supporting the hero chunk rather than competing with it.
+
+13. Use perspective transforms and depth cues, but avoid projectile-like speed. The chunks should feel heavy, physical, and pulled by cosmic light.
+
+14. Ensure pure white-gold/cosmic light is visible underneath as chunks separate. Do not show a duplicate panel/image underneath.
+
+15. The flash/portal transition should begin as the hero chunk disappears into the center light, helping bridge to Cosmic Portal Boom.mp3 and the portal/entity reveal.
+
+16. Dev Summon Test must show the synchronized audio/animation choreography.
+
+17. Do not change core game logic or unrelated UI.
+
+Most important:
+
+The Luminary shatter must be choreographed to the sound effects. First Crack and Second Crack drive crack formation; Deep Impact and Glass Shatter drive the big-chunk rupture; one large chunk pans forward toward the middle and disappears into the light/flash before the portal reveal.

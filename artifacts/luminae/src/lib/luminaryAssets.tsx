@@ -737,26 +737,29 @@ const FY = Math.round(BOARD_CARD_H * 0.5125); // 82 — junction y (51.25%)
 //   C1 top-left      : (0,0) → (37.5%,0) → J → (0,53.75%)
 //   C2 top-center    : (37.5%,0) → (78.6%,0) → J            [triangle]
 //   C3 upper-right   : (78.6%,0) → (100%,0) → (100%,41.25%) → J
-//   C4 bottom-left   : (0,53.75%) → J → (50%,100%) → (0,100%)
+//   C4 bottom-left   : (0,53.75%) → J → (50%,100%) → (0,100%)  ← HERO
 //   C5 bottom-right  : J → (100%,41.25%) → (100%,100%) → (50%,100%)
 // 3-D motion: x/y/z throw + rotateX/Y/Z tilt, rendered via transformPerspective on each chunk.
 // dz > 0 = erupts toward the viewer (grows); dz < 0 = recedes away (shrinks).
+// C4 is the hero chunk: it drifts forward and toward center, growing as it fades into the light.
+const HERO_CHUNK_IDX = 3; // C4 bottom-left
 const PANEL_PIECES = [
-  // C1: Top-left — drifts upper-left, gentle forward tilt, heavy crystal peel
+  // C1: Top-left — drifts upper-left, gentle peel away from center
   { clip: 'polygon(0% 0%, 37.5% 0%, 41.1% 51.25%, 0% 53.75%)',
-    dx:  -68, dy:  -48, dz:   22, rotateX:  -8, rotateY:  12, rotateZ:   5 },
-  // C2: Top-center — rises slowly straight up, subtle recede, no projectile depth
+    dx:  -64, dy:  -44, dz:   18, rotateX:  -7, rotateY:  10, rotateZ:   5 },
+  // C2: Top-center — rises slowly straight up, subtle recede
   { clip: 'polygon(37.5% 0%, 78.6% 0%, 41.1% 51.25%)',
-    dx:   -4, dy:  -82, dz:  -16, rotateX: -16, rotateY:   2, rotateZ:  -3 },
-  // C3: Upper-right — drifts right and slightly up, gentle tilt, shallow depth
+    dx:   -4, dy:  -78, dz:  -14, rotateX: -14, rotateY:   2, rotateZ:  -3 },
+  // C3: Upper-right — drifts right and slightly up, gentle tilt
   { clip: 'polygon(78.6% 0%, 100% 0%, 100% 41.25%, 41.1% 51.25%)',
-    dx:   74, dy:  -32, dz:   18, rotateX:  -5, rotateY: -14, rotateZ:  -9 },
-  // C4: Bottom-left — sweeps lower-left, slight forward peel, stately and heavy
+    dx:   70, dy:  -30, dz:   16, rotateX:  -5, rotateY: -13, rotateZ:  -8 },
+  // C4: HERO — drifts forward toward viewer and toward card center, fades into cosmic light
+  // dx/dy bring it toward the card's visual center; large dz makes it grow as it approaches
   { clip: 'polygon(0% 53.75%, 41.1% 51.25%, 50% 100%, 0% 100%)',
-    dx:  -62, dy:   68, dz:   26, rotateX:  14, rotateY:  10, rotateZ:  11 },
-  // C5: Bottom-right — drifts lower-right, gentle recede, symmetrical balance
+    dx:   16, dy:  -16, dz:   76, rotateX:   5, rotateY:   5, rotateZ:   3 },
+  // C5: Bottom-right — drifts lower-right, gentle recede
   { clip: 'polygon(41.1% 51.25%, 100% 41.25%, 100% 100%, 50% 100%)',
-    dx:   70, dy:   62, dz:  -18, rotateX:  14, rotateY: -13, rotateZ: -10 },
+    dx:   68, dy:   60, dz:  -16, rotateX:  13, rotateY: -12, rotateZ: -10 },
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
@@ -1397,57 +1400,86 @@ export function LuminarySummonCutscene({
         {/* ── Five large 3-D chunk pieces ─────────────────────────────── */}
         {/* Each chunk clip-path is one of the five regions defined by the     */}
         {/* crack SVG. Camera returns to scale=1 so dx/dy are viewport pixels. */}
-        {/* drop-shadow filter follows the polygon edge for a thick-slab look. */}
+        {/* C4 (HERO_CHUNK_IDX=3) is the hero: drifts forward and toward       */}
+        {/* center, grows with perspective, then dissolves into the light.      */}
+        {/* Supporting chunks drift slowly outward in different directions.     */}
         <AnimatePresence>
-          {isShattering && PANEL_PIECES.map((piece, i) => (
-            <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
-              style={{
-                width: BOARD_CARD_W, height: BOARD_CARD_H,
-                left: vesselLeft, top: vesselTop,
-                clipPath: piece.clip,
-                transformPerspective: 900,
-              }}
-              initial={{
-                x: 0, y: 0, z: 0, rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
-                filter: 'brightness(1) drop-shadow(2px -1px 0px rgba(255,230,140,0.65)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))',
-              }}
-              animate={{
-                x: piece.dx, y: piece.dy, z: piece.dz,
-                rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
-                opacity: [1, 1, 0.72, 0],
-                filter: [
-                  'brightness(1.0) drop-shadow(2px -1px 0px rgba(255,230,140,0.65)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))',
-                  'brightness(3.2) drop-shadow(3px -2px 2px rgba(255,240,160,0.88)) drop-shadow(-3px 2px 2px rgba(0,0,30,0.78))',
-                  'brightness(5.8) drop-shadow(4px -3px 4px rgba(255,250,180,1.00)) drop-shadow(-4px 3px 4px rgba(0,0,50,0.92))',
-                  'brightness(9.5) drop-shadow(5px -4px 6px rgba(255,255,200,1.00)) drop-shadow(-5px 4px 6px rgba(0,0,80,1.00))',
-                ],
-              }}
-              transition={{
-                duration: 2.60 + i * 0.045, ease: [0.04, 0.28, 0.62, 1], delay: i * 0.045,
-                opacity: { duration: 2.60, times: [0, 0.44, 0.82, 1] },
-                filter:  { duration: 2.60, times: [0, 0.32, 0.68, 1] },
-              }}
-            >
-              {/* Panel art fills the full card box; clip-path carves each chunk shape */}
-              {panelArt ? (
-                <img src={panelArt} alt="" aria-hidden
-                  style={{
-                    width: BOARD_CARD_W, height: BOARD_CARD_H,
-                    objectFit: 'cover', objectPosition: 'center top',
-                    display: 'block',
-                  }}
-                  draggable={false}
-                />
-              ) : (
-                <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
-              )}
-              {/* Physical slab edge: thick inset border + depth shading + inner glow */}
-              <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                boxShadow: 'inset 0 0 0 2px rgba(255,240,160,0.80), inset 4px 4px 0 rgba(255,255,210,0.38), inset -4px -4px 0 rgba(0,0,20,0.65), inset 0 0 24px rgba(255,200,60,0.30)',
-              }} />
-            </motion.div>
-          ))}
+          {isShattering && PANEL_PIECES.map((piece, i) => {
+            const isHero = i === HERO_CHUNK_IDX;
+            return (
+              <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
+                style={{
+                  width: BOARD_CARD_W, height: BOARD_CARD_H,
+                  left: vesselLeft, top: vesselTop,
+                  clipPath: piece.clip,
+                  transformPerspective: 900,
+                  zIndex: isHero ? 10 : 0,
+                }}
+                initial={{
+                  x: 0, y: 0, z: 0, scale: 1,
+                  rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
+                  filter: 'brightness(1) drop-shadow(2px -1px 0px rgba(255,230,140,0.65)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))',
+                }}
+                animate={isHero ? {
+                  // Hero: drifts forward and toward center; grows slowly then dissolves
+                  x: piece.dx, y: piece.dy, z: piece.dz,
+                  scale: [1, 1.04, 1.10],
+                  rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
+                  opacity: [1, 1, 0.82, 0],
+                  filter: [
+                    'brightness(1.2) drop-shadow(3px -2px 2px rgba(255,240,160,0.75)) drop-shadow(-3px 2px 2px rgba(0,0,20,0.60))',
+                    'brightness(4.0) drop-shadow(4px -3px 3px rgba(255,248,170,0.95)) drop-shadow(-4px 3px 3px rgba(0,0,30,0.85))',
+                    'brightness(7.0) drop-shadow(5px -4px 5px rgba(255,255,190,1.00)) drop-shadow(-5px 4px 5px rgba(0,0,50,0.95))',
+                    'brightness(12)  drop-shadow(6px -5px 8px rgba(255,255,220,1.00)) drop-shadow(-6px 5px 8px rgba(0,0,80,1.00))',
+                  ],
+                } : {
+                  // Supporting chunks: drift outward slowly, no scale growth
+                  x: piece.dx, y: piece.dy, z: piece.dz,
+                  rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
+                  opacity: [1, 1, 0.70, 0],
+                  filter: [
+                    'brightness(1.0) drop-shadow(2px -1px 0px rgba(255,230,140,0.65)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))',
+                    'brightness(3.0) drop-shadow(3px -2px 2px rgba(255,240,160,0.85)) drop-shadow(-3px 2px 2px rgba(0,0,30,0.75))',
+                    'brightness(5.5) drop-shadow(4px -3px 4px rgba(255,250,180,1.00)) drop-shadow(-4px 3px 4px rgba(0,0,50,0.90))',
+                    'brightness(8.5) drop-shadow(5px -4px 6px rgba(255,255,200,1.00)) drop-shadow(-5px 4px 6px rgba(0,0,80,1.00))',
+                  ],
+                }}
+                transition={isHero ? {
+                  // Hero: slow majestic float — very gentle start, peaks at mid-duration
+                  duration: 3.40, ease: [0.02, 0.08, 0.50, 1], delay: 0,
+                  scale:   { duration: 3.40, times: [0, 0.42, 1.00] },
+                  opacity: { duration: 3.40, times: [0, 0.42, 0.78, 1] },
+                  filter:  { duration: 3.40, times: [0, 0.30, 0.65, 1] },
+                } : {
+                  // Supporting: slower drift, staggered, smooth soft easing
+                  duration: 2.60 + i * 0.045, ease: [0.04, 0.28, 0.62, 1], delay: i * 0.045,
+                  opacity: { duration: 2.60, times: [0, 0.44, 0.82, 1] },
+                  filter:  { duration: 2.60, times: [0, 0.32, 0.68, 1] },
+                }}
+              >
+                {/* Panel art fills the full card box; clip-path carves each chunk shape */}
+                {panelArt ? (
+                  <img src={panelArt} alt="" aria-hidden
+                    style={{
+                      width: BOARD_CARD_W, height: BOARD_CARD_H,
+                      objectFit: 'cover', objectPosition: 'center top',
+                      display: 'block',
+                    }}
+                    draggable={false}
+                  />
+                ) : (
+                  <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
+                )}
+                {/* Physical slab edge: hero gets stronger inner glow; others get standard */}
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none',
+                  boxShadow: isHero
+                    ? 'inset 0 0 0 2px rgba(255,248,180,0.95), inset 5px 5px 0 rgba(255,255,230,0.50), inset -5px -5px 0 rgba(0,0,20,0.70), inset 0 0 32px rgba(255,220,80,0.45)'
+                    : 'inset 0 0 0 2px rgba(255,240,160,0.80), inset 4px 4px 0 rgba(255,255,210,0.38), inset -4px -4px 0 rgba(0,0,20,0.65), inset 0 0 24px rgba(255,200,60,0.30)',
+                }} />
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
 
       </motion.div>
