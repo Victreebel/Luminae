@@ -715,30 +715,49 @@ const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 
 // Fault-line junction pixel coords inside the vessel's SVG viewBox
 // (viewBox matches BOARD_CARD_W × BOARD_CARD_H)
-const FX = Math.round(BOARD_CARD_W * 0.50); // 56
-const FY = Math.round(BOARD_CARD_H * 0.39); // 62
+const FX = Math.round(BOARD_CARD_W * 0.50); // 56 — junction x
+const FY = Math.round(BOARD_CARD_H * 0.39); // 62 — junction y
 
-// Seven organic shard shapes using clip-path percentage coords.
-// Together they tile the full card. Boundaries converge at the fault
-// junction (50%, 39%) and four branch nodes:
-//   top-split   (48%, 14%)   left-branch  (18%, 38%)
-//   right-branch(72%, 41%)   lower-left   (36%, 74%)
-//   lower-right (66%, 70%)
+// Ten organic shard shapes tiling the full card without gaps.
+// Fault geometry (% coords, matching the crack SVG paths below):
+//   Primary vertical  : (50%,0%) → (45%,20%) → J(50%,39%) → (53%,62%) → (46%,100%)
+//   Upper-right branch: J → (74%,16%) → (90%,0%)
+//   Horizontal L/R    : (0%,40%) → J → (100%,42%)
+//   Lower-left branch : J → (28%,63%) → (14%,100%)
+//   Lower-right branch: J → (53%,62%) → (63%,70%) → (76%,68%) → (100%,60%)
+//   Lower-mid connector:(28%,63%) → (40%,72%) → (63%,70%)
+// 3-D motion: rotateX/Y/Z compose with x/y throw via transformPerspective on each shard.
 const PANEL_PIECES = [
-  // Top-left main chunk
-  { clip: 'polygon(0% 0%, 48% 0%, 48% 14%, 50% 39%, 18% 38%, 0% 35%)',   dx: -152, dy: -110, dr:  52 },
-  // Top-right sliver
-  { clip: 'polygon(48% 0%, 100% 0%, 100% 18%, 72% 41%, 50% 39%, 48% 14%)', dx:  145, dy: -126, dr: -44 },
-  // Right column
-  { clip: 'polygon(72% 41%, 100% 18%, 100% 58%, 66% 70%, 50% 39%)',        dx:  172, dy:   18, dr: -30 },
-  // Left-mid wedge
-  { clip: 'polygon(0% 35%, 18% 38%, 50% 39%, 66% 70%, 36% 74%, 0% 62%)',  dx: -162, dy:   24, dr:  36 },
-  // Bottom-left
-  { clip: 'polygon(0% 62%, 36% 74%, 40% 100%, 0% 100%)',                   dx: -110, dy:  145, dr:  62 },
-  // Bottom-centre
-  { clip: 'polygon(36% 74%, 66% 70%, 68% 100%, 40% 100%)',                 dx:    5, dy:  162, dr:  -9 },
-  // Bottom-right
-  { clip: 'polygon(66% 70%, 100% 58%, 100% 100%, 68% 100%)',               dx:  130, dy:  138, dr: -54 },
+  // S1: Top-left block — flies upper-left, tilts toward viewer L-side
+  { clip: 'polygon(0% 0%, 50% 0%, 45% 20%, 50% 39%, 0% 40%)',
+    dx: -142, dy: -88, rotateX: -14, rotateY:  16, rotateZ:   7 },
+  // S2: Top-center (between vertical fault and upper-right branch) — flies straight up
+  { clip: 'polygon(50% 0%, 90% 0%, 74% 16%, 50% 39%, 45% 20%)',
+    dx:    8, dy: -148, rotateX: -22, rotateY:  -6, rotateZ:  -5 },
+  // S3: Top-right (right of upper-right branch) — flies upper-right, tilts away R-side
+  { clip: 'polygon(90% 0%, 100% 0%, 100% 42%, 50% 39%, 74% 16%)',
+    dx:  158, dy: -88, rotateX: -10, rotateY: -22, rotateZ: -14 },
+  // S4: Left column (left of vertical, below horizontal) — flies left, tilts toward viewer
+  { clip: 'polygon(0% 40%, 50% 39%, 28% 63%, 14% 100%, 0% 100%)',
+    dx: -158, dy:  32, rotateX:  13, rotateY:  22, rotateZ:   6 },
+  // S5: Right column (right of vertical, between horizontal and lower-right branch)
+  { clip: 'polygon(50% 39%, 100% 42%, 100% 60%, 76% 68%, 63% 70%, 53% 62%)',
+    dx:  158, dy:  26, rotateX:  18, rotateY: -24, rotateZ:  -8 },
+  // S6: Center wedge (between lower branches and lower-mid connector) — erupts forward
+  { clip: 'polygon(50% 39%, 53% 62%, 63% 70%, 40% 72%, 28% 63%)',
+    dx:  -22, dy:  62, rotateX:  32, rotateY:  10, rotateZ:   5 },
+  // S7: Bottom-left shard — tumbles lower-left with rotateZ spin
+  { clip: 'polygon(14% 100%, 28% 63%, 40% 72%, 44% 100%)',
+    dx: -108, dy: 148, rotateX:  22, rotateY:  16, rotateZ:  28 },
+  // S8: Bottom-center shard — drops straight down, face-on tilt
+  { clip: 'polygon(44% 100%, 40% 72%, 63% 70%, 66% 100%)',
+    dx:    6, dy: 168, rotateX:  30, rotateY:  -4, rotateZ:  -7 },
+  // S9: Bottom-center-right shard — lower-right tumble
+  { clip: 'polygon(66% 100%, 63% 70%, 76% 68%, 83% 100%)',
+    dx:   72, dy: 150, rotateX:  20, rotateY: -18, rotateZ: -22 },
+  // S10: Bottom-right shard — strong right throw with deep rotateY + rotateZ
+  { clip: 'polygon(83% 100%, 76% 68%, 100% 60%, 100% 100%)',
+    dx:  138, dy: 142, rotateX:  14, rotateY: -26, rotateZ: -38 },
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
@@ -1099,6 +1118,10 @@ export function LuminarySummonCutscene({
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
               {/* ── Crack-light SVG overlay ────────────────────────────── */}
+              {/* Crack paths match the PANEL_PIECES fault geometry exactly:      */}
+              {/* firstcrack: primary vertical + upper-right branch               */}
+              {/* secondcrack: horizontal L/R + lower-left branch                 */}
+              {/* cracking: lower-right branch + lower-mid connector              */}
               {hasCracks && (
                 <svg
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -1138,19 +1161,19 @@ export function LuminarySummonCutscene({
                     )}
                   </defs>
 
-                  {/* ── Seam wound glow — wide diffuse warmth along the fault lines ── */}
-                  {/* Painted first (below crack lines) so it reads as heat/pressure    */}
-                  {/* escaping through the vessel wall, not an overlay placed on top.   */}
+                  {/* ── Seam wound glows — diffuse warmth painted first (firstcrack+) ── */}
+                  {/* Primary vertical fault glow: J(50%,39%) kinks at (45%,20%) and (53%,62%) */}
                   <motion.path
-                    d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
+                    d={`M${FX},0 L50,32 L${FX},${FY} L59,99 L52,${BOARD_CARD_H}`}
                     stroke="#ffe8a0" strokeWidth="26" fill="none" strokeLinecap="round"
                     filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.09, 0.14, 0.10] }}
                     transition={{ duration: 0.16, ease: 'easeOut' }}
                   />
+                  {/* Upper-right branch seam glow: J → (74%,16%) → (90%,0%) */}
                   <motion.path
-                    d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
+                    d={`M${FX},${FY} L83,26 L101,0`}
                     stroke="#ffe8a0" strokeWidth="18" fill="none" strokeLinecap="round"
                     filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
@@ -1158,32 +1181,32 @@ export function LuminarySummonCutscene({
                     transition={{ duration: 0.14, delay: 0.05, ease: 'easeOut' }}
                   />
 
-                  {/* ── Primary vertical fault — thick, prominent (firstcrack+) ── */}
+                  {/* ── Primary vertical fault — thick prominent crack (firstcrack+) ── */}
                   <motion.path
-                    d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
+                    d={`M${FX},0 L50,32 L${FX},${FY} L59,99 L52,${BOARD_CARD_H}`}
                     stroke="white" strokeWidth="2.4" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.92, 1.0] }}
                     transition={{ duration: 0.14, ease: 'easeOut' }}
                   />
                   <motion.path
-                    d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
+                    d={`M${FX},0 L50,32 L${FX},${FY} L59,99 L52,${BOARD_CARD_H}`}
                     stroke="#ffe8a0" strokeWidth="9" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.30, 0.52] }}
                     transition={{ duration: 0.14, delay: 0.02, ease: 'easeOut' }}
                   />
 
-                  {/* ── Branch 1: upper-right diagonal from junction (firstcrack+) ── */}
+                  {/* ── Upper-right branch from junction (firstcrack+) ── */}
                   <motion.path
-                    d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
+                    d={`M${FX},${FY} L83,26 L101,0`}
                     stroke="white" strokeWidth="1.6" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.78, 0.92] }}
                     transition={{ duration: 0.13, delay: 0.05, ease: 'easeOut' }}
                   />
                   <motion.path
-                    d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
+                    d={`M${FX},${FY} L83,26 L101,0`}
                     stroke="#ffe8a0" strokeWidth="6" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.22, 0.42] }}
@@ -1191,27 +1214,23 @@ export function LuminarySummonCutscene({
                   />
 
                   {/* ── Organic light leaking through crack crevices (leaking+) ── */}
-                  {/* No crisp circles or radar rings. A diffuse, heavily blurred blob  */}
-                  {/* at the junction reads as trapped radiance, not a UI indicator.     */}
-                  {/* Ember motes (r≤1.5) at irregular positions with long staggered     */}
-                  {/* flicker cycles (2.5–3.6 s) shimmer like embers, not a pulse.      */}
                   {(isLeaking || isSecondCrack || isCracking) && (
                     <>
-                      {/* Diffuse light pool — r=22 + stdDeviation=10 ≈ 42 px soft edge */}
+                      {/* Diffuse light pool at junction */}
                       <motion.circle cx={FX} cy={FY} r="22" fill="#fff6e0"
                         filter="url(#crackglow)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.22, 0.14, 0.28, 0.16, 0.24] }}
                         transition={{ duration: 3.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
                       />
-                      {/* Mote 1 — upper crack */}
-                      <motion.circle cx={FX-3} cy={18} r="1.2" fill="white" filter="url(#cgb)"
+                      {/* Mote 1 — top of primary fault */}
+                      <motion.circle cx={FX} cy={13} r="1.2" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.70, 0.10, 0.85, 0.20, 0.60, 0] }}
                         transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.00 }}
                       />
-                      {/* Mote 2 — upper-mid crack */}
-                      <motion.circle cx={FX+2} cy={38} r="0.9" fill="white" filter="url(#cgb)"
+                      {/* Mote 2 — upper kink (45%, 20%) */}
+                      <motion.circle cx={50} cy={32} r="0.9" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.50, 0.80, 0.10, 0.70, 0.30, 0] }}
                         transition={{ duration: 3.2, ease: 'easeInOut', repeat: Infinity, delay: 0.35 }}
@@ -1222,14 +1241,14 @@ export function LuminarySummonCutscene({
                         animate={{ opacity: [0, 0.90, 0.30, 0.65, 0.10, 0.80, 0] }}
                         transition={{ duration: 2.5, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
                       />
-                      {/* Mote 4 — lower-mid crack */}
-                      <motion.circle cx={FX+4} cy={98} r="1.0" fill="white" filter="url(#cgb)"
+                      {/* Mote 4 — lower kink (53%, 62%) */}
+                      <motion.circle cx={59} cy={85} r="1.0" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.40, 0.90, 0.20, 0.70, 0.10, 0] }}
                         transition={{ duration: 3.6, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
                       />
-                      {/* Mote 5 — lower crack */}
-                      <motion.circle cx={FX-2} cy={138} r="1.1" fill="white" filter="url(#cgb)"
+                      {/* Mote 5 — lower vertical */}
+                      <motion.circle cx={55} cy={130} r="1.1" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.60, 0.10, 0.80, 0.30, 0.50, 0] }}
                         transition={{ duration: 2.9, ease: 'easeInOut', repeat: Infinity, delay: 0.80 }}
@@ -1237,78 +1256,92 @@ export function LuminarySummonCutscene({
                     </>
                   )}
 
-                  {/* ── Branch 2: lower-left diagonal from junction (secondcrack+) ── */}
+                  {/* ── Horizontal L/R branches + lower-left branch (secondcrack+) ── */}
                   {(isSecondCrack || isCracking) && (
                     <>
-                      {/* Seam wound glow for branch 2 */}
+                      {/* Horizontal left seam glow: (0%,40%) → J */}
                       <motion.path
-                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
+                        d={`M0,64 L${FX},${FY}`}
+                        stroke="#ffe8a0" strokeWidth="18" fill="none" strokeLinecap="round"
+                        filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.07, 0.11] }}
+                        transition={{ duration: 0.50, ease: 'easeOut' }}
+                      />
+                      {/* Horizontal left crack */}
+                      <motion.path
+                        d={`M0,64 L${FX},${FY}`}
+                        stroke="white" strokeWidth="1.4" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.72, 0.88] }}
+                        transition={{ duration: 0.45, ease: 'easeOut' }}
+                      />
+                      <motion.path
+                        d={`M0,64 L${FX},${FY}`}
+                        stroke="#ffe8a0" strokeWidth="5" fill="none" strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.18, 0.34] }}
+                        transition={{ duration: 0.45, delay: 0.05, ease: 'easeOut' }}
+                      />
+                      {/* Horizontal right seam glow: J → (100%,42%) */}
+                      <motion.path
+                        d={`M${FX},${FY} L${BOARD_CARD_W},67`}
+                        stroke="#ffe8a0" strokeWidth="16" fill="none" strokeLinecap="round"
+                        filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.06, 0.09] }}
+                        transition={{ duration: 0.45, delay: 0.08, ease: 'easeOut' }}
+                      />
+                      {/* Horizontal right crack */}
+                      <motion.path
+                        d={`M${FX},${FY} L${BOARD_CARD_W},67`}
+                        stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.65, 0.82] }}
+                        transition={{ duration: 0.40, delay: 0.08, ease: 'easeOut' }}
+                      />
+                      <motion.path
+                        d={`M${FX},${FY} L${BOARD_CARD_W},67`}
+                        stroke="#ffe8a0" strokeWidth="5" fill="none" strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.15, 0.30] }}
+                        transition={{ duration: 0.40, delay: 0.12, ease: 'easeOut' }}
+                      />
+                      {/* Lower-left branch seam glow: J → (28%,63%) → (14%,100%) */}
+                      <motion.path
+                        d={`M${FX},${FY} L31,101 L16,${BOARD_CARD_H}`}
                         stroke="#ffe8a0" strokeWidth="18" fill="none" strokeLinecap="round"
                         filter="url(#crackglow)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.07, 0.11] }}
                         transition={{ duration: 0.60, ease: 'easeOut' }}
                       />
+                      {/* Lower-left branch crack */}
                       <motion.path
-                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
+                        d={`M${FX},${FY} L31,101 L16,${BOARD_CARD_H}`}
                         stroke="white" strokeWidth="1.5" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.75, 0.90] }}
                         transition={{ duration: 0.55, ease: 'easeOut' }}
                       />
                       <motion.path
-                        d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.28)},${Math.round(BOARD_CARD_H*0.62)} L${Math.round(BOARD_CARD_W*0.12)},${Math.round(BOARD_CARD_H*0.90)}`}
+                        d={`M${FX},${FY} L31,101 L16,${BOARD_CARD_H}`}
                         stroke="#ffe8a0" strokeWidth="6" fill="none" strokeLinecap="round"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.20, 0.36] }}
                         transition={{ duration: 0.55, delay: 0.05, ease: 'easeOut' }}
                       />
-                      {/* Ember motes along branch 2 */}
-                      <motion.circle cx={Math.round(BOARD_CARD_W*0.44)} cy={Math.round(BOARD_CARD_H*0.52)} r="1.0" fill="white" filter="url(#cgb)"
+                      {/* Ember motes along lower-left branch */}
+                      <motion.circle cx={42} cy={82} r="1.0" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.60, 0.10, 0.75, 0.20, 0] }}
                         transition={{ duration: 3.0, ease: 'easeInOut', repeat: Infinity, delay: 0.10 }}
                       />
-                      <motion.circle cx={Math.round(BOARD_CARD_W*0.26)} cy={Math.round(BOARD_CARD_H*0.72)} r="0.8" fill="white" filter="url(#cgb)"
+                      <motion.circle cx={24} cy={118} r="0.8" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.40, 0.80, 0.15, 0.60, 0] }}
                         transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.50 }}
                       />
-
-                      {/* ── Branch 2b: bent crack off the end of stem 2 (secondcrack+) ── */}
-                      {/* Roots at ~(17%, 86%), bends at (30%, 90%), tips at (24%, 97%) */}
-                      {/* Seam wound glow */}
-                      <motion.path
-                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.30)},${Math.round(BOARD_CARD_H*0.90)} L${Math.round(BOARD_CARD_W*0.24)},${Math.round(BOARD_CARD_H*0.97)}`}
-                        stroke="#ffe8a0" strokeWidth="16" fill="none" strokeLinecap="round"
-                        filter="url(#crackglow)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.06, 0.10] }}
-                        transition={{ duration: 0.42, delay: 0.09, ease: 'easeOut' }}
-                      />
-                      {/* White crack line */}
-                      <motion.path
-                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.30)},${Math.round(BOARD_CARD_H*0.90)} L${Math.round(BOARD_CARD_W*0.24)},${Math.round(BOARD_CARD_H*0.97)}`}
-                        stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.65, 0.80] }}
-                        transition={{ duration: 0.38, delay: 0.09, ease: 'easeOut' }}
-                      />
-                      {/* Warm inner fill */}
-                      <motion.path
-                        d={`M${Math.round(BOARD_CARD_W*0.17)},${Math.round(BOARD_CARD_H*0.86)} L${Math.round(BOARD_CARD_W*0.30)},${Math.round(BOARD_CARD_H*0.90)} L${Math.round(BOARD_CARD_W*0.24)},${Math.round(BOARD_CARD_H*0.97)}`}
-                        stroke="#ffe8a0" strokeWidth="4" fill="none" strokeLinecap="round"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.16, 0.28] }}
-                        transition={{ duration: 0.38, delay: 0.13, ease: 'easeOut' }}
-                      />
-                      {/* Ember mote at the bend */}
-                      <motion.circle cx={Math.round(BOARD_CARD_W*0.30)} cy={Math.round(BOARD_CARD_H*0.90)} r="0.9" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.60, 0.12, 0.70, 0.18, 0] }}
-                        transition={{ duration: 2.7, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
-                      />
-
                       {/* Faint rays seeping through at secondcrack */}
                       <motion.line x1={FX} y1={FY} x2={FX} y2={0}
                         stroke="url(#rayUp)" strokeWidth="1.8"
@@ -1325,34 +1358,58 @@ export function LuminarySummonCutscene({
                     </>
                   )}
 
-                  {/* ── Multi-crack burst + full energy rays (cracking phase) ── */}
+                  {/* ── Lower-right branch + lower-mid connector + full rays (cracking) ── */}
                   {isCracking && (
                     <>
-                      {/* Horizontal branch across junction */}
+                      {/* Lower-right branch seam glow: J → (53%,62%) → (63%,70%) → (76%,68%) → (100%,60%) */}
                       <motion.path
-                        d={`M0,${FY} L${Math.round(FX*0.44)},${FY-10} L${FX},${FY} L${FX+Math.round(FX*0.76)},${FY+11} L${BOARD_CARD_W},${FY+4}`}
+                        d={`M${FX},${FY} L59,99 L71,112 L85,109 L${BOARD_CARD_W},96`}
+                        stroke="#ffe8a0" strokeWidth="16" fill="none" strokeLinecap="round"
+                        filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.06, 0.10] }}
+                        transition={{ duration: 0.55, ease: 'easeOut' }}
+                      />
+                      {/* Lower-right branch crack */}
+                      <motion.path
+                        d={`M${FX},${FY} L59,99 L71,112 L85,109 L${BOARD_CARD_W},96`}
                         stroke="white" strokeWidth="0.9" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.36, 0.58] }}
                         transition={{ duration: 0.60, ease: 'easeOut' }}
                       />
-                      {/* Bottom-left diagonal */}
                       <motion.path
-                        d={`M0,${Math.round(BOARD_CARD_H*0.80)} L${Math.round(FX*0.68)},${Math.round(FY*1.80)} L${FX-3},${BOARD_CARD_H}`}
+                        d={`M${FX},${FY} L59,99 L71,112 L85,109 L${BOARD_CARD_W},96`}
+                        stroke="#ffe8a0" strokeWidth="4" fill="none" strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.12, 0.24] }}
+                        transition={{ duration: 0.60, delay: 0.04, ease: 'easeOut' }}
+                      />
+                      {/* Lower-mid connector seam glow: (28%,63%) → (40%,72%) → (63%,70%) */}
+                      <motion.path
+                        d="M31,101 L45,115 L71,112"
+                        stroke="#ffe8a0" strokeWidth="14" fill="none" strokeLinecap="round"
+                        filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.05, 0.08] }}
+                        transition={{ duration: 0.45, delay: 0.16, ease: 'easeOut' }}
+                      />
+                      {/* Lower-mid connector crack */}
+                      <motion.path
+                        d="M31,101 L45,115 L71,112"
                         stroke="white" strokeWidth="0.65" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.20, 0.40] }}
+                        animate={{ pathLength: 1, opacity: [0, 0.22, 0.42] }}
                         transition={{ duration: 0.55, delay: 0.18, ease: 'easeOut' }}
                       />
-                      {/* Top-right minor crack */}
                       <motion.path
-                        d={`M${BOARD_CARD_W},${Math.round(BOARD_CARD_H*0.17)} L${Math.round(FX*1.44)},${Math.round(FY*0.74)} L${FX},${FY}`}
-                        stroke="white" strokeWidth="0.60" fill="none" filter="url(#cgb)"
+                        d="M31,101 L45,115 L71,112"
+                        stroke="#ffe8a0" strokeWidth="3" fill="none" strokeLinecap="round"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.22, 0.44] }}
-                        transition={{ duration: 0.55, delay: 0.30, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.08, 0.18] }}
+                        transition={{ duration: 0.55, delay: 0.22, ease: 'easeOut' }}
                       />
-                      {/* Full energy rays */}
+                      {/* Full energy rays from junction */}
                       <motion.line x1={FX} y1={FY} x2={FX} y2={0}
                         stroke="url(#rayUp)" strokeWidth="2.8"
                         animate={{ opacity: [0, 0.72, 0.45, 0.78, 0.32], scaleY: [0, 1, 0.9, 1] }}
@@ -1365,18 +1422,17 @@ export function LuminarySummonCutscene({
                         transition={{ repeat: Infinity, duration: 0.52, ease: 'easeOut', delay: 0.11 }}
                         style={{ transformOrigin: `${FX}px ${FY}px` }}
                       />
-                      <motion.line x1={FX} y1={FY} x2={0} y2={FY}
+                      <motion.line x1={FX} y1={FY} x2={0} y2={64}
                         stroke="url(#rayLeft)" strokeWidth="1.8"
                         animate={{ opacity: [0, 0.44, 0.18, 0.52, 0.16] }}
                         transition={{ repeat: Infinity, duration: 0.58, ease: 'easeInOut', delay: 0.21 }}
                       />
-                      <motion.line x1={FX} y1={FY} x2={BOARD_CARD_W} y2={FY+4}
+                      <motion.line x1={FX} y1={FY} x2={BOARD_CARD_W} y2={67}
                         stroke="url(#rayRight)" strokeWidth="1.8"
                         animate={{ opacity: [0, 0.36, 0.16, 0.48, 0.14] }}
                         transition={{ repeat: Infinity, duration: 0.54, ease: 'easeInOut', delay: 0.34 }}
                       />
-                      {/* Non-repeating junction flare: fires once on cracking entry.   */}
-                      {/* A burst of convergent light — organic, not a pulsing marker.  */}
+                      {/* Non-repeating junction flare: fires once on cracking entry */}
                       <motion.circle cx={FX} cy={FY} r="16" fill="#fff6e0"
                         filter="url(#crackglow)"
                         initial={{ opacity: 0, scale: 0.3 }}
@@ -1412,9 +1468,11 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-        {/* ── Seven organic shard pieces ────────────────────────────────── */}
-        {/* Camera is returning to scale=1 during shattering, so dx/dy values */}
-        {/* are real viewport pixels. No card art beneath — only cosmic light. */}
+        {/* ── Ten 3-D shard pieces ─────────────────────────────────────── */}
+        {/* Camera is returning to scale=1 during shattering, so dx/dy values  */}
+        {/* are real viewport pixels. No card art beneath — only cosmic light.  */}
+        {/* transformPerspective on each shard adds individual depth perspective */}
+        {/* so rotateX/Y produce believable tilt rather than flat 2-D rotation. */}
         <AnimatePresence>
           {isShattering && PANEL_PIECES.map((piece, i) => (
             <motion.div key={`shard-${i}`} className="absolute pointer-events-none"
@@ -1422,32 +1480,39 @@ export function LuminarySummonCutscene({
                 width: BOARD_CARD_W, height: BOARD_CARD_H,
                 left: vesselLeft, top: vesselTop,
                 clipPath: piece.clip,
-                borderRadius: 10,
+                transformPerspective: 700,
               }}
-              initial={{ x: 0, y: 0, rotate: 0, opacity: 1, filter: 'brightness(1)' }}
+              initial={{ x: 0, y: 0, rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1, filter: 'brightness(1)' }}
               animate={{
-                x: piece.dx, y: piece.dy, rotate: piece.dr,
+                x: piece.dx, y: piece.dy,
+                rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
                 opacity: [1, 1, 0.52, 0],
                 filter: ['brightness(1)', 'brightness(2.6)', 'brightness(4.2)', 'brightness(7)'],
               }}
               transition={{
-                duration: 1.08, ease: [0.18, 0.85, 0.32, 1], delay: i * 0.036,
-                opacity: { duration: 1.08, times: [0, 0.18, 0.58, 1] },
-                filter:  { duration: 1.08, times: [0, 0.22, 0.58, 1] },
+                duration: 1.04 + i * 0.024, ease: [0.18, 0.85, 0.32, 1], delay: i * 0.038,
+                opacity: { duration: 1.04, times: [0, 0.18, 0.58, 1] },
+                filter:  { duration: 1.04, times: [0, 0.22, 0.58, 1] },
               }}
             >
+              {/* Panel art fills the full card box; clip-path carves each shard shape */}
               {panelArt ? (
                 <img src={panelArt} alt="" aria-hidden
                   style={{
                     width: BOARD_CARD_W, height: BOARD_CARD_H,
                     objectFit: 'cover', objectPosition: 'center top',
-                    display: 'block', borderRadius: 10,
+                    display: 'block',
                   }}
                   draggable={false}
                 />
               ) : (
                 <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
               )}
+              {/* Pseudo edge-depth: inset warm highlight simulates shard thickness */}
+              <div style={{
+                position: 'absolute', inset: 0, pointerEvents: 'none',
+                boxShadow: 'inset 0 0 0 1px rgba(255,228,140,0.55), inset 0 0 12px rgba(255,190,60,0.20)',
+              }} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -1551,7 +1616,7 @@ export function LuminarySummonCutscene({
                       position: 'absolute',
                       width: 680, height: 740,
                       top: '50%', left: '50%',
-                      transform: 'translate(-50%, -52%)',
+                      x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ff 0%, ${primaryColor}cc 12%, ${primaryColor}77 34%, ${secondaryColor}33 58%, transparent 76%)`,
                       filter: 'blur(38px)',
@@ -1574,7 +1639,7 @@ export function LuminarySummonCutscene({
                       position: 'absolute',
                       width: 400, height: 500,
                       top: '50%', left: '50%',
-                      transform: 'translate(-50%, -52%)',
+                      x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 46%, ${glowColor}ff 0%, ${glowColor}dd 14%, ${glowColor}88 32%, ${primaryColor}44 54%, transparent 72%)`,
                       filter: 'blur(18px)',
@@ -1597,7 +1662,7 @@ export function LuminarySummonCutscene({
                       position: 'absolute',
                       width: 480, height: 560,
                       top: '50%', left: '50%',
-                      transform: 'translate(-50%, -52%)',
+                      x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: 'transparent',
                       boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
