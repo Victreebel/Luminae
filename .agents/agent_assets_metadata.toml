@@ -719,3 +719,9 @@ id = "RG5NibHDIbbWphz5pVD37"
 uri = "file://cards_tier3.png"
 type = "image"
 title = "Tier 3 Cards (20 cards — Ruby, Sapphire, Emerald, Onyx, Pearl)"
+
+[[outputs]]
+id = "VkcsgdWDq8HN5b4FMB1eb"
+uri = "file://luminae_images.zip"
+type = "unspecified"
+title = "Luminae — Original Image Assets"
