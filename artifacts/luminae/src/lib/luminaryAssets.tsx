@@ -846,7 +846,9 @@ export function LuminarySummonCutscene({
       `[data-luminary-id="${luminaryId}"]`
     ) as HTMLElement | null;
     if (!el) return;
-    const hide = phase !== 'establish' && phase !== 'panning' && phase !== 'done';
+    // Real card stays visible through focusing so the board zoom has context.
+    // Vessel fades in on top during focusing; card is suppressed at intro.
+    const hide = phase !== 'establish' && phase !== 'panning' && phase !== 'focusing' && phase !== 'done';
     el.style.opacity = hide ? '0' : '';
     return () => { el.style.opacity = ''; };
   }, [phase, luminaryId]);
@@ -861,24 +863,42 @@ export function LuminarySummonCutscene({
     const panX = vw / 2 - boardCx;
     const panY = vh / 2 - boardCy;
 
+    // Transform-origin for scale: card's position in the element's coordinate
+    // space so scale keeps the card fixed at (vw/2, vh/2) in the viewport.
+    const mainTop = el.getBoundingClientRect().top;
+    const originX = boardCx;            // element has no x offset
+    const originY = boardCy - mainTop;  // adjust for element top offset
+    const ts = Math.min((vw * 0.65) / BOARD_CARD_W, (vh * 0.65) / BOARD_CARD_H, 3.8);
+
     if (phase === 'establish' || phase === 'done') {
-      el.style.transition = '';
-      el.style.transform  = '';
+      el.style.transition      = '';
+      el.style.transform       = '';
+      el.style.transformOrigin = '';
     } else if (phase === 'panning') {
-      el.style.transition = 'transform 0.75s cubic-bezier(0.16, 1, 0.3, 1)';
-      el.style.transform  = `translate(${panX}px, ${panY}px)`;
+      el.style.transition      = 'transform 0.75s cubic-bezier(0.16, 1, 0.3, 1)';
+      el.style.transformOrigin = `${originX}px ${originY}px`;
+      el.style.transform       = `translate(${panX}px, ${panY}px)`;
+    } else if (phase === 'focusing') {
+      // Zoom the whole board toward the card — camera pushes in over 0.7s.
+      // Overlay stays at 0 so the full board context is visible during zoom.
+      el.style.transition      = 'transform 0.70s cubic-bezier(0.16, 1, 0.3, 1)';
+      el.style.transformOrigin = `${originX}px ${originY}px`;
+      el.style.transform       = `translate(${panX}px, ${panY}px) scale(${ts})`;
     } else if (isShattering || isRevealed || isFading) {
-      el.style.transition = 'transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)';
-      el.style.transform  = '';
+      el.style.transition      = 'transform 0.85s cubic-bezier(0.16, 1, 0.3, 1)';
+      el.style.transform       = '';
+      el.style.transformOrigin = '';
     } else {
-      // focusing through cracking: hold the panned position, no re-animation
-      el.style.transition = '';
-      el.style.transform  = `translate(${panX}px, ${panY}px)`;
+      // intro through cracking: hold at panned+zoomed position
+      el.style.transition      = '';
+      el.style.transformOrigin = `${originX}px ${originY}px`;
+      el.style.transform       = `translate(${panX}px, ${panY}px) scale(${ts})`;
     }
 
     return () => {
-      el.style.transform  = '';
-      el.style.transition = '';
+      el.style.transform       = '';
+      el.style.transition      = '';
+      el.style.transformOrigin = '';
     };
   }, [phase, boardCx, boardCy, vw, vh, isShattering, isRevealed, isFading]);
 
@@ -886,7 +906,7 @@ export function LuminarySummonCutscene({
   const overlayOpacity =
     isEstablish      ? 0    :
     isPanning        ? 0    :   // board fully visible while camera travels
-    isFocusing       ? 0.52 :
+    isFocusing       ? 0    :   // board still visible — whole scene zooms in
     isFlashing       ? 0.32 :
     isRevealedActive ? 0.52 :
     isFading         ? 0    :
