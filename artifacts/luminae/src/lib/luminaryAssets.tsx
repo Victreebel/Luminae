@@ -1014,9 +1014,8 @@ export function LuminarySummonCutscene({
               opacity: [0.50, 0.85, 0.40, 0.92, 0.45, 0.88, 0.55],
               x: [0, -2.5, 1.5, -1.0, 2.8, -1.5,  0.8, 0],
               y: [0,  1.2, -1.8, 0.5, -1.5, 1.8, -0.8, 0],
-              rotate: [0, -0.4, 0.3, -0.5, 0.2, -0.4, 0.3, 0],
             }}
-            exit={{ opacity: 0, rotate: 0, transition: { duration: 0.18 } }}
+            exit={{ opacity: 0, transition: { duration: 0.18 } }}
             transition={{ repeat: Infinity, duration: 0.28, ease: 'linear' }}
             style={{
               left: (cardRect ? cardRect.cx : vw / 2) - BOARD_CARD_W / 2 - 8,
