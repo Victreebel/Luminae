@@ -264,22 +264,25 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
-// Fits the same 112×160 footprint. The active affinity colour dominates the
-// vortex; a MiniGem icon in the upper-right shows which affinity is linked.
+// Fits the same 112×160 footprint.
 //
-// isNew=true  → 900ms entrance: collapses from center, spiral burst, spring-settle.
-// isNew=false → skip entrance; portal appears already stabilised (reconnect/load).
+// isLive=true   → bonus is currently active (turnCount > summonedAtTurnCount)
+// isNew=true    → 900ms entrance: collapses from center, spiral burst, spring-settle.
+// canToggle=true → entire card is a button cycling eligible affinities.
 //
-// When canToggle=true the entire card is a button — clicking it cycles through
-// eligible affinities and calls onToggle with the next affinity key.
+// Vortex design: outer ring uses conicActive (active ~55%, others ~45%).
+// Inner counter-swirl uses conicAll (all colours equal) so every requirement
+// colour remains visibly present. 4 of 7 motes are the active colour;
+// remaining 3 cycle through the other requirement colours.
 function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, canToggle, onToggle, isNew = false,
+  isOwnedByMe, isLive, canToggle, onToggle, isNew = false,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
   luminaryAffinity?: LuminaryActiveState | null;
   isOwnedByMe?: boolean;
+  isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
   isNew?: boolean;
@@ -290,47 +293,71 @@ function LuminaryClaimedPortal({
   const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
   const activeAffinityMeta = activeKey ? GEM_META[activeKey] : null;
 
-  // Fallback accent colours from luminary requirements (used for particles)
+  // All requirement colours — basis for the vortex mix (no flux)
   const accentMeta = useMemo(
-    () => GEM_KEYS.filter(k => (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => GEM_META[k as GemKey]),
+    () => GEM_KEYS.filter(k => k !== 'flux' && (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => GEM_META[k as GemKey]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [luminary.id],
   );
   const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
-  const hexes = colors.map(c => c.hex);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hexes = useMemo(() => colors.map(c => c.hex), [colors]);
 
-  // Active affinity drives the dominant vortex colour
+  // Active affinity drives dominant colour; fallback to first requirement colour
   const g1 = activeAffinityMeta?.hex ?? hexes[0];
   const g2 = activeAffinityMeta?.glowHex ?? hexes[0];
 
-  // Build a conic where active affinity owns 270° (75%); others split the rest
-  const conic = useMemo(() => {
-    if (!activeAffinityMeta || hexes.length <= 1) {
-      return `conic-gradient(${g1}, ${g1}88, ${g1})`;
-    }
+  // conicAll: equal distribution of ALL requirement colours.
+  // Used for inner swirl + burst so every requirement colour stays visible.
+  const conicAll = useMemo(() => {
+    if (hexes.length <= 1) return `conic-gradient(${hexes[0]}, ${hexes[0]}88, ${hexes[0]})`;
+    const deg = 360 / hexes.length;
+    return `conic-gradient(from 0deg, ${hexes.flatMap((h, i) => [`${h} ${i * deg}deg`, `${h} ${(i + 1) * deg}deg`]).join(', ')})`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hexes.join(',')]);
+
+  // conicActive: active affinity ~55% (200°), others share ~45%.
+  // Used for outer rotating ring — dominant but non-exclusive.
+  const conicActive = useMemo(() => {
     const otherHexes = hexes.filter(h => h !== g1);
-    const slice = otherHexes.length > 0 ? 90 / otherHexes.length : 90;
-    const parts: string[] = [`${g1} 0deg`, `${g1} 270deg`];
+    if (hexes.length <= 1 || otherHexes.length === 0) {
+      return `conic-gradient(${g1}ee, ${g1}88, ${g1}ee)`;
+    }
+    const activeDeg = 200;
+    const sliceDeg = (360 - activeDeg) / otherHexes.length;
+    const parts: string[] = [`${g1} 0deg`, `${g1} ${activeDeg}deg`];
     otherHexes.forEach((h, i) => {
-      parts.push(`${h} ${270 + i * slice}deg`, `${h} ${270 + (i + 1) * slice}deg`);
+      parts.push(`${h} ${activeDeg + i * sliceDeg}deg`, `${h} ${activeDeg + (i + 1) * sliceDeg}deg`);
     });
     parts.push(`${g1} 360deg`);
     return `conic-gradient(from 0deg, ${parts.join(', ')})`;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hexes.join(','), g1]);
 
-  const particles = useMemo(
+  // Particle positions — stable per luminary (seeded by id)
+  const particlePositions = useMemo(
     () => Array.from({ length: 7 }, (_, i) => ({
-      left: 8  + (i * 19 % 90),
-      top:  12 + (i * 31 % 120),
-      size: 1.5 + (i % 3) * 0.8,
-      color: hexes[i % hexes.length],
+      left:  8  + (i * 19 % 90),
+      top:   12 + (i * 31 % 120),
       dur:   2.4 + i * 0.38,
       delay: i  * 0.28,
     })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hexes.join(',')],
+    [luminary.id],
   );
+
+  // Particle colours — 4/7 bias toward active affinity, 3/7 secondary req colours
+  const particleColors = useMemo(() => {
+    const otherHexes = hexes.filter(h => h !== g1);
+    return Array.from({ length: 7 }, (_, i) => {
+      const useActive = i < 4;
+      return {
+        color: useActive ? g1 : (otherHexes.length > 0 ? otherHexes[(i - 4) % otherHexes.length] : g1),
+        size:  useActive ? (2 + (i % 2) * 0.8) : (1.2 + (i % 2) * 0.5),
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hexes.join(','), g1]);
 
   const handleToggle = () => {
     if (!canToggle || !onToggle || eligibleKeys.length < 2 || !activeKey) return;
@@ -339,8 +366,10 @@ function LuminaryClaimedPortal({
     onToggle(next);
   };
 
-  // "activating" = player owns it but bonus not yet live (same turn as summoning)
-  const activating = isOwnedByMe && !!luminaryAffinity && !canToggle;
+  // activating: I own it, affinity data present, but bonus not yet live this turn
+  // NOTE: uses isLive directly — not !canToggle — so single-affinity luminaries
+  // (canToggle=false but isLive=true) correctly show "+1 active" not "active next turn"
+  const activating = isOwnedByMe && !!luminaryAffinity && !isLive;
   const ownerName = claimedByPlayer?.playerName ?? '';
 
   const Tag = (canToggle ? motion.button : motion.div) as typeof motion.div;
@@ -358,16 +387,16 @@ function LuminaryClaimedPortal({
       {/* ── Opening spiral burst ── */}
       {fresh && (
         <>
-          {/* Conic vortex bloom */}
+          {/* Conic vortex bloom — conicAll so all req colours appear in burst */}
           <motion.div
             className="absolute pointer-events-none"
-            style={{ inset: -24, background: conic, filter: 'blur(22px)' }}
+            style={{ inset: -24, background: conicAll, filter: 'blur(22px)' }}
             initial={{ opacity: 0, rotate: 0, scale: 0.1 }}
             animate={{ opacity: [0, 0.72, 0], rotate: 540, scale: [0.1, 1.5, 1.0] }}
             transition={{ duration: 0.96, ease: [0.16, 0.8, 0.3, 1] }}
           />
 
-          {/* Reality crack lines — lightning SVG appearing at impact then fading */}
+          {/* Reality crack lines */}
           <motion.div
             className="absolute inset-0 pointer-events-none z-20"
             initial={{ opacity: 0 }}
@@ -375,33 +404,19 @@ function LuminaryClaimedPortal({
             transition={{ duration: 0.82, times: [0, 0.04, 0.38, 1], ease: 'easeOut' }}
           >
             <svg width="112" height="160" viewBox="0 0 112 160" className="w-full h-full overflow-visible">
-              {/* Main lightning bolt — thick, upward, pronounced zigzag */}
-              <polyline
-                points="56,70 50,54 62,40 53,24 61,10 49,0"
-                stroke={g2} strokeWidth="1.6" fill="none"
-                strokeLinecap="round" strokeLinejoin="round"
-                style={{ filter: `drop-shadow(0 0 4px white) drop-shadow(0 0 8px ${g1})` }}
-              />
-              {/* Branch off the main bolt */}
+              <polyline points="56,70 50,54 62,40 53,24 61,10 49,0" stroke={g2} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 4px white) drop-shadow(0 0 8px ${g1})` }} />
               <polyline points="62,40 74,32 82,18" stroke={g2} strokeWidth="0.9" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
               <polyline points="53,24 44,20 36,12" stroke={g2} strokeWidth="0.7" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
-              {/* Right radial crack */}
               <polyline points="56,70 70,64 82,70 98,62 112,66" stroke="white" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.75, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              {/* Left radial crack */}
               <polyline points="56,70 42,76 28,70 12,75 0,72" stroke="white" strokeWidth="0.7" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              {/* Down-right crack */}
               <polyline points="56,70 66,84 60,102 70,122 63,148 70,160" stroke="white" strokeWidth="0.65" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.65, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              {/* Down-left crack */}
               <polyline points="56,70 44,86 50,106 42,132 48,160" stroke="white" strokeWidth="0.6" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              {/* Upper-right diagonal */}
               <polyline points="56,70 66,56 74,44 70,28 80,14 88,0" stroke="white" strokeWidth="0.65" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, filter: `drop-shadow(0 0 2px ${g1})` }} />
-              {/* Thin hairline cracks */}
               <polyline points="56,70 64,72 74,68 86,74 100,70" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.45 }} />
               <polyline points="56,70 48,62 38,66 24,62 8,65" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.45 }} />
               <polyline points="56,70 60,82 56,96 62,114 58,136" stroke="white" strokeWidth="0.35" fill="none" style={{ opacity: 0.4 }} />
               <polyline points="56,70 50,76 40,72 26,78 10,75" stroke="white" strokeWidth="0.3" fill="none" style={{ opacity: 0.35 }} />
               <polyline points="56,70 68,78 80,74 96,80" stroke="white" strokeWidth="0.3" fill="none" style={{ opacity: 0.35 }} />
-              {/* Spider-web micro-cracks near the bolt tip */}
               <polyline points="61,10 56,6 64,2" stroke="white" strokeWidth="0.4" fill="none" style={{ opacity: 0.5 }} />
               <polyline points="49,0 43,4 38,0" stroke="white" strokeWidth="0.4" fill="none" style={{ opacity: 0.4 }} />
             </svg>
@@ -422,8 +437,7 @@ function LuminaryClaimedPortal({
               key={i}
               className="absolute pointer-events-none z-20"
               style={{
-                left: s.x, top: s.y,
-                width: s.w, height: s.h,
+                left: s.x, top: s.y, width: s.w, height: s.h,
                 clipPath: `polygon(${s.clip})`,
                 background: `linear-gradient(135deg, #ffffffcc 0%, ${g1}cc 55%, ${g2}66 100%)`,
                 boxShadow: `0 0 ${s.w + 2}px ${g1}88`,
@@ -436,17 +450,18 @@ function LuminaryClaimedPortal({
           ))}
         </>
       )}
-      {/* Outer rotating colour ring */}
+
+      {/* Outer rotating ring — conicActive: active ~55%, others visible at ~45% */}
       <motion.div
         className="absolute"
-        style={{ inset: -16, background: conic, filter: 'blur(16px)', opacity: 0.45 }}
+        style={{ inset: -16, background: conicActive, filter: 'blur(16px)', opacity: 0.45 }}
         animate={{ rotate: 360 }}
         transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
       />
-      {/* Inner counter-rotating swirl */}
+      {/* Inner counter-rotating swirl — conicAll: all req colours equal weight */}
       <motion.div
         className="absolute"
-        style={{ inset: 18, borderRadius: '50%', background: conic, filter: 'blur(10px)', opacity: 0.3 }}
+        style={{ inset: 18, borderRadius: '50%', background: conicAll, filter: 'blur(10px)', opacity: 0.3 }}
         animate={{ rotate: -360 }}
         transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
       />
@@ -455,7 +470,7 @@ function LuminaryClaimedPortal({
         className="absolute inset-0"
         style={{ background: 'radial-gradient(ellipse 62% 62% at 50% 44%, #030308 0%, #030308 32%, transparent 68%)' }}
       />
-      {/* Pulsing depth aura — uses active affinity colour */}
+      {/* Pulsing depth aura — active affinity colour */}
       <motion.div
         className="absolute inset-0"
         style={{ background: `radial-gradient(ellipse 75% 65% at 50% 44%, transparent 28%, ${g1}1a 62%, ${g2}14 80%, transparent 90%)` }}
@@ -473,21 +488,25 @@ function LuminaryClaimedPortal({
         animate={{ opacity: [0.5, 1, 0.5], scale: [0.7, 1.5, 0.7] }}
         transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Drifting affinity motes */}
-      {particles.map((p, i) => (
+      {/* Drifting motes — 4/7 active colour, 3/7 secondary requirement colours */}
+      {particlePositions.map((p, i) => (
         <motion.div
           key={i}
           className="absolute rounded-full"
-          style={{ left: p.left, top: p.top, width: p.size, height: p.size,
-            background: p.color, boxShadow: `0 0 ${p.size + 2}px ${p.color}` }}
+          style={{
+            left: p.left, top: p.top,
+            width: particleColors[i].size, height: particleColors[i].size,
+            background: particleColors[i].color,
+            boxShadow: `0 0 ${particleColors[i].size + 2}px ${particleColors[i].color}`,
+          }}
           animate={{ y: [-5, 5, -5], opacity: [0.2, 0.85, 0.2] }}
           transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay + (fresh ? 0.46 : 0) }}
         />
       ))}
 
-      {/* ── UI Overlay ──────────────────────────────────────────────────── */}
+      {/* ── UI Overlay ── */}
       <div className="relative z-10 h-full flex flex-col justify-between p-2 pointer-events-none">
-        {/* Top row: eminence cutout (left) + active affinity gem (right) */}
+        {/* Top row: eminence cutout (left) + floating active affinity gem (right) */}
         <div className="flex justify-between items-start">
           <span
             className="text-lg font-serif font-black leading-none select-none"
@@ -500,29 +519,50 @@ function LuminaryClaimedPortal({
             {luminary.lumens}
           </span>
           {activeKey && (
-            <div className="relative" style={{ filter: `drop-shadow(0 0 4px ${g2}cc)` }}>
+            <motion.div
+              className="relative"
+              animate={{ y: [-2, 2, -2] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
+            >
               <MiniGem color={activeKey} size={16} />
               {canToggle && (
                 <div
-                  className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center"
+                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
                   style={{ background: g1, boxShadow: `0 0 4px ${g1}` }}
                 >
-                  <span className="text-[6px] text-black font-black leading-none">↻</span>
+                  <span className="text-[7px] text-black font-black leading-none">↻</span>
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
         </div>
 
-        {/* Centre: "next turn" badge shown when freshly summoned but not yet active */}
-        {activating && (
+        {/* Centre status badge */}
+        {isOwnedByMe && luminaryAffinity && (
           <div className="flex justify-center">
-            <span
-              className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-              style={{ background: `${g1}33`, color: g2, border: `1px solid ${g1}66` }}
-            >
-              next turn
-            </span>
+            {activating ? (
+              <span
+                className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{ background: `${g1}33`, color: g2, border: `1px solid ${g1}66` }}
+              >
+                active next turn
+              </span>
+            ) : canToggle ? (
+              <span
+                className="text-[7px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                tap to shift ↻
+              </span>
+            ) : isLive ? (
+              <span
+                className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{ background: `${g1}22`, color: `${g2}cc`, border: `1px solid ${g1}44` }}
+              >
+                +1 active
+              </span>
+            ) : null}
           </div>
         )}
 
@@ -547,8 +587,9 @@ function LuminaryClaimedPortal({
           {claimedByPlayer && ownerName && (
             <div
               className="flex items-center gap-1 px-1 py-0.5 rounded"
-              style={{ background: 'rgba(3,3,8,0.72)' }}
+              style={{ background: 'rgba(3,3,8,0.75)' }}
             >
+              <span className="text-[7px] font-medium text-white/35 shrink-0">Allied</span>
               <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={12} />
               <span className="text-[8px] font-semibold leading-none text-white/80 truncate">{ownerName}</span>
               {isOwnedByMe && <span className="text-[7px] text-primary/80 font-bold ml-auto shrink-0">you</span>}
@@ -556,13 +597,26 @@ function LuminaryClaimedPortal({
           )}
         </div>
       </div>
+
+      {/* Dev debug overlay — tree-shaken in production builds */}
+      {import.meta.env.DEV && luminaryAffinity && (
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-black/90 text-white/70 z-30 pointer-events-none"
+          style={{ fontSize: 5.5, padding: '2px 3px', lineHeight: 1.5 }}
+        >
+          <div>owner: {luminaryAffinity.ownerId.slice(0, 12)}</div>
+          <div>active: <span style={{ color: activeKey ? GEM_META[activeKey]?.glowHex : '#fff' }}>{luminaryAffinity.activeAffinity}</span></div>
+          <div>eligible: {luminaryAffinity.eligibleAffinities.join('·')}</div>
+          <div>live:{isLive ? '✓' : '✗'} | toggle:{canToggle ? '✓' : '✗'}</div>
+        </div>
+      )}
     </Tag>
   );
 }
 
 function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
-  luminaryAffinity, claimedByPlayer, isOwnedByMe, canToggle, onToggle,
+  luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -570,6 +624,7 @@ function LuminaryCard({
   luminaryAffinity?: LuminaryActiveState | null;
   claimedByPlayer?: GamePlayerState | null;
   isOwnedByMe?: boolean;
+  isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
 }) {
@@ -596,6 +651,7 @@ function LuminaryCard({
           claimedByPlayer={claimedByPlayer}
           luminaryAffinity={luminaryAffinity}
           isOwnedByMe={isOwnedByMe}
+          isLive={isLive}
           canToggle={canToggle}
           onToggle={onToggle}
           isNew={portalIsNew}
@@ -744,6 +800,8 @@ export default function GameBoard() {
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
   // Client-side only — never written to the server.
   const [previewedPortals, setPreviewedPortals] = useState<Set<string>>(new Set());
+  // Dev-only: affinity index per luminary for portal preview testing (not sent to server)
+  const [devPortalAffinityIdx, setDevPortalAffinityIdx] = useState<Record<string, number>>({});
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -1458,24 +1516,54 @@ export default function GameBoard() {
           {state.luminaries.map(l => {
             const claimedByPlayer = state.players.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
-            const effectiveClaimedByNames =
-              import.meta.env.DEV && previewedPortals.has(l.id) && claimedByNames.length === 0
-                ? ['[Preview]']
-                : claimedByNames;
-            const lumAffinity = ((state as any).luminaryAffinities as LuminaryActiveState[] ?? []).find(la => la.luminaryId === l.id) ?? null;
+            const turnCount: number = (state as any)?.turnCount ?? 0;
+
+            // Real server affinity state
+            const serverLumAffinity = ((state as any).luminaryAffinities as LuminaryActiveState[] ?? []).find(la => la.luminaryId === l.id) ?? null;
             const isOwnedByMe = claimedByPlayer?.playerId === session?.playerId;
-            const canToggle = isOwnedByMe && !!lumAffinity && ((state as any).turnCount ?? 0) > (lumAffinity?.summonedAtTurnCount ?? Infinity) && (lumAffinity?.eligibleAffinities?.length ?? 0) >= 2;
+            // isLive: bonus active starting the turn AFTER summoning
+            const isLive = !!serverLumAffinity && turnCount > serverLumAffinity.summonedAtTurnCount;
+            const canToggle = isOwnedByMe && isLive && (serverLumAffinity?.eligibleAffinities?.length ?? 0) >= 2;
+
+            // Dev-only: synthesize affinity for portal preview without touching server
+            const isDevPreviewed = import.meta.env.DEV && previewedPortals.has(l.id) && !claimedByPlayer;
+            const devEligible = isDevPreviewed
+              ? (GEM_KEYS.filter(k => k !== 'flux' && (l.requirements[k as GemKey] ?? 0) > 0) as GemKey[])
+              : [];
+            const devIdx = devPortalAffinityIdx[l.id] ?? 0;
+            const devAffinity: LuminaryActiveState | null = (isDevPreviewed && devEligible.length > 0) ? {
+              luminaryId: l.id,
+              ownerId: 'dev-preview',
+              activeAffinity: devEligible[devIdx % devEligible.length] as any,
+              eligibleAffinities: devEligible as any,
+              summonedAtTurnCount: 0,
+            } : null;
+
+            const effectiveLumAffinity = isDevPreviewed ? devAffinity : serverLumAffinity;
+            const effectiveClaimedByNames = isDevPreviewed ? ['[Preview]'] : claimedByNames;
+            const effectiveIsOwnedByMe = isDevPreviewed ? true : isOwnedByMe;
+            const effectiveIsLive = isDevPreviewed ? true : isLive;
+            const effectiveCanToggle = isDevPreviewed ? devEligible.length >= 2 : canToggle;
+            const effectiveClaimedByPlayer = isDevPreviewed ? (me ?? null) : claimedByPlayer;
+
             return (
               <LuminaryCard
                 key={l.id}
                 luminary={l}
                 claimedByNames={effectiveClaimedByNames}
                 isReleased={claimedThisSession.includes(l.id)}
-                luminaryAffinity={lumAffinity}
-                claimedByPlayer={claimedByPlayer}
-                isOwnedByMe={isOwnedByMe}
-                canToggle={canToggle}
-                onToggle={(affinity) => handleToggleLuminaryAffinity(l.id, affinity)}
+                luminaryAffinity={effectiveLumAffinity}
+                claimedByPlayer={effectiveClaimedByPlayer}
+                isOwnedByMe={effectiveIsOwnedByMe}
+                isLive={effectiveIsLive}
+                canToggle={effectiveCanToggle}
+                onToggle={isDevPreviewed
+                  ? (affinity) => {
+                      const nextIdx = devEligible.indexOf(affinity as GemKey);
+                      if (nextIdx >= 0) setDevPortalAffinityIdx(prev => ({ ...prev, [l.id]: nextIdx }));
+                    }
+                  : (affinity) => handleToggleLuminaryAffinity(l.id, affinity)
+                }
               />
             );
           })}
@@ -1867,17 +1955,29 @@ export default function GameBoard() {
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">My Affinities</p>
         <div className="grid grid-cols-3 gap-2.5">
-          {CRYSTALS.map((c) => (
-            <div key={c} className="flex items-center gap-2.5 bg-secondary/50 rounded-xl p-2.5">
-              <CrystalIcon color={c} size={44} count={me?.crystals[c as keyof CrystalCounts]} />
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold" style={{ color: GEM_META[c].glowHex }}>{GEM_META[c].shortName}</span>
-                {(me?.bonuses[c as keyof CrystalCounts] ?? 0) > 0 && (
-                  <span className="text-[10px] font-bold text-primary">+{me?.bonuses[c as keyof CrystalCounts]} bonus</span>
-                )}
+          {CRYSTALS.map((c) => {
+            const cardBonus = me?.bonuses[c as keyof CrystalCounts] ?? 0;
+            const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
+              .filter((la: LuminaryActiveState) =>
+                la.ownerId === session?.playerId &&
+                ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
+                la.activeAffinity === c
+              ).length;
+            return (
+              <div key={c} className="flex items-center gap-2.5 bg-secondary/50 rounded-xl p-2.5">
+                <CrystalIcon color={c} size={44} count={me?.crystals[c as keyof CrystalCounts]} />
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs font-semibold" style={{ color: GEM_META[c].glowHex }}>{GEM_META[c].shortName}</span>
+                  {cardBonus > 0 && (
+                    <span className="text-[10px] font-bold text-primary">+{cardBonus}</span>
+                  )}
+                  {lumBonus > 0 && (
+                    <span className="text-[10px] font-bold" style={{ color: GEM_META[c as GemKey].glowHex }}>+{lumBonus} ✦</span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -1917,22 +2017,42 @@ export default function GameBoard() {
         </button>
         {showPurchased && (
           <div className="p-3">
-            {/* Bonus summary */}
-            <div className="flex gap-1.5 flex-wrap mb-3">
-              {CRYSTALS.filter(c => c !== 'flux').map((c) => {
-                const count = me?.bonuses[c as keyof CrystalCounts] ?? 0;
-                if (count === 0) return null;
-                return (
-                  <div key={c} className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5">
-                    <MiniGem color={c as GemKey} size={12} />
-                    <span className="text-xs font-bold text-white">×{count}</span>
-                  </div>
-                );
-              })}
-              {Object.values(me?.bonuses ?? {}).every(v => v === 0) && (
-                <span className="text-xs text-muted-foreground italic">No bonuses yet</span>
-              )}
-            </div>
+            {/* Bonus summary — card bonuses + living luminary alliance bonuses */}
+            {(() => {
+              const lumAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
+              const tc: number = (state as any)?.turnCount ?? 0;
+              const myLumBonus: Partial<Record<GemKey, number>> = {};
+              for (const la of lumAffinities) {
+                if (la.ownerId !== session?.playerId || tc <= la.summonedAtTurnCount) continue;
+                const k = la.activeAffinity as GemKey;
+                myLumBonus[k] = (myLumBonus[k] ?? 0) + 1;
+              }
+              const hasAnyLumBonus = Object.values(myLumBonus).some(v => (v ?? 0) > 0);
+              const hasAnyBonus = hasAnyLumBonus || CRYSTALS.filter(c => c !== 'flux').some(c => (me?.bonuses[c as keyof CrystalCounts] ?? 0) > 0);
+              return (
+                <div className="flex gap-1.5 flex-wrap mb-3 items-center">
+                  {CRYSTALS.filter(c => c !== 'flux').map((c) => {
+                    const cardCount = me?.bonuses[c as keyof CrystalCounts] ?? 0;
+                    const lumCount = myLumBonus[c as GemKey] ?? 0;
+                    const total = cardCount + lumCount;
+                    if (total === 0) return null;
+                    return (
+                      <div key={c} className="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5">
+                        <MiniGem color={c as GemKey} size={12} />
+                        <span className="text-xs font-bold text-white">×{total}</span>
+                        {lumCount > 0 && <span className="text-[9px] text-yellow-400/80">✦</span>}
+                      </div>
+                    );
+                  })}
+                  {!hasAnyBonus && (
+                    <span className="text-xs text-muted-foreground italic">No bonuses yet</span>
+                  )}
+                  {hasAnyLumBonus && (
+                    <span className="text-[9px] text-yellow-400/60 ml-auto">✦ alliance</span>
+                  )}
+                </div>
+              );
+            })()}
             {(me?.purchasedCards?.length ?? 0) === 0 ? (
               <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
             ) : (
@@ -3216,33 +3336,53 @@ export default function GameBoard() {
             </div>
           </details>
 
-          {/* Portal Preview — toggles the claimed-portal visual locally, no server write */}
+          {/* Portal Preview — toggles claimed-portal visual locally, no server write */}
           <details className="fixed bottom-16 right-40 z-[8000] text-[10px]">
             <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">🌀 Portal Preview</summary>
-            <div className="mt-1 bg-black/80 rounded p-1.5 border border-white/10 min-w-40">
+            <div className="mt-1 bg-black/80 rounded p-1.5 border border-white/10 min-w-48">
               <p className="text-white/40 leading-tight mb-1.5 px-1">
                 Client-only · no server write
+              </p>
+              <p className="text-white/30 leading-tight mb-1.5 px-1">
+                Toggle portal · click portal card to cycle affinity
               </p>
               <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
                 {Object.values(LUMINARY_VISUALS).map(v => {
                   const isRealClaimed = state.players.some(p => (p.claimedLuminaryIds ?? []).includes(v.id));
                   const isPreviewed = previewedPortals.has(v.id);
+                  const lumDef = state.luminaries.find(l => l.id === v.id);
+                  const eligibleForPreview = lumDef
+                    ? GEM_KEYS.filter(k => k !== 'flux' && (lumDef.requirements[k as GemKey] ?? 0) > 0)
+                    : [];
+                  const currentDevIdx = devPortalAffinityIdx[v.id] ?? 0;
+                  const currentDevAffinity = eligibleForPreview.length > 0
+                    ? eligibleForPreview[currentDevIdx % eligibleForPreview.length]
+                    : null;
                   return (
                     <button
                       key={v.id}
                       className={`text-left px-2 py-0.5 rounded text-white/70 hover:text-white flex items-center gap-1.5 ${isPreviewed ? 'bg-white/10' : 'hover:bg-white/10'}`}
                       style={{ borderLeft: `3px solid ${isPreviewed ? v.primaryColor : 'transparent'}` }}
                       disabled={isRealClaimed}
-                      title={isRealClaimed ? 'Already claimed in game state' : (isPreviewed ? 'Click to restore panel' : 'Click to preview portal')}
+                      title={isRealClaimed ? 'Already claimed in game state' : (isPreviewed ? 'Click to hide portal' : 'Click to preview portal')}
                       onClick={() => setPreviewedPortals(prev => {
                         const next = new Set(prev);
-                        if (next.has(v.id)) next.delete(v.id); else next.add(v.id);
+                        if (next.has(v.id)) {
+                          next.delete(v.id);
+                          setDevPortalAffinityIdx(prev2 => { const n = { ...prev2 }; delete n[v.id]; return n; });
+                        } else {
+                          next.add(v.id);
+                        }
                         return next;
                       })}
                     >
                       <span className={isPreviewed ? 'text-white' : ''}>{v.id}</span>
-                      {isPreviewed && <span className="ml-auto text-white/40">on</span>}
-                      {isRealClaimed && <span className="ml-auto text-amber-400/70">★</span>}
+                      {isPreviewed && currentDevAffinity && (
+                        <span className="ml-auto text-white/50" style={{ color: GEM_META[currentDevAffinity as GemKey]?.glowHex }}>
+                          {GEM_META[currentDevAffinity as GemKey]?.shortName}
+                        </span>
+                      )}
+                      {!isPreviewed && isRealClaimed && <span className="ml-auto text-amber-400/70">★</span>}
                     </button>
                   );
                 })}
@@ -3250,7 +3390,7 @@ export default function GameBoard() {
               {previewedPortals.size > 0 && (
                 <button
                   className="mt-1.5 w-full text-center text-white/40 hover:text-white/70 px-1 py-0.5 rounded hover:bg-white/10"
-                  onClick={() => setPreviewedPortals(new Set())}
+                  onClick={() => { setPreviewedPortals(new Set()); setDevPortalAffinityIdx({}); }}
                 >
                   Clear all
                 </button>
