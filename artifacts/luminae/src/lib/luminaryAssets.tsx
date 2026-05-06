@@ -1778,7 +1778,7 @@ export function LuminarySummonCutscene({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export function LuminaryIdleOverlay({ luminaryId }: { luminaryId: string }) {
+export function LuminaryIdleOverlay({ luminaryId, frozen = false }: { luminaryId: string; frozen?: boolean }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor } = vis;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
@@ -1795,11 +1795,20 @@ export function LuminaryIdleOverlay({ luminaryId }: { luminaryId: string }) {
   // by subsequent scroll-induced cardPos updates.
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Keep a ref so the scroll handler always sees the latest frozen value
+  // without needing to re-register listeners on every render.
+  const frozenRef = useRef(frozen);
+  useEffect(() => { frozenRef.current = frozen; }, [frozen]);
+
   useEffect(() => {
     let animFrame = 0;
     const scrollTargets: Element[] = [];
 
     const measure = () => {
+      // While a cutscene is playing for another luminary, do not re-measure.
+      // A position update would recalculate initX/initY and re-trigger the
+      // return-flight animation, causing this entity to fly away mid-idle.
+      if (frozenRef.current) return;
       const el = document.querySelector(
         `[data-luminary-id="${luminaryId}"]`
       ) as HTMLElement | null;

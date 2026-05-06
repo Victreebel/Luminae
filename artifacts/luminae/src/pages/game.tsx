@@ -2749,7 +2749,7 @@ export default function GameBoard() {
           Each overlay flies from the viewport centre back to its panel card
           and then idles there with breathing / floating animations. */}
       {claimedThisSession.map(lumId => (
-        <LuminaryIdleOverlay key={lumId} luminaryId={lumId} />
+        <LuminaryIdleOverlay key={lumId} luminaryId={lumId} frozen={summonQueue.length > 0} />
       ))}
 
       {/* Dev test panel — visible in development to preview each Luminary cutscene */}
