@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -261,6 +261,106 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
   );
 }
 
+// ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
+// Replaces the Luminary panel card after it has been claimed by any player.
+// Fits the same 112×160 footprint; accent colours are derived from the
+// Luminary's affinity requirements so each portal looks distinct.
+function LuminaryClaimedPortal({ luminary, claimedByName }: { luminary: Luminary; claimedByName?: string }) {
+  const accentMeta = useMemo(
+    () => GEM_KEYS.filter(k => (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => GEM_META[k as GemKey]),
+    // id is stable for the lifetime of the card — requirements won't change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [luminary.id],
+  );
+  const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
+  const hexes = colors.map(c => c.hex);
+
+  // Stable particle positions seeded from the luminary id — deterministic across re-renders
+  const particles = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => ({
+      left: 8  + (i * 19 % 90),
+      top:  12 + (i * 31 % 120),
+      size: 1.5 + (i % 3) * 0.8,
+      color: hexes[i % hexes.length],
+      dur:   2.4 + i * 0.38,
+      delay: i  * 0.28,
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hexes.join(',')],
+  );
+
+  const conic = hexes.length === 1
+    ? `conic-gradient(${hexes[0]}, ${hexes[0]}88, ${hexes[0]})`
+    : `conic-gradient(from 0deg, ${hexes.map((h, i) => `${h} ${Math.round(i * 360 / hexes.length)}deg`).join(', ')}, ${hexes[0]} 360deg)`;
+  const g1 = hexes[0];
+  const g2 = hexes.length > 1 ? hexes[1] : hexes[0];
+
+  return (
+    <div className="absolute inset-0 bg-[#030308]">
+      {/* Outer rotating colour ring — blurred to paint the rim */}
+      <motion.div
+        className="absolute"
+        style={{ inset: -16, background: conic, filter: 'blur(16px)', opacity: 0.45 }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
+      />
+      {/* Inner counter-rotating swirl */}
+      <motion.div
+        className="absolute"
+        style={{ inset: 18, borderRadius: '50%', background: conic, filter: 'blur(10px)', opacity: 0.3 }}
+        animate={{ rotate: -360 }}
+        transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
+      />
+      {/* Deep void centre — occludes the inner swirl core */}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse 62% 62% at 50% 44%, #030308 0%, #030308 32%, transparent 68%)' }}
+      />
+      {/* Pulsing depth aura */}
+      <motion.div
+        className="absolute inset-0"
+        style={{ background: `radial-gradient(ellipse 75% 65% at 50% 44%, transparent 28%, ${g1}1a 62%, ${g2}14 80%, transparent 90%)` }}
+        animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.07, 1] }}
+        transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {/* Centre singularity — tiny bright mote */}
+      <motion.div
+        className="absolute"
+        style={{
+          left: '50%', top: '42%', width: 5, height: 5, borderRadius: '50%',
+          background: `radial-gradient(circle, #fff 0%, ${g1} 60%, transparent 100%)`,
+          transform: 'translate(-50%, -50%)', filter: 'blur(0.5px)',
+        }}
+        animate={{ opacity: [0.5, 1, 0.5], scale: [0.7, 1.5, 0.7] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {/* Drifting affinity motes */}
+      {particles.map((p, i) => (
+        <motion.div
+          key={i}
+          className="absolute rounded-full"
+          style={{ left: p.left, top: p.top, width: p.size, height: p.size,
+            background: p.color, boxShadow: `0 0 ${p.size + 2}px ${p.color}` }}
+          animate={{ y: [-5, 5, -5], opacity: [0.2, 0.85, 0.2] }}
+          transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
+        />
+      ))}
+      {/* Attribution footer */}
+      <div className="absolute bottom-0 inset-x-0 flex flex-col items-center pb-1.5 gap-0.5 pointer-events-none">
+        {claimedByName && (
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-black/60">
+            <Sparkles className="h-2 w-2 text-amber-300/80 shrink-0" />
+            <span className="text-[7px] font-bold text-amber-200/90 leading-none">
+              {claimedByName.length > 9 ? claimedByName.slice(0, 9) + '…' : claimedByName}
+            </span>
+          </div>
+        )}
+        <span className="text-[6px] uppercase tracking-widest font-semibold text-white/25 leading-none">Released</span>
+      </div>
+    </div>
+  );
+}
+
 function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { luminary: Luminary; claimedByNames?: string[]; isReleased?: boolean }) {
   const isClaimed = claimedByNames.length > 0;
   const vis = LUMINARY_VISUALS[luminary.id];
@@ -268,99 +368,95 @@ function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { l
   const claimedName = claimedByNames[0];
   return (
     <motion.div
-      whileHover={isReleased ? {} : { scale: 1.02 }}
+      whileHover={isClaimed || (isReleased && !isClaimed) ? {} : { scale: 1.02 }}
       data-luminary-id={luminary.id}
       className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
-        isClaimed ? 'ring-2 ring-amber-300/70 shadow-[0_0_20px_rgba(251,191,36,0.4)]' : 'ring-1 ring-black/30'
+        isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30'
       }`}
-      title={luminary.flavor || luminary.name}
-      style={isReleased ? { opacity: 0, pointerEvents: 'none' } : undefined}
+      title={isClaimed
+        ? `Released${claimedName ? ` — claimed by ${claimedName}` : ''}`
+        : (luminary.flavor || luminary.name)}
+      style={isReleased && !isClaimed ? { opacity: 0, pointerEvents: 'none' } : undefined}
     >
-      {/* Background art layer — procedural entity portrait fills the card */}
-      <div className="absolute inset-0 pointer-events-none">
-        <LuminaryPanelArt luminaryId={luminary.id} size={112} claimed={isClaimed} />
-      </div>
-
-      {/* Same dark gradient as artifact cards */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
-
-      <div className="relative z-10 h-full p-2 flex flex-col justify-between">
-        {/* Top row — lumens (left) + accent dot (right), mirroring ArtifactCardView */}
-        <div className="flex justify-between items-start">
-          <span
-            className="text-lg font-serif font-bold"
-            style={{
-              color: accentColor,
-              textShadow: '-1px -1px 0 rgba(255,255,255,0.92), 1px -1px 0 rgba(255,255,255,0.92), -1px 1px 0 rgba(255,255,255,0.92), 1px 1px 0 rgba(255,255,255,0.92), 0 2px 5px rgba(0,0,0,1)',
-            }}
-          >
-            +{luminary.lumens}
-          </span>
-          {/* Domain card — portrait card shape, Luminary color gradient, inner frame */}
-          <div
-            className="relative shrink-0 overflow-hidden flex items-center justify-center"
-            title={luminary.domain}
-            style={{
-              width: 22, height: 30, borderRadius: 3,
-              background: `linear-gradient(145deg, ${vis?.primaryColor ?? accentColor}dd, ${vis?.secondaryColor ?? '#000'}bb)`,
-              boxShadow: `0 0 8px ${vis?.primaryColor ?? accentColor}66, 0 2px 4px rgba(0,0,0,0.85)`,
-              border: `1px solid ${vis?.primaryColor ?? accentColor}66`,
-            }}
-          >
-            <div className="absolute pointer-events-none" style={{ inset: 2, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1 }} />
-            <Sparkles className="h-3 w-3 text-white/90 relative z-10" />
+      {isClaimed ? (
+        <LuminaryClaimedPortal luminary={luminary} claimedByName={claimedName} />
+      ) : (
+        <>
+          {/* Background art layer — procedural entity portrait fills the card */}
+          <div className="absolute inset-0 pointer-events-none">
+            <LuminaryPanelArt luminaryId={luminary.id} size={112} claimed={false} />
           </div>
-        </div>
 
-        {/* Bottom — name + requirement gems */}
-        <div className="space-y-1">
-          {isClaimed && claimedName && (
-            <div className="flex items-center gap-0.5 bg-black/70 rounded px-1 py-0.5 self-start w-fit">
-              <Sparkles className="h-2.5 w-2.5 text-amber-300" />
-              <span className="text-[8px] font-bold leading-none text-amber-200">
-                {claimedName.length > 8 ? claimedName.slice(0, 8) + '…' : claimedName}
+          {/* Same dark gradient as artifact cards */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
+
+          <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+            {/* Top row — lumens (left) + accent dot (right), mirroring ArtifactCardView */}
+            <div className="flex justify-between items-start">
+              <span
+                className="text-lg font-serif font-bold"
+                style={{
+                  color: accentColor,
+                  textShadow: '-1px -1px 0 rgba(255,255,255,0.92), 1px -1px 0 rgba(255,255,255,0.92), -1px 1px 0 rgba(255,255,255,0.92), 1px 1px 0 rgba(255,255,255,0.92), 0 2px 5px rgba(0,0,0,1)',
+                }}
+              >
+                +{luminary.lumens}
               </span>
+              {/* Domain card — portrait card shape, Luminary color gradient, inner frame */}
+              <div
+                className="relative shrink-0 overflow-hidden flex items-center justify-center"
+                title={luminary.domain}
+                style={{
+                  width: 22, height: 30, borderRadius: 3,
+                  background: `linear-gradient(145deg, ${vis?.primaryColor ?? accentColor}dd, ${vis?.secondaryColor ?? '#000'}bb)`,
+                  boxShadow: `0 0 8px ${vis?.primaryColor ?? accentColor}66, 0 2px 4px rgba(0,0,0,0.85)`,
+                  border: `1px solid ${vis?.primaryColor ?? accentColor}66`,
+                }}
+              >
+                <div className="absolute pointer-events-none" style={{ inset: 2, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1 }} />
+                <Sparkles className="h-3 w-3 text-white/90 relative z-10" />
+              </div>
             </div>
-          )}
-          <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
-            {luminary.name}
+
+            {/* Bottom — name + requirement gems */}
+            <div className="space-y-1">
+              <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
+                {luminary.name}
+              </div>
+              <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+                Artifacts Required:
+              </div>
+              {/* Affinity requirement chips — mini card shapes, gem image as texture */}
+              <div className="flex flex-wrap gap-0.5 justify-end items-end">
+                {CRYSTALS.map((c) => {
+                  const req = luminary.requirements[c as keyof CrystalCounts];
+                  if (req <= 0) return null;
+                  const meta = GEM_META[c];
+                  return (
+                    <div
+                      key={c}
+                      className="relative shrink-0 overflow-hidden"
+                      style={{
+                        width: 20, height: 28, borderRadius: 3,
+                        boxShadow: `0 0 7px ${meta.hex}77, 0 2px 4px rgba(0,0,0,0.85)`,
+                        border: `1px solid ${meta.hex}66`,
+                      }}
+                      title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
+                    >
+                      <img src={meta.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%)' }} />
+                      <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.hex}33`, borderRadius: 2 }} />
+                      <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                        {req}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
-            Artifacts Required:
-          </div>
-          {/* Affinity requirement chips — mini card shapes, gem image as texture */}
-          <div className="flex flex-wrap gap-0.5 justify-end items-end">
-            {CRYSTALS.map((c) => {
-              const req = luminary.requirements[c as keyof CrystalCounts];
-              if (req <= 0) return null;
-              const meta = GEM_META[c];
-              return (
-                <div
-                  key={c}
-                  className="relative shrink-0 overflow-hidden"
-                  style={{
-                    width: 20, height: 28, borderRadius: 3,
-                    boxShadow: `0 0 7px ${meta.hex}77, 0 2px 4px rgba(0,0,0,0.85)`,
-                    border: `1px solid ${meta.hex}66`,
-                  }}
-                  title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
-                >
-                  {/* Full-bleed gem image as card texture */}
-                  <img src={meta.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-                  {/* Bottom-weighted vignette for count readability */}
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%)' }} />
-                  {/* Inner frame line */}
-                  <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.hex}33`, borderRadius: 2 }} />
-                  {/* Count number pinned to bottom centre */}
-                  <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
-                    {req}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </motion.div>
   );
 }
