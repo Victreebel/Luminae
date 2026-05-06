@@ -1147,7 +1147,7 @@ export function LuminarySummonCutscene({
                     filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.09, 0.14, 0.10] }}
-                    transition={{ duration: 0.90, ease: 'easeOut' }}
+                    transition={{ duration: 0.16, ease: 'easeOut' }}
                   />
                   <motion.path
                     d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
@@ -1155,7 +1155,7 @@ export function LuminarySummonCutscene({
                     filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.07, 0.11] }}
-                    transition={{ duration: 0.65, delay: 0.22, ease: 'easeOut' }}
+                    transition={{ duration: 0.14, delay: 0.05, ease: 'easeOut' }}
                   />
 
                   {/* ── Primary vertical fault — thick, prominent (firstcrack+) ── */}
@@ -1164,14 +1164,14 @@ export function LuminarySummonCutscene({
                     stroke="white" strokeWidth="2.4" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.92, 1.0] }}
-                    transition={{ duration: 0.72, ease: 'easeOut' }}
+                    transition={{ duration: 0.14, ease: 'easeOut' }}
                   />
                   <motion.path
                     d={`M${FX},0 L${FX-7},${Math.round(FY*0.63)} L${FX},${FY} L${FX+7},${Math.round(FY*1.58)} L${FX-4},${BOARD_CARD_H}`}
                     stroke="#ffe8a0" strokeWidth="9" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.30, 0.52] }}
-                    transition={{ duration: 0.72, delay: 0.06, ease: 'easeOut' }}
+                    transition={{ duration: 0.14, delay: 0.02, ease: 'easeOut' }}
                   />
 
                   {/* ── Branch 1: upper-right diagonal from junction (firstcrack+) ── */}
@@ -1180,14 +1180,14 @@ export function LuminarySummonCutscene({
                     stroke="white" strokeWidth="1.6" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.78, 0.92] }}
-                    transition={{ duration: 0.58, delay: 0.20, ease: 'easeOut' }}
+                    transition={{ duration: 0.13, delay: 0.05, ease: 'easeOut' }}
                   />
                   <motion.path
                     d={`M${FX},${FY} L${Math.round(BOARD_CARD_W*0.72)},${Math.round(FY*0.44)} L${Math.round(BOARD_CARD_W*0.90)},${Math.round(FY*0.10)}`}
                     stroke="#ffe8a0" strokeWidth="6" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.22, 0.42] }}
-                    transition={{ duration: 0.58, delay: 0.24, ease: 'easeOut' }}
+                    transition={{ duration: 0.13, delay: 0.06, ease: 'easeOut' }}
                   />
 
                   {/* ── Organic light leaking through crack crevices (leaking+) ── */}
