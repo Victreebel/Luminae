@@ -265,7 +265,13 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 // Replaces the Luminary panel card after it has been claimed by any player.
 // Fits the same 112×160 footprint; accent colours are derived from the
 // Luminary's affinity requirements so each portal looks distinct.
-function LuminaryClaimedPortal({ luminary, claimedByName }: { luminary: Luminary; claimedByName?: string }) {
+//
+// isNew=true  → 900ms entrance: collapses from center, spiral burst, spring-settle.
+// isNew=false → skip entrance; portal appears already stabilised (reconnect/load).
+function LuminaryClaimedPortal({ luminary, claimedByName, isNew = false }: { luminary: Luminary; claimedByName?: string; isNew?: boolean }) {
+  // Lock in isNew at mount — never re-read; prevents double-firing on re-renders.
+  const fresh = useRef(isNew).current;
+
   const accentMeta = useMemo(
     () => GEM_KEYS.filter(k => (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => GEM_META[k as GemKey]),
     // id is stable for the lifetime of the card — requirements won't change
@@ -296,7 +302,25 @@ function LuminaryClaimedPortal({ luminary, claimedByName }: { luminary: Luminary
   const g2 = hexes.length > 1 ? hexes[1] : hexes[0];
 
   return (
-    <div className="absolute inset-0 bg-[#030308]">
+    <motion.div
+      className="absolute inset-0 bg-[#030308]"
+      style={{ transformOrigin: '50% 42%' }}
+      initial={fresh ? { scale: 0.04, opacity: 0 } : false}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
+    >
+      {/* ── Opening spiral burst — fires once on fresh entrance ──────────── */}
+      {/* A wide conic bloom spins 540° then dissolves, giving the impression  */}
+      {/* the board has been scarred open and the portal is tearing into view. */}
+      {fresh && (
+        <motion.div
+          className="absolute pointer-events-none"
+          style={{ inset: -24, background: conic, filter: 'blur(22px)' }}
+          initial={{ opacity: 0, rotate: 0, scale: 0.1 }}
+          animate={{ opacity: [0, 0.72, 0], rotate: 540, scale: [0.1, 1.5, 1.0] }}
+          transition={{ duration: 0.96, ease: [0.16, 0.8, 0.3, 1] }}
+        />
+      )}
       {/* Outer rotating colour ring — blurred to paint the rim */}
       <motion.div
         className="absolute"
@@ -334,7 +358,8 @@ function LuminaryClaimedPortal({ luminary, claimedByName }: { luminary: Luminary
         animate={{ opacity: [0.5, 1, 0.5], scale: [0.7, 1.5, 0.7] }}
         transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Drifting affinity motes */}
+      {/* Drifting affinity motes — staggered later on fresh entrance so they */}
+      {/* arrive after the portal ring has already settled into view.          */}
       {particles.map((p, i) => (
         <motion.div
           key={i}
@@ -342,15 +367,21 @@ function LuminaryClaimedPortal({ luminary, claimedByName }: { luminary: Luminary
           style={{ left: p.left, top: p.top, width: p.size, height: p.size,
             background: p.color, boxShadow: `0 0 ${p.size + 2}px ${p.color}` }}
           animate={{ y: [-5, 5, -5], opacity: [0.2, 0.85, 0.2] }}
-          transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
+          transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay + (fresh ? 0.46 : 0) }}
         />
       ))}
-    </div>
+    </motion.div>
   );
 }
 
 function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { luminary: Luminary; claimedByNames?: string[]; isReleased?: boolean }) {
   const isClaimed = claimedByNames.length > 0;
+  // Capture claimed state at mount. If the luminary was already claimed when
+  // this component first rendered (page load / reconnect), the portal appears
+  // instantly stabilised. If it became claimed while mounted (cutscene completed
+  // or dev portal preview toggled on), the portal plays the entrance animation.
+  const initialClaimedRef = useRef(isClaimed);
+  const portalIsNew = !initialClaimedRef.current;
   const vis = LUMINARY_VISUALS[luminary.id];
   const accentColor = vis?.primaryColor ?? GEM_META.flux.hex;
   const claimedName = claimedByNames[0];
@@ -367,7 +398,7 @@ function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { l
       style={isReleased && !isClaimed ? { opacity: 0, pointerEvents: 'none' } : undefined}
     >
       {isClaimed ? (
-        <LuminaryClaimedPortal luminary={luminary} claimedByName={claimedName} />
+        <LuminaryClaimedPortal luminary={luminary} claimedByName={claimedName} isNew={portalIsNew} />
       ) : (
         <>
           {/* Background art layer — procedural entity portrait fills the card */}
