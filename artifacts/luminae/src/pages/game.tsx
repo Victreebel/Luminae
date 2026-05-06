@@ -345,17 +345,6 @@ function LuminaryClaimedPortal({ luminary, claimedByName }: { luminary: Luminary
           transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay }}
         />
       ))}
-      {/* Attribution footer */}
-      <div className="absolute bottom-0 inset-x-0 flex flex-col items-center pb-1.5 gap-0.5 pointer-events-none">
-        <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-black/60">
-          <Sparkles className="h-2 w-2 text-amber-300/80 shrink-0" />
-          <span className="text-[7px] font-bold text-amber-200/90 leading-none">
-            {claimedByName
-              ? `Released by ${claimedByName.length > 9 ? claimedByName.slice(0, 9) + '…' : claimedByName}`
-              : 'Released'}
-          </span>
-        </div>
-      </div>
     </div>
   );
 }
