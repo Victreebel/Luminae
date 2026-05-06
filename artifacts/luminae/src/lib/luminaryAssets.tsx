@@ -1534,7 +1534,7 @@ export function LuminarySummonCutscene({
                   <motion.img src={auraLayer} alt="" aria-hidden
                     className="absolute pointer-events-none"
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.76, 0.46, 0.70]) }}
+                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.95, 0.68, 0.88]) }}
                     transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
                     style={{
                       width: 560, height: 560,
@@ -1547,15 +1547,16 @@ export function LuminarySummonCutscene({
                 ) : (
                   <motion.div className="absolute pointer-events-none"
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.62, 0.32, 0.56]) }}
+                    animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.94, 0.64, 0.84]) }}
                     transition={{ duration: 2.8, ease: 'easeInOut', times: [0, 0.28, 0.60, 1] }}
                     style={{
                       width: 560, height: 560,
                       position: 'absolute', top: '50%', left: '50%',
                       transform: 'translate(-50%, -56%)',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at center, ${primaryColor}58 0%, ${secondaryColor}2c 40%, transparent 70%)`,
-                      filter: 'blur(40px)',
+                      background: `radial-gradient(ellipse at center, ${primaryColor}cc 0%, ${primaryColor}77 30%, ${secondaryColor}44 58%, transparent 76%)`,
+                      filter: 'blur(26px)',
+                      mixBlendMode: 'screen',
                     }}
                   />
                 )}
@@ -1564,7 +1565,7 @@ export function LuminarySummonCutscene({
                 <motion.div className="absolute pointer-events-none"
                   initial={{ opacity: 0 }}
                   animate={{
-                    opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.50, 0.26, 0.44]),
+                    opacity: isFading ? 0 : (isFlashing ? 0 : [0, 0.88, 0.56, 0.76]),
                     scale:   isFading ? 1.28 : [0.82, 1.02, 0.96],
                   }}
                   transition={{ duration: 2.2, ease: 'easeInOut' }}
@@ -1573,8 +1574,9 @@ export function LuminarySummonCutscene({
                     position: 'absolute', top: '50%', left: '50%',
                     transform: 'translate(-50%, -53%)',
                     borderRadius: '50%',
-                    background: `radial-gradient(ellipse at center, ${glowColor}48 0%, ${primaryColor}22 52%, transparent 80%)`,
-                    filter: 'blur(22px)',
+                    background: `radial-gradient(ellipse at center, ${glowColor}aa 0%, ${glowColor}55 38%, ${primaryColor}33 62%, transparent 82%)`,
+                    filter: 'blur(16px)',
+                    mixBlendMode: 'screen',
                   }}
                 />
 
