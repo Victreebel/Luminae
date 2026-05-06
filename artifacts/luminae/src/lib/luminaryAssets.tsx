@@ -1844,7 +1844,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
   return (
     <div
       className="fixed pointer-events-none"
-      style={{ zIndex: 8500, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
+      style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
                opacity: (hidden || !isWithinScroller) ? 0 : 1,
                transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in' }}
     >

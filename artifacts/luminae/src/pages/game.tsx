@@ -2931,7 +2931,7 @@ export default function GameBoard() {
           key={lumId}
           luminaryId={lumId}
           frozen={summonQueue.length > 0}
-          hidden={summonQueue.length > 0 && !cutscenePostFlash}
+          hidden={activeTab !== 'board' || (summonQueue.length > 0 && !cutscenePostFlash)}
         />
       ))}
 
