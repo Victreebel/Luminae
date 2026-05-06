@@ -753,8 +753,8 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   secondcrack:  650,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
   shattering: 1000,
-  flashing:    500,
-  revealed:   2700,
+  flashing:    950,
+  revealed:   4200,
   fading:      550,
   done:           0,
 };
@@ -1425,8 +1425,8 @@ export function LuminarySummonCutscene({
         {isFlashing && (
           <motion.div key="flash" className="absolute inset-0 pointer-events-none"
             initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 0.54, ease: 'easeOut' }}
+            animate={{ opacity: [1, 1, 0] }}
+            transition={{ duration: 0.88, ease: 'easeInOut', times: [0, 0.28, 1] }}
             style={{
               background: 'radial-gradient(ellipse at 50% 42%, #ffffff 0%, #fff8dc 22%, #ffe566 46%, #ffaa22 66%, transparent 86%)',
             }}
