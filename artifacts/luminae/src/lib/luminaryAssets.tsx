@@ -1556,7 +1556,6 @@ export function LuminarySummonCutscene({
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at center, ${primaryColor}cc 0%, ${primaryColor}77 30%, ${secondaryColor}44 58%, transparent 76%)`,
                       filter: 'blur(26px)',
-                      mixBlendMode: 'screen',
                     }}
                   />
                 )}
@@ -1576,7 +1575,6 @@ export function LuminarySummonCutscene({
                     borderRadius: '50%',
                     background: `radial-gradient(ellipse at center, ${glowColor}aa 0%, ${glowColor}55 38%, ${primaryColor}33 62%, transparent 82%)`,
                     filter: 'blur(16px)',
-                    mixBlendMode: 'screen',
                   }}
                 />
 
