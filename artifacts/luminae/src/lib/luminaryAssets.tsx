@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
+import { gameAudio } from './audio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -834,6 +835,12 @@ export function LuminarySummonCutscene({
   useEffect(() => { onFlashRef.current = onFlash; }, [onFlash]);
   const onCompleteRef = useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  // Fire all cutscene sound effects pre-scheduled against AudioContext time.
+  // Runs exactly once on mount; respects the user's mute setting internally.
+  useEffect(() => {
+    gameAudio.playSummonCutscene();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
   useEffect(() => {

@@ -396,6 +396,192 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  // ── Summon-cutscene helpers ──────────────────────────────────────────────
+
+  /** Oscillator with an LFO applied to frequency — produces an organic warble. */
+  private wobble(ctx: AudioContext, startTime: number, durationMs: number, freq: number, lfoHz: number, vol: number, dest?: AudioNode) {
+    const dur = durationMs / 1000;
+    const o   = ctx.createOscillator();
+    const g   = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const lfg = ctx.createGain();
+    o.type   = 'sine';
+    o.frequency.value = freq;
+    lfo.type = 'sine';
+    lfo.frequency.value = lfoHz;
+    lfg.gain.value = freq * 0.05;
+    lfo.connect(lfg);
+    lfg.connect(o.frequency);
+    g.gain.setValueAtTime(0, startTime);
+    g.gain.linearRampToValueAtTime(vol, startTime + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+    o.connect(g);
+    g.connect(dest ?? ctx.destination);
+    lfo.start(startTime);  o.start(startTime);
+    lfo.stop(startTime + dur + 0.05);  o.stop(startTime + dur + 0.05);
+  }
+
+  /** Oscillator that glides from freqStart to freqEnd over durationMs. */
+  private risingTone(ctx: AudioContext, startTime: number, durationMs: number, freqStart: number, freqEnd: number, vol: number, dest?: AudioNode) {
+    const dur = durationMs / 1000;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(freqStart, startTime);
+    o.frequency.exponentialRampToValueAtTime(freqEnd, startTime + dur);
+    g.gain.setValueAtTime(0, startTime);
+    g.gain.linearRampToValueAtTime(vol, startTime + dur * 0.15);
+    g.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+    o.connect(g);
+    g.connect(dest ?? ctx.destination);
+    o.start(startTime);
+    o.stop(startTime + dur + 0.05);
+  }
+
+  // ── Luminary Summon Cutscene ─────────────────────────────────────────────
+  // All sounds are pre-scheduled at AudioContext times matching the visual
+  // phase durations in LuminarySummonCutscene.  Routed through a shared
+  // DynamicsCompressor to prevent clipping when layers peak together.
+  //
+  // Phase offsets (ms from cutscene mount):
+  //   establish:   0   (600 ms)
+  //   panning:     600 (750 ms)  ← deep whoosh + sub swell
+  //   focusing:    1350(600 ms)  ← shimmer
+  //   intro:       1950(350 ms)  ← tension build
+  //   zooming:     2300(650 ms)
+  //   pressure:    2950(500 ms)  ← rattle + hum + warble
+  //   firstcrack:  3450(750 ms)  ← snap + ping + bass thump
+  //   leaking:     4200(850 ms)  ← airy shimmer + rising tone
+  //   secondcrack: 5050(420 ms)  ← staggered pings + sweep
+  //   cracking:    5470(1100 ms) ← escalating burst
+  //   shattering:  6570(1000 ms) ← rupture + shards + bass bloom
+  //   flashing:    7570(950 ms)  ← bright swell + chord + shimmer
+  //   revealed:    8520(4200 ms) ← cosmic chord + sub + bell overtones
+  playSummonCutscene() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t   = ctx.currentTime;
+
+      // Shared compressor so simultaneous layers never clip.
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -14;
+      comp.knee.value      = 10;
+      comp.ratio.value     = 8;
+      comp.attack.value    = 0.002;
+      comp.release.value   = 0.18;
+      comp.connect(ctx.destination);
+      const D = comp;
+
+      // Convenience: AudioContext seconds from a ms offset.
+      const s = (ms: number) => t + ms / 1000;
+
+      const PAN    =  600;
+      const FOCUS  = 1350;
+      const INTRO  = 1950;
+      const PRES   = 2950;
+      const CRACK1 = 3450;
+      const LEAK   = 4200;
+      const CRACK2 = 5050;
+      const CRACKS = 5470;
+      const SHATT  = 6570;
+      const FLASH  = 7570;
+      const REVL   = 8520;
+
+      // ── establish (0–600 ms): anticipatory shimmer + sub foundation ─────
+      this.noiseBlip(ctx, s(60),  0.5, 0.022, 4600, 2, D);
+      this.osc(ctx, 55, 'sine',   s(0), s(FOCUS + 200), 0.07, 0.45, D);
+
+      // ── panning + focusing (600–1950 ms): deep whoosh + sub swell ───────
+      this.noiseSweep(ctx, s(PAN), 1.1, 0.10, 55, 700, D);
+      this.osc(ctx, 45, 'sine',   s(PAN), s(FOCUS + 420), 0.10, 0.28, D);
+      // Faint shimmer as camera locks in
+      this.noiseBlip(ctx, s(FOCUS + 130), 0.5, 0.038, 3800, 3, D);
+      this.osc(ctx, 1760, 'sine', s(FOCUS + 180), s(FOCUS + 600), 0.032, 0.06, D);
+
+      // ── intro + zooming (1950–2950 ms): quiet tension build ─────────────
+      this.osc(ctx, 110, 'sine',  s(INTRO),       s(PRES),       0.05, 0.30, D);
+      this.risingTone(ctx, s(INTRO + 220), 720, 155, 215, 0.04, D);
+
+      // ── pressure (2950–3450 ms): crystalline rattle + hum + warble ──────
+      for (let i = 0; i < 5; i++) {
+        const at = s(PRES + i * 82 + Math.random() * 16);
+        this.noiseBlip(ctx, at, 0.034, 0.038 + Math.random() * 0.022, 2300 + Math.random() * 750, 14, D);
+      }
+      this.osc(ctx, 82, 'sine',   s(PRES), s(CRACK1), 0.08, 0.10, D);
+      this.wobble(ctx, s(PRES),   490, 220, 9, 0.05, D);
+
+      // ── firstcrack (3450–4200 ms): sharp snap + glass ping + bass thump ─
+      this.noiseBlip(ctx, s(CRACK1),       0.055, 0.15, 3700, 24, D);
+      this.osc(ctx, 2093, 'sine',  s(CRACK1),       s(CRACK1 + 570), 0.09, 0.003, D);
+      this.osc(ctx, 3520, 'sine',  s(CRACK1 +  8),  s(CRACK1 + 260), 0.04, 0.002, D);
+      this.osc(ctx, 60,   'sine',  s(CRACK1),        s(CRACK1 + 310), 0.16, 0.005, D);
+      this.osc(ctx, 42,   'sine',  s(CRACK1),        s(CRACK1 + 470), 0.10, 0.008, D);
+
+      // ── leaking (4200–5050 ms): airy shimmer + rising tension ────────────
+      this.noiseBlip(ctx, s(LEAK),       0.84, 0.058, 4300, 2.5, D);
+      this.osc(ctx, 1568, 'sine', s(LEAK +  60), s(LEAK + 810), 0.048, 0.10, D);
+      this.risingTone(ctx, s(LEAK), 850, 185, 365, 0.058, D);
+
+      // ── secondcrack (5050–5470 ms): staggered pings + sweep ─────────────
+      [0, 110, 240, 370].forEach((off, i) => {
+        this.noiseBlip(ctx, s(CRACK2 + off), 0.038, 0.052 + i * 0.020, 2700 + i * 370, 18, D);
+        this.osc(ctx, 1320 + i * 255, 'sine', s(CRACK2 + off), s(CRACK2 + off + 170), 0.032, 0.002, D);
+      });
+      this.noiseSweep(ctx, s(CRACK2), 0.42, 0.088, 360, 3400, D);
+
+      // ── cracking (5470–6570 ms): escalating burst + rising sweep ─────────
+      [0, 88, 188, 305, 455, 675, 900].forEach((off, i) => {
+        const vol  = 0.042 + i * 0.017;
+        const freq = 2000 + i * 275 + Math.random() * 340;
+        this.noiseBlip(ctx, s(CRACKS + off), 0.032, Math.min(vol, 0.13), freq, 16 + i, D);
+      });
+      this.noiseSweep(ctx, s(CRACKS), 1.10, 0.10, 270, 5200, D);
+      this.osc(ctx, 52, 'sine', s(CRACKS), s(SHATT), 0.09, 0.20, D);
+
+      // ── shattering (6570–7570 ms): rupture + shard spray + bass bloom ────
+      this.noiseBlip(ctx, s(SHATT),       0.36, 0.13, 2900, 3.0, D);
+      this.noiseBlip(ctx, s(SHATT +  18), 0.27, 0.10, 1550, 2.0, D);
+      this.noiseBlip(ctx, s(SHATT +  42), 0.21, 0.07,  760, 1.5, D);
+      for (let i = 0; i < 10; i++) {
+        const at = s(SHATT + 32 + i * 68 + Math.random() * 32);
+        this.noiseBlip(ctx, at, 0.028, Math.max(0.008, 0.048 - i * 0.003),
+                       1400 + Math.random() * 3000, 10, D);
+      }
+      this.osc(ctx, 40, 'sine',  s(SHATT),       s(SHATT + 760), 0.14, 0.010, D);
+      this.osc(ctx, 58, 'sine',  s(SHATT),       s(SHATT + 560), 0.08, 0.015, D);
+      this.osc(ctx, 80, 'sine',  s(SHATT +  18), s(SHATT + 400), 0.055, 0.020, D);
+
+      // ── flashing (7570–8520 ms): bright swell + celestial chord + shimmer ─
+      this.osc(ctx, 880,  'sine', s(FLASH),      s(FLASH + 460), 0.11, 0.008, D);
+      this.osc(ctx, 1320, 'sine', s(FLASH),      s(FLASH + 310), 0.055, 0.008, D);
+      // Cmaj7 voiced: C5 E5 G5 B5
+      [523.25, 659.25, 783.99, 987.77].forEach((f, i) => {
+        this.osc(ctx, f, 'sine', s(FLASH + 22 + i * 16), s(FLASH + 910), 0.075, 0.012, D);
+      });
+      this.noiseBlip(ctx, s(FLASH +  38), 0.60, 0.085, 5400, 2.0, D);
+      this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
+
+      // ── revealed (8520–12720 ms): cosmic hum + sub + bell overtones ──────
+      // C2 G2 C3 E3 warm chord — slow attack, fades before done
+      this.osc(ctx, 65.41,  'sine', s(REVL),        s(REVL + 3800), 0.10, 0.38, D);
+      this.osc(ctx, 98.00,  'sine', s(REVL +  100),  s(REVL + 3600), 0.07, 0.42, D);
+      this.osc(ctx, 130.81, 'sine', s(REVL +  200),  s(REVL + 3400), 0.06, 0.42, D);
+      this.osc(ctx, 164.81, 'sine', s(REVL +  300),  s(REVL + 3200), 0.042, 0.42, D);
+      // Sub foundation
+      this.osc(ctx, 32.7,   'sine', s(REVL +  100),  s(REVL + 3900), 0.08, 0.52, D);
+      // Soft bell overtones — staggered entry, long decay
+      [523.25, 783.99, 1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
+        const at = REVL + 170 + i * 340;
+        const dur = Math.max(200, 1600 - i * 80);
+        this.osc(ctx, f, 'sine', s(at), s(at + dur), Math.max(0.008, 0.036 - i * 0.004), 0.012, D);
+      });
+
+    } catch (e) {
+      console.warn('[Luminae] Summon cutscene audio failed', e);
+    }
+  }
+
   playBonusSound(color: GemKey) {
     switch (color) {
       case 'onyx': return this.playBonusOnyx();
