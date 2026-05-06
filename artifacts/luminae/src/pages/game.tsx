@@ -437,14 +437,14 @@ function LuminaryCard({ luminary, claimedByNames = [], isReleased = false }: { l
                       className="relative shrink-0 overflow-hidden"
                       style={{
                         width: 20, height: 28, borderRadius: 3,
-                        boxShadow: `0 0 7px ${meta.hex}77, 0 2px 4px rgba(0,0,0,0.85)`,
-                        border: `1px solid ${meta.hex}66`,
+                        boxShadow: `0 0 8px ${meta.glowHex}99, 0 2px 4px rgba(0,0,0,0.85)`,
+                        border: `1px solid ${meta.glowHex}88`,
                       }}
                       title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
                     >
                       <img src={meta.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%)' }} />
-                      <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.hex}33`, borderRadius: 2 }} />
+                      <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.glowHex}44`, borderRadius: 2 }} />
                       <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
                         {req}
                       </span>
