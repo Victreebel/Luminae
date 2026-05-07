@@ -581,6 +581,7 @@ function LuminaryClaimedPortal({
 function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
+  costMode, playerBonuses,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -591,6 +592,8 @@ function LuminaryCard({
   isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
+  costMode?: 'printed' | 'after_bonuses' | 'needed_now';
+  playerBonuses?: Partial<CrystalCounts>;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -655,26 +658,41 @@ function LuminaryCard({
               {/* Affinity requirement chips — mini card shapes, gem image as texture */}
               <div className="flex flex-wrap gap-0.5 justify-end items-end">
                 {CRYSTALS.map((c) => {
-                  const req = luminary.requirements[c as keyof CrystalCounts];
-                  if (req <= 0) return null;
+                  const printed = luminary.requirements[c as keyof CrystalCounts];
+                  if (printed <= 0) return null;
+                  const bonus = playerBonuses?.[c as keyof CrystalCounts] ?? 0;
+                  const displayVal = costMode === 'needed_now'
+                    ? Math.max(0, printed - bonus)
+                    : printed;
+                  const isMet = costMode === 'needed_now' && displayVal === 0;
                   const meta = GEM_META[c];
+                  const tooltipBase = costMode === 'needed_now'
+                    ? (isMet
+                        ? `${meta.name} requirement met (${bonus}/${printed})`
+                        : `${displayVal} more ${meta.name} bonus card${displayVal === 1 ? '' : 's'} needed (have ${bonus}/${printed})`)
+                    : `${printed} ${meta.name} bonus card${printed === 1 ? '' : 's'} required`;
                   return (
                     <div
                       key={c}
                       className="relative shrink-0 overflow-hidden"
                       style={{
                         width: 20, height: 28, borderRadius: 3,
-                        boxShadow: `0 0 8px ${meta.glowHex}99, 0 2px 4px rgba(0,0,0,0.85)`,
-                        border: `1px solid ${meta.glowHex}88`,
+                        opacity: isMet ? 0.45 : 1,
+                        boxShadow: isMet ? 'none' : `0 0 8px ${meta.glowHex}99, 0 2px 4px rgba(0,0,0,0.85)`,
+                        border: `1px solid ${isMet ? 'rgba(255,255,255,0.2)' : `${meta.glowHex}88`}`,
                       }}
-                      title={`${req} ${meta.name} bonus card${req === 1 ? '' : 's'} required`}
+                      title={tooltipBase}
                     >
                       <img src={meta.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%)' }} />
                       <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.glowHex}44`, borderRadius: 2 }} />
-                      <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
-                        {req}
-                      </span>
+                      {isMet ? (
+                        <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none">✓</span>
+                      ) : (
+                        <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                          {displayVal}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -1734,6 +1752,8 @@ export default function GameBoard() {
                 isOwnedByMe={effectiveIsOwnedByMe}
                 isLive={effectiveIsLive}
                 canToggle={effectiveCanToggle}
+                costMode={costMode}
+                playerBonuses={me?.bonuses}
                 onToggle={isDevPreviewed
                   ? (affinity) => {
                       const nextIdx = devEligible.indexOf(affinity as GemKey);
