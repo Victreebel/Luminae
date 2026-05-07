@@ -235,52 +235,6 @@ export const CARD_CATALOG: ArtifactCard[] = [
 ];
 
 export const LUMINARIES: LuminaryDef[] = [
-  // Luminaries are the cosmic equivalent of Splendor's Nobles: claimed
-  // automatically (no payment) at end of any turn in which a player's
-  // PURCHASED-CARD bonus counts meet every listed requirement.
-  //
-  // Tiered rewards balance card-cost vs lumen payout:
-  //   Rare    (3 lumens) — 2 colors × 4 bonuses = 8 cards         ×6
-  //   Greater (4 lumens) — 3 colors × 3 bonuses = 9 cards         ×4
-  //   Mythic  (5 lumens) — 3 colors × 4 bonuses = 12 cards        ×2
-  //
-  // Color distribution across all 12 (count of card-bonuses required to
-  // claim every Luminary): R 24 · S 25 · E 21 · O 28 · P 24.
-
-  // ─── Rare · 3 lumens · dual-color 4+4 ───────────────────────────────────────
-  {
-    id: "lum_astral",
-    name: "The Astral Weaver",
-    domain: "Stars",
-    lumens: 3,
-    requirements: { ruby: 4, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "She stitched the first constellations from stolen fire and frozen sea, and the sky has never been empty since.",
-    summonColor: "#f43f5e",
-    summonSecondaryColor: "#3d6bff",
-    auraStyle: "stars",
-  },
-  {
-    id: "lum_tide",
-    name: "The Tide Architect",
-    domain: "Time",
-    lumens: 3,
-    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
-    flavor: "Every river bends to his design. Every moment flows through channels only he can see.",
-    summonColor: "#3d6bff",
-    summonSecondaryColor: "#a8b8e8",
-    auraStyle: "water",
-  },
-  {
-    id: "lum_root",
-    name: "The Root Ancient",
-    domain: "Growth",
-    lumens: 3,
-    requirements: { ruby: 4, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "Older than any forest, she remembers the first seed and the darkness before the first dawn.",
-    summonColor: "#2ecc71",
-    summonSecondaryColor: "#ff5a3c",
-    auraStyle: "nature",
-  },
   {
     id: "lum_forge",
     name: "The Iron Harbinger",
@@ -293,30 +247,6 @@ export const LUMINARIES: LuminaryDef[] = [
     auraStyle: "storm",
   },
   {
-    id: "lum_void",
-    name: "The Void Warden",
-    domain: "Entropy",
-    lumens: 3,
-    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
-    flavor: "He does not destroy. He simply waits for all things to return to the stillness from which they came.",
-    summonColor: "#7b1fa2",
-    summonSecondaryColor: "#3d6bff",
-    auraStyle: "void",
-  },
-  {
-    id: "lum_radiant",
-    name: "The Radiant Keeper",
-    domain: "Memory",
-    lumens: 3,
-    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 0, pearl: 4, flux: 0 },
-    flavor: "She holds every forgotten name, every erased memory, every light that thought it had gone out forever.",
-    summonColor: "#a8b8e8",
-    summonSecondaryColor: "#2ecc71",
-    auraStyle: "light",
-  },
-
-  // ─── Greater · 4 lumens · tri-color 3+3+3 ───────────────────────────────────
-  {
     id: "lum_ember",
     name: "The Ember Sovereign",
     domain: "Flame",
@@ -326,52 +256,6 @@ export const LUMINARIES: LuminaryDef[] = [
     summonColor: "#ff5a3c",
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
-  },
-  {
-    id: "lum_pale",
-    name: "The Pale Merchant",
-    domain: "Secrets",
-    lumens: 4,
-    requirements: { ruby: 0, sapphire: 3, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
-    flavor: "She trades in truths that cannot be unlearned and bargains sealed in silence, never in blood.",
-    summonColor: "#7b1fa2",
-    summonSecondaryColor: "#a8b8e8",
-    auraStyle: "shadow",
-  },
-  {
-    id: "lum_bloom",
-    name: "The Bloom Tyrant",
-    domain: "Wildfire",
-    lumens: 4,
-    requirements: { ruby: 3, sapphire: 0, emerald: 3, onyx: 0, pearl: 3, flux: 0 },
-    flavor: "Life and destruction share the same root. He is both the flood and the first flower after it recedes.",
-    summonColor: "#ff5a3c",
-    summonSecondaryColor: "#2ecc71",
-    auraStyle: "bloom",
-  },
-  {
-    id: "lum_compass",
-    name: "The Stellar Guide",
-    domain: "Fate",
-    lumens: 4,
-    requirements: { ruby: 0, sapphire: 3, emerald: 3, onyx: 0, pearl: 3, flux: 0 },
-    flavor: "She does not choose your path. She simply makes certain you cannot pretend you didn't see it.",
-    summonColor: "#3d6bff",
-    summonSecondaryColor: "#2ecc71",
-    auraStyle: "cosmic",
-  },
-
-  // ─── Mythic · 5 lumens · heavy 4+4+4 ────────────────────────────────────────
-  {
-    id: "lum_oracle",
-    name: "The Cosmic Oracle",
-    domain: "Cosmos",
-    lumens: 5,
-    requirements: { ruby: 4, sapphire: 4, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "Three minds, three voices, one unbroken gaze that spans every age simultaneously. Ask carefully. It always answers.",
-    summonColor: "#FFC43D",
-    summonSecondaryColor: "#7b1fa2",
-    auraStyle: "cosmic",
   },
   {
     id: "lum_null",
