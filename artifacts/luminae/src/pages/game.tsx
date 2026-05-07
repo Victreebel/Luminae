@@ -1716,23 +1716,48 @@ export default function GameBoard() {
                   whileTap={selectable && !isEmpty ? { scale: 0.9 } : {}}
                   animate={queued > 0 ? { scale: [1, 1.08, 1], transition: { duration: 0.3 } } : {}}
                   onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-center transition-all ${
+                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-center transition-all overflow-hidden ${
                     queued > 0
-                      ? 'bg-primary/20 ring-2 ring-primary shadow-lg'
+                      ? 'ring-2 ring-primary shadow-lg'
                       : isEmpty
-                        ? 'bg-white/[0.03] opacity-40'
-                        : 'bg-white/[0.06] active:bg-white/[0.12]'
+                        ? 'opacity-40'
+                        : ''
                   }`}
-                  style={queued > 0 ? { boxShadow: `0 0 16px ${meta.glowHex}40` } : {}}
+                  style={
+                    queued > 0
+                      ? {
+                          background: `linear-gradient(160deg, ${meta.hex}35 0%, ${meta.hex}12 50%, ${meta.hex}25 100%)`,
+                          border: `1px solid ${meta.glowHex}70`,
+                          boxShadow: `0 0 18px ${meta.glowHex}50, inset 0 0 20px ${meta.hex}18`,
+                        }
+                      : isEmpty
+                        ? {
+                            background: `linear-gradient(160deg, ${meta.hex}0a 0%, transparent 100%)`,
+                            border: `1px solid ${meta.hex}18`,
+                          }
+                        : {
+                            background: `linear-gradient(160deg, ${meta.hex}28 0%, ${meta.hex}0c 45%, ${meta.hex}1e 100%)`,
+                            border: `1px solid ${meta.glowHex}55`,
+                            boxShadow: `inset 0 0 22px ${meta.hex}14, inset 0 1px 0 ${meta.glowHex}30`,
+                          }
+                  }
                 >
+                  {/* Top-edge highlight streak */}
+                  {!isEmpty && (
+                    <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}99, transparent)` }} />
+                  )}
                   <img
                     src={meta.image} alt={meta.name}
                     className="w-14 h-14 object-contain pointer-events-none select-none"
-                    style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 6px ${meta.glowHex}66)` }}
+                    style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 7px ${meta.glowHex}80)` }}
                     draggable={false}
                   />
                   <div className="flex items-center gap-0.5 mt-1">
-                    <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count - queued}</span>
+                    {/* Shadow behind number for readability against colored background */}
+                    <span
+                      className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}
+                      style={isEmpty ? {} : { textShadow: '0 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)' }}
+                    >{count - queued}</span>
                   </div>
                 </motion.button>
                 <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-1.5 leading-none" style={{ color: `${meta.glowHex}88` }}>
@@ -2256,7 +2281,20 @@ export default function GameBoard() {
       <header className="shrink-0 h-14 px-4 flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">
         <div className="flex items-center gap-2">
           <img src={gemIcon} alt="" className="h-7 w-7 drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" draggable={false} />
-          <h1 className="text-base font-serif font-bold text-primary tracking-wide">Luminae</h1>
+          <div className="flex flex-col leading-none">
+            <h1 className="text-sm font-serif font-bold text-primary tracking-wide">Luminae</h1>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(session.inviteCode).then(() =>
+                  toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
+                );
+              }}
+              className="text-[9px] font-mono text-white/35 hover:text-white/65 tracking-widest mt-0.5 transition-colors text-left"
+              title="Tap to copy game code — share with friends to join"
+            >
+              {session.inviteCode}
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 min-w-0">
