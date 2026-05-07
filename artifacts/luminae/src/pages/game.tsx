@@ -1815,9 +1815,11 @@ export default function GameBoard() {
                               return (
                                 <div
                                   key={c}
-                                  className="min-h-[72px] flex flex-col items-center gap-1 rounded-lg pt-1.5 pb-1.5 relative overflow-hidden"
+                                  className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
                                   style={{
-                                    background: `radial-gradient(ellipse at 50% 0%, ${meta.hex}${hasContent ? '22' : '0a'} 0%, ${meta.hex}0a 55%, ${hasContent ? '#060611' : '#07070b'} 100%)`,
+                                    background: hasContent
+                                      ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                                      : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
                                     border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
                                     boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
                                   }}
@@ -1825,10 +1827,6 @@ export default function GameBoard() {
                                   {hasContent && (
                                     <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
                                   )}
-                                  <div className="flex items-center gap-0.5 z-10">
-                                    <span className="text-[7px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                                    <MiniGem color={c as GemKey} size={7} />
-                                  </div>
                                   <span
                                     className="text-2xl font-black leading-none tracking-tight"
                                     style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
@@ -1836,10 +1834,10 @@ export default function GameBoard() {
                                     {n}
                                   </span>
                                   {!isFlux && bonus > 0 && (
-                                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+                                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus} bonus</span>
                                   )}
                                   {isFlux && reservedCount > 0 && (
-                                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} rsv</span>
+                                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} reserved</span>
                                   )}
                                 </div>
                               );
@@ -1893,26 +1891,27 @@ export default function GameBoard() {
             return (
               <div
                 key={c}
-                className="flex flex-col items-center gap-1.5 rounded-xl p-2 relative overflow-hidden"
+                className="flex flex-col items-center gap-1 rounded-xl px-1.5 pt-1.5 pb-1.5 relative overflow-hidden"
                 style={{
-                  background: `radial-gradient(ellipse at 50% 0%, ${meta.hex}1a 0%, ${meta.hex}0a 55%, rgba(255,255,255,0.03) 100%)`,
+                  background: `radial-gradient(ellipse at 50% 0%, ${meta.hex}18 0%, ${meta.hex}08 55%, rgba(255,255,255,0.02) 100%)`,
                   border: `1px solid ${meta.hex}28`,
                 }}
               >
-                {/* Affinity name + icon centered at top */}
-                <div className="flex items-center gap-0.5 z-10">
-                  <span className="text-[9px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                  <MiniGem color={c as GemKey} size={9} />
+                {/* Affinity name + icon — centered at top */}
+                <div className="flex items-center gap-0.5 z-10 w-full justify-center">
+                  <span className="text-[8px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                  <MiniGem color={c as GemKey} size={8} />
                 </div>
-                {/* Crystal count — primary visual */}
-                <CrystalIcon color={c} size={40} count={me?.crystals[c as keyof CrystalCounts]} />
-                {/* Bonus indicators */}
-                {(cardBonus > 0 || lumBonus > 0) && (
-                  <div className="flex flex-col items-center gap-0.5 z-10">
-                    {cardBonus > 0 && <span className="text-[10px] font-bold text-primary leading-none">+{cardBonus}</span>}
-                    {lumBonus > 0 && <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus} ✦</span>}
-                  </div>
-                )}
+                {/* Token count (primary) with bonus side-by-side */}
+                <div className="flex items-center gap-1 z-10">
+                  <CrystalIcon color={c} size={40} count={me?.crystals[c as keyof CrystalCounts]} />
+                  {(cardBonus > 0 || lumBonus > 0) && (
+                    <div className="flex flex-col gap-0.5">
+                      {cardBonus > 0 && <span className="text-[10px] font-bold text-primary leading-none">+{cardBonus}</span>}
+                      {lumBonus > 0 && <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -2047,9 +2046,11 @@ export default function GameBoard() {
                     return (
                       <div
                         key={c}
-                        className="min-h-[72px] flex flex-col items-center gap-1 rounded-lg pt-1.5 pb-1.5 relative overflow-hidden"
+                        className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
                         style={{
-                          background: `radial-gradient(ellipse at 50% 0%, ${meta.hex}${hasContent ? '22' : '0a'} 0%, ${meta.hex}0a 55%, ${hasContent ? '#060611' : '#07070b'} 100%)`,
+                          background: hasContent
+                            ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                            : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
                           border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
                           boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
                         }}
@@ -2057,10 +2058,6 @@ export default function GameBoard() {
                         {hasContent && (
                           <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
                         )}
-                        <div className="flex items-center gap-0.5 z-10">
-                          <span className="text-[7px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                          <MiniGem color={c as GemKey} size={7} />
-                        </div>
                         <span
                           className="text-2xl font-black leading-none tracking-tight"
                           style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
@@ -2068,10 +2065,10 @@ export default function GameBoard() {
                           {n}
                         </span>
                         {!isFlux && bonus > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus} bonus</span>
                         )}
                         {isFlux && reservedCount > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} rsv</span>
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} reserved</span>
                         )}
                       </div>
                     );
