@@ -1614,7 +1614,7 @@ export default function GameBoard() {
                   whileTap={selectable && !isEmpty ? { scale: 0.9 } : {}}
                   animate={queued > 0 ? { scale: [1, 1.08, 1], transition: { duration: 0.3 } } : {}}
                   onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-center transition-all ${
+                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-between pt-1.5 pb-1 transition-all overflow-hidden ${
                     queued > 0
                       ? 'bg-primary/20 ring-2 ring-primary shadow-lg'
                       : isEmpty
@@ -1623,19 +1623,19 @@ export default function GameBoard() {
                   }`}
                   style={queued > 0 ? { boxShadow: `0 0 16px ${meta.glowHex}40` } : {}}
                 >
+                  {/* Affinity name + icon at top of box */}
+                  <div className="flex items-center gap-0.5 z-10">
+                    <span className="text-[8px] font-semibold tracking-wide leading-none" style={{ color: isEmpty ? `${meta.glowHex}55` : meta.glowHex }}>{meta.shortName}</span>
+                    <MiniGem color={c as GemKey} size={8} />
+                  </div>
                   <img
                     src={meta.image} alt={meta.name}
-                    className="w-14 h-14 object-contain pointer-events-none select-none"
+                    className="w-11 h-11 object-contain pointer-events-none select-none"
                     style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 6px ${meta.glowHex}66)` }}
                     draggable={false}
                   />
-                  <div className="flex items-center gap-0.5 mt-1">
-                    <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count - queued}</span>
-                  </div>
+                  <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count - queued}</span>
                 </motion.button>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-1.5 leading-none" style={{ color: `${meta.glowHex}88` }}>
-                  {meta.shortName}
-                </span>
                 {canTake2 && (
                   <motion.button
                     type="button"
