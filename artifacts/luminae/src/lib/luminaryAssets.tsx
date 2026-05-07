@@ -1028,7 +1028,7 @@ export function LuminarySummonCutscene({
   // directly into the card without any additional translate.
   const camZoomed =
     isFocusing || isIntro || isZooming ||
-    isPressure || isFirstCrack || isLeaking || isCracking;
+    isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
   const camScale = camZoomed ? targetScale : 1;
 
   // ── Shake profile (internal-pressure trembling, replaces scale-pulse) ───────
@@ -1616,94 +1616,97 @@ export function LuminarySummonCutscene({
           )}
         </AnimatePresence>
 
-        {/* ── Cosmic light beneath shattering panels ────────────────────── */}
-        {/* Luminary-themed radial light — no duplicate card or portrait.     */}
-        <AnimatePresence>
-          {isShattering && (
-            <motion.div key="cosmiclight" className="absolute pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isFlashing ? 0 : [0, 0.72, 0.88] }}
-              exit={{ opacity: 0, transition: { duration: 0.10 } }}
-              transition={{ duration: 0.40, ease: 'easeOut' }}
-              style={{
-                width: BOARD_CARD_W * 2.8, height: BOARD_CARD_H * 2.8,
-                left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 1.4,
-                top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 1.4,
-                background: `radial-gradient(ellipse 36% 40% at 50% 38%, #ffffff 0%, ${primaryColor}ee 18%, ${primaryColor}aa 42%, ${primaryColor}44 64%, transparent 82%)`,
-                filter: 'blur(5px)',
-                borderRadius: '50%',
-              }}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* ── Nine irregular crystal polygon chunks (A–I) ──────────────── */}
-        {/* All pieces burst outward, then fall downward and fade into light. */}
-        {/* No toward-viewer motion; gravity takes all shards down.           */}
-        <AnimatePresence>
-          {isShattering && PANEL_PIECES.map((piece, i) => (
-            <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
-              style={{
-                width: BOARD_CARD_W, height: BOARD_CARD_H,
-                left: vesselLeft, top: vesselTop,
-                clipPath: piece.clip,
-                transformPerspective: 800,
-                zIndex: 0,
-              }}
-              initial={{
-                x: 0, y: 0, scale: 1,
-                rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
-                filter: `brightness(1) drop-shadow(2px -1px 0px rgba(${pRgb},0.60)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))`,
-              }}
-              animate={{
-                // Burst outward (initial direction) then fall downward under gravity
-                x: [0, piece.dx * 0.45, piece.dx * 0.42],
-                y: [0, piece.dy * 0.35, piece.dy * 0.35 + 145],
-                rotateX: piece.rotateX,
-                rotateY: piece.rotateY,
-                rotateZ: [0, piece.rotateZ * 0.55, piece.rotateZ + (i % 2 === 0 ? 18 : -14)],
-                opacity: [1, 0.88, 0.45, 0],
-                filter: [
-                  `brightness(1.2) drop-shadow(2px -1px 1px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 1px rgba(0,0,20,0.58))`,
-                  `brightness(3.0) drop-shadow(3px -2px 2px rgba(${pRgb},0.85)) drop-shadow(-3px 2px 2px rgba(0,0,30,0.78))`,
-                  `brightness(1.4) drop-shadow(2px -1px 1px rgba(${pRgb},0.55)) drop-shadow(-2px 1px 1px rgba(0,0,20,0.50))`,
-                  `brightness(0.6) drop-shadow(1px 0px 0px rgba(${pRgb},0.20)) drop-shadow(-1px 0px 0px rgba(0,0,20,0.30))`,
-                ],
-              }}
-              transition={{
-                duration: 2.20,
-                ease: [0.08, 0.24, 0.58, 1],
-                delay: i * 0.025,
-                x:       { times: [0, 0.22, 1.0] },
-                y:       { times: [0, 0.20, 1.0] },
-                rotateZ: { times: [0, 0.28, 1.0] },
-                opacity: { times: [0, 0.16, 0.48, 1.0] },
-                filter:  { times: [0, 0.16, 0.48, 1.0] },
-              }}
-            >
-              {panelArt ? (
-                <img src={panelArt} alt="" aria-hidden
-                  style={{
-                    width: BOARD_CARD_W, height: BOARD_CARD_H,
-                    objectFit: 'cover', objectPosition: 'center top',
-                    display: 'block',
-                  }}
-                  draggable={false}
-                />
-              ) : (
-                <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
-              )}
-              {/* Physical slab edge — Luminary-tinted glow on all pieces */}
-              <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                boxShadow: `inset 0 0 0 2px rgba(${pRgb},0.80), inset 4px 4px 0 rgba(${pRgb},0.28), inset -4px -4px 0 rgba(0,0,20,0.65), inset 0 0 22px rgba(${pRgb},0.30)`,
-              }} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
       </motion.div>
       {/* ── end board camera layer ────────────────────────────────────────── */}
+
+      {/* ── Cosmic light beneath shattering panels ────────────────────── */}
+      {/* Intentionally OUTSIDE the camera layer so it renders at full     */}
+      {/* screen scale and is not shrunk by the camera scale-out.         */}
+      <AnimatePresence>
+        {isShattering && (
+          <motion.div key="cosmiclight" className="absolute pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: isFlashing ? 0 : [0, 0.80, 1.0] }}
+            exit={{ opacity: 0, transition: { duration: 0.10 } }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            style={{
+              width: BOARD_CARD_W * 5, height: BOARD_CARD_H * 5,
+              left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.5,
+              top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
+              background: `radial-gradient(ellipse 36% 40% at 50% 38%, #ffffff 0%, ${primaryColor}ee 18%, ${primaryColor}aa 42%, ${primaryColor}44 64%, transparent 82%)`,
+              filter: 'blur(6px)',
+              borderRadius: '50%',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Nine irregular crystal polygon chunks (A–I) ──────────────── */}
+      {/* OUTSIDE camera layer: rendered in screen space at scale=1, so  */}
+      {/* the camera scale-out does not fight the burst motion.           */}
+      {/* Pieces burst outward explosively, then fall under gravity.      */}
+      <AnimatePresence>
+        {isShattering && PANEL_PIECES.map((piece, i) => (
+          <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
+            style={{
+              width: BOARD_CARD_W, height: BOARD_CARD_H,
+              left: vesselLeft, top: vesselTop,
+              clipPath: piece.clip,
+              transformPerspective: 900,
+            }}
+            initial={{
+              x: 0, y: 0, scale: 1,
+              rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
+              filter: `brightness(1) drop-shadow(2px -1px 0px rgba(${pRgb},0.60)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))`,
+            }}
+            animate={{
+              // Explosive burst outward then arc down under gravity
+              x: [0, piece.dx * 2.4, piece.dx * 2.2],
+              y: [0, piece.dy * 1.5, piece.dy * 1.5 + 380],
+              rotateX: [0, piece.rotateX * 2, piece.rotateX * 2.8],
+              rotateY: [0, piece.rotateY * 2, piece.rotateY * 2.8],
+              rotateZ: [0, piece.rotateZ * 0.8, piece.rotateZ * 1.5 + (i % 2 === 0 ? 35 : -28)],
+              opacity: [1, 1, 0.55, 0],
+              filter: [
+                `brightness(1.2) drop-shadow(2px -1px 1px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 1px rgba(0,0,20,0.58))`,
+                `brightness(4.0) drop-shadow(4px -3px 3px rgba(${pRgb},0.90)) drop-shadow(-4px 3px 3px rgba(0,0,30,0.80))`,
+                `brightness(1.6) drop-shadow(3px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-3px 2px 2px rgba(0,0,20,0.55))`,
+                `brightness(0.5) drop-shadow(1px 0px 0px rgba(${pRgb},0.15)) drop-shadow(-1px 0px 0px rgba(0,0,20,0.25))`,
+              ],
+            }}
+            transition={{
+              duration: 2.40,
+              ease: [0.05, 0.18, 0.52, 1],
+              delay: i * 0.022,
+              x:       { times: [0, 0.20, 1.0] },
+              y:       { times: [0, 0.18, 1.0] },
+              rotateX: { times: [0, 0.20, 1.0] },
+              rotateY: { times: [0, 0.20, 1.0] },
+              rotateZ: { times: [0, 0.25, 1.0] },
+              opacity: { times: [0, 0.12, 0.45, 1.0] },
+              filter:  { times: [0, 0.12, 0.45, 1.0] },
+            }}
+          >
+            {panelArt ? (
+              <img src={panelArt} alt="" aria-hidden
+                style={{
+                  width: BOARD_CARD_W, height: BOARD_CARD_H,
+                  objectFit: 'cover', objectPosition: 'center top',
+                  display: 'block',
+                }}
+                draggable={false}
+              />
+            ) : (
+              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
+            )}
+            {/* Physical slab edge — Luminary-tinted glow on all pieces */}
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              boxShadow: `inset 0 0 0 2px rgba(${pRgb},0.80), inset 4px 4px 0 rgba(${pRgb},0.28), inset -4px -4px 0 rgba(0,0,20,0.65), inset 0 0 22px rgba(${pRgb},0.30)`,
+            }} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* ── Full-viewport bloom flash — outside camera layer ────────────────── */}
       <AnimatePresence>
