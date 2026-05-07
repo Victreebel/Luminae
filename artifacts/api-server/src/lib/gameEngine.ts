@@ -78,6 +78,7 @@ export interface GameStateData {
   roundNumber: number;
   turnCount: number;
   phase: "playing" | "last_round" | "finished";
+  finishReason?: "win" | "surrender";
   crystalBank: CrystalCounts;
   marketTier1: string[];
   marketTier2: string[];
@@ -707,6 +708,7 @@ function advanceTurn(state: GameStateData): void {
     // Last round ends when it wraps back around to first player
     if (nextIndex === 0) {
       state.phase = "finished";
+      state.finishReason = "win";
       // Find winner (most lumens, tie-break: fewest cards)
       let bestLumens = -1;
       let bestCards = Infinity;
@@ -930,6 +932,7 @@ export function applyAction(
     case "surrender": {
       // Player surrenders; end the game with them as last place
       state.phase = "finished";
+      state.finishReason = "surrender";
       // Set winner to highest lumens among remaining players (or first if tied)
       const others = state.players.filter((p) => p.playerId !== playerId);
       if (others.length > 0) {
