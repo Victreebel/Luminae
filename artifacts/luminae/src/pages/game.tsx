@@ -1633,6 +1633,8 @@ export default function GameBoard() {
 
   const canPlan = !isMyTurn && state.status === 'playing' && !!me;
   const myPlannedAction = (me as any)?.plannedAction ?? null;
+  const safePlayers = state.players ?? [];
+  const safeLuminaries = state.luminaries ?? [];
 
   const handleToggleLuminaryAffinity = async (luminaryId: string, affinity: string) => {
     try {
@@ -1672,8 +1674,8 @@ export default function GameBoard() {
           })()}
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-          {state.luminaries.map(l => {
-            const claimedByPlayer = state.players.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
+          {safeLuminaries.map(l => {
+            const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
             const turnCount: number = (state as any)?.turnCount ?? 0;
 
@@ -3596,7 +3598,7 @@ export default function GameBoard() {
                   <div className="text-5xl">🌌</div>
                   <h2 className="text-4xl font-serif font-bold text-primary">Game Over</h2>
                   <div className="text-base text-foreground">
-                    Winner: <span className="font-bold text-primary">{state.players.find(p => p.playerId === state.winnerId)?.playerName}</span>
+                    Winner: <span className="font-bold text-primary">{safePlayers.find(p => p.playerId === state.winnerId)?.playerName}</span>
                   </div>
                 </>
               )}
@@ -3740,7 +3742,7 @@ export default function GameBoard() {
                   className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
                   style={{ borderLeft: `3px solid ${v.primaryColor}` }}
                   onClick={() => {
-                    const lumData = state.luminaries.find(l => l.id === v.id);
+                    const lumData = safeLuminaries.find(l => l.id === v.id);
                     enqueueSummon(
                       v.id,
                       lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
@@ -3772,7 +3774,7 @@ export default function GameBoard() {
                 {Object.values(LUMINARY_VISUALS).map(v => {
                   const isRealClaimed = state.players.some(p => (p.claimedLuminaryIds ?? []).includes(v.id));
                   const isPreviewed = previewedPortals.has(v.id);
-                  const lumDef = state.luminaries.find(l => l.id === v.id);
+                  const lumDef = safeLuminaries.find(l => l.id === v.id);
                   const eligibleForPreview = lumDef
                     ? GEM_KEYS.filter(k => k !== 'flux' && (lumDef.requirements[k as GemKey] ?? 0) > 0)
                     : [];
