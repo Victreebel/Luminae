@@ -2389,11 +2389,18 @@ export default function GameBoard() {
             {CRYSTALS.map((c) => {
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
               const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
+              // Living Luminary alliance bonus — same logic as HandTab / effectiveBonuses()
+              const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
+                .filter((la: LuminaryActiveState) =>
+                  la.ownerId === session?.playerId &&
+                  ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
+                  la.activeAffinity === c
+                ).length;
               const meta = GEM_META[c as GemKey];
               const isFlux = c === 'flux';
               const reservedCount = me.reservedCards.length;
               const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-              const hasContent = isFlux ? (gems > 0 || reservedCount > 0) : (gems > 0 || bonus > 0);
+              const hasContent = isFlux ? (gems > 0 || reservedCount > 0) : (gems > 0 || bonus > 0 || lumBonus > 0);
               const clickable = isFlux ? reservedCount > 0 : bonus > 0;
               return (
                 <button
@@ -2446,9 +2453,16 @@ export default function GameBoard() {
                       <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
                     )}
                   </div>
-                  {/* Artifact / Luminary bonus — below the token number */}
-                  {!isFlux && bonus > 0 && (
-                    <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+                  {/* Card bonus + Luminary alliance bonus — stacked below token count */}
+                  {!isFlux && (bonus > 0 || lumBonus > 0) && (
+                    <div className="flex flex-col items-center gap-0" style={{ lineHeight: 1 }}>
+                      {bonus > 0 && (
+                        <span className="text-[9px] font-bold leading-none text-primary">+{bonus}</span>
+                      )}
+                      {lumBonus > 0 && (
+                        <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>
+                      )}
+                    </div>
                   )}
                 </button>
               );
