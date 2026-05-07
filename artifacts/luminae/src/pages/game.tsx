@@ -721,6 +721,11 @@ export default function GameBoard() {
   // the early return) so the initial-load useEffect can call it safely.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enqueueSummonRef = useRef<(...args: any[]) => void>(() => {});
+  // Luminary IDs that have been detected as newly summoned in processUpdate but
+  // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to
+  // suppress the vortex portal during those few frames so it never flashes
+  // before the cutscene starts. Cleared when the entry lands in summonQueue.
+  const pendingSuppressLumIdsRef = useRef(new Set<string>());
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -1049,6 +1054,12 @@ export default function GameBoard() {
         for (const evt of newPending) {
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
           if (!alreadyKnown) {
+            // Synchronously mark this luminary as suppressed BEFORE any RAF fires.
+            // This ensures the portal doesn't flash during the frames between the
+            // queryClient.setQueryData re-render and the setSummonQueue call.
+            if (!handledSummonEventIdsRef.current.has(evt.eventId)) {
+              pendingSuppressLumIdsRef.current.add(evt.luminaryId);
+            }
             const lum = newState.luminaries.find(l => l.id === evt.luminaryId);
             if (lum) {
               enqueueSummon(
@@ -1225,6 +1236,7 @@ export default function GameBoard() {
               `[Luminae] enqueueSummon: no DOM element for luminary "${lumId}". ` +
               'Falling back to viewport centre.'
             );
+            pendingSuppressLumIdsRef.current.delete(lumId);
             setSummonQueue(q => [
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
@@ -1252,6 +1264,7 @@ export default function GameBoard() {
               );
             }
 
+            pendingSuppressLumIdsRef.current.delete(lumId);
             setSummonQueue(q => [                   // 7. start the cutscene
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
@@ -1551,7 +1564,8 @@ export default function GameBoard() {
             // the queue (not just the head) so queued-but-not-yet-playing cutscenes
             // are also suppressed. Dev-test entries (isDevTest=true) have no real
             // claimedByPlayer, so they are excluded to keep the dev preview working.
-            const isSummonInProgress = summonQueue.some(e => e.id === l.id && !e.isDevTest);
+            const isSummonInProgress = summonQueue.some(e => e.id === l.id && !e.isDevTest)
+              || pendingSuppressLumIdsRef.current.has(l.id);
 
             // Visible claimed state — cleared during active cutscene so the board
             // slot keeps rendering the sealed panel until onComplete fires.
