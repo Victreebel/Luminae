@@ -519,11 +519,11 @@ class GameAudio {
       const PRES   = 2540;
       const CRACK1 = 2580;
       const LEAK   = 3200;
-      const CRACK2 = 3780;
-      const CRACKS = 4200;
-      const SHATT  = 5240;
-      const FLASH  = 6080;
-      const REVL   = 7030;
+      const CRACK2 = 3600;
+      const CRACKS = 4020;
+      const SHATT  = 5060;
+      const FLASH  = 5900;
+      const REVL   = 6850;
 
       // ── establish (0–600 ms): anticipatory shimmer + sub foundation ─────
       this.noiseBlip(ctx, s(60),  0.5, 0.022, 4600, 2, D);
@@ -573,7 +573,7 @@ class GameAudio {
       // Internal pressure tone: a glide, not a ping
       this.risingTone(ctx, s(LEAK), 850, 185, 365, 0.055, D);
 
-      // ── secondcrack (3840–4200 ms): staggered brittle physical snaps ────
+      // ── secondcrack (3600–4020 ms): staggered brittle physical snaps ────
       [0, 110, 240, 370].forEach((off, i) => {
         // Crack body: low-mid, low-Q — physical snap, increasing intensity
         this.noiseBlip(ctx, s(CRACK2 + off),     0.050, 0.048 + i * 0.018, 270 + i * 105, 8, D);
@@ -582,7 +582,7 @@ class GameAudio {
       });
       this.noiseSweep(ctx, s(CRACK2), 0.42, 0.088, 360, 3400, D);
 
-      // ── cracking (4200–5160 ms): escalating fracture burst — physical, no pings ─
+      // ── cracking (4020–4980 ms): escalating fracture burst — physical, no pings ─
       [0, 88, 188, 305, 455, 675, 900].forEach((off, i) => {
         const vol = 0.038 + i * 0.016;
         // Fracture body: low-mid, Q=7 — each crack heavier than the last
@@ -595,7 +595,7 @@ class GameAudio {
       this.noiseSweep(ctx, s(CRACKS), 1.10, 0.10, 270, 5200, D);
       this.osc(ctx, 52, 'sine', s(CRACKS), s(SHATT), 0.09, 0.20, D);
 
-      // ── shattering (5240–6080 ms): rupture + shard spray + bass bloom ────
+      // ── shattering (5060–5900 ms): rupture + shard spray + bass bloom ────
       this.noiseBlip(ctx, s(SHATT),       0.36, 0.13, 2900, 3.0, D);
       this.noiseBlip(ctx, s(SHATT +  18), 0.27, 0.10, 1550, 2.0, D);
       this.noiseBlip(ctx, s(SHATT +  42), 0.21, 0.07,  760, 1.5, D);
@@ -612,7 +612,7 @@ class GameAudio {
       this.osc(ctx, 58, 'sine',  s(SHATT),       s(SHATT + 560), 0.08, 0.015, D);
       this.osc(ctx, 80, 'sine',  s(SHATT +  18), s(SHATT + 400), 0.055, 0.020, D);
 
-      // ── flashing (6080–7030 ms): bright swell + celestial chord + shimmer ─
+      // ── flashing (5900–6850 ms): bright swell + celestial chord + shimmer ─
       this.osc(ctx, 880,  'sine', s(FLASH),      s(FLASH + 460), 0.11, 0.008, D);
       this.osc(ctx, 1320, 'sine', s(FLASH),      s(FLASH + 310), 0.055, 0.008, D);
       // Cmaj7 voiced: C5 E5 G5 B5
@@ -622,7 +622,7 @@ class GameAudio {
       this.noiseBlip(ctx, s(FLASH +  38), 0.60, 0.085, 5400, 2.0, D);
       this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
 
-      // ── revealed (7030–11230 ms): cosmic hum + sub + bell overtones ──────
+      // ── revealed (6850–11050 ms): cosmic hum + sub + bell overtones ──────
       // C2 G2 C3 E3 warm chord — slow attack, fades before done
       this.osc(ctx, 65.41,  'sine', s(REVL),        s(REVL + 3800), 0.10, 0.38, D);
       this.osc(ctx, 98.00,  'sine', s(REVL +  100),  s(REVL + 3600), 0.07, 0.42, D);
