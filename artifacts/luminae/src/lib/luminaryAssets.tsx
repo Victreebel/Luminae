@@ -1863,29 +1863,6 @@ export function LuminarySummonCutscene({
                   />
 
                   {/* Portal rim ring (480×560) — thin bright event-horizon edge */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
-                      scale:   isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
-                    }}
-                    transition={{
-                      opacity: { duration: 2.0, ease: 'easeOut' },
-                      scale:   { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
-                    }}
-                    style={{
-                      position: 'absolute',
-                      width: 480, height: 560,
-                      top: '50%', left: '50%',
-                      x: '-50%', y: '-52%',
-                      borderRadius: '50%',
-                      background: 'transparent',
-                      boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
-                      filter: 'blur(4px)',
-                      zIndex: 5,
-                    }}
-                  />
-
                   {/* Entity — aggressive elliptical mask dissolves edges into portal */}
                   {/* Any baked-in background or white fringe reads as rim-light.    */}
                   <motion.div
@@ -1926,6 +1903,29 @@ export function LuminarySummonCutscene({
                       <EntityArt size={ENT_W} />
                     )}
                   </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{
+                      opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
+                      scale:   isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
+                    }}
+                    transition={{
+                      opacity: { duration: 2.0, ease: 'easeOut' },
+                      scale:   { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
+                    }}
+                    style={{
+                      position: 'absolute',
+                      width: 480, height: 560,
+                      top: '50%', left: '50%',
+                      x: '-50%', y: '-52%',
+                      borderRadius: '50%',
+                      background: 'transparent',
+                      boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
+                      filter: 'blur(4px)',
+                      zIndex: 6,
+                    }}
+                  />
 
                 </div>
                 {/* ── end portal composition ── */}
