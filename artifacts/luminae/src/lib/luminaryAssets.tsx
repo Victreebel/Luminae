@@ -1632,20 +1632,37 @@ export function LuminarySummonCutscene({
               clipPath: piece.clip,
               transformPerspective: 1000,
             }}
-            initial={{ x: 0, y: 0, rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1 }}
+            initial={{
+              x: 0, y: 0,
+              rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
+              filter: `brightness(1.1) drop-shadow(2px -1px 0px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 0px rgba(0,0,22,0.58))`,
+            }}
             animate={{
-              x: piece.dx,
-              y: piece.dy,
-              rotateX: piece.rotateX,
-              rotateY: piece.rotateY,
-              rotateZ: piece.rotateZ,
-              opacity: [1, 1, 0.95, 0],
+              // Overshoot 2.4× then drift back to final resting position — no falling
+              x: [0, piece.dx * 2.4, piece.dx],
+              y: [0, piece.dy * 2.0, piece.dy],
+              rotateX: [0, piece.rotateX * 2.2, piece.rotateX],
+              rotateY: [0, piece.rotateY * 2.2, piece.rotateY],
+              rotateZ: [0, piece.rotateZ * 0.9, piece.rotateZ * 1.8 + (i % 2 === 0 ? 20 : -16)],
+              opacity: [1, 1, 0.90, 0],
+              filter: [
+                `brightness(1.2) drop-shadow(2px -1px 1px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 1px rgba(0,0,22,0.58))`,
+                `brightness(4.5) drop-shadow(5px -4px 4px rgba(${pRgb},0.95)) drop-shadow(-5px 4px 4px rgba(0,0,32,0.85))`,
+                `brightness(1.8) drop-shadow(3px -2px 2px rgba(${pRgb},0.65)) drop-shadow(-3px 2px 2px rgba(0,0,22,0.58))`,
+                `brightness(0.4) drop-shadow(1px 0px 0px rgba(${pRgb},0.12)) drop-shadow(-1px 0px 0px rgba(0,0,22,0.22))`,
+              ],
             }}
             transition={{
-              duration: 3.50,
-              ease: [0.12, 0.90, 0.28, 1],
-              delay: i * 0.055,
-              opacity: { times: [0, 0.35, 0.68, 1.0], ease: 'easeInOut' },
+              duration: 3.00,
+              ease: [0.05, 0.18, 0.52, 1],
+              delay: i * 0.028,
+              x:       { times: [0, 0.16, 1.0] },
+              y:       { times: [0, 0.16, 1.0] },
+              rotateX: { times: [0, 0.18, 1.0] },
+              rotateY: { times: [0, 0.18, 1.0] },
+              rotateZ: { times: [0, 0.22, 1.0] },
+              opacity: { times: [0, 0.12, 0.52, 1.0] },
+              filter:  { times: [0, 0.12, 0.52, 1.0] },
             }}
           >
             {/* Panel artwork — the face of the vessel shard */}
