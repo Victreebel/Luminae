@@ -1754,40 +1754,46 @@ export function LuminarySummonCutscene({
 
       {/* ── Portal-style entity reveal ──────────────────────────────────────────── */}
       {/* The Luminary manifests from the cosmic flash — it mounts during the     */}
-      {/* 'flashing' phase and starts as a near-white blurry haze (indistinguish- */}
-      {/* able from the bloom), then resolves over ~3 s into the fully formed     */}
-      {/* entity. The portal geometry is unreadable while shards are still in     */}
-      {/* the air; it only crystallises once the space has cleared.               */}
+      {/* 'flashing' phase. The outer wrapper resolves the flash haze; the inner  */}
+      {/* entrance div drives the physical "swing in" from portal depth:          */}
+      {/* entity starts small and angled (~32° rotateY, like a poster edge-on),  */}
+      {/* snaps forward on the beat-drop boom to a +6° overshoot, then settles   */}
+      {/* face-on. Haze blur is lighter (10px) so the silhouette is readable     */}
+      {/* through it while swinging.                                              */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'brightness(8) blur(18px)' }}
+            initial={{ opacity: 0, filter: 'brightness(5) blur(10px)' }}
             animate={isFading
               ? { opacity: 0, filter: 'brightness(1) blur(0px)' }
               : { opacity: 1, filter: 'brightness(1) blur(0px)' }
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 3.20, delay: 0.30, ease: [0.12, 0, 0.88, 1] }
+              : { duration: 2.60, delay: 0.05, ease: [0.12, 0, 0.88, 1] }
             }
           >
-            {/* Entrance scale + fly-in — unchanged */}
+            {/* Swing-in entrance — poster-to-anterior sweep timed to beat drop.  */}
+            {/* rotateY: −32° (edge-on) → +6° (overshoot) → 0° (face-on).       */}
+            {/* transformPerspective gives the Y-rotation proper 3-D depth.       */}
             <motion.div
               className="relative flex flex-col items-center"
-              style={{ overflow: 'visible' }}
-              initial={{ scale: 0.52, y: 30 }}
+              style={{ overflow: 'visible', transformPerspective: 1100 }}
+              initial={{ scale: 0.26, y: 20, rotateY: -32 }}
               animate={isFading
-                ? { scale: 1.14, y: -38 }
-                : { scale: [0.52, 1.18, 1.06, 1.0], y: [30, -7, 0] }
+                ? { scale: 1.14, y: -38, rotateY: 0 }
+                : { scale: [0.26, 1.14, 1.05, 1.0], y: [20, -5, 0], rotateY: [-32, 6, 0] }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale: { duration: 1.82, times: [0, 0.50, 0.78, 1], ease: 'easeOut' },
-                    y:     { duration: 1.42, ease: [0.22, 1, 0.36, 1] },
+                    scale:   { duration: 1.30, times: [0, 0.52, 0.76, 1.0], ease: 'easeOut' },
+                    y:       { duration: 1.10, ease: [0.22, 1, 0.36, 1] },
+                    rotateY: { duration: 1.30, times: [0, 0.54, 1.0],
+                               ease: ['easeIn', [0.16, 1, 0.3, 1]] },
                   }
               }
             >
