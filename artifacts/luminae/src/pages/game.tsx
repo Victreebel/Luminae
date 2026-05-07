@@ -536,10 +536,10 @@ function LuminaryClaimedPortal({
         </div>
       )}
 
-      {/* Dev debug overlay — tree-shaken in production builds */}
+      {/* Dev debug overlay — anchored top so it never covers the alliance bar; tree-shaken in production */}
       {import.meta.env.DEV && luminaryAffinity && (
         <div
-          className="absolute bottom-0 left-0 right-0 bg-black/90 text-white/70 z-30 pointer-events-none"
+          className="absolute top-0 left-0 right-0 bg-black/90 text-white/70 z-30 pointer-events-none"
           style={{ fontSize: 5.5, padding: '2px 3px', lineHeight: 1.5 }}
         >
           <div>owner: {luminaryAffinity.ownerId.slice(0, 12)}</div>
