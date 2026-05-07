@@ -671,7 +671,8 @@ export default function GameBoard() {
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
-  const [showEffectiveCost, setShowEffectiveCost] = useState(true);
+  type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
+  const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
@@ -1360,6 +1361,23 @@ export default function GameBoard() {
     }
     return out;
   };
+  // ── computeCosts: returns display costs for the active costMode ──────────
+  const computeCosts = (card: ArtifactCard, mode: CostMode): Partial<Record<GemKey, number>> | undefined => {
+    if (!me) return undefined;
+    if (mode === 'printed') return undefined;
+    const afterBonus = effectiveCost(card, me) as Record<string, number>;
+    if (mode === 'after_bonuses') return afterBonus as Partial<Record<GemKey, number>>;
+    // 'needed_now': after bonuses, subtract held tokens + pre-harvest tally, clamp >= 0
+    const out: Partial<Record<GemKey, number>> = {};
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      const eff = afterBonus[c] ?? 0;
+      const held = me.crystals[c as keyof CrystalCounts] ?? 0;
+      const harvest = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+      out[c as GemKey] = Math.max(0, eff - held - harvest);
+    }
+    return out;
+  };
   const canAffordCard = (card: ArtifactCard, p: GamePlayerState): boolean => {
     const cost = effectiveCost(card, p);
     let fluxNeeded = 0;
@@ -1386,7 +1404,7 @@ export default function GameBoard() {
 
   const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
-    const ec = showEffectiveCost ? effectiveCost(card, me) as Partial<Record<GemKey, number>> : undefined;
+    const ec = computeCosts(card, costMode);
     setSelectedCard({
       card, fromReserve,
       canBuy: isMyTurn && canAffordCard(card, me),
@@ -1499,14 +1517,23 @@ export default function GameBoard() {
         {/* Cost toggle */}
         <div className="flex items-center justify-between px-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Artifacts · Forge using Affinities</p>
-          <button
-            type="button"
-            onClick={() => setShowEffectiveCost(v => !v)}
-            className={`flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${showEffectiveCost ? 'bg-primary/20 border-primary/50 text-primary' : 'bg-secondary/50 border-border/50 text-muted-foreground'}`}
-          >
-            {showEffectiveCost ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-            {showEffectiveCost ? 'Planning' : 'Planning'}
-          </button>
+          <div className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5">
+            {([
+              { mode: 'printed' as CostMode, label: 'Printed', title: 'Show original printed cost' },
+              { mode: 'after_bonuses' as CostMode, label: 'Bonuses', title: 'Cost after your permanent bonuses' },
+              { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harvest selection' },
+            ]).map(({ mode, label, title }) => (
+              <button
+                key={mode}
+                type="button"
+                title={title}
+                onClick={() => setCostMode(mode)}
+                className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-colors leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {[
@@ -1559,7 +1586,7 @@ export default function GameBoard() {
                           tier={row.tier}
                           onTap={() => openCardSheet(c, false)}
                           tapped={selectedCard?.card.id === c.id}
-                          effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
+                          effectiveCosts={computeCosts(c, costMode)}
                         />
                       </motion.div>
                     </div>
@@ -1573,7 +1600,7 @@ export default function GameBoard() {
                       tier={row.tier}
                       onTap={() => openCardSheet(c, false)}
                       tapped={selectedCard?.card.id === c.id}
-                      effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
+                      effectiveCosts={computeCosts(c, costMode)}
                     />
                   </div>
                 );
@@ -1932,7 +1959,7 @@ export default function GameBoard() {
                 tier={c.tier}
                 onTap={() => openCardSheet(c, true)}
                 tapped={selectedCard?.card.id === c.id}
-                effectiveCosts={showEffectiveCost && me ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined}
+                effectiveCosts={computeCosts(c, costMode)}
               />
             ))}
           </div>
@@ -2355,7 +2382,7 @@ export default function GameBoard() {
                 <ArtifactCardView
                   card={selectedCard.card}
                   tier={selectedCard.card.tier}
-                  effectiveCosts={selectedCard.effectiveCosts}
+                  effectiveCosts={me ? computeCosts(selectedCard.card, costMode) : undefined}
                 />
                 <div className="flex-1 flex flex-col gap-2 justify-center">
                   <div className="font-bold text-base leading-tight">{selectedCard.card.name}</div>
@@ -2377,33 +2404,43 @@ export default function GameBoard() {
               </div>
 
               {/* My Cost breakdown — shortfall per gem */}
-              {showEffectiveCost && selectedCard.effectiveCosts && me && (() => {
+              {costMode !== 'printed' && me && (() => {
+                // Live calculation — reacts to costMode and selectedCrystals changes in real time
+                const liveCosts = computeCosts(selectedCard.card, costMode) as Record<string, number> | undefined;
+                if (!liveCosts) return null;
                 const rows: { gem: GemKey; need: number; have: number; short: number }[] = [];
                 let totalShort = 0;
                 for (const c of CRYSTALS) {
                   if (c === 'flux') continue;
-                  const need = selectedCard.effectiveCosts[c] ?? 0;
-                  if (need <= 0) continue;
-                  const have = Math.min(need, me.crystals[c as keyof CrystalCounts] ?? 0);
-                  const short = Math.max(0, need - have);
+                  const baseCost = selectedCard.card.cost[c as keyof CrystalCounts] ?? 0;
+                  if (baseCost <= 0) continue;
+                  const need = liveCosts[c] ?? 0;
+                  // In after_bonuses mode show token coverage; in needed_now the shortfall IS the remaining
+                  const have = costMode === 'after_bonuses'
+                    ? Math.min(need, me.crystals[c as keyof CrystalCounts] ?? 0)
+                    : 0;
+                  const short = costMode === 'after_bonuses' ? Math.max(0, need - have) : need;
                   totalShort += short;
                   rows.push({ gem: c as GemKey, need, have, short });
                 }
                 const fluxHave = me.crystals.flux ?? 0;
                 const fluxNeeded = Math.max(0, totalShort);
                 const fluxCovers = fluxNeeded <= fluxHave;
-                const canAfford = fluxNeeded === 0 || fluxCovers;
+                const canAfford = canAffordCard(selectedCard.card, me);
                 if (rows.length === 0) return null;
+                const modeLabel = costMode === 'after_bonuses' ? 'After bonuses — tokens needed' : 'What you still need right now';
                 return (
                   <div className="mb-3 rounded-xl border border-border/50 bg-secondary/30 px-3 py-2.5 flex flex-col gap-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">What you still need</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{modeLabel}</p>
                     <div className="flex flex-wrap gap-2">
                       {rows.map(({ gem, need, have, short }) => (
                         <div key={gem} className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${short === 0 ? 'bg-green-900/40 text-green-300' : 'bg-red-900/40 text-red-300'}`}>
                           <MiniGem color={gem} size={12} />
                           {short === 0
                             ? <span className="text-green-400">✓ {have}/{need}</span>
-                            : <span>−{short} <span className="text-white/40 font-normal">({have}/{need})</span></span>
+                            : costMode === 'after_bonuses'
+                              ? <span>−{short} <span className="text-white/40 font-normal">({have}/{need})</span></span>
+                              : <span>−{need}</span>
                           }
                         </div>
                       ))}
@@ -2417,12 +2454,8 @@ export default function GameBoard() {
                         </div>
                       )}
                     </div>
-                    {canAfford && (
-                      <p className="text-[10px] font-semibold text-green-400">You can forge this now</p>
-                    )}
-                    {!canAfford && (
-                      <p className="text-[10px] font-semibold text-red-400">Still short — keep harnessing</p>
-                    )}
+                    {canAfford && <p className="text-[10px] font-semibold text-green-400">You can forge this now</p>}
+                    {!canAfford && <p className="text-[10px] font-semibold text-red-400">Still short — keep harnessing</p>}
                   </div>
                 );
               })()}
@@ -2886,7 +2919,7 @@ export default function GameBoard() {
                 ) : (
                   <div className="flex flex-col gap-3">
                     {me.reservedCards.map((c) => {
-                      const ec = showEffectiveCost ? effectiveCost(c, me) as Partial<Record<GemKey, number>> : undefined;
+                      const ec = computeCosts(c, costMode);
                       const canBuy = canAffordCard(c, me);
                       return (
                         <div key={c.id} className="flex gap-4 items-center bg-secondary/30 rounded-2xl p-3">
