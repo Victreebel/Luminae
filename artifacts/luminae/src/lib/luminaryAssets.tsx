@@ -1603,22 +1603,22 @@ export function LuminarySummonCutscene({
       <AnimatePresence>
         {isShatterVisible && (
           <motion.div key="cosmiclight" className="absolute pointer-events-none"
-            initial={{ opacity: 0, scale: 0.10 }}
+            initial={{ opacity: 0, scale: 0.08 }}
             animate={{
-              opacity: isFlashing ? 0 : [0, 1.0, 0.95, 0.65, 0],
-              scale:   isFlashing ? 0.18 : [0.10, 0.72, 1.25, 1.34, 1.28],
+              opacity: isFlashing ? 0 : [0, 0.84, 0.98, 0.96, 0.82, 0.46, 0],
+              scale:   isFlashing ? 0.16 : [0.08, 0.40, 0.78, 1.02, 1.20, 1.30, 1.26],
             }}
             exit={{ opacity: 0, transition: { duration: 0.30 } }}
             transition={{
-              opacity: { duration: 1.05, times: [0, 0.12, 0.34, 0.72, 1.0], ease: 'easeInOut' },
-              scale:   { duration: 1.05, times: [0, 0.16, 0.42, 0.72, 1.0], ease: [0.16, 1, 0.3, 1] },
+              opacity: { duration: 1.08, times: [0, 0.10, 0.24, 0.42, 0.64, 0.84, 1.0], ease: 'easeInOut' },
+              scale:   { duration: 1.08, times: [0, 0.10, 0.26, 0.44, 0.64, 0.84, 1.0], ease: [0.16, 1, 0.3, 1] },
             }}
             style={{
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 34% 38% at 50% 42%, #ffffff 0%, ${primaryColor}ff 14%, ${primaryColor}cc 32%, ${primaryColor}66 56%, transparent 80%)`,
-              filter: 'blur(10px)',
+              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, ${primaryColor}ff 10%, ${primaryColor}dd 24%, ${primaryColor}88 50%, transparent 84%)`,
+              filter: 'blur(14px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
             }}
@@ -1663,12 +1663,12 @@ export function LuminarySummonCutscene({
               // Filter arc: normal → affinity glow builds → pulse peak → white-hot
               // burn-out. Chunks never go dark — they dissolve INTO affinity light.
               filter: [
-                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
-                `brightness(1.5) drop-shadow(3px -3px 5px rgba(${pRgb},0.78)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
-                `brightness(2.2) drop-shadow(5px -4px 8px rgba(${pRgb},0.90)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.36))`,
-                `brightness(4.0) drop-shadow(0 0 12px rgba(${pRgb},0.98)) drop-shadow(0 0 22px rgba(${pRgb},0.62))`,
-                `brightness(6.5) drop-shadow(0 0 18px rgba(${pRgb},1.0)) drop-shadow(0 0 34px rgba(255,255,255,0.72))`,
-                `brightness(9.0) drop-shadow(0 0 24px rgba(${pRgb},1.0)) drop-shadow(0 0 44px rgba(255,255,255,0.90))`,
+                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
+                `brightness(1.3) drop-shadow(3px -3px 4px rgba(${pRgb},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
+                `brightness(2.0) drop-shadow(5px -4px 7px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.30))`,
+                `brightness(3.6) drop-shadow(0 0 14px rgba(${pRgb},0.96)) drop-shadow(0 0 26px rgba(${pRgb},0.58))`,
+                `brightness(5.6) drop-shadow(0 0 20px rgba(${pRgb},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
+                `brightness(8.0) drop-shadow(0 0 26px rgba(${pRgb},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
               ],
             }}
             transition={{
@@ -1681,8 +1681,8 @@ export function LuminarySummonCutscene({
               rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
               rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
               rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
-              opacity: { times: [0, 0.14, 0.55, 0.70, 0.87, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.18, 0.45, 0.65, 0.80, 1.0], ease: 'easeInOut' },
+              opacity: { times: [0, 0.08, 0.26, 0.46, 0.66, 0.84, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.10, 0.24, 0.44, 0.64, 0.82, 1.0], ease: 'easeInOut' },
             }}
           >
             {/* Panel artwork — the face of the vessel shard */}
@@ -1770,14 +1770,14 @@ export function LuminarySummonCutscene({
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'brightness(5) blur(10px)' }}
+            initial={{ opacity: 0, filter: 'brightness(6) blur(12px)' }}
             animate={isFading
               ? { opacity: 0, filter: 'brightness(1) blur(0px)' }
               : { opacity: 1, filter: 'brightness(1) blur(0px)' }
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 2.60, delay: 0.05, ease: [0.12, 0, 0.88, 1] }
+              : { duration: 2.10, delay: 0.00, ease: [0.18, 0, 0.82, 1] }
             }
           >
             {/* Swing-in entrance — poster-to-anterior sweep timed to beat drop.  */}
@@ -1789,14 +1789,14 @@ export function LuminarySummonCutscene({
               initial={{ scale: 0.26, y: 20, rotateY: -32 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, rotateY: 0 }
-                : { scale: [0.26, 1.14, 1.05, 1.0], y: [20, -5, 0], rotateY: [-32, 6, 0] }
+                : { scale: [0.26, 1.10, 1.04, 1.0], y: [20, -8, 0], rotateY: [-32, 4, 0] }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 1.30, times: [0, 0.52, 0.76, 1.0], ease: 'easeOut' },
-                    y:       { duration: 1.10, ease: [0.22, 1, 0.36, 1] },
-                    rotateY: { duration: 1.30, times: [0, 0.54, 1.0],
+                    scale:   { duration: 1.10, times: [0, 0.50, 0.78, 1.0], ease: 'easeOut' },
+                    y:       { duration: 1.00, ease: [0.22, 1, 0.36, 1] },
+                    rotateY: { duration: 1.10, times: [0, 0.56, 1.0],
                                ease: ['easeIn', [0.16, 1, 0.3, 1]] },
                   }
               }
