@@ -487,7 +487,7 @@ class GameAudio {
   //   intro:       1950(350 ms)  ← tension build
   //   zooming:     2300(650 ms)
   //   pressure:    2950(500 ms)  ← rattle + hum + warble
-  //   firstcrack:  3450(750 ms)  ← snap + ping + bass thump
+  //   firstcrack:  3030(520 ms)  ← snap + ping + bass thump
   //   leaking:     4200(850 ms)  ← airy shimmer + rising tone
   //   secondcrack: 5050(420 ms)  ← staggered pings + sweep
   //   cracking:    5470(1100 ms) ← escalating burst
@@ -516,14 +516,14 @@ class GameAudio {
       const PAN    =  600;
       const FOCUS  = 1350;
       const INTRO  = 1950;
-      const PRES   = 2950;
-      const CRACK1 = 3450;
-      const LEAK   = 4200;
-      const CRACK2 = 5050;
-      const CRACKS = 5470;
-      const SHATT  = 6570;
-      const FLASH  = 7570;
-      const REVL   = 8520;
+      const PRES   = 2830;
+      const CRACK1 = 3030;
+      const LEAK   = 3450;
+      const CRACK2 = 4350;
+      const CRACKS = 4740;
+      const SHATT  = 5740;
+      const FLASH  = 6590;
+      const REVL   = 7540;
 
       // ── establish (0–600 ms): anticipatory shimmer + sub foundation ─────
       this.noiseBlip(ctx, s(60),  0.5, 0.022, 4600, 2, D);
@@ -640,7 +640,7 @@ class GameAudio {
       // ── MP3 sound effects — fired at their exact phase beat times ───────
       // Each file is fetched+decoded async and scheduled precisely on the
       // AudioContext timeline. Decode typically completes well within the
-      // ~3.4 s gap before the first beat (CRACK1).
+      // ~3.0 s gap before the first beat (CRACK1).
       void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,        0.80);
       void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,        0.76);
       void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,        0.90);
