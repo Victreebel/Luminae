@@ -1603,15 +1603,15 @@ export function LuminarySummonCutscene({
       <AnimatePresence>
         {isShatterVisible && (
           <motion.div key="cosmiclight" className="absolute pointer-events-none"
-            initial={{ opacity: 0, scale: 0.14 }}
+            initial={{ opacity: 0, scale: 0.10 }}
             animate={{
-              opacity: isFlashing ? 0 : [0, 0.80, 1.0, 0.92],
-              scale:   isFlashing ? 0.30 : [0.14, 0.55, 1.0, 1.12],
+              opacity: isFlashing ? 0 : [0, 1.0, 0.95, 0.65, 0],
+              scale:   isFlashing ? 0.18 : [0.10, 0.72, 1.25, 1.34, 1.28],
             }}
             exit={{ opacity: 0, transition: { duration: 0.30 } }}
             transition={{
-              opacity: { duration: 0.75, times: [0, 0.18, 0.52, 1.0], ease: 'easeOut' },
-              scale:   { duration: 1.80, times: [0, 0.22, 0.64, 1.0], ease: [0.16, 1, 0.3, 1] },
+              opacity: { duration: 1.05, times: [0, 0.12, 0.34, 0.72, 1.0], ease: 'easeInOut' },
+              scale:   { duration: 1.05, times: [0, 0.16, 0.42, 0.72, 1.0], ease: [0.16, 1, 0.3, 1] },
             }}
             style={{
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
@@ -1636,7 +1636,7 @@ export function LuminarySummonCutscene({
         {isShatterVisible && PANEL_PIECES.map((piece, i) => (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
-              width: BOARD_CARD_W * 1.2, height: BOARD_CARD_H * 1.2,
+              width: BOARD_CARD_W * 1.28, height: BOARD_CARD_H * 1.28,
               left: vesselLeft, top: vesselTop,
               clipPath: piece.clip,
               transformPerspective: 1000,
@@ -1650,8 +1650,8 @@ export function LuminarySummonCutscene({
               // Micro-jolt at crack moment (8% of travel in first ~0.3 s),
               // then the pieces peel slowly outward under magical suspension.
               // No projectile overshoot — the panel is being consumed, not shattered.
-              x: [0, piece.dx * 0.09, piece.dx],
-              y: [0, piece.dy * 0.09, piece.dy],
+              x: [0, piece.dx * 0.11, piece.dx],
+              y: [0, piece.dy * 0.11, piece.dy],
               rotateX: [0, piece.rotateX],
               rotateY: [0, piece.rotateY],
               rotateZ: [0, piece.rotateZ],
