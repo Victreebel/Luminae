@@ -182,6 +182,35 @@ paths:
         "403":
           description: Not the host
 
+  /rooms/{roomId}/rematch:
+    post:
+      operationId: rematch
+      tags: [rooms]
+      summary: Restart the game with the same players (host only)
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HostActionBody"
+      responses:
+        "200":
+          description: Game restarted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameState"
+        "400":
+          description: Game is not finished
+        "403":
+          description: Not the host
+
   /rooms/{roomId}/state:
     get:
       operationId: getGameState

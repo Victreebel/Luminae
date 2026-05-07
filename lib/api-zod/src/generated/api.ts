@@ -457,6 +457,242 @@ export const StartGameResponse = zod.object({
 });
 
 /**
+ * @summary Restart the game with the same players (host only)
+ */
+export const RematchParams = zod.object({
+  roomId: zod.coerce.string(),
+});
+
+export const RematchBody = zod.object({
+  sessionToken: zod.string(),
+});
+
+export const RematchResponse = zod.object({
+  roomId: zod.string(),
+  status: zod.enum(["lobby", "playing", "finished"]),
+  currentPlayerIndex: zod.number(),
+  roundNumber: zod.number(),
+  turnCount: zod
+    .number()
+    .describe(
+      "Monotonically increasing counter incremented each time any player's turn ends",
+    ),
+  crystalBank: zod.object({
+    ruby: zod.number(),
+    sapphire: zod.number(),
+    emerald: zod.number(),
+    onyx: zod.number(),
+    pearl: zod.number(),
+    flux: zod.number(),
+  }),
+  marketTier1: zod.array(
+    zod.object({
+      id: zod.string(),
+      tier: zod.number(),
+      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+      lumens: zod.number(),
+      cost: zod.object({
+        ruby: zod.number(),
+        sapphire: zod.number(),
+        emerald: zod.number(),
+        onyx: zod.number(),
+        pearl: zod.number(),
+        flux: zod.number(),
+      }),
+      name: zod.string(),
+      flavor: zod.string(),
+    }),
+  ),
+  marketTier2: zod.array(
+    zod.object({
+      id: zod.string(),
+      tier: zod.number(),
+      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+      lumens: zod.number(),
+      cost: zod.object({
+        ruby: zod.number(),
+        sapphire: zod.number(),
+        emerald: zod.number(),
+        onyx: zod.number(),
+        pearl: zod.number(),
+        flux: zod.number(),
+      }),
+      name: zod.string(),
+      flavor: zod.string(),
+    }),
+  ),
+  marketTier3: zod.array(
+    zod.object({
+      id: zod.string(),
+      tier: zod.number(),
+      bonusColor: zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+      lumens: zod.number(),
+      cost: zod.object({
+        ruby: zod.number(),
+        sapphire: zod.number(),
+        emerald: zod.number(),
+        onyx: zod.number(),
+        pearl: zod.number(),
+        flux: zod.number(),
+      }),
+      name: zod.string(),
+      flavor: zod.string(),
+    }),
+  ),
+  deckCounts: zod.object({
+    tier1: zod.number(),
+    tier2: zod.number(),
+    tier3: zod.number(),
+  }),
+  luminaries: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      domain: zod
+        .string()
+        .describe(
+          "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
+        ),
+      lumens: zod.number(),
+      requirements: zod.object({
+        ruby: zod.number(),
+        sapphire: zod.number(),
+        emerald: zod.number(),
+        onyx: zod.number(),
+        pearl: zod.number(),
+        flux: zod.number(),
+      }),
+      flavor: zod
+        .string()
+        .describe("Short lore\/flavor text shown on the Luminary card"),
+      summonColor: zod
+        .string()
+        .describe("Primary hex color used for glow and aura effects"),
+      summonSecondaryColor: zod
+        .string()
+        .describe("Secondary hex color used for aura gradient"),
+      auraStyle: zod
+        .string()
+        .describe("Named aura style for the summoning cutscene"),
+    }),
+  ),
+  luminaryAffinities: zod
+    .array(
+      zod.object({
+        luminaryId: zod.string(),
+        ownerId: zod.string(),
+        activeAffinity: zod.enum([
+          "ruby",
+          "sapphire",
+          "emerald",
+          "onyx",
+          "pearl",
+        ]),
+        eligibleAffinities: zod.array(
+          zod.enum(["ruby", "sapphire", "emerald", "onyx", "pearl"]),
+        ),
+        summonedAtTurnCount: zod.number(),
+      }),
+    )
+    .describe("Active affinity state for each claimed Luminary"),
+  players: zod.array(
+    zod.object({
+      playerId: zod.string(),
+      playerName: zod.string(),
+      avatarId: zod.string().nullish(),
+      crystals: zod.object({
+        ruby: zod.number(),
+        sapphire: zod.number(),
+        emerald: zod.number(),
+        onyx: zod.number(),
+        pearl: zod.number(),
+        flux: zod.number(),
+      }),
+      bonuses: zod.object({
+        ruby: zod.number(),
+        sapphire: zod.number(),
+        emerald: zod.number(),
+        onyx: zod.number(),
+        pearl: zod.number(),
+        flux: zod.number(),
+      }),
+      lumens: zod.number(),
+      reservedCards: zod.array(
+        zod.object({
+          id: zod.string(),
+          tier: zod.number(),
+          bonusColor: zod.enum([
+            "ruby",
+            "sapphire",
+            "emerald",
+            "onyx",
+            "pearl",
+          ]),
+          lumens: zod.number(),
+          cost: zod.object({
+            ruby: zod.number(),
+            sapphire: zod.number(),
+            emerald: zod.number(),
+            onyx: zod.number(),
+            pearl: zod.number(),
+            flux: zod.number(),
+          }),
+          name: zod.string(),
+          flavor: zod.string(),
+        }),
+      ),
+      purchasedCardIds: zod.array(zod.string()),
+      purchasedCards: zod.array(
+        zod.object({
+          id: zod.string(),
+          tier: zod.number(),
+          bonusColor: zod.enum([
+            "ruby",
+            "sapphire",
+            "emerald",
+            "onyx",
+            "pearl",
+          ]),
+          lumens: zod.number(),
+          cost: zod.object({
+            ruby: zod.number(),
+            sapphire: zod.number(),
+            emerald: zod.number(),
+            onyx: zod.number(),
+            pearl: zod.number(),
+            flux: zod.number(),
+          }),
+          name: zod.string(),
+          flavor: zod.string(),
+        }),
+      ),
+      isConnected: zod.boolean(),
+      claimedLuminaryIds: zod
+        .array(zod.string())
+        .describe("IDs of luminaries this player has claimed"),
+    }),
+  ),
+  winnerId: zod.string().nullable(),
+  lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
+  actionLog: zod.array(
+    zod.object({
+      playerId: zod.string(),
+      playerName: zod.string(),
+      summary: zod.string(),
+      turn: zod.number(),
+    }),
+  ),
+  turnTimerSeconds: zod.number().nullish(),
+  turnDeadline: zod
+    .number()
+    .nullish()
+    .describe(
+      "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
+    ),
+  version: zod.number(),
+});
+
+/**
  * @summary Get current game state
  */
 export const GetGameStateParams = zod.object({
@@ -710,7 +946,6 @@ export const SubmitActionBody = zod.object({
     "pass",
     "surrender",
     "toggle_luminary_affinity",
-    "resolve_summon",
   ]),
   crystals: zod
     .object({
@@ -735,10 +970,6 @@ export const SubmitActionBody = zod.object({
     .enum(["ruby", "sapphire", "emerald", "onyx", "pearl"])
     .optional()
     .describe("Target affinity for toggle_luminary_affinity action"),
-  eventId: zod
-    .string()
-    .optional()
-    .describe("Event ID for resolve_summon action"),
 });
 
 export const SubmitActionResponse = zod.object({

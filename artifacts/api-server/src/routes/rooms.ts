@@ -514,6 +514,103 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   void runAiTurnsIfNeeded(rawId);
 });
 
+// POST /api/rooms/:roomId/rematch — host restarts the game with same players
+router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+
+  const parsed = StartGameBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [room] = await db
+    .select()
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+
+  if (!room) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+  if (room.status !== "finished") {
+    res.status(400).json({ error: "Game is not finished yet" });
+    return;
+  }
+
+  const [host] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, parsed.data.sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+
+  if (!host || !host.isHost) {
+    res.status(403).json({ error: "Only the host can start a rematch" });
+    return;
+  }
+
+  const players = await db
+    .select()
+    .from(playersTable)
+    .where(eq(playersTable.roomId, rawId))
+    .orderBy(playersTable.orderIndex);
+
+  const gameData = initializeGame(
+    players.map((p) => ({ id: p.id, name: p.name })),
+    players.length,
+  );
+  gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
+  updateTurnDeadline(gameData);
+
+  await db
+    .update(roomsTable)
+    .set({ status: "playing", updatedAt: new Date() })
+    .where(eq(roomsTable.id, rawId));
+
+  await db
+    .insert(gameStatesTable)
+    .values({
+      roomId: rawId,
+      state: gameData as unknown as Record<string, unknown>,
+      version: gameData.version,
+    })
+    .onConflictDoUpdate({
+      target: gameStatesTable.roomId,
+      set: {
+        state: gameData as unknown as Record<string, unknown>,
+        version: gameData.version,
+        updatedAt: new Date(),
+      },
+    });
+
+  const connectedIds = getConnectedPlayerIds(rawId);
+  for (const p of players) {
+    if (p.isAi) connectedIds.add(p.id);
+  }
+  const avatarMap = new Map<string, string | null>(
+    players.map((p) => [p.id, p.avatarId ?? null]),
+  );
+
+  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap);
+
+  // Broadcast as state_update so all clients see status change from
+  // 'finished' → 'playing' without any navigation required.
+  broadcastToRoom(rawId, { type: "state_update", state: formatted });
+  armTurnTimer(rawId, gameData);
+
+  res.json(formatted);
+
+  void runAiTurnsIfNeeded(rawId);
+});
+
 // DELETE /api/rooms/:roomId/players/:playerId
 router.delete(
   "/rooms/:roomId/players/:playerId",

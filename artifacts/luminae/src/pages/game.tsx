@@ -3,6 +3,7 @@ import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
   useSubmitAction, 
+  useRematch,
   getGetGameStateQueryKey
 } from '@workspace/api-client-react';
 import type { 
@@ -1167,6 +1168,7 @@ export default function GameBoard() {
   });
 
   const submitAction = useSubmitAction();
+  const rematchMutation = useRematch();
 
   // ── Summon cutscene duration used for the animation barrier ───────────────
   const SUMMON_CUTSCENE_DURATION_MS = 12_000;
@@ -3397,8 +3399,24 @@ export default function GameBoard() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 }}
+                className="flex flex-col gap-2"
               >
-                <Button size="lg" className="w-full" onClick={() => setLocation('/')}>Back to Home</Button>
+                {session.isHost && (
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    disabled={rematchMutation.isPending}
+                    onClick={() => {
+                      rematchMutation.mutate(
+                        { roomId, data: { sessionToken: session.sessionToken } },
+                        { onError: () => toast({ title: 'Rematch failed', description: 'Could not restart the game.', variant: 'destructive' }) },
+                      );
+                    }}
+                  >
+                    {rematchMutation.isPending ? 'Restarting…' : 'Rematch'}
+                  </Button>
+                )}
+                <Button size="lg" variant="outline" className="w-full" onClick={() => setLocation('/')}>Back to Home</Button>
               </motion.div>
             </motion.div>
           </motion.div>
