@@ -1542,8 +1542,22 @@ export default function GameBoard() {
             const isLive = !!serverLumAffinity && turnCount > serverLumAffinity.summonedAtTurnCount;
             const canToggle = isOwnedByMe && isLive && (serverLumAffinity?.eligibleAffinities?.length ?? 0) >= 2;
 
+            // Suppress the claimed vortex/portal while a summon cutscene is active
+            // for this luminary. The server marks it claimed immediately (for rules /
+            // persistence), but visually the portal must not appear until the shatter
+            // animation has fully resolved. isSummonInProgress covers every entry in
+            // the queue (not just the head) so queued-but-not-yet-playing cutscenes
+            // are also suppressed. Dev-test entries (isDevTest=true) have no real
+            // claimedByPlayer, so they are excluded to keep the dev preview working.
+            const isSummonInProgress = summonQueue.some(e => e.id === l.id && !e.isDevTest);
+
+            // Visible claimed state — cleared during active cutscene so the board
+            // slot keeps rendering the sealed panel until onComplete fires.
+            const visibleClaimedByPlayer = isSummonInProgress ? null : claimedByPlayer;
+            const visibleClaimedByNames  = isSummonInProgress ? []   : claimedByNames;
+
             // Dev-only: synthesize affinity for portal preview without touching server
-            const isDevPreviewed = import.meta.env.DEV && previewedPortals.has(l.id) && !claimedByPlayer;
+            const isDevPreviewed = import.meta.env.DEV && previewedPortals.has(l.id) && !visibleClaimedByPlayer;
             const devEligible = isDevPreviewed
               ? (GEM_KEYS.filter(k => k !== 'flux' && (l.requirements[k as GemKey] ?? 0) > 0) as GemKey[])
               : [];
@@ -1556,12 +1570,12 @@ export default function GameBoard() {
               summonedAtTurnCount: 0,
             } : null;
 
-            const effectiveLumAffinity = isDevPreviewed ? devAffinity : serverLumAffinity;
-            const effectiveClaimedByNames = isDevPreviewed ? ['[Preview]'] : claimedByNames;
-            const effectiveIsOwnedByMe = isDevPreviewed ? true : isOwnedByMe;
-            const effectiveIsLive = isDevPreviewed ? true : isLive;
-            const effectiveCanToggle = isDevPreviewed ? devEligible.length >= 2 : canToggle;
-            const effectiveClaimedByPlayer = isDevPreviewed ? (me ?? null) : claimedByPlayer;
+            const effectiveLumAffinity     = isDevPreviewed ? devAffinity              : serverLumAffinity;
+            const effectiveClaimedByNames  = isDevPreviewed ? ['[Preview]']            : visibleClaimedByNames;
+            const effectiveIsOwnedByMe     = isDevPreviewed ? true                     : (isSummonInProgress ? false : isOwnedByMe);
+            const effectiveIsLive          = isDevPreviewed ? true                     : (isSummonInProgress ? false : isLive);
+            const effectiveCanToggle       = isDevPreviewed ? devEligible.length >= 2  : (isSummonInProgress ? false : canToggle);
+            const effectiveClaimedByPlayer = isDevPreviewed ? (me ?? null)             : visibleClaimedByPlayer;
 
             return (
               <LuminaryCard
