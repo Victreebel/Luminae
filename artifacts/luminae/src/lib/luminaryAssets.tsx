@@ -722,85 +722,86 @@ const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 const IDLE_W = BOARD_CARD_W;                     // 112
 const IDLE_H = Math.round(BOARD_CARD_H * 1.1);   // ≈ 176
 
-// ── Nine-Chunk Crystal Shatter Geometry ──────────────────────────────────────
+// ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
 // Card viewport: 112 × 160 px.  All coords are raw pixels.
 //
-// Interior junction points (where crack lines intersect):
-//   A1(38,50)  — first-crack main hub (left of centre)
-//   A2(72,38)  — upper-right junction (first branch ends / second crack starts)
-//   A3(86,88)  — right-middle junction
-//   A4(50,72)  — centre junction (main second-crack node)
-//   A5(28,102) — lower-left junction
-//   A6(70,118) — lower-right junction
+// Design: two main cracks + branches divide the panel into 6 large readable
+// shards.  Each chunk boundary is defined exactly by the crack network below.
 //
-// Jagged sub-vertices (give crack lines their irregular faceted character):
-//   ZA(34,25)  — kink on T1→A1      ZB(58,44) — kink on A1→A2 branch
-//   ZC(82,64)  — kink on A2→A3      ZE(32,130) — bend on A5→B1
-//   ZF(78,140) — bend on A6→B2
+// Interior junctions:
+//   P(56,68)   — primary junction: where first crack meets second crack
+//   Q(28,116)  — secondary junction: lower node of second crack
 //
 // Edge split points:
-//   T1(28,0)  T2(72,0)         — top edge
-//   L1(0,52)  L2(0,108)        — left edge
-//   R1(112,40) R2(112,110)     — right edge
-//   B1(36,160) B2(78,160)      — bottom edge
+//   TA(40,0)    — top edge split
+//   RA(112,56)  — right edge upper split
+//   RB(112,116) — right edge lower split
+//   BA(44,160)  — bottom edge split
+//   LA2(0,64)   — left edge upper split (end of first-crack P→left branch)
+//   LA(0,128)   — left edge lower split (end of Q→left branch)
 //
-// Crack network (paths exactly match polygon chunk boundaries):
-//   First crack  : T1→ZA→A1→L1          [main] + A1→ZB→A2  [branch]
-//   Second crack : R1→A2→ZC→A3→A4→A5→L2 [main]
-//                + A3→A6→R2              [right branch]
-//                + A5→ZE→B1              [bottom-left branch]
-//                + A6→ZF→B2              [bottom-right branch]
+// Crack network:
+//   First crack:   TA→K1→P→K2→RA              [main: top → right edge]
+//                  P→K3a→K3b→LA2              [branch: P → left edge]
+//   Second crack:  P→K4→Q→K8→BA               [main: down to bottom]
+//                  Q→K5→K6→RB                 [branch: right edge]
+//                  Q→K7→LA                    [branch: left edge]
+//   Fine details:  K1→(22,14)→(12,5)          [tiny branch near top]
+//                  K4→(38,84)→(28,82)         [tiny branch mid-left]
 //
-// Nine irregular polygon chunks (no gaps, no overlaps):
-//   A(5pt) top-left wing    B(6pt) top-centre shard    C(4pt) top-right corner
-//   D(5pt) left-middle      E(6pt) centre crystal       F(6pt) right slab
-//   G(5pt) lower-left       H(8pt) lower-centre         I(5pt) lower-right
+// Six polygon chunks (no gaps, no overlaps — boundaries are exact crack lines):
+//   TL (7pt) top-left          TR (6pt) top-right
+//   LM (8pt) left-centre       RM (8pt) right-centre
+//   BL (6pt) bottom-left       BR (7pt) bottom-right
 //
-// All pieces burst outward then fall under gravity — no toward-viewer motion.
+// Shatter motion: pieces drift slowly outward from centre, rotate in 3-D,
+// then pulse into the Luminary's primary affinity colour via a screen-blend
+// overlay before fading out of existence.  No falling.
 
-// Interior junction points
-const A1X = 38;  const A1Y = 50;
-const A2X = 72;  const A2Y = 38;
-const A3X = 86;  const A3Y = 88;
-const A4X = 50;  const A4Y = 72;
-const A5X = 28;  const A5Y = 102;
-// Edge split points (active)
-const L2X = 0;   const L2Y = 108;
-const R1X = BOARD_CARD_W;  const R1Y = 40;
-const R2X = BOARD_CARD_W;  const R2Y = 110;
-const B1X = 36;  const B1Y = BOARD_CARD_H;
-const B2X = 78;  const B2Y = BOARD_CARD_H;
+// Interior junctions
+const PX = 56;  const PY = 68;
+const QX = 28;  const QY = 116;
 
-// All pieces: burst outward → slow → fall downward → fade into light.
-// No toward-viewer motion (dz removed). Motion language: physical debris falling.
+// Edge split points
+const TAX = 40;                              // top edge (y = 0)
+const RAY = 56;                              // right edge upper  (x = BOARD_CARD_W)
+const RBY = 116;                             // right edge lower  (x = BOARD_CARD_W)
+const BAX = 44;                              // bottom edge       (y = BOARD_CARD_H)
+const LA2Y = 64;                             // left edge upper   (x = 0)
+const LAY  = 128;                            // left edge lower   (x = 0)
+
+// Kink points along crack lines
+const K1X = 32;   const K1Y = 24;   // first crack main  TA→P
+const K2X = 68;   const K2Y = 56;   // first crack branch P→RA
+const K3aX = 44;  const K3aY = 64;  // first crack branch P→LA2, kink 1
+const K3bX = 22;  const K3bY = 60;  // first crack branch P→LA2, kink 2
+const K4X = 46;   const K4Y = 92;   // second crack main  P→Q
+const K5X = 52;   const K5Y = 112;  // second crack right branch Q→RB, kink 1
+const K6X = 80;   const K6Y = 112;  // second crack right branch Q→RB, kink 2
+const K7X = 18;   const K7Y = 122;  // second crack left branch  Q→LA
+const K8X = 38;   const K8Y = 136;  // second crack main  Q→BA
+
+// Six large shard pieces — clip paths in percentage coords (W=112, H=160).
+// Motion: slow outward drift, subtle 3-D tumble, affinity-colour pulse, fade.
 const PANEL_PIECES = [
-  // A: top-left wing (5pt)
-  { clip: 'polygon(0% 0%, 25% 0%, 30.4% 15.6%, 33.9% 31.25%, 0% 32.5%)',
-    dx:  -58, dy:  -50, rotateX: -13, rotateY:  16, rotateZ:  13 },
-  // B: top-centre shard (6pt)
-  { clip: 'polygon(25% 0%, 64.3% 0%, 64.3% 23.75%, 51.8% 27.5%, 33.9% 31.25%, 30.4% 15.6%)',
-    dx:   -6, dy:  -64, rotateX: -11, rotateY:   4, rotateZ:  -7 },
-  // C: top-right corner (4pt)
-  { clip: 'polygon(64.3% 0%, 100% 0%, 100% 25%, 64.3% 23.75%)',
-    dx:   56, dy:  -48, rotateX:  -9, rotateY: -20, rotateZ: -11 },
-  // D: left-middle (5pt)
-  { clip: 'polygon(0% 32.5%, 33.9% 31.25%, 44.6% 45%, 25% 63.75%, 0% 67.5%)',
-    dx:  -52, dy:    8, rotateX:   5, rotateY:  11, rotateZ: -10 },
-  // E: centre crystal (6pt)
-  { clip: 'polygon(51.8% 27.5%, 64.3% 23.75%, 73.2% 40%, 76.8% 55%, 44.6% 45%, 33.9% 31.25%)',
-    dx:    8, dy:   -4, rotateX:   2, rotateY:  -5, rotateZ:   6 },
-  // F: right slab (6pt)
-  { clip: 'polygon(100% 25%, 100% 68.75%, 62.5% 73.75%, 76.8% 55%, 73.2% 40%, 64.3% 23.75%)',
-    dx:   54, dy:   10, rotateX:  -3, rotateY: -12, rotateZ:  -5 },
-  // G: lower-left (5pt)
-  { clip: 'polygon(0% 67.5%, 25% 63.75%, 28.6% 81.25%, 32.1% 100%, 0% 100%)',
-    dx:  -54, dy:   60, rotateX:  14, rotateY:  14, rotateZ:  14 },
-  // H: lower-centre (8pt, concave)
-  { clip: 'polygon(44.6% 45%, 25% 63.75%, 28.6% 81.25%, 32.1% 100%, 69.6% 100%, 69.6% 87.5%, 62.5% 73.75%, 76.8% 55%)',
-    dx:    4, dy:   68, rotateX:  12, rotateY:  -3, rotateZ:  -8 },
-  // I: lower-right (5pt)
-  { clip: 'polygon(100% 68.75%, 100% 100%, 69.6% 100%, 69.6% 87.5%, 62.5% 73.75%)',
-    dx:   62, dy:   52, rotateX:   9, rotateY: -15, rotateZ: -12 },
+  // TL — top-left wedge (7 vertices)
+  { clip: 'polygon(0% 0%, 35.7% 0%, 28.6% 15%, 50% 42.5%, 39.3% 40%, 19.6% 37.5%, 0% 40%)',
+    dx:  -78, dy:  -68, rotateX: -18, rotateY:  14, rotateZ:  16 },
+  // TR — top-right slab (6 vertices)
+  { clip: 'polygon(35.7% 0%, 100% 0%, 100% 35%, 60.7% 35%, 50% 42.5%, 28.6% 15%)',
+    dx:   74, dy:  -64, rotateX: -15, rotateY: -16, rotateZ: -14 },
+  // LM — left-centre strip (8 vertices)
+  { clip: 'polygon(0% 40%, 19.6% 37.5%, 39.3% 40%, 50% 42.5%, 41.1% 57.5%, 25% 72.5%, 16.1% 76.25%, 0% 80%)',
+    dx:  -82, dy:    6, rotateX:   5, rotateY:  17, rotateZ:  11 },
+  // RM — right-centre slab (8 vertices)
+  { clip: 'polygon(100% 35%, 100% 72.5%, 71.4% 70%, 46.4% 70%, 25% 72.5%, 41.1% 57.5%, 50% 42.5%, 60.7% 35%)',
+    dx:   84, dy:    4, rotateX:  -4, rotateY: -18, rotateZ:  -9 },
+  // BL — bottom-left wedge (6 vertices)
+  { clip: 'polygon(25% 72.5%, 33.9% 85%, 39.3% 100%, 0% 100%, 0% 80%, 16.1% 76.25%)',
+    dx:  -65, dy:   74, rotateX:  20, rotateY:  12, rotateZ:  18 },
+  // BR — bottom-right slab (7 vertices)
+  { clip: 'polygon(25% 72.5%, 46.4% 70%, 71.4% 70%, 100% 72.5%, 100% 100%, 39.3% 100%, 33.9% 85%)',
+    dx:   62, dy:   72, rotateX:  17, rotateY: -14, rotateZ: -16 },
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
@@ -916,6 +917,9 @@ export function LuminarySummonCutscene({
   // during board-camera travel, which caused the "duplicate panning" artifact.
   const isVessel  = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
   const hasCracks = isFirstCrack || isLeaking || isSecondCrack || isCracking;
+  // Shards stay mounted through the entity reveal so they drift apart while
+  // the Luminary manifests — creating the "born from the shattered vessel" effect.
+  const isShatterVisible = isShattering || isRevealedActive;
 
   // Stores the board element's NATURAL top (before any pan transform is applied).
   // Needed to compute a correct transform-origin during the focusing scale phase,
@@ -1196,13 +1200,11 @@ export function LuminarySummonCutscene({
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
               {/* ── Crack-light SVG overlay ────────────────────────────── */}
-              {/* Crack network (rebuilt from scratch):                             */}
-              {/*   First crack : T1(28,0)→(34,18)→(18,32)→A1(38,50)→(56,42)→A2  */}
-              {/*   + 5 short branches each with ≥1 kink, pointed butt-cap tips    */}
-              {/*   Second crack: R1(112,40)→(92,34)→A2→(78,56)→A3→(68,78)→A4     */}
-              {/*                →(36,88)→A5→(16,110)→L2 + 3 branches + 3 fine     */}
-              {/* Each path: white fracture first → colored glow chases tip →      */}
-              {/* residual wound glow + tinted seam settle after chase passes.     */}
+              {/* Six-chunk crack network — boundaries match PANEL_PIECES exactly  */}
+              {/* First crack : TA→K1→P→K2→RA + P→K3a→K3b→LA2                    */}
+              {/* Second crack: P→K4→Q→K8→BA + Q→K5→K6→RB + Q→K7→LA              */}
+              {/* Fine details: K1→(22,14)→(12,5) + K4→(38,84)→(28,82)            */}
+              {/* 4-layer paint: white snap → chasing glow → residual → seam      */}
               {hasCracks && (
                 <svg
                   className="absolute inset-0 w-full h-full pointer-events-none"
@@ -1243,370 +1245,345 @@ export function LuminarySummonCutscene({
                   </defs>
 
                   {/* ════ FIRST CRACK ═══════════════════════════════════════════ */}
-                  {/* T1(28,0)→kink(34,18)→kink(18,32)→A1(38,50)→kink(56,42)→A2 */}
-                  {/* L1: white fracture snaps in fast, leads the glow            */}
+                  {/* TA(40,0)→K1(32,24)→P(56,68)   [main: top → primary junction] */}
+                  {/* P→K2(68,56)→RA(112,56)          [branch: P → right edge]      */}
+                  {/* P→K3a(44,64)→K3b(22,60)→LA2(0,64) [branch: P → left edge]    */}
+                  {/* 4-layer paint: white snap → chasing glow → residual → seam    */}
+
+                  {/* ── Main: TA→K1→P ──────────────────────────────────── */}
+                  {/* L1 white fracture */}
                   <motion.path
-                    d="M28,0 L34,18 L18,32 L38,50 L56,42 L72,38"
-                    stroke="white" strokeWidth="1.4" fill="none" filter="url(#cgb)"
+                    d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
+                    stroke="white" strokeWidth="1.5" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
                     transition={{ duration: 0.10, ease: 'easeOut' }}
                   />
-                  {/* L2: chasing affinity glow — trails the white tip */}
+                  {/* L2 chasing glow */}
                   <motion.path
-                    d="M28,0 L34,18 L18,32 L38,50 L56,42 L72,38"
+                    d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
                     stroke={primaryColor} strokeWidth="22" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.78, 0.22, 0] }}
+                    animate={{ pathLength: 1, opacity: [0, 0.80, 0.20, 0] }}
                     transition={{
                       pathLength: { duration: 0.28, delay: 0.04, ease: 'easeOut' },
-                      opacity:    { duration: 0.56, delay: 0.04, times: [0, 0.15, 0.55, 1.0] },
+                      opacity:    { duration: 0.56, delay: 0.04, times: [0, 0.14, 0.55, 1.0] },
                     }}
                   />
-                  {/* L3: residual wound glow — sustained after chase passes */}
+                  {/* L3 residual wound glow */}
                   <motion.path
-                    d="M28,0 L34,18 L18,32 L38,50 L56,42 L72,38"
+                    d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
                     stroke={primaryColor} strokeWidth="14" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.48, 0.66, 0.58] }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
                     transition={{ duration: 0.62, delay: 0.14, ease: 'easeOut' }}
                   />
-                  {/* L4: tinted seam — saturated core line */}
+                  {/* L4 tinted seam */}
                   <motion.path
-                    d="M28,0 L34,18 L18,32 L38,50 L56,42 L72,38"
+                    d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
                     stroke={primaryColor} strokeWidth="3.5" fill="none"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.54, 0.47] }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.32, 0.52, 0.45] }}
                     transition={{ duration: 0.58, delay: 0.16, ease: 'easeOut' }}
                   />
 
-                  {/* ── First-crack branches (shorter, each with ≥1 kink) ─────── */}
-                  {/* White snaps first → chasing glow trails and fades to zero   */}
-
-                  {/* Br-A: from kink(34,18) upper-right → top edge */}
-                  <motion.path d="M34,18 L44,10 L54,4"
-                    stroke="white" strokeWidth="0.75" fill="none" filter="url(#cgb)"
+                  {/* ── Branch: P→K2→RA (right edge) ─────────────────────── */}
+                  <motion.path
+                    d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
+                    stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.80, 0.72] }}
-                    transition={{ duration: 0.09, delay: 0.07, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0.90, 0.84] }}
+                    transition={{ duration: 0.10, delay: 0.06, ease: 'easeOut' }}
                   />
-                  <motion.path d="M34,18 L44,10 L54,4"
-                    stroke={primaryColor} strokeWidth="6" fill="none" filter="url(#cgw)"
+                  <motion.path
+                    d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
+                    stroke={primaryColor} strokeWidth="18" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.42, 0.10, 0] }}
+                    animate={{ pathLength: 1, opacity: [0, 0.68, 0.16, 0] }}
                     transition={{
-                      pathLength: { duration: 0.18, delay: 0.09, ease: 'easeOut' },
-                      opacity:    { duration: 0.36, delay: 0.09, times: [0, 0.24, 0.65, 1] },
+                      pathLength: { duration: 0.22, delay: 0.08, ease: 'easeOut' },
+                      opacity:    { duration: 0.48, delay: 0.08, times: [0, 0.16, 0.56, 1.0] },
                     }}
                   />
-
-                  {/* Br-B: from kink(18,32) upper-left → left edge */}
-                  <motion.path d="M18,32 L8,24 L0,18"
-                    stroke="white" strokeWidth="0.68" fill="none" filter="url(#cgb)"
+                  <motion.path
+                    d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
+                    stroke={primaryColor} strokeWidth="10" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.76, 0.68] }}
-                    transition={{ duration: 0.08, delay: 0.08, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.54, 0.46] }}
+                    transition={{ duration: 0.52, delay: 0.16, ease: 'easeOut' }}
                   />
-                  <motion.path d="M18,32 L8,24 L0,18"
-                    stroke={primaryColor} strokeWidth="5" fill="none" filter="url(#cgw)"
+                  <motion.path
+                    d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
+                    stroke={primaryColor} strokeWidth="2.8" fill="none"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.38, 0.09, 0] }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.26, 0.44, 0.38] }}
+                    transition={{ duration: 0.50, delay: 0.18, ease: 'easeOut' }}
+                  />
+
+                  {/* ── Branch: P→K3a→K3b→LA2 (left edge) ─────────────── */}
+                  <motion.path
+                    d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
+                    stroke="white" strokeWidth="1.0" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.85, 0.78] }}
+                    transition={{ duration: 0.12, delay: 0.07, ease: 'easeOut' }}
+                  />
+                  <motion.path
+                    d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
+                    stroke={primaryColor} strokeWidth="16" fill="none" filter="url(#cgw)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.62, 0.14, 0] }}
                     transition={{
-                      pathLength: { duration: 0.16, delay: 0.10, ease: 'easeOut' },
-                      opacity:    { duration: 0.34, delay: 0.10, times: [0, 0.26, 0.66, 1] },
+                      pathLength: { duration: 0.24, delay: 0.09, ease: 'easeOut' },
+                      opacity:    { duration: 0.46, delay: 0.09, times: [0, 0.16, 0.56, 1.0] },
                     }}
                   />
-
-                  {/* Br-C: from kink(18,32) down-left → left edge */}
-                  <motion.path d="M18,32 L8,40 L0,46"
-                    stroke="white" strokeWidth="0.65" fill="none" filter="url(#cgb)"
+                  <motion.path
+                    d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
+                    stroke={primaryColor} strokeWidth="9" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.72, 0.64] }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.50, 0.42] }}
+                    transition={{ duration: 0.50, delay: 0.17, ease: 'easeOut' }}
+                  />
+                  <motion.path
+                    d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
+                    stroke={primaryColor} strokeWidth="2.5" fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.24, 0.40, 0.34] }}
+                    transition={{ duration: 0.48, delay: 0.19, ease: 'easeOut' }}
+                  />
+
+                  {/* ── Fine detail: tiny branch off K1 toward top-left corner */}
+                  <motion.path d={`M${K1X},${K1Y} L22,14 L12,5`}
+                    stroke="white" strokeWidth="0.60" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.70, 0.60] }}
                     transition={{ duration: 0.08, delay: 0.09, ease: 'easeOut' }}
                   />
-                  <motion.path d="M18,32 L8,40 L0,46"
-                    stroke={primaryColor} strokeWidth="5" fill="none" filter="url(#cgw)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.36, 0.08, 0] }}
-                    transition={{
-                      pathLength: { duration: 0.16, delay: 0.11, ease: 'easeOut' },
-                      opacity:    { duration: 0.34, delay: 0.11, times: [0, 0.26, 0.66, 1] },
-                    }}
-                  />
 
-                  {/* Br-D: from A1(38,50) left → L1 edge */}
-                  <motion.path d="M38,50 L20,54 L0,52"
-                    stroke="white" strokeWidth="0.80" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.78, 0.70] }}
-                    transition={{ duration: 0.10, delay: 0.08, ease: 'easeOut' }}
-                  />
-                  <motion.path d="M38,50 L20,54 L0,52"
-                    stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#cgw)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.40, 0.10, 0] }}
-                    transition={{
-                      pathLength: { duration: 0.20, delay: 0.10, ease: 'easeOut' },
-                      opacity:    { duration: 0.40, delay: 0.10, times: [0, 0.22, 0.65, 1] },
-                    }}
-                  />
-
-                  {/* Br-E: from A2(72,38) zigzag up → T2(72,0) */}
-                  <motion.path d="M72,38 L80,24 L74,12 L72,0"
-                    stroke="white" strokeWidth="0.72" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.74, 0.66] }}
-                    transition={{ duration: 0.11, delay: 0.09, ease: 'easeOut' }}
-                  />
-                  <motion.path d="M72,38 L80,24 L74,12 L72,0"
-                    stroke={primaryColor} strokeWidth="6" fill="none" filter="url(#cgw)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.36, 0.09, 0] }}
-                    transition={{
-                      pathLength: { duration: 0.22, delay: 0.11, ease: 'easeOut' },
-                      opacity:    { duration: 0.40, delay: 0.11, times: [0, 0.22, 0.64, 1] },
-                    }}
-                  />
-
-                  {/* ── Light leaking through cracks (leaking+) ─────────────── */}
+                  {/* ── Light leaking through first crack (leaking+) ─────────── */}
                   {(isLeaking || isSecondCrack || isCracking) && (
                     <>
-                      {/* Diffuse light pool at A1 — primary crack hub */}
-                      <motion.circle cx={A1X} cy={A1Y} r="18" fill={primaryColor}
+                      {/* Diffuse light pool at P — primary junction */}
+                      <motion.circle cx={PX} cy={PY} r="20" fill={primaryColor}
                         filter="url(#cgw)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.22, 0.12, 0.28, 0.14, 0.24] }}
-                        transition={{ duration: 3.6, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
+                        animate={{ opacity: [0, 0.24, 0.12, 0.30, 0.14, 0.26] }}
+                        transition={{ duration: 3.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
                       />
-                      {/* Mote 1 — near T1(28,0), along first crack */}
-                      <motion.circle cx={28} cy={10} r="1.1" fill="white" filter="url(#cgb)"
+                      {/* Mote 1 — near TA, along main crack */}
+                      <motion.circle cx={TAX} cy={8} r="1.1" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.70, 0.12, 0.84, 0.20, 0.60, 0] }}
-                        transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.00 }}
+                        animate={{ opacity: [0, 0.72, 0.14, 0.86, 0.20, 0.62, 0] }}
+                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.00 }}
                       />
-                      {/* Mote 2 — on kink(34,18) */}
-                      <motion.circle cx={34} cy={18} r="0.9" fill="white" filter="url(#cgb)"
+                      {/* Mote 2 — at K1 kink */}
+                      <motion.circle cx={K1X} cy={K1Y} r="0.9" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.48, 0.78, 0.12, 0.68, 0.28, 0] }}
-                        transition={{ duration: 3.0, ease: 'easeInOut', repeat: Infinity, delay: 0.35 }}
+                        animate={{ opacity: [0, 0.50, 0.80, 0.12, 0.70, 0.28, 0] }}
+                        transition={{ duration: 3.2, ease: 'easeInOut', repeat: Infinity, delay: 0.38 }}
                       />
-                      {/* Mote 3 — at A1 junction */}
-                      <motion.circle cx={A1X} cy={A1Y} r="1.4" fill="white" filter="url(#cgb)"
+                      {/* Mote 3 — at P junction */}
+                      <motion.circle cx={PX} cy={PY} r="1.5" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.88, 0.30, 0.64, 0.10, 0.80, 0] }}
-                        transition={{ duration: 2.4, ease: 'easeInOut', repeat: Infinity, delay: 0.62 }}
+                        animate={{ opacity: [0, 0.90, 0.32, 0.66, 0.10, 0.82, 0] }}
+                        transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
                       />
-                      {/* Mote 4 — on kink(56,42) toward A2 */}
-                      <motion.circle cx={56} cy={42} r="0.9" fill="white" filter="url(#cgb)"
+                      {/* Mote 4 — on P→RA branch near K2 */}
+                      <motion.circle cx={K2X} cy={K2Y} r="0.9" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.40, 0.84, 0.16, 0.64, 0.10, 0] }}
-                        transition={{ duration: 3.4, ease: 'easeInOut', repeat: Infinity, delay: 0.18 }}
+                        animate={{ opacity: [0, 0.44, 0.86, 0.16, 0.68, 0.10, 0] }}
+                        transition={{ duration: 3.6, ease: 'easeInOut', repeat: Infinity, delay: 0.20 }}
                       />
-                      {/* Mote 5 — along Br-D branch toward left edge */}
-                      <motion.circle cx={20} cy={54} r="0.9" fill="white" filter="url(#cgb)"
+                      {/* Mote 5 — on P→LA2 branch near K3b */}
+                      <motion.circle cx={K3bX} cy={K3bY} r="0.9" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.58, 0.10, 0.78, 0.30, 0.48, 0] }}
-                        transition={{ duration: 2.7, ease: 'easeInOut', repeat: Infinity, delay: 0.78 }}
+                        animate={{ opacity: [0, 0.60, 0.10, 0.80, 0.32, 0.50, 0] }}
+                        transition={{ duration: 2.9, ease: 'easeInOut', repeat: Infinity, delay: 0.80 }}
                       />
                     </>
                   )}
 
-                  {/* ════ SECOND CRACK ═══════════════════════════════════════════ */}
-                  {/* R1→(92,34)→A2→(78,56)→A3→(68,78)→A4→(36,88)→A5→(16,110)→L2 */}
-                  {/* Same white-first / chasing-glow / residual / seam pattern.   */}
+                  {/* ════ SECOND CRACK ══════════════════════════════════════════ */}
+                  {/* P→K4→Q→K8→BA  [main: down to bottom]                       */}
+                  {/* Q→K5→K6→RB    [branch: right edge]                         */}
+                  {/* Q→K7→LA       [branch: left edge]                           */}
                   {(isSecondCrack || isCracking) && (
                     <>
-                      {/* Main — L1: white fracture */}
+                      {/* ── Main: P→K4→Q→K8→BA ─────────────────────────── */}
                       <motion.path
-                        d={`M${R1X},${R1Y} L92,34 L${A2X},${A2Y} L78,56 L${A3X},${A3Y} L68,78 L${A4X},${A4Y} L36,88 L${A5X},${A5Y} L16,110 L${L2X},${L2Y}`}
+                        d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke="white" strokeWidth="1.6" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 1.0, 0.94] }}
-                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                        transition={{ duration: 0.14, ease: 'easeOut' }}
                       />
-                      {/* Main — L2: chasing glow */}
                       <motion.path
-                        d={`M${R1X},${R1Y} L92,34 L${A2X},${A2Y} L78,56 L${A3X},${A3Y} L68,78 L${A4X},${A4Y} L36,88 L${A5X},${A5Y} L16,110 L${L2X},${L2Y}`}
+                        d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke={primaryColor} strokeWidth="24" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.72, 0.18, 0] }}
+                        animate={{ pathLength: 1, opacity: [0, 0.76, 0.18, 0] }}
                         transition={{
-                          pathLength: { duration: 0.38, delay: 0.05, ease: 'easeOut' },
+                          pathLength: { duration: 0.36, delay: 0.05, ease: 'easeOut' },
                           opacity:    { duration: 0.62, delay: 0.05, times: [0, 0.14, 0.52, 1.0] },
                         }}
                       />
-                      {/* Main — L3: residual glow */}
                       <motion.path
-                        d={`M${R1X},${R1Y} L92,34 L${A2X},${A2Y} L78,56 L${A3X},${A3Y} L68,78 L${A4X},${A4Y} L36,88 L${A5X},${A5Y} L16,110 L${L2X},${L2Y}`}
+                        d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke={primaryColor} strokeWidth="16" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0, 0.44, 0.62, 0.54] }}
+                        animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
                         transition={{ duration: 0.68, delay: 0.12, ease: 'easeOut' }}
                       />
-                      {/* Main — L4: tinted seam */}
                       <motion.path
-                        d={`M${R1X},${R1Y} L92,34 L${A2X},${A2Y} L78,56 L${A3X},${A3Y} L68,78 L${A4X},${A4Y} L36,88 L${A5X},${A5Y} L16,110 L${L2X},${L2Y}`}
+                        d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke={primaryColor} strokeWidth="4.0" fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0, 0.28, 0.48, 0.42] }}
+                        animate={{ pathLength: 1, opacity: [0, 0, 0.30, 0.50, 0.44] }}
                         transition={{ duration: 0.64, delay: 0.14, ease: 'easeOut' }}
                       />
 
-                      {/* ── Second-crack branches (short, ≥1 kink) ─────────────── */}
-
-                      {/* SC-Br-A: A3→right edge R2, kink at (96,96) */}
-                      <motion.path d={`M${A3X},${A3Y} L96,96 L${R2X},${R2Y}`}
-                        stroke="white" strokeWidth="0.80" fill="none" filter="url(#cgb)"
+                      {/* ── Branch: Q→K5→K6→RB (right edge) ────────────── */}
+                      <motion.path
+                        d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
+                        stroke="white" strokeWidth="1.0" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.74, 0.66] }}
-                        transition={{ duration: 0.11, delay: 0.24, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0.80, 0.72] }}
+                        transition={{ duration: 0.12, delay: 0.22, ease: 'easeOut' }}
                       />
-                      <motion.path d={`M${A3X},${A3Y} L96,96 L${R2X},${R2Y}`}
-                        stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#cgw)"
+                      <motion.path
+                        d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
+                        stroke={primaryColor} strokeWidth="14" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.38, 0.09, 0] }}
+                        animate={{ pathLength: 1, opacity: [0, 0.60, 0.14, 0] }}
                         transition={{
-                          pathLength: { duration: 0.20, delay: 0.26, ease: 'easeOut' },
-                          opacity:    { duration: 0.40, delay: 0.26, times: [0, 0.24, 0.65, 1] },
+                          pathLength: { duration: 0.28, delay: 0.24, ease: 'easeOut' },
+                          opacity:    { duration: 0.52, delay: 0.24, times: [0, 0.18, 0.58, 1.0] },
                         }}
                       />
-
-                      {/* SC-Br-B: A5→bottom B1, kink at (32,126) */}
-                      <motion.path d={`M${A5X},${A5Y} L32,126 L${B1X},${B1Y}`}
-                        stroke="white" strokeWidth="0.76" fill="none" filter="url(#cgb)"
+                      <motion.path
+                        d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
+                        stroke={primaryColor} strokeWidth="8" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.70, 0.62] }}
-                        transition={{ duration: 0.13, delay: 0.26, ease: 'easeOut' }}
+                        animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.50, 0.42] }}
+                        transition={{ duration: 0.54, delay: 0.30, ease: 'easeOut' }}
                       />
-                      <motion.path d={`M${A5X},${A5Y} L32,126 L${B1X},${B1Y}`}
+                      <motion.path
+                        d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
+                        stroke={primaryColor} strokeWidth="2.6" fill="none"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0, 0.24, 0.42, 0.36] }}
+                        transition={{ duration: 0.52, delay: 0.32, ease: 'easeOut' }}
+                      />
+
+                      {/* ── Branch: Q→K7→LA (left edge) ─────────────────── */}
+                      <motion.path
+                        d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
+                        stroke="white" strokeWidth="0.85" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.76, 0.68] }}
+                        transition={{ duration: 0.11, delay: 0.25, ease: 'easeOut' }}
+                      />
+                      <motion.path
+                        d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
+                        stroke={primaryColor} strokeWidth="11" fill="none" filter="url(#cgw)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.54, 0.12, 0] }}
+                        transition={{
+                          pathLength: { duration: 0.22, delay: 0.27, ease: 'easeOut' },
+                          opacity:    { duration: 0.44, delay: 0.27, times: [0, 0.20, 0.60, 1.0] },
+                        }}
+                      />
+                      <motion.path
+                        d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
                         stroke={primaryColor} strokeWidth="6" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.34, 0.08, 0] }}
-                        transition={{
-                          pathLength: { duration: 0.24, delay: 0.28, ease: 'easeOut' },
-                          opacity:    { duration: 0.42, delay: 0.28, times: [0, 0.24, 0.65, 1] },
-                        }}
+                        animate={{ pathLength: 1, opacity: [0, 0, 0.28, 0.44, 0.36] }}
+                        transition={{ duration: 0.46, delay: 0.33, ease: 'easeOut' }}
+                      />
+                      <motion.path
+                        d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
+                        stroke={primaryColor} strokeWidth="2.0" fill="none"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0, 0.20, 0.36, 0.30] }}
+                        transition={{ duration: 0.44, delay: 0.35, ease: 'easeOut' }}
                       />
 
-                      {/* SC-Br-C: A4→bottom B2, kink at (60,108) */}
-                      <motion.path d={`M${A4X},${A4Y} L60,108 L${B2X},${B2Y}`}
-                        stroke="white" strokeWidth="0.72" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.68, 0.60] }}
-                        transition={{ duration: 0.15, delay: 0.28, ease: 'easeOut' }}
-                      />
-                      <motion.path d={`M${A4X},${A4Y} L60,108 L${B2X},${B2Y}`}
-                        stroke={primaryColor} strokeWidth="6" fill="none" filter="url(#cgw)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.32, 0.07, 0] }}
-                        transition={{
-                          pathLength: { duration: 0.26, delay: 0.30, ease: 'easeOut' },
-                          opacity:    { duration: 0.44, delay: 0.30, times: [0, 0.22, 0.64, 1] },
-                        }}
-                      />
-
-                      {/* ── Fine fracture detail (very short, sharp kinks) ─────── */}
-
-                      {/* SC-FB1: off kink(92,34) upper-right */}
-                      <motion.path d="M92,34 L100,26 L108,18"
-                        stroke="white" strokeWidth="0.60" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.66, 0.56] }}
-                        transition={{ duration: 0.09, delay: 0.18, ease: 'easeOut' }}
-                      />
-                      <motion.path d="M92,34 L100,26 L108,18"
-                        stroke={primaryColor} strokeWidth="5" fill="none" filter="url(#cgw)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.30, 0.07, 0] }}
-                        transition={{
-                          pathLength: { duration: 0.16, delay: 0.20, ease: 'easeOut' },
-                          opacity:    { duration: 0.34, delay: 0.20, times: [0, 0.26, 0.66, 1] },
-                        }}
-                      />
-
-                      {/* SC-FB2: off kink(78,56) rightward */}
-                      <motion.path d="M78,56 L88,50 L98,44"
-                        stroke="white" strokeWidth="0.58" fill="none" filter="url(#cgb)"
+                      {/* ── Fine detail: tiny branch off K4 toward upper-left */}
+                      <motion.path d={`M${K4X},${K4Y} L38,84 L28,82`}
+                        stroke="white" strokeWidth="0.55" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.62, 0.52] }}
-                        transition={{ duration: 0.08, delay: 0.22, ease: 'easeOut' }}
-                      />
-                      <motion.path d="M78,56 L88,50 L98,44"
-                        stroke={primaryColor} strokeWidth="5" fill="none" filter="url(#cgw)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.28, 0.06, 0] }}
-                        transition={{
-                          pathLength: { duration: 0.14, delay: 0.24, ease: 'easeOut' },
-                          opacity:    { duration: 0.32, delay: 0.24, times: [0, 0.28, 0.68, 1] },
-                        }}
+                        transition={{ duration: 0.08, delay: 0.20, ease: 'easeOut' }}
                       />
 
-                      {/* SC-FB3: off kink(68,78) down-left */}
-                      <motion.path d="M68,78 L58,88 L52,98"
-                        stroke="white" strokeWidth="0.58" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.60, 0.50] }}
-                        transition={{ duration: 0.09, delay: 0.24, ease: 'easeOut' }}
-                      />
-                      <motion.path d="M68,78 L58,88 L52,98"
-                        stroke={primaryColor} strokeWidth="5" fill="none" filter="url(#cgw)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.26, 0.06, 0] }}
-                        transition={{
-                          pathLength: { duration: 0.15, delay: 0.26, ease: 'easeOut' },
-                          opacity:    { duration: 0.32, delay: 0.26, times: [0, 0.28, 0.68, 1] },
-                        }}
-                      />
-
-                      {/* Energy rays from A1 (primary crack hub) */}
-                      <motion.line x1={A1X} y1={A1Y} x2={A1X} y2={0}
-                        stroke="url(#rayUp)" strokeWidth="2.2"
-                        animate={{ opacity: [0, 0.64, 0.38, 0.70, 0.24], scaleY: [0, 1, 0.9, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.50, ease: 'easeOut' }}
-                        style={{ transformOrigin: `${A1X}px ${A1Y}px` }}
-                      />
-                      <motion.line x1={A1X} y1={A1Y} x2={A1X} y2={BOARD_CARD_H}
-                        stroke="url(#rayDown)" strokeWidth="2.2"
-                        animate={{ opacity: [0, 0.54, 0.32, 0.62, 0.22], scaleY: [0, 1, 0.9, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.56, ease: 'easeOut', delay: 0.12 }}
-                        style={{ transformOrigin: `${A1X}px ${A1Y}px` }}
-                      />
-                      <motion.line x1={A1X} y1={A1Y} x2={0} y2={A1Y}
-                        stroke="url(#rayLeft)" strokeWidth="1.4"
-                        animate={{ opacity: [0, 0.40, 0.14, 0.48, 0.12] }}
-                        transition={{ repeat: Infinity, duration: 0.62, ease: 'easeInOut', delay: 0.22 }}
-                      />
-                      <motion.line x1={A1X} y1={A1Y} x2={BOARD_CARD_W} y2={A1Y}
-                        stroke="url(#rayRight)" strokeWidth="1.4"
-                        animate={{ opacity: [0, 0.32, 0.12, 0.44, 0.10] }}
-                        transition={{ repeat: Infinity, duration: 0.58, ease: 'easeInOut', delay: 0.36 }}
-                      />
-                      {/* Diffuse light pool at A2 — secondary hub */}
-                      <motion.circle cx={A2X} cy={A2Y} r="12" fill={primaryColor}
+                      {/* ── Light pools and motes along second crack ─────── */}
+                      <motion.circle cx={QX} cy={QY} r="16" fill={primaryColor}
                         filter="url(#cgw)"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.18, 0.09, 0.24, 0.11] }}
-                        transition={{ duration: 3.0, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.5 }}
+                        animate={{ opacity: [0, 0.18, 0.09, 0.22, 0.10, 0.20] }}
+                        transition={{ duration: 3.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.4 }}
+                      />
+                      <motion.circle cx={K4X} cy={K4Y} r="1.0" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.56, 0.10, 0.76, 0.24, 0.48, 0] }}
+                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
+                      />
+                      <motion.circle cx={K5X} cy={K5Y} r="0.9" fill="white" filter="url(#cgb)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.40, 0.82, 0.14, 0.64, 0.10, 0] }}
+                        transition={{ duration: 3.0, ease: 'easeInOut', repeat: Infinity, delay: 0.55 }}
+                      />
+
+                      {/* Energy rays from P (primary junction) */}
+                      <motion.line x1={PX} y1={PY} x2={PX} y2={0}
+                        stroke="url(#rayUp)" strokeWidth="2.4"
+                        animate={{ opacity: [0, 0.68, 0.36, 0.74, 0.22], scaleY: [0, 1, 0.88, 1] }}
+                        transition={{ repeat: Infinity, duration: 0.52, ease: 'easeOut' }}
+                        style={{ transformOrigin: `${PX}px ${PY}px` }}
+                      />
+                      <motion.line x1={PX} y1={PY} x2={PX} y2={BOARD_CARD_H}
+                        stroke="url(#rayDown)" strokeWidth="2.4"
+                        animate={{ opacity: [0, 0.56, 0.28, 0.64, 0.20], scaleY: [0, 1, 0.88, 1] }}
+                        transition={{ repeat: Infinity, duration: 0.58, ease: 'easeOut', delay: 0.14 }}
+                        style={{ transformOrigin: `${PX}px ${PY}px` }}
+                      />
+                      <motion.line x1={PX} y1={PY} x2={0} y2={PY}
+                        stroke="url(#rayLeft)" strokeWidth="1.6"
+                        animate={{ opacity: [0, 0.42, 0.14, 0.50, 0.12] }}
+                        transition={{ repeat: Infinity, duration: 0.64, ease: 'easeInOut', delay: 0.24 }}
+                      />
+                      <motion.line x1={PX} y1={PY} x2={BOARD_CARD_W} y2={PY}
+                        stroke="url(#rayRight)" strokeWidth="1.6"
+                        animate={{ opacity: [0, 0.34, 0.12, 0.46, 0.10] }}
+                        transition={{ repeat: Infinity, duration: 0.60, ease: 'easeInOut', delay: 0.38 }}
+                      />
+                      {/* Secondary light pool at K2 (right branch kink) */}
+                      <motion.circle cx={K2X} cy={K2Y} r="10" fill={primaryColor}
+                        filter="url(#cgw)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.16, 0.08, 0.22, 0.10] }}
+                        transition={{ duration: 2.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.5 }}
                       />
                     </>
                   )}
 
-                  {/* ── Cracking phase: completion bursts at A1 + A2 ─────────── */}
+                  {/* ── Cracking phase: energy burst at P and Q ───────────────── */}
                   {isCracking && (
                     <>
-                      <motion.circle cx={A1X} cy={A1Y} r="16" fill={primaryColor}
+                      <motion.circle cx={PX} cy={PY} r="18" fill={primaryColor}
                         filter="url(#cgw)"
                         initial={{ opacity: 0, scale: 0.3 }}
-                        animate={{ opacity: [0, 0.50, 0.20], scale: [0.3, 1.7, 0.95] }}
+                        animate={{ opacity: [0, 0.55, 0.22], scale: [0.3, 1.8, 1.0] }}
                         transition={{ duration: 0.70, ease: 'easeOut' }}
-                        style={{ transformOrigin: `${A1X}px ${A1Y}px` }}
+                        style={{ transformOrigin: `${PX}px ${PY}px` }}
                       />
-                      <motion.circle cx={A2X} cy={A2Y} r="12" fill={primaryColor}
+                      <motion.circle cx={QX} cy={QY} r="14" fill={primaryColor}
                         filter="url(#cgw)"
                         initial={{ opacity: 0, scale: 0.4 }}
-                        animate={{ opacity: [0, 0.42, 0.18], scale: [0.4, 1.35, 0.88] }}
-                        transition={{ duration: 0.58, delay: 0.10, ease: 'easeOut' }}
-                        style={{ transformOrigin: `${A2X}px ${A2Y}px` }}
+                        animate={{ opacity: [0, 0.45, 0.18], scale: [0.4, 1.45, 0.92] }}
+                        transition={{ duration: 0.58, delay: 0.12, ease: 'easeOut' }}
+                        style={{ transformOrigin: `${QX}px ${QY}px` }}
                       />
                     </>
                   )}
@@ -1620,73 +1597,58 @@ export function LuminarySummonCutscene({
       {/* ── end board camera layer ────────────────────────────────────────── */}
 
       {/* ── Cosmic light beneath shattering panels ────────────────────── */}
-      {/* Intentionally OUTSIDE the camera layer so it renders at full     */}
-      {/* screen scale and is not shrunk by the camera scale-out.         */}
+      {/* OUTSIDE camera layer — full screen scale, not shrunk by camera. */}
       <AnimatePresence>
-        {isShattering && (
+        {isShatterVisible && (
           <motion.div key="cosmiclight" className="absolute pointer-events-none"
             initial={{ opacity: 0 }}
-            animate={{ opacity: isFlashing ? 0 : [0, 0.80, 1.0] }}
-            exit={{ opacity: 0, transition: { duration: 0.10 } }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
+            animate={{ opacity: isFlashing ? 0 : [0, 0.90, 1.0, 0.80] }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+            transition={{ duration: 0.55, ease: 'easeOut', times: [0, 0.18, 0.50, 1.0] }}
             style={{
               width: BOARD_CARD_W * 5, height: BOARD_CARD_H * 5,
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.5,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 36% 40% at 50% 38%, #ffffff 0%, ${primaryColor}ee 18%, ${primaryColor}aa 42%, ${primaryColor}44 64%, transparent 82%)`,
-              filter: 'blur(6px)',
+              background: `radial-gradient(ellipse 38% 42% at 50% 40%, #ffffff 0%, ${primaryColor}ee 20%, ${primaryColor}aa 44%, ${primaryColor}44 66%, transparent 84%)`,
+              filter: 'blur(8px)',
               borderRadius: '50%',
             }}
           />
         )}
       </AnimatePresence>
 
-      {/* ── Nine irregular crystal polygon chunks (A–I) ──────────────── */}
-      {/* OUTSIDE camera layer: rendered in screen space at scale=1, so  */}
-      {/* the camera scale-out does not fight the burst motion.           */}
-      {/* Pieces burst outward explosively, then fall under gravity.      */}
+      {/* ── Six large crystal polygon chunks ─────────────────────────── */}
+      {/* OUTSIDE camera layer — rendered in fixed screen space so the   */}
+      {/* camera scale-out does not interfere with chunk drift motion.   */}
+      {/* Chunks drift slowly outward, rotate in 3-D, pulse into the     */}
+      {/* Luminary's primary affinity colour via screen-blend overlay,   */}
+      {/* and fade out while the entity manifests from the shattered vessel. */}
       <AnimatePresence>
-        {isShattering && PANEL_PIECES.map((piece, i) => (
+        {isShatterVisible && PANEL_PIECES.map((piece, i) => (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
               width: BOARD_CARD_W, height: BOARD_CARD_H,
               left: vesselLeft, top: vesselTop,
               clipPath: piece.clip,
-              transformPerspective: 900,
+              transformPerspective: 1000,
             }}
-            initial={{
-              x: 0, y: 0, scale: 1,
-              rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
-              filter: `brightness(1) drop-shadow(2px -1px 0px rgba(${pRgb},0.60)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))`,
-            }}
+            initial={{ x: 0, y: 0, rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1 }}
             animate={{
-              // Explosive burst outward then arc down under gravity
-              x: [0, piece.dx * 2.4, piece.dx * 2.2],
-              y: [0, piece.dy * 1.5, piece.dy * 1.5 + 380],
-              rotateX: [0, piece.rotateX * 2, piece.rotateX * 2.8],
-              rotateY: [0, piece.rotateY * 2, piece.rotateY * 2.8],
-              rotateZ: [0, piece.rotateZ * 0.8, piece.rotateZ * 1.5 + (i % 2 === 0 ? 35 : -28)],
-              opacity: [1, 1, 0.55, 0],
-              filter: [
-                `brightness(1.2) drop-shadow(2px -1px 1px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 1px rgba(0,0,20,0.58))`,
-                `brightness(4.0) drop-shadow(4px -3px 3px rgba(${pRgb},0.90)) drop-shadow(-4px 3px 3px rgba(0,0,30,0.80))`,
-                `brightness(1.6) drop-shadow(3px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-3px 2px 2px rgba(0,0,20,0.55))`,
-                `brightness(0.5) drop-shadow(1px 0px 0px rgba(${pRgb},0.15)) drop-shadow(-1px 0px 0px rgba(0,0,20,0.25))`,
-              ],
+              x: piece.dx,
+              y: piece.dy,
+              rotateX: piece.rotateX,
+              rotateY: piece.rotateY,
+              rotateZ: piece.rotateZ,
+              opacity: [1, 1, 0.95, 0],
             }}
             transition={{
-              duration: 2.40,
-              ease: [0.05, 0.18, 0.52, 1],
-              delay: i * 0.022,
-              x:       { times: [0, 0.20, 1.0] },
-              y:       { times: [0, 0.18, 1.0] },
-              rotateX: { times: [0, 0.20, 1.0] },
-              rotateY: { times: [0, 0.20, 1.0] },
-              rotateZ: { times: [0, 0.25, 1.0] },
-              opacity: { times: [0, 0.12, 0.45, 1.0] },
-              filter:  { times: [0, 0.12, 0.45, 1.0] },
+              duration: 3.50,
+              ease: [0.12, 0.90, 0.28, 1],
+              delay: i * 0.055,
+              opacity: { times: [0, 0.35, 0.68, 1.0], ease: 'easeInOut' },
             }}
           >
+            {/* Panel artwork — the face of the vessel shard */}
             {panelArt ? (
               <img src={panelArt} alt="" aria-hidden
                 style={{
@@ -1699,10 +1661,23 @@ export function LuminarySummonCutscene({
             ) : (
               <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
             )}
-            {/* Physical slab edge — Luminary-tinted glow on all pieces */}
+            {/* Affinity-colour transmutation — chunk is "consumed" by the Luminary's energy */}
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: primaryColor, mixBlendMode: 'screen' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0, 0.50, 0.88, 0.60, 0] }}
+              transition={{
+                duration: 3.50,
+                times: [0, 0.18, 0.40, 0.60, 0.80, 1.0],
+                ease: 'easeInOut',
+                delay: i * 0.055,
+              }}
+            />
+            {/* Physical slab edge — Luminary-tinted bevel */}
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              boxShadow: `inset 0 0 0 2px rgba(${pRgb},0.80), inset 4px 4px 0 rgba(${pRgb},0.28), inset -4px -4px 0 rgba(0,0,20,0.65), inset 0 0 22px rgba(${pRgb},0.30)`,
+              boxShadow: `inset 0 0 0 1.5px rgba(${pRgb},0.75), inset 3px 3px 0 rgba(${pRgb},0.22), inset -3px -3px 0 rgba(0,0,20,0.60), inset 0 0 18px rgba(${pRgb},0.22)`,
             }} />
           </motion.div>
         ))}
