@@ -1614,7 +1614,7 @@ export default function GameBoard() {
                   whileTap={selectable && !isEmpty ? { scale: 0.9 } : {}}
                   animate={queued > 0 ? { scale: [1, 1.08, 1], transition: { duration: 0.3 } } : {}}
                   onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-between pt-1.5 pb-1 transition-all overflow-hidden ${
+                  className={`relative w-full aspect-square rounded-xl flex items-center justify-center transition-all overflow-hidden ${
                     queued > 0
                       ? 'bg-primary/20 ring-2 ring-primary shadow-lg'
                       : isEmpty
@@ -1623,18 +1623,26 @@ export default function GameBoard() {
                   }`}
                   style={queued > 0 ? { boxShadow: `0 0 16px ${meta.glowHex}40` } : {}}
                 >
-                  {/* Affinity name + icon at top of box */}
-                  <div className="flex items-center gap-0.5 z-10">
-                    <span className="text-[8px] font-semibold tracking-wide leading-none" style={{ color: isEmpty ? `${meta.glowHex}55` : meta.glowHex }}>{meta.shortName}</span>
+                  {/* Affinity name + icon — pinned to top */}
+                  <div className="absolute top-1 left-0 right-0 flex items-center justify-center gap-0.5 z-10">
+                    <span className="text-[8px] font-semibold tracking-wide leading-none" style={{ color: isEmpty ? `${meta.glowHex}44` : meta.glowHex }}>{meta.shortName}</span>
                     <MiniGem color={c as GemKey} size={8} />
                   </div>
+                  {/* Gem art — centred */}
                   <img
                     src={meta.image} alt={meta.name}
-                    className="w-11 h-11 object-contain pointer-events-none select-none"
+                    className="w-10 h-10 object-contain pointer-events-none select-none mt-1"
                     style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 6px ${meta.glowHex}66)` }}
                     draggable={false}
                   />
-                  <span className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count - queued}</span>
+                  {/* Count — pinned to bottom */}
+                  <span className={`absolute bottom-1 left-0 right-0 text-center text-sm font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}>{count - queued}</span>
+                  {/* Queued badge — top-right corner, never overlaps name */}
+                  {queued > 0 && (
+                    <div className="absolute top-1 right-1 z-20 bg-primary text-white text-[7px] font-black rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                      +{queued}
+                    </div>
+                  )}
                 </motion.button>
                 {canTake2 && (
                   <motion.button
