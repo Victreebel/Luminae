@@ -1062,7 +1062,8 @@ export default function GameBoard() {
 
         for (const evt of newPending) {
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
-          if (!alreadyKnown) {
+          const isAlreadyClaimed = newState.players.some(p => (p.claimedLuminaryIds ?? []).includes(evt.luminaryId));
+          if (!alreadyKnown && !isAlreadyClaimed) {
             // Synchronously mark this luminary as suppressed BEFORE any RAF fires.
             // This ensures the portal doesn't flash during the frames between the
             // queryClient.setQueryData re-render and the setSummonQueue call.

@@ -627,6 +627,7 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
       (c) => liveBonuses[c] >= lum.requirements[c],
     );
     if (qualifies) {
+      if (isLuminaryAlreadyClaimed(state, lumId)) continue;
       player.luminaries.push(lumId);
       player.lumens += lum.lumens;
       const eligible = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
@@ -660,6 +661,10 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
       }
     }
   }
+}
+
+function isLuminaryAlreadyClaimed(state: GameStateData, luminaryId: string): boolean {
+  return state.players.some((p) => p.luminaries.includes(luminaryId));
 }
 
 // ─── Draw Card ───────────────────────────────────────────────────────────────
