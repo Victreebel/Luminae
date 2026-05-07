@@ -386,6 +386,13 @@ export const LUMINARY_MAP = new Map<string, LuminaryDef>(
   LUMINARIES.map((l) => [l.id, l]),
 );
 
+// Luminaries with complete illustrated assets — only these enter the active
+// pool until the remaining entries have their art finalised.
+const ILLUSTRATED_IDS = new Set(["lum_forge", "lum_null", "lum_verdant"]);
+const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
+  ILLUSTRATED_IDS.has(l.id),
+);
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function shuffle<T>(arr: T[]): T[] {
@@ -422,9 +429,9 @@ export function initializeGame(
     CARD_CATALOG.filter((c) => c.tier === 3).map((c) => c.id),
   );
 
-  // Luminaries: pick playerCount+1 from shuffled list
-  const lumCount = Math.min(playerCount + 1, LUMINARIES.length);
-  const activeLuminaries = shuffle(LUMINARIES.map((l) => l.id)).slice(
+  // Luminaries: pick playerCount+1 from illustrated pool only
+  const lumCount = Math.min(playerCount + 1, AVAILABLE_LUMINARIES.length);
+  const activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
     0,
     lumCount,
   );
@@ -1053,9 +1060,9 @@ export function normalizeState(raw: unknown): GameStateData {
         : 2;
       const lumCount = Math.min(
         Math.max(playerCount + 1, original.length),
-        LUMINARIES.length,
+        AVAILABLE_LUMINARIES.length,
       );
-      state.activeLuminaries = shuffle(LUMINARIES.map((l) => l.id)).slice(
+      state.activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
         0,
         lumCount,
       );
