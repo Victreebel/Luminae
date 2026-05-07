@@ -1,0 +1,74 @@
+Rework the Luminary cracking and shattering animations from scratch using the agreed principles.
+
+Preserve:
+- gameplay rules
+- multiplayer/reconnect/persistence
+- scoring
+- artifact cost display modes
+- Living Luminary Affinity
+- global cutscene queue/gate behavior
+- vortex timing fix
+- uploaded MP3 timing/hooks
+- camera/focus behavior
+- portal/entity reveal
+- claimed portal board state
+- dev tools
+- player/opponent UI
+- unrelated systems
+
+Goal:
+Replace the current crack/shatter implementation with a cleaner version that feels like a sealed crystalline vessel fracturing under pressure.
+
+Sound timing to preserve:
+- First Crack.mp3 = first major crack appears
+- Second Crack.mp3 = second major crack appears
+- Deep Impact.mp3 = moment shards/chunks first burst apart
+- Glass Shatter.mp3 = main physical rupture / shard separation
+- Cosmic Portal Boom.mp3 = flash resolves into portal/entity reveal
+
+Cracking design:
+1. Start from scratch.
+2. The first crack should appear as a thin sharp white physical fracture.
+3. After the white crack appears, a colored glow should chase along the crack path using the Luminary’s primary affinity/theme color.
+4. Do not use a generic “increasing glow everywhere” effect.
+5. Keep the white fracture line visible as the core, with the color moving/chasing along it and leaving residual colored energy behind it.
+6. The second major crack should use the same pattern: thin white fracture first, then colored glow chasing along it.
+7. Favor more branching rather than long stray secondary lines.
+8. The smaller fracture lines were too long in the last iteration. Make them shorter.
+9. Each branch should have at least one angle/kink so it feels like real fracture branching, not straight decorative scratches.
+10. Branches should be thinner than the main cracks.
+11. Crack ends/tips should be pointed/tapered, not flat or blunt.
+12. Keep the crack network readable and not too webby or cluttered.
+13. Cracks must act as the blueprint for the shatter pattern.
+
+Shatter design:
+1. Use irregular polygonal shard/chunk shapes, not square or rectangular pieces.
+2. The crack boundaries should clearly define the future chunk boundaries.
+3. When Deep Impact.mp3 hits, the chunks should first break free.
+4. When Glass Shatter.mp3 hits, the chunks should visibly separate and rupture.
+5. After they burst apart, the pieces should not hover awkwardly.
+6. The pieces should separate, rotate in 3D, then fall/drift downward and fade out.
+7. Favor this motion language:
+   burst apart → slow slightly → fall/drift downward → fade into light
+8. Avoid projectile motion toward the player.
+9. Avoid pieces lingering too long.
+10. Keep them physical and readable, but let them fade as they fall.
+11. Maintain themed light underneath the broken panel using the Luminary’s theme/affinity color(s), not plain white unless appropriate.
+12. Do not show a duplicate intact panel underneath.
+
+Visual style notes:
+- The panel is a sealed vessel under pressure.
+- Cracks should feel physical first, magical second.
+- The colored glow should feel like energy traveling through damage.
+- The shatter should feel like real broken material losing support and being consumed by light.
+
+Keep everything else the same unless necessary to support this rewrite.
+
+Most important:
+Rebuild the crack/shatter section from scratch so it uses:
+- thin white cracks first
+- colored glow chasing the cracks
+- shorter, more branched fracture offshoots with angled branches
+- pointed crack ends
+- polygonal pieces
+- pieces that burst apart, then fall and fade
