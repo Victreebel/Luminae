@@ -716,6 +716,10 @@ export default function GameBoard() {
   const [localSummonSkipped, setLocalSummonSkipped] = useState(false);
   // Prevents the initial-state pending-summon check from running twice.
   const checkedInitialSummonRef = useRef(false);
+  // Stable ref to enqueueSummon — populated after it is defined below (after
+  // the early return) so the initial-load useEffect can call it safely.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enqueueSummonRef = useRef<(...args: any[]) => void>(() => {});
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -910,6 +914,29 @@ export default function GameBoard() {
       fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, cp.playerId === session.playerId);
     }
   }, [state?.status, state?.version]);
+
+  // ── Initial-load summon check ─────────────────────────────────────────────
+  // Picks up any pendingSummonEvents already in the REST-loaded state (page
+  // load / reconnect) where no subsequent WebSocket delta will fire a diff.
+  // Placed after `state` is declared but before early returns so hook order
+  // is always stable across renders.
+  useEffect(() => {
+    if (checkedInitialSummonRef.current) return;
+    if (!state) return;
+    checkedInitialSummonRef.current = true;
+    const pending: Array<{ eventId: string; luminaryId: string }> =
+      (state as any)?.pendingSummonEvents ?? [];
+    for (const evt of pending) {
+      const lum = (state as any).luminaries?.find((l: any) => l.id === evt.luminaryId);
+      if (lum) {
+        enqueueSummonRef.current(
+          evt.luminaryId, lum.name, lum.domain ?? '',
+          lum.lumens, lum.flavor ?? '', evt.eventId, false,
+        );
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!state]);
 
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
@@ -1243,6 +1270,8 @@ export default function GameBoard() {
       doEnqueue();
     }
   };
+  // Keep the ref in sync so the pre-early-return useEffect can call it.
+  enqueueSummonRef.current = enqueueSummon;
 
   const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
     const gems: GemKey[] = [];
@@ -1275,33 +1304,6 @@ export default function GameBoard() {
   }
 
   if (!prevStateRef.current) prevStateRef.current = state;
-
-  // ── On first load: detect any in-flight summon events (reconnect support) ──
-  // Runs once when `state` first becomes available.  WebSocket reconnect may
-  // deliver a state that already has pendingSummonEvents; this ensures those
-  // events are picked up even if no subsequent WS delta is received.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    if (!state || checkedInitialSummonRef.current) return;
-    checkedInitialSummonRef.current = true;
-    const pending: Array<{ eventId: string; luminaryId: string }> =
-      (state as any)?.pendingSummonEvents ?? [];
-    for (const evt of pending) {
-      const lum = state.luminaries.find(l => l.id === evt.luminaryId);
-      if (lum) {
-        enqueueSummon(
-          evt.luminaryId,
-          lum.name,
-          (lum as any).domain ?? '',
-          lum.lumens,
-          (lum as any).flavor ?? '',
-          evt.eventId,
-          false,
-        );
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!state]);
 
   const actionsLocked = !!turnAnnouncement;
   // Gate turn actions during any active summon cutscene so that nobody can act
