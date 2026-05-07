@@ -805,15 +805,6 @@ export default function GameBoard() {
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
-  const eminenceBreakdown: EminenceBreakdown = {
-    artifacts: (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0),
-    luminaries: (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
-      const lum = state.luminaries.find((l) => l.id === lumId);
-      return sum + (lum?.lumens ?? 0);
-    }, 0),
-    other: 0,
-  };
-  eminenceBreakdown.other = Math.max(0, (me?.lumens ?? 0) - eminenceBreakdown.artifacts - eminenceBreakdown.luminaries);
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
@@ -1385,6 +1376,15 @@ export default function GameBoard() {
   const isMyTurn = !actionsLocked && !summonGateActive && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
+  const eminenceBreakdown: EminenceBreakdown = {
+    artifacts: (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0),
+    luminaries: (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
+      const lum = state.luminaries.find((l) => l.id === lumId);
+      return sum + (lum?.lumens ?? 0);
+    }, 0),
+    other: 0,
+  };
+  eminenceBreakdown.other = Math.max(0, (me?.lumens ?? 0) - eminenceBreakdown.artifacts - eminenceBreakdown.luminaries);
 
   const handleCrystalClick = (color: keyof CrystalCounts) => {
     if (!isMyTurn || color === 'flux' || !state) return;
