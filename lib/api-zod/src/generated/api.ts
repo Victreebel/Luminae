@@ -710,6 +710,7 @@ export const SubmitActionBody = zod.object({
     "pass",
     "surrender",
     "toggle_luminary_affinity",
+    "resolve_summon",
   ]),
   crystals: zod
     .object({
@@ -734,6 +735,10 @@ export const SubmitActionBody = zod.object({
     .enum(["ruby", "sapphire", "emerald", "onyx", "pearl"])
     .optional()
     .describe("Target affinity for toggle_luminary_affinity action"),
+  eventId: zod
+    .string()
+    .optional()
+    .describe("Event ID for resolve_summon action"),
 });
 
 export const SubmitActionResponse = zod.object({

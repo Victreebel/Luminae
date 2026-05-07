@@ -705,7 +705,17 @@ export default function GameBoard() {
   const [summonQueue, setSummonQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
     cardRect?: { cx: number; cy: number; w: number };
+    eventId: string;    // stable server event ID (or 'dev-test-<id>' for dev panel)
+    isDevTest: boolean; // dev tests skip the server resolve_summon call
   }>>([]);
+  // Tracks which server summon eventIds have already been pushed into the queue
+  // so that duplicate WebSocket / reconnect deliveries are safely deduped.
+  const handledSummonEventIdsRef = useRef(new Set<string>());
+  // True when the user pressed "Skip view" on the active cutscene.
+  // The cutscene stays mounted (timer runs) but the overlay is hidden.
+  const [localSummonSkipped, setLocalSummonSkipped] = useState(false);
+  // Prevents the initial-state pending-summon check from running twice.
+  const checkedInitialSummonRef = useRef(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -1000,28 +1010,28 @@ export default function GameBoard() {
         gameAudio.playWin();
       }
 
-      // Detect newly claimed luminaries and toast the player
-      if (prev && newState.players) {
-        for (const newPlayer of newState.players) {
-          const prevPlayer = prev.players.find(p => p.playerId === newPlayer.playerId);
-          const prevClaimed = prevPlayer?.claimedLuminaryIds ?? [];
-          const newClaimed = newPlayer.claimedLuminaryIds ?? [];
-          for (const lumId of newClaimed) {
-            if (!prevClaimed.includes(lumId)) {
-              const lum = newState.luminaries.find(l => l.id === lumId);
-              const lumName = lum?.name ?? 'a Luminary';
-              const lumLumens = lum?.lumens ?? 0;
-              const lumDomain = (lum as { domain?: string } | undefined)?.domain ?? '';
-              const lumFlavor = (lum as { flavor?: string } | undefined)?.flavor ?? '';
-              const isMe = newPlayer.playerId === session?.playerId;
-              if (isMe) {
-                enqueueSummon(lumId, lumName, lumDomain, lumLumens, lumFlavor);
-              } else {
-                toast({
-                  title: `${newPlayer.playerName} claimed a Luminary`,
-                  description: `${newPlayer.playerName} drew the favor of ${lumName} (+${lumLumens} eminence)`,
-                });
-              }
+      // Detect newly arrived pendingSummonEvents and start cutscenes for ALL players.
+      // The dedup guard in enqueueSummon prevents re-enqueueing the same event.
+      {
+        const prevPending: Array<{ eventId: string; luminaryId: string }> =
+          (prev as any)?.pendingSummonEvents ?? [];
+        const newPending: Array<{ eventId: string; luminaryId: string; claimedByPlayerId: string }> =
+          (newState as any)?.pendingSummonEvents ?? [];
+
+        for (const evt of newPending) {
+          const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
+          if (!alreadyKnown) {
+            const lum = newState.luminaries.find(l => l.id === evt.luminaryId);
+            if (lum) {
+              enqueueSummon(
+                evt.luminaryId,
+                lum.name,
+                (lum as any).domain ?? '',
+                lum.lumens,
+                (lum as any).flavor ?? '',
+                evt.eventId,
+                false,
+              );
             }
           }
         }
@@ -1087,8 +1097,10 @@ export default function GameBoard() {
     queueTimerRef.current = null;
     if (stateQueueRef.current.length === 0) return;
     const remaining = animationEndTimeRef.current - Date.now();
-    if (remaining > 50 || pendingTurnAnnounceRef.current) {
-      const delay = remaining > 50 ? remaining + 100 : 200;
+    // Also pause draining while a summon cutscene is actively playing.
+    const summonActive = summonQueue.length > 0;
+    if (remaining > 50 || pendingTurnAnnounceRef.current || summonActive) {
+      const delay = remaining > 50 ? remaining + 100 : summonActive ? 500 : 200;
       queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
       return;
     }
@@ -1129,77 +1141,107 @@ export default function GameBoard() {
 
   const submitAction = useSubmitAction();
 
+  // ── Summon cutscene duration used for the animation barrier ───────────────
+  const SUMMON_CUTSCENE_DURATION_MS = 12_000;
+
   // ── enqueueSummon ─────────────────────────────────────────────────────────
-  // Shared path used by both the real game (WebSocket state diff) and the dev
-  // Summon Test panel.  Guarantees the board tab is rendered, the target
-  // Luminary card is scrolled into the viewport, and the rect is re-measured
-  // before the cutscene entry is pushed into summonQueue.
+  // Shared path for both real game events (detected via pendingSummonEvents)
+  // and the dev Summon Test panel.
+  //
+  // Dedup guard: skips any eventId already in handledSummonEventIdsRef.
+  // Animation barrier: if other animations are running, delays the DOM
+  // measurement and queue push until they complete.
   //
   // Sequence:
-  //   1. setActiveTab('board')          — mount LuminaryCard elements
-  //   2. double rAF                     — let React commit + browser layout
-  //   3. el.scrollIntoView (instant)    — bring card into view on both axes
-  //      (handles main vertical scroller AND horizontal Luminary row overflow)
-  //   4. one rAF                        — let scroll settle
-  //   5. getBoundingClientRect()        — fresh measurement
-  //   6. setSummonQueue                 — start the cutscene
+  //   1. Dedup check + mark eventId handled
+  //   2. Wait for any running animation barrier to expire
+  //   3. setActiveTab('board')          — mount LuminaryCard elements
+  //   4. double rAF                     — let React commit + browser layout
+  //   5. el.scrollIntoView (instant)    — bring card into view on both axes
+  //   6. one rAF                        — let scroll settle
+  //   7. getBoundingClientRect()        — fresh measurement
+  //   8. setSummonQueue + setAnimEndTime — start the cutscene; block state drains
   //
-  // If the element cannot be found even after switching to the board tab,
-  // the cutscene falls back to viewport-centre (same as the existing behaviour)
-  // and a warning is logged rather than crashing.
+  // If the element is missing after switching tabs, falls back to viewport-centre.
   const enqueueSummon = (
     lumId: string,
     lumName: string,
     lumDomain: string,
     lumLumens: number,
     lumFlavor: string,
+    eventId: string,
+    isDevTest: boolean,
   ) => {
-    setActiveTab('board');                           // 1. ensure board tab mounts
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {                  // 2. React commit + layout
-        const el = document.querySelector(
-          `[data-luminary-id="${lumId}"]`
-        ) as HTMLElement | null;
+    // 1. Dedup guard (skip for dev tests which intentionally replay)
+    if (!isDevTest) {
+      if (handledSummonEventIdsRef.current.has(eventId)) {
+        console.log(`[Luminae] enqueueSummon: duplicate eventId="${eventId}" — skipped`);
+        return;
+      }
+      handledSummonEventIdsRef.current.add(eventId);
+    }
 
-        if (!el) {
-          console.warn(
-            `[Luminae] enqueueSummon: no DOM element for luminary "${lumId}". ` +
-            'Falling back to viewport centre.'
-          );
-          setSummonQueue(q => [
-            ...q,
-            { id: lumId, name: lumName, domain: lumDomain,
-              lumens: lumLumens, flavor: lumFlavor, cardRect: undefined },
-          ]);
-          return;
-        }
+    console.log(`[Luminae] enqueueSummon: queueing lumId="${lumId}" eventId="${eventId}" isDevTest=${isDevTest}`);
 
-        // 3. Scroll into view — browser handles both scroll containers at once.
-        el.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+    const doEnqueue = () => {
+      setActiveTab('board');                         // 3. ensure board tab mounts
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {                // 4. React commit + layout
+          const el = document.querySelector(
+            `[data-luminary-id="${lumId}"]`
+          ) as HTMLElement | null;
 
-        requestAnimationFrame(() => {               // 4. settle
-          const rect = el.getBoundingClientRect();
-          const cardRectVal = rect.width > 0
-            ? { cx: rect.left + rect.width / 2,
-                cy: rect.top  + rect.height / 2,
-                w:  rect.width }
-            : undefined;
-
-          if (!cardRectVal) {
+          if (!el) {
             console.warn(
-              `[Luminae] enqueueSummon: element for "${lumId}" has zero width ` +
-              'after scroll. Falling back to viewport centre.'
+              `[Luminae] enqueueSummon: no DOM element for luminary "${lumId}". ` +
+              'Falling back to viewport centre.'
             );
+            setSummonQueue(q => [
+              ...q,
+              { id: lumId, name: lumName, domain: lumDomain,
+                lumens: lumLumens, flavor: lumFlavor, cardRect: undefined, eventId, isDevTest },
+            ]);
+            setAnimEndTime(SUMMON_CUTSCENE_DURATION_MS); // 8. block state drains
+            return;
           }
 
-          setSummonQueue(q => [                     // 6. start the cutscene
-            ...q,
-            { id: lumId, name: lumName, domain: lumDomain,
-              lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal },
-          ]);
+          // 5. Scroll into view — browser handles both scroll containers at once.
+          el.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'center' });
+
+          requestAnimationFrame(() => {             // 6. settle
+            const rect = el.getBoundingClientRect();
+            const cardRectVal = rect.width > 0
+              ? { cx: rect.left + rect.width / 2,
+                  cy: rect.top  + rect.height / 2,
+                  w:  rect.width }
+              : undefined;
+
+            if (!cardRectVal) {
+              console.warn(
+                `[Luminae] enqueueSummon: element for "${lumId}" has zero width ` +
+                'after scroll. Falling back to viewport centre.'
+              );
+            }
+
+            setSummonQueue(q => [                   // 7. start the cutscene
+              ...q,
+              { id: lumId, name: lumName, domain: lumDomain,
+                lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal, eventId, isDevTest },
+            ]);
+            setAnimEndTime(SUMMON_CUTSCENE_DURATION_MS); // 8. block state drains
+          });
         });
       });
-    });
+    };
+
+    // 2. Respect animation barrier — delay if other animations are active.
+    const animBarrier = animationEndTimeRef.current - Date.now();
+    if (animBarrier > 50) {
+      console.log(`[Luminae] enqueueSummon: delaying ${Math.round(animBarrier)}ms for animation barrier`);
+      setTimeout(doEnqueue, animBarrier + 100);
+    } else {
+      doEnqueue();
+    }
   };
 
   const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
@@ -1234,8 +1276,39 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
+  // ── On first load: detect any in-flight summon events (reconnect support) ──
+  // Runs once when `state` first becomes available.  WebSocket reconnect may
+  // deliver a state that already has pendingSummonEvents; this ensures those
+  // events are picked up even if no subsequent WS delta is received.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!state || checkedInitialSummonRef.current) return;
+    checkedInitialSummonRef.current = true;
+    const pending: Array<{ eventId: string; luminaryId: string }> =
+      (state as any)?.pendingSummonEvents ?? [];
+    for (const evt of pending) {
+      const lum = state.luminaries.find(l => l.id === evt.luminaryId);
+      if (lum) {
+        enqueueSummon(
+          evt.luminaryId,
+          lum.name,
+          (lum as any).domain ?? '',
+          lum.lumens,
+          (lum as any).flavor ?? '',
+          evt.eventId,
+          false,
+        );
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!state]);
+
   const actionsLocked = !!turnAnnouncement;
-  const isMyTurn = !actionsLocked && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
+  // Gate turn actions during any active summon cutscene so that nobody can act
+  // while the global cinematic plays out.  The server also tracks this via
+  // pendingSummonEvents but we enforce it locally for instant feedback.
+  const summonGateActive = summonQueue.length > 0;
+  const isMyTurn = !actionsLocked && !summonGateActive && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
 
@@ -3243,31 +3316,65 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* Luminary summoning cutscene queue — plays one cutscene at a time */}
+      {/* Luminary summoning cutscene queue — plays one cutscene at a time.
+          When the user presses "Skip view", the cutscene overlay is hidden via
+          CSS (visibility:hidden) but the component stays mounted so its internal
+          timer chain still runs and fires onComplete at the correct moment.
+          onComplete sends resolve_summon to the server (clearing the global gate)
+          and advances the local queue, at which point the "waiting" chip clears. */}
       <AnimatePresence>
-        {summonQueue.length > 0 && summonQueue[0] && (
-          <LuminarySummonCutscene
-            key={summonQueue[0].id + '-' + summonQueue[0].lumens + '-' + summonQueue.length}
-            luminaryId={summonQueue[0].id}
-            luminaryName={summonQueue[0].name}
-            domain={summonQueue[0].domain}
-            lumens={summonQueue[0].lumens}
-            flavor={summonQueue[0].flavor}
-            cardRect={summonQueue[0].cardRect}
-            onFlash={() => setCutscenePostFlash(true)}
-            onComplete={(() => {
-              const completedId = summonQueue[0].id;
-              return () => {
-                setCutscenePostFlash(false);
-                setSummonQueue(q => q.slice(1));
-                setClaimedThisSession(prev =>
-                  prev.includes(completedId) ? prev : [...prev, completedId]
-                );
-              };
-            })()}
-          />
-        )}
+        {summonQueue.length > 0 && summonQueue[0] && (() => {
+          const entry = summonQueue[0];
+          return (
+            <div
+              key={entry.eventId}
+              style={localSummonSkipped
+                ? { visibility: 'hidden', pointerEvents: 'none' }
+                : undefined}
+            >
+              <LuminarySummonCutscene
+                luminaryId={entry.id}
+                luminaryName={entry.name}
+                domain={entry.domain}
+                lumens={entry.lumens}
+                flavor={entry.flavor}
+                cardRect={entry.cardRect}
+                onFlash={() => setCutscenePostFlash(true)}
+                onSkip={() => {
+                  console.log(`[Luminae] Summon view skipped locally for eventId="${entry.eventId}"`);
+                  setLocalSummonSkipped(true);
+                }}
+                onComplete={(() => {
+                  const capturedEntry = entry;
+                  return () => {
+                    console.log(`[Luminae] Summon onComplete: eventId="${capturedEntry.eventId}" isDevTest=${capturedEntry.isDevTest}`);
+                    setCutscenePostFlash(false);
+                    setLocalSummonSkipped(false);
+                    setSummonQueue(q => q.slice(1));
+                    setClaimedThisSession(prev =>
+                      prev.includes(capturedEntry.id) ? prev : [...prev, capturedEntry.id]
+                    );
+                    // Resolve the global summon gate on the server so all clients
+                    // can unblock their turn actions once the cutscene is done.
+                    if (!capturedEntry.isDevTest) {
+                      executeAction({ type: 'resolve_summon', eventId: capturedEntry.eventId });
+                    }
+                  };
+                })()}
+              />
+            </div>
+          );
+        })()}
       </AnimatePresence>
+
+      {/* "Waiting" chip shown when the user has skipped their local view but
+          the summon is still globally resolving (cutscene timer still running). */}
+      {localSummonSkipped && summonQueue.length > 0 && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9001] flex items-center gap-2 bg-black/75 text-white/75 text-xs px-4 py-2 rounded-full border border-white/15 backdrop-blur pointer-events-none select-none">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+          <span>Summoning in progress…</span>
+        </div>
+      )}
 
       {/* Persistent entity overlays — one per luminary claimed this session.
           Each overlay flies from the viewport centre back to its panel card
@@ -3301,6 +3408,8 @@ export default function GameBoard() {
                       (lumData as { domain?: string } | undefined)?.domain ?? '',
                       lumData?.lumens ?? 0,
                       (lumData as { flavor?: string } | undefined)?.flavor ?? '',
+                      `dev-test-${v.id}-${Date.now()}`, // unique each click
+                      true,                             // isDevTest — no server resolve
                     );
                   }}
                 >

@@ -205,6 +205,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     crystals: actionData.crystals as Partial<Record<string, number>> | undefined,
     luminaryId: actionData.luminaryId ?? undefined,
     affinity: actionData.affinity as CrystalColor | undefined,
+    eventId: actionData.eventId ?? undefined,
   };
 
   // Serialize all read-modify-write on this room's state behind a per-room
@@ -230,8 +231,9 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     }
 
     // Refresh per-turn deadline based on configured timer.
-    // toggle_luminary_affinity does not advance the turn so the deadline stays.
-    if (action.type !== "toggle_luminary_affinity") {
+    // Non-turn-gated actions (toggle_luminary_affinity, resolve_summon) do not
+    // advance the turn so the deadline must not be reset.
+    if (action.type !== "toggle_luminary_affinity" && action.type !== "resolve_summon") {
       updateTurnDeadline(stateData);
     }
 

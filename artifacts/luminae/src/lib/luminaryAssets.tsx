@@ -861,6 +861,7 @@ export function LuminarySummonCutscene({
   cardRect,
   onComplete,
   onFlash,
+  onSkip,
 }: {
   luminaryId: string;
   luminaryName: string;
@@ -870,6 +871,7 @@ export function LuminarySummonCutscene({
   cardRect?: { cx: number; cy: number; w: number };
   onComplete: () => void;
   onFlash?: () => void;
+  onSkip?: () => void;
 }) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
@@ -1100,7 +1102,22 @@ export function LuminarySummonCutscene({
   const vesselTop  = vh / 2 - BOARD_CARD_H / 2;
 
   return (
-    <div className="fixed inset-0 z-[9000] cursor-pointer" onClick={onComplete}>
+    <div className="fixed inset-0 z-[9000]">
+
+      {/* ── Skip View button ───────────────────────────────────────────────── */}
+      {onSkip && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onSkip(); }}
+          className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur transition-colors select-none"
+          aria-label="Skip summoning view"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
+            <path d="M1 1l8 4-8 4V1z" />
+            <rect x="8" y="1" width="1.5" height="8" rx="0.5" />
+          </svg>
+          Skip view
+        </button>
+      )}
 
       {/* ── Dark overlay ──────────────────────────────────────────────────── */}
       <motion.div

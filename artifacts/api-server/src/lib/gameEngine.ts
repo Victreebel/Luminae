@@ -16,6 +16,12 @@ export interface LuminaryAffinity {
   summonedAtTurnCount: number;
 }
 
+export interface PendingSummonEvent {
+  eventId: string;
+  luminaryId: string;
+  claimedByPlayerId: string;
+}
+
 export type CrystalCounts = Record<CrystalColorWithFlux, number>;
 
 export const CRYSTAL_COLORS: CrystalColor[] = [
@@ -86,6 +92,7 @@ export interface GameStateData {
   turnTimerSeconds: number | null;
   turnDeadline: number | null;
   version: number;
+  pendingSummonEvents: PendingSummonEvent[];
 }
 
 const ACTION_LOG_MAX = 20;
@@ -353,6 +360,7 @@ export function initializeGame(
     deckTier3,
     activeLuminaries,
     luminaryAffinities: [],
+    pendingSummonEvents: [],
     players: playerStates,
     winnerId: null,
     lastAction: null,
@@ -373,7 +381,8 @@ export type ActionType =
   | "purchase_reserved"
   | "pass"
   | "surrender"
-  | "toggle_luminary_affinity";
+  | "toggle_luminary_affinity"
+  | "resolve_summon";
 
 export interface ActionPayload {
   type: ActionType;
@@ -383,6 +392,7 @@ export interface ActionPayload {
   tier?: 1 | 2 | 3;
   luminaryId?: string;
   affinity?: CrystalColor;
+  eventId?: string;
 }
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
@@ -505,6 +515,20 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
         summary: `Drew the favor of ${lum.name} (+${lum.lumens} eminence)`,
         turn: state.roundNumber,
       });
+      // Queue a summon event so all clients can play the cutscene.
+      // eventId uses the current version (before the post-action increment) to
+      // produce a stable unique key. Idempotency guard prevents double-push.
+      if (!Array.isArray(state.pendingSummonEvents)) {
+        state.pendingSummonEvents = [];
+      }
+      const eventId = `${lumId}-v${state.version}`;
+      if (!state.pendingSummonEvents.some((e) => e.eventId === eventId)) {
+        state.pendingSummonEvents.push({
+          eventId,
+          luminaryId: lumId,
+          claimedByPlayerId: player.playerId,
+        });
+      }
     }
   }
 }
@@ -588,9 +612,11 @@ export function applyAction(
   if (state.phase === "finished")
     return { success: false, error: "Game is over" };
 
-  // toggle_luminary_affinity is not turn-gated — any player may reconfigure
-  // their Luminary alliance at any time (it takes effect on their next action).
-  const isTurnGated = action.type !== "toggle_luminary_affinity";
+  // toggle_luminary_affinity and resolve_summon are not turn-gated — any
+  // player may send them regardless of whose turn it currently is.
+  const isTurnGated =
+    action.type !== "toggle_luminary_affinity" &&
+    action.type !== "resolve_summon";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx)
     return { success: false, error: "Not your turn" };
 
@@ -757,6 +783,26 @@ export function applyAction(
       break;
     }
 
+    case "resolve_summon": {
+      // Non-turn-gated: any player can acknowledge the cutscene is done.
+      // Removes the matching pending event; if nothing changed, returns a no-op
+      // so the caller avoids a redundant broadcast.
+      const { eventId } = action;
+      if (!Array.isArray(state.pendingSummonEvents)) {
+        state.pendingSummonEvents = [];
+      }
+      const lenBefore = state.pendingSummonEvents.length;
+      state.pendingSummonEvents = state.pendingSummonEvents.filter(
+        (e) => e.eventId !== eventId,
+      );
+      if (state.pendingSummonEvents.length === lenBefore) {
+        // Already resolved by another client — no-op, skip version bump.
+        return { success: true };
+      }
+      state.version++;
+      return { success: true };
+    }
+
     default:
       return { success: false, error: "Unknown action type" };
   }
@@ -876,6 +922,10 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!Array.isArray(state.luminaryAffinities)) {
     state.luminaryAffinities = [];
   }
+  // ensure pendingSummonEvents array exists (added in summon gate feature)
+  if (!Array.isArray(state.pendingSummonEvents)) {
+    state.pendingSummonEvents = [];
+  }
   // filter activeLuminaries to only known IDs (backward compat for old saves)
   if (Array.isArray(state.activeLuminaries)) {
     const original = state.activeLuminaries as string[];
@@ -975,5 +1025,6 @@ export function formatGameState(
     turnTimerSeconds: stateData.turnTimerSeconds,
     turnDeadline: stateData.turnDeadline,
     version: stateData.version,
+    pendingSummonEvents: stateData.pendingSummonEvents ?? [],
   };
 }
