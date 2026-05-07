@@ -1254,60 +1254,47 @@ export function LuminarySummonCutscene({
                     )}
                   </defs>
 
-                  {/* ── First crack: T1(28,0)→ZA(34,25)→A1(38,50)→L1(0,52) ── */}
-                  {/* Defines A|B and A|D chunk seams                             */}
-                  {/* Wound glow */}
+                  {/* ── First crack: thunderbolt T1→kinks→A1→kinks→A2 ─────── */}
+                  {/* Single jagged lightning bolt — no Y fork.                   */}
+                  {/* Sequence: 1) white fracture snaps in with no glow            */}
+                  {/*           2) affinity-color bloom spikes (pulse)             */}
+                  {/*           3) thick residual energy wound stays glowing       */}
+                  {/* Kink points (not part of shard geometry, visual only):       */}
+                  {/*   P1(50,13) P2(14,31) P3(52,44) → A1(38,50) →              */}
+                  {/*   P4(64,41) → A2(72,38)                                     */}
+                  {/* 1 · Crisp white thunderbolt — appears instantly, zero glow  */}
                   <motion.path
-                    d={`M${T1X},${T1Y} L${ZAX},${ZAY} L${A1X},${A1Y} L${L1X},${L1Y}`}
+                    d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
+                    stroke="white" strokeWidth="2.6" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 1.0, 1.0, 1.0] }}
+                    transition={{ duration: 0.11, ease: 'easeOut' }}
+                  />
+                  {/* 2 · Affinity-color bloom pulse — spikes after white appears */}
+                  <motion.path
+                    d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
+                    stroke={primaryColor} strokeWidth="52" fill="none" strokeLinecap="round"
+                    filter="url(#crackglow)"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.82, 0.28, 0] }}
+                    transition={{ duration: 0.52, delay: 0.08, ease: 'easeOut', times: [0, 0.20, 0.58, 1] }}
+                  />
+                  {/* 3 · Thick residual energy glow — "wound leaking light"      */}
+                  <motion.path
+                    d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
                     stroke={primaryColor} strokeWidth="28" fill="none" strokeLinecap="round"
                     filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.15, 0.22, 0.17] }}
-                    transition={{ duration: 0.24, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.50, 0.76, 0.64] }}
+                    transition={{ duration: 0.72, delay: 0.13, ease: 'easeOut' }}
                   />
-                  {/* Crisp line */}
+                  {/* 4 · Tight tinted energy line — saturated primaryColor seam  */}
                   <motion.path
-                    d={`M${T1X},${T1Y} L${ZAX},${ZAY} L${A1X},${A1Y} L${L1X},${L1Y}`}
-                    stroke="white" strokeWidth="2.6" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.92, 1.0] }}
-                    transition={{ duration: 0.26, delay: 0.02, ease: 'easeOut' }}
-                  />
-                  {/* Tinted overlay */}
-                  <motion.path
-                    d={`M${T1X},${T1Y} L${ZAX},${ZAY} L${A1X},${A1Y} L${L1X},${L1Y}`}
-                    stroke={primaryColor} strokeWidth="8" fill="none" strokeLinecap="round"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.32, 0.54] }}
-                    transition={{ duration: 0.26, delay: 0.04, ease: 'easeOut' }}
-                  />
-
-                  {/* ── First branch: A1(38,50)→ZB(58,44)→A2(72,38) ────────── */}
-                  {/* Defines B|E and B|C seams (top of centre crystal)           */}
-                  {/* Wound glow */}
-                  <motion.path
-                    d={`M${A1X},${A1Y} L${ZBX},${ZBY} L${A2X},${A2Y}`}
-                    stroke={primaryColor} strokeWidth="22" fill="none" strokeLinecap="round"
-                    filter="url(#crackglow)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.10, 0.18] }}
-                    transition={{ duration: 0.18, delay: 0.14, ease: 'easeOut' }}
-                  />
-                  {/* Crisp line */}
-                  <motion.path
-                    d={`M${A1X},${A1Y} L${ZBX},${ZBY} L${A2X},${A2Y}`}
-                    stroke="white" strokeWidth="2.2" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.82, 0.96] }}
-                    transition={{ duration: 0.20, delay: 0.16, ease: 'easeOut' }}
-                  />
-                  {/* Tinted overlay */}
-                  <motion.path
-                    d={`M${A1X},${A1Y} L${ZBX},${ZBY} L${A2X},${A2Y}`}
+                    d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
                     stroke={primaryColor} strokeWidth="7" fill="none" strokeLinecap="round"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.28, 0.46] }}
-                    transition={{ duration: 0.20, delay: 0.18, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.42, 0.68, 0.58] }}
+                    transition={{ duration: 0.68, delay: 0.16, ease: 'easeOut' }}
                   />
 
                   {/* ── Light leaking through cracks (leaking+) ─────────────── */}
@@ -1549,7 +1536,7 @@ export function LuminarySummonCutscene({
                   x: piece.dx, y: piece.dy, z: piece.dz,
                   scale: i === 4 ? [1, 1.06, 1.14] : [1, 1.02, 1.08],
                   rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
-                  opacity: [1, 1, 0.72, 0],
+                  opacity: [1, 0.90, 0.32, 0],
                   filter: [
                     `brightness(1.3) drop-shadow(3px -2px 2px rgba(${pRgb},0.70)) drop-shadow(-3px 2px 2px rgba(0,0,20,0.60))`,
                     `brightness(3.5) drop-shadow(4px -3px 3px rgba(${pRgb},0.90)) drop-shadow(-4px 3px 3px rgba(0,0,30,0.80))`,
@@ -1560,7 +1547,7 @@ export function LuminarySummonCutscene({
                   // Outward movers: drift away slowly, no scale growth
                   x: piece.dx, y: piece.dy, z: piece.dz,
                   rotateX: piece.rotateX, rotateY: piece.rotateY, rotateZ: piece.rotateZ,
-                  opacity: [1, 1, 0.68, 0],
+                  opacity: [1, 0.88, 0.25, 0],
                   filter: [
                     `brightness(1.0) drop-shadow(2px -1px 0px rgba(${pRgb},0.60)) drop-shadow(-2px 1px 0px rgba(0,0,20,0.55))`,
                     `brightness(2.8) drop-shadow(3px -2px 2px rgba(${pRgb},0.80)) drop-shadow(-3px 2px 2px rgba(0,0,30,0.75))`,
@@ -1572,13 +1559,13 @@ export function LuminarySummonCutscene({
                   // Forward: slow float then fade into light
                   duration: 2.80, ease: [0.02, 0.08, 0.50, 1], delay: 0,
                   scale:   { duration: 2.80, times: [0, 0.40, 1.00] },
-                  opacity: { duration: 2.80, times: [0, 0.30, 0.58, 1] },
-                  filter:  { duration: 2.80, times: [0, 0.28, 0.55, 1] },
+                  opacity: { duration: 2.80, times: [0, 0.18, 0.44, 1] },
+                  filter:  { duration: 2.80, times: [0, 0.18, 0.44, 1] },
                 } : {
                   // Outward: slower drift, staggered
                   duration: 2.70 + i * 0.04, ease: [0.04, 0.28, 0.62, 1], delay: i * 0.04,
-                  opacity: { duration: 2.70, times: [0, 0.44, 0.82, 1] },
-                  filter:  { duration: 2.70, times: [0, 0.32, 0.68, 1] },
+                  opacity: { duration: 2.70, times: [0, 0.22, 0.55, 1] },
+                  filter:  { duration: 2.70, times: [0, 0.22, 0.55, 1] },
                 }}
               >
                 {/* Panel art fills the full card box; clip-path carves each chunk shape */}
