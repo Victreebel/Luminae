@@ -1640,9 +1640,11 @@ export function LuminarySummonCutscene({
               left: vesselLeft, top: vesselTop,
               clipPath: piece.clip,
               transformPerspective: 1000,
+              transformStyle: 'preserve-3d',
             }}
             initial={{
               x: 0, y: 0,
+              z: 0,
               rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
               filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
@@ -1652,11 +1654,12 @@ export function LuminarySummonCutscene({
               // No projectile overshoot — the panel is being consumed, not shattered.
               x: [0, piece.dx * 0.11, piece.dx],
               y: [0, piece.dy * 0.11, piece.dy],
+              z: [0, piece.z ?? (i % 2 === 0 ? 80 : -80), piece.z ?? (i % 2 === 0 ? 180 : -180)],
               rotateX: [0, piece.rotateX],
               rotateY: [0, piece.rotateY],
               rotateZ: [0, piece.rotateZ],
               // Stay fully opaque through the "beat" (55%), then dissolve bright.
-              opacity: [1, 1, 1, 0.92, 0.40, 0],
+              opacity: [1, 1, 1, 0.96, 0.66, 0],
               // Filter arc: normal → affinity glow builds → pulse peak → white-hot
               // burn-out. Chunks never go dark — they dissolve INTO affinity light.
               filter: [
@@ -1674,6 +1677,7 @@ export function LuminarySummonCutscene({
               // Crack jolt then slow float
               x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
               y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              z:       { times: [0, 0.18, 1.0], ease: ['easeOut', 'easeInOut'] },
               rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
               rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
               rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
