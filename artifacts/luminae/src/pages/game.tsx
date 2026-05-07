@@ -2165,10 +2165,10 @@ export default function GameBoard() {
                           {n}
                         </span>
                         {!isFlux && bonus > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus} bonus</span>
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
                         )}
                         {isFlux && reservedCount > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} reserved</span>
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} rsv</span>
                         )}
                       </div>
                     );
@@ -2369,8 +2369,8 @@ export default function GameBoard() {
                     <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
                     <MiniGem color={c as GemKey} size={7} />
                   </div>
-                  {/* Token count (primary) + bonus side-by-side */}
-                  <div className="flex items-center gap-0.5 flex-1">
+                  {/* Token count + pending additions inline to the right */}
+                  <div className="flex items-center gap-0.5">
                     <span
                       className="text-2xl font-black leading-none tracking-tight"
                       style={{
@@ -2380,20 +2380,21 @@ export default function GameBoard() {
                     >
                       {gems}
                     </span>
-                    {!isFlux && bonus > 0 && (
-                      <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+                    {pending > 0 && (
+                      <motion.span
+                        key={pending}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="text-[10px] font-black leading-none text-primary"
+                      >+{pending}</motion.span>
                     )}
                     {isFlux && reservedCount > 0 && (
                       <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
                     )}
                   </div>
-                  {pending > 0 && (
-                    <motion.span
-                      key={pending}
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute top-1 right-1.5 text-[10px] font-black leading-none text-primary bg-primary/25 px-1 py-0.5 rounded"
-                    >+{pending}</motion.span>
+                  {/* Artifact / Luminary bonus — below the token number */}
+                  {!isFlux && bonus > 0 && (
+                    <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
                   )}
                 </button>
               );
