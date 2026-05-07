@@ -1700,15 +1700,17 @@ export function LuminarySummonCutscene({
       {/* ── Board vignette dimmer — dims edges, keeps entity focal ─────────────── */}
       {/* Radial gradient: lighter at center (entity zone), darker at edges.      */}
       {/* Hides any residual semi-transparent tint from baked-in asset glow.      */}
+      {/* Mounted only at 'revealed'/'fading' + 1.85 s entrance delay so it does */}
+      {/* not appear while shatter chunks are still drifting.                     */}
       <AnimatePresence>
-        {isRevealed && (
+        {(isRevealedActive || isFading) && (
           <motion.div
             key="boarddim"
             className="absolute inset-0 pointer-events-none"
             initial={{ opacity: 0 }}
-            animate={{ opacity: isFading ? 0 : (isFlashing ? 0 : 1) }}
+            animate={{ opacity: isFading ? 0 : 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: 'easeOut' }}
+            transition={{ duration: isFading ? 0.55 : 0.80, delay: isFading ? 0 : 1.85, ease: 'easeOut' }}
             style={{
               background: 'radial-gradient(ellipse 54% 58% at 50% 42%, rgba(0,0,10,0.22) 0%, rgba(0,0,10,0.70) 100%)',
             }}
@@ -1722,15 +1724,17 @@ export function LuminarySummonCutscene({
       {/* The entity image is masked with an aggressive radial ellipse so edge   */}
       {/* artifacts dissolve into the portal and read as designed rim-light.     */}
       {/* Works correctly even with opaque/imperfect entity assets.              */}
+      {/* Mounted at 'revealed'/'fading' with 1.85 s entrance delay so the       */}
+      {/* portal only becomes visible after all shatter chunks have fully faded. */}
       <AnimatePresence>
-        {isRevealed && (
+        {(isRevealedActive || isFading) && (
           <motion.div
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
             initial={{ opacity: 0 }}
             animate={isFading ? { opacity: 0 } : { opacity: 1 }}
-            transition={{ duration: isFading ? 0.55 : 0.42, ease: isFading ? 'easeIn' : 'easeOut' }}
+            transition={{ duration: isFading ? 0.55 : 0.60, delay: isFading ? 0 : 1.85, ease: isFading ? 'easeIn' : 'easeOut' }}
           >
             {/* Entrance scale + fly-in — unchanged */}
             <motion.div
