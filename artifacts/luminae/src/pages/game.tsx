@@ -1586,7 +1586,7 @@ export default function GameBoard() {
       {/* Crystal Bank */}
       <div className="rounded-2xl bg-secondary/40 border border-border/50 backdrop-blur overflow-hidden">
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinities · Harness the essence of the cosmos</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinities · Harness cosmic essence</p>
           {(() => {
             const fluxCount = state.crystalBank.flux ?? 0;
             return (
