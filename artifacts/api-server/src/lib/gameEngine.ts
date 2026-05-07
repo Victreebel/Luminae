@@ -904,13 +904,13 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
         .filter((c) => (sel[c] ?? 0) > 0)
         .map((c) => `${sel[c]} ${COLOR_LABEL[c]}`);
       return parts.length === 0
-        ? "Harvested nothing"
-        : `Harvested ${parts.join(", ")}`;
+        ? "Harnessed nothing"
+        : `Harnessed ${parts.join(", ")}`;
     }
     case "take_two_crystals":
       return action.crystal
-        ? `Harvested 2 ${COLOR_LABEL[action.crystal]}`
-        : "Harvested 2 affinities";
+        ? `Harnessed 2 ${COLOR_LABEL[action.crystal]}`
+        : "Harnessed 2 affinities";
     case "reserve_card": {
       if (action.cardId) {
         const lore = getCardLore(action.cardId);

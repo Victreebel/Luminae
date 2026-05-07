@@ -536,18 +536,6 @@ function LuminaryClaimedPortal({
         </div>
       )}
 
-      {/* Dev debug overlay — anchored top so it never covers the alliance bar; tree-shaken in production */}
-      {import.meta.env.DEV && luminaryAffinity && (
-        <div
-          className="absolute top-0 left-0 right-0 bg-black/90 text-white/70 z-30 pointer-events-none"
-          style={{ fontSize: 5.5, padding: '2px 3px', lineHeight: 1.5 }}
-        >
-          <div>owner: {luminaryAffinity.ownerId.slice(0, 12)}</div>
-          <div>active: <span style={{ color: activeKey ? GEM_META[activeKey]?.glowHex : '#fff' }}>{luminaryAffinity.activeAffinity}</span></div>
-          <div>eligible: {luminaryAffinity.eligibleAffinities.join('·')}</div>
-          <div>live:{isLive ? '✓' : '✗'} | toggle:{canToggle ? '✓' : '✗'}</div>
-        </div>
-      )}
     </Tag>
   );
 }
@@ -1324,11 +1312,11 @@ export default function GameBoard() {
     if (handTotal + total > 10) return { ok: false, reason: `Hand limit is 10 (you'd have ${handTotal + total})`, actionType: null };
     if (distinct.length === 1 && (selectedCrystals[distinct[0] as keyof CrystalCounts] ?? 0) === 2) {
       const c = distinct[0] as keyof CrystalCounts;
-      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Harvest 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
-      return { ok: false, reason: `Need 4+ in well to harvest 2`, actionType: null };
+      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Harness 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
+      return { ok: false, reason: `Need 4+ in well to harness 2`, actionType: null };
     }
     if (distinct.every(c => (selectedCrystals[c as keyof CrystalCounts] ?? 0) === 1) && distinct.length <= 3) {
-      return { ok: true, reason: distinct.length === 3 ? 'Harvest 3 different' : `Harvest ${distinct.length}`, actionType: 'take3' };
+      return { ok: true, reason: distinct.length === 3 ? 'Harness 3 different' : `Harness ${distinct.length}`, actionType: 'take3' };
     }
     return { ok: false, reason: 'Invalid combination', actionType: null };
   })();
@@ -1510,7 +1498,7 @@ export default function GameBoard() {
       <div className="flex flex-col gap-4">
         {/* Cost toggle */}
         <div className="flex items-center justify-between px-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Market</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Artifacts · Forge using Affinities</p>
           <button
             type="button"
             onClick={() => setShowEffectiveCost(v => !v)}
@@ -1598,7 +1586,7 @@ export default function GameBoard() {
       {/* Crystal Bank */}
       <div className="rounded-2xl bg-secondary/40 border border-border/50 backdrop-blur overflow-hidden">
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Essence Well</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinities · Harness the essence of the cosmos</p>
           {(() => {
             const fluxCount = state.crystalBank.flux ?? 0;
             return (
@@ -1656,7 +1644,7 @@ export default function GameBoard() {
                     onClick={(e) => { e.stopPropagation(); promoteToTake2(c); }}
                     className="mt-0.5 text-[9px] font-bold text-primary/80 hover:text-primary bg-primary/10 rounded-full px-2 py-0.5 active:bg-primary/25 transition-colors"
                   >
-                    harvest 2
+                    harness 2
                   </motion.button>
                 )}
               </div>
@@ -1699,7 +1687,7 @@ export default function GameBoard() {
                       onClick={confirmCrystals}
                       disabled={!queueLegality.ok}
                     >
-                      Harvest
+                      Harness
                     </Button>
                   </div>
                 </div>
@@ -1710,7 +1698,7 @@ export default function GameBoard() {
         {isMyTurn && !crystalQueueActive && (
           <div className="px-3 pb-2.5">
             <p className="text-[9px] text-muted-foreground text-center italic">
-              Tap to harvest affinities · up to 3 different or 2 of the same
+              Tap to harness affinities · up to 3 different or 2 of the same
             </p>
           </div>
         )}
@@ -1890,7 +1878,7 @@ export default function GameBoard() {
       {/* My Gems */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">My Affinities</p>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           {CRYSTALS.map((c) => {
             const cardBonus = me?.bonuses[c as keyof CrystalCounts] ?? 0;
             const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
@@ -1899,18 +1887,30 @@ export default function GameBoard() {
                 ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
                 la.activeAffinity === c
               ).length;
+            const meta = GEM_META[c as GemKey];
             return (
-              <div key={c} className="flex items-center gap-2.5 bg-secondary/50 rounded-xl p-2.5">
-                <CrystalIcon color={c} size={44} count={me?.crystals[c as keyof CrystalCounts]} />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-semibold" style={{ color: GEM_META[c].glowHex }}>{GEM_META[c].shortName}</span>
-                  {cardBonus > 0 && (
-                    <span className="text-[10px] font-bold text-primary">+{cardBonus}</span>
-                  )}
-                  {lumBonus > 0 && (
-                    <span className="text-[10px] font-bold" style={{ color: GEM_META[c as GemKey].glowHex }}>+{lumBonus} ✦</span>
-                  )}
+              <div
+                key={c}
+                className="flex flex-col items-center gap-1.5 rounded-xl p-2 relative overflow-hidden"
+                style={{
+                  background: `radial-gradient(ellipse at 50% 0%, ${meta.hex}1a 0%, ${meta.hex}0a 55%, rgba(255,255,255,0.03) 100%)`,
+                  border: `1px solid ${meta.hex}28`,
+                }}
+              >
+                {/* Affinity name + icon centered at top */}
+                <div className="flex items-center gap-0.5 z-10">
+                  <span className="text-[9px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                  <MiniGem color={c as GemKey} size={9} />
                 </div>
+                {/* Crystal count — primary visual */}
+                <CrystalIcon color={c} size={40} count={me?.crystals[c as keyof CrystalCounts]} />
+                {/* Bonus indicators */}
+                {(cardBonus > 0 || lumBonus > 0) && (
+                  <div className="flex flex-col items-center gap-0.5 z-10">
+                    {cardBonus > 0 && <span className="text-[10px] font-bold text-primary leading-none">+{cardBonus}</span>}
+                    {lumBonus > 0 && <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus} ✦</span>}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -2416,7 +2416,7 @@ export default function GameBoard() {
                       <p className="text-[10px] font-semibold text-green-400">You can forge this now</p>
                     )}
                     {!canAfford && (
-                      <p className="text-[10px] font-semibold text-red-400">Still short — keep harvesting</p>
+                      <p className="text-[10px] font-semibold text-red-400">Still short — keep harnessing</p>
                     )}
                   </div>
                 );
@@ -2698,7 +2698,7 @@ export default function GameBoard() {
                 {gemBurst.playerName}
               </div>
               <span className="text-lg font-serif font-bold text-emerald-300 drop-shadow-[0_0_12px_rgba(110,231,183,0.7)]">
-                Harvested
+                Harnessed
               </span>
             </motion.div>
           </motion.div>
@@ -2812,7 +2812,7 @@ export default function GameBoard() {
                   {
                     icon: '🪙',
                     title: 'On your turn — pick one action',
-                    body: 'Harvest up to 3 affinities (1 of each type) · Harvest 2 of the same (needs 4+ in the well) · Reserve a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
+                    body: 'Harness up to 3 affinities (1 of each type) · Harness 2 of the same (needs 4+ in the well) · Reserve a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
                   },
                   {
                     icon: '🃏',

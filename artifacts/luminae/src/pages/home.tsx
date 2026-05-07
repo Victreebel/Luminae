@@ -188,7 +188,7 @@ export default function Home() {
           transition={{ delay: 0.28 }}
           className="text-muted-foreground text-sm tracking-wide"
         >
-          Harvest affinities. Forge cosmic artifacts. Claim Eminence.
+          Harness affinities. Forge cosmic artifacts. Claim Eminence.
         </motion.p>
 
         {/* Avatar selector — always visible */}
