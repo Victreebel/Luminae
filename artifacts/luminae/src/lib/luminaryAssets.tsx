@@ -1883,47 +1883,49 @@ export function LuminarySummonCutscene({
                       justifyContent: 'center',
                     }}
                   >
-                    {entityCutout ? (
-                      <img src={entityCutout} alt={luminaryName}
-                        style={{
-                          width: ENT_W, height: ENT_H,
-                          objectFit: 'contain', objectPosition: 'center',
-                          display: 'block',
-                          // Aggressive radial mask: opaque centre, fading to transparent
-                          // well before the image edges. Background pixels and rectangular
-                          // glow/fringe are dissolved into the portal field behind, reading
-                          // as designed rim-light rather than asset artifacts.
-                          maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
-                          WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                    <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
+                      {entityCutout ? (
+                        <img src={entityCutout} alt={luminaryName}
+                          style={{
+                            width: ENT_W, height: ENT_H,
+                            objectFit: 'contain', objectPosition: 'center',
+                            display: 'block',
+                            // Aggressive radial mask: opaque centre, fading to transparent
+                            // well before the image edges. Background pixels and rectangular
+                            // glow/fringe are dissolved into the portal field behind, reading
+                            // as designed rim-light rather than asset artifacts.
+                            maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                            WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                          }}
+                          draggable={false}
+                        />
+                      ) : (
+                        // Procedural SVG entity — transparent bg, no mask needed
+                        <EntityArt size={ENT_W} />
+                      )}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{
+                          opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
+                          scale:   isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
                         }}
-                        draggable={false}
+                        transition={{
+                          opacity: { duration: 2.0, ease: 'easeOut' },
+                          scale:   { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
+                        }}
+                        style={{
+                          position: 'absolute',
+                          width: 480, height: 560,
+                          top: '50%', left: '50%',
+                          x: '-50%', y: '-52%',
+                          borderRadius: '50%',
+                          background: 'transparent',
+                          boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
+                          filter: 'blur(4px)',
+                          zIndex: 2,
+                        }}
                       />
-                    ) : (
-                      // Procedural SVG entity — transparent bg, no mask needed
-                      <EntityArt size={ENT_W} />
-                    )}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{
-                        opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
-                        scale:   isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
-                      }}
-                      transition={{
-                        opacity: { duration: 2.0, ease: 'easeOut' },
-                        scale:   { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
-                      }}
-                      style={{
-                        position: 'absolute',
-                        width: 480, height: 560,
-                        top: '50%', left: '50%',
-                        x: '-50%', y: '-52%',
-                        borderRadius: '50%',
-                        background: 'transparent',
-                        boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
-                        filter: 'blur(4px)',
-                        zIndex: 999,
-                      }}
-                    />
+                    </div>
                   </motion.div>
 
                 </div>
