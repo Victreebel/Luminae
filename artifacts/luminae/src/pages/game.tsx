@@ -736,6 +736,7 @@ export default function GameBoard() {
   const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
@@ -1623,7 +1624,6 @@ export default function GameBoard() {
 
   const canPlan = !isMyTurn && state.status === 'playing' && !!me;
   const myPlannedAction = (me as any)?.plannedAction ?? null;
-  const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
   const eminenceBreakdown: EminenceBreakdown = useMemo(() => {
     const artifacts = (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0);
     const luminaries = (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
