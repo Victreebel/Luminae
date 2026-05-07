@@ -97,6 +97,43 @@ function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
   );
 }
 
+function BaseDialog({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-white">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+          >
+            Close
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+type EminenceBreakdown = {
+  artifacts: number;
+  luminaries: number;
+  other: number;
+};
+
 function CrystalIcon({
   color, count, onClick, selectable, selected, size = 40,
 }: {
@@ -1586,6 +1623,16 @@ export default function GameBoard() {
 
   const canPlan = !isMyTurn && state.status === 'playing' && !!me;
   const myPlannedAction = (me as any)?.plannedAction ?? null;
+  const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
+  const eminenceBreakdown: EminenceBreakdown = useMemo(() => {
+    const artifacts = (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0);
+    const luminaries = (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
+      const lum = state.luminaries.find((l) => l.id === lumId);
+      return sum + (lum?.lumens ?? 0);
+    }, 0);
+    const other = Math.max(0, (me?.lumens ?? 0) - artifacts - luminaries);
+    return { artifacts, luminaries, other };
+  }, [me?.claimedLuminaryIds, me?.lumens, me?.purchasedCards, state.luminaries]);
 
   const handleToggleLuminaryAffinity = async (luminaryId: string, affinity: string) => {
     try {
@@ -2510,11 +2557,16 @@ export default function GameBoard() {
               <span className="text-xs font-semibold truncate">{me.playerName}</span>
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
-            <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => setShowEminenceBreakdown(true)}
+              className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              title="View eminence breakdown"
+            >
               <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> Affinity</span>
               <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
               <Sparkles className="h-3 w-3 text-primary" />
-            </div>
+            </button>
           </div>
           {/* Planned move status row */}
           {myPlannedAction && (
@@ -3125,6 +3177,33 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <BaseDialog
+        open={showEminenceBreakdown}
+        onClose={() => setShowEminenceBreakdown(false)}
+        title="Eminence breakdown"
+      >
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+            <span className="text-white/70">Artifacts</span>
+            <span className="font-bold text-white">+{eminenceBreakdown.artifacts}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+            <span className="text-white/70">Luminaries</span>
+            <span className="font-bold text-white">+{eminenceBreakdown.luminaries}</span>
+          </div>
+          {eminenceBreakdown.other > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+              <span className="text-white/70">Other</span>
+              <span className="font-bold text-white">+{eminenceBreakdown.other}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+            <span className="text-primary/80">Total</span>
+            <span className="font-bold text-primary">{me?.lumens ?? 0}</span>
+          </div>
+        </div>
+      </BaseDialog>
 
       {/* ── Rules Sheet ── */}
       <AnimatePresence>
