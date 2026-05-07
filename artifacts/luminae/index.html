@@ -9,20 +9,35 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
 
-    <!-- PWA / homescreen -->
+    <!-- PWA manifest — injected by vite-plugin-pwa in production builds -->
     <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme / status bar -->
     <meta name="theme-color" content="#0a0c14" />
+
+    <!-- Android / Chrome install prompt -->
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS / Safari homescreen -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Luminae" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Prevent phone-number linkification on iOS -->
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- Open Graph / social -->
     <meta property="og:title" content="Luminae" />
     <meta property="og:description" content="Forge cosmic affinities. Claim eminence." />
-    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:image" content="/opengraph.jpg" />
     <meta property="og:type" content="website" />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Luminae" />
+    <meta name="twitter:description" content="Forge cosmic affinities. Claim eminence." />
+    <meta name="twitter:image" content="/opengraph.jpg" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

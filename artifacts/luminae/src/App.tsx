@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Lobby from "@/pages/lobby";
 import Game from "@/pages/game";
+import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -70,6 +71,7 @@ function App() {
             </div>
           </WouterRouter>
           <Toaster />
+          <PwaUpdatePrompt />
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>
