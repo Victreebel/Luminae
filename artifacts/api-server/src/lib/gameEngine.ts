@@ -268,12 +268,114 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_null",
     name: "The Null Sovereign",
     domain: "Transcendence",
-    lumens: 5,
+    lumens: 4,
     requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
     flavor: "Beyond the final star, past the edge of the last dark, something waits that was never born and cannot die.",
     summonColor: "#0f172a",
     summonSecondaryColor: "#a8b8e8",
     auraStyle: "null",
+  },
+  // ── Mono-color Luminaries (2 Eminence) ──────────────────────────────────────
+  {
+    id: "lum_tide",
+    name: "The Tide Architect",
+    domain: "Tides",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "The sea does not rage. It simply rises.",
+    summonColor: "#60a5fa",
+    summonSecondaryColor: "#e2e8f0",
+    auraStyle: "tide",
+  },
+  {
+    id: "lum_root",
+    name: "The Root Ancient",
+    domain: "Growth",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Before the first cities rose, the roots were already old.",
+    summonColor: "#4ade80",
+    summonSecondaryColor: "#ef4444",
+    auraStyle: "root",
+  },
+  {
+    id: "lum_void",
+    name: "The Void Warden",
+    domain: "Void",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
+    flavor: "In the space between stars, something watches without eyes.",
+    summonColor: "#4c1d95",
+    summonSecondaryColor: "#0a0a14",
+    auraStyle: "void",
+  },
+  {
+    id: "lum_radiant",
+    name: "The Radiant Keeper",
+    domain: "Light",
+    lumens: 2,
+    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
+    flavor: "She holds back the dark not with fire, but with patience.",
+    summonColor: "#fef9c3",
+    summonSecondaryColor: "#2ecc71",
+    auraStyle: "radiant",
+  },
+  // ── Dual-color Luminaries (3 Eminence) ──────────────────────────────────────
+  {
+    id: "lum_astral",
+    name: "The Astral Weaver",
+    domain: "Stars",
+    lumens: 3,
+    requirements: { ruby: 3, sapphire: 3, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Where stellar fire meets the deep cold, the astral web is woven.",
+    summonColor: "#f43f5e",
+    summonSecondaryColor: "#3d6bff",
+    auraStyle: "astral",
+  },
+  {
+    id: "lum_pale",
+    name: "The Pale Merchant",
+    domain: "Balance",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
+    flavor: "Every transaction is a small death. Every debt, a small birth.",
+    summonColor: "#cbd5e1",
+    summonSecondaryColor: "#0a0a14",
+    auraStyle: "pale",
+  },
+  {
+    id: "lum_bloom",
+    name: "The Bloom Tyrant",
+    domain: "Wildgrowth",
+    lumens: 3,
+    requirements: { ruby: 4, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "She tends the garden of conflict and harvests its strange flowers.",
+    summonColor: "#86efac",
+    summonSecondaryColor: "#7f1d1d",
+    auraStyle: "bloom",
+  },
+  {
+    id: "lum_compass",
+    name: "The Stellar Guide",
+    domain: "Navigation",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 4, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "The shortest path between two stars is a story.",
+    summonColor: "#38bdf8",
+    summonSecondaryColor: "#2ecc71",
+    auraStyle: "compass",
+  },
+  // ── Triple-color Luminary (4 Eminence) ──────────────────────────────────────
+  {
+    id: "lum_oracle",
+    name: "The Cosmic Oracle",
+    domain: "Prophecy",
+    lumens: 4,
+    requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "She sees what will be, and what might have been, and cannot tell the difference.",
+    summonColor: "#fbbf24",
+    summonSecondaryColor: "#ef4444",
+    auraStyle: "oracle",
   },
 ];
 
@@ -400,12 +502,26 @@ export interface ActionPayload {
 // Maps a Luminary's summonColor hex to its closest CrystalColor affinity.
 // Used to pick a sensible default active affinity when claiming a Luminary.
 const SUMMON_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
+  // Ruby / Radiance
   "#f43f5e": "ruby",
-  "#ff5a3c": "ruby",
+  "#ff5a3c": "ruby",   // lum_ember
+  "#f43f5e": "ruby",   // lum_astral
+  "#fbbf24": "ruby",   // lum_oracle (ruby is first eligible)
+  // Sapphire / Continuum
   "#3d6bff": "sapphire",
+  "#60a5fa": "sapphire", // lum_tide
+  "#38bdf8": "sapphire", // lum_compass
+  // Emerald / Verdance
   "#2ecc71": "emerald",
+  "#4ade80": "emerald",  // lum_root
+  "#86efac": "emerald",  // lum_bloom (emerald is first eligible)
+  // Onyx / Abyss
   "#7b1fa2": "onyx",
+  "#4c1d95": "onyx",     // lum_void
+  // Pearl / Singularity
   "#a8b8e8": "pearl",
+  "#fef9c3": "pearl",    // lum_radiant
+  "#cbd5e1": "pearl",    // lum_pale (pearl is first eligible)
 };
 
 function defaultActiveAffinity(

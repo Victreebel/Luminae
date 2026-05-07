@@ -786,22 +786,22 @@ const K8X = 38;   const K8Y = 136;  // second crack main  Q→BA
 const PANEL_PIECES = [
   // TL — top-left wedge (7 vertices)
   { clip: 'polygon(0% 0%, 35.7% 0%, 28.6% 15%, 50% 42.5%, 39.3% 40%, 19.6% 37.5%, 0% 40%)',
-    dx:  -78, dy:  -68, rotateX: -18, rotateY:  14, rotateZ:  16 },
+    dx:  -42, dy:  -36, rotateX: -12, rotateY:   9, rotateZ:  10 },
   // TR — top-right slab (6 vertices)
   { clip: 'polygon(35.7% 0%, 100% 0%, 100% 35%, 60.7% 35%, 50% 42.5%, 28.6% 15%)',
-    dx:   74, dy:  -64, rotateX: -15, rotateY: -16, rotateZ: -14 },
+    dx:   40, dy:  -33, rotateX: -10, rotateY: -10, rotateZ:  -9 },
   // LM — left-centre strip (8 vertices)
   { clip: 'polygon(0% 40%, 19.6% 37.5%, 39.3% 40%, 50% 42.5%, 41.1% 57.5%, 25% 72.5%, 16.1% 76.25%, 0% 80%)',
-    dx:  -82, dy:    6, rotateX:   5, rotateY:  17, rotateZ:  11 },
+    dx:  -44, dy:    4, rotateX:   4, rotateY:  11, rotateZ:   7 },
   // RM — right-centre slab (8 vertices)
   { clip: 'polygon(100% 35%, 100% 72.5%, 71.4% 70%, 46.4% 70%, 25% 72.5%, 41.1% 57.5%, 50% 42.5%, 60.7% 35%)',
-    dx:   84, dy:    4, rotateX:  -4, rotateY: -18, rotateZ:  -9 },
+    dx:   46, dy:    3, rotateX:  -3, rotateY: -12, rotateZ:  -6 },
   // BL — bottom-left wedge (6 vertices)
   { clip: 'polygon(25% 72.5%, 33.9% 85%, 39.3% 100%, 0% 100%, 0% 80%, 16.1% 76.25%)',
-    dx:  -65, dy:   74, rotateX:  20, rotateY:  12, rotateZ:  18 },
+    dx:  -34, dy:   38, rotateX:  13, rotateY:   8, rotateZ:  12 },
   // BR — bottom-right slab (7 vertices)
   { clip: 'polygon(25% 72.5%, 46.4% 70%, 71.4% 70%, 100% 72.5%, 100% 100%, 39.3% 100%, 33.9% 85%)',
-    dx:   62, dy:   72, rotateX:  17, rotateY: -14, rotateZ: -16 },
+    dx:   32, dy:   37, rotateX:  11, rotateY:  -9, rotateZ: -10 },
 ] as const;
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
@@ -1598,20 +1598,29 @@ export function LuminarySummonCutscene({
 
       {/* ── Cosmic light beneath shattering panels ────────────────────── */}
       {/* OUTSIDE camera layer — full screen scale, not shrunk by camera. */}
+      {/* Starts tiny at the panel centre and grows outward as chunks peel */}
+      {/* apart, creating the "expanding void / portal core" effect.       */}
       <AnimatePresence>
         {isShatterVisible && (
           <motion.div key="cosmiclight" className="absolute pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isFlashing ? 0 : [0, 0.90, 1.0, 0.80] }}
-            exit={{ opacity: 0, transition: { duration: 0.25 } }}
-            transition={{ duration: 0.55, ease: 'easeOut', times: [0, 0.18, 0.50, 1.0] }}
+            initial={{ opacity: 0, scale: 0.14 }}
+            animate={{
+              opacity: isFlashing ? 0 : [0, 0.80, 1.0, 0.92],
+              scale:   isFlashing ? 0.30 : [0.14, 0.55, 1.0, 1.12],
+            }}
+            exit={{ opacity: 0, transition: { duration: 0.30 } }}
+            transition={{
+              opacity: { duration: 0.75, times: [0, 0.18, 0.52, 1.0], ease: 'easeOut' },
+              scale:   { duration: 1.80, times: [0, 0.22, 0.64, 1.0], ease: [0.16, 1, 0.3, 1] },
+            }}
             style={{
-              width: BOARD_CARD_W * 5, height: BOARD_CARD_H * 5,
-              left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.5,
+              width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
+              left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 38% 42% at 50% 40%, #ffffff 0%, ${primaryColor}ee 20%, ${primaryColor}aa 44%, ${primaryColor}44 66%, transparent 84%)`,
-              filter: 'blur(8px)',
+              background: `radial-gradient(ellipse 34% 38% at 50% 42%, #ffffff 0%, ${primaryColor}ff 14%, ${primaryColor}cc 32%, ${primaryColor}66 56%, transparent 80%)`,
+              filter: 'blur(10px)',
               borderRadius: '50%',
+              transformOrigin: '50% 50%',
             }}
           />
         )}
@@ -1635,36 +1644,41 @@ export function LuminarySummonCutscene({
             initial={{
               x: 0, y: 0,
               rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
-              filter: `brightness(1.1) drop-shadow(2px -1px 0px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 0px rgba(0,0,22,0.58))`,
+              filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
             animate={{
-              // Snaps to 2.6× overshoot at ~250ms (aligned with glass-shatter audio beat),
-              // then floats slowly back to the final drift position — no falling.
-              x: [0, piece.dx * 2.6, piece.dx],
-              y: [0, piece.dy * 2.2, piece.dy],
-              rotateX: [0, piece.rotateX * 2.5, piece.rotateX],
-              rotateY: [0, piece.rotateY * 2.5, piece.rotateY],
-              rotateZ: [0, piece.rotateZ * 0.9, piece.rotateZ * 1.8 + (i % 2 === 0 ? 22 : -18)],
-              opacity: [1, 1, 0.90, 0],
+              // Micro-jolt at crack moment (8% of travel in first ~0.3 s),
+              // then the pieces peel slowly outward under magical suspension.
+              // No projectile overshoot — the panel is being consumed, not shattered.
+              x: [0, piece.dx * 0.08, piece.dx],
+              y: [0, piece.dy * 0.08, piece.dy],
+              rotateX: [0, piece.rotateX],
+              rotateY: [0, piece.rotateY],
+              rotateZ: [0, piece.rotateZ],
+              // Stay fully opaque through the "beat" (55%), then dissolve bright.
+              opacity: [1, 1, 1, 0.92, 0.40, 0],
+              // Filter arc: normal → affinity glow builds → pulse peak → white-hot
+              // burn-out. Chunks never go dark — they dissolve INTO affinity light.
               filter: [
-                `brightness(1.2) drop-shadow(2px -1px 1px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 1px rgba(0,0,22,0.58))`,
-                `brightness(4.8) drop-shadow(5px -4px 4px rgba(${pRgb},0.95)) drop-shadow(-5px 4px 4px rgba(0,0,32,0.85))`,
-                `brightness(1.8) drop-shadow(3px -2px 2px rgba(${pRgb},0.65)) drop-shadow(-3px 2px 2px rgba(0,0,22,0.58))`,
-                `brightness(0.4) drop-shadow(1px 0px 0px rgba(${pRgb},0.12)) drop-shadow(-1px 0px 0px rgba(0,0,22,0.22))`,
+                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
+                `brightness(1.5) drop-shadow(3px -3px 5px rgba(${pRgb},0.78)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
+                `brightness(2.2) drop-shadow(5px -4px 8px rgba(${pRgb},0.90)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.36))`,
+                `brightness(4.0) drop-shadow(0 0 12px rgba(${pRgb},0.98)) drop-shadow(0 0 22px rgba(${pRgb},0.62))`,
+                `brightness(6.5) drop-shadow(0 0 18px rgba(${pRgb},1.0)) drop-shadow(0 0 34px rgba(255,255,255,0.72))`,
+                `brightness(9.0) drop-shadow(0 0 24px rgba(${pRgb},1.0)) drop-shadow(0 0 44px rgba(255,255,255,0.90))`,
               ],
             }}
             transition={{
-              duration: 3.20,
-              delay: i * 0.028,
-              // Segment 1 — linear: instant departure at full velocity (snap)
-              // Segment 2 — slow ease-out: piece floats to rest position
-              x:       { times: [0, 0.08, 1.0], ease: ['linear', [0.05, 0.52, 0.15, 1.0]] },
-              y:       { times: [0, 0.08, 1.0], ease: ['linear', [0.05, 0.52, 0.15, 1.0]] },
-              rotateX: { times: [0, 0.09, 1.0], ease: ['linear', 'easeOut'] },
-              rotateY: { times: [0, 0.09, 1.0], ease: ['linear', 'easeOut'] },
-              rotateZ: { times: [0, 0.10, 1.0], ease: ['linear', 'easeOut'] },
-              opacity: { times: [0, 0.08, 0.50, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.08, 0.50, 1.0], ease: 'easeInOut' },
+              duration: 5.00,
+              delay: i * 0.04,
+              // Crack jolt then slow float
+              x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              opacity: { times: [0, 0.14, 0.55, 0.70, 0.87, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.18, 0.45, 0.65, 0.80, 1.0], ease: 'easeInOut' },
             }}
           >
             {/* Panel artwork — the face of the vessel shard */}
@@ -1680,23 +1694,27 @@ export function LuminarySummonCutscene({
             ) : (
               <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
             )}
-            {/* Affinity-colour transmutation — chunk is "consumed" by the Luminary's energy */}
+            {/* Affinity-colour transmutation — the vessel material is consumed by the
+                Luminary's energy. Ramps to full opacity (solid affinity colour) before
+                the parent chunk fades, so the shard visibly "becomes" pure light before
+                it dissolves. Screen blend means at opacity=1 the artwork is fully washed
+                into the affinity hue and the parent brightness boosts push it to white. */}
             <motion.div
               className="absolute inset-0 pointer-events-none"
               style={{ background: primaryColor, mixBlendMode: 'screen' }}
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0, 0.50, 0.88, 0.60, 0] }}
+              animate={{ opacity: [0, 0, 0.18, 0.70, 1.00, 1.00, 0.85] }}
               transition={{
-                duration: 3.50,
-                times: [0, 0.18, 0.40, 0.60, 0.80, 1.0],
+                duration: 5.20,
+                times: [0, 0.12, 0.38, 0.60, 0.78, 0.90, 1.0],
                 ease: 'easeInOut',
-                delay: i * 0.055,
+                delay: i * 0.04,
               }}
             />
-            {/* Physical slab edge — Luminary-tinted bevel */}
+            {/* Physical slab edge — Luminary-tinted bevel, brightens with the chunk */}
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              boxShadow: `inset 0 0 0 1.5px rgba(${pRgb},0.75), inset 3px 3px 0 rgba(${pRgb},0.22), inset -3px -3px 0 rgba(0,0,20,0.60), inset 0 0 18px rgba(${pRgb},0.22)`,
+              boxShadow: `inset 0 0 0 1.5px rgba(${pRgb},0.80), inset 3px 3px 0 rgba(${pRgb},0.28), inset -3px -3px 0 rgba(0,0,20,0.55), inset 0 0 22px rgba(${pRgb},0.30)`,
             }} />
           </motion.div>
         ))}
