@@ -519,7 +519,7 @@ class GameAudio {
       const PRES   = 2540;
       const CRACK1 = 2580;
       const LEAK   = 3200;
-      const CRACK2 = 3840;
+      const CRACK2 = 3780;
       const CRACKS = 4200;
       const SHATT  = 5240;
       const FLASH  = 6080;

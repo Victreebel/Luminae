@@ -813,7 +813,7 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   pressure:     90,
   firstcrack:   320,  // primary fault + branch draw, then hold for suspense
   leaking:      850,  // energy bleeds through; sustained quiet-before-storm
-  secondcrack:  420,  // second branch crack appears; faint rays start seeping
+  secondcrack:  360,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
   shattering: 1000,
   flashing:    950,
