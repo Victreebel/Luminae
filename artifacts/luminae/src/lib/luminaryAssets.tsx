@@ -1184,7 +1184,7 @@ export function LuminarySummonCutscene({
                   ? (vesselGlow as unknown as string)
                   : '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
               }}
-              exit={{ scale: 1.12, opacity: 0, x: 0, y: 0, rotate: 0, transition: { duration: 0.30, ease: 'easeIn' } }}
+              exit={{ opacity: 0, x: 0, y: 0, rotate: 0, transition: { duration: 0.06, ease: 'linear' } }}
               transition={{
                 scale:     { duration: 0.26 },
                 opacity:   { duration: 0.28 },
@@ -1638,31 +1638,33 @@ export function LuminarySummonCutscene({
               filter: `brightness(1.1) drop-shadow(2px -1px 0px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 0px rgba(0,0,22,0.58))`,
             }}
             animate={{
-              // Overshoot 2.4× then drift back to final resting position — no falling
-              x: [0, piece.dx * 2.4, piece.dx],
-              y: [0, piece.dy * 2.0, piece.dy],
-              rotateX: [0, piece.rotateX * 2.2, piece.rotateX],
-              rotateY: [0, piece.rotateY * 2.2, piece.rotateY],
-              rotateZ: [0, piece.rotateZ * 0.9, piece.rotateZ * 1.8 + (i % 2 === 0 ? 20 : -16)],
+              // Snaps to 2.6× overshoot at ~250ms (aligned with glass-shatter audio beat),
+              // then floats slowly back to the final drift position — no falling.
+              x: [0, piece.dx * 2.6, piece.dx],
+              y: [0, piece.dy * 2.2, piece.dy],
+              rotateX: [0, piece.rotateX * 2.5, piece.rotateX],
+              rotateY: [0, piece.rotateY * 2.5, piece.rotateY],
+              rotateZ: [0, piece.rotateZ * 0.9, piece.rotateZ * 1.8 + (i % 2 === 0 ? 22 : -18)],
               opacity: [1, 1, 0.90, 0],
               filter: [
                 `brightness(1.2) drop-shadow(2px -1px 1px rgba(${pRgb},0.65)) drop-shadow(-2px 1px 1px rgba(0,0,22,0.58))`,
-                `brightness(4.5) drop-shadow(5px -4px 4px rgba(${pRgb},0.95)) drop-shadow(-5px 4px 4px rgba(0,0,32,0.85))`,
+                `brightness(4.8) drop-shadow(5px -4px 4px rgba(${pRgb},0.95)) drop-shadow(-5px 4px 4px rgba(0,0,32,0.85))`,
                 `brightness(1.8) drop-shadow(3px -2px 2px rgba(${pRgb},0.65)) drop-shadow(-3px 2px 2px rgba(0,0,22,0.58))`,
                 `brightness(0.4) drop-shadow(1px 0px 0px rgba(${pRgb},0.12)) drop-shadow(-1px 0px 0px rgba(0,0,22,0.22))`,
               ],
             }}
             transition={{
-              duration: 3.00,
-              ease: [0.05, 0.18, 0.52, 1],
+              duration: 3.20,
               delay: i * 0.028,
-              x:       { times: [0, 0.16, 1.0] },
-              y:       { times: [0, 0.16, 1.0] },
-              rotateX: { times: [0, 0.18, 1.0] },
-              rotateY: { times: [0, 0.18, 1.0] },
-              rotateZ: { times: [0, 0.22, 1.0] },
-              opacity: { times: [0, 0.12, 0.52, 1.0] },
-              filter:  { times: [0, 0.12, 0.52, 1.0] },
+              // Segment 1 — linear: instant departure at full velocity (snap)
+              // Segment 2 — slow ease-out: piece floats to rest position
+              x:       { times: [0, 0.08, 1.0], ease: ['linear', [0.05, 0.52, 0.15, 1.0]] },
+              y:       { times: [0, 0.08, 1.0], ease: ['linear', [0.05, 0.52, 0.15, 1.0]] },
+              rotateX: { times: [0, 0.09, 1.0], ease: ['linear', 'easeOut'] },
+              rotateY: { times: [0, 0.09, 1.0], ease: ['linear', 'easeOut'] },
+              rotateZ: { times: [0, 0.10, 1.0], ease: ['linear', 'easeOut'] },
+              opacity: { times: [0, 0.08, 0.50, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.08, 0.50, 1.0], ease: 'easeInOut' },
             }}
           >
             {/* Panel artwork — the face of the vessel shard */}
@@ -1716,9 +1718,6 @@ export function LuminarySummonCutscene({
 
       {/* ── Board vignette dimmer — dims edges, keeps entity focal ─────────────── */}
       {/* Radial gradient: lighter at center (entity zone), darker at edges.      */}
-      {/* Hides any residual semi-transparent tint from baked-in asset glow.      */}
-      {/* Mounted only at 'revealed'/'fading' + 1.85 s entrance delay so it does */}
-      {/* not appear while shatter chunks are still drifting.                     */}
       <AnimatePresence>
         {(isRevealedActive || isFading) && (
           <motion.div
@@ -1727,7 +1726,7 @@ export function LuminarySummonCutscene({
             initial={{ opacity: 0 }}
             animate={{ opacity: isFading ? 0 : 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: isFading ? 0.55 : 0.80, delay: isFading ? 0 : 1.85, ease: 'easeOut' }}
+            transition={{ duration: isFading ? 0.55 : 1.20, delay: isFading ? 0 : 0.40, ease: 'easeOut' }}
             style={{
               background: 'radial-gradient(ellipse 54% 58% at 50% 42%, rgba(0,0,10,0.22) 0%, rgba(0,0,10,0.70) 100%)',
             }}
@@ -1736,22 +1735,26 @@ export function LuminarySummonCutscene({
       </AnimatePresence>
 
       {/* ── Portal-style entity reveal ──────────────────────────────────────────── */}
-      {/* The Luminary manifests inside a large cosmic portal that blooms out of  */}
-      {/* the flash. The portal field is entirely procedural — no asset needed.  */}
-      {/* The entity image is masked with an aggressive radial ellipse so edge   */}
-      {/* artifacts dissolve into the portal and read as designed rim-light.     */}
-      {/* Works correctly even with opaque/imperfect entity assets.              */}
-      {/* Mounted at 'revealed'/'fading' with 1.85 s entrance delay so the       */}
-      {/* portal only becomes visible after all shatter chunks have fully faded. */}
+      {/* The Luminary manifests from the cosmic flash — it mounts during the     */}
+      {/* 'flashing' phase and starts as a near-white blurry haze (indistinguish- */}
+      {/* able from the bloom), then resolves over ~3 s into the fully formed     */}
+      {/* entity. The portal geometry is unreadable while shards are still in     */}
+      {/* the air; it only crystallises once the space has cleared.               */}
       <AnimatePresence>
-        {(isRevealedActive || isFading) && (
+        {isRevealed && (
           <motion.div
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0 }}
-            animate={isFading ? { opacity: 0 } : { opacity: 1 }}
-            transition={{ duration: isFading ? 0.55 : 0.60, delay: isFading ? 0 : 1.85, ease: isFading ? 'easeIn' : 'easeOut' }}
+            initial={{ opacity: 0, filter: 'brightness(8) blur(18px)' }}
+            animate={isFading
+              ? { opacity: 0, filter: 'brightness(1) blur(0px)' }
+              : { opacity: 1, filter: 'brightness(1) blur(0px)' }
+            }
+            transition={isFading
+              ? { duration: 0.55, ease: 'easeIn' }
+              : { duration: 3.20, delay: 0.30, ease: [0.12, 0, 0.88, 1] }
+            }
           >
             {/* Entrance scale + fly-in — unchanged */}
             <motion.div
