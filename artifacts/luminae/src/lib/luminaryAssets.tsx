@@ -1858,7 +1858,7 @@ export function LuminarySummonCutscene({
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 46%, ${glowColor}ff 0%, ${glowColor}dd 14%, ${glowColor}88 32%, ${primaryColor}44 54%, transparent 72%)`,
                       filter: 'blur(18px)',
-                      zIndex: 1,
+                      zIndex: 4,
                     }}
                   />
 
@@ -1882,7 +1882,7 @@ export function LuminarySummonCutscene({
                       background: 'transparent',
                       boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
                       filter: 'blur(4px)',
-                      zIndex: 2,
+                      zIndex: 5,
                     }}
                   />
 
