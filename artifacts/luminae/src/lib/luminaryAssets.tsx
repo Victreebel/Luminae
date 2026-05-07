@@ -2145,13 +2145,16 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               style={{
                 width: IDLE_W,
                 height: IDLE_H,
-                objectFit: 'cover',
+                objectFit: 'contain',
                 objectPosition: 'center top',
                 display: 'block',
-                // Fade to transparent in the lower third so the card's name /
-                // requirements row stays legible underneath the entity.
-                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                // Aggressive elliptical mask: opaque at entity centre, dissolving
+                // all four edges into transparency. Matches the cutscene reveal
+                // mask so the figure floats without any rectangular frame artifact.
+                // Bottom fades earlier (60% vs 76% for sides/top) to keep the
+                // card's name / requirements row legible underneath.
+                maskImage: 'radial-gradient(ellipse 72% 78% at 50% 38%, black 18%, rgba(0,0,0,0.88) 38%, rgba(0,0,0,0.45) 56%, rgba(0,0,0,0.10) 70%, transparent 82%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 72% 78% at 50% 38%, black 18%, rgba(0,0,0,0.88) 38%, rgba(0,0,0,0.45) 56%, rgba(0,0,0,0.10) 70%, transparent 82%)',
               }}
             />
           ) : (
