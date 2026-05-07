@@ -2557,16 +2557,18 @@ export default function GameBoard() {
               <span className="text-xs font-semibold truncate">{me.playerName}</span>
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowEminenceBreakdown(true)}
-              className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-              title="View eminence breakdown"
-            >
+            <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
               <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> Affinity</span>
-              <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
-              <Sparkles className="h-3 w-3 text-primary" />
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowEminenceBreakdown(true)}
+                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:text-foreground transition-colors"
+                title="View eminence breakdown"
+              >
+                <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
+                <Sparkles className="h-3 w-3 text-primary" />
+              </button>
+            </div>
           </div>
           {/* Planned move status row */}
           {myPlannedAction && (
