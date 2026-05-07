@@ -1654,7 +1654,7 @@ export function LuminarySummonCutscene({
               // No projectile overshoot — the panel is being consumed, not shattered.
               x: [0, piece.dx * 0.11, piece.dx],
               y: [0, piece.dy * 0.11, piece.dy],
-              z: [0, (piece as { z?: number }).z ?? (i % 2 === 0 ? 80 : -80), (piece as { z?: number }).z ?? (i % 2 === 0 ? 180 : -180)],
+              z: [0, piece.z ?? (i % 2 === 0 ? 80 : -80), piece.z ?? (i % 2 === 0 ? 180 : -180)],
               rotateX: [0, piece.rotateX],
               rotateY: [0, piece.rotateY],
               rotateZ: [0, piece.rotateZ],
@@ -1920,8 +1920,8 @@ export function LuminarySummonCutscene({
                             // well before the image edges. Background pixels and rectangular
                             // glow/fringe are dissolved into the portal field behind, reading
                             // as designed rim-light rather than asset artifacts.
-                            maskImage: 'radial-gradient(ellipse 70% 76% at 50% 42%, black 18%, rgba(0,0,0,0.96) 36%, rgba(0,0,0,0.62) 56%, transparent 80%)',
-                            WebkitMaskImage: 'radial-gradient(ellipse 70% 76% at 50% 42%, black 18%, rgba(0,0,0,0.96) 36%, rgba(0,0,0,0.62) 56%, transparent 80%)',
+                            maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                            WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                           }}
                           draggable={false}
                         />
@@ -2160,8 +2160,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 display: 'block',
                 // Fade to transparent in the lower third so the card's name /
                 // requirements row stays legible underneath the entity.
-                maskImage: 'radial-gradient(ellipse 92% 98% at 50% 28%, black 14%, rgba(0,0,0,0.96) 40%, rgba(0,0,0,0.7) 58%, rgba(0,0,0,0.22) 74%, transparent 86%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 92% 98% at 50% 28%, black 14%, rgba(0,0,0,0.96) 40%, rgba(0,0,0,0.7) 58%, rgba(0,0,0,0.22) 74%, transparent 86%)',
+                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
               }}
             />
           ) : (
