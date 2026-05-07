@@ -556,7 +556,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_root:    { id: 'lum_root',    primaryColor: '#2ecc71', secondaryColor: '#ef4444', glowColor: 'rgba(46,204,113,0.55)',  EntityArt: RootEntity    },
   lum_void:    { id: 'lum_void',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.55)',  EntityArt: VoidEntity    },
   lum_radiant: { id: 'lum_radiant', primaryColor: '#e2e8f0', secondaryColor: '#2ecc71', glowColor: 'rgba(226,232,240,0.5)',  EntityArt: RadiantEntity },
-  lum_astral:  { id: 'lum_astral',  primaryColor: '#a78bfa', secondaryColor: '#1e3a8a', glowColor: 'rgba(167,139,250,0.55)', EntityArt: AstralEntity  },
+  lum_astral:  { id: 'lum_astral',  primaryColor: '#ef4444', secondaryColor: '#3d6bff', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: AstralEntity  },
   lum_forge:   { id: 'lum_forge',   primaryColor: '#166534', secondaryColor: '#1c1917', glowColor: 'rgba(22,101,52,0.6)',    EntityArt: ForgeEntity   },
   lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity    },
   lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity   },
