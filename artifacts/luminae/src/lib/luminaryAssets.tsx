@@ -1255,46 +1255,134 @@ export function LuminarySummonCutscene({
                   </defs>
 
                   {/* ── First crack: thunderbolt T1→kinks→A1→kinks→A2 ─────── */}
-                  {/* Single jagged lightning bolt — no Y fork.                   */}
-                  {/* Sequence: 1) white fracture snaps in with no glow            */}
-                  {/*           2) affinity-color bloom spikes (pulse)             */}
-                  {/*           3) thick residual energy wound stays glowing       */}
-                  {/* Kink points (not part of shard geometry, visual only):       */}
-                  {/*   P1(50,13) P2(14,31) P3(52,44) → A1(38,50) →              */}
-                  {/*   P4(64,41) → A2(72,38)                                     */}
-                  {/* 1 · Crisp white thunderbolt — appears instantly, zero glow  */}
+                  {/* Visual: thin white fracture snaps in first; affinity glow   */}
+                  {/* chases its tip (pathLength-animated, delayed); residual     */}
+                  {/* wound glow + tinted seam settle after the chase passes.     */}
+                  {/* Five long jagged branches spread from the junction nodes,   */}
+                  {/* each using the same white-first / chasing-glow pattern.     */}
+
+                  {/* 1 · Crisp white fracture — snaps in, leads the glow        */}
                   <motion.path
                     d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
-                    stroke="white" strokeWidth="2.6" fill="none" filter="url(#cgb)"
+                    stroke="white" strokeWidth="1.6" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 1.0, 1.0, 1.0] }}
-                    transition={{ duration: 0.11, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 1.0, 0.96, 0.92] }}
+                    transition={{ duration: 0.10, ease: 'easeOut' }}
                   />
-                  {/* 2 · Affinity-color bloom pulse — spikes after white appears */}
+                  {/* 2 · Chasing affinity glow — trails the white tip           */}
                   <motion.path
                     d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
-                    stroke={primaryColor} strokeWidth="52" fill="none" strokeLinecap="round"
-                    filter="url(#crackglow)"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0, 0.82, 0.28, 0] }}
-                    transition={{ duration: 0.52, delay: 0.08, ease: 'easeOut', times: [0, 0.20, 0.58, 1] }}
-                  />
-                  {/* 3 · Thick residual energy glow — "wound leaking light"      */}
-                  <motion.path
-                    d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
-                    stroke={primaryColor} strokeWidth="28" fill="none" strokeLinecap="round"
-                    filter="url(#crackglow)"
+                    stroke={primaryColor} strokeWidth="26" fill="none" filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.50, 0.76, 0.64] }}
-                    transition={{ duration: 0.72, delay: 0.13, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0.80, 0.28, 0] }}
+                    transition={{
+                      pathLength: { duration: 0.24, delay: 0.04, ease: 'easeOut' },
+                      opacity:    { duration: 0.56, delay: 0.04, times: [0, 0.18, 0.60, 1.0] },
+                    }}
                   />
-                  {/* 4 · Tight tinted energy line — saturated primaryColor seam  */}
+                  {/* 3 · Thick residual wound glow — stays after chase passes   */}
                   <motion.path
                     d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
-                    stroke={primaryColor} strokeWidth="7" fill="none" strokeLinecap="round"
+                    stroke={primaryColor} strokeWidth="18" fill="none" filter="url(#crackglow)"
                     initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.42, 0.68, 0.58] }}
-                    transition={{ duration: 0.68, delay: 0.16, ease: 'easeOut' }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.52, 0.72, 0.62] }}
+                    transition={{ duration: 0.66, delay: 0.12, ease: 'easeOut' }}
+                  />
+                  {/* 4 · Tight tinted seam — saturated primaryColor at core     */}
+                  <motion.path
+                    d={`M${T1X},${T1Y} L50,13 L14,31 L52,44 L${A1X},${A1Y} L64,41 L${A2X},${A2Y}`}
+                    stroke={primaryColor} strokeWidth="5" fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.62, 0.55] }}
+                    transition={{ duration: 0.62, delay: 0.15, ease: 'easeOut' }}
+                  />
+
+                  {/* ── First-crack branches: long jagged fine fractures ─────── */}
+                  {/* Each: white draws first → chasing affinity glow trails tip  */}
+
+                  {/* BR1 · upper-right off (50,13) → top edge */}
+                  <motion.path d="M50,13 L66,5 L84,0"
+                    stroke="white" strokeWidth="0.72" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.82, 0.74] }}
+                    transition={{ duration: 0.12, delay: 0.08, ease: 'easeOut' }}
+                  />
+                  <motion.path d="M50,13 L66,5 L84,0"
+                    stroke={primaryColor} strokeWidth="8" fill="none" filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.44, 0.12, 0] }}
+                    transition={{
+                      pathLength: { duration: 0.22, delay: 0.10, ease: 'easeOut' },
+                      opacity:    { duration: 0.44, delay: 0.10, times: [0, 0.22, 0.65, 1] },
+                    }}
+                  />
+
+                  {/* BR2 · upper-left off (14,31) → left edge */}
+                  <motion.path d="M14,31 L4,22 L0,14"
+                    stroke="white" strokeWidth="0.68" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.78, 0.70] }}
+                    transition={{ duration: 0.11, delay: 0.09, ease: 'easeOut' }}
+                  />
+                  <motion.path d="M14,31 L4,22 L0,14"
+                    stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.40, 0.10, 0] }}
+                    transition={{
+                      pathLength: { duration: 0.20, delay: 0.11, ease: 'easeOut' },
+                      opacity:    { duration: 0.42, delay: 0.11, times: [0, 0.24, 0.66, 1] },
+                    }}
+                  />
+
+                  {/* BR3 · lower-left off (14,31) → left edge */}
+                  <motion.path d="M14,31 L4,44 L0,57"
+                    stroke="white" strokeWidth="0.64" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.74, 0.66] }}
+                    transition={{ duration: 0.12, delay: 0.09, ease: 'easeOut' }}
+                  />
+                  <motion.path d="M14,31 L4,44 L0,57"
+                    stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.38, 0.10, 0] }}
+                    transition={{
+                      pathLength: { duration: 0.20, delay: 0.11, ease: 'easeOut' },
+                      opacity:    { duration: 0.42, delay: 0.11, times: [0, 0.24, 0.66, 1] },
+                    }}
+                  />
+
+                  {/* BR4 · long upper-right off (52,44) → upper-right corner */}
+                  <motion.path d="M52,44 L70,34 L90,22 L106,14"
+                    stroke="white" strokeWidth="0.68" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.76, 0.68] }}
+                    transition={{ duration: 0.15, delay: 0.09, ease: 'easeOut' }}
+                  />
+                  <motion.path d="M52,44 L70,34 L90,22 L106,14"
+                    stroke={primaryColor} strokeWidth="8" fill="none" filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.42, 0.12, 0] }}
+                    transition={{
+                      pathLength: { duration: 0.26, delay: 0.11, ease: 'easeOut' },
+                      opacity:    { duration: 0.48, delay: 0.11, times: [0, 0.20, 0.62, 1] },
+                    }}
+                  />
+
+                  {/* BR5 · long lower-left off A1(38,50) → lower-left */}
+                  <motion.path d={`M${A1X},${A1Y} L24,65 L12,82 L4,98`}
+                    stroke="white" strokeWidth="0.64" fill="none" filter="url(#cgb)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.72, 0.64] }}
+                    transition={{ duration: 0.16, delay: 0.10, ease: 'easeOut' }}
+                  />
+                  <motion.path d={`M${A1X},${A1Y} L24,65 L12,82 L4,98`}
+                    stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#crackglow)"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: [0, 0.38, 0.10, 0] }}
+                    transition={{
+                      pathLength: { duration: 0.26, delay: 0.12, ease: 'easeOut' },
+                      opacity:    { duration: 0.48, delay: 0.12, times: [0, 0.22, 0.65, 1] },
+                    }}
                   />
 
                   {/* ── Light leaking through cracks (leaking+) ─────────────── */}
@@ -1428,6 +1516,61 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 0.52, 0.70] }}
                         transition={{ duration: 0.30, delay: 0.48, ease: 'easeOut' }}
                       />
+
+                      {/* ── Fine fracture branches — long thin jagged, butt tips ─ */}
+                      {/* Each: white snaps first → chasing affinity glow trails.   */}
+
+                      {/* SC_BR1 · off A2(72,38) upper-right → top edge */}
+                      <motion.path d={`M${A2X},${A2Y} L84,24 L98,10 L108,0`}
+                        stroke="white" strokeWidth="0.66" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.72, 0.62] }}
+                        transition={{ duration: 0.16, delay: 0.22, ease: 'easeOut' }}
+                      />
+                      <motion.path d={`M${A2X},${A2Y} L84,24 L98,10 L108,0`}
+                        stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.36, 0.10, 0] }}
+                        transition={{
+                          pathLength: { duration: 0.26, delay: 0.24, ease: 'easeOut' },
+                          opacity:    { duration: 0.46, delay: 0.24, times: [0, 0.22, 0.64, 1] },
+                        }}
+                      />
+
+                      {/* SC_BR2 · off ZC(82,64) rightward → right edge */}
+                      <motion.path d={`M${ZCX},${ZCY} L96,54 L112,46`}
+                        stroke="white" strokeWidth="0.64" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.68, 0.58] }}
+                        transition={{ duration: 0.14, delay: 0.26, ease: 'easeOut' }}
+                      />
+                      <motion.path d={`M${ZCX},${ZCY} L96,54 L112,46`}
+                        stroke={primaryColor} strokeWidth="7" fill="none" filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.32, 0.08, 0] }}
+                        transition={{
+                          pathLength: { duration: 0.24, delay: 0.28, ease: 'easeOut' },
+                          opacity:    { duration: 0.44, delay: 0.28, times: [0, 0.24, 0.66, 1] },
+                        }}
+                      />
+
+                      {/* SC_BR3 · off A4(50,72) down-left */}
+                      <motion.path d={`M${A4X},${A4Y} L40,88 L32,108 L26,124`}
+                        stroke="white" strokeWidth="0.60" fill="none" filter="url(#cgb)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.64, 0.54] }}
+                        transition={{ duration: 0.18, delay: 0.30, ease: 'easeOut' }}
+                      />
+                      <motion.path d={`M${A4X},${A4Y} L40,88 L32,108 L26,124`}
+                        stroke={primaryColor} strokeWidth="6" fill="none" filter="url(#crackglow)"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: [0, 0.28, 0.08, 0] }}
+                        transition={{
+                          pathLength: { duration: 0.28, delay: 0.32, ease: 'easeOut' },
+                          opacity:    { duration: 0.46, delay: 0.32, times: [0, 0.22, 0.65, 1] },
+                        }}
+                      />
+
                       {/* Energy rays erupting from A1 — the primary crack hub */}
                       <motion.line x1={A1X} y1={A1Y} x2={A1X} y2={0}
                         stroke="url(#rayUp)" strokeWidth="2.4"
