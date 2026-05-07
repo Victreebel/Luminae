@@ -808,10 +808,10 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   establish:    600,
   panning:      750,  // board DOM pans as a unit toward the card (overlay=0)
   focusing:     600,  // camera layer zooms in on the now-centred card
-  intro:        90,
-  zooming:      120,
-  pressure:     160,
-  firstcrack:   420,  // primary fault + branch draw, then hold for suspense
+  intro:        120,
+  zooming:      180,
+  pressure:     220,
+  firstcrack:   520,  // primary fault + branch draw, then hold for suspense
   leaking:      850,  // energy bleeds through; sustained quiet-before-storm
   secondcrack:  420,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
@@ -1636,7 +1636,7 @@ export function LuminarySummonCutscene({
         {isShatterVisible && PANEL_PIECES.map((piece, i) => (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
-              width: BOARD_CARD_W * 3.2, height: BOARD_CARD_H * 3.2,
+              width: BOARD_CARD_W * 2.0, height: BOARD_CARD_H * 2.0,
               left: vesselLeft, top: vesselTop,
               clipPath: piece.clip,
               transformPerspective: 1000,
@@ -1650,8 +1650,8 @@ export function LuminarySummonCutscene({
               // Micro-jolt at crack moment (8% of travel in first ~0.3 s),
               // then the pieces peel slowly outward under magical suspension.
               // No projectile overshoot — the panel is being consumed, not shattered.
-              x: [0, piece.dx * 0.18, piece.dx],
-              y: [0, piece.dy * 0.18, piece.dy],
+              x: [0, piece.dx * 0.08, piece.dx],
+              y: [0, piece.dy * 0.08, piece.dy],
               rotateX: [0, piece.rotateX],
               rotateY: [0, piece.rotateY],
               rotateZ: [0, piece.rotateZ],

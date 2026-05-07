@@ -517,7 +517,7 @@ class GameAudio {
       const FOCUS  = 1350;
       const INTRO  = 1950;
       const PRES   = 2750;
-      const CRACK1 = 2785;
+      const CRACK1 = 2870;
       const LEAK   = 3310;
       const CRACK2 = 4150;
       const CRACKS = 4520;
