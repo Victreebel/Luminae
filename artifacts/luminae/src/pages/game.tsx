@@ -501,8 +501,8 @@ function LuminaryClaimedPortal({
       ))}
 
       {/* ── UI Overlay ── */}
-      {/* Top-left: eminence value */}
-      <div className="absolute top-2 left-2 z-10 pointer-events-none">
+      {/* Top row: eminence value (left) + floating active affinity gem (right) */}
+      <div className="absolute top-2 left-0 right-0 z-10 pointer-events-none flex justify-between items-start px-2">
         <span
           className="text-lg font-serif font-black leading-none select-none"
           style={{
@@ -513,6 +513,15 @@ function LuminaryClaimedPortal({
         >
           {luminary.lumens}
         </span>
+        {activeKey && (
+          <motion.div
+            animate={{ y: [-2, 2, -2] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
+          >
+            <MiniGem color={activeKey} size={16} />
+          </motion.div>
+        )}
       </div>
 
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
@@ -607,20 +616,6 @@ function LuminaryCard({
               >
                 {luminary.lumens}
               </span>
-              {/* Domain card — portrait card shape, Luminary color gradient, inner frame */}
-              <div
-                className="relative shrink-0 overflow-hidden flex items-center justify-center"
-                title={luminary.domain}
-                style={{
-                  width: 22, height: 30, borderRadius: 3,
-                  background: `linear-gradient(145deg, ${vis?.primaryColor ?? accentColor}dd, ${vis?.secondaryColor ?? '#000'}bb)`,
-                  boxShadow: `0 0 8px ${vis?.primaryColor ?? accentColor}66, 0 2px 4px rgba(0,0,0,0.85)`,
-                  border: `1px solid ${vis?.primaryColor ?? accentColor}66`,
-                }}
-              >
-                <div className="absolute pointer-events-none" style={{ inset: 2, border: '1px solid rgba(255,255,255,0.18)', borderRadius: 1 }} />
-                <Sparkles className="h-3 w-3 text-white/90 relative z-10" />
-              </div>
             </div>
 
             {/* Bottom — name + requirement gems */}
