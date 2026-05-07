@@ -477,6 +477,8 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
         </radialGradient>
       </defs>
       <ellipse cx="50" cy="72" rx="46" ry="56" fill="url(#ora-g2)" />
+      <ellipse cx="50" cy="72" rx="40" ry="48" fill="none" stroke="#fbbf24" strokeWidth="0.8" opacity="0.48" />
+      <ellipse cx="50" cy="72" rx="34" ry="42" fill="none" stroke="#ef4444" strokeWidth="0.55" opacity="0.28" />
       <ellipse cx="50" cy="70" rx="45" ry="10" fill="none" stroke="#ef4444" strokeWidth="1.9" opacity="0.82" />
       <ellipse cx="50" cy="70" rx="41" ry="16" fill="none" stroke="#3d6bff" strokeWidth="1.6" opacity="0.78" transform="rotate(-28 50 70)" />
       <ellipse cx="50" cy="70" rx="41" ry="16" fill="none" stroke="#2ecc71" strokeWidth="1.6" opacity="0.78" transform="rotate(28 50 70)" />
@@ -497,6 +499,10 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
       <path d="M 69,80 Q 73,93 66,98 Q 58,98 50,92" fill="url(#ora-g1)" opacity="0.9" />
       <line x1="50" y1="92" x2="44" y2="114" stroke="#fbbf24" strokeWidth="0.5" opacity="0.3" />
       <line x1="50" y1="92" x2="56" y2="114" stroke="#fbbf24" strokeWidth="0.5" opacity="0.3" />
+      <polygon points="50,28 53,35 50,42 47,35" fill="none" stroke="#fbbf24" strokeWidth="0.75" opacity="0.62" />
+      <line x1="50" y1="47" x2="50" y2="89" stroke="#fbbf24" strokeWidth="0.45" opacity="0.28" />
+      <line x1="36" y1="79" x2="24" y2="90" stroke="#ef4444" strokeWidth="0.45" opacity="0.2" />
+      <line x1="64" y1="79" x2="76" y2="90" stroke="#3d6bff" strokeWidth="0.45" opacity="0.2" />
     </svg>
   );
 }
