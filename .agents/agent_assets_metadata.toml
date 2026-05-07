@@ -700,13 +700,13 @@ title = "Voidcaller avatar portrait"
 id = "NBG33K8KeRVE3XsRJPx1n"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/panel.png"
 type = "image"
-title = "Oracle panel artwork"
+title = "Oracle panel art"
 
 [[generated]]
 id = "zMQhgn_IwHA8ejgEbe41_"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
 type = "image"
-title = "Oracle transparent cutout"
+title = "Oracle entity cutout"
 
 [[generated]]
 id = "4RJJCttnZbJi8zCxf3q4U"
