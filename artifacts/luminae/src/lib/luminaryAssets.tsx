@@ -1883,7 +1883,7 @@ export function LuminarySummonCutscene({
                       justifyContent: 'center',
                     }}
                   >
-                    <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
+                    <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}>
                       {entityCutout ? (
                         <img src={entityCutout} alt={luminaryName}
                           style={{
@@ -1903,30 +1903,34 @@ export function LuminarySummonCutscene({
                         // Procedural SVG entity — transparent bg, no mask needed
                         <EntityArt size={ENT_W} />
                       )}
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{
-                          opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
-                          scale:   isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
-                        }}
-                        transition={{
-                          opacity: { duration: 2.0, ease: 'easeOut' },
-                          scale:   { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
-                        }}
-                        style={{
-                          position: 'absolute',
-                          width: 480, height: 560,
-                          top: '50%', left: '50%',
-                          x: '-50%', y: '-52%',
-                          borderRadius: '50%',
-                          background: 'transparent',
-                          boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
-                          filter: 'blur(4px)',
-                          zIndex: 2,
-                        }}
-                      />
                     </div>
                   </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{
+                    opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
+                    scale: isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
+                  }}
+                  transition={{
+                    opacity: { duration: 2.0, ease: 'easeOut' },
+                    scale: { type: 'spring', stiffness: 70, damping: 16, mass: 1.1 },
+                  }}
+                  style={{
+                    position: 'absolute',
+                    width: 480,
+                    height: 560,
+                    top: '50%',
+                    left: '50%',
+                    x: '-50%',
+                    y: '-52%',
+                    borderRadius: '50%',
+                    background: 'transparent',
+                    boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
+                    filter: 'blur(4px)',
+                    zIndex: 5,
+                    pointerEvents: 'none',
+                  }}
+                />
 
                 </div>
                 {/* ── end portal composition ── */}
