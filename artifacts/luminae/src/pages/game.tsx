@@ -1748,14 +1748,14 @@ export default function GameBoard() {
                   )}
                   <img
                     src={meta.image} alt={meta.name}
-                    className="w-14 h-14 object-contain pointer-events-none select-none"
+                    className="w-[58%] h-[58%] object-contain pointer-events-none select-none"
                     style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 7px ${meta.glowHex}80)` }}
                     draggable={false}
                   />
-                  <div className="flex items-center gap-0.5 mt-1">
+                  <div className="flex items-center gap-0.5 mt-0.5">
                     {/* Shadow behind number for readability against colored background */}
                     <span
-                      className={`text-base font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}
+                      className={`text-sm font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}
                       style={isEmpty ? {} : { textShadow: '0 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)' }}
                     >{count - queued}</span>
                   </div>
