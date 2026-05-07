@@ -2148,13 +2148,21 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 objectFit: 'contain',
                 objectPosition: 'center top',
                 display: 'block',
-                // Aggressive elliptical mask: opaque at entity centre, dissolving
-                // all four edges into transparency. Matches the cutscene reveal
-                // mask so the figure floats without any rectangular frame artifact.
-                // Bottom fades earlier (60% vs 76% for sides/top) to keep the
-                // card's name / requirements row legible underneath.
-                maskImage: 'radial-gradient(ellipse 72% 78% at 50% 38%, black 18%, rgba(0,0,0,0.88) 38%, rgba(0,0,0,0.45) 56%, rgba(0,0,0,0.10) 70%, transparent 82%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 72% 78% at 50% 38%, black 18%, rgba(0,0,0,0.88) 38%, rgba(0,0,0,0.45) 56%, rgba(0,0,0,0.10) 70%, transparent 82%)',
+                // Two-layer mask (multiplicatively composited):
+                //   Layer 1 — vertical linear: dissolves the top ~10 % and
+                //     bottom ~26 % of the frame so neither image edge is visible.
+                //   Layer 2 — radial ellipse: dissolves the left/right sides so
+                //     the figure floats without a rectangular frame artifact.
+                // Combined the entity is opaque at the figure body and transparent
+                // at all four edges.
+                maskImage: [
+                  'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.85) 8%, black 15%, black 62%, rgba(0,0,0,0.45) 76%, transparent 90%)',
+                  'radial-gradient(ellipse 84% 94% at 50% 46%, black 32%, rgba(0,0,0,0.70) 58%, transparent 84%)',
+                ].join(', '),
+                WebkitMaskImage: [
+                  'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.85) 8%, black 15%, black 62%, rgba(0,0,0,0.45) 76%, transparent 90%)',
+                  'radial-gradient(ellipse 84% 94% at 50% 46%, black 32%, rgba(0,0,0,0.70) 58%, transparent 84%)',
+                ].join(', '),
               }}
             />
           ) : (
