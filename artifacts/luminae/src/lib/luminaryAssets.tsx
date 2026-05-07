@@ -808,10 +808,10 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   establish:    600,
   panning:      750,  // board DOM pans as a unit toward the card (overlay=0)
   focusing:     600,  // camera layer zooms in on the now-centred card
-  intro:        60,
-  zooming:      90,
-  pressure:     110,
-  firstcrack:   360,  // primary fault + branch draw, then hold for suspense
+  intro:        50,
+  zooming:      80,
+  pressure:     90,
+  firstcrack:   320,  // primary fault + branch draw, then hold for suspense
   leaking:      850,  // energy bleeds through; sustained quiet-before-storm
   secondcrack:  420,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
