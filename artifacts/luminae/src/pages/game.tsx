@@ -2230,7 +2230,7 @@ export default function GameBoard() {
               <Sparkles className="h-3 w-3 text-primary" />
             </div>
           </div>
-          {/* Gem columns: tall box with token count + bonus beneath */}
+          {/* ── Pinned Player Info Panel affinity boxes (6-col flex row) ── */}
           <div className="flex gap-1.5">
             {CRYSTALS.map((c) => {
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
@@ -2250,7 +2250,7 @@ export default function GameBoard() {
                     if (isFlux) setShowReservedOverlay(true);
                     else { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }
                   }}
-                  className="flex-1 h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden transition-all active:scale-95 disabled:cursor-default"
+                  className="flex-1 min-h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden transition-all active:scale-95 disabled:cursor-default pt-1.5 pb-1.5"
                   style={{
                     background: hasContent
                       ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
@@ -2264,25 +2264,29 @@ export default function GameBoard() {
                   {hasContent && (
                     <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
                   )}
-                  <span
-                    className="text-2xl font-black leading-none tracking-tight"
-                    style={{
-                      color: hasContent ? '#fff' : meta.hex + '40',
-                      textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
-                    }}
-                  >
-                    {gems}
-                  </span>
-                  {!isFlux && bonus > 0 && (
-                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
-                      +{bonus} bonus
+                  {/* Affinity name + icon — top center of Player Info box */}
+                  <div className="flex items-center gap-0.5 w-full justify-center">
+                    <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                    <MiniGem color={c as GemKey} size={7} />
+                  </div>
+                  {/* Token count (primary) + bonus side-by-side */}
+                  <div className="flex items-center gap-0.5 flex-1">
+                    <span
+                      className="text-2xl font-black leading-none tracking-tight"
+                      style={{
+                        color: hasContent ? '#fff' : meta.hex + '40',
+                        textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
+                      }}
+                    >
+                      {gems}
                     </span>
-                  )}
-                  {isFlux && reservedCount > 0 && (
-                    <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>
-                      {reservedCount} reserved
-                    </span>
-                  )}
+                    {!isFlux && bonus > 0 && (
+                      <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+                    )}
+                    {isFlux && reservedCount > 0 && (
+                      <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
+                    )}
+                  </div>
                   {pending > 0 && (
                     <motion.span
                       key={pending}
