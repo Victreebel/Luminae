@@ -2148,21 +2148,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 objectFit: 'contain',
                 objectPosition: 'center top',
                 display: 'block',
-                // Two-layer mask (multiplicatively composited):
-                //   Layer 1 — vertical linear: dissolves the top ~10 % and
-                //     bottom ~26 % of the frame so neither image edge is visible.
-                //   Layer 2 — radial ellipse: dissolves the left/right sides so
-                //     the figure floats without a rectangular frame artifact.
-                // Combined the entity is opaque at the figure body and transparent
-                // at all four edges.
-                maskImage: [
-                  'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.85) 8%, black 15%, black 62%, rgba(0,0,0,0.45) 76%, transparent 90%)',
-                  'radial-gradient(ellipse 84% 94% at 50% 46%, black 32%, rgba(0,0,0,0.70) 58%, transparent 84%)',
-                ].join(', '),
-                WebkitMaskImage: [
-                  'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.85) 8%, black 15%, black 62%, rgba(0,0,0,0.45) 76%, transparent 90%)',
-                  'radial-gradient(ellipse 84% 94% at 50% 46%, black 32%, rgba(0,0,0,0.70) 58%, transparent 84%)',
-                ].join(', '),
+                // Fade to transparent in the lower third so the card's name /
+                // requirements row stays legible underneath the entity.
+                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
               }}
             />
           ) : (
