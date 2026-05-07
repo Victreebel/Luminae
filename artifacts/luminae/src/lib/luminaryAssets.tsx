@@ -40,7 +40,7 @@ export interface LuminaryVisuals {
 // Supported formats: .webp (preferred), .png, .jpg
 //
 // All 12 Luminary IDs:
-//   lum_ember   lum_tide    lum_root    lum_void    lum_radiant lum_astral
+//   lum_ember   lum_tide    lum_verdant lum_void    lum_radiant lum_astral
 //   lum_forge   lum_pale    lum_bloom   lum_compass lum_oracle  lum_null
 //
 // No code changes are needed after dropping files — the glob picks them up on
@@ -162,9 +162,9 @@ function TideEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
-// ── Root Ancient ──────────────────────────────────────────────────────────────
-// Root ancient: wide squat body, geological crystal dome head, massive root arms.
-function RootEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+// ── Verdant Oracle ────────────────────────────────────────────────────────────
+// Verdant oracle: wide squat body, geological crystal dome head, massive root arms.
+function VerdantEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
       <defs>
@@ -553,7 +553,7 @@ function NullEntity({ size = 140, className = '' }: { size?: number; className?:
 export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_ember:   { id: 'lum_ember',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: EmberEntity   },
   lum_tide:    { id: 'lum_tide',    primaryColor: '#3d6bff', secondaryColor: '#e2e8f0', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: TideEntity    },
-  lum_root:    { id: 'lum_root',    primaryColor: '#2ecc71', secondaryColor: '#ef4444', glowColor: 'rgba(46,204,113,0.55)',  EntityArt: RootEntity    },
+  lum_verdant: { id: 'lum_verdant', primaryColor: '#2ecc71', secondaryColor: '#166534', glowColor: 'rgba(46,204,113,0.55)',  EntityArt: VerdantEntity },
   lum_void:    { id: 'lum_void',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.55)',  EntityArt: VoidEntity    },
   lum_radiant: { id: 'lum_radiant', primaryColor: '#e2e8f0', secondaryColor: '#2ecc71', glowColor: 'rgba(226,232,240,0.5)',  EntityArt: RadiantEntity },
   lum_astral:  { id: 'lum_astral',  primaryColor: '#ef4444', secondaryColor: '#3d6bff', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: AstralEntity  },

@@ -288,15 +288,15 @@ export const LUMINARIES: LuminaryDef[] = [
     auraStyle: "tide",
   },
   {
-    id: "lum_root",
-    name: "The Root Ancient",
-    domain: "Growth",
+    id: "lum_verdant",
+    name: "The Verdant Oracle",
+    domain: "Verdance",
     lumens: 2,
     requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "Before the first cities rose, the roots were already old.",
+    flavor: "She reads the future in the rings of trees that have not yet been planted.",
     summonColor: "#4ade80",
-    summonSecondaryColor: "#ef4444",
-    auraStyle: "root",
+    summonSecondaryColor: "#166534",
+    auraStyle: "verdant",
   },
   {
     id: "lum_void",
@@ -503,7 +503,6 @@ export interface ActionPayload {
 // Used to pick a sensible default active affinity when claiming a Luminary.
 const SUMMON_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
   // Ruby / Radiance
-  "#f43f5e": "ruby",
   "#ff5a3c": "ruby",   // lum_ember
   "#f43f5e": "ruby",   // lum_astral
   "#fbbf24": "ruby",   // lum_oracle (ruby is first eligible)
@@ -513,7 +512,7 @@ const SUMMON_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
   "#38bdf8": "sapphire", // lum_compass
   // Emerald / Verdance
   "#2ecc71": "emerald",
-  "#4ade80": "emerald",  // lum_root
+  "#4ade80": "emerald",  // lum_verdant
   "#86efac": "emerald",  // lum_bloom (emerald is first eligible)
   // Onyx / Abyss
   "#7b1fa2": "onyx",

@@ -1,4 +1,4 @@
-# lum_root — Illustrated Asset Slot
+# lum_verdant — Illustrated Asset Slot
 
 Drop final illustrated assets here. All formats are accepted (.webp preferred).
 Vite discovers files at build time via import.meta.glob; missing files fall back
