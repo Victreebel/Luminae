@@ -540,19 +540,6 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Game is not finished yet" });
     return;
   }
-  const [gameState] = await db
-    .select()
-    .from(gameStatesTable)
-    .where(eq(gameStatesTable.roomId, rawId))
-    .limit(1);
-
-  if (gameState) {
-    const state = normalizeState(gameState.state);
-    if (state.finishReason === "surrender") {
-      res.status(400).json({ error: "Cannot rematch a surrendered game" });
-      return;
-    }
-  }
 
   const [host] = await db
     .select()
