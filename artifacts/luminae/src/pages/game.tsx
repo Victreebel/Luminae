@@ -1228,6 +1228,7 @@ export default function GameBoard() {
 
   const submitAction = useSubmitAction();
   const rematchMutation = useRematch();
+  const rematchClickedRef = useRef(false);
 
   // ── Summon cutscene duration used for the animation barrier ───────────────
   const SUMMON_CUTSCENE_DURATION_MS = 12_000;
@@ -3639,11 +3640,18 @@ export default function GameBoard() {
                   <Button
                     size="lg"
                     className="w-full"
-                    disabled={rematchMutation.isPending}
+                    disabled={rematchMutation.isPending || rematchClickedRef.current}
                     onClick={() => {
+                      if (rematchClickedRef.current) return;
+                      rematchClickedRef.current = true;
                       rematchMutation.mutate(
                         { roomId, data: { sessionToken: session.sessionToken } },
-                        { onError: () => toast({ title: 'Rematch failed', description: 'Could not restart the game.', variant: 'destructive' }) },
+                        {
+                          onError: () => {
+                            rematchClickedRef.current = false;
+                            toast({ title: 'Rematch failed', description: 'Could not restart the game.', variant: 'destructive' });
+                          },
+                        },
                       );
                     }}
                   >
