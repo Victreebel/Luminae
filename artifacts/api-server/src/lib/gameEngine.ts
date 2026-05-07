@@ -62,6 +62,8 @@ export interface PlayerGameState {
   purchasedCardIds: string[];
   luminaries: string[];
   isConnected: boolean;
+  plannedAction: ActionPayload | null;
+  plannedActionCancelReason: string | null;
 }
 
 export interface ActionLogEntry {
@@ -453,6 +455,8 @@ export function initializeGame(
     purchasedCardIds: [],
     luminaries: [],
     isConnected: true,
+    plannedAction: null,
+    plannedActionCancelReason: null,
   }));
 
   return {
@@ -491,7 +495,9 @@ export type ActionType =
   | "pass"
   | "surrender"
   | "toggle_luminary_affinity"
-  | "resolve_summon";
+  | "resolve_summon"
+  | "plan_action"
+  | "cancel_plan";
 
 export interface ActionPayload {
   type: ActionType;
@@ -502,6 +508,7 @@ export interface ActionPayload {
   luminaryId?: string;
   affinity?: CrystalColor;
   eventId?: string;
+  plannedActionData?: ActionPayload;
 }
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
@@ -722,23 +729,47 @@ function advanceTurn(state: GameStateData): void {
   }
 }
 
+// ─── Plan Validation Helper ───────────────────────────────────────────────────
+
+/**
+ * Validates whether `action` would be legal if it were `playerId`'s turn,
+ * without mutating the real state.  Uses a deep-clone dry-run so all
+ * existing action-validation logic is reused automatically.
+ */
+function validatePlannedAction(
+  state: GameStateData,
+  playerId: string,
+  action: ActionPayload,
+): { ok: boolean; error?: string } {
+  const clone: GameStateData = JSON.parse(JSON.stringify(state));
+  const idx = clone.players.findIndex((p) => p.playerId === playerId);
+  if (idx === -1) return { ok: false, error: "Player not found" };
+  clone.currentPlayerIndex = idx;
+  // _isAutoExec=true prevents the recursive planned-action check inside applyAction
+  const result = applyAction(clone, playerId, action, true);
+  return result.success ? { ok: true } : { ok: false, error: result.error };
+}
+
 // ─── Main Action Handler ──────────────────────────────────────────────────────
 
 export function applyAction(
   state: GameStateData,
   playerId: string,
   action: ActionPayload,
+  _isAutoExec = false,
 ): { success: boolean; error?: string } {
   const playerIdx = state.players.findIndex((p) => p.playerId === playerId);
   if (playerIdx === -1) return { success: false, error: "Player not found" };
   if (state.phase === "finished")
     return { success: false, error: "Game is over" };
 
-  // toggle_luminary_affinity and resolve_summon are not turn-gated — any
-  // player may send them regardless of whose turn it currently is.
+  // Non-turn-gated actions: toggle_luminary_affinity, resolve_summon,
+  // plan_action, cancel_plan may be sent by any player at any time.
   const isTurnGated =
     action.type !== "toggle_luminary_affinity" &&
-    action.type !== "resolve_summon";
+    action.type !== "resolve_summon" &&
+    action.type !== "plan_action" &&
+    action.type !== "cancel_plan";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx)
     return { success: false, error: "Not your turn" };
 
@@ -925,6 +956,33 @@ export function applyAction(
       return { success: true };
     }
 
+    case "plan_action": {
+      // Non-turn-gated: any player may submit a planned action for their
+      // upcoming turn.  Validate legality first via a dry-run clone.
+      const inner = action.plannedActionData;
+      if (!inner) return { success: false, error: "No plannedActionData provided" };
+      const disallowed: ActionType[] = ["plan_action", "cancel_plan", "resolve_summon", "surrender", "pass"];
+      if (disallowed.includes(inner.type)) {
+        return { success: false, error: `Cannot plan a '${inner.type}' action` };
+      }
+      const validation = validatePlannedAction(state, playerId, inner);
+      if (!validation.ok) {
+        return { success: false, error: validation.error ?? "Planned action is not currently legal" };
+      }
+      player.plannedAction = inner;
+      player.plannedActionCancelReason = null;
+      state.version++;
+      return { success: true };
+    }
+
+    case "cancel_plan": {
+      // Non-turn-gated: cancel any standing planned action.
+      player.plannedAction = null;
+      player.plannedActionCancelReason = null;
+      state.version++;
+      return { success: true };
+    }
+
     default:
       return { success: false, error: "Unknown action type" };
   }
@@ -943,6 +1001,23 @@ export function applyAction(
   if (state.phase !== "finished") {
     advanceTurn(state);
   }
+
+  // Auto-execute the new current player's planned action (once only — _isAutoExec
+  // guards against infinite recursion).
+  if (!_isAutoExec && state.phase !== "finished") {
+    const nextPlayer = state.players[state.currentPlayerIndex];
+    const planned = nextPlayer?.plannedAction ?? null;
+    if (planned) {
+      nextPlayer.plannedAction = null;
+      const autoResult = applyAction(state, nextPlayer.playerId, planned, true);
+      if (!autoResult.success) {
+        nextPlayer.plannedActionCancelReason =
+          autoResult.error ?? "Planned move is no longer legal.";
+        state.version++;
+      }
+    }
+  }
+
   return { success: true };
 }
 
@@ -1033,6 +1108,9 @@ export function normalizeState(raw: unknown): GameStateData {
           LUMINARY_MAP.has(id),
         ),
       };
+      // ensure Plan Move fields exist (added in Plan Move feature)
+      if (!("plannedAction" in p)) p = { ...p, plannedAction: null };
+      if (!("plannedActionCancelReason" in p)) p = { ...p, plannedActionCancelReason: null };
       return p;
     });
   }
@@ -1121,6 +1199,8 @@ export function formatGameState(
       .map((c) => withLore(c as ArtifactCard)),
     isConnected: connectedPlayerIds.has(p.playerId),
     claimedLuminaryIds: p.luminaries ?? [],
+    plannedAction: p.plannedAction ?? null,
+    plannedActionCancelReason: p.plannedActionCancelReason ?? null,
   }));
 
   return {

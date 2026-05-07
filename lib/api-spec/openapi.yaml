@@ -571,6 +571,13 @@ components:
           items:
             type: string
           description: IDs of luminaries this player has claimed
+        plannedAction:
+          type: ["object", "null"]
+          additionalProperties: true
+          description: Pre-committed action to auto-execute when this player's turn arrives
+        plannedActionCancelReason:
+          type: ["string", "null"]
+          description: Reason the last planned action was auto-cancelled, if applicable
       required:
         - playerId
         - playerName
@@ -713,6 +720,9 @@ components:
             - pass
             - surrender
             - toggle_luminary_affinity
+            - resolve_summon
+            - plan_action
+            - cancel_plan
         crystals:
           $ref: "#/components/schemas/CrystalCounts"
         crystal:
@@ -729,6 +739,13 @@ components:
           type: string
           enum: [ruby, sapphire, emerald, onyx, pearl]
           description: Target affinity for toggle_luminary_affinity action
+        eventId:
+          type: string
+          description: Event ID for resolve_summon action
+        plannedActionData:
+          type: object
+          additionalProperties: true
+          description: Nested action payload for plan_action type
       required:
         - sessionToken
         - type

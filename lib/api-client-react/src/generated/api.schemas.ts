@@ -164,6 +164,12 @@ export interface Luminary {
   auraStyle: string;
 }
 
+/**
+ * Pre-committed action to auto-execute when this player's turn arrives
+ * @nullable
+ */
+export type GamePlayerStatePlannedAction = { [key: string]: unknown } | null;
+
 export interface GamePlayerState {
   playerId: string;
   playerName: string;
@@ -178,6 +184,16 @@ export interface GamePlayerState {
   isConnected: boolean;
   /** IDs of luminaries this player has claimed */
   claimedLuminaryIds: string[];
+  /**
+   * Pre-committed action to auto-execute when this player's turn arrives
+   * @nullable
+   */
+  plannedAction?: GamePlayerStatePlannedAction;
+  /**
+   * Reason the last planned action was auto-cancelled, if applicable
+   * @nullable
+   */
+  plannedActionCancelReason?: string | null;
 }
 
 export type LuminaryActiveStateActiveAffinity =
@@ -273,6 +289,9 @@ export const ActionRequestType = {
   pass: "pass",
   surrender: "surrender",
   toggle_luminary_affinity: "toggle_luminary_affinity",
+  resolve_summon: "resolve_summon",
+  plan_action: "plan_action",
+  cancel_plan: "cancel_plan",
 } as const;
 
 export type ActionRequestCrystal =
@@ -300,6 +319,11 @@ export const ActionRequestAffinity = {
   pearl: "pearl",
 } as const;
 
+/**
+ * Nested action payload for plan_action type
+ */
+export type ActionRequestPlannedActionData = { [key: string]: unknown };
+
 export interface ActionRequest {
   sessionToken: string;
   type: ActionRequestType;
@@ -311,6 +335,10 @@ export interface ActionRequest {
   luminaryId?: string;
   /** Target affinity for toggle_luminary_affinity action */
   affinity?: ActionRequestAffinity;
+  /** Event ID for resolve_summon action */
+  eventId?: string;
+  /** Nested action payload for plan_action type */
+  plannedActionData?: ActionRequestPlannedActionData;
 }
 
 export type GetGameStateParams = {

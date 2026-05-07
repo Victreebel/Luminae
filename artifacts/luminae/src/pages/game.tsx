@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, ShoppingCart, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -1035,6 +1035,15 @@ export default function GameBoard() {
         }
       }
 
+      // Detect planned action cancellation for the local player and show a toast.
+      const myNewPlayer = (newState.players as GamePlayerState[]).find(p => p.playerId === session?.playerId);
+      const myOldPlayer = prev ? (prev.players as GamePlayerState[]).find(p => p.playerId === session?.playerId) : null;
+      const newCancelReason = (myNewPlayer as any)?.plannedActionCancelReason;
+      const oldCancelReason = (myOldPlayer as any)?.plannedActionCancelReason;
+      if (newCancelReason && newCancelReason !== oldCancelReason) {
+        setTimeout(() => toast({ variant: 'destructive', title: 'Planned move cancelled', description: newCancelReason }), 150);
+      }
+
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
 
@@ -1507,6 +1516,76 @@ export default function GameBoard() {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
 
+  const getPlannedActionSummary = (action: any): string => {
+    if (!action) return '';
+    const allCards: ArtifactCard[] = [
+      ...(state?.marketTier1 ?? []),
+      ...(state?.marketTier2 ?? []),
+      ...(state?.marketTier3 ?? []),
+      ...(me?.reservedCards ?? []),
+    ];
+    switch (action.type) {
+      case 'purchase_card':
+      case 'purchase_reserved': {
+        const card = allCards.find((c) => c.id === action.cardId);
+        return card ? `Forge "${card.name}"` : 'Forge Artifact';
+      }
+      case 'reserve_card': {
+        if (action.cardId) {
+          const card = allCards.find((c) => c.id === action.cardId);
+          return card ? `Reserve "${card.name}"` : 'Reserve card';
+        }
+        return action.tier ? `Reserve Tier ${action.tier}` : 'Reserve card';
+      }
+      case 'take_three_crystals': {
+        const crystals = action.crystals ?? {};
+        const parts = (CRYSTALS as string[])
+          .filter(c => c !== 'flux' && (crystals[c] ?? 0) > 0)
+          .map(c => GEM_META[c as GemKey]?.shortName ?? c);
+        return parts.length > 0 ? `Harvest ${parts.join(', ')}` : 'Harvest affinities';
+      }
+      case 'take_two_crystals':
+        return action.crystal
+          ? `Harvest 2 ${GEM_META[action.crystal as GemKey]?.shortName ?? action.crystal}`
+          : 'Harvest 2 affinities';
+      case 'toggle_luminary_affinity':
+        return 'Toggle Luminary affinity';
+      default:
+        return 'Planned action';
+    }
+  };
+
+  const handlePlanAction = async (plannedActionData: Record<string, unknown>) => {
+    if (!me || !session) return;
+    try {
+      await submitAction.mutateAsync({
+        roomId: roomId!,
+        data: { sessionToken: session.sessionToken, type: 'plan_action', plannedActionData } as any,
+      });
+      toast({ title: 'Move planned', description: getPlannedActionSummary(plannedActionData) });
+      setSelectedCard(null);
+      setSelectedCrystals({});
+      setActionMode('none');
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Plan failed', description: err.message });
+    }
+  };
+
+  const handleCancelPlan = async () => {
+    if (!session) return;
+    try {
+      await submitAction.mutateAsync({
+        roomId: roomId!,
+        data: { sessionToken: session.sessionToken, type: 'cancel_plan' } as any,
+      });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Cancel failed', description: err.message });
+    }
+  };
+
+  const canPlan = !isMyTurn && state.status === 'playing' && !!me;
+  const myPlannedAction = (me as any)?.plannedAction ?? null;
+
   const handleToggleLuminaryAffinity = async (luminaryId: string, affinity: string) => {
     try {
       await submitAction.mutateAsync({
@@ -1838,14 +1917,30 @@ export default function GameBoard() {
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      size="sm"
-                      className="h-7 px-3 rounded-lg text-xs font-bold"
-                      onClick={confirmCrystals}
-                      disabled={!queueLegality.ok}
-                    >
-                      Harness
-                    </Button>
+                    {isMyTurn ? (
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 rounded-lg text-xs font-bold"
+                        onClick={confirmCrystals}
+                        disabled={!queueLegality.ok}
+                      >
+                        Harness
+                      </Button>
+                    ) : canPlan && queueLegality.ok ? (
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500"
+                        onClick={() => {
+                          if (queueLegality.actionType === 'take3') {
+                            handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });
+                          } else if (queueLegality.actionType === 'take2') {
+                            handlePlanAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+                          }
+                        }}
+                      >
+                        Plan Harvest
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -2420,6 +2515,22 @@ export default function GameBoard() {
               <Sparkles className="h-3 w-3 text-primary" />
             </div>
           </div>
+          {/* Planned move status row */}
+          {myPlannedAction && (
+            <div className="flex items-center gap-2 mb-2 px-0.5 py-1 rounded-lg bg-amber-950/40 border border-amber-500/30">
+              <span className="text-[10px] text-amber-300/90 flex-1 truncate pl-1.5">
+                ⏳ Planned: {getPlannedActionSummary(myPlannedAction)}
+              </span>
+              <button
+                type="button"
+                onClick={handleCancelPlan}
+                className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/60 hover:bg-amber-800/60 border border-amber-500/40 rounded-md px-2 py-0.5 shrink-0 animate-pulse"
+              >
+                <CalendarX className="h-3 w-3" />
+                Cancel
+              </button>
+            </div>
+          )}
           {/* ── Pinned Player Info Panel affinity boxes (6-col flex row) ── */}
           <div className="flex gap-1.5">
             {CRYSTALS.map((c) => {
@@ -2661,6 +2772,31 @@ export default function GameBoard() {
                         {selectedCard.canReserve ? 'Reserve for later' : 'Reserve pile full (3 max)'}
                       </Button>
                     )}
+                  </>
+                ) : canPlan ? (
+                  <>
+                    <Button
+                      className="w-full h-12 text-base font-bold"
+                      disabled={!me || !canAffordCard(selectedCard.card, me)}
+                      onClick={() => handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id })}
+                    >
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      {me && canAffordCard(selectedCard.card, me) ? 'Plan: Forge this Artifact' : 'Cannot afford yet'}
+                    </Button>
+                    {!selectedCard.fromReserve && (
+                      <Button
+                        variant="secondary"
+                        className="w-full h-12 text-base"
+                        disabled={!me || !canReserveMore(me)}
+                        onClick={() => handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier })}
+                      >
+                        <Bookmark className="h-5 w-5 mr-2" />
+                        {me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)'}
+                      </Button>
+                    )}
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Planned moves auto-execute when your turn starts
+                    </p>
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground text-center py-2">

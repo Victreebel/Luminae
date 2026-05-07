@@ -434,6 +434,18 @@ export const StartGameResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      plannedAction: zod
+        .record(zod.string(), zod.unknown())
+        .nullish()
+        .describe(
+          "Pre-committed action to auto-execute when this player's turn arrives",
+        ),
+      plannedActionCancelReason: zod
+        .string()
+        .nullish()
+        .describe(
+          "Reason the last planned action was auto-cancelled, if applicable",
+        ),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -670,6 +682,18 @@ export const RematchResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      plannedAction: zod
+        .record(zod.string(), zod.unknown())
+        .nullish()
+        .describe(
+          "Pre-committed action to auto-execute when this player's turn arrives",
+        ),
+      plannedActionCancelReason: zod
+        .string()
+        .nullish()
+        .describe(
+          "Reason the last planned action was auto-cancelled, if applicable",
+        ),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -906,6 +930,18 @@ export const GetGameStateResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      plannedAction: zod
+        .record(zod.string(), zod.unknown())
+        .nullish()
+        .describe(
+          "Pre-committed action to auto-execute when this player's turn arrives",
+        ),
+      plannedActionCancelReason: zod
+        .string()
+        .nullish()
+        .describe(
+          "Reason the last planned action was auto-cancelled, if applicable",
+        ),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -946,6 +982,9 @@ export const SubmitActionBody = zod.object({
     "pass",
     "surrender",
     "toggle_luminary_affinity",
+    "resolve_summon",
+    "plan_action",
+    "cancel_plan",
   ]),
   crystals: zod
     .object({
@@ -970,6 +1009,14 @@ export const SubmitActionBody = zod.object({
     .enum(["ruby", "sapphire", "emerald", "onyx", "pearl"])
     .optional()
     .describe("Target affinity for toggle_luminary_affinity action"),
+  eventId: zod
+    .string()
+    .optional()
+    .describe("Event ID for resolve_summon action"),
+  plannedActionData: zod
+    .record(zod.string(), zod.unknown())
+    .optional()
+    .describe("Nested action payload for plan_action type"),
 });
 
 export const SubmitActionResponse = zod.object({
@@ -1175,6 +1222,18 @@ export const SubmitActionResponse = zod.object({
       claimedLuminaryIds: zod
         .array(zod.string())
         .describe("IDs of luminaries this player has claimed"),
+      plannedAction: zod
+        .record(zod.string(), zod.unknown())
+        .nullish()
+        .describe(
+          "Pre-committed action to auto-execute when this player's turn arrives",
+        ),
+      plannedActionCancelReason: zod
+        .string()
+        .nullish()
+        .describe(
+          "Reason the last planned action was auto-cancelled, if applicable",
+        ),
     }),
   ),
   winnerId: zod.string().nullable(),

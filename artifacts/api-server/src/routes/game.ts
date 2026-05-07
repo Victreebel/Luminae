@@ -214,6 +214,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     luminaryId: actionData.luminaryId ?? undefined,
     affinity: actionData.affinity as CrystalColor | undefined,
     eventId: actionData.eventId ?? undefined,
+    plannedActionData: actionData.plannedActionData as ActionPayload | undefined,
   };
 
   // Serialize all read-modify-write on this room's state behind a per-room
@@ -239,9 +240,15 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     }
 
     // Refresh per-turn deadline based on configured timer.
-    // Non-turn-gated actions (toggle_luminary_affinity, resolve_summon) do not
-    // advance the turn so the deadline must not be reset.
-    if (action.type !== "toggle_luminary_affinity" && action.type !== "resolve_summon") {
+    // Non-turn-gated actions that do not advance the turn must not reset it.
+    // plan_action / cancel_plan don't advance the turn themselves (auto-execution
+    // is internal to applyAction), so skip the deadline reset for them too.
+    if (
+      action.type !== "toggle_luminary_affinity" &&
+      action.type !== "resolve_summon" &&
+      action.type !== "plan_action" &&
+      action.type !== "cancel_plan"
+    ) {
       updateTurnDeadline(stateData);
     }
 
@@ -289,7 +296,11 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap);
 
     broadcastToRoom(rawId, { type: "state_update", state: formatted });
-    if (action.type !== "toggle_luminary_affinity") {
+    if (
+      action.type !== "toggle_luminary_affinity" &&
+      action.type !== "plan_action" &&
+      action.type !== "cancel_plan"
+    ) {
       armTurnTimer(rawId, stateData);
     }
     return { ok: true as const, formatted };
