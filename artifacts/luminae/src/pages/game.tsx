@@ -805,6 +805,15 @@ export default function GameBoard() {
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
+  const eminenceBreakdown: EminenceBreakdown = useMemo(() => {
+    const artifacts = (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0);
+    const luminaries = (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
+      const lum = state.luminaries.find((l) => l.id === lumId);
+      return sum + (lum?.lumens ?? 0);
+    }, 0);
+    const other = Math.max(0, (me?.lumens ?? 0) - artifacts - luminaries);
+    return { artifacts, luminaries, other };
+  }, [me?.claimedLuminaryIds, me?.lumens, me?.purchasedCards, state.luminaries]);
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
@@ -1624,15 +1633,6 @@ export default function GameBoard() {
 
   const canPlan = !isMyTurn && state.status === 'playing' && !!me;
   const myPlannedAction = (me as any)?.plannedAction ?? null;
-  const eminenceBreakdown: EminenceBreakdown = useMemo(() => {
-    const artifacts = (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0);
-    const luminaries = (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
-      const lum = state.luminaries.find((l) => l.id === lumId);
-      return sum + (lum?.lumens ?? 0);
-    }, 0);
-    const other = Math.max(0, (me?.lumens ?? 0) - artifacts - luminaries);
-    return { artifacts, luminaries, other };
-  }, [me?.claimedLuminaryIds, me?.lumens, me?.purchasedCards, state.luminaries]);
 
   const handleToggleLuminaryAffinity = async (luminaryId: string, affinity: string) => {
     try {
