@@ -6,6 +6,8 @@
  *   pnpm --filter @workspace/api-server run simulate
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --difficulty hard
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --difficulty all
+ *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all
+ *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all --difficulty hard
  *
  * Reports:
  *   - Per-Luminary claim rates across all games
@@ -14,6 +16,8 @@
  *   - Average turn counts and winner Eminence
  *   - AI action distribution breakdown
  *   - Side-by-side multi-difficulty comparison when --difficulty all is used
+ *   - Side-by-side player-count comparison (2/3/4) when --players all is used,
+ *     including per-Luminary median claim turn and cross-count claim warnings
  */
 
 import {
@@ -27,19 +31,21 @@ import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { games: number; difficulties: AiDifficulty[]; players: number } {
+function parseArgs(): { games: number; difficulties: AiDifficulty[]; playerCounts: number[] } {
   const args = process.argv.slice(2);
   let games = 100;
   let diffArg = "hard";
-  let players = 4;
+  let playersArg = "4";
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--games" && args[i + 1]) games = parseInt(args[++i], 10);
     if (args[i] === "--difficulty" && args[i + 1]) diffArg = args[++i];
-    if (args[i] === "--players" && args[i + 1]) players = parseInt(args[++i], 10);
+    if (args[i] === "--players" && args[i + 1]) playersArg = args[++i];
   }
   const difficulties: AiDifficulty[] =
     diffArg === "all" ? ["easy", "medium", "hard"] : [diffArg as AiDifficulty];
-  return { games, difficulties, players };
+  const playerCounts: number[] =
+    playersArg === "all" ? [2, 3, 4] : [parseInt(playersArg, 10)];
+  return { games, difficulties, playerCounts };
 }
 
 // ── Game simulation ───────────────────────────────────────────────────────────
@@ -211,6 +217,7 @@ function reqSummary(lum: (typeof LUMINARIES)[0]): string {
 
 interface DifficultyStats {
   difficulty: AiDifficulty;
+  playerCount: number;
   games: number;
   avgTurns: number;
   minTurns: number;
@@ -316,7 +323,8 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number)
   }
 
   return {
-    difficulty, games, avgTurns, minTurns: Math.min(...turns), maxTurns: Math.max(...turns),
+    difficulty, playerCount: players, games, avgTurns,
+    minTurns: Math.min(...turns), maxTurns: Math.max(...turns),
     avgWinLumens, claimedCount, totalClaims, avgClaimsPerGame: mean(claimsPerGame),
     gamesWithClaims, tierGroups, actionCounts: totalActionCounts,
     monoAvgRate, dualAvgRate, tripleAvgRate, warnings, claimTurns,
@@ -332,7 +340,7 @@ function printDifficultyReport(s: DifficultyStats): void {
   };
 
   console.log(`\n${"═".repeat(64)}`);
-  console.log(`  difficulty=${s.difficulty}  players=4  games=${s.games}`);
+  console.log(`  difficulty=${s.difficulty}  players=${s.playerCount}  games=${s.games}`);
   console.log(`${"═".repeat(64)}`);
 
   console.log("\n── Game Pacing ──────────────────────────────────────────────────");
@@ -541,27 +549,200 @@ function printComparisonTable(allStats: DifficultyStats[]): void {
   console.log();
 }
 
+// ── Player-count side-by-side comparison ──────────────────────────────────────
+
+function printPlayerCountComparison(allStats: DifficultyStats[]): void {
+  const counts = allStats.map((s) => `${s.playerCount}p`);
+  const difficulty = allStats[0].difficulty;
+
+  console.log(`\n${"═".repeat(72)}`);
+  console.log(`  Player-Count Comparison  (difficulty=${difficulty})`);
+  console.log(`${"═".repeat(72)}`);
+
+  const hdr = `  ${"Metric".padEnd(34)} ${counts.map((c) => c.padEnd(10)).join("")}`;
+  console.log(hdr);
+  console.log("  " + "─".repeat(hdr.length - 2));
+
+  function row(label: string, vals: string[]): void {
+    console.log(`  ${label.padEnd(34)} ${vals.map((v) => v.padEnd(10)).join("")}`);
+  }
+
+  row("Active Luminaries per game", allStats.map((s) => String(s.playerCount + 1)));
+  row("Avg turns / game", allStats.map((s) => s.avgTurns.toFixed(1)));
+  row("Turn range", allStats.map((s) => `${s.minTurns}–${s.maxTurns}`));
+  row("Avg winner Eminence", allStats.map((s) => s.avgWinLumens.toFixed(1)));
+  row("Avg Luminary claims / game", allStats.map((s) => s.avgClaimsPerGame.toFixed(2)));
+  row("Games with ≥1 claim", allStats.map((s) => pct(s.gamesWithClaims, s.games)));
+  row("Mono avg rate / Lum / game", allStats.map((s) => (s.monoAvgRate * 100).toFixed(1) + "%"));
+  row("Dual avg rate / Lum / game", allStats.map((s) => (s.dualAvgRate * 100).toFixed(1) + "%"));
+  row("Triple avg rate / Lum / game", allStats.map((s) => (s.tripleAvgRate * 100).toFixed(1) + "%"));
+  row(
+    "Purchase share",
+    allStats.map((s) => {
+      const total = Object.values(s.actionCounts).reduce((a, b) => a + b, 0);
+      return pct(s.actionCounts["purchase_card"] ?? 0, total);
+    }),
+  );
+
+  // Per-Luminary claim rate by player count
+  console.log(`\n── Per-Luminary claim rate by player count ──────────────────────────`);
+  const lumHdr = `  ${"Luminary".padEnd(26)} ${"Req".padEnd(15)} ${counts.map((c) => c.padEnd(9)).join("")}`;
+  console.log(lumHdr);
+  console.log("  " + "─".repeat(lumHdr.length - 2));
+  const sorted = [...LUMINARIES].sort((a, b) => lumTier(a) - lumTier(b));
+  for (const lum of sorted) {
+    const rates = allStats.map((s) => pct(s.claimedCount[lum.id] ?? 0, s.games));
+    console.log(
+      `  ${lum.name.padEnd(26)} ${reqSummary(lum).padEnd(15)} ${rates.map((r) => r.padEnd(9)).join("")}`,
+    );
+  }
+
+  // Per-Luminary median claim turn by player count
+  console.log(`\n── Per-Luminary median claim turn by player count ───────────────────`);
+  const timHdr = `  ${"Luminary".padEnd(26)} ${"Req".padEnd(15)} ${counts.map((c) => c.padEnd(9)).join("")}`;
+  console.log(timHdr);
+  console.log("  " + "─".repeat(timHdr.length - 2));
+  for (const lum of sorted) {
+    const medians = allStats.map((s) => {
+      const times = s.claimTurns[lum.id] ?? [];
+      if (times.length === 0) return "—";
+      return `t${median(times).toFixed(0)}`;
+    });
+    console.log(
+      `  ${lum.name.padEnd(26)} ${reqSummary(lum).padEnd(15)} ${medians.map((m) => m.padEnd(9)).join("")}`,
+    );
+  }
+
+  // Cross-count warnings
+  // "Claimed regularly" = ≥10% claim rate (i.e. appears in at least 1-in-10 games).
+  // We check every adjacent pair (2p→3p, 3p→4p) PLUS the end-to-end span (2p→4p) so
+  // transitions at every step are visible, not just the extremes.
+  const REGULAR_THRESHOLD = 0.10;
+
+  console.log(`\n── Cross-Count Warnings ─────────────────────────────────────────────`);
+  const crossWarnings: string[] = [];
+  const seen = new Set<string>(); // deduplicate identical messages
+
+  function addWarning(msg: string): void {
+    if (!seen.has(msg)) { seen.add(msg); crossWarnings.push(msg); }
+  }
+
+  // Build all pairs to evaluate: consecutive neighbours + overall span
+  const pairs: Array<[DifficultyStats, DifficultyStats]> = [];
+  for (let i = 0; i < allStats.length - 1; i++) {
+    pairs.push([allStats[i], allStats[i + 1]]);
+  }
+  if (allStats.length > 2) {
+    pairs.push([allStats[0], allStats[allStats.length - 1]]);
+  }
+
+  for (const [a, b] of pairs) {
+    const aCount = a.playerCount;
+    const bCount = b.playerCount;
+
+    for (const lum of LUMINARIES) {
+      const aRate = (a.claimedCount[lum.id] ?? 0) / a.games;
+      const bRate = (b.claimedCount[lum.id] ?? 0) / b.games;
+
+      // Never claimed at one count but claimed regularly at another
+      if (aRate === 0 && bRate >= REGULAR_THRESHOLD) {
+        addWarning(
+          `${lum.name}: never claimed at ${aCount}p but claimed in ${pct(b.claimedCount[lum.id] ?? 0, b.games)} of ${bCount}p games`,
+        );
+      } else if (bRate === 0 && aRate >= REGULAR_THRESHOLD) {
+        addWarning(
+          `${lum.name}: never claimed at ${bCount}p but claimed in ${pct(a.claimedCount[lum.id] ?? 0, a.games)} of ${aCount}p games`,
+        );
+      } else if (aRate >= REGULAR_THRESHOLD && bRate >= REGULAR_THRESHOLD) {
+        const ratio = bRate / aRate;
+        if (ratio >= 3) {
+          addWarning(
+            `${lum.name}: claim rate ${(bRate * 100).toFixed(1)}% at ${bCount}p vs ${(aRate * 100).toFixed(1)}% at ${aCount}p (${ratio.toFixed(1)}× more likely at higher count)`,
+          );
+        } else if (ratio <= 1 / 3) {
+          addWarning(
+            `${lum.name}: claim rate ${(aRate * 100).toFixed(1)}% at ${aCount}p vs ${(bRate * 100).toFixed(1)}% at ${bCount}p (${(1 / ratio).toFixed(1)}× more likely at lower count)`,
+          );
+        }
+      }
+
+      // Timing shift: median turn moves significantly between these two counts
+      const aTimes = a.claimTurns[lum.id] ?? [];
+      const bTimes = b.claimTurns[lum.id] ?? [];
+      if (aTimes.length >= 3 && bTimes.length >= 3) {
+        const aMed = median(aTimes);
+        const bMed = median(bTimes);
+        const shift = Math.abs(bMed - aMed);
+        const refLen = Math.max(a.avgTurns, b.avgTurns);
+        if (shift / refLen >= 0.2) {
+          const dir = bMed > aMed ? "later" : "earlier";
+          addWarning(
+            `${lum.name}: claim timing shifts ${dir} by ~${shift.toFixed(0)} turns (t${aMed.toFixed(0)} at ${aCount}p → t${bMed.toFixed(0)} at ${bCount}p)`,
+          );
+        }
+      }
+    }
+  }
+
+  if (crossWarnings.length === 0) {
+    console.log("  ✓ No cross-count claim anomalies detected");
+  } else {
+    for (const w of crossWarnings) console.log(`  ⚠ ${w}`);
+  }
+
+  console.log(`\n── Player-count verdicts ────────────────────────────────────────────`);
+  for (const s of allStats) {
+    const verdict = s.warnings.length === 0 ? "✓ PASS" : `⚠ ${s.warnings.length} warning(s)`;
+    console.log(`  ${String(s.playerCount + "p").padEnd(4)}: ${verdict}`);
+  }
+  console.log();
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main() {
-  const { games, difficulties, players } = parseArgs();
+  const { games, difficulties, playerCounts } = parseArgs();
+  const playerCountSweep = playerCounts.length > 1;
 
   console.log(`\n${"═".repeat(64)}`);
   console.log(`  Luminae Balance Simulation`);
-  console.log(`  Games: ${games} each  |  Difficulty: ${difficulties.join(", ")}  |  Players: ${players}`);
+  console.log(`  Games: ${games} each  |  Difficulty: ${difficulties.join(", ")}  |  Players: ${playerCounts.join(", ")}`);
   console.log(`${"═".repeat(64)}`);
 
-  const allStats: DifficultyStats[] = [];
-  for (const difficulty of difficulties) {
-    const stats = runDifficulty(difficulty, games, players);
-    printDifficultyReport(stats);
-    allStats.push(stats);
-  }
-
-  if (allStats.length > 1) {
-    printComparisonTable(allStats);
+  if (playerCountSweep) {
+    // Player-count sweep mode: run each player count at the chosen difficulty.
+    // If --difficulty all was also passed, only the first difficulty is used
+    // (a full 3×3 matrix is not yet supported). Notify the user.
+    const difficulty = difficulties[0];
+    if (difficulties.length > 1) {
+      console.log(
+        `\n  ⚠ Note: --difficulty all is ignored when --players all is active.`
+        + ` Using difficulty=${difficulty}.`
+        + ` To sweep difficulties, omit --players all.`,
+      );
+    }
+    const sweepStats: DifficultyStats[] = [];
+    for (const pc of playerCounts) {
+      const stats = runDifficulty(difficulty, games, pc);
+      printDifficultyReport(stats);
+      sweepStats.push(stats);
+    }
+    printPlayerCountComparison(sweepStats);
   } else {
-    console.log(`\n${"═".repeat(64)}\n`);
+    // Difficulty sweep mode (existing behaviour)
+    const players = playerCounts[0];
+    const allStats: DifficultyStats[] = [];
+    for (const difficulty of difficulties) {
+      const stats = runDifficulty(difficulty, games, players);
+      printDifficultyReport(stats);
+      allStats.push(stats);
+    }
+
+    if (allStats.length > 1) {
+      printComparisonTable(allStats);
+    } else {
+      console.log(`\n${"═".repeat(64)}\n`);
+    }
   }
 }
 
