@@ -13,6 +13,7 @@ import {
   type GameStateData,
   type PlayerGameState,
   type ArtifactCard,
+  type LuminaryAffinity,
   type LuminaryDef,
 } from "./gameEngine";
 
@@ -200,6 +201,86 @@ function pickThreeCrystals(
   return result;
 }
 
+// ─── Living Luminary Affinity Toggle ─────────────────────────────────────────
+// For hard-difficulty AI: evaluate each eligible affinity for an owned Luminary
+// and return the affinity that would maximise progress toward the best target
+// cards and unclaimed Luminaries.  Returns null when the current affinity is
+// already optimal (no toggle needed).
+function chooseBestAffinity(
+  la: LuminaryAffinity,
+  player: PlayerGameState,
+  state: GameStateData,
+): CrystalColor | null {
+  if (la.eligibleAffinities.length <= 1) return null;
+  if (state.turnCount <= la.summonedAtTurnCount) return null;
+
+  const market = getMarket(state);
+  const reserved = player.reservedCardIds
+    .map((id) => CARD_MAP.get(id))
+    .filter(Boolean) as ArtifactCard[];
+  const allCards = [...market, ...reserved];
+
+  // Top-scored target cards (up to 8)
+  const topTargets = allCards
+    .slice()
+    .sort(
+      (a, b) =>
+        scoreCard(b, player, state, "hard") - scoreCard(a, player, state, "hard"),
+    )
+    .slice(0, 8);
+
+  let bestAffinity = la.activeAffinity;
+  let bestScore = -Infinity;
+
+  for (const aff of la.eligibleAffinities) {
+    // Build a simulated bonus count: all active luminary bonuses, but replace
+    // THIS luminary's contribution with the candidate affinity.
+    const simBonuses = { ...player.bonuses };
+    for (const otherLa of state.luminaryAffinities) {
+      if (otherLa.ownerId !== player.playerId) continue;
+      if (state.turnCount <= otherLa.summonedAtTurnCount) continue;
+      const contribution = otherLa.luminaryId === la.luminaryId ? aff : otherLa.activeAffinity;
+      simBonuses[contribution]++;
+    }
+
+    let score = 0;
+
+    // Score toward top target cards: higher score = closer to affording.
+    // Total per-color deficits are reduced by flux (wildcard) crystals before
+    // computing the remaining shortfall so the heuristic is accurate when the
+    // player holds flux that can cover any color.
+    for (const card of topTargets) {
+      let rawDeficit = 0;
+      for (const color of CRYSTAL_COLORS) {
+        const needed = Math.max(0, card.cost[color] - simBonuses[color]);
+        rawDeficit += Math.max(0, needed - player.crystals[color]);
+      }
+      const shortfall = Math.max(0, rawDeficit - player.crystals.flux);
+      const cardValue = scoreCard(card, player, state, "hard");
+      score += cardValue / (shortfall + 1);
+    }
+
+    // Score toward unclaimed active Luminaries
+    for (const lumId of state.activeLuminaries) {
+      if (player.luminaries.includes(lumId)) continue;
+      const lum = LUMINARY_MAP.get(lumId);
+      if (!lum) continue;
+      let shortfall = 0;
+      for (const color of CRYSTAL_COLORS) {
+        shortfall += Math.max(0, lum.requirements[color] - simBonuses[color]);
+      }
+      score += (lum.lumens * 2) / (shortfall + 1);
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestAffinity = aff;
+    }
+  }
+
+  return bestAffinity !== la.activeAffinity ? bestAffinity : null;
+}
+
 function pickReserveCard(
   state: GameStateData,
   player: PlayerGameState,
@@ -234,6 +315,23 @@ export function chooseAiAction(
   }
 
   const totalHeld = totalCrystals(player.crystals);
+
+  // 0. Hard AI: optimise Living Luminary active affinity before acting.
+  // toggle_luminary_affinity is non-turn-gated so the turn runner will apply
+  // it immediately and then call chooseAiAction again for the real action.
+  if (difficulty === "hard") {
+    for (const la of state.luminaryAffinities ?? []) {
+      if (la.ownerId !== playerId) continue;
+      const betterAffinity = chooseBestAffinity(la, player, state);
+      if (betterAffinity) {
+        return {
+          type: "toggle_luminary_affinity",
+          luminaryId: la.luminaryId,
+          affinity: betterAffinity,
+        };
+      }
+    }
+  }
 
   // 1. If we can afford a card, purchase the best one
   const affordable = findAffordableCards(player, state, difficulty);
