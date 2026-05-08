@@ -736,13 +736,13 @@ title = "null sovereign entity"
 id = "Lnuc1KDFZpv6W-9ijChKd"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_verdant/entity.png"
 type = "image"
-title = "verdant oracle entity"
+title = "generated_image"
 
 [[generated]]
 id = "VuFCopsumkhkovUTINL_4"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/entity.png"
 type = "image"
-title = "recursive architect entity"
+title = "generated_image"
 
 [[generated]]
 id = "UCAw--DlclwJ-vkRFMuRJ"
