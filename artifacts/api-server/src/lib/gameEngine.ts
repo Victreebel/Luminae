@@ -103,7 +103,7 @@ export interface GameStateData {
   pendingSummonEvents: PendingSummonEvent[];
 }
 
-const ACTION_LOG_MAX = 20;
+const ACTION_LOG_MAX = 100;
 const COLOR_LABEL: Record<CrystalColor, string> = {
   ruby: "Flare",
   sapphire: "Continuum",

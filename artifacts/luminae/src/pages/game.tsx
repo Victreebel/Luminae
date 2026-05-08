@@ -764,6 +764,7 @@ export default function GameBoard() {
   const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [showAllLog, setShowAllLog] = useState(false);
   const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
@@ -2460,12 +2461,24 @@ export default function GameBoard() {
 
       {/* Action Log */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Recent Actions</p>
-        <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur divide-y divide-border/30">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Recent Actions</p>
+          {(state.actionLog ?? []).length > 12 && (
+            <button
+              onClick={() => setShowAllLog((v) => !v)}
+              className="text-[10px] font-semibold uppercase tracking-widest text-primary/70 hover:text-primary transition-colors"
+            >
+              {showAllLog ? 'Show less' : `Show all ${(state.actionLog ?? []).length}`}
+            </button>
+          )}
+        </div>
+        <div
+          className={`rounded-2xl border border-border/50 bg-card/60 backdrop-blur divide-y divide-border/30 ${showAllLog ? 'max-h-[420px] overflow-y-auto' : ''}`}
+        >
           {(state.actionLog ?? []).length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground italic text-center">No actions yet.</div>
           ) : (
-            [...(state.actionLog ?? [])].reverse().slice(0, 12).map((entry, i) => {
+            [...(state.actionLog ?? [])].reverse().slice(0, showAllLog ? undefined : 12).map((entry, i) => {
               const isMe = entry.playerId === session.playerId;
               const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
               return (
