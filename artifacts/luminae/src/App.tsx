@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Lobby from "@/pages/lobby";
 import Game from "@/pages/game";
+import FontPreview from "@/pages/font-preview";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 
 class ErrorBoundary extends Component<
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/lobby/:roomId" component={Lobby} />
       <Route path="/game/:roomId" component={Game} />
+      {import.meta.env.DEV && <Route path="/dev/font-preview" component={FontPreview} />}
       <Route component={NotFound} />
     </Switch>
   );
