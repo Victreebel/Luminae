@@ -56,15 +56,26 @@ function scoreCard(
     score += 1;
 
     if (difficulty === "hard") {
-      // Reward bonuses needed for active luminaries
+      // Reward bonuses needed for active luminaries.
+      // Scale the boost by the Luminary's lumen value so higher-reward
+      // Luminaries get proportionally stronger card-direction guidance.
+      // Add a "commitment" bonus when the player is already ≥ halfway toward
+      // a Luminary's per-color requirement — prevents the AI from abandoning
+      // a mono-color Luminary it has already started building toward.
       for (const lumId of state.activeLuminaries) {
         const lum = LUMINARY_MAP.get(lumId);
         if (!lum) continue;
-        const need = Math.max(
-          0,
-          lum.requirements[card.bonusColor] - player.bonuses[card.bonusColor],
-        );
-        if (need > 0) score += 2;
+        const req = lum.requirements[card.bonusColor];
+        if (req <= 0) continue;
+        const have = player.bonuses[card.bonusColor];
+        const need = Math.max(0, req - have);
+        if (need > 0) {
+          // Base boost proportional to Luminary value (1–4)
+          score += lum.lumens;
+          // Commitment bonus: once ≥ halfway to this color requirement,
+          // add extra incentive to finish (applies to mono Luminaries most)
+          if (have >= req / 2) score += 2;
+        }
       }
       // Tier bonus (prefer building toward higher tiers)
       score += card.tier;
