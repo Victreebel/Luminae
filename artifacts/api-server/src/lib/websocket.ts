@@ -3,6 +3,7 @@ import type { IncomingMessage } from "http";
 import type { Server } from "http";
 import { db } from "@workspace/db";
 import { playersTable } from "@workspace/db";
+import type { Player } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -87,9 +88,7 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   }
 
   // Authenticate
-  let player: typeof import("@workspace/db").$inferSelect extends never
-    ? never
-    : Awaited<ReturnType<typeof db.select>>["0"] | undefined;
+  let player: Player | undefined;
 
   try {
     const rows = await db

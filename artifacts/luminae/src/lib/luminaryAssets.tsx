@@ -787,9 +787,19 @@ const K6X = 80;   const K6Y = 112;  // second crack right branch Q→RB, kink 2
 const K7X = 18;   const K7Y = 122;  // second crack left branch  Q→LA
 const K8X = 38;   const K8Y = 136;  // second crack main  Q→BA
 
+type ShardPiece = {
+  clip: string;
+  dx: number;
+  dy: number;
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
+  z?: number;
+};
+
 // Six large shard pieces — clip paths in percentage coords (W=112, H=160).
 // Motion: slow outward drift, subtle 3-D tumble, affinity-colour pulse, fade.
-const PANEL_PIECES = [
+const PANEL_PIECES: readonly ShardPiece[] = [
   // TL — top-left wedge (7 vertices)
   { clip: 'polygon(0% 0%, 35.7% 0%, 28.6% 15%, 50% 42.5%, 39.3% 40%, 19.6% 37.5%, 0% 40%)',
     dx:  -42, dy:  -36, rotateX: -12, rotateY:   9, rotateZ:  10 },
@@ -808,7 +818,7 @@ const PANEL_PIECES = [
   // BR — bottom-right slab (7 vertices)
   { clip: 'polygon(25% 72.5%, 46.4% 70%, 71.4% 70%, 100% 72.5%, 100% 100%, 39.3% 100%, 33.9% 85%)',
     dx:   32, dy:   37, rotateX:  11, rotateY:  -9, rotateZ: -10 },
-] as const;
+];
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   establish:    600,
