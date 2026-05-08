@@ -94,8 +94,8 @@ export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
 // NOTE: These are PLACEHOLDER art, not final illustrations. The pipeline above
 // replaces them per-Luminary as soon as a real asset file is dropped in.
 
-// ── The Furnace Regent ───────────────────────────────────────────────────────
-// Crowned stellar sovereign: 5-spike crystal crown, angular gem-faceted robe.
+// ── Ember Sovereign ──────────────────────────────────────────────────────────
+// Crowned flame sovereign: 5-spike crystal crown, angular gem-faceted robe.
 function EmberEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
@@ -129,7 +129,7 @@ function EmberEntity({ size = 140, className = '' }: { size?: number; className?
   );
 }
 
-// ── The Recursive Architect ───────────────────────────────────────────────────
+// ── Tide Architect ────────────────────────────────────────────────────────────
 // Tidal architect: very tall crystal spire head (top 35%), column body, arc arms.
 function TideEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
@@ -162,7 +162,7 @@ function TideEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
-// ── The Verdant Oracle ────────────────────────────────────────────────────────
+// ── Verdant Oracle ────────────────────────────────────────────────────────────
 // Verdant oracle: wide squat body, geological crystal dome head, massive root arms.
 function VerdantEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
@@ -195,7 +195,7 @@ function VerdantEntity({ size = 140, className = '' }: { size?: number; classNam
   );
 }
 
-// ── The Void Warden ───────────────────────────────────────────────────────────
+// ── Void Warden ───────────────────────────────────────────────────────────────
 // Void warden: tall hooded cloak, absolute void face, orbital containment ring.
 function VoidEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
@@ -226,8 +226,8 @@ function VoidEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
-// ── The Coherence Keeper ──────────────────────────────────────────────────────
-// Coherence keeper: saint figure with massive 8-point starburst halo, glowing sphere.
+// ── Radiant Keeper ────────────────────────────────────────────────────────────
+// Radiant keeper: saint figure with massive 8-point starburst halo, glowing sphere.
 function RadiantEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   const haloCenter = { x: 50, y: 44 };
   const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
@@ -274,8 +274,8 @@ function RadiantEntity({ size = 140, className = '' }: { size?: number; classNam
   );
 }
 
-// ── The Stellar Cartographer ──────────────────────────────────────────────────
-// Stellar cartographer: six crystal arms in exact hexagonal star pattern, star-cluster head.
+// ── Astral Weaver ──────────────────────────────────────────────────────────────
+// Astral weaver: six crystal arms in exact hexagonal star pattern, star-cluster head.
 function AstralEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   const armAngles = [0, 60, 120, 180, 240, 300];
   const cx = 50, cy = 68;
@@ -319,7 +319,7 @@ function AstralEntity({ size = 140, className = '' }: { size?: number; className
   );
 }
 
-// ── The Iron Harbinger ────────────────────────────────────────────────────────
+// ── Iron Harbinger ────────────────────────────────────────────────────────────
 // Iron harbinger: armored stocky figure with wide mechanical crystal wings.
 function ForgeEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
@@ -354,7 +354,7 @@ function ForgeEntity({ size = 140, className = '' }: { size?: number; className?
   );
 }
 
-// ── The Pale Merchant ─────────────────────────────────────────────────────────
+// ── Pale Merchant ──────────────────────────────────────────────────────────────
 // Pale merchant: tall luminous hood, drooping cloak, balance scales to the right.
 function PaleEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
@@ -387,7 +387,7 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
-// ── The Bloom Tyrant ──────────────────────────────────────────────────────────
+// ── Bloom Tyrant ──────────────────────────────────────────────────────────────
 // Bloom tyrant: asymmetric — LEFT crystal petals blooming, RIGHT flame spikes.
 function BloomEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
@@ -422,8 +422,8 @@ function BloomEntity({ size = 140, className = '' }: { size?: number; className?
   );
 }
 
-// ── The Horizon Shepherd ──────────────────────────────────────────────────────
-// Horizon shepherd: 8-point compass rose crown, navigator with pointing arm.
+// ── Stellar Guide ──────────────────────────────────────────────────────────────
+// Stellar guide: 8-point compass rose crown, navigator with pointing arm.
 function CompassEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
@@ -463,8 +463,8 @@ function CompassEntity({ size = 140, className = '' }: { size?: number; classNam
   );
 }
 
-// ── The Probability Oracle ────────────────────────────────────────────────────
-// Probability oracle: seated floating figure inside three orbital rings, three eyes.
+// ── Cosmic Oracle ─────────────────────────────────────────────────────────────
+// Cosmic oracle: seated floating figure inside three orbital rings, three eyes.
 function OracleEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
@@ -507,7 +507,7 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
   );
 }
 
-// ── The Null Sovereign ────────────────────────────────────────────────────────
+// ── Null Sovereign ────────────────────────────────────────────────────────────
 // Null sovereign: tall figure with crown of null-rune fragments, disintegrating body.
 function NullEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (

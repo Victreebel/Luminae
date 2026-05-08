@@ -706,79 +706,13 @@ title = "Oracle panel art"
 id = "zMQhgn_IwHA8ejgEbe41_"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
 type = "image"
-title = "generated_image"
+title = "Clean Oracle webp source"
 
 [[generated]]
 id = "4RJJCttnZbJi8zCxf3q4U"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/aura.png"
 type = "image"
 title = "Oracle aura layer"
-
-[[generated]]
-id = "jMWJudilQ6TTX5rGMs5pt"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_ember/entity.png"
-type = "image"
-title = "furnace regent entity"
-
-[[generated]]
-id = "qEnsyD51VYeUf4aGsBFhB"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_forge/entity.png"
-type = "image"
-title = "iron harbinger entity"
-
-[[generated]]
-id = "BjDhUbexocoNTv3z3DMwl"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/entity.png"
-type = "image"
-title = "null sovereign entity"
-
-[[generated]]
-id = "Lnuc1KDFZpv6W-9ijChKd"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_verdant/entity.png"
-type = "image"
-title = "generated_image"
-
-[[generated]]
-id = "VuFCopsumkhkovUTINL_4"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/entity.png"
-type = "image"
-title = "generated_image"
-
-[[generated]]
-id = "UCAw--DlclwJ-vkRFMuRJ"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/entity.png"
-type = "image"
-title = "void warden entity"
-
-[[generated]]
-id = "W7XbqdUujk32xcaPZZMlZ"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/entity.png"
-type = "image"
-title = "generated_image"
-
-[[generated]]
-id = "tiMDfXw2QnqHzuPI05LvN"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/entity.png"
-type = "image"
-title = "stellar cartographer entity"
-
-[[generated]]
-id = "cM8dzKBJBhBI-ytyNdzT9"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/entity.png"
-type = "image"
-title = "pale merchant entity"
-
-[[generated]]
-id = "Uq3RwYODAeNOOWyWxIso7"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/entity.png"
-type = "image"
-title = "generated_image"
-
-[[generated]]
-id = "EmRSVOnFyjH9xuDhjw6P3"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_compass/entity.png"
-type = "image"
-title = "generated_image"
 
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"

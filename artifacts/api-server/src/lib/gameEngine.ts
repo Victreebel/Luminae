@@ -250,14 +250,24 @@ export const CARD_CATALOG: ArtifactCard[] = [
 ];
 
 export const LUMINARIES: LuminaryDef[] = [
-  // ── Triple-color Luminaries (4 Eminence) ─────────────────────────────────────
+  {
+    id: "lum_forge",
+    name: "The Iron Harbinger",
+    domain: "Ruin",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 4, pearl: 0, flux: 0 },
+    flavor: "What he builds he eventually unmakes. Creation and ruin are the same song played in different keys.",
+    summonColor: "#2ecc71",
+    summonSecondaryColor: "#7b1fa2",
+    auraStyle: "storm",
+  },
   {
     id: "lum_ember",
-    name: "The Furnace Regent",
-    domain: "Stellar Dominion",
+    name: "The Ember Sovereign",
+    domain: "Flame",
     lumens: 4,
     requirements: { ruby: 3, sapphire: 0, emerald: 3, onyx: 3, pearl: 0, flux: 0 },
-    flavor: "Some empires discover fire. This one crowned it.",
+    flavor: "Born of the first stellar ignition, she feeds on the light of dying suns and leaves only cinders where empires once stood.",
     summonColor: "#ff5a3c",
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
@@ -265,89 +275,67 @@ export const LUMINARIES: LuminaryDef[] = [
   {
     id: "lum_null",
     name: "The Null Sovereign",
-    domain: "Transcendence / Post-Material Silence",
+    domain: "Transcendence",
     lumens: 4,
     requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
-    flavor: "The throne remains. The ruler no longer requires location.",
+    flavor: "Beyond the final star, past the edge of the last dark, something waits that was never born and cannot die.",
     summonColor: "#0f172a",
     summonSecondaryColor: "#a8b8e8",
     auraStyle: "null",
   },
-  {
-    id: "lum_oracle",
-    name: "The Probability Oracle",
-    domain: "Prophecy / Predictive Cosmology",
-    lumens: 4,
-    requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "It does not see the future. It eliminates the futures that fail.",
-    summonColor: "#fbbf24",
-    summonSecondaryColor: "#ef4444",
-    auraStyle: "oracle",
-  },
-  // ── Mono-color Luminaries (1–2 Eminence) ─────────────────────────────────────
-  {
-    id: "lum_verdant",
-    name: "The Verdant Oracle",
-    domain: "Interstellar Ecology",
-    lumens: 1,
-    requirements: { ruby: 0, sapphire: 0, emerald: 5, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "The roots crossed the void before thought learned to follow.",
-    summonColor: "#4ade80",
-    summonSecondaryColor: "#166534",
-    auraStyle: "verdant",
-  },
+  // ── Mono-color Luminaries (2 Eminence) ──────────────────────────────────────
   {
     id: "lum_tide",
-    name: "The Recursive Architect",
-    domain: "Causality",
+    name: "The Tide Architect",
+    domain: "Tides",
     lumens: 2,
     requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "Every ending was measured, stored, and offered back as structure.",
+    flavor: "The sea does not rage. It simply rises.",
     summonColor: "#60a5fa",
     summonSecondaryColor: "#e2e8f0",
     auraStyle: "tide",
   },
   {
+    id: "lum_verdant",
+    name: "The Verdant Oracle",
+    domain: "Verdance",
+    lumens: 1,
+    requirements: { ruby: 0, sapphire: 0, emerald: 5, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "She reads the future in the rings of trees that have not yet been planted.",
+    summonColor: "#4ade80",
+    summonSecondaryColor: "#166534",
+    auraStyle: "verdant",
+  },
+  {
     id: "lum_void",
     name: "The Void Warden",
-    domain: "Entropy / Containment",
+    domain: "Void",
     lumens: 2,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
-    flavor: "It guards the door no civilization admits it built.",
+    flavor: "In the space between stars, something watches without eyes.",
     summonColor: "#4c1d95",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "void",
   },
   {
     id: "lum_radiant",
-    name: "The Coherence Keeper",
-    domain: "Light / Stabilization",
+    name: "The Radiant Keeper",
+    domain: "Light",
     lumens: 2,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
-    flavor: "When the universe frays, it remembers the pattern.",
+    flavor: "She holds back the dark not with fire, but with patience.",
     summonColor: "#fef9c3",
     summonSecondaryColor: "#2ecc71",
     auraStyle: "radiant",
   },
   // ── Dual-color Luminaries (3 Eminence) ──────────────────────────────────────
   {
-    id: "lum_forge",
-    name: "The Iron Harbinger",
-    domain: "Ruin / Industrial Inevitability",
-    lumens: 3,
-    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 4, pearl: 0, flux: 0 },
-    flavor: "It did not conquer worlds. It optimized them.",
-    summonColor: "#2ecc71",
-    summonSecondaryColor: "#7b1fa2",
-    auraStyle: "storm",
-  },
-  {
     id: "lum_astral",
-    name: "The Stellar Cartographer",
-    domain: "Stars / Migration",
+    name: "The Astral Weaver",
+    domain: "Stars",
     lumens: 3,
     requirements: { ruby: 3, sapphire: 3, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "Maps were useless until the stars began to move.",
+    flavor: "Where stellar fire meets the deep cold, the astral web is woven.",
     summonColor: "#f43f5e",
     summonSecondaryColor: "#3d6bff",
     auraStyle: "astral",
@@ -355,10 +343,10 @@ export const LUMINARIES: LuminaryDef[] = [
   {
     id: "lum_pale",
     name: "The Pale Merchant",
-    domain: "Balance / Entropy Exchange",
+    domain: "Balance",
     lumens: 3,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
-    flavor: "It buys what dying civilizations can no longer afford to keep.",
+    flavor: "Every transaction is a small death. Every debt, a small birth.",
     summonColor: "#cbd5e1",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
@@ -366,24 +354,36 @@ export const LUMINARIES: LuminaryDef[] = [
   {
     id: "lum_bloom",
     name: "The Bloom Tyrant",
-    domain: "Wildgrowth / Invasive Ecology",
+    domain: "Wildgrowth",
     lumens: 3,
     requirements: { ruby: 4, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "The garden did not ask permission to become an empire.",
+    flavor: "She tends the garden of conflict and harvests its strange flowers.",
     summonColor: "#86efac",
     summonSecondaryColor: "#7f1d1d",
     auraStyle: "bloom",
   },
   {
     id: "lum_compass",
-    name: "The Horizon Shepherd",
-    domain: "Navigation / Galactic Infrastructure",
+    name: "The Stellar Guide",
+    domain: "Navigation",
     lumens: 3,
     requirements: { ruby: 0, sapphire: 4, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "It led whole worlds by paths no light had taken.",
+    flavor: "The shortest path between two stars is a story.",
     summonColor: "#38bdf8",
     summonSecondaryColor: "#2ecc71",
     auraStyle: "compass",
+  },
+  // ── Triple-color Luminary (4 Eminence) ──────────────────────────────────────
+  {
+    id: "lum_oracle",
+    name: "The Cosmic Oracle",
+    domain: "Prophecy",
+    lumens: 4,
+    requirements: { ruby: 3, sapphire: 3, emerald: 3, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "She sees what will be, and what might have been, and cannot tell the difference.",
+    summonColor: "#fbbf24",
+    summonSecondaryColor: "#ef4444",
+    auraStyle: "oracle",
   },
 ];
 
@@ -394,10 +394,12 @@ export const LUMINARY_MAP = new Map<string, LuminaryDef>(
   LUMINARIES.map((l) => [l.id, l]),
 );
 
-// All 12 Luminaries have procedural SVG entity art and are available for play.
-// Illustrated (webp) assets can be dropped into src/assets/luminaries/<id>/
-// on the frontend to upgrade individual Luminaries to full illustration quality.
-const AVAILABLE_LUMINARIES = LUMINARIES;
+// Luminaries with complete illustrated assets — only these enter the active
+// pool until the remaining entries have their art finalised.
+const ILLUSTRATED_IDS = new Set(["lum_forge", "lum_null", "lum_verdant", "lum_ember", "lum_oracle"]);
+const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
+  ILLUSTRATED_IDS.has(l.id),
+);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -435,7 +437,7 @@ export function initializeGame(
     CARD_CATALOG.filter((c) => c.tier === 3).map((c) => c.id),
   );
 
-  // Luminaries: pick playerCount+1 from the full pool of 12
+  // Luminaries: pick playerCount+1 from illustrated pool only
   const lumCount = Math.min(playerCount + 1, AVAILABLE_LUMINARIES.length);
   const activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
     0,
