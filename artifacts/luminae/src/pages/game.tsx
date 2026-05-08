@@ -329,6 +329,21 @@ function LuminaryClaimedPortal({
 
   const activeKey = (luminaryAffinity?.activeAffinity ?? null) as GemKey | null;
   const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
+
+  // Detect affinity switches on AI-owned portals and trigger a flash animation
+  const isAIPortal = claimedByPlayer?.aiDifficulty === 'medium' || claimedByPlayer?.aiDifficulty === 'hard';
+  const prevActiveKeyRef = useRef<GemKey | null>(activeKey);
+  const [affinityFlashKey, setAffinityFlashKey] = useState<number>(0);
+  const [affinityFlashColor, setAffinityFlashColor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAIPortal && prevActiveKeyRef.current !== null && prevActiveKeyRef.current !== activeKey && activeKey) {
+      const newColor = GEM_META[activeKey].hex;
+      setAffinityFlashColor(newColor);
+      setAffinityFlashKey(k => k + 1);
+    }
+    prevActiveKeyRef.current = activeKey;
+  }, [activeKey, isAIPortal]);
   const activeAffinityMeta = activeKey ? GEM_META[activeKey] : null;
 
   // All requirement colours — basis for the vortex mix (no flux)
@@ -564,27 +579,67 @@ function LuminaryClaimedPortal({
       </div>
 
       {/* AI affinity indicator — shown for medium/hard AI players only */}
-      {(claimedByPlayer?.aiDifficulty === 'medium' || claimedByPlayer?.aiDifficulty === 'hard') && activeKey && (
-        <motion.div
-          className="absolute z-20 pointer-events-none"
-          style={{ top: 28, right: 6 }}
-          animate={{ opacity: [0.75, 1, 0.75] }}
-          transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <div
-            className="flex items-center gap-0.5 rounded-full px-1 py-0.5"
-            style={{
-              background: `linear-gradient(135deg, rgba(3,3,8,0.88) 0%, ${g1}28 100%)`,
-              border: `1px solid ${g1}55`,
-              boxShadow: `0 0 6px ${g1}44`,
-            }}
+      {isAIPortal && activeKey && (
+        <div className="absolute z-20 pointer-events-none" style={{ top: 28, right: 6 }}>
+          {/* Affinity-switch burst rings — key increment remounts so animation replays on every toggle */}
+          {affinityFlashColor && (
+            <>
+              {/* Expanding ring 1 */}
+              <motion.div
+                key={`ring1-${affinityFlashKey}`}
+                className="absolute rounded-full"
+                style={{
+                  inset: -2,
+                  border: `2px solid ${affinityFlashColor}`,
+                  boxShadow: `0 0 8px ${affinityFlashColor}, 0 0 16px ${affinityFlashColor}88`,
+                }}
+                initial={{ scale: 1, opacity: 0.9 }}
+                animate={{ scale: 2.8, opacity: 0 }}
+                transition={{ duration: 0.65, ease: 'easeOut' }}
+              />
+              {/* Expanding ring 2 — slightly delayed */}
+              <motion.div
+                key={`ring2-${affinityFlashKey}`}
+                className="absolute rounded-full"
+                style={{
+                  inset: -1,
+                  border: `1.5px solid ${affinityFlashColor}cc`,
+                }}
+                initial={{ scale: 1, opacity: 0.7 }}
+                animate={{ scale: 2.1, opacity: 0 }}
+                transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
+              />
+              {/* Centre flash */}
+              <motion.div
+                key={`flash-${affinityFlashKey}`}
+                className="absolute inset-0 rounded-full"
+                style={{ background: `radial-gradient(circle, ${affinityFlashColor}cc 0%, transparent 70%)` }}
+                initial={{ opacity: 0.8, scale: 0.9 }}
+                animate={{ opacity: 0, scale: 1.4 }}
+                transition={{ duration: 0.45, ease: 'easeOut' }}
+              />
+            </>
+          )}
+          {/* Badge pill */}
+          <motion.div
+            animate={{ opacity: [0.75, 1, 0.75] }}
+            transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <span className="text-[6px] font-bold tracking-wider uppercase" style={{ color: `${g1}cc` }}>
-              AI
-            </span>
-            <MiniGem color={activeKey} size={7} />
-          </div>
-        </motion.div>
+            <div
+              className="flex items-center gap-0.5 rounded-full px-1 py-0.5"
+              style={{
+                background: `linear-gradient(135deg, rgba(3,3,8,0.88) 0%, ${g1}28 100%)`,
+                border: `1px solid ${g1}55`,
+                boxShadow: `0 0 6px ${g1}44`,
+              }}
+            >
+              <span className="text-[6px] font-bold tracking-wider uppercase" style={{ color: `${g1}cc` }}>
+                AI
+              </span>
+              <MiniGem color={activeKey} size={7} />
+            </div>
+          </motion.div>
+        </div>
       )}
 
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
