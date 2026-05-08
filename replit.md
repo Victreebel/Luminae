@@ -14,8 +14,21 @@ The user prefers that all development and communication adhere to the establishe
 - `lum_ember` (Ember Sovereign), `lum_forge` (Iron Harbinger), `lum_verdant` (Verdant Oracle)
 - These three define the gold standard for panel style, frame format, density, and polish.
 
-### Panel hard rules (every panel.webp must satisfy all of these)
-- Ornate premium card-ready frame — same ornate gold border and corner gem medallions as the accepted references.
+### Panel frame template (canonical reference image)
+- **File:** `artifacts/luminae/src/assets/references/luminary_panel_reference.png`
+- **Purpose:** Visual style reference only — not a gameplay asset, never rendered in the game.
+- This is the empty containment vessel template showing the exact frame architecture to match:
+  - Square black background with an ornate gold filigree border (thin gold vine/lattice pattern along all four edges)
+  - Four corner gem housings: each is a faceted cut gem set in a gold angular housing with pointed gold flanges — gem color varies per Luminary's affinities
+  - Top-center crest: a layered gold diamond/chevron ornament with a central gem, protruding above the frame edge
+  - Bottom-center medallion: a circular gold housing with an affinity symbol inset, centered at the bottom edge
+  - Large faceted crystal dome occupying ~80% of the card interior — a multi-faceted cut-gem sphere/polyhedron with visible triangular and trapezoidal facet planes
+  - Crystal facets are interconnected by gold seam lines at every edge junction — the lattice of gold veins is a key visual signature
+  - Facet surfaces: partially transparent/glassy with iridescent prismatic light scatter and specular glints — the Luminary should be visible through/within the facets
+  - The dome sits on a dark cosmic background (deep space, particle field, or atmospheric nebula appropriate to the Luminary's affinities)
+
+### Panel hard rules (every panel must satisfy all of these)
+- Frame architecture must match the reference template above — gold border, four corner gem housings, top diamond crest, bottom medallion, gold lattice seams on crystal facets.
 - Central crystalline prison / containment vessel — the Luminary must look **sealed within** the crystal, not standing in front of it. Crystal facets must overlap, refract, restrain, or embed the entity's body.
 - If the Luminary looks like it is standing in front of a crystal, the panel has failed.
 - No text baked into the image — no name, no label, no banner, no chart annotation, no glyph text.
