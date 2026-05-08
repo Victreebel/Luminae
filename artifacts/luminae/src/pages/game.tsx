@@ -2478,24 +2478,56 @@ export default function GameBoard() {
           {(state.actionLog ?? []).length === 0 ? (
             <div className="p-4 text-sm text-muted-foreground italic text-center">No actions yet.</div>
           ) : (
-            [...(state.actionLog ?? [])].reverse().slice(0, showAllLog ? undefined : 12).map((entry, i) => {
+            (() => {
+              const AFFINITY_DOT_COLOR: Record<string, string> = {
+                Flare: '#FF5A3C',
+                Continuum: '#3D6BFF',
+                Verdance: '#2ECC71',
+                Abyss: '#9C27B0',
+                Radiance: '#C8D4F8',
+              };
+              return [...(state.actionLog ?? [])].reverse().slice(0, showAllLog ? undefined : 12).map((entry, i) => {
               const isMe = entry.playerId === session.playerId;
               const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
+              const isAffinityChange = entry.summary.startsWith('attuned ');
+              const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
+              const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
               return (
-              <div key={i} className="flex items-start gap-2.5 px-3 py-2.5">
+              <div
+                key={i}
+                className="flex items-start gap-2.5 px-3 py-2.5"
+                style={isAffinityChange ? { background: `${dotColor}0D` } : undefined}
+              >
                 <PlayerAvatar
                   avatarId={logPlayer?.avatarId ?? (isMe ? session.avatarId : null)}
                   name={entry.playerName}
                   size={22}
                 />
-                <div className="text-xs leading-relaxed">
+                <div className="text-xs leading-relaxed flex-1">
                   <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{entry.playerName}</span>
-                  <span className="text-foreground/80"> · {entry.summary}</span>
+                  {isAffinityChange ? (
+                    <>
+                      <span className="text-foreground/70 italic"> · {entry.summary}</span>
+                      <span
+                        className="inline-flex items-center gap-1 ml-1.5 align-middle"
+                        title={affinityLabel}
+                      >
+                        <span
+                          className="inline-block rounded-full border border-white/20"
+                          style={{ width: 7, height: 7, background: dotColor, boxShadow: `0 0 4px ${dotColor}99` }}
+                        />
+                        <span style={{ color: dotColor, fontSize: 10, lineHeight: 1 }}>↻</span>
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-foreground/80"> · {entry.summary}</span>
+                  )}
                   <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
                 </div>
               </div>
               );
-            })
+            });
+            })()
           )}
         </div>
       </div>
