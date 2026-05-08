@@ -1,4 +1,4 @@
-Luminae / Ember Sovereign centered full asset package
+Luminae / The Furnace Regent centered full asset package
 
 Upload these files into:
 artifacts/luminae/src/assets/luminaries/lum_ember/
@@ -10,7 +10,7 @@ Files to upload:
 
 Package notes:
 - panel.webp is the original sealed panel asset.
-- entity.webp is the new centered Ember Sovereign render with the figure better centered and hands/staff visible.
+- entity.webp is the new centered Furnace Regent render with the figure better centered and hands/staff visible.
 - aura.webp is a softly feathered version of the original aura asset.
 
 Important:
