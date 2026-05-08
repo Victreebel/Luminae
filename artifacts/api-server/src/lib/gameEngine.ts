@@ -396,7 +396,12 @@ export const LUMINARY_MAP = new Map<string, LuminaryDef>(
 
 // Luminaries with complete illustrated assets — only these enter the active
 // pool until the remaining entries have their art finalised.
-const ILLUSTRATED_IDS = new Set(["lum_forge", "lum_null", "lum_verdant", "lum_ember", "lum_oracle"]);
+const ILLUSTRATED_IDS = new Set([
+  "lum_forge", "lum_ember", "lum_verdant",
+  "lum_null", "lum_oracle",
+  "lum_astral", "lum_bloom", "lum_compass",
+  "lum_pale", "lum_radiant", "lum_tide", "lum_void",
+]);
 const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
   ILLUSTRATED_IDS.has(l.id),
 );

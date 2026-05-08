@@ -700,19 +700,169 @@ title = "Voidcaller avatar portrait"
 id = "NBG33K8KeRVE3XsRJPx1n"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/panel.png"
 type = "image"
-title = "Oracle panel art"
+title = "generated_image"
 
 [[generated]]
 id = "zMQhgn_IwHA8ejgEbe41_"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
 type = "image"
-title = "Clean Oracle webp source"
+title = "generated_image"
 
 [[generated]]
 id = "4RJJCttnZbJi8zCxf3q4U"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/aura.png"
 type = "image"
-title = "Oracle aura layer"
+title = "generated_image"
+
+[[generated]]
+id = "8hcW8nNYZbAjA-adLbVo8"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "umrS5JDG0-Qx2eZDQH5vR"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "byPCBk_e9KaEPVBGq_FQj"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_compass/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5BMNZw40oV8BkVa3dw6ig"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "bTvEsShpuxElpFuYPeWe6"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7qkJOM2YWVkRi-HLw_hil"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ZMufQgWdyX6KCNu7JLbJa"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "rzmNczupmY30Gryz29RFu"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/panel.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "DeBFxURgEmwiv-U9vV87F"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ZUNzdE0Mo9OavHMiFjZky"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "76phyipF_jNM66anWVPa5"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_compass/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "cdWEfTs1P49zYULt9YP1t"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "CBEvY_O6dtnqI3DFsy6bI"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "7_xVFO4qQSi5mZwyT6S4b"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "_pUlkAorrz3xsYq0mkzBR"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "GWO8CNnLW0i9uYg3XUtRA"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "pxtP_HM5qsR1eWEwK-kq2"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_ember/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "p3qWFtkSb_RPtm-gLdQ9_"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0KiSKImPyZynwrxFKYfr9"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "qt9VfVVHY0DaqVyhK6yNY"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_compass/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "0izNix2kNvNgtuv9e2KOZ"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Q7mv_mCyIMKki5qyevCmw"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "weE3hzYEgxvkKMZ5sPXgr"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sdSzGK-LxuTSQpui2CAuu"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/aura.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Py7EOU4fRlrwLKhqpM7YU"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/aura.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
