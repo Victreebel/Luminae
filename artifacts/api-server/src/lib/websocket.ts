@@ -26,6 +26,15 @@ export function broadcastToRoom(roomId: string, payload: unknown): void {
   }
 }
 
+export function sendToPlayer(roomId: string, playerId: string, payload: unknown): void {
+  const room = connections.get(roomId);
+  if (!room) return;
+  const ws = room.get(playerId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(payload));
+  }
+}
+
 export function setupWebSocket(server: Server): void {
   const wss = new WebSocketServer({ server, path: "/ws" });
 

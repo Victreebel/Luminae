@@ -10,12 +10,34 @@ import {
   type ActionPayload,
   type CrystalColor,
 } from "../lib/gameEngine";
-import { broadcastToRoom, getConnectedPlayerIds } from "../lib/websocket";
+import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 
 const router: IRouter = Router();
+
+// Strip plannedAction / plannedActionCancelReason from all players except the
+// viewer.  Call this before sending any state to a specific client so that
+// players cannot read each other's planned moves through the WebSocket or REST.
+function filterStateForPlayer<
+  T extends {
+    players: Array<{
+      playerId: string;
+      plannedAction: unknown;
+      plannedActionCancelReason: unknown;
+    }>;
+  },
+>(state: T, viewerPlayerId: string): T {
+  return {
+    ...state,
+    players: state.players.map((p) =>
+      p.playerId === viewerPlayerId
+        ? p
+        : { ...p, plannedAction: null, plannedActionCancelReason: null },
+    ),
+  };
+}
 
 // GET /api/rooms/:roomId/state
 router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
@@ -151,7 +173,8 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     avatarMap,
   );
 
-  res.json(formatted);
+  // Return only this player's own plannedAction; strip others' for privacy.
+  res.json(filterStateForPlayer(formatted, player.id));
 });
 
 // POST /api/rooms/:roomId/actions
@@ -295,7 +318,15 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     );
     const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap);
 
-    broadcastToRoom(rawId, { type: "state_update", state: formatted });
+    // Send each human player a view of the state with other players' planned
+    // actions stripped out.  AI players don't hold WebSocket connections.
+    for (const p of allPlayers) {
+      if (p.isAi) continue;
+      sendToPlayer(rawId, p.id, {
+        type: "state_update",
+        state: filterStateForPlayer(formatted, p.id),
+      });
+    }
     if (
       action.type !== "toggle_luminary_affinity" &&
       action.type !== "plan_action" &&
@@ -311,7 +342,8 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(outcome.formatted);
+  // REST response also strips other players' plans for the requesting player.
+  res.json(filterStateForPlayer(outcome.formatted, player.id));
 
   // If next player is an AI, kick off AI turn loop in background
   void runAiTurnsIfNeeded(rawId);

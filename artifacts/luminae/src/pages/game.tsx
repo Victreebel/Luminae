@@ -1392,7 +1392,12 @@ export default function GameBoard() {
   // while the global cinematic plays out.  The server also tracks this via
   // pendingSummonEvents but we enforce it locally for instant feedback.
   const summonGateActive = summonQueue.length > 0;
-  const isMyTurn = !actionsLocked && !summonGateActive && state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
+  // isActivePlayer: pure turn-ownership, unaffected by animation locks.
+  // isMyTurn: turn-ownership + no execution locks (animation or summon gate).
+  // These are kept separate so canPlan can be derived from isActivePlayer alone,
+  // preventing animation locks from accidentally flipping canPlan for the active player.
+  const isActivePlayer = state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
+  const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
   const eminenceBreakdown: EminenceBreakdown = {
@@ -1650,7 +1655,13 @@ export default function GameBoard() {
     }
   };
 
-  const canPlan = !isMyTurn && state.status === 'playing' && !!me;
+  // canPlan must NOT be derived from !isMyTurn. That coupling makes animation
+  // locks (turn announcements, summon gates) accidentally enable planning for
+  // the active player during their own turn. Instead derive from isActivePlayer:
+  //   - Active player never sees plan UI, regardless of animation state.
+  //   - Off-turn players can plan freely during normal opponent turns.
+  //   - During a Luminary summon, planning is blocked until localSummonSkipped.
+  const canPlan = !isActivePlayer && state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
   const myPlannedAction = (me as any)?.plannedAction ?? null;
   const safePlayers = state.players ?? [];
   const safeLuminaries = state.luminaries ?? [];

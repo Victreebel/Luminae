@@ -1973,11 +1973,6 @@ export function LuminarySummonCutscene({
         )}
       </AnimatePresence>
 
-      {/* ── Skip hint ─────────────────────────────────────────────────────────── */}
-      <div className="absolute bottom-8 left-0 right-0 text-center text-xs text-white/28 tracking-widest uppercase pointer-events-none select-none">
-        tap to skip
-      </div>
-
     </div>
   );
 }
