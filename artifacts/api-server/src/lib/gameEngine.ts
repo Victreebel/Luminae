@@ -568,7 +568,7 @@ function defaultActiveAffinity(
  * prior turn).  Used in place of player.bonuses wherever permanent card bonuses
  * are normally counted: effectiveCost, canAfford, checkLuminaries.
  */
-function effectiveBonuses(
+export function effectiveBonuses(
   state: GameStateData,
   player: PlayerGameState,
 ): CrystalCounts {

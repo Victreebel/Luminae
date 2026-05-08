@@ -6,6 +6,7 @@ import {
   CARD_MAP,
   LUMINARY_MAP,
   zeroCrystals,
+  effectiveBonuses,
   type ActionPayload,
   type CrystalColor,
   type CrystalCounts,
@@ -21,10 +22,11 @@ function totalCrystals(c: CrystalCounts): number {
   return c.ruby + c.sapphire + c.emerald + c.onyx + c.pearl + c.flux;
 }
 
-function effectiveCost(card: ArtifactCard, player: PlayerGameState): CrystalCounts {
+function effectiveCost(card: ArtifactCard, player: PlayerGameState, state: GameStateData): CrystalCounts {
+  const bonuses = effectiveBonuses(state, player);
   const result = zeroCrystals();
   for (const color of CRYSTAL_COLORS) {
-    result[color] = Math.max(0, card.cost[color] - player.bonuses[color]);
+    result[color] = Math.max(0, card.cost[color] - bonuses[color]);
   }
   return result;
 }
@@ -97,7 +99,7 @@ function findAffordableCards(
     .filter(Boolean) as ArtifactCard[];
   const all = [...market, ...reserved];
   return all
-    .filter((c) => canAfford(effectiveCost(c, player), player.crystals))
+    .filter((c) => canAfford(effectiveCost(c, player, state), player.crystals))
     .sort(
       (a, b) =>
         scoreCard(b, player, state, difficulty) -
@@ -126,7 +128,7 @@ function pickThreeCrystals(
   // Medium/hard: weight by deficits across reachable cards
   const market = getMarket(state);
   const targets = market
-    .map((card) => ({ card, eff: effectiveCost(card, player) }))
+    .map((card) => ({ card, eff: effectiveCost(card, player, state) }))
     .sort(
       (a, b) =>
         scoreCard(b.card, player, state, difficulty) -
@@ -183,7 +185,7 @@ function pickReserveCard(
   );
   // Reserve the best market card (one we can't afford yet)
   for (const card of ranked) {
-    if (!canAfford(effectiveCost(card, player), player.crystals)) {
+    if (!canAfford(effectiveCost(card, player, state), player.crystals)) {
       return { cardId: card.id };
     }
   }
