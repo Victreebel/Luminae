@@ -202,14 +202,19 @@ function pickThreeCrystals(
 }
 
 // ─── Living Luminary Affinity Toggle ─────────────────────────────────────────
-// For hard-difficulty AI: evaluate each eligible affinity for an owned Luminary
-// and return the affinity that would maximise progress toward the best target
-// cards and unclaimed Luminaries.  Returns null when the current affinity is
-// already optimal (no toggle needed).
+// For medium/hard-difficulty AI: evaluate each eligible affinity for an owned
+// Luminary and return the affinity that would maximise progress toward the best
+// target cards (and unclaimed Luminaries for hard).  Returns null when the
+// current affinity is already optimal (no toggle needed).
+//
+// Difficulty differences:
+//   medium — looks at top 3 cards only; skips Luminary scoring.
+//   hard   — looks at top 8 cards; also scores toward unclaimed Luminaries.
 function chooseBestAffinity(
   la: LuminaryAffinity,
   player: PlayerGameState,
   state: GameStateData,
+  difficulty: "medium" | "hard",
 ): CrystalColor | null {
   if (la.eligibleAffinities.length <= 1) return null;
   if (state.turnCount <= la.summonedAtTurnCount) return null;
@@ -220,14 +225,15 @@ function chooseBestAffinity(
     .filter(Boolean) as ArtifactCard[];
   const allCards = [...market, ...reserved];
 
-  // Top-scored target cards (up to 8)
+  // Top-scored target cards: 3 for medium, 8 for hard
+  const cardLimit = difficulty === "hard" ? 8 : 3;
   const topTargets = allCards
     .slice()
     .sort(
       (a, b) =>
-        scoreCard(b, player, state, "hard") - scoreCard(a, player, state, "hard"),
+        scoreCard(b, player, state, difficulty) - scoreCard(a, player, state, difficulty),
     )
-    .slice(0, 8);
+    .slice(0, cardLimit);
 
   let bestAffinity = la.activeAffinity;
   let bestScore = -Infinity;
@@ -256,20 +262,22 @@ function chooseBestAffinity(
         rawDeficit += Math.max(0, needed - player.crystals[color]);
       }
       const shortfall = Math.max(0, rawDeficit - player.crystals.flux);
-      const cardValue = scoreCard(card, player, state, "hard");
+      const cardValue = scoreCard(card, player, state, difficulty);
       score += cardValue / (shortfall + 1);
     }
 
-    // Score toward unclaimed active Luminaries
-    for (const lumId of state.activeLuminaries) {
-      if (player.luminaries.includes(lumId)) continue;
-      const lum = LUMINARY_MAP.get(lumId);
-      if (!lum) continue;
-      let shortfall = 0;
-      for (const color of CRYSTAL_COLORS) {
-        shortfall += Math.max(0, lum.requirements[color] - simBonuses[color]);
+    // Hard only: also score toward unclaimed active Luminaries
+    if (difficulty === "hard") {
+      for (const lumId of state.activeLuminaries) {
+        if (player.luminaries.includes(lumId)) continue;
+        const lum = LUMINARY_MAP.get(lumId);
+        if (!lum) continue;
+        let shortfall = 0;
+        for (const color of CRYSTAL_COLORS) {
+          shortfall += Math.max(0, lum.requirements[color] - simBonuses[color]);
+        }
+        score += (lum.lumens * 2) / (shortfall + 1);
       }
-      score += (lum.lumens * 2) / (shortfall + 1);
     }
 
     if (score > bestScore) {
@@ -316,13 +324,14 @@ export function chooseAiAction(
 
   const totalHeld = totalCrystals(player.crystals);
 
-  // 0. Hard AI: optimise Living Luminary active affinity before acting.
+  // 0. Medium/hard AI: optimise Living Luminary active affinity before acting.
   // toggle_luminary_affinity is non-turn-gated so the turn runner will apply
   // it immediately and then call chooseAiAction again for the real action.
-  if (difficulty === "hard") {
+  // Medium uses a simpler evaluation (top 3 cards, no Luminary scoring).
+  if (difficulty === "hard" || difficulty === "medium") {
     for (const la of state.luminaryAffinities ?? []) {
       if (la.ownerId !== playerId) continue;
-      const betterAffinity = chooseBestAffinity(la, player, state);
+      const betterAffinity = chooseBestAffinity(la, player, state, difficulty);
       if (betterAffinity) {
         return {
           type: "toggle_luminary_affinity",
