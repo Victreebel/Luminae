@@ -35,10 +35,12 @@ Luminaries are cosmic survival intelligences and post-civilizational archetypes 
 - Primarily Abyss + Continuum emotionally, with Radiance as stabilizing structure.
 - Mostly black, headless, seated on a throne, roughly humanoid seated silhouette.
 - Rulership through absence — a sovereign-shaped void, not a villain.
-- Subtle pale/white coherence lines or crystalline restraints for Radiance. Subtle blue recursive rings/arcs for Continuum.
-- **Do not make Null:** wizard, demon, skull king, generic shadow lord, purple smoke villain, sci-fi body-scan figure, cyberpunk diagram.
+- **Body material (critical):** Deep void-black body with a highly polished, glossy, obsidian-like or lacquered-black surface — NOT matte black, NOT flat dark gray, NOT uniform shadow. The black body should catch sharp white/pearl specular highlights on the shoulders, clavicle, chest, upper arms, forearms, knees, and throne-facing contours. Think polished black armor, wet obsidian, black lacquer, or black oil reflecting studio light. The white specular streaks make the silhouette readable without turning the body gray or silver.
+- **Radiance expression:** Expressed through white/pearl specular highlights on the glossy body surface, subtle crystalline coherence lines as restraints — not by making the body gray or metallic.
+- **Continuum expression:** Subtle deep-blue recursive arc rings framing the figure or throne area — present but not overpowering the main glossy-black body read.
+- **Do not make Null:** wizard, demon, skull king, generic shadow lord, purple smoke villain, sci-fi body-scan figure, cyberpunk diagram, matte black blob, flat dark silhouette with no surface detail.
 - **Panel:** throne and body visibly sealed within a dark crystalline reliquary — entity embedded, suspended, refracted, or restrained within the containment, not sitting in front of a background crystal.
-- **Entity:** roughly humanoid seated/throne-associated silhouette, headless, mostly black/void-like, alive and intentional, complete silhouette (not cropped).
+- **Entity:** roughly humanoid seated/throne-associated silhouette, headless, deep glossy-black obsidian-like body with white specular highlights, alive and intentional, complete silhouette (not cropped), transparent background.
 
 ### Stellar Guide — updated direction
 - Inspired by a Verdant-like nervous-system / CNS concept with Continuum influence.

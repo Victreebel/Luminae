@@ -736,7 +736,7 @@ title = "lum_compass panel crystal containment"
 id = "5BMNZw40oV8BkVa3dw6ig"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/panel.png"
 type = "image"
-title = "lum_null panel headless sovereign crystal"
+title = "lum_null panel glossy obsidian sovereign crystal"
 
 [[generated]]
 id = "bTvEsShpuxElpFuYPeWe6"
@@ -784,7 +784,7 @@ title = "generated_image"
 id = "cdWEfTs1P49zYULt9YP1t"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/entity.png"
 type = "image"
-title = "lum_null entity headless throne"
+title = "lum_null entity glossy obsidian throne"
 
 [[generated]]
 id = "CBEvY_O6dtnqI3DFsy6bI"
