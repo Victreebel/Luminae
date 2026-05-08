@@ -341,6 +341,7 @@ function LuminaryClaimedPortal({
       const newColor = GEM_META[activeKey].hex;
       setAffinityFlashColor(newColor);
       setAffinityFlashKey(k => k + 1);
+      gameAudio.playAffinitySwitch();
     }
     prevActiveKeyRef.current = activeKey;
   }, [activeKey, isAIPortal]);

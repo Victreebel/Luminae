@@ -303,6 +303,26 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /**
+   * Brief recalibration cue — plays when an AI switches its active Luminary affinity.
+   * Distinct from harvest/purchase: a quick descending two-pitch shimmer with a
+   * soft mid-range click, suggesting a gear-shift or strategic pivot.
+   */
+  playAffinitySwitch() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Two descending sine tones — "cycling down to next setting"
+      this.osc(ctx, 740,  'sine', t,        t + 0.18, 0.06, 0.004);
+      this.osc(ctx, 554,  'sine', t + 0.10, t + 0.32, 0.07, 0.005);
+      // Soft mid-range click for tactile punctuation
+      this.noiseBlip(ctx, t + 0.08, 0.05, 0.05, 900, 7);
+      // Faint high shimmer to keep it cosmic
+      this.osc(ctx, 1480, 'sine', t + 0.16, t + 0.38, 0.025, 0.008);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   playBonusOnyx() {
     if (this.muted) return;
     try {
