@@ -20,6 +20,11 @@ export interface PendingSummonEvent {
   eventId: string;
   luminaryId: string;
   claimedByPlayerId: string;
+  /** Unix ms timestamp when this event was created.  Used by the TTL guard in
+   *  applyAction to auto-expire events whose originating client disconnected
+   *  before sending resolve_summon.  Optional for backward compat with saves
+   *  created before this field was added (those events are never auto-expired). */
+  createdAt?: number;
 }
 
 export type CrystalCounts = Record<CrystalColorWithFlux, number>;
@@ -658,6 +663,7 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
           eventId,
           luminaryId: lumId,
           claimedByPlayerId: player.playerId,
+          createdAt: Date.now(),
         });
       }
     }
@@ -769,6 +775,19 @@ export function applyAction(
   if (playerIdx === -1) return { success: false, error: "Player not found" };
   if (state.phase === "finished")
     return { success: false, error: "Game is over" };
+
+  // Auto-expire stale pending summon events.  If a client disconnects before
+  // sending resolve_summon, the event would otherwise gate planned-action
+  // execution indefinitely.  TTL = 90 s (much longer than any cutscene; the
+  // longest cutscene is ~12 s).  Events created before this field was added
+  // (createdAt undefined) are left alone for backward compat.
+  if (Array.isArray(state.pendingSummonEvents) && state.pendingSummonEvents.length > 0) {
+    const SUMMON_TTL_MS = 90_000;
+    const now = Date.now();
+    state.pendingSummonEvents = state.pendingSummonEvents.filter(
+      (e) => !e.createdAt || now - e.createdAt < SUMMON_TTL_MS,
+    );
+  }
 
   // Non-turn-gated actions: toggle_luminary_affinity, resolve_summon,
   // plan_action, cancel_plan may be sent by any player at any time.

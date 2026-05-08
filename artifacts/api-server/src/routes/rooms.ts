@@ -16,7 +16,7 @@ import {
   normalizeState,
   type GameStateData,
 } from "../lib/gameEngine";
-import { broadcastToRoom, getConnectedPlayerIds } from "../lib/websocket";
+import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { armTurnTimer, updateTurnDeadline, clearTurnTimer } from "../lib/turnTimer";
 
@@ -505,10 +505,16 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
 
   const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap);
 
-  broadcastToRoom(rawId, { type: "game_started", state: formatted });
+  for (const p of players) {
+    if (p.isAi) continue;
+    sendToPlayer(rawId, p.id, {
+      type: "game_started",
+      state: filterStateForPlayer(formatted, p.id),
+    });
+  }
   armTurnTimer(rawId, gameData);
 
-  res.json(formatted);
+  res.json(filterStateForPlayer(formatted, host.id));
 
   // If first player is an AI, kick off AI turns
   void runAiTurnsIfNeeded(rawId);
@@ -603,10 +609,16 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
 
   // Broadcast as state_update so all clients see status change from
   // 'finished' → 'playing' without any navigation required.
-  broadcastToRoom(rawId, { type: "state_update", state: formatted });
+  for (const p of players) {
+    if (p.isAi) continue;
+    sendToPlayer(rawId, p.id, {
+      type: "state_update",
+      state: filterStateForPlayer(formatted, p.id),
+    });
+  }
   armTurnTimer(rawId, gameData);
 
-  res.json(formatted);
+  res.json(filterStateForPlayer(formatted, host.id));
 
   void runAiTurnsIfNeeded(rawId);
 });

@@ -10,34 +10,12 @@ import {
   type ActionPayload,
   type CrystalColor,
 } from "../lib/gameEngine";
-import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer } from "../lib/websocket";
+import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 
 const router: IRouter = Router();
-
-// Strip plannedAction / plannedActionCancelReason from all players except the
-// viewer.  Call this before sending any state to a specific client so that
-// players cannot read each other's planned moves through the WebSocket or REST.
-function filterStateForPlayer<
-  T extends {
-    players: Array<{
-      playerId: string;
-      plannedAction: unknown;
-      plannedActionCancelReason: unknown;
-    }>;
-  },
->(state: T, viewerPlayerId: string): T {
-  return {
-    ...state,
-    players: state.players.map((p) =>
-      p.playerId === viewerPlayerId
-        ? p
-        : { ...p, plannedAction: null, plannedActionCancelReason: null },
-    ),
-  };
-}
 
 // GET /api/rooms/:roomId/state
 router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {

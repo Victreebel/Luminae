@@ -8,7 +8,7 @@ import {
   formatGameState,
   type GameStateData,
 } from "./gameEngine";
-import { broadcastToRoom, getConnectedPlayerIds } from "./websocket";
+import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
 import { withRoomLock } from "./roomLock";
 import { logger } from "./logger";
 
@@ -115,7 +115,13 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
         connectedIds,
         avatarMap,
       );
-      broadcastToRoom(roomId, { type: "state_update", state: formatted });
+      for (const p of allPlayers) {
+        if (p.isAi) continue;
+        sendToPlayer(roomId, p.id, {
+          type: "state_update",
+          state: filterStateForPlayer(formatted, p.id),
+        });
+      }
 
       armTurnTimer(roomId, state);
     });

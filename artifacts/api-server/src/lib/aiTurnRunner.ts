@@ -7,7 +7,7 @@ import {
   type GameStateData,
 } from "./gameEngine";
 import { chooseAiAction, type AiDifficulty } from "./aiPlayer";
-import { broadcastToRoom, getConnectedPlayerIds } from "./websocket";
+import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
 import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
@@ -161,7 +161,13 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           connectedIds,
           avatarMap,
         );
-        broadcastToRoom(roomId, { type: "state_update", state: formatted });
+        for (const p of allPlayers) {
+          if (p.isAi) continue;
+          sendToPlayer(roomId, p.id, {
+            type: "state_update",
+            state: filterStateForPlayer(formatted, p.id),
+          });
+        }
         armTurnTimer(roomId, state);
 
         if (isFinished) return { kind: "stop" as const, actionType: action.type };
