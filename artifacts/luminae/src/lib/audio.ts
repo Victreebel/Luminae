@@ -34,6 +34,12 @@ class GameAudio {
   private ctx: AudioContext | null = null;
   private muted = false;
 
+  // ── Affinity-switch debounce ─────────────────────────────────────────────
+  // Prevents double-firing when the portal animation and the action-log entry
+  // both call playAffinitySwitch() in the same state-update cycle.
+  private lastAffinitySwitchAt = 0;
+  private readonly AFFINITY_SWITCH_DEBOUNCE_MS = 400;
+
   // ── Music state ─────────────────────────────────────────────────────────
   private musicStarted = false;
   private masterMusicGain: GainNode | null = null;
@@ -310,6 +316,9 @@ class GameAudio {
    */
   playAffinitySwitch() {
     if (this.muted) return;
+    const now = Date.now();
+    if (now - this.lastAffinitySwitchAt < this.AFFINITY_SWITCH_DEBOUNCE_MS) return;
+    this.lastAffinitySwitchAt = now;
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;

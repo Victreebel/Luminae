@@ -917,6 +917,12 @@ export default function GameBoard() {
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
+  // Tracks how many AI affinity-change log entries have already triggered the
+  // switch sound, so that we only fire for genuinely new entries.
+  const seenAiAffinityLogCountRef = useRef(0);
+  // True after the first actionLog effect run — prevents spurious sounds from
+  // replaying historical log entries that were already present on page load.
+  const aiAffinityLogInitializedRef = useRef(false);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
@@ -1090,6 +1096,27 @@ export default function GameBoard() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!state]);
+
+  // ── Action-log affinity-switch sound ──────────────────────────────────────
+  // Fires playAffinitySwitch() when a new "AI toggled affinity" entry scrolls
+  // into the action log.  The audio.ts debounce (400 ms) prevents double-firing
+  // when the portal animation already triggered the sound in the same cycle.
+  useEffect(() => {
+    if (!state?.actionLog || !state.players) return;
+    const aiPlayerIds = new Set(
+      state.players.filter((p) => p.aiDifficulty != null).map((p) => p.playerId),
+    );
+    const aiAffinityCount = state.actionLog.filter(
+      (e) => e.summary.startsWith('attuned ') && aiPlayerIds.has(e.playerId),
+    ).length;
+    if (!aiAffinityLogInitializedRef.current) {
+      // First run: snapshot existing entries so we don't replay history as sound.
+      aiAffinityLogInitializedRef.current = true;
+    } else if (aiAffinityCount > seenAiAffinityLogCountRef.current) {
+      gameAudio.playAffinitySwitch();
+    }
+    seenAiAffinityLogCountRef.current = aiAffinityCount;
+  }, [state?.actionLog]);
 
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
