@@ -966,6 +966,102 @@ uri = "file://attached_assets/panel_null.png"
 type = "image"
 title = "lum_null panel rework"
 
+[[generated]]
+id = "pYyZSGqt85ilGKhdA4pJW"
+uri = "file://attached_assets/regen_astral.png"
+type = "image"
+title = "lum_astral panel — entity-first generation"
+
+[[generated]]
+id = "QWTq2bUjNRKIOhRRbPgz0"
+uri = "file://attached_assets/regen_bloom.png"
+type = "image"
+title = "lum_bloom panel — entity-first generation"
+
+[[generated]]
+id = "dYkRSwsew4aZAn-_tkB0a"
+uri = "file://attached_assets/regen_compass.png"
+type = "image"
+title = "lum_compass panel — entity-first generation"
+
+[[generated]]
+id = "Z8p-fU4a_cOgW9NUFGm7q"
+uri = "file://attached_assets/regen_oracle.png"
+type = "image"
+title = "lum_oracle panel — entity-first generation"
+
+[[generated]]
+id = "mo2Yd7t1yAqthskYKm25K"
+uri = "file://attached_assets/regen_pale.png"
+type = "image"
+title = "lum_pale panel — entity-first generation"
+
+[[generated]]
+id = "IDp7GaZMZ_b-zPpM_NqEH"
+uri = "file://attached_assets/regen_radiant.png"
+type = "image"
+title = "lum_radiant panel"
+
+[[generated]]
+id = "kWZdPPjUTHqhNdaRrrdcH"
+uri = "file://attached_assets/regen_tide.png"
+type = "image"
+title = "lum_tide panel"
+
+[[generated]]
+id = "sxuNf0QvmDj1rIuTOKpW0"
+uri = "file://attached_assets/regen_void.png"
+type = "image"
+title = "lum_void panel"
+
+[[generated]]
+id = "40oy07RzctXVhzckLLWvx"
+uri = "file://attached_assets/regen_null.png"
+type = "image"
+title = "lum_null panel"
+
+[[generated]]
+id = "ZxKrKa3Bd78xYPbSeBASe"
+uri = "file://attached_assets/regen2_astral.png"
+type = "image"
+title = "lum_astral panel pass 2"
+
+[[generated]]
+id = "2jWSixJdj3smqPJ-CedtI"
+uri = "file://attached_assets/regen2_compass.png"
+type = "image"
+title = "lum_compass panel pass 2"
+
+[[generated]]
+id = "iGCHc89yV7eCZNeaCH0KG"
+uri = "file://attached_assets/regen2_oracle.png"
+type = "image"
+title = "lum_oracle panel pass 2"
+
+[[generated]]
+id = "-N-bR4w18wjquHVAYnsEY"
+uri = "file://attached_assets/regen2_radiant.png"
+type = "image"
+title = "lum_radiant panel pass 2"
+
+[[generated]]
+id = "vAM9BGYLpj5si6-kKSn5Z"
+uri = "file://attached_assets/regen2_void.png"
+type = "image"
+title = "lum_void panel pass 2"
+
+[[generated]]
+id = "6SNibwgDTlKojmJC8bRNe"
+uri = "file://attached_assets/regen2_null.png"
+type = "image"
+title = "lum_null panel pass 2"
+
+[[generated]]
+id = "QtXwW_t10TU5zZGUPT47J"
+uri = "file://attached_assets/regen3_null.png"
+type = "image"
+title = "lum_null pass 3 — empty throne / acephalous armor"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
