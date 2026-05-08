@@ -563,6 +563,30 @@ function LuminaryClaimedPortal({
         )}
       </div>
 
+      {/* AI affinity indicator — shown for medium/hard AI players only */}
+      {(claimedByPlayer?.aiDifficulty === 'medium' || claimedByPlayer?.aiDifficulty === 'hard') && activeKey && (
+        <motion.div
+          className="absolute z-20 pointer-events-none"
+          style={{ top: 28, right: 6 }}
+          animate={{ opacity: [0.75, 1, 0.75] }}
+          transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <div
+            className="flex items-center gap-0.5 rounded-full px-1 py-0.5"
+            style={{
+              background: `linear-gradient(135deg, rgba(3,3,8,0.88) 0%, ${g1}28 100%)`,
+              border: `1px solid ${g1}55`,
+              boxShadow: `0 0 6px ${g1}44`,
+            }}
+          >
+            <span className="text-[6px] font-bold tracking-wider uppercase" style={{ color: `${g1}cc` }}>
+              AI
+            </span>
+            <MiniGem color={activeKey} size={7} />
+          </div>
+        </motion.div>
+      )}
+
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
       {claimedByPlayer && ownerName && (
         <div

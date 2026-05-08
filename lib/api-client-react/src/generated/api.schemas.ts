@@ -165,6 +165,20 @@ export interface Luminary {
 }
 
 /**
+ * AI difficulty level, null for human players or easy AI that never toggles
+ * @nullable
+ */
+export type GamePlayerStateAiDifficulty =
+  | (typeof GamePlayerStateAiDifficulty)[keyof typeof GamePlayerStateAiDifficulty]
+  | null;
+
+export const GamePlayerStateAiDifficulty = {
+  easy: "easy",
+  medium: "medium",
+  hard: "hard",
+} as const;
+
+/**
  * Pre-committed action to auto-execute when this player's turn arrives
  * @nullable
  */
@@ -175,6 +189,13 @@ export interface GamePlayerState {
   playerName: string;
   /** @nullable */
   avatarId?: string | null;
+  /** Whether this player is an AI */
+  isAi: boolean;
+  /**
+   * AI difficulty level, null for human players or easy AI that never toggles
+   * @nullable
+   */
+  aiDifficulty?: GamePlayerStateAiDifficulty;
   crystals: CrystalCounts;
   bonuses: CrystalCounts;
   lumens: number;

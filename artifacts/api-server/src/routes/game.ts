@@ -6,6 +6,7 @@ import {
   applyAction,
   formatGameState,
   normalizeState,
+  type AiDifficulty,
   type GameStateData,
   type ActionPayload,
   type CrystalColor,
@@ -82,6 +83,8 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
         playerId: p.id,
         playerName: p.name,
         avatarId: p.avatarId ?? null,
+        isAi: p.isAi,
+        aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null,
         crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         bonuses: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         lumens: 0,
@@ -123,6 +126,9 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
   const avatarMap = new Map<string, string | null>(
     allPlayers.map((p) => [p.id, p.avatarId ?? null]),
   );
+  const aiMap = new Map(
+    allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+  );
   // Snapshot stored value BEFORE normalizeState (it mutates in place).
   const storedLuminaries = JSON.stringify(
     (gs.state as { activeLuminaries?: unknown }).activeLuminaries ?? [],
@@ -149,6 +155,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     normalized,
     connectedIds,
     avatarMap,
+    aiMap,
   );
 
   // Return only this player's own plannedAction; strip others' for privacy.
@@ -294,7 +301,10 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const avatarMap = new Map<string, string | null>(
       allPlayers.map((p) => [p.id, p.avatarId ?? null]),
     );
-    const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap);
+    const aiMap = new Map(
+      allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+    );
+    const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap, aiMap);
 
     // Send each human player a view of the state with other players' planned
     // actions stripped out.  AI players don't hold WebSocket connections.

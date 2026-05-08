@@ -1232,12 +1232,15 @@ function withLore(card: ArtifactCard) {
   return { ...card, name: lore.name, flavor: lore.flavor };
 }
 
+export type AiDifficulty = "easy" | "medium" | "hard";
+
 export function formatGameState(
   roomId: string,
   status: string,
   stateData: GameStateData,
   connectedPlayerIds: Set<string>,
   avatarMap?: Map<string, string | null>,
+  aiMap?: Map<string, { isAi: boolean; aiDifficulty: AiDifficulty | null }>,
 ) {
   const marketTier1 = stateData.marketTier1
     .map((id) => CARD_MAP.get(id))
@@ -1255,27 +1258,32 @@ export function formatGameState(
     .map((id) => LUMINARY_MAP.get(id))
     .filter(Boolean) as LuminaryDef[];
 
-  const players = stateData.players.map((p) => ({
-    playerId: p.playerId,
-    playerName: p.playerName,
-    avatarId: avatarMap?.get(p.playerId) ?? null,
-    crystals: p.crystals,
-    bonuses: p.bonuses,
-    lumens: p.lumens,
-    reservedCards: p.reservedCardIds
-      .map((id) => CARD_MAP.get(id))
-      .filter(Boolean)
-      .map((c) => withLore(c as ArtifactCard)),
-    purchasedCardIds: p.purchasedCardIds,
-    purchasedCards: p.purchasedCardIds
-      .map((id) => CARD_MAP.get(id))
-      .filter(Boolean)
-      .map((c) => withLore(c as ArtifactCard)),
-    isConnected: connectedPlayerIds.has(p.playerId),
-    claimedLuminaryIds: p.luminaries ?? [],
-    plannedAction: p.plannedAction ?? null,
-    plannedActionCancelReason: p.plannedActionCancelReason ?? null,
-  }));
+  const players = stateData.players.map((p) => {
+    const aiEntry = aiMap?.get(p.playerId);
+    return {
+      playerId: p.playerId,
+      playerName: p.playerName,
+      avatarId: avatarMap?.get(p.playerId) ?? null,
+      isAi: aiEntry?.isAi ?? false,
+      aiDifficulty: aiEntry?.aiDifficulty ?? null,
+      crystals: p.crystals,
+      bonuses: p.bonuses,
+      lumens: p.lumens,
+      reservedCards: p.reservedCardIds
+        .map((id) => CARD_MAP.get(id))
+        .filter(Boolean)
+        .map((c) => withLore(c as ArtifactCard)),
+      purchasedCardIds: p.purchasedCardIds,
+      purchasedCards: p.purchasedCardIds
+        .map((id) => CARD_MAP.get(id))
+        .filter(Boolean)
+        .map((c) => withLore(c as ArtifactCard)),
+      isConnected: connectedPlayerIds.has(p.playerId),
+      claimedLuminaryIds: p.luminaries ?? [],
+      plannedAction: p.plannedAction ?? null,
+      plannedActionCancelReason: p.plannedActionCancelReason ?? null,
+    };
+  });
 
   return {
     roomId,

@@ -14,6 +14,7 @@ import {
   initializeGame,
   formatGameState,
   normalizeState,
+  type AiDifficulty,
   type GameStateData,
 } from "../lib/gameEngine";
 import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
@@ -502,8 +503,11 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   const avatarMap = new Map<string, string | null>(
     players.map((p) => [p.id, p.avatarId ?? null]),
   );
+  const aiMap = new Map(
+    players.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+  );
 
-  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap);
+  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap, aiMap);
 
   for (const p of players) {
     if (p.isAi) continue;
@@ -604,8 +608,11 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
   const avatarMap = new Map<string, string | null>(
     players.map((p) => [p.id, p.avatarId ?? null]),
   );
+  const aiMap = new Map(
+    players.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+  );
 
-  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap);
+  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap, aiMap);
 
   // Broadcast as state_update so all clients see status change from
   // 'finished' → 'playing' without any navigation required.

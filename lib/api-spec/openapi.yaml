@@ -546,6 +546,13 @@ components:
           type: string
         avatarId:
           type: ["string", "null"]
+        isAi:
+          type: boolean
+          description: Whether this player is an AI
+        aiDifficulty:
+          type: ["string", "null"]
+          enum: [easy, medium, hard, null]
+          description: AI difficulty level, null for human players or easy AI that never toggles
         crystals:
           $ref: "#/components/schemas/CrystalCounts"
         bonuses:
@@ -581,6 +588,7 @@ components:
       required:
         - playerId
         - playerName
+        - isAi
         - crystals
         - bonuses
         - lumens

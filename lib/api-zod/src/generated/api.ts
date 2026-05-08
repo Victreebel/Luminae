@@ -364,6 +364,18 @@ export const StartGameResponse = zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
       avatarId: zod.string().nullish(),
+      isAi: zod.boolean().describe("Whether this player is an AI"),
+      aiDifficulty: zod
+        .union([
+          zod.literal("easy"),
+          zod.literal("medium"),
+          zod.literal("hard"),
+          zod.literal(null),
+        ])
+        .nullish()
+        .describe(
+          "AI difficulty level, null for human players or easy AI that never toggles",
+        ),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -612,6 +624,18 @@ export const RematchResponse = zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
       avatarId: zod.string().nullish(),
+      isAi: zod.boolean().describe("Whether this player is an AI"),
+      aiDifficulty: zod
+        .union([
+          zod.literal("easy"),
+          zod.literal("medium"),
+          zod.literal("hard"),
+          zod.literal(null),
+        ])
+        .nullish()
+        .describe(
+          "AI difficulty level, null for human players or easy AI that never toggles",
+        ),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -860,6 +884,18 @@ export const GetGameStateResponse = zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
       avatarId: zod.string().nullish(),
+      isAi: zod.boolean().describe("Whether this player is an AI"),
+      aiDifficulty: zod
+        .union([
+          zod.literal("easy"),
+          zod.literal("medium"),
+          zod.literal("hard"),
+          zod.literal(null),
+        ])
+        .nullish()
+        .describe(
+          "AI difficulty level, null for human players or easy AI that never toggles",
+        ),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -1152,6 +1188,18 @@ export const SubmitActionResponse = zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
       avatarId: zod.string().nullish(),
+      isAi: zod.boolean().describe("Whether this player is an AI"),
+      aiDifficulty: zod
+        .union([
+          zod.literal("easy"),
+          zod.literal("medium"),
+          zod.literal("hard"),
+          zod.literal(null),
+        ])
+        .nullish()
+        .describe(
+          "AI difficulty level, null for human players or easy AI that never toggles",
+        ),
       crystals: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),

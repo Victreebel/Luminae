@@ -153,6 +153,9 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         const avatarMap = new Map<string, string | null>(
           allPlayers.map((p) => [p.id, p.avatarId ?? null]),
         );
+        const aiMap = new Map(
+          allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+        );
 
         const formatted = formatGameState(
           roomId,
@@ -160,6 +163,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           state,
           connectedIds,
           avatarMap,
+          aiMap,
         );
         for (const p of allPlayers) {
           if (p.isAi) continue;
