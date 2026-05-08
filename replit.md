@@ -42,14 +42,16 @@ Luminaries are cosmic survival intelligences and post-civilizational archetypes 
 - **Panel:** throne and body visibly sealed within a dark crystalline reliquary — entity embedded, suspended, refracted, or restrained within the containment, not sitting in front of a background crystal.
 - **Entity:** roughly humanoid seated/throne-associated silhouette, headless, deep glossy-black obsidian-like body with white specular highlights, alive and intentional, complete silhouette (not cropped), transparent background.
 
-### Stellar Guide — updated direction
-- Inspired by a Verdant-like nervous-system / CNS concept with Continuum influence.
-- Nonhumanoid or CNS-like — a living route-organism, not a person.
-- Vine-like, branching nervous-system-like lifeform; organism first, route/map second.
-- Continuum influence: route nodes, repeated branching logic, temporal filaments, path arcs, migratory waypoint structures, time-route signals.
-- **Do not make Stellar Guide:** shepherd, old traveler, druid guide, robed navigator, compass-holding mage, star-chart diagram.
-- **Panel:** organism visibly sealed within a crystal containment vessel — crystal traps, compresses, refracts, or restrains the route-organism. Same style and format as accepted panels.
-- **Entity:** nonhumanoid, CNS-like/vine-network organism, complete silhouette, alive and intentional, not cropped, not a flat network diagram.
+### Stellar Guide — canonical direction (updated from CNS-organism to astral navigator)
+- Full-body cosmic navigator / astral guide. Humanoid silhouette beneath deep indigo-navy robes.
+- Robe fabric IS the star chart — living constellation maps, glowing star paths, and orbital arc lines embedded directly into the cloth.
+- 2–4 armillary spheres / celestial orrery rings float around the figure (brass and starlight-blue, etched orbital paths).
+- Face partially concealed by deep hood, two calm luminous cyan eyes visible.
+- One arm extended in a guiding gesture — pointing toward an unseen horizon.
+- Lower robe fans out and intentionally dissolves into star-dust trails / constellation lines — not a crop.
+- Coloring: deep navy/indigo body, glowing ice-blue and cyan star-map markings, warm brass armillary rings, soft teal-green nebula accents.
+- **Do not make Stellar Guide:** generic fantasy mage, CNS diagram, old traveler, compass-holding wizard, star-chart flat diagram, sci-fi astronaut.
+- **Entity:** full-body, complete readable silhouette from crown to dissolved base, transparent background, no text or labels.
 
 ### General entity rules (all Luminaries)
 - Isolated entity on transparent background.
