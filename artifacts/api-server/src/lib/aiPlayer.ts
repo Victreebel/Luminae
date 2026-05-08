@@ -125,16 +125,42 @@ function pickThreeCrystals(
     return result;
   }
 
-  // Medium/hard: weight by deficits across reachable cards
+  // Medium/hard: weight by deficits across reachable cards, prioritising one-away cards
   const market = getMarket(state);
-  const targets = market
-    .map((card) => ({ card, eff: effectiveCost(card, player, state) }))
+
+  // Compute effective cost and total remaining crystal deficit per card.
+  // effectiveCost already accounts for Living Luminary bonuses via effectiveBonuses.
+  type CardWithCost = { card: ArtifactCard; eff: CrystalCounts; totalDeficit: number };
+  const cardsWithCosts: CardWithCost[] = market.map((card) => {
+    const eff = effectiveCost(card, player, state);
+    const totalDeficit = CRYSTAL_COLORS.reduce(
+      (sum, c) => sum + Math.max(0, eff[c] - player.crystals[c]),
+      0,
+    );
+    return { card, eff, totalDeficit };
+  });
+
+  // One-away cards (exactly 1 crystal short) are the most actionable — a single
+  // harvest turn makes them purchasable immediately. Sort them first regardless of
+  // scoreCard so the AI never wastes that harvest on a less urgent color.
+  const oneAway = cardsWithCosts
+    .filter((x) => x.totalDeficit === 1)
     .sort(
       (a, b) =>
         scoreCard(b.card, player, state, difficulty) -
         scoreCard(a.card, player, state, difficulty),
-    )
-    .slice(0, difficulty === "hard" ? 6 : 3);
+    );
+  const others = cardsWithCosts
+    .filter((x) => x.totalDeficit !== 1)
+    .sort(
+      (a, b) =>
+        scoreCard(b.card, player, state, difficulty) -
+        scoreCard(a.card, player, state, difficulty),
+    );
+
+  const sliceSize = difficulty === "hard" ? 6 : 3;
+  // One-away cards lead the target list; fill the rest with the best-scored cards
+  const targets = [...oneAway, ...others].slice(0, sliceSize);
 
   const need: Record<CrystalColor, number> = {
     ruby: 0,
@@ -143,10 +169,13 @@ function pickThreeCrystals(
     onyx: 0,
     pearl: 0,
   };
-  for (const { eff } of targets) {
+  for (const { eff, totalDeficit } of targets) {
+    // Give one-away cards 10× weight so the AI strongly prefers the exact color
+    // it needs to unlock an immediately purchasable card next turn.
+    const weight = totalDeficit === 1 ? 10 : 1;
     for (const c of CRYSTAL_COLORS) {
       const deficit = Math.max(0, eff[c] - player.crystals[c]);
-      need[c] += deficit;
+      need[c] += deficit * weight;
     }
   }
 
