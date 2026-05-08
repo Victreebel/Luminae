@@ -1905,21 +1905,17 @@ export default function GameBoard() {
                   type="button"
                   disabled={!selectable || isEmpty}
                   whileTap={selectable && !isEmpty ? { scale: 0.9 } : {}}
-                  animate={queued > 0 ? { scale: [1, 1.08, 1], transition: { duration: 0.3 } } : {}}
+                  animate={queued > 0 ? { scale: [1, 1.1, 1], transition: { duration: 0.25 } } : {}}
                   onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
                   className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-center transition-all overflow-hidden ${
-                    queued > 0
-                      ? 'ring-2 ring-primary shadow-lg'
-                      : isEmpty
-                        ? 'opacity-40'
-                        : ''
+                    isEmpty ? 'opacity-40' : ''
                   }`}
                   style={
                     queued > 0
                       ? {
-                          background: `linear-gradient(160deg, ${meta.hex}35 0%, ${meta.hex}12 50%, ${meta.hex}25 100%)`,
-                          border: `1px solid ${meta.glowHex}70`,
-                          boxShadow: `0 0 18px ${meta.glowHex}50, inset 0 0 20px ${meta.hex}18`,
+                          background: `linear-gradient(160deg, ${meta.hex}70 0%, ${meta.hex}45 50%, ${meta.hex}60 100%)`,
+                          border: `2px solid ${meta.glowHex}ee`,
+                          boxShadow: `0 0 22px ${meta.glowHex}bb, 0 0 48px ${meta.glowHex}55, inset 0 0 18px ${meta.hex}55`,
                         }
                       : isEmpty
                         ? {
@@ -1940,7 +1936,13 @@ export default function GameBoard() {
                   <img
                     src={meta.image} alt={meta.name}
                     className="w-[58%] h-[58%] object-contain pointer-events-none select-none"
-                    style={{ filter: isEmpty ? 'grayscale(0.8) opacity(0.4)' : `drop-shadow(0 0 7px ${meta.glowHex}80)` }}
+                    style={{
+                      filter: isEmpty
+                        ? 'grayscale(0.8) opacity(0.4)'
+                        : queued > 0
+                          ? `drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
+                          : `drop-shadow(0 0 7px ${meta.glowHex}80)`,
+                    }}
                     draggable={false}
                   />
                   <div className="flex items-center gap-0.5 mt-0.5">
