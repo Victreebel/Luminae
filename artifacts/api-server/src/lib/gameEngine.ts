@@ -394,12 +394,10 @@ export const LUMINARY_MAP = new Map<string, LuminaryDef>(
   LUMINARIES.map((l) => [l.id, l]),
 );
 
-// Luminaries with complete illustrated assets — only these enter the active
-// pool until the remaining entries have their art finalised.
-const ILLUSTRATED_IDS = new Set(["lum_forge", "lum_null", "lum_verdant", "lum_ember", "lum_oracle"]);
-const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
-  ILLUSTRATED_IDS.has(l.id),
-);
+// All 12 Luminaries have procedural SVG entity art and are available for play.
+// Illustrated (webp) assets can be dropped into src/assets/luminaries/<id>/
+// on the frontend to upgrade individual Luminaries to full illustration quality.
+const AVAILABLE_LUMINARIES = LUMINARIES;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -437,7 +435,7 @@ export function initializeGame(
     CARD_CATALOG.filter((c) => c.tier === 3).map((c) => c.id),
   );
 
-  // Luminaries: pick playerCount+1 from illustrated pool only
+  // Luminaries: pick playerCount+1 from the full pool of 12
   const lumCount = Math.min(playerCount + 1, AVAILABLE_LUMINARIES.length);
   const activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
     0,
