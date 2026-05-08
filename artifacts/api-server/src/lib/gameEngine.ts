@@ -961,6 +961,26 @@ export function applyAction(
         return { success: true };
       }
       state.version++;
+
+      // Deferred planned-action execution: if this was the last pending summon,
+      // the current player's plan (if any) was held behind the gate.  Now that
+      // the global cutscene is fully resolved, attempt to execute it.  Uses the
+      // same _isAutoExec=true guard to prevent recursion; any new summon triggered
+      // inside would re-enter pendingSummonEvents and gate again correctly.
+      if (state.pendingSummonEvents.length === 0) {
+        const currentPlayer = state.players[state.currentPlayerIndex];
+        const deferred = currentPlayer?.plannedAction ?? null;
+        if (deferred) {
+          currentPlayer.plannedAction = null;
+          const autoResult = applyAction(state, currentPlayer.playerId, deferred, true);
+          if (!autoResult.success) {
+            currentPlayer.plannedActionCancelReason =
+              autoResult.error ?? "Planned move is no longer legal.";
+            state.version++;
+          }
+        }
+      }
+
       return { success: true };
     }
 
@@ -1012,16 +1032,25 @@ export function applyAction(
 
   // Auto-execute the new current player's planned action (once only — _isAutoExec
   // guards against infinite recursion).
+  //
+  // If a Luminary summon is pending (pendingSummonEvents non-empty), the global
+  // cutscene is still resolving on clients.  Executing the plan now would advance
+  // the board underneath the cinematic.  Instead, leave the plan stored and defer
+  // execution to the resolve_summon handler, which fires once the last client
+  // finishes the cutscene.  See the "resolve_summon" case for the deferred path.
   if (!_isAutoExec && state.phase !== "finished") {
-    const nextPlayer = state.players[state.currentPlayerIndex];
-    const planned = nextPlayer?.plannedAction ?? null;
-    if (planned) {
-      nextPlayer.plannedAction = null;
-      const autoResult = applyAction(state, nextPlayer.playerId, planned, true);
-      if (!autoResult.success) {
-        nextPlayer.plannedActionCancelReason =
-          autoResult.error ?? "Planned move is no longer legal.";
-        state.version++;
+    const hasPendingSummons = (state.pendingSummonEvents ?? []).length > 0;
+    if (!hasPendingSummons) {
+      const nextPlayer = state.players[state.currentPlayerIndex];
+      const planned = nextPlayer?.plannedAction ?? null;
+      if (planned) {
+        nextPlayer.plannedAction = null;
+        const autoResult = applyAction(state, nextPlayer.playerId, planned, true);
+        if (!autoResult.success) {
+          nextPlayer.plannedActionCancelReason =
+            autoResult.error ?? "Planned move is no longer legal.";
+          state.version++;
+        }
       }
     }
   }
