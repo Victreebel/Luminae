@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
-  Bookmark, ShoppingCart, Eye, EyeOff, Package, LayoutGrid, Hand, List,
+  Bookmark, Hammer, Eye, EyeOff, Package, LayoutGrid, Hand, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
@@ -2849,7 +2849,7 @@ export default function GameBoard() {
                       disabled={!selectedCard.canBuy}
                       onClick={() => handleBuy(selectedCard.card, selectedCard.fromReserve)}
                     >
-                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      <Hammer className="h-5 w-5 mr-2" />
                       {selectedCard.canBuy ? 'Forge Artifact' : 'Cannot afford yet'}
                     </Button>
                     {!selectedCard.fromReserve && (
@@ -2871,7 +2871,7 @@ export default function GameBoard() {
                       disabled={!me || !canAffordCard(selectedCard.card, me)}
                       onClick={() => handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id })}
                     >
-                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      <Hammer className="h-5 w-5 mr-2" />
                       {me && canAffordCard(selectedCard.card, me) ? 'Plan: Forge this Artifact' : 'Cannot afford yet'}
                     </Button>
                     {!selectedCard.fromReserve && (
@@ -3389,7 +3389,7 @@ export default function GameBoard() {
                                 handleBuy(c, true);
                               }}
                             >
-                              <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                              <Hammer className="h-3.5 w-3.5 mr-1.5" />
                               {!isMyTurn ? 'Not your turn' : canBuy ? 'Forge Now' : 'Cannot afford'}
                             </Button>
                           </div>
