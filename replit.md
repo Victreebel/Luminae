@@ -8,6 +8,61 @@
 
 The user prefers that all development and communication adhere to the established terminology for game mechanics (e.g., "affinities" instead of "gems," "Eminence" instead of "prestige"). The user also wants to ensure that all generated images are properly compressed and integrated, and that new art and lore for cards are correctly injected server-side. Additionally, the user wants to prioritize robust animation sequencing and error handling, particularly for state updates and game events. The user prefers that all development-only features, such as the animation sandbox, are fully tree-shaken from production builds.
 
+## Luminary Art Direction (canonical brief — apply to all future generation passes)
+
+### Accepted reference assets (do not overwrite)
+- `lum_ember` (Ember Sovereign), `lum_forge` (Iron Harbinger), `lum_verdant` (Verdant Oracle)
+- These three define the gold standard for panel style, frame format, density, and polish.
+
+### Panel hard rules (every panel.webp must satisfy all of these)
+- Ornate premium card-ready frame — same ornate gold border and corner gem medallions as the accepted references.
+- Central crystalline prison / containment vessel — the Luminary must look **sealed within** the crystal, not standing in front of it. Crystal facets must overlap, refract, restrain, or embed the entity's body.
+- If the Luminary looks like it is standing in front of a crystal, the panel has failed.
+- No text baked into the image — no name, no label, no banner, no chart annotation, no glyph text.
+- Same level of detail and polish as Ember / Forge / Verdant.
+
+### Overall thematic direction
+Luminaries are cosmic survival intelligences and post-civilizational archetypes — not generic fantasy patrons, Splendor-style nobles, or TCG heroes. Use scientifically inspired myth and cosmic speculative mythology.
+
+### Affinity existence framing
+- **Flare** — energy consciousness, ignition minds, stellar or plasma entities.
+- **Continuum** — temporal consciousness, recursive memory, causality-bound thought forms.
+- **Verdance** — biological, ecological, distributed living consciousness.
+- **Abyss** — entropy, silence, absence, information death, boundary-of-being intelligence.
+- **Radiance** — coherence, stabilized artificial or crystalline order, machine-like pattern consciousness.
+
+### Null Sovereign — updated direction
+- Primarily Abyss + Continuum emotionally, with Radiance as stabilizing structure.
+- Mostly black, headless, seated on a throne, roughly humanoid seated silhouette.
+- Rulership through absence — a sovereign-shaped void, not a villain.
+- Subtle pale/white coherence lines or crystalline restraints for Radiance. Subtle blue recursive rings/arcs for Continuum.
+- **Do not make Null:** wizard, demon, skull king, generic shadow lord, purple smoke villain, sci-fi body-scan figure, cyberpunk diagram.
+- **Panel:** throne and body visibly sealed within a dark crystalline reliquary — entity embedded, suspended, refracted, or restrained within the containment, not sitting in front of a background crystal.
+- **Entity:** roughly humanoid seated/throne-associated silhouette, headless, mostly black/void-like, alive and intentional, complete silhouette (not cropped).
+
+### Stellar Guide — updated direction
+- Inspired by a Verdant-like nervous-system / CNS concept with Continuum influence.
+- Nonhumanoid or CNS-like — a living route-organism, not a person.
+- Vine-like, branching nervous-system-like lifeform; organism first, route/map second.
+- Continuum influence: route nodes, repeated branching logic, temporal filaments, path arcs, migratory waypoint structures, time-route signals.
+- **Do not make Stellar Guide:** shepherd, old traveler, druid guide, robed navigator, compass-holding mage, star-chart diagram.
+- **Panel:** organism visibly sealed within a crystal containment vessel — crystal traps, compresses, refracts, or restrains the route-organism. Same style and format as accepted panels.
+- **Entity:** nonhumanoid, CNS-like/vine-network organism, complete silhouette, alive and intentional, not cropped, not a flat network diagram.
+
+### General entity rules (all Luminaries)
+- Isolated entity on transparent background.
+- Complete readable silhouette — no torso cutoffs, no clipped edges.
+- No rectangular illustration background, no card frame baked in.
+- No text, labels, equations, UI marks, or readable annotation marks anywhere on the entity.
+- Must feel alive and intentional — not a static emblem, mandala, or diagram.
+
+### Asset review status (as of commit 484bac45)
+- **Accepted (keep, do not overwrite):** lum_ember, lum_forge, lum_verdant — all three assets (panel/entity/aura).
+- **Panels needing regeneration:** lum_astral, lum_bloom, lum_compass, lum_null, lum_radiant, lum_tide, lum_void (text on panel or wrong frame); lum_pale and lum_oracle are borderline (no text, containment partially present).
+- **Entities needing regeneration:** lum_null (thematic miss — sci-fi body scan), lum_void (rune text on orbital band).
+- **Auras needing regeneration:** lum_null, lum_tide, lum_void (opaque backgrounds); lum_pale (opaque dark quadrants break screen-blend).
+- All 12 are currently active in ILLUSTRATED_IDS for iteration. Restrict back to the accepted three before publication.
+
 ## System Architecture
 
 **Luminae** is a pnpm workspace monorepo utilizing TypeScript.
