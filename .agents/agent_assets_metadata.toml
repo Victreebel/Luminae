@@ -706,7 +706,7 @@ title = "Oracle panel art"
 id = "zMQhgn_IwHA8ejgEbe41_"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
 type = "image"
-title = "probability oracle entity"
+title = "generated_image"
 
 [[generated]]
 id = "4RJJCttnZbJi8zCxf3q4U"
@@ -754,7 +754,7 @@ title = "void warden entity"
 id = "W7XbqdUujk32xcaPZZMlZ"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/entity.png"
 type = "image"
-title = "coherence keeper entity"
+title = "generated_image"
 
 [[generated]]
 id = "tiMDfXw2QnqHzuPI05LvN"
@@ -767,6 +767,18 @@ id = "cM8dzKBJBhBI-ytyNdzT9"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/entity.png"
 type = "image"
 title = "pale merchant entity"
+
+[[generated]]
+id = "Uq3RwYODAeNOOWyWxIso7"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/entity.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "EmRSVOnFyjH9xuDhjw6P3"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_compass/entity.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
