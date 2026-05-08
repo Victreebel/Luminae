@@ -8,6 +8,7 @@
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --difficulty all
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all --difficulty hard
+ *   pnpm --filter @workspace/api-server run simulate -- --games 100 --output results.json
  *
  * Reports:
  *   - Per-Luminary claim rates across all games
@@ -18,8 +19,13 @@
  *   - Side-by-side multi-difficulty comparison when --difficulty all is used
  *   - Side-by-side player-count comparison (2/3/4) when --players all is used,
  *     including per-Luminary median claim turn and cross-count claim warnings
+ *
+ * JSON export (--output / -o):
+ *   Writes a machine-readable simulation-output.json consumable by the
+ *   SimResults chart page in the mockup-sandbox artifact.
  */
 
+import { writeFileSync } from "fs";
 import {
   initializeGame,
   applyAction,
@@ -31,21 +37,23 @@ import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { games: number; difficulties: AiDifficulty[]; playerCounts: number[] } {
+function parseArgs(): { games: number; difficulties: AiDifficulty[]; playerCounts: number[]; outputFile: string | null } {
   const args = process.argv.slice(2);
   let games = 100;
   let diffArg = "hard";
   let playersArg = "4";
+  let outputFile: string | null = null;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--games" && args[i + 1]) games = parseInt(args[++i], 10);
     if (args[i] === "--difficulty" && args[i + 1]) diffArg = args[++i];
     if (args[i] === "--players" && args[i + 1]) playersArg = args[++i];
+    if ((args[i] === "--output" || args[i] === "-o") && args[i + 1]) outputFile = args[++i];
   }
   const difficulties: AiDifficulty[] =
     diffArg === "all" ? ["easy", "medium", "hard"] : [diffArg as AiDifficulty];
   const playerCounts: number[] =
     playersArg === "all" ? [2, 3, 4] : [parseInt(playersArg, 10)];
-  return { games, difficulties, playerCounts };
+  return { games, difficulties, playerCounts, outputFile };
 }
 
 // ── Game simulation ───────────────────────────────────────────────────────────
@@ -698,16 +706,220 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
   console.log();
 }
 
+// ── JSON export schema ────────────────────────────────────────────────────────
+
+export interface SimLuminaryEntry {
+  id: string;
+  name: string;
+  tier: number;
+  tierLabel: string;
+  requirements: string;
+  claimCount: number;
+  claimRatePct: number;
+  timing: {
+    medianTurn: number | null;
+    p25: number | null;
+    p75: number | null;
+    earlyPct: number | null;
+    midPct: number | null;
+    latePct: number | null;
+    verdict: string;
+  };
+  histogram: Array<{ bucket: string; count: number; pct: number }>;
+}
+
+export interface SimDifficultyResult {
+  difficulty: string;
+  games: number;
+  players: number;
+  pacing: {
+    avgTurns: number;
+    minTurns: number;
+    maxTurns: number;
+    avgWinnerEminence: number;
+    avgClaimsPerGame: number;
+    gamesWithClaimsPct: number;
+  };
+  balance: {
+    monoAvgRatePct: number;
+    dualAvgRatePct: number;
+    tripleAvgRatePct: number;
+  };
+  tierSummary: Array<{
+    tier: number;
+    tierLabel: string;
+    luminaryCount: number;
+    totalClaims: number;
+    avgClaimsPerGame: number;
+    claimSharePct: number;
+  }>;
+  luminaries: SimLuminaryEntry[];
+  actionDistribution: Array<{ action: string; count: number; sharePct: number }>;
+  warnings: string[];
+}
+
+export interface SimulationOutput {
+  $schema: "luminae-simulation/v1";
+  meta: {
+    timestamp: string;
+    games: number;
+    playerCounts: number[];
+    difficulties: string[];
+  };
+  results: SimDifficultyResult[];
+}
+
+const TIER_LABELS: Record<number, string> = {
+  1: "mono-1L", 2: "mono-2L", 3: "dual-3L", 4: "triple-4L",
+};
+
+function buildSimulationJson(
+  allStats: DifficultyStats[],
+): SimulationOutput {
+  const results: SimDifficultyResult[] = allStats.map((s) => {
+    const bucketCount = 5;
+    const bucketSize = Math.max(1, Math.ceil(s.maxTurns / bucketCount));
+    const bucketLabels = Array.from({ length: bucketCount }, (_, i) => {
+      const lo = i * bucketSize + 1;
+      const hi = (i + 1) * bucketSize;
+      return `${lo}–${hi}`;
+    });
+
+    const earlyEdge = s.avgTurns / 3;
+    const midEdge = (s.avgTurns * 2) / 3;
+
+    const totalActions = Object.values(s.actionCounts).reduce((a, b) => a + b, 0);
+    const actionDistribution = Object.entries(s.actionCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([action, count]) => ({
+        action,
+        count,
+        sharePct: totalActions > 0 ? (count / totalActions) * 100 : 0,
+      }));
+
+    const sorted = [...LUMINARIES].sort((a, b) => lumTier(a) - lumTier(b));
+    const luminaries: SimLuminaryEntry[] = sorted.map((lum) => {
+      const tier = lumTier(lum);
+      const times = s.claimTurns[lum.id] ?? [];
+      const claimCount = times.length;
+
+      let timing: SimLuminaryEntry["timing"];
+      if (claimCount === 0) {
+        timing = {
+          medianTurn: null, p25: null, p75: null,
+          earlyPct: null, midPct: null, latePct: null,
+          verdict: "never claimed",
+        };
+      } else {
+        const med = median(times);
+        const p25v = percentile(times, 25);
+        const p75v = percentile(times, 75);
+        const earlyN = times.filter((t) => t <= earlyEdge).length;
+        const midN = times.filter((t) => t > earlyEdge && t <= midEdge).length;
+        const lateN = times.filter((t) => t > midEdge).length;
+        timing = {
+          medianTurn: med,
+          p25: p25v,
+          p75: p75v,
+          earlyPct: (earlyN / claimCount) * 100,
+          midPct: (midN / claimCount) * 100,
+          latePct: (lateN / claimCount) * 100,
+          verdict:
+            earlyN / claimCount >= 0.5
+              ? "early/strat"
+              : midN / claimCount >= 0.4
+                ? "mid-game"
+                : "late/incid.",
+        };
+      }
+
+      const histogram =
+        claimCount === 0
+          ? []
+          : Array.from({ length: bucketCount }, (_, i) => {
+              const count = times.filter(
+                (t) => t > i * bucketSize && t <= (i + 1) * bucketSize,
+              ).length;
+              return {
+                bucket: bucketLabels[i],
+                count,
+                pct: (count / claimCount) * 100,
+              };
+            });
+
+      return {
+        id: lum.id,
+        name: lum.name,
+        tier,
+        tierLabel: TIER_LABELS[tier] ?? String(tier),
+        requirements: reqSummary(lum),
+        claimCount,
+        claimRatePct: (claimCount / s.games) * 100,
+        timing,
+        histogram,
+      };
+    });
+
+    const totalClaims = Object.values(s.claimedCount).reduce((a, b) => a + b, 0);
+    const tierSummary = Object.entries(s.tierGroups)
+      .sort((a, b) => +a[0] - +b[0])
+      .map(([tier, data]) => ({
+        tier: +tier,
+        tierLabel: TIER_LABELS[+tier] ?? String(tier),
+        luminaryCount: data.count,
+        totalClaims: data.claims,
+        avgClaimsPerGame: data.claims / s.games,
+        claimSharePct: totalClaims > 0 ? (data.claims / totalClaims) * 100 : 0,
+      }));
+
+    return {
+      difficulty: s.difficulty,
+      games: s.games,
+      players: s.playerCount,
+      pacing: {
+        avgTurns: s.avgTurns,
+        minTurns: s.minTurns,
+        maxTurns: s.maxTurns,
+        avgWinnerEminence: s.avgWinLumens,
+        avgClaimsPerGame: s.avgClaimsPerGame,
+        gamesWithClaimsPct: s.games > 0 ? (s.gamesWithClaims / s.games) * 100 : 0,
+      },
+      balance: {
+        monoAvgRatePct: s.monoAvgRate * 100,
+        dualAvgRatePct: s.dualAvgRate * 100,
+        tripleAvgRatePct: s.tripleAvgRate * 100,
+      },
+      tierSummary,
+      luminaries,
+      actionDistribution,
+      warnings: s.warnings,
+    };
+  });
+
+  return {
+    $schema: "luminae-simulation/v1",
+    meta: {
+      timestamp: new Date().toISOString(),
+      games: allStats[0]?.games ?? 0,
+      playerCounts: [...new Set(allStats.map((s) => s.playerCount))],
+      difficulties: [...new Set(allStats.map((s) => s.difficulty))],
+    },
+    results,
+  };
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main() {
-  const { games, difficulties, playerCounts } = parseArgs();
+  const { games, difficulties, playerCounts, outputFile } = parseArgs();
   const playerCountSweep = playerCounts.length > 1;
 
   console.log(`\n${"═".repeat(64)}`);
   console.log(`  Luminae Balance Simulation`);
   console.log(`  Games: ${games} each  |  Difficulty: ${difficulties.join(", ")}  |  Players: ${playerCounts.join(", ")}`);
   console.log(`${"═".repeat(64)}`);
+
+  let outputStats: DifficultyStats[] = [];
 
   if (playerCountSweep) {
     // Player-count sweep mode: run each player count at the chosen difficulty.
@@ -728,6 +940,7 @@ function main() {
       sweepStats.push(stats);
     }
     printPlayerCountComparison(sweepStats);
+    outputStats = sweepStats;
   } else {
     // Difficulty sweep mode (existing behaviour)
     const players = playerCounts[0];
@@ -743,6 +956,13 @@ function main() {
     } else {
       console.log(`\n${"═".repeat(64)}\n`);
     }
+    outputStats = allStats;
+  }
+
+  if (outputFile) {
+    const output = buildSimulationJson(outputStats);
+    writeFileSync(outputFile, JSON.stringify(output, null, 2), "utf8");
+    console.log(`  ✓ JSON results written to: ${outputFile}\n`);
   }
 }
 
