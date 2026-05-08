@@ -829,12 +829,14 @@ export function applyAction(
         };
       if (!la.eligibleAffinities.includes(affinity))
         return { success: false, error: "Invalid affinity for this Luminary" };
+      const previousAffinity = la.activeAffinity;
       la.activeAffinity = affinity;
       const lumDef = LUMINARY_MAP.get(luminaryId);
+      const fromLabel = previousAffinity ? `${COLOR_LABEL[previousAffinity] ?? previousAffinity} → ` : "";
       pushLog(state, {
         playerId: player.playerId,
         playerName: player.playerName,
-        summary: `attuned ${lumDef?.name ?? luminaryId} to ${COLOR_LABEL[affinity] ?? affinity}`,
+        summary: `switched ${lumDef?.name ?? luminaryId} to ${fromLabel}${COLOR_LABEL[affinity] ?? affinity}`,
         turn: state.roundNumber,
       });
       state.version++;

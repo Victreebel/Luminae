@@ -9,6 +9,7 @@
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all --difficulty hard
  *   pnpm --filter @workspace/api-server run simulate -- --games 100 --output results.json
+ *   pnpm --filter @workspace/api-server run simulate -- --games 1 --verbose
  *
  * Reports:
  *   - Per-Luminary claim rates across all games
@@ -37,23 +38,25 @@ import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { games: number; difficulties: AiDifficulty[]; playerCounts: number[]; outputFile: string | null } {
+function parseArgs(): { games: number; difficulties: AiDifficulty[]; playerCounts: number[]; outputFile: string | null; verbose: boolean } {
   const args = process.argv.slice(2);
   let games = 100;
   let diffArg = "hard";
   let playersArg = "4";
   let outputFile: string | null = null;
+  let verbose = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--games" && args[i + 1]) games = parseInt(args[++i], 10);
     if (args[i] === "--difficulty" && args[i + 1]) diffArg = args[++i];
     if (args[i] === "--players" && args[i + 1]) playersArg = args[++i];
     if ((args[i] === "--output" || args[i] === "-o") && args[i + 1]) outputFile = args[++i];
+    if (args[i] === "--verbose") verbose = true;
   }
   const difficulties: AiDifficulty[] =
     diffArg === "all" ? ["easy", "medium", "hard"] : [diffArg as AiDifficulty];
   const playerCounts: number[] =
     playersArg === "all" ? [2, 3, 4] : [parseInt(playersArg, 10)];
-  return { games, difficulties, playerCounts, outputFile };
+  return { games, difficulties, playerCounts, outputFile, verbose };
 }
 
 // ── Game simulation ───────────────────────────────────────────────────────────
@@ -69,7 +72,7 @@ interface GameResult {
 
 const MAX_TURNS_PER_GAME = 400;
 
-function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
+function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = false): GameResult {
   const playerDefs = Array.from({ length: playerCount }, (_, i) => ({
     id: `p${i + 1}`,
     name: `AI-${i + 1}`,
@@ -119,6 +122,12 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
 
     if (result.success) {
       actionCounts[action.type] = (actionCounts[action.type] ?? 0) + 1;
+      if (verbose && action.type === "toggle_luminary_affinity") {
+        const lumName = LUMINARY_MAP.get(action.luminaryId ?? "")?.name ?? action.luminaryId ?? "?";
+        console.log(
+          `  [turn ${state.turnCount}] ${currentPlayer.playerName} (${difficulty}) switched ${lumName} → ${action.affinity}`,
+        );
+      }
     } else {
       // Fallback: take any single crystal
       let recovered = false;
@@ -245,12 +254,13 @@ interface DifficultyStats {
   claimTurns: Record<string, number[]>;
 }
 
-function runDifficulty(difficulty: AiDifficulty, games: number, players: number): DifficultyStats {
+function runDifficulty(difficulty: AiDifficulty, games: number, players: number, verbose = false): DifficultyStats {
   console.log(`\n  Running ${games} games at difficulty=${difficulty} players=${players}...`);
   const results: GameResult[] = [];
   for (let i = 0; i < games; i++) {
-    results.push(runOneGame(players, difficulty));
-    if ((i + 1) % 50 === 0) process.stdout.write(`    Progress: ${i + 1}/${games}\r`);
+    if (verbose) console.log(`\n── Game ${i + 1} ────────────────────────────────────────────────────`);
+    results.push(runOneGame(players, difficulty, verbose));
+    if (!verbose && (i + 1) % 50 === 0) process.stdout.write(`    Progress: ${i + 1}/${games}\r`);
   }
   if (games >= 50) process.stdout.write("\n");
 
@@ -911,12 +921,12 @@ function buildSimulationJson(
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main() {
-  const { games, difficulties, playerCounts, outputFile } = parseArgs();
+  const { games, difficulties, playerCounts, outputFile, verbose } = parseArgs();
   const playerCountSweep = playerCounts.length > 1;
 
   console.log(`\n${"═".repeat(64)}`);
   console.log(`  Luminae Balance Simulation`);
-  console.log(`  Games: ${games} each  |  Difficulty: ${difficulties.join(", ")}  |  Players: ${playerCounts.join(", ")}`);
+  console.log(`  Games: ${games} each  |  Difficulty: ${difficulties.join(", ")}  |  Players: ${playerCounts.join(", ")}${verbose ? "  |  verbose=on" : ""}`);
   console.log(`${"═".repeat(64)}`);
 
   let outputStats: DifficultyStats[] = [];
@@ -935,7 +945,7 @@ function main() {
     }
     const sweepStats: DifficultyStats[] = [];
     for (const pc of playerCounts) {
-      const stats = runDifficulty(difficulty, games, pc);
+      const stats = runDifficulty(difficulty, games, pc, verbose);
       printDifficultyReport(stats);
       sweepStats.push(stats);
     }
@@ -946,7 +956,7 @@ function main() {
     const players = playerCounts[0];
     const allStats: DifficultyStats[] = [];
     for (const difficulty of difficulties) {
-      const stats = runDifficulty(difficulty, games, players);
+      const stats = runDifficulty(difficulty, games, players, verbose);
       printDifficultyReport(stats);
       allStats.push(stats);
     }
