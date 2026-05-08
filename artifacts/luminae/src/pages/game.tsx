@@ -556,6 +556,7 @@ function LuminaryClaimedPortal({
             animate={{ y: [-2, 2, -2] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
+            title={activeAffinityMeta ? `${isOwnedByMe ? 'Active affinity' : 'Opponent boosting'}: ${activeAffinityMeta.name}` : undefined}
           >
             <MiniGem color={activeKey} size={16} />
           </motion.div>
@@ -565,12 +566,21 @@ function LuminaryClaimedPortal({
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
       {claimedByPlayer && ownerName && (
         <div
-          className="absolute bottom-0 left-0 right-0 z-20 flex items-center gap-1.5 px-2 py-1.5 pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 z-20 px-2 py-1.5 pointer-events-none"
           style={{ background: 'linear-gradient(to top, rgba(3,3,8,0.90) 0%, rgba(3,3,8,0.45) 65%, transparent 100%)' }}
         >
-          <span className="text-[8px] font-medium tracking-wide text-white/60 shrink-0">Alliance with</span>
-          <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={14} />
-          <span className="text-[9px] font-semibold leading-none text-white truncate" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{ownerName}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[8px] font-medium tracking-wide text-white/60 shrink-0">Alliance with</span>
+            <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={14} />
+            <span className="text-[9px] font-semibold leading-none text-white truncate" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{ownerName}</span>
+          </div>
+          {!isOwnedByMe && activeKey && activeAffinityMeta && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[7px] font-medium tracking-wide text-white/40 shrink-0 uppercase">Opponent boosting</span>
+              <MiniGem color={activeKey} size={10} />
+              <span className="text-[8px] font-semibold leading-none" style={{ color: g1, textShadow: `0 0 4px ${g1}88` }}>{activeAffinityMeta.name}</span>
+            </div>
+          )}
         </div>
       )}
 
