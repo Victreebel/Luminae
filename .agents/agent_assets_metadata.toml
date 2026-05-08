@@ -912,6 +912,60 @@ uri = "file://attached_assets/lum_forge_entity_repair_v2.png"
 type = "image"
 title = "Iron Harbinger entity repair v2 — chain dissolution base"
 
+[[generated]]
+id = "yBrkYs3bKKSDn2rPFeKWF"
+uri = "file://attached_assets/panel_astral.png"
+type = "image"
+title = "lum_astral panel rework"
+
+[[generated]]
+id = "yZQDXWWvz9u6juZbsyz_f"
+uri = "file://attached_assets/panel_bloom.png"
+type = "image"
+title = "lum_bloom panel rework"
+
+[[generated]]
+id = "V3PDAL7kFRd63Ceg5jGhu"
+uri = "file://attached_assets/panel_compass.png"
+type = "image"
+title = "lum_compass panel rework"
+
+[[generated]]
+id = "9mFiMyvmP_vl3-45E7Wwr"
+uri = "file://attached_assets/panel_oracle.png"
+type = "image"
+title = "lum_oracle panel rework"
+
+[[generated]]
+id = "gCSMpTNXFENL8DG2QKRbk"
+uri = "file://attached_assets/panel_pale.png"
+type = "image"
+title = "lum_pale panel rework"
+
+[[generated]]
+id = "X9pKF_NwiSc_rqZC49PoP"
+uri = "file://attached_assets/panel_radiant.png"
+type = "image"
+title = "lum_radiant panel rework"
+
+[[generated]]
+id = "CzZWxU93_Eczj2aZQUwXm"
+uri = "file://attached_assets/panel_tide.png"
+type = "image"
+title = "lum_tide panel rework"
+
+[[generated]]
+id = "CY6qRSjda-j175t4WcA-A"
+uri = "file://attached_assets/panel_void.png"
+type = "image"
+title = "lum_void panel rework"
+
+[[generated]]
+id = "bvYHax7AVcQeN0RgfyNm6"
+uri = "file://attached_assets/panel_null.png"
+type = "image"
+title = "lum_null panel rework"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
