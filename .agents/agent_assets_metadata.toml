@@ -743,3 +743,9 @@ id = "VkcsgdWDq8HN5b4FMB1eb"
 uri = "file://luminae_images.zip"
 type = "unspecified"
 title = "Luminae — Original Image Assets"
+
+[[outputs]]
+id = "Gq3p9Rr22pB_cWO8NjqFV"
+uri = "file://luminae-card-reference.md"
+type = "text"
+title = "Luminae — Complete Card Reference"
