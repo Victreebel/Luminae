@@ -900,6 +900,18 @@ uri = "file://attached_assets/lum_null_panel_v2.png"
 type = "image"
 title = "lum_null panel v2 crystal containment"
 
+[[generated]]
+id = "f2z7DdyYMhJw-l9qVrBEi"
+uri = "file://attached_assets/lum_forge_entity_repair_v1.png"
+type = "image"
+title = "Iron Harbinger entity repair v1 — full greaves visible"
+
+[[generated]]
+id = "6ZpImFVbG7bS2blrJd162"
+uri = "file://attached_assets/lum_forge_entity_repair_v2.png"
+type = "image"
+title = "Iron Harbinger entity repair v2 — chain dissolution base"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
