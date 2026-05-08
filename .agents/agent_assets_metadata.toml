@@ -700,7 +700,7 @@ title = "Voidcaller avatar portrait"
 id = "NBG33K8KeRVE3XsRJPx1n"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_oracle panel tri-affinity crystal"
 
 [[generated]]
 id = "zMQhgn_IwHA8ejgEbe41_"
@@ -718,49 +718,49 @@ title = "generated_image"
 id = "8hcW8nNYZbAjA-adLbVo8"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_astral panel crystal containment"
 
 [[generated]]
 id = "umrS5JDG0-Qx2eZDQH5vR"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_bloom panel crystal containment"
 
 [[generated]]
 id = "byPCBk_e9KaEPVBGq_FQj"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_compass/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_compass panel crystal containment"
 
 [[generated]]
 id = "5BMNZw40oV8BkVa3dw6ig"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_null panel headless sovereign crystal"
 
 [[generated]]
 id = "bTvEsShpuxElpFuYPeWe6"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_pale panel crystal containment"
 
 [[generated]]
 id = "7qkJOM2YWVkRi-HLw_hil"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_radiant panel crystal containment"
 
 [[generated]]
 id = "ZMufQgWdyX6KCNu7JLbJa"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_tide panel crystal containment"
 
 [[generated]]
 id = "rzmNczupmY30Gryz29RFu"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/panel.png"
 type = "image"
-title = "generated_image"
+title = "lum_void panel crystal containment"
 
 [[generated]]
 id = "DeBFxURgEmwiv-U9vV87F"
@@ -784,7 +784,7 @@ title = "generated_image"
 id = "cdWEfTs1P49zYULt9YP1t"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/entity.png"
 type = "image"
-title = "generated_image"
+title = "lum_null entity headless throne"
 
 [[generated]]
 id = "CBEvY_O6dtnqI3DFsy6bI"
@@ -808,7 +808,7 @@ title = "generated_image"
 id = "GWO8CNnLW0i9uYg3XUtRA"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/entity.png"
 type = "image"
-title = "generated_image"
+title = "lum_void entity void warden clean"
 
 [[generated]]
 id = "pxtP_HM5qsR1eWEwK-kq2"
@@ -838,13 +838,13 @@ title = "generated_image"
 id = "0izNix2kNvNgtuv9e2KOZ"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/aura.png"
 type = "image"
-title = "generated_image"
+title = "lum_null aura pale white blue glow"
 
 [[generated]]
 id = "Q7mv_mCyIMKki5qyevCmw"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/aura.png"
 type = "image"
-title = "generated_image"
+title = "lum_pale aura pure white silver glow"
 
 [[generated]]
 id = "weE3hzYEgxvkKMZ5sPXgr"
@@ -856,13 +856,13 @@ title = "generated_image"
 id = "sdSzGK-LxuTSQpui2CAuu"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/aura.png"
 type = "image"
-title = "generated_image"
+title = "lum_tide aura transparent blue"
 
 [[generated]]
 id = "Py7EOU4fRlrwLKhqpM7YU"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/aura.png"
 type = "image"
-title = "generated_image"
+title = "lum_void aura deep purple glow"
 
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
