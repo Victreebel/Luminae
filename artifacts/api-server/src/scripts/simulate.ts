@@ -9,6 +9,7 @@
  *
  * Reports:
  *   - Per-Luminary claim rates across all games
+ *   - Per-Luminary claim timing: median turn, p25/p75, early/mid/late histogram
  *   - Mono vs dual vs triple tier claim distribution
  *   - Average turn counts and winner Eminence
  *   - AI action distribution breakdown
@@ -47,6 +48,7 @@ interface GameResult {
   turnsTotal: number;
   winnerLumens: number;
   luminaryClaims: Record<string, string>; // luminaryId → claimerPlayerId
+  claimedAtTurn: Record<string, number>;  // luminaryId → turnCount when claimed
   actionCounts: Record<string, number>;
   playerFinalLumens: number[];
 }
@@ -62,8 +64,22 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
   const state: GameStateData = initializeGame(playerDefs, playerCount);
 
   const actionCounts: Record<string, number> = {};
+  const claimedAtTurn: Record<string, number> = {};
+  const prevClaimed = new Set<string>();
   let turnsSinceLastProgress = 0;
   let lastTotalLumens = 0;
+
+  /** Scan all players for newly added luminaries and record the current turnCount. */
+  function detectNewClaims(): void {
+    for (const p of state.players) {
+      for (const lumId of p.luminaries) {
+        if (!prevClaimed.has(lumId)) {
+          claimedAtTurn[lumId] = state.turnCount;
+          prevClaimed.add(lumId);
+        }
+      }
+    }
+  }
 
   for (let turn = 0; turn < MAX_TURNS_PER_GAME; turn++) {
     if (state.phase === "finished") break;
@@ -76,11 +92,16 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
           eventId: evt.eventId,
         });
       }
+      // Detect luminaries added during summon resolution
+      detectNewClaims();
     }
 
     const currentPlayer = state.players[state.currentPlayerIndex];
     const action = chooseAiAction(state, currentPlayer.playerId, difficulty);
     const result = applyAction(state, currentPlayer.playerId, action);
+
+    // Detect luminaries added by this action (including the game-ending action)
+    detectNewClaims();
 
     if (result.success) {
       actionCounts[action.type] = (actionCounts[action.type] ?? 0) + 1;
@@ -94,6 +115,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
             crystals: { [color]: 1 },
           });
           if (fb.success) {
+            detectNewClaims();
             actionCounts["take_three_crystals"] = (actionCounts["take_three_crystals"] ?? 0) + 1;
             recovered = true;
             break;
@@ -130,6 +152,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty): GameResult {
     turnsTotal: state.turnCount,
     winnerLumens: winner.lumens,
     luminaryClaims,
+    claimedAtTurn,
     actionCounts,
     playerFinalLumens: state.players.map((p) => p.lumens),
   };
@@ -144,6 +167,25 @@ function mean(arr: number[]): number {
 function pct(n: number, total: number): string {
   if (total === 0) return "0.0%";
   return ((n / total) * 100).toFixed(1) + "%";
+}
+
+function median(arr: number[]): number {
+  if (arr.length === 0) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
+function percentile(arr: number[], p: number): number {
+  if (arr.length === 0) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]);
 }
 
 function lumTier(lum: (typeof LUMINARIES)[0]): number {
@@ -184,6 +226,8 @@ interface DifficultyStats {
   dualAvgRate: number;
   tripleAvgRate: number;
   warnings: string[];
+  /** Per-Luminary list of turnCount values when the Luminary was claimed (one per game it was claimed). */
+  claimTurns: Record<string, number[]>;
 }
 
 function runDifficulty(difficulty: AiDifficulty, games: number, players: number): DifficultyStats {
@@ -199,7 +243,11 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number)
   const winnerLumens = results.map((r) => r.winnerLumens);
 
   const claimedCount: Record<string, number> = {};
-  for (const lum of LUMINARIES) claimedCount[lum.id] = 0;
+  const claimTurns: Record<string, number[]> = {};
+  for (const lum of LUMINARIES) {
+    claimedCount[lum.id] = 0;
+    claimTurns[lum.id] = [];
+  }
 
   let gamesWithClaims = 0;
   const claimsPerGame: number[] = [];
@@ -211,6 +259,10 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number)
     if (n > 0) gamesWithClaims++;
     for (const lumId of Object.keys(r.luminaryClaims)) {
       claimedCount[lumId] = (claimedCount[lumId] ?? 0) + 1;
+      if (lumId in r.claimedAtTurn) {
+        claimTurns[lumId] = claimTurns[lumId] ?? [];
+        claimTurns[lumId].push(r.claimedAtTurn[lumId]);
+      }
     }
     for (const [k, v] of Object.entries(r.actionCounts)) {
       totalActionCounts[k] = (totalActionCounts[k] ?? 0) + v;
@@ -247,11 +299,27 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number)
   if (avgTurns < 25) warnings.push("Games ending very quickly (<25 turns avg)");
   if (mean(claimsPerGame) < 0.5) warnings.push("Very few Luminaries claimed overall (<0.5/game)");
 
+  // Timing warnings: Luminaries never claimed
+  const neverClaimed = LUMINARIES.filter((lum) => claimedCount[lum.id] === 0);
+  if (neverClaimed.length > 0) {
+    warnings.push(`Luminaries NEVER claimed in any game: ${neverClaimed.map((l) => l.name).join(", ")}`);
+  }
+
+  // Timing warning: any Luminary claimed only very late (median > 90% of avg game)
+  const lateThreshold = avgTurns * 0.9;
+  const lateOnly = LUMINARIES.filter((lum) => {
+    const times = claimTurns[lum.id];
+    return times && times.length >= 3 && median(times) > lateThreshold;
+  });
+  if (lateOnly.length > 0) {
+    warnings.push(`Luminaries claimed only very late (median >90% game length): ${lateOnly.map((l) => l.name).join(", ")}`);
+  }
+
   return {
     difficulty, games, avgTurns, minTurns: Math.min(...turns), maxTurns: Math.max(...turns),
     avgWinLumens, claimedCount, totalClaims, avgClaimsPerGame: mean(claimsPerGame),
     gamesWithClaims, tierGroups, actionCounts: totalActionCounts,
-    monoAvgRate, dualAvgRate, tripleAvgRate, warnings,
+    monoAvgRate, dualAvgRate, tripleAvgRate, warnings, claimTurns,
   };
 }
 
@@ -297,6 +365,9 @@ function printDifficultyReport(s: DifficultyStats): void {
     );
   }
 
+  // ── Luminary Timing ────────────────────────────────────────────────────────
+  printTimingReport(s);
+
   console.log(`\n── Balance Verdict ──────────────────────────────────────────────`);
   console.log(`  Mono  avg rate/Lum/game : ${(s.monoAvgRate * 100).toFixed(1)}%`);
   console.log(`  Dual  avg rate/Lum/game : ${(s.dualAvgRate * 100).toFixed(1)}%`);
@@ -307,6 +378,98 @@ function printDifficultyReport(s: DifficultyStats): void {
     console.log("  ✓ PASS — no balance concerns detected");
   } else {
     for (const w of s.warnings) console.log(`  ⚠ WARN: ${w}`);
+  }
+}
+
+/**
+ * Print the Luminary timing table and per-Luminary histograms.
+ *
+ * For each Luminary that was claimed at least once, reports:
+ *   - Median claim turn, p25, p75
+ *   - % of claims falling in early (≤1/3), mid (1/3–2/3), and late (>2/3)
+ *     bands of the average game length
+ *   - Whether timing suggests strategic pursuit vs incidental end-of-game claim
+ */
+function printTimingReport(s: DifficultyStats): void {
+  console.log(`\n── Luminary Claim Timing ────────────────────────────────────────`);
+
+  const earlyEdge = s.avgTurns / 3;
+  const midEdge = (s.avgTurns * 2) / 3;
+
+  // Header
+  const hdr = `  ${"Luminary".padEnd(28)} ${"Tier".padEnd(8)} ${"n".padStart(4)}  ${"Med".padStart(5)}  ${"p25".padStart(5)}–${"p75".padStart(5)}  Early  Mid   Late  Verdict`;
+  console.log(hdr);
+  console.log(`  ${"─".repeat(hdr.length - 2)}`);
+
+  const tierLabel: Record<number, string> = {
+    1: "mono-1L", 2: "mono-2L", 3: "dual-3L", 4: "triple-4L",
+  };
+  const sorted = [...LUMINARIES].sort((a, b) => lumTier(a) - lumTier(b));
+
+  for (const lum of sorted) {
+    const times = s.claimTurns[lum.id] ?? [];
+    const tier = lumTier(lum);
+    const claimCount = times.length;
+
+    if (claimCount === 0) {
+      console.log(
+        `  ${lum.name.padEnd(28)} ${tierLabel[tier].padEnd(8)} ${"—".padStart(4)}  ${"—".padStart(5)}  ${"—".padStart(5)} ${"—".padStart(5)}  ${"—".padEnd(6)} ${"—".padEnd(5)} ${"—".padEnd(5)} never claimed`,
+      );
+      continue;
+    }
+
+    const med = median(times);
+    const p25 = percentile(times, 25);
+    const p75 = percentile(times, 75);
+    const earlyN = times.filter((t) => t <= earlyEdge).length;
+    const midN = times.filter((t) => t > earlyEdge && t <= midEdge).length;
+    const lateN = times.filter((t) => t > midEdge).length;
+    const earlyPct = ((earlyN / claimCount) * 100).toFixed(0) + "%";
+    const midPct = ((midN / claimCount) * 100).toFixed(0) + "%";
+    const latePct = ((lateN / claimCount) * 100).toFixed(0) + "%";
+
+    // Verdict: "strategic" if majority claimed in first 2/3, "incidental" if mostly late
+    const verdict =
+      earlyN / claimCount >= 0.5
+        ? "early/strat"
+        : midN / claimCount >= 0.4
+          ? "mid-game"
+          : "late/incid.";
+
+    console.log(
+      `  ${lum.name.padEnd(28)} ${tierLabel[tier].padEnd(8)} ${claimCount.toString().padStart(4)}  ${med.toFixed(0).padStart(5)}  ${p25.toFixed(0).padStart(5)}–${p75.toFixed(0).padEnd(5)}  ${earlyPct.padEnd(6)} ${midPct.padEnd(5)} ${latePct.padEnd(5)} ${verdict}`,
+    );
+  }
+
+  // Per-Luminary turn histogram (5-bucket, only for Luminaries with enough data)
+  const claimedLums = sorted.filter((lum) => (s.claimTurns[lum.id]?.length ?? 0) >= 5);
+  if (claimedLums.length > 0) {
+    const bucketCount = 5;
+    const bucketSize = Math.ceil(s.maxTurns / bucketCount);
+    const bucketLabels = Array.from({ length: bucketCount }, (_, i) => {
+      const lo = i * bucketSize + 1;
+      const hi = (i + 1) * bucketSize;
+      return `${lo}–${hi}`;
+    });
+
+    console.log(`\n── Claim Turn Histogram (per-Luminary, turns 1–${s.maxTurns}) ──────────────`);
+    console.log(`  ${"Luminary".padEnd(28)} ${bucketLabels.map((l) => l.padEnd(9)).join("")}`);
+    console.log(`  ${"─".repeat(28 + 2 + bucketCount * 9)}`);
+
+    for (const lum of claimedLums) {
+      const times = s.claimTurns[lum.id];
+      const buckets = Array.from({ length: bucketCount }, (_, i) =>
+        times.filter((t) => t > i * bucketSize && t <= (i + 1) * bucketSize).length,
+      );
+      const maxBucket = Math.max(...buckets, 1);
+      const bars = buckets.map((b) => {
+        const barLen = Math.round((b / maxBucket) * 6);
+        const bar = "█".repeat(barLen).padEnd(6);
+        const pctStr = ((b / times.length) * 100).toFixed(0) + "%";
+        return `${bar}${pctStr.padStart(3)}`;
+      });
+      console.log(`  ${lum.name.padEnd(28)} ${bars.map((b) => b.padEnd(9)).join("")}`);
+    }
   }
 }
 
@@ -351,6 +514,22 @@ function printComparisonTable(allStats: DifficultyStats[]): void {
     const rates = allStats.map((s) => pct(s.claimedCount[lum.id] ?? 0, s.games));
     console.log(
       `  ${lum.name.padEnd(26)} ${reqSummary(lum).padEnd(15)} ${rates.map((r) => r.padEnd(9)).join("")}`,
+    );
+  }
+
+  // Cross-difficulty timing comparison: median claim turn per Luminary
+  console.log("\n── Per-Luminary median claim turn by difficulty ─────────────────");
+  const timHdr = `  ${"Luminary".padEnd(26)} ${"Req".padEnd(15)} ${diffs.map((d) => d.padEnd(9)).join("")}`;
+  console.log(timHdr);
+  console.log("  " + "─".repeat(timHdr.length - 2));
+  for (const lum of sorted) {
+    const medians = allStats.map((s) => {
+      const times = s.claimTurns[lum.id] ?? [];
+      if (times.length === 0) return "—";
+      return `t${median(times).toFixed(0)}`;
+    });
+    console.log(
+      `  ${lum.name.padEnd(26)} ${reqSummary(lum).padEnd(15)} ${medians.map((m) => m.padEnd(9)).join("")}`,
     );
   }
 
