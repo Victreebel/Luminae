@@ -10,10 +10,14 @@
  *   pnpm --filter @workspace/api-server run simulate -- --games 200 --players all --difficulty hard
  *   pnpm --filter @workspace/api-server run simulate -- --games 100 --output results.json
  *   pnpm --filter @workspace/api-server run simulate -- --games 1 --verbose
+ *   pnpm --filter @workspace/api-server run simulate -- --probe lum_tide --games 100
+ *   pnpm --filter @workspace/api-server run simulate -- --probe lum_null --games 200 --players 4
  *
  * Reports:
  *   - Per-Luminary claim rates across all games
  *   - Per-Luminary claim timing: median turn, p25/p75, early/mid/late histogram
+ *   - Structural reachability: shortfall analysis for zero-claim Luminaries
+ *   - Optional: --probe <lumId> forces one AI to pursue that Luminary single-mindedly
  *   - Mono vs dual vs triple tier claim distribution
  *   - Average turn counts and winner Eminence
  *   - AI action distribution breakdown
@@ -32,31 +36,49 @@ import {
   applyAction,
   LUMINARIES,
   LUMINARY_MAP,
+  CARD_MAP,
+  CRYSTAL_COLORS,
+  effectiveBonuses,
+  zeroCrystals,
   type GameStateData,
+  type CrystalColor,
+  type CrystalCounts,
+  type ArtifactCard,
+  type LuminaryDef,
+  type ActionPayload,
 } from "../lib/gameEngine.js";
 import { chooseAiAction, type AiDifficulty } from "../lib/aiPlayer.js";
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
 
-function parseArgs(): { games: number; difficulties: AiDifficulty[]; playerCounts: number[]; outputFile: string | null; verbose: boolean } {
+function parseArgs(): {
+  games: number;
+  difficulties: AiDifficulty[];
+  playerCounts: number[];
+  outputFile: string | null;
+  verbose: boolean;
+  probe: string | null;
+} {
   const args = process.argv.slice(2);
   let games = 100;
   let diffArg = "hard";
   let playersArg = "4";
   let outputFile: string | null = null;
   let verbose = false;
+  let probe: string | null = null;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--games" && args[i + 1]) games = parseInt(args[++i], 10);
     if (args[i] === "--difficulty" && args[i + 1]) diffArg = args[++i];
     if (args[i] === "--players" && args[i + 1]) playersArg = args[++i];
     if ((args[i] === "--output" || args[i] === "-o") && args[i + 1]) outputFile = args[++i];
     if (args[i] === "--verbose") verbose = true;
+    if (args[i] === "--probe" && args[i + 1]) probe = args[++i];
   }
   const difficulties: AiDifficulty[] =
     diffArg === "all" ? ["easy", "medium", "hard"] : [diffArg as AiDifficulty];
   const playerCounts: number[] =
     playersArg === "all" ? [2, 3, 4] : [parseInt(playersArg, 10)];
-  return { games, difficulties, playerCounts, outputFile, verbose };
+  return { games, difficulties, playerCounts, outputFile, verbose, probe };
 }
 
 // ── Game simulation ───────────────────────────────────────────────────────────
@@ -68,6 +90,10 @@ interface GameResult {
   claimedAtTurn: Record<string, number>;  // luminaryId → turnCount when claimed
   actionCounts: Record<string, number>;
   playerFinalLumens: number[];
+  /** Max bonus any single player accumulated per color during this game. */
+  maxBonusObserved: Record<CrystalColor, number>;
+  /** Which Luminary IDs were in the active pool for this game. */
+  activeLuminaryIds: string[];
 }
 
 const MAX_TURNS_PER_GAME = 400;
@@ -79,6 +105,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
   }));
 
   const state: GameStateData = initializeGame(playerDefs, playerCount);
+  const activeLuminaryIds = [...state.activeLuminaries];
 
   const actionCounts: Record<string, number> = {};
   const claimedAtTurn: Record<string, number> = {};
@@ -86,7 +113,6 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
   let turnsSinceLastProgress = 0;
   let lastTotalLumens = 0;
 
-  /** Scan all players for newly added luminaries and record the current turnCount. */
   function detectNewClaims(): void {
     for (const p of state.players) {
       for (const lumId of p.luminaries) {
@@ -101,7 +127,6 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
   for (let turn = 0; turn < MAX_TURNS_PER_GAME; turn++) {
     if (state.phase === "finished") break;
 
-    // Auto-resolve any pending summon events (no client cutscene in simulation)
     if (state.pendingSummonEvents && state.pendingSummonEvents.length > 0) {
       for (const evt of [...state.pendingSummonEvents]) {
         applyAction(state, state.players[0].playerId, {
@@ -109,7 +134,6 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
           eventId: evt.eventId,
         });
       }
-      // Detect luminaries added during summon resolution
       detectNewClaims();
     }
 
@@ -117,7 +141,6 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
     const action = chooseAiAction(state, currentPlayer.playerId, difficulty);
     const result = applyAction(state, currentPlayer.playerId, action);
 
-    // Detect luminaries added by this action (including the game-ending action)
     detectNewClaims();
 
     if (result.success) {
@@ -129,7 +152,6 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
         );
       }
     } else {
-      // Fallback: take any single crystal
       let recovered = false;
       for (const color of ["ruby", "sapphire", "emerald", "onyx", "pearl"] as const) {
         if (state.crystalBank[color] > 0) {
@@ -148,7 +170,6 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
       if (!recovered) break;
     }
 
-    // Stall detection: abort if no Eminence progress for 80 turns
     const totalLumens = state.players.reduce((s, p) => s + p.lumens, 0);
     if (totalLumens > lastTotalLumens) {
       lastTotalLumens = totalLumens;
@@ -159,11 +180,21 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
     }
   }
 
-  // Collect Luminary claims
   const luminaryClaims: Record<string, string> = {};
   for (const p of state.players) {
     for (const lumId of p.luminaries) {
       luminaryClaims[lumId] = p.playerId;
+    }
+  }
+
+  const maxBonusObserved: Record<CrystalColor, number> = {
+    ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0,
+  };
+  for (const p of state.players) {
+    for (const color of CRYSTAL_COLORS) {
+      if (p.bonuses[color] > maxBonusObserved[color]) {
+        maxBonusObserved[color] = p.bonuses[color];
+      }
     }
   }
 
@@ -178,6 +209,8 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
     claimedAtTurn,
     actionCounts,
     playerFinalLumens: state.players.map((p) => p.lumens),
+    maxBonusObserved,
+    activeLuminaryIds,
   };
 }
 
@@ -230,6 +263,10 @@ function reqSummary(lum: (typeof LUMINARIES)[0]): string {
     .join("+");
 }
 
+const COLOR_LABEL: Record<CrystalColor, string> = {
+  ruby: "Flr", sapphire: "Con", emerald: "Vrd", onyx: "Aby", pearl: "Rad",
+};
+
 // ── Single-difficulty report ──────────────────────────────────────────────────
 
 interface DifficultyStats {
@@ -250,8 +287,9 @@ interface DifficultyStats {
   dualAvgRate: number;
   tripleAvgRate: number;
   warnings: string[];
-  /** Per-Luminary list of turnCount values when the Luminary was claimed (one per game it was claimed). */
   claimTurns: Record<string, number[]>;
+  peakBonusObserved: Record<CrystalColor, number>;
+  gamesActiveCount: Record<string, number>;
 }
 
 function runDifficulty(difficulty: AiDifficulty, games: number, players: number, verbose = false): DifficultyStats {
@@ -278,6 +316,12 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   const claimsPerGame: number[] = [];
   const totalActionCounts: Record<string, number> = {};
 
+  const peakBonusObserved: Record<CrystalColor, number> = {
+    ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0,
+  };
+  const gamesActiveCount: Record<string, number> = {};
+  for (const lum of LUMINARIES) gamesActiveCount[lum.id] = 0;
+
   for (const r of results) {
     const n = Object.keys(r.luminaryClaims).length;
     claimsPerGame.push(n);
@@ -291,6 +335,14 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
     }
     for (const [k, v] of Object.entries(r.actionCounts)) {
       totalActionCounts[k] = (totalActionCounts[k] ?? 0) + v;
+    }
+    for (const color of CRYSTAL_COLORS) {
+      if (r.maxBonusObserved[color] > peakBonusObserved[color]) {
+        peakBonusObserved[color] = r.maxBonusObserved[color];
+      }
+    }
+    for (const lumId of r.activeLuminaryIds) {
+      gamesActiveCount[lumId] = (gamesActiveCount[lumId] ?? 0) + 1;
     }
   }
 
@@ -324,13 +376,11 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   if (avgTurns < 25) warnings.push("Games ending very quickly (<25 turns avg)");
   if (mean(claimsPerGame) < 0.5) warnings.push("Very few Luminaries claimed overall (<0.5/game)");
 
-  // Timing warnings: Luminaries never claimed
   const neverClaimed = LUMINARIES.filter((lum) => claimedCount[lum.id] === 0);
   if (neverClaimed.length > 0) {
     warnings.push(`Luminaries NEVER claimed in any game: ${neverClaimed.map((l) => l.name).join(", ")}`);
   }
 
-  // Timing warning: any Luminary claimed only very late (median > 90% of avg game)
   const lateThreshold = avgTurns * 0.9;
   const lateOnly = LUMINARIES.filter((lum) => {
     const times = claimTurns[lum.id];
@@ -346,6 +396,7 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
     avgWinLumens, claimedCount, totalClaims, avgClaimsPerGame: mean(claimsPerGame),
     gamesWithClaims, tierGroups, actionCounts: totalActionCounts,
     monoAvgRate, dualAvgRate, tripleAvgRate, warnings, claimTurns,
+    peakBonusObserved, gamesActiveCount,
   };
 }
 
@@ -391,8 +442,8 @@ function printDifficultyReport(s: DifficultyStats): void {
     );
   }
 
-  // ── Luminary Timing ────────────────────────────────────────────────────────
   printTimingReport(s);
+  printStructuralReachability(s);
 
   console.log(`\n── Balance Verdict ──────────────────────────────────────────────`);
   console.log(`  Mono  avg rate/Lum/game : ${(s.monoAvgRate * 100).toFixed(1)}%`);
@@ -407,22 +458,12 @@ function printDifficultyReport(s: DifficultyStats): void {
   }
 }
 
-/**
- * Print the Luminary timing table and per-Luminary histograms.
- *
- * For each Luminary that was claimed at least once, reports:
- *   - Median claim turn, p25, p75
- *   - % of claims falling in early (≤1/3), mid (1/3–2/3), and late (>2/3)
- *     bands of the average game length
- *   - Whether timing suggests strategic pursuit vs incidental end-of-game claim
- */
 function printTimingReport(s: DifficultyStats): void {
   console.log(`\n── Luminary Claim Timing ────────────────────────────────────────`);
 
   const earlyEdge = s.avgTurns / 3;
   const midEdge = (s.avgTurns * 2) / 3;
 
-  // Header
   const hdr = `  ${"Luminary".padEnd(28)} ${"Tier".padEnd(8)} ${"n".padStart(4)}  ${"Med".padStart(5)}  ${"p25".padStart(5)}–${"p75".padStart(5)}  Early  Mid   Late  Verdict`;
   console.log(hdr);
   console.log(`  ${"─".repeat(hdr.length - 2)}`);
@@ -454,7 +495,6 @@ function printTimingReport(s: DifficultyStats): void {
     const midPct = ((midN / claimCount) * 100).toFixed(0) + "%";
     const latePct = ((lateN / claimCount) * 100).toFixed(0) + "%";
 
-    // Verdict: "strategic" if majority claimed in first 2/3, "incidental" if mostly late
     const verdict =
       earlyN / claimCount >= 0.5
         ? "early/strat"
@@ -467,7 +507,6 @@ function printTimingReport(s: DifficultyStats): void {
     );
   }
 
-  // Per-Luminary turn histogram (5-bucket, only for Luminaries with enough data)
   const claimedLums = sorted.filter((lum) => (s.claimTurns[lum.id]?.length ?? 0) >= 5);
   if (claimedLums.length > 0) {
     const bucketCount = 5;
@@ -496,6 +535,68 @@ function printTimingReport(s: DifficultyStats): void {
       });
       console.log(`  ${lum.name.padEnd(28)} ${bars.map((b) => b.padEnd(9)).join("")}`);
     }
+  }
+}
+
+function printStructuralReachability(s: DifficultyStats): void {
+  console.log(`\n── Structural Reachability ──────────────────────────────────────`);
+
+  const zeroClaim = LUMINARIES.filter((lum) => (s.claimedCount[lum.id] ?? 0) === 0);
+
+  if (zeroClaim.length === 0) {
+    console.log("  ✓ All Luminaries were claimed in at least one game — no reachability concerns.");
+    return;
+  }
+
+  console.log(`  ${zeroClaim.length} Luminary(ies) with zero claims across ${s.games} games:\n`);
+
+  for (const lum of zeroClaim) {
+    const gamesActive = s.gamesActiveCount[lum.id] ?? 0;
+    const activeRate = s.games > 0 ? ((gamesActive / s.games) * 100).toFixed(0) : "0";
+
+    console.log(`  ▸ ${lum.name}  [${reqSummary(lum)}]  [in pool ${gamesActive}/${s.games} games, ${activeRate}%]`);
+
+    if (gamesActive === 0) {
+      console.log(`      Verdict: NEVER IN ACTIVE POOL`);
+      console.log(`      → This Luminary was not selected in any game at this player count.`);
+      console.log(`      → Increase player count or shrink the pool to make it reachable.\n`);
+      continue;
+    }
+
+    const reqColors = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
+    let anyShortfall = false;
+    const shortfallLines: string[] = [];
+    const metLines: string[] = [];
+
+    for (const c of reqColors) {
+      const need = lum.requirements[c];
+      const peak = s.peakBonusObserved[c] ?? 0;
+      const shortfall = Math.max(0, need - peak);
+      if (shortfall > 0) {
+        anyShortfall = true;
+        shortfallLines.push(
+          `      ${COLOR_LABEL[c].padEnd(4)} (${c}): max observed bonus ${peak}, needs ${need}  → shortfall ${shortfall}`,
+        );
+      } else {
+        metLines.push(
+          `      ${COLOR_LABEL[c].padEnd(4)} (${c}): ✓ peak ${peak} ≥ ${need} required`,
+        );
+      }
+    }
+
+    for (const line of [...metLines, ...shortfallLines]) console.log(line);
+
+    if (anyShortfall) {
+      console.log(`      Verdict: REQUIREMENT TOO HIGH`);
+      console.log(`      → No player built a deep enough bonus stack in the required color(s).`);
+      console.log(`      → Suggestion: lower the requirement or run --probe ${lum.id} to test.`);
+    } else {
+      console.log(`      Verdict: COLOR STACK INCOMPATIBLE WITH AI STRATEGY`);
+      console.log(`      → Peak bonuses are theoretically sufficient, but the AI never combined`);
+      console.log(`        these colors in the same game as this Luminary's active window.`);
+      console.log(`      → Suggestion: run --probe ${lum.id} to measure focused-pursuit success rate.`);
+    }
+    console.log();
   }
 }
 
@@ -543,7 +644,6 @@ function printComparisonTable(allStats: DifficultyStats[]): void {
     );
   }
 
-  // Cross-difficulty timing comparison: median claim turn per Luminary
   console.log("\n── Per-Luminary median claim turn by difficulty ─────────────────");
   const timHdr = `  ${"Luminary".padEnd(26)} ${"Req".padEnd(15)} ${diffs.map((d) => d.padEnd(9)).join("")}`;
   console.log(timHdr);
@@ -602,7 +702,6 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
     }),
   );
 
-  // Per-Luminary claim rate by player count
   console.log(`\n── Per-Luminary claim rate by player count ──────────────────────────`);
   const lumHdr = `  ${"Luminary".padEnd(26)} ${"Req".padEnd(15)} ${counts.map((c) => c.padEnd(9)).join("")}`;
   console.log(lumHdr);
@@ -615,7 +714,6 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
     );
   }
 
-  // Per-Luminary median claim turn by player count
   console.log(`\n── Per-Luminary median claim turn by player count ───────────────────`);
   const timHdr = `  ${"Luminary".padEnd(26)} ${"Req".padEnd(15)} ${counts.map((c) => c.padEnd(9)).join("")}`;
   console.log(timHdr);
@@ -631,21 +729,16 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
     );
   }
 
-  // Cross-count warnings
-  // "Claimed regularly" = ≥10% claim rate (i.e. appears in at least 1-in-10 games).
-  // We check every adjacent pair (2p→3p, 3p→4p) PLUS the end-to-end span (2p→4p) so
-  // transitions at every step are visible, not just the extremes.
   const REGULAR_THRESHOLD = 0.10;
 
   console.log(`\n── Cross-Count Warnings ─────────────────────────────────────────────`);
   const crossWarnings: string[] = [];
-  const seen = new Set<string>(); // deduplicate identical messages
+  const seen = new Set<string>();
 
   function addWarning(msg: string): void {
     if (!seen.has(msg)) { seen.add(msg); crossWarnings.push(msg); }
   }
 
-  // Build all pairs to evaluate: consecutive neighbours + overall span
   const pairs: Array<[DifficultyStats, DifficultyStats]> = [];
   for (let i = 0; i < allStats.length - 1; i++) {
     pairs.push([allStats[i], allStats[i + 1]]);
@@ -662,7 +755,6 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
       const aRate = (a.claimedCount[lum.id] ?? 0) / a.games;
       const bRate = (b.claimedCount[lum.id] ?? 0) / b.games;
 
-      // Never claimed at one count but claimed regularly at another
       if (aRate === 0 && bRate >= REGULAR_THRESHOLD) {
         addWarning(
           `${lum.name}: never claimed at ${aCount}p but claimed in ${pct(b.claimedCount[lum.id] ?? 0, b.games)} of ${bCount}p games`,
@@ -684,7 +776,6 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
         }
       }
 
-      // Timing shift: median turn moves significantly between these two counts
       const aTimes = a.claimTurns[lum.id] ?? [];
       const bTimes = b.claimTurns[lum.id] ?? [];
       if (aTimes.length >= 3 && bTimes.length >= 3) {
@@ -712,6 +803,265 @@ function printPlayerCountComparison(allStats: DifficultyStats[]): void {
   for (const s of allStats) {
     const verdict = s.warnings.length === 0 ? "✓ PASS" : `⚠ ${s.warnings.length} warning(s)`;
     console.log(`  ${String(s.playerCount + "p").padEnd(4)}: ${verdict}`);
+  }
+  console.log();
+}
+
+// ── Probe mode ────────────────────────────────────────────────────────────────
+
+function probeScoreCard(
+  card: ArtifactCard,
+  player: { bonuses: CrystalCounts },
+  targetLum: LuminaryDef,
+): number {
+  const need = targetLum.requirements[card.bonusColor as CrystalColor] ?? 0;
+  if (need > 0) {
+    const have = player.bonuses[card.bonusColor as CrystalColor] ?? 0;
+    const stillNeeded = Math.max(0, need - have);
+    return 200 + stillNeeded * 20 + card.lumens * 2 + card.tier;
+  }
+  return card.lumens;
+}
+
+function chooseProbeAction(
+  state: GameStateData,
+  playerId: string,
+  targetLum: LuminaryDef,
+): ActionPayload {
+  const playerMaybe = state.players.find((p) => p.playerId === playerId);
+  if (!playerMaybe) return { type: "take_three_crystals", crystals: {} };
+  const player = playerMaybe;
+
+  const reqColors = CRYSTAL_COLORS.filter((c) => targetLum.requirements[c] > 0);
+
+  function effCost(card: ArtifactCard): CrystalCounts {
+    const bonuses = effectiveBonuses(state, player);
+    const result = zeroCrystals();
+    for (const color of CRYSTAL_COLORS) {
+      result[color] = Math.max(0, card.cost[color] - bonuses[color]);
+    }
+    return result;
+  }
+
+  function canAffordCard(card: ArtifactCard): boolean {
+    const eff = effCost(card);
+    let fluxNeeded = 0;
+    for (const color of CRYSTAL_COLORS) {
+      fluxNeeded += Math.max(0, eff[color] - player.crystals[color]);
+    }
+    return fluxNeeded <= player.crystals.flux;
+  }
+
+  const marketIds = [...state.marketTier1, ...state.marketTier2, ...state.marketTier3];
+  const market = marketIds.map((id) => CARD_MAP.get(id)).filter(Boolean) as ArtifactCard[];
+  const reserved = player.reservedCardIds
+    .map((id) => CARD_MAP.get(id))
+    .filter(Boolean) as ArtifactCard[];
+  const allCards = [...market, ...reserved];
+
+  const affordable = allCards
+    .filter(canAffordCard)
+    .sort((a, b) => probeScoreCard(b, player, targetLum) - probeScoreCard(a, player, targetLum));
+
+  if (affordable.length > 0) {
+    const card = affordable[0];
+    const isReserved = player.reservedCardIds.includes(card.id);
+    return { type: isReserved ? "purchase_reserved" : "purchase_card", cardId: card.id };
+  }
+
+  if (player.reservedCardIds.length < 3) {
+    const bestUnaffordable = allCards
+      .filter((c) => !canAffordCard(c) && !player.reservedCardIds.includes(c.id))
+      .sort((a, b) => probeScoreCard(b, player, targetLum) - probeScoreCard(a, player, targetLum));
+    if (bestUnaffordable.length > 0) {
+      return { type: "reserve_card", cardId: bestUnaffordable[0].id };
+    }
+  }
+
+  const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
+  const remaining = 10 - totalHeld;
+  if (remaining <= 0) {
+    return chooseAiAction(state, playerId, "hard");
+  }
+
+  const available = CRYSTAL_COLORS.filter((c) => state.crystalBank[c] > 0);
+  const prioritised = [
+    ...reqColors.filter((c) => available.includes(c)),
+    ...available.filter((c) => !reqColors.includes(c)),
+  ];
+  const pick = prioritised.slice(0, Math.min(3, remaining));
+
+  if (pick.length > 0) {
+    const crystals: Partial<CrystalCounts> = {};
+    for (const c of pick) crystals[c] = 1;
+    return { type: "take_three_crystals", crystals };
+  }
+
+  for (const c of reqColors) {
+    if (state.crystalBank[c] >= 4 && remaining >= 2) {
+      return { type: "take_two_crystals", crystal: c };
+    }
+  }
+
+  return chooseAiAction(state, playerId, "hard");
+}
+
+interface ProbeGameResult {
+  probeClaimed: boolean;
+  claimedAtTurn: number | null;
+  finalBonuses: CrystalCounts;
+  turns: number;
+}
+
+function runProbeGame(playerCount: number, targetLum: LuminaryDef): ProbeGameResult {
+  const playerDefs = Array.from({ length: playerCount }, (_, i) => ({
+    id: `p${i + 1}`,
+    name: i === 0 ? "PROBE" : `AI-${i + 1}`,
+  }));
+
+  const state: GameStateData = initializeGame(playerDefs, playerCount);
+  const probeId = "p1";
+
+  const claimedAtTurnMap: Record<string, number> = {};
+  const claimedByMap: Record<string, string> = {};
+  const prevClaimed = new Set<string>();
+  let turnsSinceLastProgress = 0;
+  let lastTotalLumens = 0;
+
+  function detectNewClaims(): void {
+    for (const p of state.players) {
+      for (const lumId of p.luminaries) {
+        if (!prevClaimed.has(lumId)) {
+          claimedAtTurnMap[lumId] = state.turnCount;
+          claimedByMap[lumId] = p.playerId;
+          prevClaimed.add(lumId);
+        }
+      }
+    }
+  }
+
+  for (let turn = 0; turn < MAX_TURNS_PER_GAME; turn++) {
+    if (state.phase === "finished") break;
+
+    if (state.pendingSummonEvents && state.pendingSummonEvents.length > 0) {
+      for (const evt of [...state.pendingSummonEvents]) {
+        applyAction(state, state.players[0].playerId, { type: "resolve_summon", eventId: evt.eventId });
+      }
+      detectNewClaims();
+    }
+
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    const isProbe = currentPlayer.playerId === probeId;
+    const action = isProbe
+      ? chooseProbeAction(state, currentPlayer.playerId, targetLum)
+      : chooseAiAction(state, currentPlayer.playerId, "hard");
+
+    const result = applyAction(state, currentPlayer.playerId, action);
+    detectNewClaims();
+
+    if (!result.success) {
+      let recovered = false;
+      for (const color of CRYSTAL_COLORS) {
+        if (state.crystalBank[color] > 0) {
+          const fb = applyAction(state, currentPlayer.playerId, {
+            type: "take_three_crystals",
+            crystals: { [color]: 1 },
+          });
+          if (fb.success) { detectNewClaims(); recovered = true; break; }
+        }
+      }
+      if (!recovered) break;
+    }
+
+    const totalLumens = state.players.reduce((s, p) => s + p.lumens, 0);
+    if (totalLumens > lastTotalLumens) {
+      lastTotalLumens = totalLumens;
+      turnsSinceLastProgress = 0;
+    } else {
+      turnsSinceLastProgress++;
+      if (turnsSinceLastProgress > 80) break;
+    }
+  }
+
+  const probePlayer = state.players.find((p) => p.playerId === probeId)!;
+  const probeClaimed =
+    targetLum.id in claimedByMap && claimedByMap[targetLum.id] === probeId;
+
+  return {
+    probeClaimed,
+    claimedAtTurn: probeClaimed ? (claimedAtTurnMap[targetLum.id] ?? null) : null,
+    finalBonuses: probePlayer.bonuses,
+    turns: state.turnCount,
+  };
+}
+
+function printProbeReport(
+  targetLum: LuminaryDef,
+  results: ProbeGameResult[],
+  players: number,
+): void {
+  const claimed = results.filter((r) => r.probeClaimed);
+  const missed = results.filter((r) => !r.probeClaimed);
+  const games = results.length;
+  const claimRate = claimed.length / games;
+  const claimTurns = claimed.map((r) => r.claimedAtTurn!);
+  const reqColors = CRYSTAL_COLORS.filter((c) => targetLum.requirements[c] > 0);
+
+  console.log(`\n${"═".repeat(64)}`);
+  console.log(`  Probe: Can ${targetLum.name} be reached?`);
+  console.log(`  Requirement: ${reqSummary(targetLum)}  |  Reward: ${targetLum.lumens}L`);
+  console.log(`  Strategy: P1 exclusively builds toward required colors`);
+  console.log(`  Games: ${games}  |  Players: ${players}  |  Other AIs: hard`);
+  console.log(`${"═".repeat(64)}`);
+
+  console.log(`\n  Claim success rate  : ${claimed.length}/${games} (${(claimRate * 100).toFixed(1)}%)`);
+  console.log(`  Avg game length     : ${mean(results.map((r) => r.turns)).toFixed(1)} turns`);
+
+  if (claimTurns.length > 0) {
+    const med = median(claimTurns);
+    const p25 = percentile(claimTurns, 25);
+    const p75 = percentile(claimTurns, 75);
+    console.log(
+      `  Median claim turn   : t${med.toFixed(0)}  (p25=t${p25.toFixed(0)}, p75=t${p75.toFixed(0)})`,
+    );
+  }
+
+  console.log(`\n── Final bonus profile (probe player) ───────────────────────────`);
+
+  if (claimed.length > 0) {
+    console.log(`  When CLAIMED (n=${claimed.length}):`);
+    for (const c of reqColors) {
+      const avg = mean(claimed.map((r) => r.finalBonuses[c]));
+      const need = targetLum.requirements[c];
+      console.log(`    ${COLOR_LABEL[c].padEnd(4)} (${c}): avg ${avg.toFixed(1)} of ${need} required`);
+    }
+  }
+
+  if (missed.length > 0) {
+    console.log(`  When MISSED (n=${missed.length}):`);
+    for (const c of reqColors) {
+      const avg = mean(missed.map((r) => r.finalBonuses[c]));
+      const need = targetLum.requirements[c];
+      const shortfall = Math.max(0, need - avg);
+      console.log(
+        `    ${COLOR_LABEL[c].padEnd(4)} (${c}): avg ${avg.toFixed(1)} of ${need} required  ${shortfall > 0 ? `(avg shortfall ${shortfall.toFixed(1)})` : "✓ met"}`,
+      );
+    }
+  }
+
+  console.log(`\n── Probe Verdict ────────────────────────────────────────────────`);
+  if (claimRate >= 0.5) {
+    console.log(`  ✓ REACHABLE — claimed in ${(claimRate * 100).toFixed(0)}% of focused games`);
+    console.log(`    → Naturally missed because standard AI doesn't focus on these colors.`);
+    console.log(`    → Suggestion: strengthen AI color-commitment guidance for this Luminary.`);
+  } else if (claimRate > 0) {
+    console.log(`  ⚠ CONDITIONALLY REACHABLE — claimed in only ${(claimRate * 100).toFixed(0)}% of focused games`);
+    console.log(`    → Even with dedicated pursuit, rarely achieved within typical game length.`);
+    console.log(`    → Suggestion: consider lowering requirements by 1–2 per color.`);
+  } else {
+    console.log(`  ✗ STRUCTURALLY UNREACHABLE — never claimed even with dedicated pursuit`);
+    console.log(`    → Requirements cannot be met within typical game length.`);
+    console.log(`    → Suggestion: reduce requirements significantly or add more bonus sources.`);
   }
   console.log();
 }
@@ -783,9 +1133,7 @@ const TIER_LABELS: Record<number, string> = {
   1: "mono-1L", 2: "mono-2L", 3: "dual-3L", 4: "triple-4L",
 };
 
-function buildSimulationJson(
-  allStats: DifficultyStats[],
-): SimulationOutput {
+function buildSimulationJson(allStats: DifficultyStats[]): SimulationOutput {
   const results: SimDifficultyResult[] = allStats.map((s) => {
     const bucketCount = 5;
     const bucketSize = Math.max(1, Math.ceil(s.maxTurns / bucketCount));
@@ -921,9 +1269,37 @@ function buildSimulationJson(
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main() {
-  const { games, difficulties, playerCounts, outputFile, verbose } = parseArgs();
+  const { games, difficulties, playerCounts, outputFile, verbose, probe } = parseArgs();
   const playerCountSweep = playerCounts.length > 1;
 
+  // ── Probe mode (highest priority) ─────────────────────────────────────────
+  if (probe !== null) {
+    const targetLum = LUMINARY_MAP.get(probe);
+    if (!targetLum) {
+      console.error(`\n  Error: Unknown Luminary ID "${probe}"`);
+      console.error(`  Valid IDs: ${LUMINARIES.map((l) => l.id).join(", ")}\n`);
+      process.exit(1);
+    }
+
+    console.log(`\n${"═".repeat(64)}`);
+    console.log(`  Luminae Balance Simulation — Probe Mode`);
+    console.log(`  Target  : ${targetLum.name} (${probe})`);
+    console.log(`  Games   : ${games}  |  Players: ${playerCounts[0]}`);
+    console.log(`${"═".repeat(64)}`);
+    console.log(`\n  Running ${games} probe games...`);
+
+    const probeResults: ProbeGameResult[] = [];
+    for (let i = 0; i < games; i++) {
+      probeResults.push(runProbeGame(playerCounts[0], targetLum));
+      if ((i + 1) % 50 === 0) process.stdout.write(`    Progress: ${i + 1}/${games}\r`);
+    }
+    if (games >= 50) process.stdout.write("\n");
+
+    printProbeReport(targetLum, probeResults, playerCounts[0]);
+    return;
+  }
+
+  // ── Normal simulation mode ────────────────────────────────────────────────
   console.log(`\n${"═".repeat(64)}`);
   console.log(`  Luminae Balance Simulation`);
   console.log(`  Games: ${games} each  |  Difficulty: ${difficulties.join(", ")}  |  Players: ${playerCounts.join(", ")}${verbose ? "  |  verbose=on" : ""}`);
@@ -932,9 +1308,6 @@ function main() {
   let outputStats: DifficultyStats[] = [];
 
   if (playerCountSweep) {
-    // Player-count sweep mode: run each player count at the chosen difficulty.
-    // If --difficulty all was also passed, only the first difficulty is used
-    // (a full 3×3 matrix is not yet supported). Notify the user.
     const difficulty = difficulties[0];
     if (difficulties.length > 1) {
       console.log(
@@ -952,7 +1325,6 @@ function main() {
     printPlayerCountComparison(sweepStats);
     outputStats = sweepStats;
   } else {
-    // Difficulty sweep mode (existing behaviour)
     const players = playerCounts[0];
     const allStats: DifficultyStats[] = [];
     for (const difficulty of difficulties) {
