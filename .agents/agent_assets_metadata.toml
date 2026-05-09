@@ -1104,6 +1104,24 @@ uri = "file://attached_assets/ref5b_null.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "q6tHzzWBlCLJ6IknJqobp"
+uri = "file://attached_assets/ref6_radiant.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nXlZLmdNy-g0fWl1rAANg"
+uri = "file://attached_assets/ref6_null.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1_mDElQiTaJTZjE4DfQ41"
+uri = "file://attached_assets/ref6b_null.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
