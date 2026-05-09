@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
-  Bookmark, Hammer, Eye, EyeOff, Package, LayoutGrid, Hand, List,
+  Bookmark, Gavel, Eye, EyeOff, Package, LayoutGrid, Hand, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Info
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
@@ -2927,7 +2927,7 @@ export default function GameBoard() {
                     onClick={() => { handleBuy(selectedCard.card, selectedCard.fromReserve); clearSelection(); }}
                     className="h-9 px-3 text-xs font-bold"
                   >
-                    <Hammer className="h-3.5 w-3.5 mr-1" />
+                    <Gavel className="h-3.5 w-3.5 mr-1" />
                     Forge
                   </Button>
                   {!selectedCard.fromReserve && (
@@ -2954,7 +2954,7 @@ export default function GameBoard() {
                     }}
                     className="h-9 px-3 text-xs font-bold"
                   >
-                    <Hammer className="h-3.5 w-3.5 mr-1" />
+                    <Gavel className="h-3.5 w-3.5 mr-1" />
                     Plan Forge
                   </Button>
                   {!selectedCard.fromReserve && (
@@ -3134,7 +3134,7 @@ export default function GameBoard() {
                       disabled={!selectedCard.canBuy}
                       onClick={() => handleBuy(selectedCard.card, selectedCard.fromReserve)}
                     >
-                      <Hammer className="h-5 w-5 mr-2" />
+                      <Gavel className="h-5 w-5 mr-2" />
                       {selectedCard.canBuy ? 'Forge Artifact' : 'Cannot afford yet'}
                     </Button>
                     {!selectedCard.fromReserve && (
@@ -3156,7 +3156,7 @@ export default function GameBoard() {
                       disabled={!me || !canAffordCard(selectedCard.card, me)}
                       onClick={() => handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id })}
                     >
-                      <Hammer className="h-5 w-5 mr-2" />
+                      <Gavel className="h-5 w-5 mr-2" />
                       {me && canAffordCard(selectedCard.card, me) ? 'Plan: Forge this Artifact' : 'Cannot afford yet'}
                     </Button>
                     {!selectedCard.fromReserve && (
@@ -3674,7 +3674,7 @@ export default function GameBoard() {
                                 handleBuy(c, true);
                               }}
                             >
-                              <Hammer className="h-3.5 w-3.5 mr-1.5" />
+                              <Gavel className="h-3.5 w-3.5 mr-1.5" />
                               {!isMyTurn ? 'Not your turn' : canBuy ? 'Forge Now' : 'Cannot afford'}
                             </Button>
                           </div>
