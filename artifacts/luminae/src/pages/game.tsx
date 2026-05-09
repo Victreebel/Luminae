@@ -1237,9 +1237,15 @@ export default function GameBoard() {
           (newState as any)?.pendingSummonEvents ?? [];
 
         for (const evt of newPending) {
+          // Only enqueue cutscenes for events that weren't in the previous state.
+          // Dedup against replaying the same eventId is handled inside enqueueSummon
+          // via handledSummonEventIdsRef — that is the correct dedup boundary.
+          // NOTE: do NOT gate on claimedLuminaryIds here. The engine pushes the
+          // luminary into both player.luminaries AND pendingSummonEvents in the same
+          // atomic state update, so isAlreadyClaimed would always be true for a live
+          // summon and would suppress every cutscene.
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
-          const isAlreadyClaimed = newState.players.some(p => (p.claimedLuminaryIds ?? []).includes(evt.luminaryId));
-          if (!alreadyKnown && !isAlreadyClaimed) {
+          if (!alreadyKnown) {
             // Synchronously mark this luminary as suppressed BEFORE any RAF fires.
             // This ensures the portal doesn't flash during the frames between the
             // queryClient.setQueryData re-render and the setSummonQueue call.
