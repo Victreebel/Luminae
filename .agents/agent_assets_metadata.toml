@@ -1230,6 +1230,30 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_regen_a.pn
 type = "image"
 title = "bloom tyrant panel regen a"
 
+[[generated]]
+id = "iWgkMXGp8Q758ZrTzlwoO"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_reset_a.png"
+type = "image"
+title = "bloom tyrant panel reset"
+
+[[generated]]
+id = "vUpShDXycKt-TBLZAFBWK"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/entity_reset_a.png"
+type = "image"
+title = "bloom tyrant entity reset"
+
+[[generated]]
+id = "XMXHY21CeebogOzy9_ejS"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_reset_b.png"
+type = "image"
+title = "bloom panel reset b crystal wall"
+
+[[generated]]
+id = "cZ-hFD74iJPlGjcAceeVs"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_reset_c.png"
+type = "image"
+title = "bloom panel reset c bloom visible"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
