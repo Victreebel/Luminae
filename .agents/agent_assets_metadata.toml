@@ -1212,6 +1212,18 @@ uri = "file://attached_assets/null_regen_f.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "JFwnEMLGGJgERARw-tvfU"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity_regen_a.png"
+type = "image"
+title = "oracle entity regen a"
+
+[[generated]]
+id = "4YocGrAQWeulluxs2IxXU"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/panel_regen_a.png"
+type = "image"
+title = "oracle panel regen a"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
