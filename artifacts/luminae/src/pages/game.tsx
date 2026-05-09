@@ -3031,12 +3031,15 @@ export default function GameBoard() {
                       }}
                     >
                       <Gavel className="h-5 w-5 mr-2" />
-                      {pendingSheetAction === 'forge' ? 'Tap again to confirm forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
+                      {pendingSheetAction === 'forge' ? 'Confirm: Forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
-                        variant={pendingSheetAction === 'reserve' ? 'default' : 'secondary'}
-                        className={`w-full h-12 text-base transition-all duration-150 ${pendingSheetAction === 'reserve' ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-black
+                          ${pendingSheetAction === 'reserve'
+                            ? 'bg-[#FFE080] ring-2 ring-[#FFC43D] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
+                            : 'bg-[#FFC43D] hover:bg-[#FFD060]'
+                          }`}
                         disabled={!me || !canReserveMore(me)}
                         onClick={() => {
                           if (pendingSheetAction === 'reserve') {
@@ -3046,7 +3049,7 @@ export default function GameBoard() {
                         }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {pendingSheetAction === 'reserve' ? 'Tap again to confirm reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
+                        {pendingSheetAction === 'reserve' ? 'Confirm: Reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
                       </Button>
                     )}
                   </>
@@ -3070,7 +3073,7 @@ export default function GameBoard() {
                       }}
                     >
                       <Gavel className="h-5 w-5 mr-2" />
-                      {pendingSheetAction === 'plan_forge' ? 'Tap again to confirm plan' : 'Plan: Forge this Artifact'}
+                      {pendingSheetAction === 'plan_forge' ? 'Confirm: Plan: Forge' : 'Plan: Forge this Artifact'}
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
@@ -3088,7 +3091,7 @@ export default function GameBoard() {
                         }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {pendingSheetAction === 'plan_reserve' ? 'Tap again to confirm plan' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
+                        {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
                       </Button>
                     )}
                     <p className="text-[10px] text-muted-foreground text-center">
@@ -3590,32 +3593,26 @@ export default function GameBoard() {
                                 <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
                               </div>
                             )}
-                            {isMyTurn ? (
+                            {(isMyTurn || canPlan) && (
                               <Button
                                 size="sm"
-                                className="mt-1 w-full"
-                                disabled={!canBuy}
+                                className={`mt-1 w-full font-bold border-0 text-black
+                                  ${isMyTurn
+                                    ? canBuy
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                      : 'bg-secondary text-muted-foreground'
+                                    : 'bg-amber-600 hover:bg-amber-500'
+                                  }`}
+                                disabled={isMyTurn && !canBuy}
                                 onClick={() => {
                                   setShowReservedOverlay(false);
-                                  handleBuy(c, true);
+                                  openCardSheet(c, true);
                                 }}
                               >
                                 <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                                {canBuy ? 'Forge Now' : 'Cannot afford'}
+                                {isMyTurn ? (canBuy ? 'Forge…' : 'Cannot afford') : 'Plan: Forge…'}
                               </Button>
-                            ) : canPlan ? (
-                              <Button
-                                size="sm"
-                                className="mt-1 w-full border-0 text-black bg-amber-600 hover:bg-amber-500 font-bold"
-                                onClick={() => {
-                                  handlePlanAction({ type: 'purchase_reserved', cardId: c.id });
-                                  setShowReservedOverlay(false);
-                                }}
-                              >
-                                <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                                Plan: Forge
-                              </Button>
-                            ) : null}
+                            )}
                           </div>
                         </div>
                       );
