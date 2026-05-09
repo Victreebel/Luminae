@@ -1278,6 +1278,36 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_refine_d.p
 type = "image"
 title = "bloom panel refine d ember-style transparent crystal over visible bloom"
 
+[[generated]]
+id = "sQTrqAJ4MMA2aFn_rZKE3"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_enhance_a.png"
+type = "image"
+title = "bloom panel enhance — full-frame crystal foreground bloom visible behind"
+
+[[generated]]
+id = "_8B4i7AHDC-l_3wnfhrGZ"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_enhance_b.png"
+type = "image"
+title = "bloom panel enhance b — bloom fills frame crystal planes as foreground layer"
+
+[[generated]]
+id = "GTONib0prdxRkf3sFTQ2-"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_enhance_c.png"
+type = "image"
+title = "bloom panel enhance c — crystal encrusts outer petals thinning to center"
+
+[[generated]]
+id = "TV6fjyS3BDo5RRDJwJAZ_"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_enhance_d.png"
+type = "image"
+title = "bloom panel enhance d — unified crystal reliquary scene ember-structure"
+
+[[generated]]
+id = "AyCY7BbhIwEs0nQaYaMto"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_enhance_e.png"
+type = "image"
+title = "bloom panel enhance e — frame-filling crystal bloom large inside blazing star center"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
