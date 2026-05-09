@@ -1784,13 +1784,12 @@ export default function GameBoard() {
     }
   };
 
-  // canPlan must NOT be derived from !isMyTurn. That coupling makes animation
-  // locks (turn announcements, summon gates) accidentally enable planning for
-  // the active player during their own turn. Instead derive from isActivePlayer:
-  //   - Active player never sees plan UI, regardless of animation state.
-  //   - Off-turn players can plan freely during normal opponent turns.
-  //   - During a Luminary summon, planning is blocked until localSummonSkipped.
-  const canPlan = !isActivePlayer && state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
+  // canPlan is available to any player whenever the game is active and there is
+  // no blocking Luminary summon cutscene. It is intentionally NOT tied to
+  // !isActivePlayer or !isMyTurn — planning should be accessible at all times
+  // (on your turn, off your turn, during animation locks). Only Luminary
+  // cutscenes gate it, because those require player attention.
+  const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
   const myPlannedAction = (me as any)?.plannedAction ?? null;
   const safePlayers = state.players ?? [];
   const safeLuminaries = state.luminaries ?? [];
@@ -3019,7 +3018,7 @@ export default function GameBoard() {
                   <>
                     <Button
                       className={`w-full h-12 text-base font-bold transition-all duration-150 ${pendingSheetAction === 'forge' ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
-                      disabled={!selectedCard.canBuy}
+                      disabled={!me || !canAffordCard(selectedCard.card, me)}
                       onClick={() => {
                         if (pendingSheetAction === 'forge') {
                           handleBuy(selectedCard.card, selectedCard.fromReserve);
@@ -3028,13 +3027,13 @@ export default function GameBoard() {
                       }}
                     >
                       <Gavel className="h-5 w-5 mr-2" />
-                      {pendingSheetAction === 'forge' ? 'Tap again to confirm forge' : (selectedCard.canBuy ? 'Forge Artifact' : 'Cannot afford yet')}
+                      {pendingSheetAction === 'forge' ? 'Tap again to confirm forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
                         variant={pendingSheetAction === 'reserve' ? 'default' : 'secondary'}
                         className={`w-full h-12 text-base transition-all duration-150 ${pendingSheetAction === 'reserve' ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
-                        disabled={!selectedCard.canReserve}
+                        disabled={!me || !canReserveMore(me)}
                         onClick={() => {
                           if (pendingSheetAction === 'reserve') {
                             handleReserveCard(selectedCard.card);
@@ -3043,7 +3042,7 @@ export default function GameBoard() {
                         }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {pendingSheetAction === 'reserve' ? 'Tap again to confirm reserve' : (selectedCard.canReserve ? 'Reserve for later' : 'Reserve pile full (3 max)')}
+                        {pendingSheetAction === 'reserve' ? 'Tap again to confirm reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
                       </Button>
                     )}
                   </>
@@ -3580,18 +3579,32 @@ export default function GameBoard() {
                                 <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
                               </div>
                             )}
-                            <Button
-                              size="sm"
-                              className="mt-1 w-full"
-                              disabled={!isMyTurn || !canBuy}
-                              onClick={() => {
-                                setShowReservedOverlay(false);
-                                handleBuy(c, true);
-                              }}
-                            >
-                              <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                              {!isMyTurn ? 'Not your turn' : canBuy ? 'Forge Now' : 'Cannot afford'}
-                            </Button>
+                            {isMyTurn ? (
+                              <Button
+                                size="sm"
+                                className="mt-1 w-full"
+                                disabled={!canBuy}
+                                onClick={() => {
+                                  setShowReservedOverlay(false);
+                                  handleBuy(c, true);
+                                }}
+                              >
+                                <Gavel className="h-3.5 w-3.5 mr-1.5" />
+                                {canBuy ? 'Forge Now' : 'Cannot afford'}
+                              </Button>
+                            ) : canPlan ? (
+                              <Button
+                                size="sm"
+                                className="mt-1 w-full border-0 text-black bg-amber-600 hover:bg-amber-500 font-bold"
+                                onClick={() => {
+                                  handlePlanAction({ type: 'purchase_reserved', cardId: c.id });
+                                  setShowReservedOverlay(false);
+                                }}
+                              >
+                                <Gavel className="h-3.5 w-3.5 mr-1.5" />
+                                Plan: Forge
+                              </Button>
+                            ) : null}
                           </div>
                         </div>
                       );
