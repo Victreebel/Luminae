@@ -1224,6 +1224,12 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/panel_regen_a.p
 type = "image"
 title = "oracle panel regen a"
 
+[[generated]]
+id = "oSC8YDwdzbFi30Q0PGuVo"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_regen_a.png"
+type = "image"
+title = "bloom tyrant panel regen a"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
