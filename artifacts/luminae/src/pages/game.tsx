@@ -1604,7 +1604,10 @@ export default function GameBoard() {
       await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } });
       setActionMode('none');
       setSelectedCrystals({});
-      setSelectedCard(null);
+      // resolve_summon fires from onComplete for every player who watched the
+      // cutscene (including opponents who skipped the view and may be browsing
+      // cards). Do not close their card sheet as a side-effect of that action.
+      if (payload.type !== 'resolve_summon') setSelectedCard(null);
       if (payload.type === 'purchase_reserved') {
         gameAudio.playCardPurchased();
         const bonusColor = payload.cardRef?.bonusColor as GemKey | undefined;
