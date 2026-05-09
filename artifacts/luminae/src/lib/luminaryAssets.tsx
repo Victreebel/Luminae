@@ -163,14 +163,17 @@ function TideEntity({ size = 140, className = '' }: { size?: number; className?:
 }
 
 // ── Tide Architect Eye Overlay ────────────────────────────────────────────────
-// Ophanim-style animated eyes overlaid on the lum_tide entity art.
-// Three eyes: central awareness core (large) + two on the outer ring arcs.
-// Each pupil follows an independent slow irregular drift path — the entity watches.
+// Three realistic Ophanim eyes overlaid on the lum_tide entity art.
+// Anatomy: white sclera, textured sapphire iris with 24 radial fiber lines,
+// true black pupil at the iris center, and two catch lights.
+// The full iris group (iris + texture + pupil + catch lights) drifts slowly
+// within the sclera bounds — the entity actively watches.
 function TideEyeOverlay({ width, height }: { width: number; height: number }) {
+  const BASE_IRIS_FRAC = 0.044;
   const eyes = [
-    { cx: 0.500, cy: 0.515, irisR: 0.044, pupilR: 0.018, maxDrift: 0.022, dur: 7.2, delay: 0.0 },
-    { cx: 0.190, cy: 0.495, irisR: 0.028, pupilR: 0.011, maxDrift: 0.015, dur: 8.5, delay: 0.9 },
-    { cx: 0.810, cy: 0.495, irisR: 0.028, pupilR: 0.011, maxDrift: 0.015, dur: 9.1, delay: 1.8 },
+    { cx: 0.500, cy: 0.515, scale: 1.00, dur: 7.2, delay: 0.0 },
+    { cx: 0.190, cy: 0.495, scale: 0.64, dur: 8.6, delay: 0.9 },
+    { cx: 0.810, cy: 0.495, scale: 0.64, dur: 9.2, delay: 1.8 },
   ] as const;
   return (
     <svg
@@ -179,35 +182,86 @@ function TideEyeOverlay({ width, height }: { width: number; height: number }) {
       viewBox={`0 0 ${width} ${height}`}
     >
       <defs>
-        <radialGradient id="te-iris" cx="50%" cy="40%" r="60%">
-          <stop offset="0%" stopColor="#7dd3fc" stopOpacity="0.95" />
-          <stop offset="45%" stopColor="#0ea5e9" stopOpacity="0.80" />
-          <stop offset="100%" stopColor="#0284c7" stopOpacity="0.50" />
+        {/* Sapphire iris — deep center, vibrant mid, dark limbal edge */}
+        <radialGradient id="te-iris" cx="42%" cy="38%" r="55%">
+          <stop offset="0%"   stopColor="#09192f" />
+          <stop offset="16%"  stopColor="#0c3460" />
+          <stop offset="42%"  stopColor="#1560a0" />
+          <stop offset="68%"  stopColor="#2182c8" />
+          <stop offset="86%"  stopColor="#2a96dc" />
+          <stop offset="100%" stopColor="#082030" />
         </radialGradient>
+        {/* Black pupil with subtle depth */}
+        <radialGradient id="te-pupil" cx="50%" cy="44%" r="50%">
+          <stop offset="0%"   stopColor="#000000" />
+          <stop offset="85%"  stopColor="#020508" />
+          <stop offset="100%" stopColor="#060c18" />
+        </radialGradient>
+        {/* Realistic sclera — bright centre, slightly warm at edges */}
+        <radialGradient id="te-sclera" cx="44%" cy="38%" r="62%">
+          <stop offset="0%"   stopColor="#ffffff"  stopOpacity="0.97" />
+          <stop offset="65%"  stopColor="#eef4f6"  stopOpacity="0.93" />
+          <stop offset="100%" stopColor="#dde8ea"  stopOpacity="0.86" />
+        </radialGradient>
+        {/* Pupil depth glow */}
         <filter id="te-glow" x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="1.2" result="b" />
+          <feGaussianBlur stdDeviation="0.9" result="b" />
           <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
       {eyes.map((eye, i) => {
-        const cx = eye.cx * width;
-        const cy = eye.cy * height;
-        const irisR = eye.irisR * width;
-        const pupilR = eye.pupilR * width;
-        const drift = eye.maxDrift * width;
-        const xKeys = [0, drift * 0.7, drift, drift * 0.4, -drift * 0.5, -drift, -drift * 0.6, 0];
-        const yKeys = [0, -drift * 0.5, drift * 0.3, drift * 0.8, drift * 0.4, -drift * 0.2, -drift * 0.7, 0];
+        const cx      = eye.cx * width;
+        const cy      = eye.cy * height;
+        const irisR   = BASE_IRIS_FRAC * eye.scale * width;
+        const scleraRX = irisR * 1.54;
+        const scleraRY = irisR * 1.26;
+        const pupilR  = irisR * 0.38;
+        // Drift bounded so iris always stays fully inside the sclera
+        const maxDX = (scleraRX - irisR) * 0.78;
+        const maxDY = (scleraRY - irisR) * 0.78;
+        const xKeys = [0,  maxDX*0.7,  maxDX,  maxDX*0.4, -maxDX*0.6, -maxDX, -maxDX*0.5,  0];
+        const yKeys = [0, -maxDY*0.5, maxDY*0.3, maxDY*0.9, maxDY*0.5, -maxDY*0.2, -maxDY*0.8, 0];
         return (
           <g key={i}>
-            <circle cx={cx} cy={cy} r={irisR} fill="url(#te-iris)" opacity={0.82} />
-            <circle cx={cx} cy={cy} r={irisR * 0.62} fill="#020a18" opacity={0.92} />
+            {/* White sclera — fixed, stays in place while iris drifts */}
+            <ellipse cx={cx} cy={cy} rx={scleraRX} ry={scleraRY} fill="url(#te-sclera)" />
+            {/* Drifting iris group — iris + fibers + limbal ring + pupil + catch lights */}
             <motion.g
               animate={{ x: xKeys, y: yKeys }}
               transition={{ repeat: Infinity, duration: eye.dur, ease: 'easeInOut', delay: eye.delay, repeatType: 'loop' }}
             >
-              <circle cx={cx} cy={cy} r={pupilR} fill="#38bdf8" filter="url(#te-glow)" />
-              <circle cx={cx + pupilR * 0.5} cy={cy - pupilR * 0.5} r={pupilR * 0.32} fill="white" opacity={0.80} />
+              {/* Iris base gradient */}
+              <circle cx={cx} cy={cy} r={irisR} fill="url(#te-iris)" />
+              {/* 24 radial fiber lines — iris texture */}
+              {Array.from({ length: 24 }).map((_, j) => {
+                const angle = (j / 24) * Math.PI * 2;
+                const inner = irisR * 0.24;
+                const outer = irisR * 0.97;
+                const op = 0.14 + (j % 4) * 0.07;
+                return (
+                  <line key={j}
+                    x1={cx + Math.cos(angle) * inner} y1={cy + Math.sin(angle) * inner}
+                    x2={cx + Math.cos(angle) * outer} y2={cy + Math.sin(angle) * outer}
+                    stroke="#6dcffc" strokeWidth={irisR * 0.030} opacity={op}
+                  />
+                );
+              })}
+              {/* Limbal ring — dark border at iris edge */}
+              <circle cx={cx} cy={cy} r={irisR} fill="none"
+                stroke="#061424" strokeWidth={irisR * 0.10} opacity={0.88} />
+              {/* Black pupil */}
+              <circle cx={cx} cy={cy} r={pupilR} fill="url(#te-pupil)" filter="url(#te-glow)" />
+              {/* Primary catch light — top-right */}
+              <circle cx={cx + irisR * 0.32} cy={cy - irisR * 0.36} r={irisR * 0.14} fill="white" opacity={0.94} />
+              {/* Secondary catch light — bottom-left */}
+              <circle cx={cx - irisR * 0.18} cy={cy + irisR * 0.44} r={irisR * 0.06} fill="white" opacity={0.58} />
             </motion.g>
+            {/* Upper eyelid shadow — fixed over sclera, adds anatomical depth */}
+            <ellipse
+              cx={cx} cy={cy - scleraRY * 0.12}
+              rx={scleraRX * 0.98} ry={scleraRY * 0.62}
+              fill="#020810" opacity={0.35}
+            />
           </g>
         );
       })}
