@@ -1062,6 +1062,30 @@ uri = "file://attached_assets/regen3_null.png"
 type = "image"
 title = "lum_null pass 3 — empty throne / acephalous armor"
 
+[[generated]]
+id = "_MtQuHhYlSVkfimvUoV1E"
+uri = "file://attached_assets/ref4_null.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "CIzkiXv00SsfQBLd9lvjz"
+uri = "file://attached_assets/ref4_void.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KtqyY65B545FT8UAlOMkG"
+uri = "file://attached_assets/ref4_radiant.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "y7ChGTjPH9kamE3Da0VE8"
+uri = "file://attached_assets/ref4_compass.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
