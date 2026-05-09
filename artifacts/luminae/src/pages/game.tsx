@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, Hammer, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Info
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -822,6 +822,7 @@ export default function GameBoard() {
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
+  const [showCardDetail, setShowCardDetail] = useState(false);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{
@@ -1701,14 +1702,24 @@ export default function GameBoard() {
     executeAction({ type: 'reserve_card', tier, _tier: tier });
   };
 
-  const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
+  const clearSelection = () => {
+    setSelectedCard(null);
+    setShowCardDetail(false);
+  };
+
+  const selectCard = (card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
-    const ec = computeCosts(card, costMode);
+    // Second tap on the same card → deselect
+    if (selectedCard?.card.id === card.id) {
+      clearSelection();
+      return;
+    }
+    setShowCardDetail(false);
     setSelectedCard({
       card, fromReserve,
       canBuy: isMyTurn && canAffordCard(card, me),
       canReserve: isMyTurn && !fromReserve && canReserveMore(me),
-      effectiveCosts: ec,
+      effectiveCosts: computeCosts(card, costMode),
     });
   };
 
@@ -1978,7 +1989,7 @@ export default function GameBoard() {
                         <ArtifactCardView
                           card={c}
                           tier={row.tier}
-                          onTap={() => openCardSheet(c, false)}
+                          onTap={() => selectCard(c, false)}
                           tapped={selectedCard?.card.id === c.id}
                           effectiveCosts={computeCosts(c, costMode)}
                         />
@@ -1992,7 +2003,7 @@ export default function GameBoard() {
                     <ArtifactCardView
                       card={c}
                       tier={row.tier}
-                      onTap={() => openCardSheet(c, false)}
+                      onTap={() => selectCard(c, false)}
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
                     />
@@ -2414,7 +2425,7 @@ export default function GameBoard() {
                 key={c.id}
                 card={c}
                 tier={c.tier}
-                onTap={() => openCardSheet(c, true)}
+                onTap={() => selectCard(c, true)}
                 tapped={selectedCard?.card.id === c.id}
                 effectiveCosts={computeCosts(c, costMode)}
               />
@@ -2881,6 +2892,108 @@ export default function GameBoard() {
         </div>
       )}
 
+      {/* ── Card Action Bar (two-tap confirm) ── */}
+      {/* First tap selects/highlights a card; this bar slides up with action buttons.
+          Tapping Forge / Reserve / Plan here is the second tap that finalizes the action.
+          The full detail sheet is accessible via the Details button. */}
+      <AnimatePresence>
+        {selectedCard && !showCardDetail && (
+          <motion.div
+            key="card-action-bar"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 32, stiffness: 360 }}
+            className="shrink-0 border-t border-primary/30 bg-card/98 backdrop-blur z-30 px-3 py-2.5"
+            style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.4)' }}
+          >
+            <div className="flex items-center gap-2">
+              {/* Card identity */}
+              <MiniGem color={selectedCard.card.bonusColor as GemKey} size={20} />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold leading-tight truncate">{selectedCard.card.name}</div>
+                <div className="text-[10px] text-muted-foreground leading-tight">
+                  Tier {selectedCard.card.tier}
+                  {(selectedCard.card.lumens ?? 0) > 0 && ` · ${selectedCard.card.lumens} eminence`}
+                </div>
+              </div>
+
+              {/* Action buttons — live affordability checks */}
+              {isMyTurn ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    disabled={!me || !canAffordCard(selectedCard.card, me)}
+                    onClick={() => { handleBuy(selectedCard.card, selectedCard.fromReserve); clearSelection(); }}
+                    className="h-9 px-3 text-xs font-bold"
+                  >
+                    <Hammer className="h-3.5 w-3.5 mr-1" />
+                    Forge
+                  </Button>
+                  {!selectedCard.fromReserve && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!me || !canReserveMore(me)}
+                      onClick={() => { handleReserveCard(selectedCard.card); clearSelection(); }}
+                      className="h-9 px-3 text-xs"
+                    >
+                      <Bookmark className="h-3.5 w-3.5 mr-1" />
+                      Reserve
+                    </Button>
+                  )}
+                </div>
+              ) : canPlan ? (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    disabled={!me || !canAffordCard(selectedCard.card, me)}
+                    onClick={() => {
+                      handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
+                      clearSelection();
+                    }}
+                    className="h-9 px-3 text-xs font-bold"
+                  >
+                    <Hammer className="h-3.5 w-3.5 mr-1" />
+                    Plan Forge
+                  </Button>
+                  {!selectedCard.fromReserve && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!me || !canReserveMore(me)}
+                      onClick={() => {
+                        handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
+                        clearSelection();
+                      }}
+                      className="h-9 px-3 text-xs"
+                    >
+                      <Bookmark className="h-3.5 w-3.5 mr-1" />
+                      Plan Reserve
+                    </Button>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Details — opens the full info sheet */}
+              <button
+                type="button"
+                onClick={() => setShowCardDetail(true)}
+                className="h-9 px-2 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground border border-border/50 hover:border-border transition-colors shrink-0 flex items-center gap-1"
+              >
+                <Info className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Details</span>
+              </button>
+
+              {/* Dismiss */}
+              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={clearSelection}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Bottom Navigation ── */}
       <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
@@ -2910,15 +3023,15 @@ export default function GameBoard() {
         ))}
       </nav>
 
-      {/* ── Card Action Sheet ── */}
+      {/* ── Card Action Sheet (detail view — opens via Details button in action bar) ── */}
       <AnimatePresence>
-        {selectedCard && (
+        {selectedCard && showCardDetail && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 flex items-end"
-            onClick={() => setSelectedCard(null)}
+            onClick={clearSelection}
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
@@ -3067,7 +3180,7 @@ export default function GameBoard() {
                     Not your turn
                   </p>
                 )}
-                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setSelectedCard(null)}>
+                <Button variant="ghost" className="w-full text-muted-foreground" onClick={clearSelection}>
                   Close
                 </Button>
               </div>
@@ -3533,7 +3646,7 @@ export default function GameBoard() {
                             effectiveCosts={ec}
                             onTap={() => {
                               setShowReservedOverlay(false);
-                              openCardSheet(c, true);
+                              selectCard(c, true);
                             }}
                             tapped={false}
                           />
