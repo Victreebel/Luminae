@@ -35,11 +35,17 @@ The user prefers that all development and communication adhere to the establishe
 - Same level of detail and polish as Ember / Forge / Verdant.
 
 ### Panel crystal generation rules (apply to every future panel generation pass)
-- **Crystal must dominate the panel.** The containment vessel should fill and slightly overflow the inner picture area — extending close to or slightly past the ornate border on all sides. It must not read as a clearly defined ball or small sphere sitting inside the frame. Compare to lum_ember and lum_forge: the crystal bleeds out to the edges and is the dominant compositional mass.
-- **No soccer-ball or hex-net patterns.** Avoid hexagonal or pentagonal facet layouts that read as a decorative mesh or cage laid over the crystal. These look like a covering, not a crystal.
-- **Gold seam lines are crystal edges, not a separate overlay.** The visible gold lines must be the actual facet-edge junctions of the crystal geometry itself — the edges where two crystal planes meet. They are not a net, lattice overlay, or decorative filigree applied to the surface of a smooth sphere.
-- **Favor irregular angular facet planes.** Crystal facets should be large, irregular triangular and trapezoidal planes — the geometry of a cut gemstone or natural crystal formation, not a geodesic dome or soccer ball.
-- **Prompt language that works:** "large irregular triangular and trapezoidal crystal facet planes", "gold seam lines only at the angular junctions where two crystal planes meet", "the crystal fills the entire inner picture area and bleeds to the edges", "the entity is embedded deep within the crystal volume". Avoid: "crystal orb", "crystal ball", "sphere", "geodesic", "hexagonal facets".
+
+**The core mental model — crystal wall, not crystal ball:**
+The Luminary is trapped *behind or within a massive crystal wall / faceted crystal volume*. The crystal should be so zoomed in that the viewer cannot tell the overall shape of the crystal. The viewer should feel like they are looking through and into a wall of crystal facets, not looking at a crystal object sitting inside a frame. The crystal covers most or all of the picture area and extends beyond the panel borders.
+
+**Hard rules:**
+- **Crystal must fill the panel.** The crystal volume fills and overflows the entire inner picture area — extending past the ornate border on all sides. The overall shape of the crystal must not be readable. If you can see the silhouette of a ball, orb, or defined shape, it has failed.
+- **Banned prompt terms:** crystal ball, crystal orb, sphere, geodesic dome, soccer-ball facets, hex-net, cage, mesh, lattice overlay, covering. These all produce the wrong result.
+- **Required prompt framing:** "massive faceted crystal wall", "zoomed-in crystal containment", "large irregular crystal planes filling the entire image", "refraction seams", "natural facet edges", "colored internal fracture lines", "overlapping shard planes", "the entity is trapped behind a wall of crystal facets", "the crystal extends past the panel borders on all sides".
+- **No separate net or overlay.** The visible lines on the crystal are the physical edges and refraction seams of the facet planes themselves — the places where two crystal planes meet and light changes direction. They are not a decorative mesh, not a gold overlay, not a cage placed over a smooth surface.
+- **Edge color follows the crystal's palette.** Facet edges and refraction seams should be whatever color and brightness naturally fits the Luminary's affinity palette: prismatic highlight lines, colored light seams, dark/bright plane transitions, internal fracture glow. They are not required to be gold. Gold seams are appropriate for some Luminaries (warm affinities) but wrong for others.
+- **Facet planes must be large and irregular.** Big triangular and trapezoidal planes — like a cut gemstone face or natural mineral cleavage plane, not a uniform net of small cells.
 
 ### Overall thematic direction
 Luminaries are cosmic survival intelligences and post-civilizational archetypes — not generic fantasy patrons, Splendor-style nobles, or TCG heroes. Use scientifically inspired myth and cosmic speculative mythology.
@@ -79,6 +85,19 @@ Luminaries are cosmic survival intelligences and post-civilizational archetypes 
 - No rectangular illustration background, no card frame baked in.
 - No text, labels, equations, UI marks, or readable annotation marks anywhere on the entity.
 - Must feel alive and intentional — not a static emblem, mandala, or diagram.
+
+### Entity form diversity (critical — do not default to humanoid)
+Many Luminaries should be nonhumanoid. A humanoid central figure is only correct when the specific Luminary concept explicitly calls for one. When uncertain, ask rather than defaulting to humanoid.
+
+Each Luminary represents a distinct form of cosmic living/intelligent existence. The form of the entity should reflect that:
+- **Ecological / Verdance entities** (e.g. Bloom Tyrant): plant organisms, root networks, mycelial masses, invasive growth structures — no human silhouette.
+- **Energetic / Flare entities**: stellar plasma forms, ignition clouds, radiant light-bodies — not necessarily humanoid.
+- **Temporal / Continuum entities**: recursive geometric structures, branching causality trees, layered temporal echoes — abstract or semi-abstract.
+- **Entropic / Abyss entities**: absence-forms, void geometries, silence-structures — minimalist, not monstrous.
+- **Order / Radiance entities**: machine-like crystalline lattices, coherent geometric intelligences, pattern-forms.
+- **World-scale intelligences**: organisms that operate at planetary or cosmic scale — their body may be a weather system, a root network, a stellar structure.
+
+If a generation pass produces a humanoid figure for a Luminary that should be nonhumanoid, that is a failure to capture the concept. Ask for clarification if the intended form is not clear before generating.
 
 ### Asset review status (current — supersedes all earlier commit notes)
 - **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom — 9 panels locked.
