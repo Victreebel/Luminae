@@ -1278,6 +1278,30 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_refine_d.p
 type = "image"
 title = "bloom panel refine d ember-style transparent crystal over visible bloom"
 
+[[generated]]
+id = "qXc4wgI_gagnu3AZwHIyA"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/entity_planet_a.png"
+type = "image"
+title = "bloom tyrant entity planet-eater version"
+
+[[generated]]
+id = "X7Y1Tn0zBZbY13guZZ1aq"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_planet_a.png"
+type = "image"
+title = "bloom tyrant panel planet-eater crystal wall version"
+
+[[generated]]
+id = "HmqYLJyUObXOKC2gyi_co"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_planet_b.png"
+type = "image"
+title = "bloom panel planet b ember-style transparent crystal planet-eater"
+
+[[generated]]
+id = "jESK0vcMtkJXiVCnIw0ca"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_planet_c.png"
+type = "image"
+title = "bloom panel planet c entity fills panel crystal overlay planet-eater"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
