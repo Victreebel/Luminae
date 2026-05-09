@@ -695,6 +695,37 @@ class GameAudio {
   // Kept for backward compat — maps to crystal ting on ruby
   playCrystalPickedLegacy() { this.playCrystalPicked('ruby'); }
 
+  /** Crisp, lightweight selection click — first tap (mode engaged). */
+  playButtonSelect() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Tactile click: tight bandpass noise pop
+      this.noiseBlip(ctx, t, 0.045, 0.11, 1800, 9);
+      // Crystalline high ping — "selection locked in"
+      this.osc(ctx, 1047, 'sine', t, t + 0.13, 0.055, 0.002);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  /** Heavier, more satisfying confirmation stamp — second tap (action committed). */
+  playButtonConfirm() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Bass weight — sense of finality
+      this.osc(ctx, 92, 'sine', t, t + 0.32, 0.16, 0.004);
+      // Resonant mid ring
+      this.osc(ctx, 440, 'sine', t + 0.01, t + 0.38, 0.07, 0.006);
+      // Bright stamp noise burst
+      this.noiseBlip(ctx, t, 0.06, 0.13, 2200, 6);
+      // Quick ascending shimmer pair — C5 → E5
+      this.osc(ctx, 523.25, 'sine', t + 0.05, t + 0.22, 0.05, 0.004);
+      this.osc(ctx, 659.25, 'sine', t + 0.13, t + 0.30, 0.04, 0.003);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   // ── Ambient music ─────────────────────────────────────────────────────
 
   startMusic() {
