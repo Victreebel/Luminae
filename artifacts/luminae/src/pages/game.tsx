@@ -1809,6 +1809,16 @@ export default function GameBoard() {
   // cutscenes gate it, because those require player attention.
   const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
   const myPlannedAction = (me as any)?.plannedAction ?? null;
+
+  // Forge / Plan:Forge confirmed-state color — solid affinity color of the card being acted on.
+  const _forgeCardMeta = selectedCard
+    ? (GEM_META[(selectedCard.card.bonusColor ?? 'pearl') as GemKey] ?? GEM_META.pearl)
+    : null;
+  const forgeConfirmHex   = _forgeCardMeta?.hex    ?? '#6366f1';
+  const forgeConfirmGlow  = _forgeCardMeta?.glowHex ?? '#818cf8';
+  const forgeDarkText = _forgeCardMeta
+    ? (['pearl', 'emerald', 'flux'] as string[]).includes(_forgeCardMeta.key)
+    : false;
   const safePlayers = state.players ?? [];
   const safeLuminaries = state.luminaries ?? [];
 
@@ -3039,7 +3049,14 @@ export default function GameBoard() {
                 {isMyTurn && (
                   <>
                     <Button
-                      className={`w-full h-12 text-base font-bold transition-all duration-150 ${pendingSheetAction === 'forge' ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
+                      className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
+                        ${pendingSheetAction === 'forge'
+                          ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
+                          : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200'
+                        }`}
+                      style={pendingSheetAction === 'forge'
+                        ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
+                        : {}}
                       disabled={!me || !canAffordCard(selectedCard.card, me)}
                       onClick={() => {
                         if (pendingSheetAction === 'forge') {
@@ -3053,10 +3070,10 @@ export default function GameBoard() {
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-black
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
                           ${pendingSheetAction === 'reserve'
-                            ? 'bg-[#FFE080] ring-2 ring-[#FFC43D] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                            : 'bg-[#FFC43D] hover:bg-[#FFD060]'
+                            ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
+                            : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
                           }`}
                         disabled={!me || !canReserveMore(me)}
                         onClick={() => {
@@ -3077,11 +3094,14 @@ export default function GameBoard() {
                 {canPlan && !isMyTurn && (
                   <>
                     <Button
-                      className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-black
+                      className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
                         ${pendingSheetAction === 'plan_forge'
-                          ? 'bg-amber-400 ring-2 ring-amber-300 ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(251,191,36,0.7)]'
-                          : 'bg-amber-600 hover:bg-amber-500'
+                          ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
+                          : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200'
                         }`}
+                      style={pendingSheetAction === 'plan_forge'
+                        ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
+                        : {}}
                       disabled={!me}
                       onClick={() => {
                         if (pendingSheetAction === 'plan_forge') {
@@ -3095,10 +3115,10 @@ export default function GameBoard() {
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
-                        className={`w-full h-12 text-base transition-all duration-150 border-0 text-black
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
                           ${pendingSheetAction === 'plan_reserve'
-                            ? 'bg-amber-400 ring-2 ring-amber-300 ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(251,191,36,0.7)]'
-                            : 'bg-amber-700 hover:bg-amber-600 text-amber-100'
+                            ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
+                            : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
                           }`}
                         disabled={!me || !canReserveMore(me)}
                         onClick={() => {
