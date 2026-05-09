@@ -1070,7 +1070,9 @@ export default function GameBoard() {
       const cp = state.players[state.currentPlayerIndex];
       if (!cp) return;
       const key = `init-${state.currentPlayerIndex}-${state.version}`;
-      fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, cp.playerId === session.playerId);
+      if (cp.playerId === session.playerId) {
+        fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, true);
+      }
     }
   }, [state?.status, state?.version]);
 
@@ -1311,7 +1313,9 @@ export default function GameBoard() {
         if (nextPlayer) {
           const isMe = nextPlayer.playerId === session?.playerId;
           const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
-          fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe);
+          if (isMe) {
+            fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, true);
+          }
         }
       }
   };
