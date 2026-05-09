@@ -34,6 +34,13 @@ The user prefers that all development and communication adhere to the establishe
 - No text baked into the image — no name, no label, no banner, no chart annotation, no glyph text.
 - Same level of detail and polish as Ember / Forge / Verdant.
 
+### Panel crystal generation rules (apply to every future panel generation pass)
+- **Crystal must dominate the panel.** The containment vessel should fill and slightly overflow the inner picture area — extending close to or slightly past the ornate border on all sides. It must not read as a clearly defined ball or small sphere sitting inside the frame. Compare to lum_ember and lum_forge: the crystal bleeds out to the edges and is the dominant compositional mass.
+- **No soccer-ball or hex-net patterns.** Avoid hexagonal or pentagonal facet layouts that read as a decorative mesh or cage laid over the crystal. These look like a covering, not a crystal.
+- **Gold seam lines are crystal edges, not a separate overlay.** The visible gold lines must be the actual facet-edge junctions of the crystal geometry itself — the edges where two crystal planes meet. They are not a net, lattice overlay, or decorative filigree applied to the surface of a smooth sphere.
+- **Favor irregular angular facet planes.** Crystal facets should be large, irregular triangular and trapezoidal planes — the geometry of a cut gemstone or natural crystal formation, not a geodesic dome or soccer ball.
+- **Prompt language that works:** "large irregular triangular and trapezoidal crystal facet planes", "gold seam lines only at the angular junctions where two crystal planes meet", "the crystal fills the entire inner picture area and bleeds to the edges", "the entity is embedded deep within the crystal volume". Avoid: "crystal orb", "crystal ball", "sphere", "geodesic", "hexagonal facets".
+
 ### Overall thematic direction
 Luminaries are cosmic survival intelligences and post-civilizational archetypes — not generic fantasy patrons, Splendor-style nobles, or TCG heroes. Use scientifically inspired myth and cosmic speculative mythology.
 
@@ -73,12 +80,13 @@ Luminaries are cosmic survival intelligences and post-civilizational archetypes 
 - No text, labels, equations, UI marks, or readable annotation marks anywhere on the entity.
 - Must feel alive and intentional — not a static emblem, mandala, or diagram.
 
-### Asset review status (as of commit 484bac45)
-- **Accepted (keep, do not overwrite):** lum_ember, lum_forge, lum_verdant — all three assets (panel/entity/aura).
-- **Panels needing regeneration:** lum_astral, lum_bloom, lum_compass, lum_null, lum_radiant, lum_tide, lum_void (text on panel or wrong frame); lum_pale and lum_oracle are borderline (no text, containment partially present).
-- **Entities needing regeneration:** lum_null (thematic miss — sci-fi body scan), lum_void (rune text on orbital band).
-- **Auras needing regeneration:** lum_null, lum_tide, lum_void (opaque backgrounds); lum_pale (opaque dark quadrants break screen-blend).
-- All 12 are currently active in ILLUSTRATED_IDS for iteration. Restrict back to the accepted three before publication.
+### Asset review status (current — supersedes all earlier commit notes)
+- **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom — 9 panels locked.
+- **Panels still needing regeneration:** lum_tide (white exterior background = active in-game visual bug), lum_astral (wrong format entirely; concept direction also undefined), lum_pale (wrong format; concept direction undefined).
+- **Entities needing regeneration:** lum_null (thematic miss — sci-fi cyberpunk armor, does not match accepted void-body panel spec).
+- **Auras needing regeneration:** lum_void (opaque purple-grey background will show as colored rectangle in screen-blend), lum_pale (opaque grey background, same issue).
+- **Open concept questions before next generation:** lum_tide (water-elemental direction vs Ophanim/rings?), lum_astral (concept fully undefined now that Stellar Guide belongs to lum_compass), lum_pale (no concept defined).
+- All 12 are currently active in ILLUSTRATED_IDS for iteration. Restrict back to accepted set before publication.
 
 ## System Architecture
 
