@@ -1,0 +1,64 @@
+Refine only lum_pale / Pale Merchant. Do not modify any other Luminary or any game systems.
+
+Target:
+- lum_pale panel asset only
+
+Important:
+The current Pale Merchant entity is fully approved. Do NOT redesign or replace the entity. The task is panel-only.
+
+GOAL
+
+Adjust the Pale Merchant panel so it matches the established accepted Luminary panel system, especially:
+
+- correct top frame formatting
+- correct bottom frame formatting
+- correct crystal wall / dimensional barrier presentation
+- accepted ornate Luminary border style
+- same premium board-game illustration quality as the accepted Luminaries
+
+Use accepted panel references:
+- lum_ember
+- lum_forge
+- lum_verdant
+- and the later approved successful panels
+
+PANEL REQUIREMENTS
+
+- square/card-ready composition
+- preserve the approved Pale Merchant entity concept
+- the entity should remain the same in spirit and appearance
+- the panel should depict that approved entity behind / within the established crystal wall format
+- viewer should feel like they are looking through a crystal wall / dimensional barrier
+- not a crystal orb
+- not a crystal sphere
+- not a gold net / cage / mesh overlay
+- crystal should fill most of the image area
+- overall crystal shape should not be easy to read
+- use large irregular crystal facet planes
+- facet edges should read as actual crystal facet edges / refraction seams
+- the crystal wall should clearly separate the viewer from the Pale Merchant behind it
+- correct accepted top and bottom frame language
+- ornate Luminary border quality
+- no text, labels, equations, or readable markings
+- no white/black artifact gaps that break the frame
+
+PALE MERCHANT CONCEPT TO PRESERVE
+
+Preserve the approved Pale Merchant entity and mood:
+- mysterious
+- elegant
+- ancient broker of impossible exchanges
+- morally ambiguous
+- cosmic / uncanny
+- not a generic merchant caricature
+
+Important:
+Do not redesign the entity.
+Do not turn this into a full concept reset.
+This is a formatting and presentation correction for the panel only.
+
+After updating, summarize:
+1. what changed in the panel
+2. whether the top and bottom framing now match the accepted format
+3. whether the crystal wall is clearly visible in front of the entity
+4. whether any issues remain
