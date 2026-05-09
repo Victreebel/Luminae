@@ -3006,15 +3006,19 @@ export default function GameBoard() {
                         </div>
                       )}
                     </div>
-                    {canAfford && <p className="text-[10px] font-semibold text-green-400">You can forge this now</p>}
-                    {!canAfford && <p className="text-[10px] font-semibold text-red-400">Still short — keep harnessing</p>}
+                    {isMyTurn && canAfford && <p className="text-[10px] font-semibold text-green-400">You can forge this now</p>}
+                    {isMyTurn && !canAfford && <p className="text-[10px] font-semibold text-red-400">Still short — keep harnessing</p>}
+                    {!isMyTurn && canAfford && <p className="text-[10px] font-semibold text-amber-400">You can afford this — plan it below</p>}
+                    {!isMyTurn && !canAfford && <p className="text-[10px] font-semibold text-muted-foreground">Plan it now — acquire tokens before your turn</p>}
                   </div>
                 );
               })()}
 
-              {/* Action buttons — first tap highlights, second tap confirms */}
+              {/* Action buttons */}
               <div className="flex flex-col gap-2.5">
-                {isMyTurn ? (
+
+                {/* ── Immediate actions (your active turn only) ── */}
+                {isMyTurn && (
                   <>
                     <Button
                       className={`w-full h-12 text-base font-bold transition-all duration-150 ${pendingSheetAction === 'forge' ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
@@ -3046,7 +3050,10 @@ export default function GameBoard() {
                       </Button>
                     )}
                   </>
-                ) : canPlan ? (
+                )}
+
+                {/* ── Plan actions (any time game is active, no cutscene) ── */}
+                {canPlan && !isMyTurn && (
                   <>
                     <Button
                       className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-black
@@ -3088,12 +3095,16 @@ export default function GameBoard() {
                       Planned moves auto-execute when your turn starts
                     </p>
                   </>
-                ) : (
+                )}
+
+                {/* ── Neither available — Luminary cutscene blocking ── */}
+                {!isMyTurn && !canPlan && (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     <AlertCircle className="inline h-4 w-4 mr-1" />
-                    Not your turn
+                    Waiting for Luminary summon…
                   </p>
                 )}
+
                 <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
                   Close
                 </Button>
