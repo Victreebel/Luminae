@@ -4184,7 +4184,9 @@ export default function GameBoard() {
                       v.id,
                       lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
                       (lumData as { domain?: string } | undefined)?.domain ?? '',
-                      lumData?.lumens ?? 0,
+                      (lumData as { oblivion?: number } | undefined)?.oblivion
+                        ? -((lumData as { oblivion?: number }).oblivion as number)
+                        : (lumData?.lumens ?? 0),
                       (lumData as { flavor?: string } | undefined)?.flavor ?? '',
                       `dev-test-${v.id}-${Date.now()}`, // unique each click
                       true,                             // isDevTest — no server resolve
