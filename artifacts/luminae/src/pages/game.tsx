@@ -1100,7 +1100,9 @@ export default function GameBoard() {
   useEffect(() => {
     if (!state?.actionLog || !state.players) return;
     const aiPlayerIds = new Set(
-      state.players.filter((p) => p.aiDifficulty != null).map((p) => p.playerId),
+      state.players
+        .filter((p) => p.aiDifficulty === 'medium' || p.aiDifficulty === 'hard')
+        .map((p) => p.playerId),
     );
     const aiAffinityCount = state.actionLog.filter(
       (e) => e.summary.startsWith('attuned ') && aiPlayerIds.has(e.playerId),
