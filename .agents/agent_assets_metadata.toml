@@ -1254,6 +1254,30 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_reset_c.pn
 type = "image"
 title = "bloom panel reset c bloom visible"
 
+[[generated]]
+id = "bGnr4QEDNTueaT__TEi4U"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_refine_a.png"
+type = "image"
+title = "bloom tyrant panel refine space sun in maw"
+
+[[generated]]
+id = "UmTHyJiH2DX-iGkIJAs29"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_refine_b.png"
+type = "image"
+title = "bloom panel refine b frame-filling crystal bloom+sun visible in space"
+
+[[generated]]
+id = "GypqskvZsBLBPXJq3Ujnf"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_refine_c.png"
+type = "image"
+title = "bloom panel refine c bloom entity fills panel crystal as foreground planes"
+
+[[generated]]
+id = "9NtAJ90g8DaCT4IJuXaTg"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_refine_d.png"
+type = "image"
+title = "bloom panel refine d ember-style transparent crystal over visible bloom"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
