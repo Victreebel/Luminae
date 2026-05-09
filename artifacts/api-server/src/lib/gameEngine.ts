@@ -1044,6 +1044,9 @@ export function applyAction(
       // Non-turn-gated: cancel any standing planned action.
       player.plannedAction = null;
       player.plannedActionCancelReason = null;
+      // Stamp lastAction so the broadcast doesn't carry a stale market-action
+      // type, which would confuse animation-queue gating on the client.
+      state.lastAction = { type: "cancel_plan", playerId };
       state.version++;
       return { success: true };
     }

@@ -1779,8 +1779,26 @@ export default function GameBoard() {
         roomId: roomId!,
         data: { sessionToken: session.sessionToken, type: 'cancel_plan' } as any,
       });
+      // Optimistically clear the planned action immediately after the server
+      // confirms the cancel (HTTP 200). Without this, the UI update is gated
+      // behind the animation queue — if a card animation is running it can take
+      // up to 4.3 s before the WebSocket state update is drained and rendered.
+      queryClient.setQueryData(
+        getGetGameStateQueryKey(roomId!, { sessionToken: session.sessionToken }),
+        (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            players: (old.players as any[]).map((p) =>
+              p.playerId === session.playerId
+                ? { ...p, plannedAction: null, plannedActionCancelReason: null }
+                : p,
+            ),
+          };
+        },
+      );
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Cancel failed', description: err.message });
+      toast({ variant: 'destructive', title: 'Cancel failed', description: err.message ?? 'Something went wrong' });
     }
   };
 
