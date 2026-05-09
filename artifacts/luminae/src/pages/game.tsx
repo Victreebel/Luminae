@@ -3188,6 +3188,7 @@ export default function GameBoard() {
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
                 {canPlan && !isMyTurn && (
                   <>
+                    {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
                       key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
                       className={`w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
@@ -3203,7 +3204,6 @@ export default function GameBoard() {
                         style={pendingSheetAction === 'plan_forge'
                           ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
                           : {}}
-                        disabled={!me}
                         onClick={() => {
                           if (pendingSheetAction === 'plan_forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
@@ -3219,6 +3219,7 @@ export default function GameBoard() {
                         {pendingSheetAction === 'plan_forge' ? 'Confirm: Plan: Forge' : 'Plan: Forge this Artifact'}
                       </Button>
                     </motion.div>
+                    )}
                     {!selectedCard.fromReserve && (
                       <motion.div
                         key={btnAnimTarget === 'plan_reserve' ? `plan_reserve-${btnAnimKey}` : 'plan_reserve'}
@@ -3756,7 +3757,7 @@ export default function GameBoard() {
                                 <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
                               </div>
                             )}
-                            {(isMyTurn || canPlan) && (
+                            {(isMyTurn || (canPlan && canBuy)) && (
                               <Button
                                 size="sm"
                                 className={`mt-1 w-full font-bold border-0 text-black
