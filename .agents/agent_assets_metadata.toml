@@ -718,7 +718,7 @@ title = "generated_image"
 id = "8hcW8nNYZbAjA-adLbVo8"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/panel.png"
 type = "image"
-title = "lum_astral panel crystal containment"
+title = "astral weaver panel"
 
 [[generated]]
 id = "umrS5JDG0-Qx2eZDQH5vR"
@@ -766,7 +766,7 @@ title = "lum_void panel crystal containment"
 id = "DeBFxURgEmwiv-U9vV87F"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/entity.png"
 type = "image"
-title = "generated_image"
+title = "astral weaver entity"
 
 [[generated]]
 id = "ZUNzdE0Mo9OavHMiFjZky"
