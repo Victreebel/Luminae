@@ -1182,6 +1182,36 @@ uri = "file://attached_assets/null_v9.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "ZuQv1cVOuIdLRvfQY0-FM"
+uri = "file://attached_assets/null_regen_a.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "77layKv6C2QZRkCkiOSS5"
+uri = "file://attached_assets/null_regen_b.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nzs6g5GD47c2TqgpiNR6R"
+uri = "file://attached_assets/null_regen_e.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HCBrq8fyLQ2hqN84eKc9R"
+uri = "file://attached_assets/null_regen_d.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "s9J6JnzY0pRwHzEXMidBC"
+uri = "file://attached_assets/null_regen_f.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
