@@ -169,8 +169,8 @@ function TideEntity({ size = 140, className = '' }: { size?: number; className?:
 // The full iris group drifts slowly within the sclera; the eyelid closes
 // from the top edge on a random schedule (every 2.5–7.5 s).
 function TideEyeOverlay({ width, height }: { width: number; height: number }) {
-  const cx      = 0.500 * width;
-  const cy      = 0.512 * height;
+  const cx      = 0.490 * width;
+  const cy      = 0.472 * height;
   const irisR   = 0.052 * width;
   const scleraRX = irisR * 1.54;
   const scleraRY = irisR * 1.28;
@@ -232,8 +232,8 @@ function TideEyeOverlay({ width, height }: { width: number; height: number }) {
           <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
         {/* Iris outer glow — wide soft ring */}
-        <filter id="te-iris-glow" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="2.4" />
+        <filter id="te-iris-glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="3.6" />
         </filter>
       </defs>
 
@@ -242,10 +242,10 @@ function TideEyeOverlay({ width, height }: { width: number; height: number }) {
 
       {/* Iris glow halo — pulsing sapphire ring just outside the iris */}
       <motion.circle
-        cx={cx} cy={cy} r={irisR * 1.12}
-        fill="none" stroke="#1e90d8" strokeWidth={irisR * 0.28}
+        cx={cx} cy={cy} r={irisR * 1.14}
+        fill="none" stroke="#1eb8f0" strokeWidth={irisR * 0.38}
         filter="url(#te-iris-glow)"
-        animate={{ opacity: [0.30, 0.72, 0.30], scale: [0.97, 1.05, 0.97] }}
+        animate={{ opacity: [0.50, 0.95, 0.50], scale: [0.96, 1.06, 0.96] }}
         transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
         style={{ transformOrigin: `${cx}px ${cy}px` }}
       />
