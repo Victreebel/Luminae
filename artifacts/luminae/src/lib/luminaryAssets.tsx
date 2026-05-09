@@ -162,6 +162,59 @@ function TideEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
+// ── Tide Architect Eye Overlay ────────────────────────────────────────────────
+// Ophanim-style animated eyes overlaid on the lum_tide entity art.
+// Three eyes: central awareness core (large) + two on the outer ring arcs.
+// Each pupil follows an independent slow irregular drift path — the entity watches.
+function TideEyeOverlay({ width, height }: { width: number; height: number }) {
+  const eyes = [
+    { cx: 0.500, cy: 0.515, irisR: 0.044, pupilR: 0.018, maxDrift: 0.022, dur: 7.2, delay: 0.0 },
+    { cx: 0.190, cy: 0.495, irisR: 0.028, pupilR: 0.011, maxDrift: 0.015, dur: 8.5, delay: 0.9 },
+    { cx: 0.810, cy: 0.495, irisR: 0.028, pupilR: 0.011, maxDrift: 0.015, dur: 9.1, delay: 1.8 },
+  ] as const;
+  return (
+    <svg
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4, overflow: 'visible' }}
+      width={width} height={height}
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      <defs>
+        <radialGradient id="te-iris" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stopColor="#7dd3fc" stopOpacity="0.95" />
+          <stop offset="45%" stopColor="#0ea5e9" stopOpacity="0.80" />
+          <stop offset="100%" stopColor="#0284c7" stopOpacity="0.50" />
+        </radialGradient>
+        <filter id="te-glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="1.2" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+      {eyes.map((eye, i) => {
+        const cx = eye.cx * width;
+        const cy = eye.cy * height;
+        const irisR = eye.irisR * width;
+        const pupilR = eye.pupilR * width;
+        const drift = eye.maxDrift * width;
+        const xKeys = [0, drift * 0.7, drift, drift * 0.4, -drift * 0.5, -drift, -drift * 0.6, 0];
+        const yKeys = [0, -drift * 0.5, drift * 0.3, drift * 0.8, drift * 0.4, -drift * 0.2, -drift * 0.7, 0];
+        return (
+          <g key={i}>
+            <circle cx={cx} cy={cy} r={irisR} fill="url(#te-iris)" opacity={0.82} />
+            <circle cx={cx} cy={cy} r={irisR * 0.62} fill="#020a18" opacity={0.92} />
+            <motion.g
+              animate={{ x: xKeys, y: yKeys }}
+              transition={{ repeat: Infinity, duration: eye.dur, ease: 'easeInOut', delay: eye.delay, repeatType: 'loop' }}
+            >
+              <circle cx={cx} cy={cy} r={pupilR} fill="#38bdf8" filter="url(#te-glow)" />
+              <circle cx={cx + pupilR * 0.5} cy={cy - pupilR * 0.5} r={pupilR * 0.32} fill="white" opacity={0.80} />
+            </motion.g>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 // ── Verdant Oracle ────────────────────────────────────────────────────────────
 // Verdant oracle: wide squat body, geological crystal dome head, massive root arms.
 function VerdantEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
@@ -1945,6 +1998,7 @@ export function LuminarySummonCutscene({
                         // Procedural SVG entity — transparent bg, no mask needed
                         <EntityArt size={ENT_W} />
                       )}
+                      {luminaryId === 'lum_tide' && <TideEyeOverlay width={ENT_W} height={ENT_H} />}
                     </div>
                   </motion.div>
 
@@ -2159,22 +2213,25 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           } : {}}
         >
           {entityCutout ? (
-            <img
-              src={entityCutout}
-              alt=""
-              draggable={false}
-              style={{
-                width: IDLE_W,
-                height: IDLE_H,
-                objectFit: 'contain',
-                objectPosition: 'center top',
-                display: 'block',
-                // Fade to transparent in the lower third so the card's name /
-                // requirements row stays legible underneath the entity.
-                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-              }}
-            />
+            <>
+              <img
+                src={entityCutout}
+                alt=""
+                draggable={false}
+                style={{
+                  width: IDLE_W,
+                  height: IDLE_H,
+                  objectFit: 'contain',
+                  objectPosition: 'center top',
+                  display: 'block',
+                  // Fade to transparent in the lower third so the card's name /
+                  // requirements row stays legible underneath the entity.
+                  maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                }}
+              />
+              {luminaryId === 'lum_tide' && <TideEyeOverlay width={IDLE_W} height={IDLE_H} />}
+            </>
           ) : (
             <EntityArt size={IDLE_W} />
           )}
