@@ -2250,7 +2250,7 @@ export default function GameBoard() {
                           </motion.div>
                         );
                       })()
-                    ) : canPlan && !myPlannedAction && queueLegality.ok ? (
+                    ) : canPlan && queueLegality.ok ? (
                       <Button
                         size="sm"
                         className="h-7 px-3 rounded-lg text-xs font-bold text-black bg-amber-400 hover:bg-amber-300 ring-1 ring-amber-200 ring-offset-1 ring-offset-black shadow-[0_0_10px_rgba(251,191,36,0.65)] animate-pulse"
@@ -3199,80 +3199,71 @@ export default function GameBoard() {
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
                 {canPlan && !isMyTurn && (
                   <>
-                    {myPlannedAction ? (
-                      <p className="text-xs text-amber-300/80 text-center py-1">
-                        <AlertCircle className="inline h-3.5 w-3.5 mr-1 align-middle" />
-                        A move is already planned — cancel it first to plan a different action.
-                      </p>
-                    ) : (
-                      <>
-                        {me && canAffordCard(selectedCard.card, me) && (
-                        <motion.div
-                          key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
-                          className={`w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
-                          whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                          style={{ borderRadius: '0.75rem' }}
-                        >
-                          <Button
-                            className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
-                              ${pendingSheetAction === 'plan_forge'
-                                ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
-                                : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200'
-                              }`}
-                            style={pendingSheetAction === 'plan_forge'
-                              ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
-                              : {}}
-                            onClick={() => {
-                              if (pendingSheetAction === 'plan_forge') {
-                                gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
-                                handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
-                                setSelectedCard(null); setPendingSheetAction(null);
-                              } else {
-                                gameAudio.playButtonSelect(); triggerBtnAnim('plan_forge', 'select');
-                                setPendingSheetAction('plan_forge');
-                              }
-                            }}
-                          >
-                            <Gavel className="h-5 w-5 mr-2" />
-                            {pendingSheetAction === 'plan_forge' ? 'Confirm: Plan: Forge' : 'Plan: Forge this Artifact'}
-                          </Button>
-                        </motion.div>
-                        )}
-                        {!selectedCard.fromReserve && (
-                          <motion.div
-                            key={btnAnimTarget === 'plan_reserve' ? `plan_reserve-${btnAnimKey}` : 'plan_reserve'}
-                            className={`w-full${btnAnimTarget === 'plan_reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
-                            whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                            style={{ borderRadius: '0.75rem' }}
-                          >
-                            <Button
-                              className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
-                                ${pendingSheetAction === 'plan_reserve'
-                                  ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                                  : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
-                                }`}
-                              disabled={!me || !canReserveMore(me)}
-                              onClick={() => {
-                                if (pendingSheetAction === 'plan_reserve') {
-                                  gameAudio.playButtonConfirm(); triggerBtnAnim('plan_reserve', 'confirm');
-                                  handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
-                                  setSelectedCard(null); setPendingSheetAction(null);
-                                } else {
-                                  gameAudio.playButtonSelect(); triggerBtnAnim('plan_reserve', 'select');
-                                  setPendingSheetAction('plan_reserve');
-                                }
-                              }}
-                            >
-                              <Bookmark className="h-5 w-5 mr-2" />
-                              {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
-                            </Button>
-                          </motion.div>
-                        )}
-                        <p className="text-[10px] text-muted-foreground text-center">
-                          Planned moves auto-execute when your turn starts
-                        </p>
-                      </>
+                    {me && canAffordCard(selectedCard.card, me) && (
+                    <motion.div
+                      key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
+                      className={`w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
+                      whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                      style={{ borderRadius: '0.75rem' }}
+                    >
+                      <Button
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
+                          ${pendingSheetAction === 'plan_forge'
+                            ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
+                            : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200'
+                          }`}
+                        style={pendingSheetAction === 'plan_forge'
+                          ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
+                          : {}}
+                        onClick={() => {
+                          if (pendingSheetAction === 'plan_forge') {
+                            gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
+                            handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
+                            setSelectedCard(null); setPendingSheetAction(null);
+                          } else {
+                            gameAudio.playButtonSelect(); triggerBtnAnim('plan_forge', 'select');
+                            setPendingSheetAction('plan_forge');
+                          }
+                        }}
+                      >
+                        <Gavel className="h-5 w-5 mr-2" />
+                        {pendingSheetAction === 'plan_forge' ? 'Confirm: Plan: Forge' : 'Plan: Forge this Artifact'}
+                      </Button>
+                    </motion.div>
                     )}
+                    {!selectedCard.fromReserve && (
+                      <motion.div
+                        key={btnAnimTarget === 'plan_reserve' ? `plan_reserve-${btnAnimKey}` : 'plan_reserve'}
+                        className={`w-full${btnAnimTarget === 'plan_reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
+                        whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                        style={{ borderRadius: '0.75rem' }}
+                      >
+                        <Button
+                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                            ${pendingSheetAction === 'plan_reserve'
+                              ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
+                              : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                            }`}
+                          disabled={!me || !canReserveMore(me)}
+                          onClick={() => {
+                            if (pendingSheetAction === 'plan_reserve') {
+                              gameAudio.playButtonConfirm(); triggerBtnAnim('plan_reserve', 'confirm');
+                              handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
+                              setSelectedCard(null); setPendingSheetAction(null);
+                            } else {
+                              gameAudio.playButtonSelect(); triggerBtnAnim('plan_reserve', 'select');
+                              setPendingSheetAction('plan_reserve');
+                            }
+                          }}
+                        >
+                          <Bookmark className="h-5 w-5 mr-2" />
+                          {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
+                        </Button>
+                      </motion.div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      {myPlannedAction ? 'Selecting a new plan replaces the current one' : 'Planned moves auto-execute when your turn starts'}
+                    </p>
                   </>
                 )}
 
@@ -3777,7 +3768,7 @@ export default function GameBoard() {
                                 <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
                               </div>
                             )}
-                            {(isMyTurn || (canPlan && !myPlannedAction && canBuy)) && (
+                            {(isMyTurn || (canPlan && canBuy)) && (
                               <Button
                                 size="sm"
                                 className={`mt-1 w-full font-bold border-0 text-black

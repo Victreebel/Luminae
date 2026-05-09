@@ -1056,6 +1056,25 @@ export function applyAction(
       player.plannedAction = inner;
       player.plannedActionCancelReason = null;
       state.version++;
+
+      // Edge case: if this player is already the active player with no pending
+      // summon gate (plan_action arrived at the server after another player's
+      // turn action already advanced the turn to this player), execute the plan
+      // immediately rather than leaving it stuck until the next full lap.
+      if (
+        !_isAutoExec &&
+        state.currentPlayerIndex === playerIdx &&
+        (state.pendingSummonEvents ?? []).length === 0
+      ) {
+        player.plannedAction = null;
+        const autoResult = applyAction(state, playerId, inner, true);
+        if (!autoResult.success) {
+          player.plannedActionCancelReason =
+            autoResult.error ?? "Planned move is no longer legal.";
+          state.version++;
+        }
+      }
+
       return { success: true };
     }
 
