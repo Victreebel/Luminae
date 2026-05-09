@@ -2142,7 +2142,7 @@ export default function GameBoard() {
                     ) : canPlan && queueLegality.ok ? (
                       <Button
                         size="sm"
-                        className="h-7 px-3 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500"
+                        className="h-7 px-3 rounded-lg text-xs font-bold text-black bg-amber-400 hover:bg-amber-300 ring-1 ring-amber-200 ring-offset-1 ring-offset-black shadow-[0_0_10px_rgba(251,191,36,0.65)] animate-pulse"
                         onClick={() => {
                           if (queueLegality.actionType === 'take3') {
                             handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });
@@ -3050,7 +3050,11 @@ export default function GameBoard() {
                 ) : canPlan ? (
                   <>
                     <Button
-                      className={`w-full h-12 text-base font-bold transition-all duration-150 ${pendingSheetAction === 'plan_forge' ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
+                      className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-black
+                        ${pendingSheetAction === 'plan_forge'
+                          ? 'bg-amber-400 ring-2 ring-amber-300 ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(251,191,36,0.7)]'
+                          : 'bg-amber-600 hover:bg-amber-500'
+                        }`}
                       disabled={!me || !canAffordCard(selectedCard.card, me)}
                       onClick={() => {
                         if (pendingSheetAction === 'plan_forge') {
@@ -3064,8 +3068,11 @@ export default function GameBoard() {
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
-                        variant={pendingSheetAction === 'plan_reserve' ? 'default' : 'secondary'}
-                        className={`w-full h-12 text-base transition-all duration-150 ${pendingSheetAction === 'plan_reserve' ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
+                        className={`w-full h-12 text-base transition-all duration-150 border-0 text-black
+                          ${pendingSheetAction === 'plan_reserve'
+                            ? 'bg-amber-400 ring-2 ring-amber-300 ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(251,191,36,0.7)]'
+                            : 'bg-amber-700 hover:bg-amber-600 text-amber-100'
+                          }`}
                         disabled={!me || !canReserveMore(me)}
                         onClick={() => {
                           if (pendingSheetAction === 'plan_reserve') {
