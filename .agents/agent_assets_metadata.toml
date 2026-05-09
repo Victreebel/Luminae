@@ -1086,6 +1086,24 @@ uri = "file://attached_assets/ref4_compass.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "_-EczXBB7QwkxsJO_Fq2M"
+uri = "file://attached_assets/ref5_radiant.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "I_OOVGE3vMqmSuKQXRiP9"
+uri = "file://attached_assets/ref5_void.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Z9yaHiKgQYGIR3fjxp18j"
+uri = "file://attached_assets/ref5b_null.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
