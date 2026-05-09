@@ -32,7 +32,7 @@ import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS } from '@/lib/luminaryAssets';
-import cardBackLogo from '@assets/generated_images/luminae_card_back_logo.png';
+import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 const gemIcon = "/icon_gem.svg";
 
 const CARD_ART_MODULES = import.meta.glob(
@@ -279,24 +279,12 @@ function TurnCountdown({ deadline, active }: { deadline: number | null; active: 
 
 function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: number; tier?: 1 | 2 | 3 }) {
   const sz = size === 'sm' ? 'w-9 h-12' : 'w-28 h-40';
-  const tintMap: Record<1 | 2 | 3, string> = {
-    1: 'brightness-105 saturate-125 hue-rotate-0',
-    2: 'brightness-105 saturate-125 hue-rotate-90',
-    3: 'brightness-105 saturate-125 hue-rotate-180',
-  };
-  const tint = tier ? tintMap[tier] : 'brightness-105 saturate-125';
+  const t = tier ?? 1;
   return (
-    <div className={`${sz} relative rounded-xl overflow-hidden border-2 border-border/60 shadow-md bg-secondary shrink-0`}>
-      <img
-        src={cardBackLogo} alt="Card back"
-        className={`absolute inset-0 w-full h-full object-cover pointer-events-none select-none ${tint}`}
-        draggable={false}
-      />
-      {count !== undefined && (
-        <span className="absolute bottom-1 right-1.5 text-xs font-mono font-bold text-white bg-black/70 rounded px-1.5 py-0.5">
-          {count}
-        </span>
-      )}
+    <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
+      {t === 1 && <CardBackTier1 count={count} />}
+      {t === 2 && <CardBackTier2 count={count} />}
+      {t === 3 && <CardBackTier3 count={count} />}
     </div>
   );
 }
