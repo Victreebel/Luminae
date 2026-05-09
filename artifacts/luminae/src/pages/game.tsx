@@ -814,6 +814,8 @@ export default function GameBoard() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | null>(null);
+  const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
+  const [pendingDeckConfirm, setPendingDeckConfirm] = useState(false);
   const [btnAnimKey, setBtnAnimKey] = useState(0);
   const [btnAnimTarget, setBtnAnimTarget] = useState<string | null>(null);
   const [btnAnimType, setBtnAnimType] = useState<'select' | 'confirm'>('select');
@@ -1716,6 +1718,14 @@ export default function GameBoard() {
     if (!isMyTurn) return;
     executeAction({ type: 'reserve_card', tier, _tier: tier });
   };
+  const openDeckSheet = (tier: 1 | 2 | 3) => {
+    setPendingDeckConfirm(false);
+    setSelectedDeckTier(tier);
+  };
+  const closeDeckSheet = () => {
+    setSelectedDeckTier(null);
+    setPendingDeckConfirm(false);
+  };
 
   const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
@@ -1994,15 +2004,19 @@ export default function GameBoard() {
               {/* Deck pile */}
               <button
                 type="button"
-                onClick={() => row.deck > 0 && me && canReserveMore(me) && handleReserveDeck(row.tier)}
-                disabled={!isMyTurn || row.deck === 0 || !me || !canReserveMore(me)}
+                onClick={() => {
+                  if (row.deck === 0 || !me) return;
+                  if (!isMyTurn && !canPlan) return;
+                  openDeckSheet(row.tier as 1 | 2 | 3);
+                }}
+                disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
                 className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={row.deck === 0 ? 'Deck empty' : 'Reserve hidden card'}
+                title={row.deck === 0 ? 'Deck empty' : 'View deck — reserve a hidden card'}
               >
                 <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
-                {isMyTurn && row.deck > 0 && me && canReserveMore(me) && (
+                {(isMyTurn || canPlan) && row.deck > 0 && me && (
                   <div className="absolute inset-x-0 bottom-0 bg-primary/90 text-primary-foreground text-[9px] font-bold uppercase text-center py-1 rounded-b-xl">
-                    Reserve
+                    {isMyTurn ? 'Reserve' : 'Plan'}
                   </div>
                 )}
               </button>
@@ -3274,6 +3288,147 @@ export default function GameBoard() {
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* ── Deck Reserve Sheet ── */}
+      {/* Shown when the player taps a face-down deck pile.                    */}
+      {/* Gives a clear confirmation buffer before committing the blind draw.  */}
+      <AnimatePresence>
+        {selectedDeckTier !== null && (() => {
+          const deckTier = selectedDeckTier;
+          const deckCount = deckTier === 1 ? (state?.deckCounts.tier1 ?? 0)
+            : deckTier === 2 ? (state?.deckCounts.tier2 ?? 0)
+            : (state?.deckCounts.tier3 ?? 0);
+          const tierLore = deckTier === 3
+            ? 'Sovereigns & absolutes — apex relics that bend the cosmos to your will'
+            : deckTier === 2
+            ? 'Forged instruments — crucibles and sigils of focused cosmic mastery'
+            : 'Fragments & sparks — raw nascent shards that seed any engine';
+          const canReserve = isMyTurn && !!me && canReserveMore(me);
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 flex items-end"
+              onClick={closeDeckSheet}
+            >
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              >
+                {/* Header row: large card back + tier info */}
+                <div className="flex gap-4 mb-5">
+                  {/* Larger preview — 3× the sm size, matching md width */}
+                  <div className="w-28 h-40 relative rounded-xl overflow-hidden border border-[#c4a85a]/40 shadow-lg bg-[#030509] shrink-0">
+                    {deckTier === 1 && <CardBackTier1 />}
+                    {deckTier === 2 && <CardBackTier2 />}
+                    {deckTier === 3 && <CardBackTier3 />}
+                  </div>
+                  <div className="flex-1 flex flex-col gap-2 justify-center">
+                    <div className="font-bold text-base leading-tight">Tier {deckTier} Artifact</div>
+                    <p className="text-xs text-muted-foreground italic leading-relaxed">
+                      "{tierLore}"
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                      {deckCount} card{deckCount !== 1 ? 's' : ''} remaining in this deck.
+                      You will receive one at random — the card is hidden until reserved.
+                    </p>
+                    {me && !canReserveMore(me) && (
+                      <p className="text-xs font-semibold text-destructive">
+                        Reserve pile full — forge or spend a reserved card first.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-col gap-2.5">
+
+                  {/* ── Reserve now (active turn) ── */}
+                  {isMyTurn && (
+                    <motion.div
+                      whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                      style={{ borderRadius: '0.75rem' }}
+                    >
+                      <Button
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                          ${pendingDeckConfirm
+                            ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
+                            : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                          }`}
+                        disabled={!canReserve}
+                        onClick={() => {
+                          if (pendingDeckConfirm) {
+                            gameAudio.playButtonConfirm();
+                            handleReserveDeck(deckTier);
+                            closeDeckSheet();
+                          } else {
+                            gameAudio.playButtonSelect();
+                            setPendingDeckConfirm(true);
+                          }
+                        }}
+                      >
+                        <Bookmark className="h-5 w-5 mr-2" />
+                        {pendingDeckConfirm
+                          ? 'Confirm: Reserve Hidden Card'
+                          : canReserve
+                          ? 'Reserve Hidden Card'
+                          : 'Reserve pile full (3 max)'}
+                      </Button>
+                    </motion.div>
+                  )}
+
+                  {/* ── Plan: reserve from deck (off-turn) ── */}
+                  {canPlan && !isMyTurn && me && canReserveMore(me) && (
+                    <motion.div
+                      whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                      style={{ borderRadius: '0.75rem' }}
+                    >
+                      <Button
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                          ${pendingDeckConfirm
+                            ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
+                            : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                          }`}
+                        onClick={() => {
+                          if (pendingDeckConfirm) {
+                            gameAudio.playButtonConfirm();
+                            handlePlanAction({ type: 'reserve_card', tier: deckTier, _tier: deckTier });
+                            closeDeckSheet();
+                          } else {
+                            gameAudio.playButtonSelect();
+                            setPendingDeckConfirm(true);
+                          }
+                        }}
+                      >
+                        <Bookmark className="h-5 w-5 mr-2" />
+                        {pendingDeckConfirm ? 'Confirm: Plan Reserve' : 'Plan: Reserve Hidden Card'}
+                      </Button>
+                    </motion.div>
+                  )}
+
+                  {/* ── Waiting — Luminary cutscene blocking ── */}
+                  {!isMyTurn && !canPlan && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      <AlertCircle className="inline h-4 w-4 mr-1" />
+                      Waiting for Luminary summon…
+                    </p>
+                  )}
+
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={closeDeckSheet}>
+                    Close
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Card Action Burst (market purchase/reserve) ── */}
