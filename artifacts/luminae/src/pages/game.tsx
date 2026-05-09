@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, Gavel, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Info
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -822,7 +822,7 @@ export default function GameBoard() {
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
-  const [showCardDetail, setShowCardDetail] = useState(false);
+  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | null>(null);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{
@@ -1702,19 +1702,9 @@ export default function GameBoard() {
     executeAction({ type: 'reserve_card', tier, _tier: tier });
   };
 
-  const clearSelection = () => {
-    setSelectedCard(null);
-    setShowCardDetail(false);
-  };
-
-  const selectCard = (card: ArtifactCard, fromReserve: boolean) => {
+  const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
-    // Second tap on the same card → deselect
-    if (selectedCard?.card.id === card.id) {
-      clearSelection();
-      return;
-    }
-    setShowCardDetail(false);
+    setPendingSheetAction(null);
     setSelectedCard({
       card, fromReserve,
       canBuy: isMyTurn && canAffordCard(card, me),
@@ -1989,7 +1979,7 @@ export default function GameBoard() {
                         <ArtifactCardView
                           card={c}
                           tier={row.tier}
-                          onTap={() => selectCard(c, false)}
+                          onTap={() => openCardSheet(c, false)}
                           tapped={selectedCard?.card.id === c.id}
                           effectiveCosts={computeCosts(c, costMode)}
                         />
@@ -2003,7 +1993,7 @@ export default function GameBoard() {
                     <ArtifactCardView
                       card={c}
                       tier={row.tier}
-                      onTap={() => selectCard(c, false)}
+                      onTap={() => openCardSheet(c, false)}
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
                     />
@@ -2425,7 +2415,7 @@ export default function GameBoard() {
                 key={c.id}
                 card={c}
                 tier={c.tier}
-                onTap={() => selectCard(c, true)}
+                onTap={() => openCardSheet(c, true)}
                 tapped={selectedCard?.card.id === c.id}
                 effectiveCosts={computeCosts(c, costMode)}
               />
@@ -2892,108 +2882,6 @@ export default function GameBoard() {
         </div>
       )}
 
-      {/* ── Card Action Bar (two-tap confirm) ── */}
-      {/* First tap selects/highlights a card; this bar slides up with action buttons.
-          Tapping Forge / Reserve / Plan here is the second tap that finalizes the action.
-          The full detail sheet is accessible via the Details button. */}
-      <AnimatePresence>
-        {selectedCard && !showCardDetail && (
-          <motion.div
-            key="card-action-bar"
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 32, stiffness: 360 }}
-            className="shrink-0 border-t border-primary/30 bg-card/98 backdrop-blur z-30 px-3 py-2.5"
-            style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.4)' }}
-          >
-            <div className="flex items-center gap-2">
-              {/* Card identity */}
-              <MiniGem color={selectedCard.card.bonusColor as GemKey} size={20} />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold leading-tight truncate">{selectedCard.card.name}</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">
-                  Tier {selectedCard.card.tier}
-                  {(selectedCard.card.lumens ?? 0) > 0 && ` · ${selectedCard.card.lumens} eminence`}
-                </div>
-              </div>
-
-              {/* Action buttons — live affordability checks */}
-              {isMyTurn ? (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    size="sm"
-                    disabled={!me || !canAffordCard(selectedCard.card, me)}
-                    onClick={() => { handleBuy(selectedCard.card, selectedCard.fromReserve); clearSelection(); }}
-                    className="h-9 px-3 text-xs font-bold"
-                  >
-                    <Gavel className="h-3.5 w-3.5 mr-1" />
-                    Forge
-                  </Button>
-                  {!selectedCard.fromReserve && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!me || !canReserveMore(me)}
-                      onClick={() => { handleReserveCard(selectedCard.card); clearSelection(); }}
-                      className="h-9 px-3 text-xs"
-                    >
-                      <Bookmark className="h-3.5 w-3.5 mr-1" />
-                      Reserve
-                    </Button>
-                  )}
-                </div>
-              ) : canPlan ? (
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    size="sm"
-                    disabled={!me || !canAffordCard(selectedCard.card, me)}
-                    onClick={() => {
-                      handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
-                      clearSelection();
-                    }}
-                    className="h-9 px-3 text-xs font-bold"
-                  >
-                    <Gavel className="h-3.5 w-3.5 mr-1" />
-                    Plan Forge
-                  </Button>
-                  {!selectedCard.fromReserve && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!me || !canReserveMore(me)}
-                      onClick={() => {
-                        handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
-                        clearSelection();
-                      }}
-                      className="h-9 px-3 text-xs"
-                    >
-                      <Bookmark className="h-3.5 w-3.5 mr-1" />
-                      Plan Reserve
-                    </Button>
-                  )}
-                </div>
-              ) : null}
-
-              {/* Details — opens the full info sheet */}
-              <button
-                type="button"
-                onClick={() => setShowCardDetail(true)}
-                className="h-9 px-2 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground border border-border/50 hover:border-border transition-colors shrink-0 flex items-center gap-1"
-              >
-                <Info className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Details</span>
-              </button>
-
-              {/* Dismiss */}
-              <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={clearSelection}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ── Bottom Navigation ── */}
       <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
@@ -3023,15 +2911,15 @@ export default function GameBoard() {
         ))}
       </nav>
 
-      {/* ── Card Action Sheet (detail view — opens via Details button in action bar) ── */}
+      {/* ── Card Action Sheet ── */}
       <AnimatePresence>
-        {selectedCard && showCardDetail && (
+        {selectedCard && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 flex items-end"
-            onClick={clearSelection}
+            onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
@@ -3125,49 +3013,69 @@ export default function GameBoard() {
                 );
               })()}
 
-              {/* Action buttons */}
+              {/* Action buttons — first tap highlights, second tap confirms */}
               <div className="flex flex-col gap-2.5">
                 {isMyTurn ? (
                   <>
                     <Button
-                      className="w-full h-12 text-base font-bold"
+                      className={`w-full h-12 text-base font-bold transition-all duration-150 ${pendingSheetAction === 'forge' ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
                       disabled={!selectedCard.canBuy}
-                      onClick={() => handleBuy(selectedCard.card, selectedCard.fromReserve)}
+                      onClick={() => {
+                        if (pendingSheetAction === 'forge') {
+                          handleBuy(selectedCard.card, selectedCard.fromReserve);
+                          setSelectedCard(null); setPendingSheetAction(null);
+                        } else { setPendingSheetAction('forge'); }
+                      }}
                     >
                       <Gavel className="h-5 w-5 mr-2" />
-                      {selectedCard.canBuy ? 'Forge Artifact' : 'Cannot afford yet'}
+                      {pendingSheetAction === 'forge' ? 'Tap again to confirm forge' : (selectedCard.canBuy ? 'Forge Artifact' : 'Cannot afford yet')}
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
-                        variant="secondary"
-                        className="w-full h-12 text-base"
+                        variant={pendingSheetAction === 'reserve' ? 'default' : 'secondary'}
+                        className={`w-full h-12 text-base transition-all duration-150 ${pendingSheetAction === 'reserve' ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
                         disabled={!selectedCard.canReserve}
-                        onClick={() => handleReserveCard(selectedCard.card)}
+                        onClick={() => {
+                          if (pendingSheetAction === 'reserve') {
+                            handleReserveCard(selectedCard.card);
+                            setSelectedCard(null); setPendingSheetAction(null);
+                          } else { setPendingSheetAction('reserve'); }
+                        }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {selectedCard.canReserve ? 'Reserve for later' : 'Reserve pile full (3 max)'}
+                        {pendingSheetAction === 'reserve' ? 'Tap again to confirm reserve' : (selectedCard.canReserve ? 'Reserve for later' : 'Reserve pile full (3 max)')}
                       </Button>
                     )}
                   </>
                 ) : canPlan ? (
                   <>
                     <Button
-                      className="w-full h-12 text-base font-bold"
+                      className={`w-full h-12 text-base font-bold transition-all duration-150 ${pendingSheetAction === 'plan_forge' ? 'ring-2 ring-primary ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
                       disabled={!me || !canAffordCard(selectedCard.card, me)}
-                      onClick={() => handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id })}
+                      onClick={() => {
+                        if (pendingSheetAction === 'plan_forge') {
+                          handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
+                          setSelectedCard(null); setPendingSheetAction(null);
+                        } else { setPendingSheetAction('plan_forge'); }
+                      }}
                     >
                       <Gavel className="h-5 w-5 mr-2" />
-                      {me && canAffordCard(selectedCard.card, me) ? 'Plan: Forge this Artifact' : 'Cannot afford yet'}
+                      {pendingSheetAction === 'plan_forge' ? 'Tap again to confirm plan' : (me && canAffordCard(selectedCard.card, me) ? 'Plan: Forge this Artifact' : 'Cannot afford yet')}
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
-                        variant="secondary"
-                        className="w-full h-12 text-base"
+                        variant={pendingSheetAction === 'plan_reserve' ? 'default' : 'secondary'}
+                        className={`w-full h-12 text-base transition-all duration-150 ${pendingSheetAction === 'plan_reserve' ? 'ring-2 ring-amber-400 ring-offset-1 ring-offset-background scale-[1.02]' : ''}`}
                         disabled={!me || !canReserveMore(me)}
-                        onClick={() => handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier })}
+                        onClick={() => {
+                          if (pendingSheetAction === 'plan_reserve') {
+                            handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
+                            setSelectedCard(null); setPendingSheetAction(null);
+                          } else { setPendingSheetAction('plan_reserve'); }
+                        }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)'}
+                        {pendingSheetAction === 'plan_reserve' ? 'Tap again to confirm plan' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
                       </Button>
                     )}
                     <p className="text-[10px] text-muted-foreground text-center">
@@ -3180,7 +3088,7 @@ export default function GameBoard() {
                     Not your turn
                   </p>
                 )}
-                <Button variant="ghost" className="w-full text-muted-foreground" onClick={clearSelection}>
+                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
                   Close
                 </Button>
               </div>
@@ -3646,7 +3554,7 @@ export default function GameBoard() {
                             effectiveCosts={ec}
                             onTap={() => {
                               setShowReservedOverlay(false);
-                              selectCard(c, true);
+                              openCardSheet(c, true);
                             }}
                             tapped={false}
                           />
