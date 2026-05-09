@@ -512,6 +512,12 @@ components:
           description: Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)
         lumens:
           type: integer
+        oblivion:
+          type: integer
+          description: >
+            Oblivion penalty — when this Luminary is claimed, ALL players lose this
+            many Eminence. Mutually exclusive with a positive lumens award.
+            Omitted (or 0) on normal Eminence Luminaries.
         requirements:
           $ref: "#/components/schemas/CrystalCounts"
         flavor:

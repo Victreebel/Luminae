@@ -153,6 +153,9 @@ export interface Luminary {
   /** Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars) */
   domain: string;
   lumens: number;
+  /** Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.
+   */
+  oblivion?: number;
   requirements: CrystalCounts;
   /** Short lore/flavor text shown on the Luminary card */
   flavor: string;

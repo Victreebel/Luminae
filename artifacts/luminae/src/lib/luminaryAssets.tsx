@@ -2102,7 +2102,7 @@ export function LuminarySummonCutscene({
                   </div>
                   <div className="text-base font-bold px-3 py-0.5 rounded-full"
                     style={{ background: `${primaryColor}28`, color: primaryColor, border: `1px solid ${primaryColor}55` }}>
-                    +{lumens} Eminence
+                    {lumens < 0 ? `\u2212${Math.abs(lumens)} Oblivion \u2014 all players` : `+${lumens} Eminence`}
                   </div>
                   {flavor && (
                     <div className="text-[11px] text-white/50 italic max-w-[260px] mt-1 leading-snug">

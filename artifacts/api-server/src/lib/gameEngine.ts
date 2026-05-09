@@ -50,6 +50,10 @@ export interface LuminaryDef {
   name: string;
   domain: string;
   lumens: number;
+  /** When set, this Luminary deals Oblivion instead of awarding Eminence.
+   *  On claim, ALL players lose this many Eminence. Mutually exclusive with
+   *  a positive lumens award (lumens must be 0 when oblivion is set). */
+  oblivion?: number;
   requirements: CrystalCounts;
   flavor: string;
   summonColor: string;
@@ -276,7 +280,8 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_null",
     name: "The Null Sovereign",
     domain: "Transcendence",
-    lumens: 4,
+    lumens: 0,
+    oblivion: 4,
     requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
     flavor: "Beyond the final star, past the edge of the last dark, something waits that was never born and cannot die.",
     summonColor: "#0f172a",
@@ -310,7 +315,8 @@ export const LUMINARIES: LuminaryDef[] = [
     id: "lum_void",
     name: "The Void Warden",
     domain: "Void",
-    lumens: 1,
+    lumens: 0,
+    oblivion: 2,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 6, pearl: 0, flux: 0 },
     flavor: "In the space between stars, something watches without eyes.",
     summonColor: "#4c1d95",
@@ -644,7 +650,6 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
     if (qualifies) {
       if (isLuminaryAlreadyClaimed(state, lumId)) continue;
       player.luminaries.push(lumId);
-      player.lumens += lum.lumens;
       const eligible = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
       const defaultAffinity = defaultActiveAffinity(lum, eligible);
       state.luminaryAffinities.push({
@@ -654,12 +659,26 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
         eligibleAffinities: eligible,
         summonedAtTurnCount: state.turnCount,
       });
-      pushLog(state, {
-        playerId: player.playerId,
-        playerName: player.playerName,
-        summary: `Drew the favor of ${lum.name} (+${lum.lumens} eminence)`,
-        turn: state.roundNumber,
-      });
+      if (lum.oblivion) {
+        // Oblivion — penalise every player, including the one who triggered the claim.
+        for (const p of state.players) {
+          p.lumens -= lum.oblivion;
+        }
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: `Invoked the Oblivion of ${lum.name} (−${lum.oblivion} eminence to all players)`,
+          turn: state.roundNumber,
+        });
+      } else {
+        player.lumens += lum.lumens;
+        pushLog(state, {
+          playerId: player.playerId,
+          playerName: player.playerName,
+          summary: `Drew the favor of ${lum.name} (+${lum.lumens} eminence)`,
+          turn: state.roundNumber,
+        });
+      }
       // Queue a summon event so all clients can play the cutscene.
       // eventId uses the current version (before the post-action increment) to
       // produce a stable unique key. Idempotency guard prevents double-push.

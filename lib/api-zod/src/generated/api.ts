@@ -318,6 +318,12 @@ export const StartGameResponse = zod.object({
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
       lumens: zod.number(),
+      oblivion: zod
+        .number()
+        .optional()
+        .describe(
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+        ),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -578,6 +584,12 @@ export const RematchResponse = zod.object({
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
       lumens: zod.number(),
+      oblivion: zod
+        .number()
+        .optional()
+        .describe(
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+        ),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -838,6 +850,12 @@ export const GetGameStateResponse = zod.object({
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
       lumens: zod.number(),
+      oblivion: zod
+        .number()
+        .optional()
+        .describe(
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+        ),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),
@@ -1142,6 +1160,12 @@ export const SubmitActionResponse = zod.object({
           "Cosmic domain or element of this Luminary (e.g. Flame, Time, Stars)",
         ),
       lumens: zod.number(),
+      oblivion: zod
+        .number()
+        .optional()
+        .describe(
+          "Oblivion penalty — when this Luminary is claimed, ALL players lose this many Eminence. Mutually exclusive with a positive lumens award. Omitted (or 0) on normal Eminence Luminaries.\n",
+        ),
       requirements: zod.object({
         ruby: zod.number(),
         sapphire: zod.number(),

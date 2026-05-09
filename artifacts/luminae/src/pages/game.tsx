@@ -131,6 +131,7 @@ function BaseDialog({
 type EminenceBreakdown = {
   artifacts: number;
   luminaries: number;
+  oblivionRows: Array<{ name: string; amount: number }>;
   other: number;
 };
 
@@ -565,7 +566,7 @@ function LuminaryClaimedPortal({
             textShadow: `0 0 8px ${g1}cc, 0 0 16px ${g1}55`,
           }}
         >
-          {luminary.lumens}
+          {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
         </span>
         {activeKey && (
           <motion.div
@@ -724,7 +725,7 @@ function LuminaryCard({
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
           <div className="relative z-10 h-full p-2 flex flex-col justify-between">
-            {/* Top row — lumens (left) + accent dot (right), mirroring ArtifactCardView */}
+            {/* Top row — lumens/oblivion (left) + accent dot (right), mirroring ArtifactCardView */}
             <div className="flex justify-between items-start">
               <span
                 className="text-lg font-serif font-bold"
@@ -733,7 +734,7 @@ function LuminaryCard({
                   textShadow: '-1px -1px 0 rgba(255,255,255,0.92), 1px -1px 0 rgba(255,255,255,0.92), -1px 1px 0 rgba(255,255,255,0.92), 1px 1px 0 rgba(255,255,255,0.92), 0 2px 5px rgba(0,0,0,1)',
                 }}
               >
-                {luminary.lumens}
+                {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
               </span>
             </div>
 
@@ -1097,7 +1098,7 @@ export default function GameBoard() {
       if (lum) {
         enqueueSummonRef.current(
           evt.luminaryId, lum.name, lum.domain ?? '',
-          lum.lumens, lum.flavor ?? '', evt.eventId, false,
+          lum.oblivion ? -lum.oblivion : lum.lumens, lum.flavor ?? '', evt.eventId, false,
         );
       }
     }
@@ -1263,7 +1264,7 @@ export default function GameBoard() {
                 evt.luminaryId,
                 lum.name,
                 (lum as any).domain ?? '',
-                lum.lumens,
+                lum.oblivion ? -lum.oblivion : lum.lumens,
                 (lum as any).flavor ?? '',
                 evt.eventId,
                 false,
@@ -1533,15 +1534,22 @@ export default function GameBoard() {
   const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
   const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
+  const oblivionRows: Array<{ name: string; amount: number }> = (state.luminaries ?? [])
+    .filter(lum => (lum.oblivion ?? 0) > 0 &&
+      state.players.some(p => (p.claimedLuminaryIds ?? []).includes(lum.id)))
+    .map(lum => ({ name: lum.name, amount: lum.oblivion! }));
+  const totalOblivion = oblivionRows.reduce((s, r) => s + r.amount, 0);
   const eminenceBreakdown: EminenceBreakdown = {
     artifacts: (me?.purchasedCards ?? []).reduce((sum, card) => sum + (card.lumens ?? 0), 0),
     luminaries: (me?.claimedLuminaryIds ?? []).reduce((sum, lumId) => {
       const lum = state.luminaries.find((l) => l.id === lumId);
+      if (lum?.oblivion) return sum;
       return sum + (lum?.lumens ?? 0);
     }, 0),
+    oblivionRows,
     other: 0,
   };
-  eminenceBreakdown.other = Math.max(0, (me?.lumens ?? 0) - eminenceBreakdown.artifacts - eminenceBreakdown.luminaries);
+  eminenceBreakdown.other = Math.max(0, (me?.lumens ?? 0) - eminenceBreakdown.artifacts - eminenceBreakdown.luminaries + totalOblivion);
 
   const handleCrystalClick = (color: keyof CrystalCounts) => {
     if (!isMyTurn || color === 'flux' || !state) return;
@@ -3586,10 +3594,18 @@ export default function GameBoard() {
             <span className="text-white/70">Artifacts</span>
             <span className="font-bold text-white">+{eminenceBreakdown.artifacts}</span>
           </div>
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
-            <span className="text-white/70">Luminaries</span>
-            <span className="font-bold text-white">+{eminenceBreakdown.luminaries}</span>
-          </div>
+          {eminenceBreakdown.luminaries > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+              <span className="text-white/70">Luminaries</span>
+              <span className="font-bold text-white">+{eminenceBreakdown.luminaries}</span>
+            </div>
+          )}
+          {eminenceBreakdown.oblivionRows.map(row => (
+            <div key={row.name} className="flex items-center justify-between gap-3 rounded-lg bg-red-950/40 border border-red-900/40 px-3 py-2">
+              <span className="text-red-300/80">{row.name}</span>
+              <span className="font-bold text-red-400">\u2212{row.amount} to all</span>
+            </div>
+          ))}
           {eminenceBreakdown.other > 0 && (
             <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
               <span className="text-white/70">Other</span>
