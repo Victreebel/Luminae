@@ -1128,7 +1128,15 @@ export default function GameBoard() {
 
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
-    if (prev && newState.version <= prev.version) return;
+    const isRematch = prev?.status === 'finished' && newState.status === 'playing';
+    if (prev && newState.version <= prev.version && !isRematch) return;
+    if (isRematch) {
+      initialTurnFiredRef.current = false;
+      checkedInitialSummonRef.current = false;
+      handledSummonEventIdsRef.current = new Set();
+      pendingSuppressLumIdsRef.current = new Set();
+      stateQueueRef.current = [];
+    }
       const action = newState.lastAction;
       const isMarketAction = action && (
         action.type === 'purchase_card' ||
