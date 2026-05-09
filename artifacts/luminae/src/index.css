@@ -197,6 +197,20 @@
 .btn-select-flash  { animation: btn-select-flash  0.22s ease-out forwards; }
 .btn-confirm-flash { animation: btn-confirm-flash 0.32s ease-out forwards; }
 
+/* ── Harness button — swirling affinity vial ────────────────────────────── */
+@keyframes harness-swirl {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes harness-press-flash {
+  0%   { filter: brightness(1)   saturate(1); }
+  16%  { filter: brightness(3.8) saturate(3.2); }
+  52%  { filter: brightness(1.8) saturate(2.0); }
+  100% { filter: brightness(1)   saturate(1); }
+}
+.harness-swirl-ring { animation: harness-swirl 3s linear infinite; }
+.harness-press-flash { animation: harness-press-flash 0.48s ease-out forwards; }
+
 @layer utilities {
   .gem-glow {
     box-shadow: 0 0 15px currentColor;

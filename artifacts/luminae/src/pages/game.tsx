@@ -826,6 +826,7 @@ export default function GameBoard() {
   const [btnAnimKey, setBtnAnimKey] = useState(0);
   const [btnAnimTarget, setBtnAnimTarget] = useState<string | null>(null);
   const [btnAnimType, setBtnAnimType] = useState<'select' | 'confirm'>('select');
+  const [harnessPulseKey, setHarnessPulseKey] = useState(0);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{
@@ -2167,14 +2168,69 @@ export default function GameBoard() {
                       <X className="h-3.5 w-3.5" />
                     </Button>
                     {isMyTurn ? (
-                      <Button
-                        size="sm"
-                        className="h-7 px-3 rounded-lg text-xs font-bold"
-                        onClick={confirmCrystals}
-                        disabled={!queueLegality.ok}
-                      >
-                        Harness
-                      </Button>
+                      (() => {
+                        const selKeys = Object.keys(selectedCrystals) as GemKey[];
+                        const hasColors = selKeys.length > 0 && queueLegality.ok;
+                        const borderColor = hasColors
+                          ? `${GEM_META[selKeys[0]].hex}70`
+                          : 'rgba(255,255,255,0.18)';
+                        const conicGradient = selKeys.length === 1
+                          ? `conic-gradient(${GEM_META[selKeys[0]].hex} 0deg, ${GEM_META[selKeys[0]].hex}44 180deg, ${GEM_META[selKeys[0]].hex} 360deg)`
+                          : `conic-gradient(${selKeys.map((k, i) => {
+                              const deg1 = Math.round((i / selKeys.length) * 360);
+                              const deg2 = Math.round(((i + 1) / selKeys.length) * 360);
+                              return `${GEM_META[k].hex} ${deg1}deg ${deg2}deg`;
+                            }).join(', ')})`;
+                        return (
+                          <motion.div
+                            whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                            className={`relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!queueLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              borderColor,
+                              boxShadow: hasColors
+                                ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[selKeys[0]].hex}44`
+                                : 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                              backdropFilter: 'blur(6px)',
+                              WebkitBackdropFilter: 'blur(6px)',
+                            }}
+                            onClick={queueLegality.ok ? () => {
+                              setHarnessPulseKey(k => k + 1);
+                              confirmCrystals();
+                            } : undefined}
+                          >
+                            {/* Swirling affinity color fill — remount on press replays flash */}
+                            {selKeys.length > 0 && (
+                              <div
+                                key={harnessPulseKey}
+                                className={harnessPulseKey > 0 ? 'harness-press-flash' : ''}
+                                style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}
+                              >
+                                <div
+                                  className="w-full h-full harness-swirl-ring"
+                                  style={{
+                                    background: conicGradient,
+                                    opacity: 0.48,
+                                    filter: 'blur(8px)',
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {/* Glass top-shine */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.13] to-transparent pointer-events-none" />
+                            {/* Label */}
+                            <span
+                              className="relative z-10 text-xs font-bold transition-colors duration-300 select-none"
+                              style={{
+                                color: hasColors ? '#fff' : 'rgba(255,255,255,0.35)',
+                                textShadow: hasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none',
+                              }}
+                            >
+                              Harness
+                            </span>
+                          </motion.div>
+                        );
+                      })()
                     ) : canPlan && queueLegality.ok ? (
                       <Button
                         size="sm"
