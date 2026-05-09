@@ -1,0 +1,111 @@
+Refine only lum_tide / Tide Architect. Do not modify any other Luminary or any game systems.
+
+Target:
+- lum_tide entity asset
+- lum_tide panel asset
+- leave aura unchanged unless clearly broken
+
+HIGH-LEVEL GOAL
+
+Tide Architect should use the Ophanim-like direction.
+
+Do NOT make it a generic water elemental, Neptune/Poseidon, mermaid, aquatic humanoid, or simple robed mage.
+
+It should feel like:
+- a cosmic tide / causality engine
+- a living architecture of rings
+- an intelligence made of nested rotating circles, tidal arcs, orbit paths, and gravitational flow
+- something ancient, strange, elegant, and alive
+
+ENTITY DIRECTION
+
+The entity should be:
+- nonhuman or only minimally anthropomorphic
+- built primarily from nested rings / wheels / circular structures
+- Ophanim-like in spirit
+- infused with wave/tide/flow identity
+- clearly alive/intelligent, not just a symbol
+
+Entity visual ideas:
+- multiple concentric or partially offset rings
+- tidal arcs
+- lunar / orbital pull geometry
+- flowing energy bands
+- subtle eye-like or awareness-core presence if needed
+- crystalline or fluid-light structures
+- Continuum-blue dominant palette
+- supporting pale teal / sea-glow / moonlit white accents if appropriate
+
+Important:
+This is NOT just “water.”
+It is:
+- time
+- return
+- pull
+- rhythm
+- recurrence
+- orbital inevitability
+- tidal causality
+
+The rings should feel like:
+- they govern motion
+- they measure recurrence
+- they pull systems into pattern
+
+Entity hard rules:
+- avoid humanoid default
+- no generic face/body
+- no trident / sea king / fantasy water mage
+- transparent background whenever possible
+- no rectangular background
+- no card frame
+- no text or readable markings
+- full readable silhouette
+- portal-ready
+
+PANEL DIRECTION
+
+The panel should depict this same Tide Architect concept using the accepted Luminary panel format.
+
+Use accepted panel references:
+- lum_ember
+- lum_forge
+- lum_verdant
+
+Crystal requirements:
+- use the newer crystal-wall interpretation
+- viewer should feel like they are looking through a massive crystal wall / dimensional barrier
+- NOT a crystal orb / ball / sphere
+- NOT a gold net / cage / lattice overlay
+- crystal should fill most of the image area
+- overall crystal shape should not be easily readable
+- use large irregular crystal planes
+- facet lines should look like real crystal facet edges / refraction seams
+- crystal should clearly separate the viewer from the Tide Architect behind it
+
+Panel composition goals:
+- the Tide Architect visible behind the crystal wall
+- nested rings clearly visible
+- rings should feel dimensional and layered
+- subtle tidal / orbital / gravitational / recurrence atmosphere
+- accepted ornate Luminary border quality
+- premium board-game illustration quality
+- no text or readable markings
+
+Color / mood:
+- Continuum-blue dominant
+- moonlit / tidal / orbital feel
+- elegant, mysterious, ancient
+- dynamic but controlled
+- less fiery, less floral, less void-dark than other Luminaries
+
+Important:
+Do not default to humanoid.
+Do not make it a simple water spirit.
+Keep the Ophanim-like ring intelligence direction.
+
+After updating, summarize:
+1. what changed in the entity
+2. what changed in the panel
+3. whether it still reads too humanoid
+4. whether the crystal wall is clearly visible in front of the Luminary

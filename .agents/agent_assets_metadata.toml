@@ -1308,6 +1308,54 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_bloom/panel_enhance_e.
 type = "image"
 title = "bloom panel enhance e — frame-filling crystal bloom large inside blazing star center"
 
+[[generated]]
+id = "aZIa-s4bmHDSHACWHahRh"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_a.png"
+type = "image"
+title = "tide architect panel sapphire crystal ophanim rings behind facets"
+
+[[generated]]
+id = "rSDyp3HZkuwIvV1M9p4QD"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/entity_ophanim_a.png"
+type = "image"
+title = "tide architect ophanim entity nested rings tidal intelligence"
+
+[[generated]]
+id = "kRYCfQITNvj1xsNHhAac1"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_b.png"
+type = "image"
+title = "tide architect panel b — frame-filling crystal glowing ring entity inside"
+
+[[generated]]
+id = "3iqks65QSIIgyAJDWfzXD"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_c.png"
+type = "image"
+title = "tide architect panel c — zoomed crystal wall fills frame Ember-style"
+
+[[generated]]
+id = "6PjpdUD5ouM-WXFcId0a4"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_d.png"
+type = "image"
+title = "tide architect panel d — entity fills frame crystal in foreground layer"
+
+[[generated]]
+id = "AZ0FrirrO-Dsi0FjYlsgR"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_e.png"
+type = "image"
+title = "tide architect panel e — Ember composition format sapphire ring entity inside large crystal"
+
+[[generated]]
+id = "4TuIpA2HLvFzFZOBlvQKu"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_f.png"
+type = "image"
+title = "tide architect panel f — no text diamond crest sapphire ring entity inside crystal"
+
+[[generated]]
+id = "iaTQE_-wpfSGCXEwgAaXI"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_g.png"
+type = "image"
+title = "tide architect panel g — solid crystal filled frame with visible ring entity inside"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
