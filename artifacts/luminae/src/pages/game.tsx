@@ -3055,7 +3055,7 @@ export default function GameBoard() {
                           ? 'bg-amber-400 ring-2 ring-amber-300 ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(251,191,36,0.7)]'
                           : 'bg-amber-600 hover:bg-amber-500'
                         }`}
-                      disabled={!me || !canAffordCard(selectedCard.card, me)}
+                      disabled={!me}
                       onClick={() => {
                         if (pendingSheetAction === 'plan_forge') {
                           handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
@@ -3064,7 +3064,7 @@ export default function GameBoard() {
                       }}
                     >
                       <Gavel className="h-5 w-5 mr-2" />
-                      {pendingSheetAction === 'plan_forge' ? 'Tap again to confirm plan' : (me && canAffordCard(selectedCard.card, me) ? 'Plan: Forge this Artifact' : 'Cannot afford yet')}
+                      {pendingSheetAction === 'plan_forge' ? 'Tap again to confirm plan' : 'Plan: Forge this Artifact'}
                     </Button>
                     {!selectedCard.fromReserve && (
                       <Button
