@@ -330,7 +330,9 @@ function LuminaryClaimedPortal({
       const newColor = GEM_META[activeKey].hex;
       setAffinityFlashColor(newColor);
       setAffinityFlashKey(k => k + 1);
-      gameAudio.playAffinitySwitch();
+      // Sound is intentionally omitted here — the action-log useEffect is the
+      // single canonical trigger for playAffinitySwitch().  This prevents
+      // double-firing (portal + log) and ensures human-player toggles stay silent.
     }
     prevActiveKeyRef.current = activeKey;
   }, [activeKey, isAIPortal]);
@@ -1094,9 +1096,9 @@ export default function GameBoard() {
   }, [!!state]);
 
   // ── Action-log affinity-switch sound ──────────────────────────────────────
-  // Fires playAffinitySwitch() when a new "AI toggled affinity" entry scrolls
-  // into the action log.  The audio.ts debounce (400 ms) prevents double-firing
-  // when the portal animation already triggered the sound in the same cycle.
+  // Single canonical trigger for playAffinitySwitch().  Fires when a new
+  // "attuned" entry appears in the action log for medium/hard AI players.
+  // Human-player toggles are silent because they never match aiPlayerIds.
   useEffect(() => {
     if (!state?.actionLog || !state.players) return;
     const aiPlayerIds = new Set(

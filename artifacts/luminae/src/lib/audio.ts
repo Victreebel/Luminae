@@ -35,8 +35,9 @@ class GameAudio {
   private muted = false;
 
   // ── Affinity-switch debounce ─────────────────────────────────────────────
-  // Prevents double-firing when the portal animation and the action-log entry
-  // both call playAffinitySwitch() in the same state-update cycle.
+  // Defensive guard in case rapid state updates deliver two identical events
+  // in the same cycle.  The action-log useEffect in game.tsx is the sole
+  // canonical call site; the portal component no longer calls this directly.
   private lastAffinitySwitchAt = 0;
   private readonly AFFINITY_SWITCH_DEBOUNCE_MS = 400;
 
