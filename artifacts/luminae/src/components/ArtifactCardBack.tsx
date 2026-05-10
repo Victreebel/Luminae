@@ -478,29 +478,23 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
         const surfCol  = PANEL_MID[col]   ?? '#303040';
 
-        // ── Shell 2 (innermost) — very transparent flat panels ────────────
-        if (sn === 2) {
-          const fOpacity = solid ? 0.08 + z * 0.10 : 0.02 + z * 0.04;
-          return (
-            <g key={i}>
-              <polygon points={ptStr} fill={col} fillOpacity={fOpacity} />
-              <polygon points={ptStr} fill="none" stroke={col}
-                strokeWidth="0.09" strokeOpacity={0.10 + z * 0.18} />
-            </g>
-          );
-        }
+        // ── Shell 2 (innermost) — only solid panels have fill ────────────
+        if (sn === 2) return (
+          <g key={i}>
+            {solid && <polygon points={ptStr} fill={col} fillOpacity={0.08 + z * 0.10} />}
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.09" strokeOpacity={0.10 + z * 0.18} />
+          </g>
+        );
 
-        // ── Shell 1 (middle) — semi-transparent flat panels ───────────────
-        if (sn === 1) {
-          const fOpacity = solid ? 0.18 + z * 0.22 : 0.06 + z * 0.08;
-          return (
-            <g key={i}>
-              <polygon points={ptStr} fill={col} fillOpacity={fOpacity} />
-              <polygon points={ptStr} fill="none" stroke={col}
-                strokeWidth="0.10" strokeOpacity={0.15 + z * 0.25} />
-            </g>
-          );
-        }
+        // ── Shell 1 (middle) — only solid panels have fill ────────────────
+        if (sn === 1) return (
+          <g key={i}>
+            {solid && <polygon points={ptStr} fill={col} fillOpacity={0.18 + z * 0.22} />}
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.10" strokeOpacity={0.15 + z * 0.25} />
+          </g>
+        );
 
         // ── Shell 3 (outermost) ────────────────────────────────────────────
         const dx = CX - cx, dy = CY - cy;
