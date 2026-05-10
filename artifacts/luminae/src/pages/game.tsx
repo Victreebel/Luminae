@@ -3430,8 +3430,8 @@ export default function GameBoard() {
                             type="button"
                             initial={{ opacity: 0, y: 6, scale: 0.92 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 4, scale: 0.92 }}
-                            transition={{ duration: 0.2 }}
+                            exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                            transition={{ duration: 0.3 }}
                             onClick={dismissForgeHint}
                             className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                             title="Dismiss hint"
@@ -3480,8 +3480,8 @@ export default function GameBoard() {
                               type="button"
                               initial={{ opacity: 0, y: 6, scale: 0.92 }}
                               animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 4, scale: 0.92 }}
-                              transition={{ duration: 0.2 }}
+                              exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                              transition={{ duration: 0.3 }}
                               onClick={dismissReserveHint}
                               className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                               title="Dismiss hint"
