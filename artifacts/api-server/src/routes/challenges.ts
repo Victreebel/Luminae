@@ -199,6 +199,144 @@ router.post("/challenges", accountAuth, async (req: Request, res): Promise<void>
   });
 });
 
+// POST /api/rooms/:roomId/invite-friend — invite an existing friend to join the current lobby room.
+// Creates a challenge pointing at the existing room (no new room created).
+// The standard PATCH /api/challenges/:id accept flow then adds them as a player.
+router.post("/rooms/:roomId/invite-friend", accountAuth, async (req: Request, res): Promise<void> => {
+  const account = req.account!;
+  const { roomId } = req.params as { roomId: string };
+
+  const parsed = z.object({
+    sessionToken: z.string(),
+    friendUsername: z.string(),
+  }).safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "sessionToken and friendUsername are required" });
+    return;
+  }
+
+  const { sessionToken, friendUsername } = parsed.data;
+
+  // Verify the room exists and is still in lobby
+  const [room] = await db.select().from(roomsTable).where(eq(roomsTable.id, roomId)).limit(1);
+  if (!room) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+  if (room.status !== "lobby") {
+    res.status(400).json({ error: "Game has already started" });
+    return;
+  }
+
+  // Verify the caller holds a valid session in this room
+  const [player] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.roomId, roomId),
+        eq(playersTable.sessionToken, sessionToken),
+        eq(playersTable.accountId, account.id),
+      ),
+    )
+    .limit(1);
+
+  if (!player) {
+    res.status(403).json({ error: "Not a member of this room" });
+    return;
+  }
+
+  // Check there is still space
+  const allPlayers = await db.select().from(playersTable).where(eq(playersTable.roomId, roomId));
+  if (allPlayers.length >= room.maxPlayers) {
+    res.status(400).json({ error: "Room is full" });
+    return;
+  }
+
+  // Resolve the friend's account
+  if (friendUsername.toLowerCase() === account.username.toLowerCase()) {
+    res.status(400).json({ error: "Cannot invite yourself" });
+    return;
+  }
+
+  const [target] = await db
+    .select()
+    .from(accountsTable)
+    .where(eq(accountsTable.username, friendUsername))
+    .limit(1);
+
+  if (!target) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  // Must be friends
+  const [friendship] = await db
+    .select()
+    .from(friendshipsTable)
+    .where(
+      and(
+        eq(friendshipsTable.status, "accepted"),
+        or(
+          and(eq(friendshipsTable.requesterId, account.id), eq(friendshipsTable.addresseeId, target.id)),
+          and(eq(friendshipsTable.requesterId, target.id), eq(friendshipsTable.addresseeId, account.id)),
+        ),
+      ),
+    )
+    .limit(1);
+
+  if (!friendship) {
+    res.status(403).json({ error: "You can only invite friends" });
+    return;
+  }
+
+  // Don't double-invite
+  const [existing] = await db
+    .select()
+    .from(challengesTable)
+    .where(
+      and(
+        eq(challengesTable.challengerAccountId, account.id),
+        eq(challengesTable.challengedAccountId, target.id),
+        eq(challengesTable.roomId, roomId),
+        eq(challengesTable.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    res.status(409).json({ error: "Already invited this player" });
+    return;
+  }
+
+  const [challenge] = await db
+    .insert(challengesTable)
+    .values({
+      challengerAccountId: account.id,
+      challengedAccountId: target.id,
+      roomId: room.id,
+      status: "pending",
+      expiresAt: challengeExpiry(),
+    })
+    .returning();
+
+  await notifyChallengedPlayer(target.id, {
+    type: "challenge_received",
+    challenge: {
+      id: challenge.id,
+      challengerUsername: account.username,
+      roomId: room.id,
+      inviteCode: room.inviteCode,
+      expiresAt: challenge.expiresAt,
+    },
+  });
+
+  req.log.info({ challengeId: challenge.id, roomId }, "Friend invited to existing room");
+
+  res.status(201).json({ ok: true, challengeId: challenge.id });
+});
+
 // GET /api/challenges — list incoming pending challenges for current account
 router.get("/challenges", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;

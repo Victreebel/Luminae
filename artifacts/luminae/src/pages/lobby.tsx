@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import {
   useStartGame,
@@ -13,11 +13,12 @@ import { getSession, clearSession, saveSession } from "@/lib/session";
 import { useGameWebsocket } from "@/hooks/use-game-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users } from "lucide-react";
+import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users, UserPlus, Send } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { useAccount } from "@/contexts/AccountContext";
+import { apiListFriends, apiInviteFriendToRoom, getAccountToken, type Friend } from "@/lib/accountSession";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
@@ -52,6 +53,9 @@ export default function Lobby() {
   const [copied, setCopied] = useState(false);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("medium");
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [invitedUsernames, setInvitedUsernames] = useState<Set<string>>(new Set());
+  const [invitingUsername, setInvitingUsername] = useState<string | null>(null);
 
   const handleChallengeCreated = (cRoomId: string, cInviteCode: string, cSessionToken: string, cPlayerId: string) => {
     saveSession({
@@ -145,6 +149,37 @@ export default function Lobby() {
       });
     } catch (err: any) {
       toast({ variant: "destructive", title: "Could not add AI player", description: err.message });
+    }
+  };
+
+  const fetchFriends = useCallback(async () => {
+    const token = getAccountToken();
+    if (!token || !account) return;
+    try {
+      const list = await apiListFriends(token);
+      setFriends(list);
+    } catch {
+      // silently ignore — friends list is non-critical
+    }
+  }, [account]);
+
+  useEffect(() => {
+    fetchFriends();
+  }, [fetchFriends]);
+
+  const handleInviteFriend = async (username: string) => {
+    const token = getAccountToken();
+    if (!token || !session?.sessionToken || !roomId) return;
+    setInvitingUsername(username);
+    try {
+      await apiInviteFriendToRoom(token, roomId, session.sessionToken, username);
+      setInvitedUsernames((prev) => new Set(prev).add(username));
+      toast({ title: "Invite sent", description: `${username} received your invite.` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send invite";
+      toast({ variant: "destructive", title: "Invite failed", description: msg });
+    } finally {
+      setInvitingUsername(null);
     }
   };
 
@@ -303,6 +338,67 @@ export default function Lobby() {
             </div>
           )}
         </div>
+
+        {/* Invite Friends */}
+        {account && friends.length > 0 && canAddMore && (
+          <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur overflow-hidden">
+            <div className="px-4 py-3 border-b border-border/40 flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary/70 shrink-0" />
+              <span className="text-sm font-semibold">Invite Friends</span>
+            </div>
+            <div className="divide-y divide-border/30">
+              {friends
+                .sort((a, b) => (b.isOnline ? 1 : 0) - (a.isOnline ? 1 : 0))
+                .map((friend) => {
+                  const alreadyIn = players.some(
+                    (p) => !p.isAi && p.name.toLowerCase() === friend.username.toLowerCase(),
+                  );
+                  const invited = invitedUsernames.has(friend.username);
+                  const sending = invitingUsername === friend.username;
+                  const disabled = alreadyIn || invited || sending || !friend.isOnline;
+
+                  return (
+                    <div
+                      key={friend.friendshipId}
+                      className={`flex items-center gap-3 px-4 py-3 ${!friend.isOnline ? "opacity-40" : ""}`}
+                    >
+                      <div className="h-8 w-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                        {friend.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{friend.username}</p>
+                        <p className={`text-[11px] ${friend.isOnline ? "text-green-400" : "text-muted-foreground"}`}>
+                          {alreadyIn ? "Already in room" : friend.isOnline ? "Online" : "Offline"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => !disabled && handleInviteFriend(friend.username)}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors shrink-0 ${
+                          invited || alreadyIn
+                            ? "bg-green-500/15 text-green-400 cursor-default"
+                            : disabled
+                            ? "bg-secondary/40 text-muted-foreground cursor-not-allowed"
+                            : "bg-primary/20 text-primary hover:bg-primary/30"
+                        }`}
+                      >
+                        {alreadyIn ? (
+                          <><CheckCircle className="h-3.5 w-3.5" /> Joined</>
+                        ) : invited ? (
+                          <><CheckCircle className="h-3.5 w-3.5" /> Invited</>
+                        ) : sending ? (
+                          <><Send className="h-3.5 w-3.5 animate-pulse" /> Sending…</>
+                        ) : (
+                          <><Send className="h-3.5 w-3.5" /> Invite</>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* Add AI (host only) */}
         {isHost && canAddMore && (

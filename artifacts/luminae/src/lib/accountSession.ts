@@ -242,6 +242,24 @@ export async function apiGetMyStats(token: string): Promise<PlayerStats> {
   return res.json();
 }
 
+export async function apiInviteFriendToRoom(
+  token: string,
+  roomId: string,
+  sessionToken: string,
+  friendUsername: string,
+): Promise<{ ok: boolean; challengeId: string }> {
+  const res = await fetch(apiUrl(`/rooms/${roomId}/invite-friend`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ sessionToken, friendUsername }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to invite friend" }));
+    throw new Error(err.error ?? "Failed to invite friend");
+  }
+  return res.json();
+}
+
 export async function apiQuitRoom(token: string, roomId: string, sessionToken: string): Promise<void> {
   const res = await fetch(apiUrl(`/rooms/${roomId}/quit`), {
     method: "POST",
