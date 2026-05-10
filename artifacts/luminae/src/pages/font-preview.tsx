@@ -189,7 +189,7 @@ function VariantC() {
           );
           background-size: 400% 100%;
           -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-          animation: shimmer-sweep 28s linear infinite;
+          animation: shimmer-sweep 50s linear infinite;
           filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)) drop-shadow(0 0 18px rgba(160,140,255,0.3)) drop-shadow(0 0 40px rgba(100,80,180,0.15));
           position: relative; z-index: 1;
         }
