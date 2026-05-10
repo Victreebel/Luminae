@@ -477,7 +477,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
 
         // Inset vertices for the raised top face of the bevel
-        const BEVEL_F = 0.60;
+        const BEVEL_F = 0.80;
         const innerVerts = verts.map(([vx, vy]) =>
           [cx + (vx - cx) * BEVEL_F, cy + (vy - cy) * BEVEL_F] as [number, number]
         );
@@ -557,20 +557,24 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
         // Full 3D beveled opaque panel with affinity-coloured glow
         const topGradId = `${id}-s3t-${i}`;
+        // Upper-left to lower-right linear gradient for a flat surface sheen
+        // (light grazes across the face from one direction — no centre hotspot)
+        const gx1 = (cx - 2.2).toFixed(2), gy1 = (cy - 2.2).toFixed(2);
+        const gx2 = (cx + 2.2).toFixed(2), gy2 = (cy + 2.2).toFixed(2);
         return (
           <g key={i}>
             <defs>
-              {/* Subtle centre-bright radial gradient for the top face */}
-              <radialGradient id={topGradId}
-                cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="2.8"
+              {/* Flat directional sheen — bright upper-left edge, slightly dark lower-right */}
+              <linearGradient id={topGradId}
+                x1={gx1} y1={gy1} x2={gx2} y2={gy2}
                 gradientUnits="userSpaceOnUse">
-                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.45" />
-                <stop offset="55%"  stopColor={col}      stopOpacity="1.0"  />
-                <stop offset="100%" stopColor={darkCol}  stopOpacity="1.0"  />
-              </radialGradient>
+                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.28" />
+                <stop offset="40%"  stopColor={col}      stopOpacity="1.0"  />
+                <stop offset="100%" stopColor={col}      stopOpacity="1.0"  />
+              </linearGradient>
             </defs>
 
-            {/* Affinity-coloured outer glow (replaces gold glow) */}
+            {/* Affinity-coloured outer glow */}
             <polygon points={ptStr} fill="none"
               stroke={col} strokeWidth="1.0" strokeOpacity="0.50"
               filter={`url(#${id}-panelglow)`} />
@@ -582,23 +586,22 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
               const lf = edgeLightFactor(k);
               return (
                 <g key={k}>
-                  {/* Base: very dark affinity shadow */}
                   <polygon points={ps} fill={darkCol} fillOpacity="1.0" />
-                  {/* Overlay: bright highlight proportional to lighting */}
-                  {lf > 0 && <polygon points={ps} fill={lightCol} fillOpacity={lf * 0.78} />}
+                  {lf > 0 && <polygon points={ps} fill={lightCol} fillOpacity={lf * 0.72} />}
                 </g>
               );
             })}
 
-            {/* Raised top face — affinity colour with centre highlight */}
+            {/* Flat top face — solid affinity colour with single-direction sheen */}
+            <polygon points={innerPts} fill={col} fillOpacity="1.0" />
             <polygon points={innerPts} fill={`url(#${topGradId})`} fillOpacity="1.0" />
 
-            {/* Outer edge hairline (bright affinity) */}
+            {/* Outer edge hairline */}
             <polygon points={ptStr} fill="none"
-              stroke={lightCol} strokeWidth="0.06" strokeOpacity="0.65" />
-            {/* Inner edge hairline (where bevel meets top face) */}
+              stroke={lightCol} strokeWidth="0.06" strokeOpacity="0.60" />
+            {/* Inner edge hairline */}
             <polygon points={innerPts} fill="none"
-              stroke={lightCol} strokeWidth="0.05" strokeOpacity="0.45" />
+              stroke={lightCol} strokeWidth="0.05" strokeOpacity="0.40" />
           </g>
         );
       })}
