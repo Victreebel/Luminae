@@ -20,7 +20,7 @@ import { LoginRegisterForm } from "@/components/LoginRegisterForm";
 import { useAccount } from "@/contexts/AccountContext";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
+import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
@@ -31,8 +31,10 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { account, token, isLoading: accountLoading, logout } = useAccount();
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const handleLogout = async () => {
     await logout();
+    setConfirmLogout(false);
     setMode("home");
   };
   const [activeSession, setActiveSession] = useState(() => getSession());
@@ -366,15 +368,39 @@ export default function Home() {
                       <LayoutDashboard className="h-3.5 w-3.5" />
                       Dashboard
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-9 rounded-xl p-0 text-muted-foreground hover:text-foreground hover:bg-destructive/15"
-                      onClick={handleLogout}
-                      title="Sign out"
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                    </Button>
+                    {confirmLogout ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-9 rounded-xl gap-1.5 text-xs"
+                          onClick={handleLogout}
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          Sign out
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-9 w-9 rounded-xl p-0 text-muted-foreground"
+                          onClick={() => setConfirmLogout(false)}
+                          title="Cancel"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-9 rounded-xl gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        onClick={() => setConfirmLogout(true)}
+                        title="Sign out"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        Sign out
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : (
