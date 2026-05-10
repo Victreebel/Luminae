@@ -472,6 +472,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
       {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
       {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
+        // Drop every panel whose centre falls within the star's exclusion zone
+        const dxSun = cx - CX, dySun = cy - CY;
+        if (dxSun * dxSun + dySun * dySun < 13 * 13) return null;
+
         const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
         const darkCol  = BEVEL_DARK[col]  ?? '#0a0a0a';
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
@@ -520,13 +524,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
               strokeWidth="0.13" strokeOpacity={0.18 + z * 0.30} />
-          </g>
-        );
-
-        if (dist < 10) return (
-          <g key={i}>
-            <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.26} />
           </g>
         );
 
