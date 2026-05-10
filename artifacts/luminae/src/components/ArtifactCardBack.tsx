@@ -513,13 +513,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             <polygon points={ptStr} fill={col} fillOpacity="0.18" stroke="none" />
             <polygon points={ptStr} fill="none"
               stroke="#d4b060" strokeWidth="0.28"
-              strokeOpacity={0.15 + limbFactor * 0.50} />
-            {edgeGlow.map(({ x1, y1, x2, y2, outward }, k) => outward > 0.15 && (
-              <line key={k} x1={x1.toFixed(2)} y1={y1.toFixed(2)}
-                x2={x2.toFixed(2)} y2={y2.toFixed(2)}
-                stroke="#ffcc60" strokeWidth="0.55"
-                strokeOpacity={outward * lf2 * 0.85} />
-            ))}
+              strokeOpacity={0.20 + limbFactor * 0.55} />
           </g>
         );
       })}
