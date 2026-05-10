@@ -34,13 +34,6 @@ class GameAudio {
   private ctx: AudioContext | null = null;
   private muted = false;
 
-  // ── Affinity-switch debounce ─────────────────────────────────────────────
-  // Defensive guard in case rapid state updates deliver two identical events
-  // in the same cycle.  The action-log useEffect in game.tsx is the sole
-  // canonical call site; the portal component no longer calls this directly.
-  private lastAffinitySwitchAt = 0;
-  private readonly AFFINITY_SWITCH_DEBOUNCE_MS = 400;
-
   // ── Music state ─────────────────────────────────────────────────────────
   private musicStarted = false;
   private masterMusicGain: GainNode | null = null;
@@ -317,9 +310,6 @@ class GameAudio {
    */
   playAffinitySwitch() {
     if (this.muted) return;
-    const now = Date.now();
-    if (now - this.lastAffinitySwitchAt < this.AFFINITY_SWITCH_DEBOUNCE_MS) return;
-    this.lastAffinitySwitchAt = now;
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
