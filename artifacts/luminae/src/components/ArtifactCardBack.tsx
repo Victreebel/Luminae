@@ -544,14 +544,18 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const OUTER_R = 7.5;
 
   // Secondary star systems — branching off the spiral energy arms mid-path.
-  // ax/ay = the point on the arm bezier where the branch splits off.
-  // cx/cy = where the satellite system sits (offset sideways from the arm).
-  const satellites: Array<{ cx: number; cy: number; ax: number; ay: number; col: string; parentIdx: number }> = [
-    { ax: 45, ay: 38, cx: 57, cy: 30, col: R, parentIdx: 0 },  // R arm t≈0.35 → upper-right
-    { ax: 54, ay: 57, cx: 63, cy: 62, col: C, parentIdx: 1 },  // C arm t≈0.30 → far-right
-    { ax: 39, ay: 71, cx: 52, cy: 82, col: V, parentIdx: 2 },  // V arm t≈0.20 → lower-right
-    { ax: 17, ay: 64, cx:  9, cy: 78, col: F, parentIdx: 3 },  // F arm t≈0.25 → lower-left
-    { ax: 17, ay: 38, cx:  8, cy: 27, col: A, parentIdx: 4 },  // A arm t≈0.30 → upper-left
+  // ax/ay = arm junction (on the bezier).  cx/cy = satellite center.
+  // qx/qy = quadratic bezier control point (arcs outward from hub).
+  // All satellites kept within safe inner-frame bounds (x:13–57, y:23–86).
+  const satellites: Array<{
+    cx: number; cy: number; ax: number; ay: number;
+    qx: number; qy: number; col: string; parentIdx: number;
+  }> = [
+    { ax: 45, ay: 38, qx: 53, qy: 30, cx: 54, cy: 24, col: R, parentIdx: 0 },
+    { ax: 54, ay: 57, qx: 60, qy: 52, cx: 57, cy: 46, col: C, parentIdx: 1 },
+    { ax: 39, ay: 71, qx: 48, qy: 79, cx: 53, cy: 83, col: V, parentIdx: 2 },
+    { ax: 17, ay: 65, qx: 11, qy: 72, cx: 14, cy: 81, col: F, parentIdx: 3 },
+    { ax: 17, ay: 38, qx: 11, qy: 31, cx: 14, cy: 25, col: A, parentIdx: 4 },
   ];
 
   return (
@@ -738,22 +742,25 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           strokeDasharray="2.2 2" />
       ))}
 
-      {/* Branch spurs — same two-layer glow beam style as the main spiral arms */}
-      {satellites.map(({ cx, cy, ax, ay, col }, i) => (
-        <g key={i}>
-          {/* Glow under-stroke */}
-          <line x1={ax} y1={ay} x2={cx} y2={cy}
-            stroke={col} strokeWidth="1.8" strokeOpacity="0.11"
-            strokeLinecap="round" filter={`url(#${id}-aglow)`} />
-          {/* Bright core stroke */}
-          <line x1={ax} y1={ay} x2={cx} y2={cy}
-            stroke={col} strokeWidth="0.52" strokeOpacity="0.40"
-            strokeLinecap="round" />
-          {/* Junction dot — bifurcation node on the arm */}
-          <circle cx={ax} cy={ay} r="0.55"
-            fill="#0a0818" stroke={col} strokeWidth="0.28" strokeOpacity="0.80" />
-        </g>
-      ))}
+      {/* Branch spurs — curved quadratic bezier, same two-layer glow as main arms */}
+      {satellites.map(({ cx, cy, ax, ay, qx, qy, col }, i) => {
+        const d = `M ${ax} ${ay} Q ${qx} ${qy} ${cx} ${cy}`;
+        return (
+          <g key={i}>
+            {/* Glow under-stroke */}
+            <path d={d} fill="none"
+              stroke={col} strokeWidth="1.8" strokeOpacity="0.11"
+              strokeLinecap="round" filter={`url(#${id}-aglow)`} />
+            {/* Bright core stroke */}
+            <path d={d} fill="none"
+              stroke={col} strokeWidth="0.52" strokeOpacity="0.40"
+              strokeLinecap="round" />
+            {/* Junction dot — bifurcation node on the arm */}
+            <circle cx={ax} cy={ay} r="0.55"
+              fill="#0a0818" stroke={col} strokeWidth="0.28" strokeOpacity="0.80" />
+          </g>
+        );
+      })}
 
       {/* Secondary star systems — smaller Dyson swarms at branch tips */}
       {satellites.map(({ cx, cy, col }, i) => {
