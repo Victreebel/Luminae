@@ -2068,6 +2068,27 @@ export default function GameBoard() {
           </div>
         </div>
 
+        {/* Plan queued badge — shown on the card market when a reserve is waiting */}
+        <AnimatePresence>
+          {myPlannedAction && myPlannedAction.type === 'reserve_card' && (
+            <motion.div
+              key="reserve-plan-badge"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-950/50 border border-amber-500/40 shadow-[0_0_8px_rgba(251,191,36,0.15)]">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
+                <span className="text-[10px] text-amber-300/80 truncate">
+                  {getPlannedActionSummary(myPlannedAction)}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {[
           { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Sovereigns & absolutes — apex relics that bend the cosmos to your will' },
           { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Forged instruments — crucibles and sigils of focused cosmic mastery' },
