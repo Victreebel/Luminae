@@ -101,10 +101,10 @@ If a generation pass produces a humanoid figure for a Luminary that should be no
 
 ### Asset review status (current — supersedes all earlier commit notes)
 - **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom — 9 panels locked.
-- **Panels still needing regeneration:** lum_tide (white exterior background = active in-game visual bug), lum_astral (wrong format entirely; concept direction also undefined), lum_pale (wrong format; concept direction undefined).
+- **Panels regenerated (pending acceptance review):** lum_tide (recursive tidal spiral, dark oceanic void bg — visual bug fixed), lum_astral (fire/ice dual-crystal, dark space bg — new concept: stellar weaving intelligence, not Stellar Guide), lum_pale (void/pearl contrast crystal, dark starfield bg — new concept: cosmic exchange intelligence, nonhumanoid balance entity).
 - **Entities needing regeneration:** lum_null (thematic miss — sci-fi cyberpunk armor, does not match accepted void-body panel spec).
 - **Auras needing regeneration:** lum_void (opaque purple-grey background will show as colored rectangle in screen-blend), lum_pale (opaque grey background, same issue).
-- **Open concept questions before next generation:** lum_tide (water-elemental direction vs Ophanim/rings?), lum_astral (concept fully undefined now that Stellar Guide belongs to lum_compass), lum_pale (no concept defined).
+- **Open concept questions:** None — lum_tide (Continuum recursive tidal architecture), lum_astral (stellar fire meets cold void weaving entity), and lum_pale (Abyss+Singularity cosmic exchange) have defined directions now.
 - All 12 are currently active in ILLUSTRATED_IDS for iteration. Restrict back to accepted set before publication.
 
 ## System Architecture

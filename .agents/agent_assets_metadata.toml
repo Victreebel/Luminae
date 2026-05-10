@@ -718,7 +718,7 @@ title = "generated_image"
 id = "8hcW8nNYZbAjA-adLbVo8"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_astral/panel.png"
 type = "image"
-title = "astral weaver panel"
+title = "lum_astral panel astral weaver fire void"
 
 [[generated]]
 id = "umrS5JDG0-Qx2eZDQH5vR"
@@ -742,7 +742,7 @@ title = "lum_null panel glossy obsidian sovereign crystal"
 id = "bTvEsShpuxElpFuYPeWe6"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel.png"
 type = "image"
-title = "pale merchant panel corrected"
+title = "lum_pale panel pale merchant abyss singularity"
 
 [[generated]]
 id = "7qkJOM2YWVkRi-HLw_hil"
@@ -754,7 +754,7 @@ title = "lum_radiant panel crystal containment"
 id = "ZMufQgWdyX6KCNu7JLbJa"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel.png"
 type = "image"
-title = "lum_tide panel crystal containment"
+title = "lum_tide panel tidal recursive continuum"
 
 [[generated]]
 id = "rzmNczupmY30Gryz29RFu"
