@@ -475,62 +475,29 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
         const darkCol  = BEVEL_DARK[col]  ?? '#0a0a0a';
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
+        // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
+        const surfCol  = PANEL_MID[col]   ?? '#303040';
 
-        // Inset vertices for the raised top face of the bevel
-        const BEVEL_F = 0.80;
-        const innerVerts = verts.map(([vx, vy]) =>
-          [cx + (vx - cx) * BEVEL_F, cy + (vy - cy) * BEVEL_F] as [number, number]
-        );
-        const innerPts = innerVerts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-
-        // ── Shell 2 (innermost) — very transparent glass ──────────────────
+        // ── Shell 2 (innermost) — very transparent flat panels ────────────
         if (sn === 2) {
-          const fOpacity = solid ? 0.09 + z * 0.11 : 0.03 + z * 0.04;
+          const fOpacity = solid ? 0.08 + z * 0.10 : 0.02 + z * 0.04;
           return (
             <g key={i}>
-              {/* faint bevel side hints */}
-              {Array.from({ length: 6 }, (_, k) => {
-                const pts = [verts[k], verts[(k + 1) % 6], innerVerts[(k + 1) % 6], innerVerts[k]];
-                const ps = pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-                const lf = edgeLightFactor(k);
-                return (
-                  <polygon key={k} points={ps}
-                    fill={lf > 0.3 ? lightCol : darkCol}
-                    fillOpacity={0.06 + lf * 0.12} />
-                );
-              })}
-              {/* glassy top face */}
-              <polygon points={innerPts} fill={col} fillOpacity={fOpacity} />
-              {/* coloured edge outline */}
+              <polygon points={ptStr} fill={col} fillOpacity={fOpacity} />
               <polygon points={ptStr} fill="none" stroke={col}
-                strokeWidth="0.09" strokeOpacity={0.12 + z * 0.20} />
+                strokeWidth="0.09" strokeOpacity={0.10 + z * 0.18} />
             </g>
           );
         }
 
-        // ── Shell 1 (middle) — semi-transparent with light bevel ──────────
+        // ── Shell 1 (middle) — semi-transparent flat panels ───────────────
         if (sn === 1) {
-          const fOpacity = solid ? 0.20 + z * 0.25 : 0.07 + z * 0.09;
-          const bevelBase = solid ? 0.55 : 0.30;
+          const fOpacity = solid ? 0.18 + z * 0.22 : 0.06 + z * 0.08;
           return (
             <g key={i}>
-              {/* bevel side faces — moderate opacity */}
-              {Array.from({ length: 6 }, (_, k) => {
-                const pts = [verts[k], verts[(k + 1) % 6], innerVerts[(k + 1) % 6], innerVerts[k]];
-                const ps = pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-                const lf = edgeLightFactor(k);
-                return (
-                  <g key={k}>
-                    <polygon points={ps} fill={darkCol} fillOpacity={bevelBase} />
-                    {lf > 0 && <polygon points={ps} fill={lightCol} fillOpacity={lf * 0.55 * bevelBase} />}
-                  </g>
-                );
-              })}
-              {/* semi-transparent top face */}
-              <polygon points={innerPts} fill={col} fillOpacity={fOpacity} />
-              {/* coloured edge hairline */}
+              <polygon points={ptStr} fill={col} fillOpacity={fOpacity} />
               <polygon points={ptStr} fill="none" stroke={col}
-                strokeWidth="0.10" strokeOpacity={0.18 + z * 0.28} />
+                strokeWidth="0.10" strokeOpacity={0.15 + z * 0.25} />
             </g>
           );
         }
@@ -539,7 +506,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Non-solid → wire-only outline panel (fragmentation gaps)
         if (!solid) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
@@ -547,61 +513,41 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
-        // Too close to star core → wire only so bloom is never buried
         if (dist < 10) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.13" strokeOpacity={0.18 + z * 0.28} />
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.26} />
           </g>
         );
 
-        // Full 3D beveled opaque panel with affinity-coloured glow
-        const topGradId = `${id}-s3t-${i}`;
-        // Upper-left to lower-right linear gradient for a flat surface sheen
-        // (light grazes across the face from one direction — no centre hotspot)
-        const gx1 = (cx - 2.2).toFixed(2), gy1 = (cy - 2.2).toFixed(2);
-        const gx2 = (cx + 2.2).toFixed(2), gy2 = (cy + 2.2).toFixed(2);
+        // Flat opaque panel — 3D depth hinted only by shadow/brightness gradient
+        const shadingId = `${id}-sh-${i}`;
+        // Gradient: upper-left bright highlight → transparent mid → lower-right shadow
+        const gx1 = (cx - 2.6).toFixed(2), gy1 = (cy - 2.6).toFixed(2);
+        const gx2 = (cx + 2.6).toFixed(2), gy2 = (cy + 2.6).toFixed(2);
         return (
           <g key={i}>
             <defs>
-              {/* Flat directional sheen — bright upper-left edge, slightly dark lower-right */}
-              <linearGradient id={topGradId}
+              <linearGradient id={shadingId}
                 x1={gx1} y1={gy1} x2={gx2} y2={gy2}
                 gradientUnits="userSpaceOnUse">
-                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.28" />
-                <stop offset="40%"  stopColor={col}      stopOpacity="1.0"  />
-                <stop offset="100%" stopColor={col}      stopOpacity="1.0"  />
+                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.32" />
+                <stop offset="28%"  stopColor={lightCol} stopOpacity="0"    />
+                <stop offset="72%"  stopColor={darkCol}  stopOpacity="0"    />
+                <stop offset="100%" stopColor={darkCol}  stopOpacity="0.40" />
               </linearGradient>
             </defs>
-
             {/* Affinity-coloured outer glow */}
             <polygon points={ptStr} fill="none"
-              stroke={col} strokeWidth="1.0" strokeOpacity="0.50"
+              stroke={col} strokeWidth="1.0" strokeOpacity="0.48"
               filter={`url(#${id}-panelglow)`} />
-
-            {/* 6 bevel trapezoid side faces — shadow + highlight per lighting */}
-            {Array.from({ length: 6 }, (_, k) => {
-              const pts = [verts[k], verts[(k + 1) % 6], innerVerts[(k + 1) % 6], innerVerts[k]];
-              const ps = pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-              const lf = edgeLightFactor(k);
-              return (
-                <g key={k}>
-                  <polygon points={ps} fill={darkCol} fillOpacity="1.0" />
-                  {lf > 0 && <polygon points={ps} fill={lightCol} fillOpacity={lf * 0.72} />}
-                </g>
-              );
-            })}
-
-            {/* Flat top face — solid affinity colour with single-direction sheen */}
-            <polygon points={innerPts} fill={col} fillOpacity="1.0" />
-            <polygon points={innerPts} fill={`url(#${topGradId})`} fillOpacity="1.0" />
-
-            {/* Outer edge hairline */}
+            {/* Dark panel surface (PANEL_MID — not full-bright affinity) */}
+            <polygon points={ptStr} fill={surfCol} fillOpacity="1.0" />
+            {/* Directional shading overlay: upper-left bright, lower-right dark */}
+            <polygon points={ptStr} fill={`url(#${shadingId})`} />
+            {/* Bright hairline rim — sole geometric 3D cue */}
             <polygon points={ptStr} fill="none"
-              stroke={lightCol} strokeWidth="0.06" strokeOpacity="0.60" />
-            {/* Inner edge hairline */}
-            <polygon points={innerPts} fill="none"
-              stroke={lightCol} strokeWidth="0.05" strokeOpacity="0.40" />
+              stroke={lightCol} strokeWidth="0.10" strokeOpacity="0.65" />
           </g>
         );
       })}
