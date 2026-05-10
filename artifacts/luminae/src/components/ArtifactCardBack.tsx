@@ -505,14 +505,21 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
               <radialGradient id={gradId}
                 cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
                 gradientUnits="userSpaceOnUse">
+                {/* dark center */}
                 <stop offset="0%"   stopColor={base} stopOpacity="1.0" />
+                <stop offset="68%"  stopColor={base} stopOpacity="1.0" />
+                {/* dim col zone — "less bright area" */}
+                <stop offset="70%"  stopColor={col}  stopOpacity="0.28" />
+                <stop offset="86%"  stopColor={col}  stopOpacity="0.32" />
+                {/* sharp jump → bright col rim */}
+                <stop offset="88%"  stopColor={col}  stopOpacity="0.92" />
                 <stop offset="100%" stopColor={col}  stopOpacity="1.0" />
               </radialGradient>
             </defs>
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
+            {/* very bright gold outline on top */}
             <polygon points={ptStr} fill="none"
-              stroke="#d4b060" strokeWidth="0.28"
-              strokeOpacity={0.20 + limbFactor * 0.55} />
+              stroke="#ffe08a" strokeWidth="0.32" strokeOpacity="1.0" />
           </g>
         );
       })}
