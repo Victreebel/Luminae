@@ -66,6 +66,7 @@ export function useGameWebsocket({
   });
 
   const connect = useCallback(() => {
+    if (!sessionToken) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
