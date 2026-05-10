@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #040608; display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 12px; font-family: Georgia, serif; }
+  .label { color: #c4a85a; font-size: 11px; letter-spacing: 3px; opacity: 0.7; text-transform: uppercase; }
+  .card { width: 210px; height: 300px; }
+</style></head><body>
+<div class="label">Tier I — Planetary Civilization</div>
+<div class="card">
+<svg viewBox="0 0 70 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block" aria-hidden="true">
+<defs>
+  <radialGradient id="bg" cx="50%" cy="52%" r="65%"><stop offset="0%" stop-color="#0d1230"/><stop offset="55%" stop-color="#08091a"/><stop offset="100%" stop-color="#030509"/></radialGradient>
+  <radialGradient id="planet" cx="62%" cy="30%" r="65%"><stop offset="0%" stop-color="#3060c0"/><stop offset="25%" stop-color="#1840a0"/><stop offset="60%" stop-color="#0c2268"/><stop offset="100%" stop-color="#040e30"/></radialGradient>
+  <radialGradient id="night" cx="12%" cy="55%" r="70%"><stop offset="0%" stop-color="#000010" stop-opacity="0.88"/><stop offset="45%" stop-color="#000010" stop-opacity="0.45"/><stop offset="100%" stop-color="#000010" stop-opacity="0"/></radialGradient>
+  <radialGradient id="atmo" cx="50%" cy="50%" r="50%"><stop offset="70%" stop-color="#1a6ae0" stop-opacity="0"/><stop offset="82%" stop-color="#4090ff" stop-opacity="0.65"/><stop offset="92%" stop-color="#80c8ff" stop-opacity="0.3"/><stop offset="100%" stop-color="#a0daff" stop-opacity="0"/></radialGradient>
+  <radialGradient id="land" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#1e4830" stop-opacity="0.85"/><stop offset="100%" stop-color="#0d2818" stop-opacity="0.65"/></radialGradient>
+  <linearGradient id="bord" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ead68c" stop-opacity="0.8"/><stop offset="50%" stop-color="#c4a85a" stop-opacity="1"/><stop offset="100%" stop-color="#7a6030" stop-opacity="0.55"/></linearGradient>
+  <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="0.8"/></filter>
+  <clipPath id="clip"><circle cx="35" cy="53" r="18"/></clipPath>
+</defs>
+<rect width="70" height="100" fill="url(#bg)"/>
+<!-- Stars -->
+<circle cx="7" cy="7" r="0.35" fill="#fff" opacity="0.18"/><circle cx="62" cy="8" r="0.28" fill="#fff" opacity="0.24"/><circle cx="14" cy="15" r="0.22" fill="#fff" opacity="0.14"/><circle cx="58" cy="19" r="0.3" fill="#fff" opacity="0.2"/><circle cx="9" cy="29" r="0.18" fill="#fff" opacity="0.12"/><circle cx="66" cy="34" r="0.25" fill="#fff" opacity="0.18"/><circle cx="5" cy="47" r="0.2" fill="#fff" opacity="0.14"/><circle cx="68" cy="52" r="0.3" fill="#fff" opacity="0.2"/><circle cx="8" cy="65" r="0.22" fill="#fff" opacity="0.16"/><circle cx="63" cy="70" r="0.28" fill="#fff" opacity="0.22"/><circle cx="11" cy="80" r="0.18" fill="#fff" opacity="0.12"/><circle cx="60" cy="84" r="0.32" fill="#fff" opacity="0.26"/><circle cx="7" cy="91" r="0.2" fill="#fff" opacity="0.14"/><circle cx="64" cy="90" r="0.22" fill="#fff" opacity="0.16"/><circle cx="20" cy="5" r="0.18" fill="#fff" opacity="0.12"/><circle cx="50" cy="6" r="0.2" fill="#fff" opacity="0.14"/><circle cx="38" cy="95" r="0.25" fill="#fff" opacity="0.18"/><circle cx="25" cy="93" r="0.18" fill="#fff" opacity="0.12"/>
+<!-- Border -->
+<rect x="3.5" y="3.5" width="63" height="93" rx="1.2" fill="none" stroke="url(#bord)" stroke-width="0.7"/>
+<rect x="5.8" y="5.8" width="58.4" height="88.4" rx="0.6" fill="none" stroke="#7a6030" stroke-width="0.25" stroke-opacity="0.38"/>
+<path d="M3.5 17 L3.5 3.5 L17 3.5" fill="none" stroke="#ead68c" stroke-width="1.3" stroke-linecap="square"/>
+<path d="M53 3.5 L66.5 3.5 L66.5 17" fill="none" stroke="#ead68c" stroke-width="1.3" stroke-linecap="square"/>
+<path d="M3.5 83 L3.5 96.5 L17 96.5" fill="none" stroke="#ead68c" stroke-width="1.3" stroke-linecap="square"/>
+<path d="M53 96.5 L66.5 96.5 L66.5 83" fill="none" stroke="#ead68c" stroke-width="1.3" stroke-linecap="square"/>
+<circle cx="3.5" cy="3.5" r="1.1" fill="#c4a85a" opacity="0.85"/><circle cx="66.5" cy="3.5" r="1.1" fill="#c4a85a" opacity="0.85"/><circle cx="3.5" cy="96.5" r="1.1" fill="#c4a85a" opacity="0.85"/><circle cx="66.5" cy="96.5" r="1.1" fill="#c4a85a" opacity="0.85"/>
+<line x1="35" y1="3.5" x2="35" y2="7.5" stroke="#c4a85a" stroke-width="0.6"/>
+<line x1="35" y1="96.5" x2="35" y2="92.5" stroke="#c4a85a" stroke-width="0.6"/>
+<line x1="3.5" y1="50" x2="7.5" y2="50" stroke="#c4a85a" stroke-width="0.6"/>
+<line x1="66.5" y1="50" x2="62.5" y2="50" stroke="#c4a85a" stroke-width="0.6"/>
+<text x="35" y="15" text-anchor="middle" font-family="Georgia,serif" font-size="5.5" fill="#ead68c" opacity="0.78" letter-spacing="1.5">I</text>
+<line x1="31" y1="16.5" x2="39" y2="16.5" stroke="#7a6030" stroke-width="0.4" stroke-opacity="0.5"/>
+<!-- Debris belt -->
+<path d="M10.57 38.87 A24.5 24.5 0 0 1 57.32 29.66" fill="none" stroke="#7a6030" stroke-width="0.45" stroke-opacity="0.28" stroke-dasharray="1.2 2.8"/>
+<!-- Orbital ring -->
+<path d="M16.72 35.49 A21.5 21.5 0 0 1 59.46 57.58" fill="none" stroke="#c4a85a" stroke-width="0.65" stroke-opacity="0.5" stroke-dasharray="2.8 1.5"/>
+<!-- Orbital stations -->
+<rect x="19.3" y="30.7" width="2.4" height="1.8" rx="0.4" fill="#0a1540" stroke="#ead68c" stroke-width="0.4"/>
+<rect x="29.1" y="24.8" width="2.4" height="1.8" rx="0.4" fill="#0a1540" stroke="#ead68c" stroke-width="0.4"/>
+<rect x="41.2" y="24.1" width="2.4" height="1.8" rx="0.4" fill="#0a1540" stroke="#ead68c" stroke-width="0.4"/>
+<rect x="51.8" y="29.9" width="2.4" height="1.8" rx="0.4" fill="#0a1540" stroke="#ead68c" stroke-width="0.4"/>
+<!-- Atmosphere -->
+<circle cx="35" cy="53" r="22" fill="url(#atmo)"/>
+<!-- Planet -->
+<circle cx="35" cy="53" r="18" fill="url(#planet)"/>
+<!-- Landmasses -->
+<polygon points="38,38 45,42 49,48 45,55 39,57 36,50 37,43" fill="url(#land)" clip-path="url(#clip)"/>
+<polygon points="33,59 40,58 43,64 40,68 34,69 28,65 29,59" fill="url(#land)" clip-path="url(#clip)"/>
+<polygon points="23,49 27,46 30,50 26,56 22,55" fill="url(#land)" clip-path="url(#clip)"/>
+<polygon points="31,37 37,38 38,41 34,42 30,40" fill="url(#land)" clip-path="url(#clip)"/>
+<!-- Grid -->
+<g clip-path="url(#clip)" fill="none" stroke="#2a5ad0" stroke-width="0.38" stroke-opacity="0.38">
+  <line x1="17" y1="43" x2="53" y2="43"/><line x1="17" y1="49" x2="53" y2="49"/>
+  <line x1="17" y1="55" x2="53" y2="55"/><line x1="17" y1="61" x2="53" y2="61"/>
+  <line x1="25" y1="35" x2="25" y2="71"/><line x1="31" y1="35" x2="31" y2="71"/>
+  <line x1="37" y1="35" x2="37" y2="71"/><line x1="43" y1="35" x2="43" y2="71"/>
+</g>
+<!-- Night -->
+<circle cx="35" cy="53" r="18" fill="url(#night)"/>
+<circle cx="35" cy="53" r="18" fill="none" stroke="#4888e8" stroke-width="0.55" stroke-opacity="0.45"/>
+<!-- City connections -->
+<line x1="35" y1="38" x2="48" y2="47" stroke="#3870d0" stroke-width="0.4" stroke-opacity="0.55" clip-path="url(#clip)"/>
+<line x1="48" y1="47" x2="45" y2="62" stroke="#3870d0" stroke-width="0.4" stroke-opacity="0.55" clip-path="url(#clip)"/>
+<line x1="45" y1="62" x2="25" y2="63" stroke="#3870d0" stroke-width="0.4" stroke-opacity="0.55" clip-path="url(#clip)"/>
+<line x1="25" y1="63" x2="22" y2="48" stroke="#3870d0" stroke-width="0.4" stroke-opacity="0.55" clip-path="url(#clip)"/>
+<line x1="22" y1="48" x2="35" y2="38" stroke="#3870d0" stroke-width="0.4" stroke-opacity="0.55" clip-path="url(#clip)"/>
+<!-- City nodes -->
+<circle cx="35" cy="38" r="3.5" fill="#ef4444" opacity="0.09" clip-path="url(#clip)"/>
+<circle cx="35" cy="38" r="1.5" fill="#ef4444" opacity="0.6" clip-path="url(#clip)"/>
+<circle cx="35" cy="38" r="0.6" fill="#fff" opacity="0.85" clip-path="url(#clip)"/>
+<circle cx="48" cy="47" r="3.5" fill="#3b82f6" opacity="0.09" clip-path="url(#clip)"/>
+<circle cx="48" cy="47" r="1.5" fill="#3b82f6" opacity="0.6" clip-path="url(#clip)"/>
+<circle cx="48" cy="47" r="0.6" fill="#fff" opacity="0.85" clip-path="url(#clip)"/>
+<circle cx="45" cy="62" r="3.5" fill="#22c55e" opacity="0.09" clip-path="url(#clip)"/>
+<circle cx="45" cy="62" r="1.5" fill="#22c55e" opacity="0.6" clip-path="url(#clip)"/>
+<circle cx="45" cy="62" r="0.6" fill="#fff" opacity="0.85" clip-path="url(#clip)"/>
+<circle cx="25" cy="63" r="3.5" fill="#a855f7" opacity="0.09" clip-path="url(#clip)"/>
+<circle cx="25" cy="63" r="1.5" fill="#a855f7" opacity="0.6" clip-path="url(#clip)"/>
+<circle cx="25" cy="63" r="0.6" fill="#fff" opacity="0.85" clip-path="url(#clip)"/>
+<circle cx="22" cy="48" r="3.5" fill="#e2e8f0" opacity="0.09" clip-path="url(#clip)"/>
+<circle cx="22" cy="48" r="1.5" fill="#e2e8f0" opacity="0.6" clip-path="url(#clip)"/>
+<circle cx="22" cy="48" r="0.6" fill="#fff" opacity="0.85" clip-path="url(#clip)"/>
+<!-- Wordmark -->
+<text x="35" y="91" text-anchor="middle" font-family="Georgia,serif" font-size="3.8" fill="#c4a85a" opacity="0.3" letter-spacing="2.5">LUMINAE</text>
+</svg>
+</div>
+</body></html>
