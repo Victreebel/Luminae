@@ -52,11 +52,11 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
   const PX = 35, PY = 56, PR = 16;
 
   const cityNodes: [number,number,string][] = [
-    [35,  44.5, F],  // Flare     — upper continent interior
-    [46,  51.5, C],  // Continuum — east coast
-    [42,  64.5, V],  // Verdance  — southern continent
-    [24,  64.0, A],  // Abyss     — western ocean (open sea)
-    [24,  51.5, R],  // Radiance  — west coast
+    [35,  44.5, F],  // Flare     — upper continent interior (unchanged)
+    [46,  51.5, R],  // Radiance  — east coast (was Continuum)
+    [42,  64.5, V],  // Verdance  — southern continent (unchanged)
+    [24,  64.0, C],  // Continuum — western ocean (was Abyss)
+    [24,  51.5, A],  // Abyss     — west coast / shadow side (was Radiance)
   ];
 
   const ORB_R = PR + 4.5;
@@ -112,7 +112,7 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           <stop offset="100%" stopColor="#ff6000" stopOpacity="0"   />
         </radialGradient>
         <filter id={`${id}-sunglow`} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="2.8" />
+          <feGaussianBlur stdDeviation="4.5" />
         </filter>
       </defs>
 
@@ -137,24 +137,28 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           opacity={0.10 + (sz * 0.038)} />
       ))}
 
-      {/* ── Distant sun — upper-right, off in deep space ── */}
-      {/* Outer halo bloom */}
-      <circle cx="57" cy="19" r="9"
+      {/* ── Local star — same solar system, close and bright ── */}
+      {/* Broad outer corona bloom */}
+      <circle cx="57" cy="19" r="20"
         fill={`url(#${id}-sun)`}
-        filter={`url(#${id}-sunglow)`} opacity="0.45" />
+        filter={`url(#${id}-sunglow)`} opacity="0.38" />
       {/* Inner corona */}
-      <circle cx="57" cy="19" r="4.5"
+      <circle cx="57" cy="19" r="11"
         fill={`url(#${id}-sun)`}
-        filter={`url(#${id}-sunglow)`} opacity="0.55" />
-      {/* Visible disc */}
-      <circle cx="57" cy="19" r="1.8" fill={`url(#${id}-sun)`} opacity="0.9" />
+        filter={`url(#${id}-sunglow)`} opacity="0.65" />
+      {/* Limb-lit disc */}
+      <circle cx="57" cy="19" r="4.2" fill={`url(#${id}-sun)`} opacity="0.94" />
       {/* Bright point */}
-      <circle cx="57" cy="19" r="0.6" fill="#ffffff" opacity="0.96" />
-      {/* Subtle lens cross-flare */}
-      <line x1="51" y1="19" x2="63" y2="19"
-        stroke="#fff8c0" strokeWidth="0.25" strokeOpacity="0.28" />
-      <line x1="57" y1="13" x2="57" y2="25"
-        stroke="#fff8c0" strokeWidth="0.25" strokeOpacity="0.22" />
+      <circle cx="57" cy="19" r="1.5" fill="#ffffff" opacity="0.98" />
+      {/* Cross-flare */}
+      <line x1="45" y1="19" x2="69" y2="19"
+        stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.38" />
+      <line x1="57" y1="7"  x2="57" y2="31"
+        stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.30" />
+      <line x1="49" y1="11" x2="65" y2="27"
+        stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
+      <line x1="65" y1="11" x2="49" y2="27"
+        stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
 
       {/* ── T1 Border — single L-corner ── */}
       <rect x="4" y="4" width="62" height="92" rx="1.5"
@@ -278,10 +282,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
   const CX = 35, CY = 54;
 
-  const rings = [
-    { r: 10,  segs: 8, span: 35, step: 45,   startOff: -90, colors: [F,C,V,A,R,F,C,V] as string[] },
-    { r: 16,  segs: 6, span: 48, step: 60,   startOff: -75, colors: [V,A,R,F,C,V]     as string[] },
-    { r: 22,  segs: 4, span: 68, step: 90,   startOff: -60, colors: [C,A,F,R]         as string[] },
+  const SWARM_COLORS = [F, C, V, A, R];
+  const swarmRings = [
+    { r: 10, n: 30, phase:  0 },
+    { r: 16, n: 38, phase: 26 },
+    { r: 22, n: 45, phase: 52 },
   ];
 
   return (
@@ -325,14 +330,21 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Background ── */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
 
-      {/* Moderate starfield */}
+      {/* Dense starfield */}
       {([
-        [6,6],[63,10],[16,17],[54,21],[9,31],[66,36],
-        [5,57],[67,62],[15,74],[59,77],[8,87],[64,91],
-        [26,9],[46,7],[38,94],[22,92],[14,46],[58,44],
-      ] as [number,number][]).map(([x,y], i) => (
-        <circle key={i} cx={x} cy={y} r={i % 4 === 0 ? 0.42 : 0.24}
-          fill="#fff" opacity={0.13 + (i % 5) * 0.05} />
+        [6,6,5],[63,10,4],[16,17,3],[54,21,6],[9,31,4],[66,36,5],
+        [5,57,3],[67,62,6],[15,74,4],[59,77,5],[8,87,3],[64,91,4],
+        [26,9,5],[46,7,3],[38,94,6],[22,92,4],[14,46,5],[58,44,3],
+        [4,20,4],[68,25,5],[11,38,3],[62,42,4],[7,52,6],[69,48,3],
+        [5,68,4],[66,72,5],[13,80,3],[57,83,4],[10,92,5],[63,88,3],
+        [20,14,4],[48,12,5],[32,6,3],[56,8,6],[17,26,4],[61,30,5],
+        [8,42,3],[65,46,4],[12,60,5],[66,56,3],[9,76,4],[63,80,5],
+        [22,88,3],[54,90,4],[36,97,5],[18,96,3],[50,94,6],[28,4,4],
+        [42,15,3],[30,22,5],[52,35,4],[24,50,3],[58,64,5],[40,78,4],
+      ] as [number,number,number][]).map(([x,y,sz], i) => (
+        <circle key={i} cx={x} cy={y}
+          r={sz >= 6 ? 0.44 : sz >= 5 ? 0.30 : sz >= 4 ? 0.21 : 0.14}
+          fill="#fff" opacity={0.10 + (sz * 0.04)} />
       ))}
 
       {/* ── T2 Border — double L-corner ── */}
@@ -380,48 +392,37 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Extended corona ── */}
       <circle cx={CX} cy={CY} r="14" fill={`url(#${id}-corona)`} />
 
-      {/* ── Three Dyson collector rings ── */}
-      {rings.map(({ r, segs, span, step, startOff, colors }, ri) => (
+      {/* ── Dyson Swarm — three orbital shells of independent satellites ── */}
+      {swarmRings.map(({ r, n, phase }, ri) => (
         <g key={ri}>
+          {/* faint orbital guide ring */}
           <circle cx={CX} cy={CY} r={r}
-            fill="none" stroke={ri === 0 ? "#3050a0" : GOLD3}
-            strokeWidth={ri === 0 ? 0.3 : 0.28}
-            strokeOpacity={ri === 0 ? 0.3 : 0.25}
-            strokeDasharray="1.5 1.5" />
+            fill="none" stroke={GOLD3}
+            strokeWidth="0.18" strokeOpacity="0.18"
+            strokeDasharray="1.8 2.2" />
 
-          {Array.from({ length: segs }).map((_, i) => {
-            const s = startOff + i * step;
-            const e = s + span;
-            const col = colors[i % colors.length];
-            const [mx, my] = pt(CX, CY, r, s + span/2);
+          {/* satellite particles — all 5 affinity colors evenly distributed */}
+          {Array.from({ length: n }, (_, i) => {
+            const ang   = (i / n) * 360 + phase + Math.sin(i * 1.7) * 9;
+            const rad   = r + Math.sin(i * 2.3) * 0.85;
+            const col   = SWARM_COLORS[i % 5];
+            const sz    = ri === 0 ? 0.55 : ri === 1 ? 0.50 : 0.44;
+            const op    = 0.52 + (i % 4) * 0.1;
+            const [px, py] = pt(CX, CY, rad, ang);
             return (
-              <g key={i}>
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke={col} strokeWidth={ri===0?3.5:ri===1?3:2.5}
-                  strokeOpacity="0.1" strokeLinecap="round"
-                  filter={`url(#${id}-arcglow)`} />
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke={col}
-                  strokeWidth={ri===0?1.5:ri===1?1.3:1.1}
-                  strokeOpacity={ri===0?0.75:ri===1?0.68:0.6}
-                  strokeLinecap="round" />
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke="#ffffff"
-                  strokeWidth="0.35" strokeOpacity="0.18"
-                  strokeLinecap="round" />
-                <circle cx={mx} cy={my} r={ri===0?0.9:0.75}
-                  fill="#080c28" stroke={GOLD3} strokeWidth="0.3" />
-              </g>
+              <circle key={i} cx={px} cy={py} r={sz} fill={col} opacity={op} />
             );
           })}
 
-          {ri < 2 && Array.from({ length: 4 }).map((_, i) => {
-            const deg = i * 90 + startOff + span/2;
-            const [x1, y1] = pt(CX, CY, r, deg);
-            const [x2, y2] = pt(CX, CY, rings[ri+1].r, deg);
+          {/* occasional structural collector node */}
+          {Array.from({ length: 5 }, (_, i) => {
+            const ang = phase + i * 72;
+            const [nx, ny] = pt(CX, CY, r, ang);
             return (
-              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.45" />
+              <circle key={i} cx={nx} cy={ny}
+                r={ri === 0 ? 0.85 : 0.72}
+                fill="#080c28" stroke={GOLD3}
+                strokeWidth="0.28" strokeOpacity="0.7" />
             );
           })}
         </g>
@@ -547,6 +548,29 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         <filter id={`${id}-hubglow`} x="-500%" y="-500%" width="1100%" height="1100%">
           <feGaussianBlur stdDeviation="3.0" />
         </filter>
+
+        {/* Singularity — black hole */}
+        <radialGradient id={`${id}-accglow`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#ff9030" stopOpacity="0.95" />
+          <stop offset="45%"  stopColor="#ff5010" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#ff2000" stopOpacity="0"    />
+        </radialGradient>
+        <linearGradient id={`${id}-disk`} x1="0%" y1="50%" x2="100%" y2="50%">
+          <stop offset="0%"   stopColor="#60d8ff" stopOpacity="0"   />
+          <stop offset="22%"  stopColor="#b0e8ff" stopOpacity="0.9" />
+          <stop offset="50%"  stopColor="#ffffff"  stopOpacity="1"   />
+          <stop offset="78%"  stopColor="#ffb040"  stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#ff5000"  stopOpacity="0"   />
+        </linearGradient>
+        <filter id={`${id}-bhblur`} x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="1.6" />
+        </filter>
+        <filter id={`${id}-diskblur`} x="-100%" y="-500%" width="300%" height="1100%">
+          <feGaussianBlur stdDeviation="0.5" />
+        </filter>
+        <filter id={`${id}-galblur`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="2.2" />
+        </filter>
       </defs>
 
       {/* Background */}
@@ -558,6 +582,20 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           r={ov >= 6 ? 0.42 : ov >= 4 ? 0.27 : 0.18}
           fill="#ffffff"
           opacity={0.06 + ov * 0.03} />
+      ))}
+
+      {/* Distant galaxy smudges */}
+      {([
+        [8,  14, 5,  1.8,  15],
+        [62, 29, 4,  1.5, -22],
+        [9,  73, 6,  2.2,  30],
+        [63, 83, 4,  1.5, -14],
+        [40,  4, 3.5, 1.4,   5],
+      ] as [number,number,number,number,number][]).map(([x,y,rx,ry,rot], i) => (
+        <ellipse key={i} cx={x} cy={y} rx={rx} ry={ry}
+          fill="#8090ff" opacity="0.055"
+          transform={`rotate(${rot} ${x} ${y})`}
+          filter={`url(#${id}-galblur)`} />
       ))}
 
       {/* T3 Border — triple L-corner, richest detail */}
@@ -617,32 +655,32 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           strokeDasharray="2.2 2" />
       ))}
 
-      {/* Hub spokes — each system beams energy toward the central hub */}
-      {systems.map(({ cx, cy, col }, i) => (
-        <line key={i}
-          x1={cx} y1={cy} x2={HUB_X} y2={HUB_Y}
-          stroke={col} strokeWidth="0.25" strokeOpacity="0.20"
-          strokeDasharray="1.6 1.8" />
+      {/* Clockwise spiral arms — energy from each system spirals into the singularity */}
+      {([
+        `M 35 31 C 53 36, 48 48, 35 52`,
+        `M 55 47 C 58 63, 45 61, 35 52`,
+        `M 47 69 C 31 77, 24 63, 35 52`,
+        `M 23 69 C 9  62, 17 53, 35 52`,
+        `M 15 47 C 14 32, 27 34, 35 52`,
+      ] as string[]).map((d, i) => (
+        <g key={i}>
+          <path d={d} fill="none" stroke={systems[i].col}
+            strokeWidth="2.2" strokeOpacity="0.10" strokeLinecap="round"
+            filter={`url(#${id}-aglow)`} />
+          <path d={d} fill="none" stroke={systems[i].col}
+            strokeWidth="0.6" strokeOpacity="0.42" strokeLinecap="round" />
+        </g>
       ))}
 
-      {/* Central convergence hub bloom */}
-      <circle cx={HUB_X} cy={HUB_Y} r="7"
-        fill={`url(#${id}-hub)`}
-        filter={`url(#${id}-hubglow)`} opacity="0.28" />
+      {/* Singularity — outer accretion glow */}
+      <circle cx={HUB_X} cy={HUB_Y} r="10"
+        fill={`url(#${id}-accglow)`} opacity="0.55"
+        filter={`url(#${id}-bhblur)`} />
 
       {/* ── Five affinity star systems ── */}
       {systems.map(({ cx, cy, col }, si) => {
         // Inner ring: 4 arcs, 62° span, 90° step, offset varies per system
-        const startOff = -90 + si * 18;
-        const innerSegs = Array.from({ length: 4 }, (_, i) => ({
-          s: startOff + i * 90,
-          e: startOff + i * 90 + 62,
-        }));
-        // Outer ring: 3 arcs, 72° span, 120° step
-        const outerSegs = Array.from({ length: 3 }, (_, i) => ({
-          s: startOff + i * 120,
-          e: startOff + i * 120 + 72,
-        }));
+        const pOff = -90 + si * 18;
 
         return (
           <g key={si}>
@@ -659,45 +697,32 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
               fill="none" stroke={GOLD3} strokeWidth="0.18"
               strokeOpacity="0.22" strokeDasharray="1.5 2" />
 
-            {/* Outer ring arc segments */}
-            {outerSegs.map(({ s, e }, i) => (
-              <g key={i}>
-                <path d={arcPath(cx, cy, OUTER_R, s, e)}
-                  fill="none" stroke={col} strokeWidth="2.5"
-                  strokeOpacity="0.08" strokeLinecap="round"
-                  filter={`url(#${id}-aglow)`} />
-                <path d={arcPath(cx, cy, OUTER_R, s, e)}
-                  fill="none" stroke={col} strokeWidth="1.05"
-                  strokeOpacity="0.65" strokeLinecap="round" />
-                <path d={arcPath(cx, cy, OUTER_R, s, e)}
-                  fill="none" stroke="#ffffff"
-                  strokeWidth="0.28" strokeOpacity="0.14"
-                  strokeLinecap="round" />
-                {/* Collector node at arc midpoint */}
-                {(() => {
-                  const [mx, my] = pt(cx, cy, OUTER_R, s + 36);
-                  return <circle cx={mx} cy={my} r="0.62"
-                    fill="#070510" stroke={GOLD3} strokeWidth="0.22" />;
-                })()}
-              </g>
-            ))}
+            {/* Outer swarm — 16 independent satellite particles */}
+            {Array.from({ length: 16 }, (_, i) => {
+              const ang = (i / 16) * 360 + pOff + Math.sin(i * 1.9) * 11;
+              const rad = OUTER_R + Math.sin(i * 2.4) * 0.55;
+              const [px, py] = pt(cx, cy, rad, ang);
+              return i % 4 === 0
+                ? <circle key={i} cx={px} cy={py} r="0.58"
+                    fill="#070510" stroke={GOLD3} strokeWidth="0.22" strokeOpacity="0.75" />
+                : <circle key={i} cx={px} cy={py} r="0.42"
+                    fill={col} opacity={0.55 + (i % 3) * 0.12} />;
+            })}
 
-            {/* Inner ring arc segments */}
-            {innerSegs.map(({ s, e }, i) => (
-              <g key={i}>
-                <path d={arcPath(cx, cy, INNER_R, s, e)}
-                  fill="none" stroke={col} strokeWidth="1.8"
-                  strokeOpacity="0.08" strokeLinecap="round"
-                  filter={`url(#${id}-aglow)`} />
-                <path d={arcPath(cx, cy, INNER_R, s, e)}
-                  fill="none" stroke={col} strokeWidth="0.85"
-                  strokeOpacity="0.72" strokeLinecap="round" />
-              </g>
-            ))}
+            {/* Inner swarm — 12 independent satellite particles */}
+            {Array.from({ length: 12 }, (_, i) => {
+              const ang = (i / 12) * 360 + pOff + Math.sin(i * 2.1) * 12;
+              const rad = INNER_R + Math.sin(i * 1.8) * 0.45;
+              const [px, py] = pt(cx, cy, rad, ang);
+              return (
+                <circle key={i} cx={px} cy={py} r="0.36"
+                  fill={col} opacity={0.62 + (i % 3) * 0.10} />
+              );
+            })}
 
             {/* Radial energy beams from star surface */}
             {[0, 60, 120, 180, 240, 300].map((deg, i) => {
-              const [bx, by] = pt(cx, cy, 3.5, deg + startOff);
+              const [bx, by] = pt(cx, cy, 3.5, deg + pOff);
               return (
                 <line key={i} x1={cx} y1={cy} x2={bx} y2={by}
                   stroke={i % 2 === 0 ? "#fffce0" : col}
@@ -726,11 +751,28 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         );
       })}
 
-      {/* Central convergence node */}
-      <circle cx={HUB_X} cy={HUB_Y} r="1.2"
-        fill="#070510" stroke={GOLD2} strokeWidth="0.42" strokeOpacity="0.88" />
-      <circle cx={HUB_X} cy={HUB_Y} r="0.52" fill={GOLD2} opacity="0.92" />
-      <circle cx={HUB_X} cy={HUB_Y} r="0.22" fill="#ffffff" opacity="0.95" />
+      {/* Singularity — black hole event horizon + accretion disk */}
+      {/* Relativistic jets */}
+      <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 10}
+        stroke="#90d8ff" strokeWidth="0.7" strokeOpacity="0.22" strokeLinecap="round" />
+      <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
+        stroke="#90d8ff" strokeWidth="0.7" strokeOpacity="0.14" strokeLinecap="round" />
+      {/* Accretion disk — tilted ellipses, warm-to-blue gradient */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.5} rx="9" ry="2.4"
+        fill={`url(#${id}-disk)`} opacity="0.62"
+        filter={`url(#${id}-diskblur)`} />
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.3} rx="5.5" ry="1.4"
+        fill={`url(#${id}-disk)`} opacity="0.88"
+        filter={`url(#${id}-diskblur)`} />
+      {/* Photon sphere glow */}
+      <circle cx={HUB_X} cy={HUB_Y} r="4.0"
+        fill="none" stroke="#ffffff" strokeWidth="0.7"
+        strokeOpacity="0.5" filter={`url(#${id}-bhblur)`} />
+      {/* Event horizon — pure black */}
+      <circle cx={HUB_X} cy={HUB_Y} r="3.3" fill="#000000" />
+      {/* Bright photon ring edge */}
+      <circle cx={HUB_X} cy={HUB_Y} r="3.5"
+        fill="none" stroke="#ffffff" strokeWidth="0.38" strokeOpacity="0.88" />
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
