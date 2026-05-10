@@ -178,9 +178,9 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <circle key={i} cx={x} cy={y} r="1.1" fill={GOLD} opacity="0.82" />
       ))}
 
-      {/* Single mid-edge tick per side */}
+      {/* Single mid-edge tick per side — bottom tick shortened to leave wordmark clear */}
       <line x1="35" y1="4"  x2="35" y2="7.5"  stroke={GOLD} strokeWidth="0.6" />
-      <line x1="35" y1="96" x2="35" y2="92.5" stroke={GOLD} strokeWidth="0.6" />
+      <line x1="35" y1="96" x2="35" y2="93.5" stroke={GOLD} strokeWidth="0.6" />
       <line x1="4"  y1="50" x2="7.5"  y2="50" stroke={GOLD} strokeWidth="0.6" />
       <line x1="66" y1="50" x2="62.5" y2="50" stroke={GOLD} strokeWidth="0.6" />
 
@@ -268,8 +268,8 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       ))}
 
       {/* ── Luminae wordmark ── */}
-      <text x="35" y="91.5" textAnchor="middle" fontFamily="Georgia, serif"
-        fontSize="3.8" fill={GOLD} opacity="0.32" letterSpacing="2.5">LUMINAE</text>
+      <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
+        fontSize="3.8" fill={GOLD} opacity="0.50" letterSpacing="2.5">LUMINAE</text>
     </svg>
   );
 }
@@ -508,10 +508,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <circle key={i} cx={x} cy={y} r="1.35" fill={GOLD} opacity="0.9" />
       ))}
 
+      {/* Bottom centre tick shortened to y=93 — prevents overlap with LUMINAE wordmark */}
       {[26,35,44].map(x => (
         <g key={x}>
           <line x1={x} y1="3.5"  x2={x} y2={x===35?8.5:7}   stroke={GOLD} strokeWidth={x===35?0.88:0.56} />
-          <line x1={x} y1="96.5" x2={x} y2={x===35?91.5:93} stroke={GOLD} strokeWidth={x===35?0.88:0.56} />
+          <line x1={x} y1="96.5" x2={x} y2="93"              stroke={GOLD} strokeWidth={x===35?0.88:0.56} />
         </g>
       ))}
       {[40,50,60].map(y => (
@@ -528,8 +529,8 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.52" />
 
       {/* ── Luminae wordmark ── */}
-      <text x="35" y="91.5" textAnchor="middle" fontFamily="Georgia, serif"
-        fontSize="3.8" fill={GOLD} opacity="0.32" letterSpacing="2.5">LUMINAE</text>
+      <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
+        fontSize="3.8" fill={GOLD} opacity="0.48" letterSpacing="2.5">LUMINAE</text>
     </svg>
   );
 }
