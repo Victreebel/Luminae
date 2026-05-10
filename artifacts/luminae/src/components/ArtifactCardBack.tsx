@@ -519,12 +519,13 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         return (
           <g key={i}>
             <defs>
-              {/* Smooth gold-rim → dark-center gradient, no sharp stops */}
+              {/* Flat dark body — only the outermost rim brightens to gold */}
               <radialGradient id={gradId}
                 cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
                 gradientUnits="userSpaceOnUse">
-                <stop offset="0%"   stopColor={base}    stopOpacity="1.0" />
-                <stop offset="100%" stopColor="#ffe08a"  stopOpacity="1.0" />
+                <stop offset="0%"   stopColor={base}   stopOpacity="1.0" />
+                <stop offset="82%"  stopColor={base}   stopOpacity="1.0" />
+                <stop offset="100%" stopColor="#ffe08a" stopOpacity="1.0" />
               </radialGradient>
             </defs>
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
