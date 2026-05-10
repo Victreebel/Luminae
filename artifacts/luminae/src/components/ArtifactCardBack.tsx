@@ -291,63 +291,78 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
   const CX = 35, CY = 51;   // star / sphere center
 
-  // ── Large flat-top hex tiles, single dense field ──────────────────────────
-  const r    = 5;
-  const DX   = r * 1.5;           // 7.5  — column pitch
-  const DY   = r * Math.sqrt(3);  // ~8.66 — row pitch
-  const FACE = 0.74;              // inner face inset (border = 26% of r ≈ 1.3u)
-  const PHOFF = 198;
-  const SECTOR_COLS = [F, A, V, R, C] as string[];
-  const getSCol = (angle: number): string | null => {
-    const a = ((angle + PHOFF) % 360 + 360) % 360;
+  // ── Hex Dyson sphere shell generator ──────────────────────────────────────
+  // Projects a flat-top hex grid onto the visible hemisphere of a sphere.
+  // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
+  // at sector boundaries let star-light through. Two shell layers: outer at
+  // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
+  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number };
+
+  const SECTOR_COLS = [R, C, V, F, A];
+  const getSectorCol = (angle: number, phaseOff: number): string | null => {
+    const a = ((angle + phaseOff) % 360 + 360) % 360;
     const frac = (a % 72) / 72;
-    if (frac < 0.06 || frac > 0.94) return null;
+    if (frac < 0.07 || frac > 0.93) return null;   // gap between sectors
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  type HexCell = {
-    cx: number; cy: number;
-    verts: [number, number][];
-    inner: [number, number][];
-    col: string; dist: number;
-  };
-
-  // Build hex grid
-  const hexes: HexCell[] = [];
-  for (let ci = -6; ci <= 6; ci++) {
-    for (let ri = -8; ri <= 8; ri++) {
-      const hx = DX * ci;
-      const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
-      const dist = Math.sqrt(hx * hx + hy * hy);
-      if (dist > 44) continue;
-      const angle = ((Math.atan2(hy, hx) * 180) / Math.PI + 360) % 360;
-      const col = getSCol(angle);
-      if (!col) continue;
-      const cx = CX + hx, cy = CY + hy;
-      const verts = Array.from({ length: 6 }, (_, k) => {
-        const ang = (Math.PI / 3) * k;
-        return [cx + r * Math.cos(ang), cy + r * Math.sin(ang)] as [number, number];
-      });
-      const inner = verts.map(([vx, vy]) =>
-        [cx + (vx - cx) * FACE, cy + (vy - cy) * FACE] as [number, number]
-      );
-      hexes.push({ cx, cy, verts, inner, col, dist });
+  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3): HexCell[] => {
+    const cells: HexCell[] = [];
+    const DX = hr * 1.5;
+    const DY = hr * Math.sqrt(3);
+    const cols = Math.ceil(shellR / DX) + 2;
+    const rows = Math.ceil(shellR / DY) + 2;
+    for (let ci = -cols; ci <= cols; ci++) {
+      for (let ri = -rows; ri <= rows; ri++) {
+        const hx = DX * ci;
+        const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
+        const d2 = (hx * hx + hy * hy) / (shellR * shellR);
+        if (d2 > 0.93) continue;
+        const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
+        const col = getSectorCol(angle, phaseOff);
+        if (!col) continue;
+        const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
+        const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
+        const verts = Array.from({ length: 6 }, (_, k) => {
+          const ang = (Math.PI / 3) * k;
+          const vx = hx + hr * Math.cos(ang);
+          const vy = hy + hr * Math.sin(ang);
+          const vd2 = Math.min((vx * vx + vy * vy) / (shellR * shellR), 1);
+          const vc = 1 - vd2 * 0.13;
+          return [CX + vx * vc, CY + vy * vc] as [number, number];
+        });
+        // Deterministic solid flag — ~every 3rd cell is a filled collector panel
+        // (caller can override density via solidMod)
+        const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % solidMod) === 0;
+        const sx = CX + hx * compress;
+        const sy = CY + hy * compress;
+        cells.push({ verts, col, z, solid, cx: sx, cy: sy });
+      }
     }
-  }
-  hexes.sort((a, b) => a.cy - b.cy);  // painter order: top rows first
+    return cells.sort((a, b) => a.z - b.z);       // back → front
+  };
 
-  // Lit bevel colour (upper-left facing edges)
-  const BEVEL_LIT: Record<string, string> = {
-    [F]: '#ff9898', [A]: '#cc99ff', [V]: '#6de898', [R]: '#eef2ff', [C]: '#80c4ff',
+  // Dark absorber-surface base — rich dark, clearly different from card void-black
+  const PANEL_BASE: Record<string, string> = {
+    [F]: '#4a1212', [C]: '#10204a', [V]: '#0d2818', [A]: '#280d4a', [R]: '#1c2030',
   };
-  // Face diagonal gradient stops per affinity
-  const FACE_GRAD: Record<string, [string, string]> = {
-    [F]: ['#c03838', '#580a0a'],
-    [A]: ['#8030c0', '#250050'],
-    [V]: ['#1e9848', '#033518'],
-    [R]: ['#a8c0dc', '#445568'],
-    [C]: ['#1858b8', '#040f2c'],
-  };
+
+  const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
+  const shell1 = genShell(23, 3.0,  0);            // mid shell
+  const shell2 = genShell(16, 2.4, 36);            // inner shell,  36° sector shift
+
+  // Render order: shell2 (inner, most transparent) → shell1 (mid) → shell3 (outer, most opaque).
+  // Shell order is the primary key so the outer shell always sits on top of the inner ones.
+  // Within each shell, cells are still z-sorted back-to-front.
+  const SHELL_ORDER: Record<number, number> = { 2: 0, 1: 1, 3: 2 };
+  const allCells = [
+    ...shell2.map(c => ({ ...c, sn: 2 as const })),
+    ...shell1.map(c => ({ ...c, sn: 1 as const })),
+    ...shell3.map(c => ({ ...c, sn: 3 as const })),
+  ].sort((a, b) => {
+    const so = SHELL_ORDER[a.sn] - SHELL_ORDER[b.sn];
+    return so !== 0 ? so : a.z - b.z;
+  });
 
   return (
     <svg
@@ -357,9 +372,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       aria-hidden
     >
       <defs>
+        {/* Background: warm amber-tinted deep space — thermal re-radiation of the swarm */}
         <radialGradient id={`${id}-bg`} cx="50%" cy="50%" r="68%">
-          <stop offset="0%"   stopColor="#100508" />
-          <stop offset="45%"  stopColor="#080304" />
+          <stop offset="0%"   stopColor="#1c0e06" />
+          <stop offset="45%"  stopColor="#0d0704" />
           <stop offset="100%" stopColor={BG_DEEP} />
         </radialGradient>
         <radialGradient id={`${id}-star`} cx="50%" cy="50%" r="50%">
@@ -369,14 +385,16 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           <stop offset="70%"  stopColor="#cc4010" stopOpacity="0.28"/>
           <stop offset="100%" stopColor="#400808" stopOpacity="0"   />
         </radialGradient>
+        {/* Collective thermal haze — infrared signature of the entire swarm */}
         <radialGradient id={`${id}-haze`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#ff8820" stopOpacity="0.35"/>
-          <stop offset="40%"  stopColor="#c04010" stopOpacity="0.14"/>
+          <stop offset="0%"   stopColor="#ff8820" stopOpacity="0.38"/>
+          <stop offset="38%"  stopColor="#c04010" stopOpacity="0.16"/>
+          <stop offset="72%"  stopColor="#601808" stopOpacity="0.06"/>
           <stop offset="100%" stopColor="#200408" stopOpacity="0"   />
         </radialGradient>
         <radialGradient id={`${id}-corona`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#fffae0" stopOpacity="0.60"/>
-          <stop offset="30%"  stopColor="#ffa020" stopOpacity="0.22"/>
+          <stop offset="0%"   stopColor="#fffae0" stopOpacity="0.55"/>
+          <stop offset="32%"  stopColor="#ffa020" stopOpacity="0.20"/>
           <stop offset="100%" stopColor="#ff4000" stopOpacity="0"   />
         </radialGradient>
         <linearGradient id={`${id}-bord`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -390,26 +408,29 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-hazeglow`} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="6.0" />
         </filter>
-        {/* Per-affinity diagonal face gradients (top-left bright → bottom-right dark) */}
-        {[F, A, V, R, C].map(col => {
-          const [lc, dc] = FACE_GRAD[col];
-          return (
-            <linearGradient key={col} id={`${id}-fg-${col.replace('#','')}`}
-              x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%"   stopColor={lc} stopOpacity="0.95" />
-              <stop offset="100%" stopColor={dc} stopOpacity="1.0"  />
-            </linearGradient>
-          );
-        })}
-        <clipPath id={`${id}-clip`}>
-          <rect x="3.5" y="3.5" width="63" height="93" rx="1.5" />
-        </clipPath>
+        {/* Limb glow — warm star-light bleeding around the outer shell edge */}
+        <radialGradient id={`${id}-limbglow`} cx="50%" cy="51%" r="50%">
+          <stop offset="0%"   stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="58%"  stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="72%"  stopColor="#ffaa40" stopOpacity="0.08" />
+          <stop offset="80%"  stopColor="#ffdd80" stopOpacity="0.40" />
+          <stop offset="86%"  stopColor="#ff8820" stopOpacity="0.22" />
+          <stop offset="94%"  stopColor="#cc4800" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#cc4800" stopOpacity="0"    />
+        </radialGradient>
+        <filter id={`${id}-limbblur`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="3.0" />
+        </filter>
+        {/* Soft glow for outer panel gold rim */}
+        <filter id={`${id}-panelglow`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="0.12" />
+        </filter>
       </defs>
 
       {/* ── Background ── */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
 
-      {/* Starfield */}
+      {/* Starfield — sparser near center (swarm obscures background stars) */}
       {([
         [6,6,5],[63,10,4],[16,17,3],[54,21,6],[9,31,4],[66,36,5],
         [5,57,3],[67,62,6],[15,74,4],[59,77,5],[8,87,3],[64,91,4],
@@ -426,43 +447,99 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           fill="#fff" opacity={0.07 + sz * 0.030} />
       ))}
 
-      {/* ── Thermal haze ── */}
+      {/* ── Collective thermal haze — warm sphere enveloping the entire swarm ── */}
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── 3D-beveled hex tiles ── */}
-      <g clipPath={`url(#${id}-clip)`}>
-        {hexes.map(({ verts: v, inner: iv, col, dist }, i) => {
-          const gid   = `${id}-fg-${col.replace('#','')}`;
-          const vPts  = v.map(([x,y])  => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-          const iPts  = iv.map(([x,y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-          const near  = Math.max(0, 1 - dist / 44);
-          const faceOp = 0.48 + near * 0.28;
-          return (
-            <g key={i}>
-              {/* Shadow bevel — lower 3 edges (k=0,1,2 face lower-right) */}
-              {[0, 1, 2].map(k => {
-                const pts = [v[k], v[k+1], iv[k+1], iv[k]]
-                  .map(([x,y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-                return <polygon key={k} points={pts} fill="#010008" fillOpacity={0.72} />;
-              })}
-              {/* Lit bevel — upper 3 edges (k=3,4,5 face upper-left) */}
-              {[3, 4, 5].map(k => {
-                const k1 = (k + 1) % 6;
-                const pts = [v[k], v[k1], iv[k1], iv[k]]
-                  .map(([x,y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-                return <polygon key={k} points={pts}
-                  fill={BEVEL_LIT[col]} fillOpacity={0.36 + near * 0.20} />;
-              })}
-              {/* Main glass face with diagonal gradient */}
-              <polygon points={iPts} fill={`url(#${gid})`} fillOpacity={faceOp} />
-              {/* Outer dark seam */}
-              <polygon points={vPts} fill="none"
-                stroke="#010008" strokeWidth="0.38" strokeOpacity="0.92" />
-            </g>
-          );
-        })}
-      </g>
+
+      {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
+      {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
+        const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+
+        // ── Shell 1 (mid) ──────────────────────────────────────────────────
+        if (sn === 1) return (
+          <g key={i}>
+            <polygon points={ptStr}
+              fill={solid ? col : 'none'}
+              fillOpacity={solid ? 0.28 + z * 0.38 : 0}
+              stroke={col} strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.10" fill={col} opacity={0.28 + z * 0.48} />
+            ))}
+          </g>
+        );
+
+        // ── Shell 2 (inner) ────────────────────────────────────────────────
+        if (sn === 2) return (
+          <g key={i}>
+            <polygon points={ptStr}
+              fill={solid ? col : 'none'}
+              fillOpacity={solid ? 0.10 + z * 0.15 : 0}
+              stroke={col} strokeWidth="0.09" strokeOpacity={0.13 + z * 0.24} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.08" fill={col} opacity={0.20 + z * 0.36} />
+            ))}
+          </g>
+        );
+
+        // ── Shell 3 (outer) — opaque panels with bright rim ───────────────
+        const dx = CX - cx, dy = CY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const limbFactor = Math.min(1, dist / 26);
+        const base = PANEL_BASE[col] ?? '#0c0810';
+
+        if (!solid) return (
+          <g key={i}>
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+            ))}
+          </g>
+        );
+
+        // Panels whose screen-centre is too close to the star are rendered as wire only
+        // so they never obscure the sun bloom.
+        if (dist < 10) return (
+          <g key={i}>
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+            ))}
+          </g>
+        );
+
+        // Radial gradient: dark PANEL_BASE at center → bright affinity col at rim
+        const gradId = `${id}-s3p-${i}`;
+        return (
+          <g key={i}>
+            <defs>
+              {/* Flat dark body — only the outermost rim brightens to gold */}
+              <radialGradient id={gradId}
+                cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
+                gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stopColor={base}   stopOpacity="1.0" />
+                <stop offset="82%"  stopColor={base}   stopOpacity="1.0" />
+                <stop offset="100%" stopColor="#ffe08a" stopOpacity="1.0" />
+              </radialGradient>
+            </defs>
+            {/* blurred glow drawn first — fill below will mask the inward half */}
+            <polygon points={ptStr} fill="none"
+              stroke="#ffe08a" strokeWidth="0.7" strokeOpacity="0.65"
+              filter={`url(#${id}-panelglow)`} />
+            {/* opaque fill on top covers inward glow bleed, leaving only outer halo */}
+            <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
+            {/* crisp hairline on the edge itself */}
+            <polygon points={ptStr} fill="none"
+              stroke="#ffe08a" strokeWidth="0.09" strokeOpacity="0.88" />
+          </g>
+        );
+      })}
 
       {/* ── Extended corona ── */}
       <circle cx={CX} cy={CY} r="17" fill={`url(#${id}-corona)`} />
