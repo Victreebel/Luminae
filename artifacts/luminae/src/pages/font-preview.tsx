@@ -182,8 +182,10 @@ function VariantC() {
             #06060f 69%,
             #50e890 73%, #2ECC71 76%, #50e890 79%,
             #06060f 83%,
-            #06060f 90%,
-            #d080ff 94%, #B14FD8 97%, #d080ff 100%
+            #06060f 87%,
+            #5c20b8 91%, #7028d0 93%, #5c20b8 95%,
+            #06060f 99%,
+            #06060f 100%
           );
           background-size: 400% 100%;
           -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
