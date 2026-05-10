@@ -22,7 +22,6 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
-import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
 
 type Mode = "home" | "create" | "join" | "auth";
@@ -252,15 +251,49 @@ export default function Home() {
           className="w-16 h-16 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
           draggable={false}
         />
-        <motion.img
+        <style>{`
+          @keyframes home-shimmer {
+            0%   { background-position: -200% center; }
+            100% { background-position: 200% center; }
+          }
+          .home-luminae-title {
+            font-family: 'Cinzel Decorative', 'Cinzel', serif;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            line-height: 1;
+            margin: 0;
+            color: transparent;
+            background: linear-gradient(105deg,
+              #06060f  0%, #06060f  6%,
+              #d0dcff 10%, #C8D4F8 13%, #d0dcff 16%,
+              #06060f 20%, #06060f 27%,
+              #ff9070 31%, #FF6B52 34%, #ff9070 37%,
+              #06060f 41%, #06060f 48%,
+              #8090ff 52%, #607AFF 55%, #8090ff 58%,
+              #06060f 62%, #06060f 69%,
+              #50e890 73%, #2ECC71 76%, #50e890 79%,
+              #06060f 83%, #06060f 87%,
+              #5c20b8 91%, #7028d0 93%, #5c20b8 95%,
+              #06060f 99%, #06060f 100%
+            );
+            background-size: 400% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: home-shimmer 50s linear infinite;
+            filter: drop-shadow(0 0 1px rgba(255,255,255,0.8))
+                    drop-shadow(0 0 18px rgba(160,140,255,0.3))
+                    drop-shadow(0 0 40px rgba(100,80,180,0.15));
+          }
+        `}</style>
+        <motion.h1
+          className="home-luminae-title text-5xl"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.12 }}
-          src={logoLuminae}
-          alt="Luminae"
-          className="w-44 h-auto drop-shadow-[0_0_22px_rgba(255,196,61,0.3)]"
-          draggable={false}
-        />
+        >
+          LUMINAE
+        </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
