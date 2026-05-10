@@ -278,36 +278,30 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  TIER II — Type II Stellar Civilization                                 ║
 // ║  A star's magnetosphere rendered as pure geometry: five dipole field    ║
-// ║  line pairs (one per affinity) arching from the stellar core,           ║
-// ║  reconnecting at the equatorial current sheet.                          ║
+// ║  A Dyson Swarm: thousands of solar collector satellites in varied        ║
+// ║  orbital planes around a single star, harvesting its full output.       ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
-  const CX = 35, CY = 52;   // star center
-  const YS = 3.35;           // vertical stretch — makes field lines arc top↔bottom
+  const CX = 35, CY = 51;   // star center
 
-  // Dipole field line: r(θ) = L·sin²(θ), traced from north pole (θ=0) to south pole (θ=π)
-  const fLine = (L: number, side: 1 | -1): string => {
-    const N = 64;
-    const pts: string[] = [];
-    for (let i = 0; i <= N; i++) {
-      const th = (Math.PI * i) / N;
-      const r  = L * Math.sin(th) * Math.sin(th);
-      pts.push(
-        `${(CX + side * r * Math.sin(th)).toFixed(2)} ${(CY - r * Math.cos(th) * YS).toFixed(2)}`
-      );
-    }
-    return `M ${pts.join(' L ')}`;
+  // Point on a rotated ellipse at angle theta
+  const ePt = (rx: number, ry: number, rotDeg: number, theta: number): [number, number] => {
+    const r = (rotDeg * Math.PI) / 180;
+    return [
+      CX + rx * Math.cos(theta) * Math.cos(r) - ry * Math.sin(theta) * Math.sin(r),
+      CY + rx * Math.cos(theta) * Math.sin(r) + ry * Math.sin(theta) * Math.cos(r),
+    ];
   };
 
-  // Five field-line shells, one per affinity — innermost (dense/bright) → outermost (sparse/faint)
-  const shells = [
-    { L: 7,  col: F },
-    { L: 11, col: C },
-    { L: 15, col: V },
-    { L: 20, col: A },
-    { L: 26, col: R },
-  ] as { L: number; col: string }[];
+  // Five orbital shells — varied inclinations & orientations, one per affinity
+  const swarmRings = [
+    { rx: 25, ry: 5,   rot:   0, col: F, n: 28, off: 0.00 },  // equatorial — widest
+    { rx: 22, ry: 13,  rot:  38, col: C, n: 22, off: 0.52 },  // 30° inclined
+    { rx: 18, ry: 17,  rot: -28, col: V, n: 20, off: 1.10 },  // 60° inclined
+    { rx:  7, ry: 26,  rot:   8, col: A, n: 18, off: 0.80 },  // near-polar — tallest
+    { rx: 16, ry: 12,  rot: -55, col: R, n: 18, off: 0.30 },  // intermediate
+  ] as { rx: number; ry: number; rot: number; col: string; n: number; off: number }[];
 
   return (
     <svg
@@ -317,139 +311,145 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       aria-hidden
     >
       <defs>
-        <radialGradient id={`${id}-bg`} cx="50%" cy="52%" r="65%">
-          <stop offset="0%"   stopColor="#140820" />
-          <stop offset="50%"  stopColor="#09060f" />
+        {/* Background: warm amber-tinted deep space — thermal re-radiation of the swarm */}
+        <radialGradient id={`${id}-bg`} cx="50%" cy="50%" r="68%">
+          <stop offset="0%"   stopColor="#1c0e06" />
+          <stop offset="45%"  stopColor="#0d0704" />
           <stop offset="100%" stopColor={BG_DEEP} />
         </radialGradient>
         <radialGradient id={`${id}-star`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#fffef0" stopOpacity="1"    />
-          <stop offset="18%"  stopColor="#fff0a0" stopOpacity="0.95" />
-          <stop offset="40%"  stopColor="#ffa030" stopOpacity="0.65" />
-          <stop offset="70%"  stopColor="#c04010" stopOpacity="0.30" />
-          <stop offset="100%" stopColor="#400808" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#fffef8" stopOpacity="1"   />
+          <stop offset="15%"  stopColor="#fff4b0" stopOpacity="0.96"/>
+          <stop offset="38%"  stopColor="#ffaa30" stopOpacity="0.68"/>
+          <stop offset="70%"  stopColor="#cc4010" stopOpacity="0.28"/>
+          <stop offset="100%" stopColor="#400808" stopOpacity="0"   />
+        </radialGradient>
+        {/* Collective thermal haze — infrared signature of the entire swarm */}
+        <radialGradient id={`${id}-haze`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#ff8820" stopOpacity="0.38"/>
+          <stop offset="38%"  stopColor="#c04010" stopOpacity="0.16"/>
+          <stop offset="72%"  stopColor="#601808" stopOpacity="0.06"/>
+          <stop offset="100%" stopColor="#200408" stopOpacity="0"   />
         </radialGradient>
         <radialGradient id={`${id}-corona`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#fff8c0" stopOpacity="0.50" />
-          <stop offset="35%"  stopColor="#ff9020" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#ff4000" stopOpacity="0"    />
-        </radialGradient>
-        {/* Polar aurora glow — diffuse blob at top / bottom of card */}
-        <radialGradient id={`${id}-polN`} cx="50%" cy="80%" r="50%">
-          <stop offset="0%"   stopColor="#c0d8ff" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#2040a0" stopOpacity="0"    />
-        </radialGradient>
-        <radialGradient id={`${id}-polS`} cx="50%" cy="20%" r="50%">
-          <stop offset="0%"   stopColor="#c0d8ff" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#2040a0" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#fffae0" stopOpacity="0.55"/>
+          <stop offset="32%"  stopColor="#ffa020" stopOpacity="0.20"/>
+          <stop offset="100%" stopColor="#ff4000" stopOpacity="0"   />
         </radialGradient>
         <linearGradient id={`${id}-bord`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%"   stopColor={GOLD2} stopOpacity="0.88" />
-          <stop offset="50%"  stopColor={GOLD}  stopOpacity="1"    />
-          <stop offset="100%" stopColor={GOLD3} stopOpacity="0.5"  />
+          <stop offset="0%"   stopColor={GOLD2} stopOpacity="0.88"/>
+          <stop offset="50%"  stopColor={GOLD}  stopOpacity="1"   />
+          <stop offset="100%" stopColor={GOLD3} stopOpacity="0.5" />
         </linearGradient>
         <filter id={`${id}-starglow`} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="4.0" />
+          <feGaussianBlur stdDeviation="4.5" />
         </filter>
-        <filter id={`${id}-flglow`} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="1.5" />
+        <filter id={`${id}-hazeglow`} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="6.0" />
         </filter>
-        <filter id={`${id}-polglow`} x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="4.0" />
+        <filter id={`${id}-satglow`} x="-300%" y="-300%" width="700%" height="700%">
+          <feGaussianBlur stdDeviation="1.0" />
         </filter>
       </defs>
 
       {/* ── Background ── */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
 
-      {/* Dense starfield */}
+      {/* Starfield — sparser near center (swarm obscures background stars) */}
       {([
         [6,6,5],[63,10,4],[16,17,3],[54,21,6],[9,31,4],[66,36,5],
         [5,57,3],[67,62,6],[15,74,4],[59,77,5],[8,87,3],[64,91,4],
         [26,9,5],[46,7,3],[38,94,6],[22,92,4],[14,46,5],[58,44,3],
-        [4,20,4],[68,25,5],[11,38,3],[62,42,4],[7,52,6],[69,48,3],
+        [4,20,4],[68,25,5],[11,38,3],[62,42,4],[69,48,3],
         [5,68,4],[66,72,5],[13,80,3],[57,83,4],[10,92,5],[63,88,3],
         [20,14,4],[48,12,5],[32,6,3],[56,8,6],[17,26,4],[61,30,5],
-        [8,42,3],[65,46,4],[12,60,5],[66,56,3],[9,76,4],[63,80,5],
+        [65,46,4],[12,60,5],[66,56,3],[9,76,4],[63,80,5],
         [22,88,3],[54,90,4],[36,97,5],[18,96,3],[50,94,6],[28,4,4],
-        [42,15,3],[30,22,5],[52,35,4],[24,50,3],[58,64,5],[40,78,4],
+        [42,15,3],[30,22,5],[24,50,3],[58,64,5],[40,78,4],
       ] as [number,number,number][]).map(([x,y,sz], i) => (
         <circle key={i} cx={x} cy={y}
           r={sz >= 6 ? 0.44 : sz >= 5 ? 0.30 : sz >= 4 ? 0.21 : 0.14}
-          fill="#fff" opacity={0.08 + sz * 0.036} />
+          fill="#fff" opacity={0.07 + sz * 0.030} />
       ))}
 
-      {/* ── Polar aurora glows — north (top) and south (bottom) convergence zones ── */}
-      <ellipse cx={CX} cy={CY - 40} rx="18" ry="10"
-        fill={`url(#${id}-polN)`} filter={`url(#${id}-polglow)`} />
-      <ellipse cx={CX} cy={CY + 42} rx="18" ry="10"
-        fill={`url(#${id}-polS)`} filter={`url(#${id}-polglow)`} />
+      {/* ── Collective thermal haze — warm sphere enveloping the entire swarm ── */}
+      <circle cx={CX} cy={CY} r="36"
+        fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Faint equatorial current sheet ── */}
-      <line x1="8" y1={CY} x2="62" y2={CY}
-        stroke="#ffffff" strokeWidth="0.20" strokeOpacity="0.09" />
-
-      {/* ── Magnetospheric field lines — left side ── */}
-      {shells.map(({ L, col }, i) => (
-        <g key={i}>
-          <path d={fLine(L, -1)} fill="none" stroke={col}
-            strokeWidth={3.8 - i * 0.35} strokeOpacity="0.10"
-            strokeLinecap="round" filter={`url(#${id}-flglow)`} />
-          <path d={fLine(L, -1)} fill="none" stroke={col}
-            strokeWidth={0.88 - i * 0.06} strokeOpacity={0.72 - i * 0.05}
-            strokeLinecap="round" />
-          <path d={fLine(L, -1)} fill="none" stroke="#ffffff"
-            strokeWidth="0.22" strokeOpacity="0.14" strokeLinecap="round" />
-          <circle cx={CX - L} cy={CY}
-            r={i === 2 ? 0.82 : 0.58}
-            fill="#07040e" stroke={col} strokeWidth="0.24" />
+      {/* ── Orbital guide ellipses — visible dashed tracks, one per affinity ring ── */}
+      {swarmRings.map(({ rx, ry, rot, col }, ri) => (
+        <g key={ri}>
+          {/* soft glow under the track */}
+          <ellipse cx={CX} cy={CY} rx={rx} ry={ry}
+            fill="none" stroke={col}
+            strokeWidth="1.4" strokeOpacity="0.08"
+            transform={`rotate(${rot} ${CX} ${CY})`} />
+          {/* dashed orbital path */}
+          <ellipse cx={CX} cy={CY} rx={rx} ry={ry}
+            fill="none" stroke={col}
+            strokeWidth="0.28" strokeOpacity="0.38"
+            strokeDasharray="1.8 2.2"
+            transform={`rotate(${rot} ${CX} ${CY})`} />
         </g>
       ))}
 
-      {/* ── Magnetospheric field lines — right side ── */}
-      {shells.map(({ L, col }, i) => (
-        <g key={i}>
-          <path d={fLine(L, 1)} fill="none" stroke={col}
-            strokeWidth={3.8 - i * 0.35} strokeOpacity="0.10"
-            strokeLinecap="round" filter={`url(#${id}-flglow)`} />
-          <path d={fLine(L, 1)} fill="none" stroke={col}
-            strokeWidth={0.88 - i * 0.06} strokeOpacity={0.72 - i * 0.05}
-            strokeLinecap="round" />
-          <path d={fLine(L, 1)} fill="none" stroke="#ffffff"
-            strokeWidth="0.22" strokeOpacity="0.14" strokeLinecap="round" />
-          <circle cx={CX + L} cy={CY}
-            r={i === 2 ? 0.82 : 0.58}
-            fill="#07040e" stroke={col} strokeWidth="0.24" />
-        </g>
-      ))}
+      {/* ── Energy collection beams — thin lines from collectors toward the star ── */}
+      {swarmRings.flatMap(({ rx, ry, rot, col, n, off }, ri) =>
+        Array.from({ length: n }, (_, i) => {
+          if (i % 4 !== 1) return null;
+          const theta = (2 * Math.PI * i) / n + off;
+          const [sx, sy] = ePt(rx, ry, rot, theta);
+          return (
+            <line key={`b-${ri}-${i}`}
+              x1={sx} y1={sy} x2={CX} y2={CY}
+              stroke={col} strokeWidth="0.20" strokeOpacity="0.20" />
+          );
+        })
+      )}
 
-      {/* ── Reconnection sparks — bright nodes between adjacent shells at equator ── */}
-      {shells.slice(0, 4).map(({ L, col }, i) => {
-        const mid = (L + shells[i + 1].L) / 2;
-        return (
-          <g key={i}>
-            <circle cx={CX + mid} cy={CY} r="0.48" fill={col} opacity="0.50" />
-            <circle cx={CX - mid} cy={CY} r="0.48" fill={col} opacity="0.50" />
-          </g>
-        );
-      })}
+      {/* ── Satellite collector dots — three size classes per ring ── */}
+      {swarmRings.flatMap(({ rx, ry, rot, col, n, off }, ri) =>
+        Array.from({ length: n }, (_, i) => {
+          const theta = (2 * Math.PI * i) / n + off;
+          const [sx, sy] = ePt(rx, ry, rot, theta);
+          const isBig = i % 5 === 0;
+          const isMid = i % 2 === 0 && !isBig;
+          const sz = isBig ? 1.00 : isMid ? 0.68 : 0.44;
+          const op = isBig ? 0.92 : isMid ? 0.78 : 0.58;
+          return (
+            <g key={`s-${ri}-${i}`}>
+              {isBig && (
+                <circle cx={sx} cy={sy} r={sz * 3.2}
+                  fill={col} opacity="0.22"
+                  filter={`url(#${id}-satglow)`} />
+              )}
+              {isMid && (
+                <circle cx={sx} cy={sy} r={sz * 2.0}
+                  fill={col} opacity="0.12"
+                  filter={`url(#${id}-satglow)`} />
+              )}
+              <circle cx={sx} cy={sy} r={sz} fill={col} opacity={op} />
+            </g>
+          );
+        })
+      )}
 
       {/* ── Extended corona ── */}
-      <circle cx={CX} cy={CY} r="18" fill={`url(#${id}-corona)`} />
+      <circle cx={CX} cy={CY} r="17" fill={`url(#${id}-corona)`} />
 
       {/* ── Star bloom glow ── */}
-      <circle cx={CX} cy={CY} r="8"
+      <circle cx={CX} cy={CY} r="9"
         fill={`url(#${id}-star)`}
-        filter={`url(#${id}-starglow)`} opacity="0.55" />
+        filter={`url(#${id}-starglow)`} opacity="0.60" />
 
       {/* ── Stellar core ── */}
       <circle cx={CX} cy={CY} r="5.5" fill={`url(#${id}-star)`} />
 
       {/* Cross-flares */}
-      <line x1={CX-10} y1={CY}    x2={CX+10} y2={CY}    stroke="#fff8c0" strokeWidth="0.42" strokeOpacity="0.42" />
-      <line x1={CX}    y1={CY-10} x2={CX}    y2={CY+10} stroke="#fff8c0" strokeWidth="0.42" strokeOpacity="0.38" />
-      <line x1={CX-7}  y1={CY-7}  x2={CX+7}  y2={CY+7}  stroke="#ffc060" strokeWidth="0.24" strokeOpacity="0.24" />
-      <line x1={CX+7}  y1={CY-7}  x2={CX-7}  y2={CY+7}  stroke="#ffc060" strokeWidth="0.24" strokeOpacity="0.24" />
+      <line x1={CX-11} y1={CY}    x2={CX+11} y2={CY}    stroke="#fff8c0" strokeWidth="0.44" strokeOpacity="0.44" />
+      <line x1={CX}    y1={CY-11} x2={CX}    y2={CY+11} stroke="#fff8c0" strokeWidth="0.44" strokeOpacity="0.40" />
+      <line x1={CX-8}  y1={CY-8}  x2={CX+8}  y2={CY+8}  stroke="#ffc060" strokeWidth="0.25" strokeOpacity="0.26" />
+      <line x1={CX+8}  y1={CY-8}  x2={CX-8}  y2={CY+8}  stroke="#ffc060" strokeWidth="0.25" strokeOpacity="0.26" />
 
       {/* ── T2 Border — double L-corner ── */}
       <rect x="3.5" y="3.5" width="63" height="93" rx="1.5"
@@ -473,7 +473,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <circle key={i} cx={x} cy={y} r="1.35" fill={GOLD} opacity="0.9" />
       ))}
 
-      {/* Three mid-edge ticks per long side */}
       {[26,35,44].map(x => (
         <g key={x}>
           <line x1={x} y1="3.5"  x2={x} y2={x===35?8.5:7}   stroke={GOLD} strokeWidth={x===35?0.88:0.56} />
