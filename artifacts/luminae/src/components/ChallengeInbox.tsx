@@ -114,7 +114,7 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -8 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-12 z-50 w-80 bg-card border border-border/60 rounded-2xl shadow-2xl overflow-hidden"
+              className="fixed right-4 top-16 z-[9999] w-80 bg-card border border-border/60 rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between p-4 border-b border-border/40">
                 <h3 className="font-bold flex items-center gap-2">

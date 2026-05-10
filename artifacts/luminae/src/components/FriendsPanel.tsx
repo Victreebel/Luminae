@@ -34,6 +34,7 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [challengingId, setChallengingId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -213,7 +214,7 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
                             {f.isOnline ? "Online" : "Offline"}
                           </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => handleChallenge(f)}
@@ -225,14 +226,39 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
                               ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               : <Swords className="h-3.5 w-3.5" />}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFriend(f.friendshipId, f.username)}
-                            className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-                            title="Remove friend"
-                          >
-                            <UserMinus className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="w-px h-5 bg-border/60 shrink-0" />
+                          {confirmRemoveId === f.friendshipId ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmRemoveId(null);
+                                  void handleRemoveFriend(f.friendshipId, f.username);
+                                }}
+                                className="px-2 py-1 rounded-lg bg-destructive/20 hover:bg-destructive/30 text-destructive text-[11px] font-semibold transition-colors"
+                                title="Confirm remove"
+                              >
+                                Remove
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRemoveId(null)}
+                                className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground transition-colors"
+                                title="Cancel"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRemoveId(f.friendshipId)}
+                              className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remove friend"
+                            >
+                              <UserMinus className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))
