@@ -593,15 +593,15 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
     col: string; parentIdx: number;
   }> = [
     // R — mid arm 0 (53,35) → top-right (58,14)
-    { ax: 53, ay: 35, qx: 57, qy: 30, q2x: 59, q2y: 19, cx: 58, cy: 14, col: R, parentIdx: 0 },
+    { ax: 40, ay: 33, qx: 48, qy: 28, q2x: 54, q2y: 17, cx: 58, cy: 14, col: R, parentIdx: 0 },
     // C — mid arm 1 (56,56) → right (59,64)
-    { ax: 56, ay: 56, qx: 60, qy: 54, q2x: 61, q2y: 60, cx: 59, cy: 64, col: C, parentIdx: 1 },
+    { ax: 55, ay: 52, qx: 59, qy: 53, q2x: 61, q2y: 60, cx: 59, cy: 64, col: C, parentIdx: 1 },
     // V — mid arm 2 (40,77) → bottom-right (52,88)
-    { ax: 40, ay: 77, qx: 46, qy: 79, q2x: 50, q2y: 84, cx: 52, cy: 88, col: V, parentIdx: 2 },
+    { ax: 43, ay: 69, qx: 48, qy: 72, q2x: 52, q2y: 80, cx: 52, cy: 88, col: V, parentIdx: 2 },
     // F — mid arm 3 (12,63) → bottom-left (14,86)
-    { ax: 12, ay: 63, qx:  9, qy: 70, q2x: 11, q2y: 80, cx: 14, cy: 86, col: F, parentIdx: 3 },
+    { ax: 24, ay: 63, qx: 18, qy: 69, q2x: 13, q2y: 79, cx: 14, cy: 86, col: F, parentIdx: 3 },
     // A — mid arm 4 (16,32) → upper-left (11,22)
-    { ax: 16, ay: 32, qx: 13, qy: 28, q2x: 14, q2y: 24, cx: 11, cy: 22, col: A, parentIdx: 4 },
+    { ax: 19, ay: 46, qx: 14, qy: 40, q2x: 11, q2y: 30, cx: 11, cy: 22, col: A, parentIdx: 4 },
   ];
 
   return (
@@ -799,14 +799,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       <line x1="28" y1="16.5" x2="42" y2="16.5"
         stroke={GOLD3} strokeWidth="0.38" strokeOpacity="0.48" />
 
-      {/* Pentagon edge connectors — faint gold dashed links between adjacent systems */}
-      {pentEdges.map(([a, b], i) => (
-        <line key={i}
-          x1={systems[a].cx} y1={systems[a].cy}
-          x2={systems[b].cx} y2={systems[b].cy}
-          stroke={GOLD3} strokeWidth="0.28" strokeOpacity="0.38"
-          strokeDasharray="2.2 2" />
-      ))}
+      {/* Pentagon edge connectors removed — avoided crossing through star systems */}
 
       {/* Branch spurs — cubic bezier forking from the exact arm start point.
            ax/ay IS the arm start, so the spur and the arm share the same origin.
@@ -881,12 +874,13 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
 
       {/* Clockwise spiral arms — each system spirals into the singularity.
            Arms tuned to the new free-form system positions to avoid crossing. */}
+      {/* Arms curve inward directly from each system — no outward swing into neighbour territory */}
       {([
-        `M 46 24 C 60 32 52 45 35 52`,
-        `M 57 44 C 60 62 48 62 35 52`,
-        `M 51 75 C 34 83 26 68 35 52`,
-        `M 17 71 C  5 59 17 54 35 52`,
-        `M 13 40 C 12 25 26 32 35 52`,
+        `M 46 24 C 40 30 36 42 35 52`,   // R: curves left-down, stays clear of C
+        `M 57 44 C 56 57 44 57 35 52`,   // C: curves down then left, stays clear of V
+        `M 51 75 C 44 73 38 63 35 52`,   // V: curves up-left, stays clear of F
+        `M 17 71 C 22 64 29 58 35 52`,   // F: curves right-up, stays clear of A
+        `M 13 40 C 16 46 28 50 35 52`,   // A: curves right-down, stays clear of R
       ] as string[]).map((d, i) => (
         <g key={i}>
           <path d={d} fill="none" stroke={systems[i].col}
@@ -922,12 +916,6 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
             <circle cx={cx} cy={cy} r={OUTER_R}
               fill="none" stroke={col} strokeWidth="0.18"
               strokeOpacity="0.18" strokeDasharray="1.5 2" />
-            {/* Inclined Dyson swarm ring — echoes T2 orbital aesthetic */}
-            <ellipse cx={cx} cy={cy} rx={OUTER_R * 1.08} ry={OUTER_R * 0.38}
-              fill="none" stroke={col}
-              strokeWidth="0.18" strokeOpacity="0.22"
-              strokeDasharray="1.3 1.8"
-              transform={`rotate(${pOff * 0.6} ${cx} ${cy})`} />
 
             {/* Outer swarm — 16 independent satellite particles */}
             {Array.from({ length: 16 }, (_, i) => {
@@ -1081,7 +1069,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
-        fontSize="3.8" fill={GOLD} opacity="0.35" letterSpacing="2.5">LUMINAE</text>
+        fontSize="3.8" fill={GOLD} opacity="0.60" letterSpacing="2.5">LUMINAE</text>
     </svg>
   );
 }
