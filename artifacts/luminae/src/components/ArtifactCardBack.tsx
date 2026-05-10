@@ -623,6 +623,18 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <stop offset="88%"  stopColor="#b07800" stopOpacity="0.45" />
           <stop offset="100%" stopColor="#7a5800" stopOpacity="0"    />
         </linearGradient>
+        {/* XZ-plane ring — vertical gradient: opaque at equatorial crossings, fades at poles */}
+        <linearGradient id={`${id}-disk-v`} x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%"   stopColor="#7a5800" stopOpacity="0"    />
+          <stop offset="15%"  stopColor="#b07800" stopOpacity="0.40" />
+          <stop offset="32%"  stopColor="#d4a020" stopOpacity="0.68" />
+          <stop offset="46%"  stopColor="#f0c040" stopOpacity="0.88" />
+          <stop offset="50%"  stopColor="#fde080" stopOpacity="0.95" />
+          <stop offset="54%"  stopColor="#f0c040" stopOpacity="0.88" />
+          <stop offset="68%"  stopColor="#d4a020" stopOpacity="0.68" />
+          <stop offset="85%"  stopColor="#b07800" stopOpacity="0.40" />
+          <stop offset="100%" stopColor="#7a5800" stopOpacity="0"    />
+        </linearGradient>
         {/* Inner disk: bright gold-white core closest to event horizon */}
         <linearGradient id={`${id}-disk-inner`} x1="0%" y1="50%" x2="100%" y2="50%">
           <stop offset="0%"   stopColor="#c89020" stopOpacity="0"    />
@@ -941,7 +953,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
         stroke="#d0f0ff" strokeWidth="0.30" strokeOpacity="0.18" strokeLinecap="round" />
 
-      {/* 2. Far-side disk — goes behind BH (top half, dimmer) */}
+      {/* 2. Far-side XY disk — goes behind BH (top half, dimmer) */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
         fill={`url(#${id}-disk)`} opacity="0.55"
         filter={`url(#${id}-diskblur)`}
@@ -950,6 +962,22 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         fill={`url(#${id}-disk-inner)`} opacity="0.60"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-back)`} />
+
+      {/* 2b. Far-side XZ ring — bottom arc, behind BH.
+               XZ ring projects to rx=9.5, ry≈9.2 given our ~75° viewing elevation.
+               SVG ellipse starts at right point going clockwise (downward first),
+               so first half of stroke = bottom arc = far side.
+               C ≈ 58.7, half ≈ 29.4. Vertical gradient fades at poles. */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="4.5" strokeOpacity="0.28"
+        strokeDasharray="29.4 100" strokeLinecap="round"
+        filter={`url(#${id}-bhblur)`} />
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="1.8" strokeOpacity="0.50"
+        strokeDasharray="29.4 100" strokeLinecap="round"
+        filter={`url(#${id}-diskblur)`} />
 
       {/* 3. Event horizon — pure black circle */}
       <circle cx={HUB_X} cy={HUB_Y} r="3.3" fill="#000000" />
@@ -989,6 +1017,31 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         fill="none" stroke={`url(#${id}-disk-inner)`}
         strokeWidth="0.9" strokeOpacity="1.0"
         strokeDasharray="20.5 100" strokeLinecap="round"
+        filter={`url(#${id}-diskblur)`} />
+
+      {/* 5b. Near-side XZ ring — top arc, drawn in front of BH.
+               strokeDashoffset="-29.4" skips the bottom arc and draws from the
+               left equatorial point up through the top pole to the right —
+               giving the curved top arm that mirrors the horizontal ring.
+               Vertical gradient: max opacity at equatorial crossings (y=52),
+               fades to transparent at the top pole (y≈42.8). */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="4.5" strokeOpacity="0.38"
+        strokeDasharray="29.4 100" strokeDashoffset="-29.4"
+        strokeLinecap="round"
+        filter={`url(#${id}-bhblur)`} />
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="1.8" strokeOpacity="0.88"
+        strokeDasharray="29.4 100" strokeDashoffset="-29.4"
+        strokeLinecap="round"
+        filter={`url(#${id}-diskblur)`} />
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-inner)`}
+        strokeWidth="0.7" strokeOpacity="0.95"
+        strokeDasharray="29.4 100" strokeDashoffset="-29.4"
+        strokeLinecap="round"
         filter={`url(#${id}-diskblur)`} />
 
       {/* Luminae wordmark */}
