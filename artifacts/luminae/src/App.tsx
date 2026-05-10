@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from "react";
+import { Component, lazy, Suspense, type ReactNode } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,6 +12,8 @@ import FontPreview from "@/pages/font-preview";
 import ResetPassword from "@/pages/reset-password";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { AccountProvider } from "@/contexts/AccountContext";
+
+const DevCardBacks = lazy(() => import("@/pages/dev-card-backs"));
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -62,6 +64,13 @@ function Router() {
       <Route path="/lobby/:roomId" component={Lobby} />
       <Route path="/game/:roomId" component={Game} />
       {import.meta.env.DEV && <Route path="/dev/font-preview" component={FontPreview} />}
+      {import.meta.env.DEV && (
+        <Route path="/dev/card-backs/:tier">
+          <Suspense fallback={null}>
+            <DevCardBacks />
+          </Suspense>
+        </Route>
+      )}
       <Route component={NotFound} />
     </Switch>
   );
