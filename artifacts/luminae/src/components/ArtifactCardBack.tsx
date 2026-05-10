@@ -423,7 +423,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         </filter>
         {/* Soft glow for outer panel gold rim */}
         <filter id={`${id}-panelglow`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="0.45" />
+          <feGaussianBlur stdDeviation="0.22" />
         </filter>
       </defs>
 
@@ -501,6 +501,19 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
+        // Panels whose screen-centre is too close to the star are rendered as wire only
+        // so they never obscure the sun bloom.
+        if (dist < 10) return (
+          <g key={i}>
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+            ))}
+          </g>
+        );
+
         // Radial gradient: dark PANEL_BASE at center → bright affinity col at rim
         const gradId = `${id}-s3p-${i}`;
         return (
@@ -517,7 +530,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
             {/* soft blurred gold glow — no hard line */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffe08a" strokeWidth="1.0" strokeOpacity="0.72"
+              stroke="#ffe08a" strokeWidth="0.45" strokeOpacity="0.80"
               filter={`url(#${id}-panelglow)`} />
           </g>
         );
