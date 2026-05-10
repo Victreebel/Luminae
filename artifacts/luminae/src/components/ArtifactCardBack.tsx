@@ -551,11 +551,16 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
     cx: number; cy: number; ax: number; ay: number;
     qx: number; qy: number; col: string; parentIdx: number;
   }> = [
-    { ax: 45, ay: 38, qx: 53, qy: 30, cx: 54, cy: 24, col: R, parentIdx: 0 },
-    { ax: 54, ay: 57, qx: 60, qy: 52, cx: 57, cy: 46, col: C, parentIdx: 1 },
-    { ax: 39, ay: 71, qx: 48, qy: 79, cx: 53, cy: 83, col: V, parentIdx: 2 },
-    { ax: 17, ay: 65, qx: 11, qy: 72, cx: 14, cy: 81, col: F, parentIdx: 3 },
-    { ax: 17, ay: 38, qx: 11, qy: 31, cx: 14, cy: 25, col: A, parentIdx: 4 },
+    // R — upper-right corner, well above arm 1
+    { ax: 43, ay: 35, qx: 52, qy: 27, cx: 55, cy: 20, col: R, parentIdx: 0 },
+    // C — lower-right, clearly separated from R (~42 units) and from V (~24 units)
+    { ax: 55, ay: 52, qx: 63, qy: 55, cx: 57, cy: 63, col: C, parentIdx: 1 },
+    // V — bottom-right corner
+    { ax: 40, ay: 72, qx: 49, qy: 80, cx: 50, cy: 85, col: V, parentIdx: 2 },
+    // F — bottom-left corner
+    { ax: 18, ay: 66, qx:  9, qy: 74, cx: 13, cy: 83, col: F, parentIdx: 3 },
+    // A — upper-left corner
+    { ax: 17, ay: 40, qx:  9, qy: 31, cx: 13, cy: 23, col: A, parentIdx: 4 },
   ];
 
   return (
