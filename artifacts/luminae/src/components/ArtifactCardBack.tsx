@@ -616,15 +616,14 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const id = 't3cb';
   const HUB_X = 35, HUB_Y = 52; // central convergence hub
 
-  // Five affinity star systems — free-form placement, no pentagon constraint.
-  // Pushed to distinct corners/edges so no two systems share the same y-level,
-  // minimising arm crossings and visual clash. Min gap between any two: ≥22u.
+  // Five affinity star systems at exact regular-pentagon vertices.
+  // Hub=(35,52), R=18, vertex 0 at top (−90°), every 72° clockwise.
   const systems: Array<{ cx: number; cy: number; col: string }> = [
-    { cx: 46, cy: 24, col: R }, // Radiance  — upper-right
-    { cx: 57, cy: 44, col: C }, // Continuum — right edge
-    { cx: 51, cy: 75, col: V }, // Verdance  — lower-right
-    { cx: 17, cy: 71, col: F }, // Flare     — lower-left (different y from V)
-    { cx: 13, cy: 40, col: A }, // Abyss     — left edge  (different y from C)
+    { cx: 35, cy: 34, col: R }, // Radiance  — top
+    { cx: 52, cy: 46, col: C }, // Continuum — upper-right
+    { cx: 46, cy: 67, col: V }, // Verdance  — lower-right
+    { cx: 24, cy: 67, col: F }, // Flare     — lower-left
+    { cx: 18, cy: 46, col: A }, // Abyss     — upper-left
   ];
 
   // Cycle edge connections (adjacent system index pairs)
@@ -646,30 +645,22 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const INNER_R = 4.8;
   const OUTER_R = 7.5;
 
-  // Branch junction points are mid-arm, computed at the t-parameter shown below.
-  // Each ax/ay lies ON the new free-form arm bezier.
-  // Satellite positions verified: ≥12u from every primary system, ≥27u between satellites.
-  //
-  // arm 0: M 46 24 C 60 32 52 45 35 52   t≈0.40 → junction (53,35)
-  // arm 1: M 57 44 C 60 62 48 62 35 52   t≈0.30 → junction (56,56)
-  // arm 2: M 51 75 C 34 83 26 68 35 52   t≈0.25 → junction (40,77)
-  // arm 3: M 17 71 C  5 59 17 54 35 52   t≈0.25 → junction (12,63)
-  // arm 4: M 13 40 C 12 25 26 32 35 52   t≈0.30 → junction (16,32)
+  // Branch junction points at t≈0.30 along each pentagon arm bezier.
   const satellites: Array<{
     cx: number; cy: number; ax: number; ay: number;
     qx: number; qy: number; q2x: number; q2y: number;
     col: string; parentIdx: number;
   }> = [
-    // R — mid arm 0 (53,35) → top-right (58,14)
-    { ax: 40, ay: 33, qx: 48, qy: 28, q2x: 54, q2y: 17, cx: 58, cy: 14, col: R, parentIdx: 0 },
-    // C — mid arm 1 (56,56) → right (59,64)
-    { ax: 55, ay: 52, qx: 59, qy: 53, q2x: 61, q2y: 60, cx: 59, cy: 64, col: C, parentIdx: 1 },
-    // V — mid arm 2 (40,77) → bottom-right (52,88)
-    { ax: 43, ay: 69, qx: 48, qy: 72, q2x: 52, q2y: 80, cx: 52, cy: 88, col: V, parentIdx: 2 },
-    // F — mid arm 3 (12,63) → bottom-left (14,86)
-    { ax: 24, ay: 63, qx: 18, qy: 69, q2x: 13, q2y: 79, cx: 14, cy: 86, col: F, parentIdx: 3 },
-    // A — mid arm 4 (16,32) → upper-left (11,22)
-    { ax: 19, ay: 46, qx: 14, qy: 40, q2x: 11, q2y: 30, cx: 11, cy: 22, col: A, parentIdx: 4 },
+    // R — junction (35,40) on arm 0 → top-right corner (58,14)
+    { ax: 35, ay: 40, qx: 43, qy: 35, q2x: 52, q2y: 22, cx: 58, cy: 14, col: R, parentIdx: 0 },
+    // C — junction (48,48) on arm 1 → right corner (59,64)
+    { ax: 48, ay: 48, qx: 53, qy: 52, q2x: 57, q2y: 60, cx: 59, cy: 64, col: C, parentIdx: 1 },
+    // V — junction (43,63) on arm 2 → bottom-right (52,88)
+    { ax: 43, ay: 63, qx: 46, qy: 72, q2x: 50, q2y: 82, cx: 52, cy: 88, col: V, parentIdx: 2 },
+    // F — junction (27,63) on arm 3 → bottom-left (14,86)
+    { ax: 27, ay: 63, qx: 22, qy: 72, q2x: 16, q2y: 82, cx: 14, cy: 86, col: F, parentIdx: 3 },
+    // A — junction (22,48) on arm 4 → upper-left (11,22)
+    { ax: 22, ay: 48, qx: 18, qy: 40, q2x: 13, q2y: 30, cx: 11, cy: 22, col: A, parentIdx: 4 },
   ];
 
   return (
@@ -944,11 +935,11 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
            Arms tuned to the new free-form system positions to avoid crossing. */}
       {/* Arms curve inward directly from each system — no outward swing into neighbour territory */}
       {([
-        `M 46 24 C 40 30 36 42 35 52`,   // R: curves left-down, stays clear of C
-        `M 57 44 C 56 57 44 57 35 52`,   // C: curves down then left, stays clear of V
-        `M 51 75 C 44 73 38 63 35 52`,   // V: curves up-left, stays clear of F
-        `M 17 71 C 22 64 29 58 35 52`,   // F: curves right-up, stays clear of A
-        `M 13 40 C 16 46 28 50 35 52`,   // A: curves right-down, stays clear of R
+        `M 35 34 C 35 40 35 47 35 52`,   // R: straight down to hub
+        `M 52 46 C 48 48 41 51 35 52`,   // C: gentle curve left-down
+        `M 46 67 C 43 62 39 57 35 52`,   // V: curves up-left
+        `M 24 67 C 27 62 31 57 35 52`,   // F: curves right-up
+        `M 18 46 C 22 48 29 51 35 52`,   // A: gentle curve right-down
       ] as string[]).map((d, i) => (
         <g key={i}>
           <path d={d} fill="none" stroke={systems[i].col}
