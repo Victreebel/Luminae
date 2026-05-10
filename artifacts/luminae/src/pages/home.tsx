@@ -204,6 +204,12 @@ export default function Home() {
     }
     try {
       const state = await getGameState(session.roomId, { sessionToken: session.sessionToken });
+      if (state.status === "finished") {
+        clearSession();
+        setActiveSession(null);
+        toast({ title: "Game already ended", description: "That session has been cleared." });
+        return;
+      }
       setLocation(state.status === "playing" ? `/game/${session.roomId}` : `/lobby/${session.roomId}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "An error occurred";
