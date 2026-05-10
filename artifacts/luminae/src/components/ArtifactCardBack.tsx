@@ -342,9 +342,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return cells.sort((a, b) => a.z - b.z);       // back → front
   };
 
-  // Dark absorber-surface base for each affinity (solar panel faces are near-black)
+  // Dark absorber-surface base — rich dark, clearly different from card void-black
   const PANEL_BASE: Record<string, string> = {
-    [F]: '#2a0606', [C]: '#060e2a', [V]: '#04150a', [A]: '#160426', [R]: '#0c0e12',
+    [F]: '#4a1212', [C]: '#10204a', [V]: '#0d2818', [A]: '#280d4a', [R]: '#1c2030',
   };
 
   const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
@@ -444,19 +444,47 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             ))}
           </g>
         );
+        // Per-edge rim lighting: outward normal of each edge vs. star direction
+        const edgeLit = Array.from({ length: 6 }, (_, k) => {
+          const [x1, y1] = verts[k];
+          const [x2, y2] = verts[(k + 1) % 6];
+          const emx = (x1 + x2) / 2 - cx;
+          const emy = (y1 + y2) / 2 - cy;
+          const el = Math.sqrt(emx * emx + emy * emy) || 1;
+          const dot = (emx / el) * nx + (emy / el) * ny;
+          return { x1, y1, x2: x2, y2: y2, dot };
+        });
+        // Electrode lines: two thin lines perpendicular to star direction across panel
+        const px = -ny, py = nx;           // perpendicular-to-star axis
+        const electrodes = [-0.5, 0.5].map(t => ({
+          x1: (cx + t * nx * 3.6 * 0.4 - py * 2.8).toFixed(2),
+          y1: (cy + t * ny * 3.6 * 0.4 + px * 2.8).toFixed(2),
+          x2: (cx + t * nx * 3.6 * 0.4 + py * 2.8).toFixed(2),
+          y2: (cy + t * ny * 3.6 * 0.4 - px * 2.8).toFixed(2),
+        }));
         return (
           <g key={i}>
-            {/* Dark absorber base — near-opaque */}
-            <polygon points={ptStr} fill={base} fillOpacity="0.90"
-              stroke={col} strokeWidth="0.14"
-              strokeOpacity={0.30 + z * 0.50} />
-            {/* Affinity colour tint — light wash */}
+            {/* Opaque dark absorber base */}
+            <polygon points={ptStr} fill={base} fillOpacity="0.93" stroke="none" />
+            {/* Affinity colour tint */}
             <polygon points={ptStr} fill={col}
-              fillOpacity={0.06 + lightFactor * 0.14} />
-            {/* Specular highlight toward star */}
-            <circle cx={hlx.toFixed(2)} cy={hly.toFixed(2)}
-              r={(1.44).toFixed(2)} fill="#fffae0"
-              opacity={lightFactor * 0.60} />
+              fillOpacity={0.07 + lightFactor * 0.16} stroke="none" />
+            {/* Electrode texture lines — thick enough to read at card scale */}
+            {electrodes.map((e, k) => (
+              <line key={k} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
+                stroke={col} strokeWidth="0.28" strokeOpacity="0.55" />
+            ))}
+            {/* Per-edge rim lighting — lit faces glow warm, shadow faces dark */}
+            {edgeLit.map(({ x1, y1, x2, y2, dot }, k) => (
+              <line key={k} x1={x1.toFixed(2)} y1={y1.toFixed(2)}
+                x2={x2.toFixed(2)} y2={y2.toFixed(2)}
+                stroke={dot > 0 ? '#fffae0' : col}
+                strokeWidth={dot > 0 ? 0.45 : 0.22}
+                strokeOpacity={dot > 0
+                  ? Math.max(0.25, dot * lightFactor * 0.90)
+                  : 0.28 + z * 0.30}
+              />
+            ))}
           </g>
         );
       })}
