@@ -480,8 +480,11 @@ export function initializeGame(
     plannedActionCancelReason: null,
   }));
 
+  const startingPlayerIndex = Math.floor(Math.random() * playerStates.length);
+  const startingPlayer = playerStates[startingPlayerIndex];
+
   return {
-    currentPlayerIndex: 0,
+    currentPlayerIndex: startingPlayerIndex,
     roundNumber: 1,
     turnCount: 0,
     phase: "playing",
@@ -498,7 +501,14 @@ export function initializeGame(
     players: playerStates,
     winnerId: null,
     lastAction: null,
-    actionLog: [],
+    actionLog: [
+      {
+        playerId: startingPlayer.playerId,
+        playerName: startingPlayer.playerName,
+        summary: `goes first (chosen at random)`,
+        turn: 0,
+      },
+    ],
     turnTimerSeconds: null,
     turnDeadline: null,
     version: 1,
