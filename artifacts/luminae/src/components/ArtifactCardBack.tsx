@@ -323,10 +323,13 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
+        // Perspective scale: hexes shrink as they approach the star (d2→0)
+        // giving a visible depth cue — 55% size at center, full size at shell edge.
+        const perspScale = 0.55 + d2 * 0.45;
         const verts = Array.from({ length: 6 }, (_, k) => {
           const ang = (Math.PI / 3) * k;
-          const vx = hx + hr * Math.cos(ang);
-          const vy = hy + hr * Math.sin(ang);
+          const vx = hx + hr * perspScale * Math.cos(ang);
+          const vy = hy + hr * perspScale * Math.sin(ang);
           const vd2 = Math.min((vx * vx + vy * vy) / (shellR * shellR), 1);
           const vc = 1 - vd2 * 0.13;
           return [CX + vx * vc, CY + vy * vc] as [number, number];
