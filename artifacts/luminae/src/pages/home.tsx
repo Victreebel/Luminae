@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveSession, getSession, clearSession } from "@/lib/session";
-import { getAccountToken } from "@/lib/accountSession";
+import { getAccountToken, type ActiveGame } from "@/lib/accountSession";
 import { getGameState } from "@workspace/api-client-react";
 import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer, AVATARS } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
@@ -51,17 +51,35 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("newgame") === "1") return;
 
-    // Only redirect to dashboard when the account has active games
+    // Auto-navigate: single playing game → go directly to game; multiple/other → dashboard
     const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
     fetch(`${base}/api/auth/me/games`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())
-      .then((d: { games?: unknown[] }) => {
-        if (d.games && d.games.length > 0) {
+      .then((d: { games?: ActiveGame[] }) => {
+        const games = d.games ?? [];
+        if (games.length === 0) return;
+
+        const playingGames = games.filter((g) => g.status === "playing");
+
+        if (games.length === 1 && playingGames.length === 1) {
+          // Exactly one in-progress game — restore the session token and go straight in
+          const game = playingGames[0];
+          saveSession({
+            roomId: game.roomId,
+            inviteCode: game.inviteCode,
+            playerId: game.playerId,
+            sessionToken: game.sessionToken,
+            playerName: game.playerName,
+            isHost: game.isHost,
+            avatarId: game.avatarId ?? undefined,
+          });
+          setLocation(`/game/${game.roomId}`);
+        } else {
+          // Multiple games or a single lobby game — let the dashboard handle it
           setLocation("/dashboard");
         }
-        // else stay on home — account username pre-fill is handled separately
       })
       .catch(() => {
         // network error — stay on home
