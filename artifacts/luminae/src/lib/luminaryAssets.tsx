@@ -168,9 +168,9 @@ function TideEntity({ size = 140, className = '' }: { size?: number; className?:
 // black pupil, pulsing iris glow halo, and random autonomous blinking.
 // The full iris group drifts slowly within the sclera; the eyelid closes
 // from the top edge on a random schedule (every 2.5–7.5 s).
-function TideEyeOverlay({ width, height }: { width: number; height: number }) {
+function TideEyeOverlay({ width, height, cyFactor = 0.472 }: { width: number; height: number; cyFactor?: number }) {
   const cx      = 0.490 * width;
-  const cy      = 0.472 * height;
+  const cy      = cyFactor * height;
   const irisR   = 0.052 * width;
   const scleraRX = irisR * 1.54;
   const scleraRY = irisR * 1.28;
@@ -861,6 +861,22 @@ const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 // the card's name / requirements row remains legible underneath.
 const IDLE_W = BOARD_CARD_W;                     // 112
 const IDLE_H = Math.round(BOARD_CARD_H * 1.1);   // ≈ 176
+
+// Per-entity idle-overlay display tweaks.
+// Adjust here when a specific entity image is proportioned differently from the
+// rest (e.g. extra negative space, unusual aspect ratio, seated vs standing).
+// `scale`          — multiplier on the inner entity wrapper (transformOrigin: center top).
+// `objectPosition` — CSS object-position for the entity <img>; overrides 'center top'.
+// `idleCyFactor`   — TideEyeOverlay-only: vertical centre of the eye in the idle panel
+//                    as a fraction of IDLE_H. Lower value → eye moves up.
+const IDLE_ENTITY_OVERRIDES: Record<string, {
+  scale?: number;
+  objectPosition?: string;
+  idleCyFactor?: number;
+}> = {
+  lum_void: { scale: 1.22, objectPosition: 'center 25%' },
+  lum_tide: { idleCyFactor: 0.435 },
+};
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
 // Card viewport: 112 × 160 px.  All coords are raw pixels.
@@ -2282,41 +2298,58 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
         />
 
         {/* Entity art — floats and breathes once idle */}
-        <motion.div
-          style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
-          animate={isIdle
-            ? { y: [0, -5, 0], scale: [1, 1.022, 1] }
-            : {}
-          }
-          transition={isIdle ? {
-            y:     { repeat: Infinity, duration: 3.3, ease: 'easeInOut', delay: 0.3 },
-            scale: { repeat: Infinity, duration: 3.9, ease: 'easeInOut', delay: 0.1 },
-          } : {}}
-        >
-          {entityCutout ? (
-            <>
-              <img
-                src={entityCutout}
-                alt=""
-                draggable={false}
-                style={{
-                  width: IDLE_W,
-                  height: IDLE_H,
-                  objectFit: 'contain',
-                  objectPosition: 'center top',
-                  display: 'block',
-                  // Fade to transparent in the lower third so the card's name /
-                  // requirements row stays legible underneath the entity.
-                  maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                }}
-              />
-              {luminaryId === 'lum_tide' && <TideEyeOverlay width={IDLE_W} height={IDLE_H} />}
-            </>
-          ) : (
-            <EntityArt size={IDLE_W} />
-          )}
-        </motion.div>
+        {(() => {
+          const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
+          const entScale = ov.scale ?? 1;
+          const objPos   = ov.objectPosition ?? 'center top';
+          const cyFactor = ov.idleCyFactor;
+          return (
+            <motion.div
+              style={{
+                position: 'relative', width: IDLE_W, height: IDLE_H,
+                ...(entScale !== 1 ? { transform: `scale(${entScale})`, transformOrigin: 'center top' } : {}),
+              }}
+              animate={isIdle
+                ? { y: [0, -5, 0], scale: [entScale, entScale * 1.022, entScale] }
+                : entScale !== 1 ? { scale: entScale } : {}
+              }
+              transition={isIdle ? {
+                y:     { repeat: Infinity, duration: 3.3, ease: 'easeInOut', delay: 0.3 },
+                scale: { repeat: Infinity, duration: 3.9, ease: 'easeInOut', delay: 0.1 },
+              } : {}}
+            >
+              {entityCutout ? (
+                <>
+                  <img
+                    src={entityCutout}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      width: IDLE_W,
+                      height: IDLE_H,
+                      objectFit: 'contain',
+                      objectPosition: objPos,
+                      display: 'block',
+                      // Fade to transparent in the lower third so the card's name /
+                      // requirements row stays legible underneath the entity.
+                      maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                      WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                    }}
+                  />
+                  {luminaryId === 'lum_tide' && (
+                    <TideEyeOverlay
+                      width={IDLE_W}
+                      height={IDLE_H}
+                      {...(cyFactor !== undefined ? { cyFactor } : {})}
+                    />
+                  )}
+                </>
+              ) : (
+                <EntityArt size={IDLE_W} />
+              )}
+            </motion.div>
+          );
+        })()}
       </motion.div>
     </div>
   );
