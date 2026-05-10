@@ -547,20 +547,24 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   // ax/ay = arm junction (on the bezier).  cx/cy = satellite center.
   // qx/qy = quadratic bezier control point (arcs outward from hub).
   // All satellites kept within safe inner-frame bounds (x:13–57, y:23–86).
+  // ax/ay is the EXACT arm start point so spurs fork from the same point the arm originates.
+  // q1 (qx,qy) and q2 (q2x,q2y) are cubic bezier controls — q1 pulls away from the arm
+  // junction in the spur direction; q2 approaches the satellite from a natural angle.
   const satellites: Array<{
     cx: number; cy: number; ax: number; ay: number;
-    qx: number; qy: number; col: string; parentIdx: number;
+    qx: number; qy: number; q2x: number; q2y: number;
+    col: string; parentIdx: number;
   }> = [
-    // R — upper-right corner, well above arm 1
-    { ax: 43, ay: 35, qx: 52, qy: 27, cx: 55, cy: 20, col: R, parentIdx: 0 },
-    // C — lower-right, clearly separated from R (~42 units) and from V (~24 units)
-    { ax: 55, ay: 52, qx: 63, qy: 55, cx: 57, cy: 63, col: C, parentIdx: 1 },
-    // V — bottom-right corner
-    { ax: 40, ay: 72, qx: 49, qy: 80, cx: 50, cy: 85, col: V, parentIdx: 2 },
-    // F — bottom-left corner
-    { ax: 18, ay: 66, qx:  9, qy: 74, cx: 13, cy: 83, col: F, parentIdx: 3 },
-    // A — upper-left corner
-    { ax: 17, ay: 40, qx:  9, qy: 31, cx: 13, cy: 23, col: A, parentIdx: 4 },
+    // R — arm 0 starts at (35,31), satellite upper-right (55,20)
+    { ax: 35, ay: 31, qx: 44, qy: 27, q2x: 50, q2y: 22, cx: 55, cy: 20, col: R, parentIdx: 0 },
+    // C — arm 1 starts at (55,47), satellite lower-right (57,63)
+    { ax: 55, ay: 47, qx: 60, qy: 51, q2x: 59, q2y: 58, cx: 57, cy: 63, col: C, parentIdx: 1 },
+    // V — arm 2 starts at (47,69), satellite bottom-right (50,85)
+    { ax: 47, ay: 69, qx: 53, qy: 73, q2x: 53, q2y: 80, cx: 50, cy: 85, col: V, parentIdx: 2 },
+    // F — arm 3 starts at (23,69), satellite bottom-left (13,83)
+    { ax: 23, ay: 69, qx: 18, qy: 74, q2x: 14, q2y: 79, cx: 13, cy: 83, col: F, parentIdx: 3 },
+    // A — arm 4 starts at (15,47), satellite upper-left (13,23)
+    { ax: 15, ay: 47, qx: 12, qy: 40, q2x: 11, q2y: 31, cx: 13, cy: 23, col: A, parentIdx: 4 },
   ];
 
   return (
@@ -767,9 +771,12 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           strokeDasharray="2.2 2" />
       ))}
 
-      {/* Branch spurs — curved quadratic bezier, same two-layer glow as main arms */}
-      {satellites.map(({ cx, cy, ax, ay, qx, qy, col }, i) => {
-        const d = `M ${ax} ${ay} Q ${qx} ${qy} ${cx} ${cy}`;
+      {/* Branch spurs — cubic bezier forking from the exact arm start point.
+           ax/ay IS the arm start, so the spur and the arm share the same origin.
+           Two control points (q1, q2) give an S-curve that leaves the junction
+           tangentially and approaches the satellite from a natural direction. */}
+      {satellites.map(({ cx, cy, ax, ay, qx, qy, q2x, q2y, col }, i) => {
+        const d = `M ${ax} ${ay} C ${qx} ${qy} ${q2x} ${q2y} ${cx} ${cy}`;
         return (
           <g key={i}>
             {/* Glow under-stroke */}
@@ -780,9 +787,9 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
             <path d={d} fill="none"
               stroke={col} strokeWidth="0.52" strokeOpacity="0.40"
               strokeLinecap="round" />
-            {/* Junction dot — bifurcation node on the arm */}
-            <circle cx={ax} cy={ay} r="0.55"
-              fill="#0a0818" stroke={col} strokeWidth="0.28" strokeOpacity="0.80" />
+            {/* Fork node — marks the bifurcation at the arm start */}
+            <circle cx={ax} cy={ay} r="0.60"
+              fill="#0a0818" stroke={col} strokeWidth="0.30" strokeOpacity="0.85" />
           </g>
         );
       })}
