@@ -52,11 +52,11 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
   const PX = 35, PY = 56, PR = 16;
 
   const cityNodes: [number,number,string][] = [
-    [35,  44.5, F],
-    [46,  51.5, C],
-    [42,  64.5, V],
-    [28,  64.5, A],
-    [24,  51.5, R],
+    [35,  44.5, F],  // Flare     — upper continent interior
+    [46,  51.5, C],  // Continuum — east coast
+    [42,  64.5, V],  // Verdance  — southern continent
+    [24,  64.0, A],  // Abyss     — western ocean (open sea)
+    [24,  51.5, R],  // Radiance  — west coast
   ];
 
   const ORB_R = PR + 4.5;
@@ -103,19 +103,58 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <clipPath id={`${id}-clip`}>
           <circle cx={PX} cy={PY} r={PR} />
         </clipPath>
+        {/* Distant sun gradient */}
+        <radialGradient id={`${id}-sun`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"   />
+          <stop offset="15%"  stopColor="#fff8d0" stopOpacity="0.92"/>
+          <stop offset="38%"  stopColor="#ffe090" stopOpacity="0.55"/>
+          <stop offset="65%"  stopColor="#ffa030" stopOpacity="0.18"/>
+          <stop offset="100%" stopColor="#ff6000" stopOpacity="0"   />
+        </radialGradient>
+        <filter id={`${id}-sunglow`} x="-300%" y="-300%" width="700%" height="700%">
+          <feGaussianBlur stdDeviation="2.8" />
+        </filter>
       </defs>
 
       {/* ── Space background ── */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
 
-      {/* Sparse starfield */}
+      {/* ── Dense starfield — distant star field across the whole card ── */}
       {([
-        [6,6],[63,9],[14,18],[58,22],[8,38],[65,43],
-        [7,72],[66,68],[12,82],[59,85],[9,93],[64,92],
-      ] as [number,number][]).map(([x,y], i) => (
-        <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 0.4 : 0.22}
-          fill="#fff" opacity={0.16 + (i % 4) * 0.055} />
+        [6,6,5],[63,9,4],[14,18,3],[58,22,6],[8,38,4],[65,43,5],
+        [7,72,3],[66,68,6],[12,82,4],[59,85,5],[9,93,3],[64,92,4],
+        [20,8,5],[47,11,3],[33,7,6],[52,5,4],[16,13,5],[60,7,3],
+        [5,25,4],[67,28,5],[10,32,3],[63,34,4],[4,48,6],[68,52,3],
+        [5,60,4],[66,64,5],[8,70,3],[64,75,4],[6,84,5],[65,80,3],
+        [18,92,4],[50,95,6],[28,97,3],[44,93,5],[22,85,4],[56,90,3],
+        [25,15,3],[42,9,5],[38,13,4],[15,22,6],[62,19,3],[48,17,5],
+        [11,44,4],[66,40,3],[5,56,5],[68,60,4],[10,68,3],[64,56,5],
+        [16,76,4],[62,78,3],[22,88,5],[54,87,4],[30,93,3],[46,91,6],
+      ] as [number,number,number][]).map(([x,y,sz], i) => (
+        <circle key={i} cx={x} cy={y}
+          r={sz >= 6 ? 0.48 : sz >= 5 ? 0.32 : sz >= 4 ? 0.22 : 0.15}
+          fill="#ffffff"
+          opacity={0.10 + (sz * 0.038)} />
       ))}
+
+      {/* ── Distant sun — upper-right, off in deep space ── */}
+      {/* Outer halo bloom */}
+      <circle cx="57" cy="19" r="9"
+        fill={`url(#${id}-sun)`}
+        filter={`url(#${id}-sunglow)`} opacity="0.45" />
+      {/* Inner corona */}
+      <circle cx="57" cy="19" r="4.5"
+        fill={`url(#${id}-sun)`}
+        filter={`url(#${id}-sunglow)`} opacity="0.55" />
+      {/* Visible disc */}
+      <circle cx="57" cy="19" r="1.8" fill={`url(#${id}-sun)`} opacity="0.9" />
+      {/* Bright point */}
+      <circle cx="57" cy="19" r="0.6" fill="#ffffff" opacity="0.96" />
+      {/* Subtle lens cross-flare */}
+      <line x1="51" y1="19" x2="63" y2="19"
+        stroke="#fff8c0" strokeWidth="0.25" strokeOpacity="0.28" />
+      <line x1="57" y1="13" x2="57" y2="25"
+        stroke="#fff8c0" strokeWidth="0.25" strokeOpacity="0.22" />
 
       {/* ── T1 Border — single L-corner ── */}
       <rect x="4" y="4" width="62" height="92" rx="1.5"
