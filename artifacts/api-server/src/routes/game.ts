@@ -15,7 +15,7 @@ import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPla
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
-import { recordGameResult } from "../lib/rematchManager";
+import { recordGameResult, getSessionStats } from "../lib/rematchManager";
 
 const router: IRouter = Router();
 

@@ -20,7 +20,7 @@ import {
 import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { armTurnTimer, updateTurnDeadline, clearTurnTimer } from "../lib/turnTimer";
-import { castVote } from "../lib/rematchManager";
+import { castVote, clearRematch, getSessionStats } from "../lib/rematchManager";
 
 const router: IRouter = Router();
 

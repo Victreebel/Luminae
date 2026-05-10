@@ -1396,6 +1396,16 @@ export default function GameBoard() {
       const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
       if (remaining > 50 || queueBusy) {
         stateQueueRef.current.push(newState);
+        // Eagerly apply the new state to the data cache so that affordability
+        // calculations and the planning UI (canAffordCard / "Plan: Forge" button)
+        // always reflect the latest server state even while an animation is still
+        // playing.  Visual-only state (hiddenSlots, flippingCards, cardActionBurst,
+        // summon cutscene) is derived exclusively from processUpdate, which is still
+        // gated by the animation queue, so animations are completely unaffected.
+        queryClient.setQueryData(
+          getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
+          newState,
+        );
         if (!queueTimerRef.current) {
           const delay = remaining > 50 ? remaining + 100 : 100;
           queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
