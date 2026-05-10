@@ -277,19 +277,37 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
 // ║  TIER II — Type II Stellar Civilization                                 ║
-// ║  A star is the engine: three concentric Dyson collector rings           ║
-// ║  (inner/middle/outer) harvest the star's full output. This              ║
-// ║  civilization has left planetary scale entirely behind.                 ║
+// ║  A star's magnetosphere rendered as pure geometry: five dipole field    ║
+// ║  line pairs (one per affinity) arching from the stellar core,           ║
+// ║  reconnecting at the equatorial current sheet.                          ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
-  const CX = 35, CY = 54;
+  const CX = 35, CY = 52;   // star center
+  const YS = 3.35;           // vertical stretch — makes field lines arc top↔bottom
 
-  const rings = [
-    { r: 10, segs: 8, span: 35, step: 45,  startOff: -90, colors: [F,C,V,A,R,F,C,V] as string[] },
-    { r: 16, segs: 6, span: 48, step: 60,  startOff: -75, colors: [V,A,R,F,C,V]     as string[] },
-    { r: 22, segs: 4, span: 68, step: 90,  startOff: -60, colors: [C,A,F,R]         as string[] },
-  ];
+  // Dipole field line: r(θ) = L·sin²(θ), traced from north pole (θ=0) to south pole (θ=π)
+  const fLine = (L: number, side: 1 | -1): string => {
+    const N = 64;
+    const pts: string[] = [];
+    for (let i = 0; i <= N; i++) {
+      const th = (Math.PI * i) / N;
+      const r  = L * Math.sin(th) * Math.sin(th);
+      pts.push(
+        `${(CX + side * r * Math.sin(th)).toFixed(2)} ${(CY - r * Math.cos(th) * YS).toFixed(2)}`
+      );
+    }
+    return `M ${pts.join(' L ')}`;
+  };
+
+  // Five field-line shells, one per affinity — innermost (dense/bright) → outermost (sparse/faint)
+  const shells = [
+    { L: 7,  col: F },
+    { L: 11, col: C },
+    { L: 15, col: V },
+    { L: 20, col: A },
+    { L: 26, col: R },
+  ] as { L: number; col: string }[];
 
   return (
     <svg
@@ -299,22 +317,31 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       aria-hidden
     >
       <defs>
-        <radialGradient id={`${id}-bg`} cx="50%" cy="50%" r="65%">
-          <stop offset="0%"   stopColor="#100c28" />
-          <stop offset="55%"  stopColor={BG_MID}  />
+        <radialGradient id={`${id}-bg`} cx="50%" cy="52%" r="65%">
+          <stop offset="0%"   stopColor="#140820" />
+          <stop offset="50%"  stopColor="#09060f" />
           <stop offset="100%" stopColor={BG_DEEP} />
         </radialGradient>
         <radialGradient id={`${id}-star`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#fffef0" stopOpacity="1"   />
-          <stop offset="18%"  stopColor="#fff0a0" stopOpacity="0.95"/>
-          <stop offset="40%"  stopColor="#ffa030" stopOpacity="0.65"/>
-          <stop offset="70%"  stopColor="#c04010" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#400808" stopOpacity="0"   />
+          <stop offset="0%"   stopColor="#fffef0" stopOpacity="1"    />
+          <stop offset="18%"  stopColor="#fff0a0" stopOpacity="0.95" />
+          <stop offset="40%"  stopColor="#ffa030" stopOpacity="0.65" />
+          <stop offset="70%"  stopColor="#c04010" stopOpacity="0.30" />
+          <stop offset="100%" stopColor="#400808" stopOpacity="0"    />
         </radialGradient>
         <radialGradient id={`${id}-corona`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#fff8c0" stopOpacity="0.5" />
-          <stop offset="35%"  stopColor="#ff9020" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#ff4000" stopOpacity="0"   />
+          <stop offset="0%"   stopColor="#fff8c0" stopOpacity="0.50" />
+          <stop offset="35%"  stopColor="#ff9020" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#ff4000" stopOpacity="0"    />
+        </radialGradient>
+        {/* Polar aurora glow — diffuse blob at top / bottom of card */}
+        <radialGradient id={`${id}-polN`} cx="50%" cy="80%" r="50%">
+          <stop offset="0%"   stopColor="#c0d8ff" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#2040a0" stopOpacity="0"    />
+        </radialGradient>
+        <radialGradient id={`${id}-polS`} cx="50%" cy="20%" r="50%">
+          <stop offset="0%"   stopColor="#c0d8ff" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#2040a0" stopOpacity="0"    />
         </radialGradient>
         <linearGradient id={`${id}-bord`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%"   stopColor={GOLD2} stopOpacity="0.88" />
@@ -322,30 +349,14 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           <stop offset="100%" stopColor={GOLD3} stopOpacity="0.5"  />
         </linearGradient>
         <filter id={`${id}-starglow`} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="3.5" />
+          <feGaussianBlur stdDeviation="4.0" />
         </filter>
-        <filter id={`${id}-arcglow`} x="-150%" y="-150%" width="400%" height="400%">
-          <feGaussianBlur stdDeviation="1.0" />
+        <filter id={`${id}-flglow`} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="1.5" />
         </filter>
-        {/* Distant planet gradients */}
-        <radialGradient id={`${id}-dpplanet`} cx="40%" cy="32%" r="72%">
-          <stop offset="0%"   stopColor="#2248a0" />
-          <stop offset="30%"  stopColor="#102260" />
-          <stop offset="70%"  stopColor="#081438" />
-          <stop offset="100%" stopColor="#030a1c" />
-        </radialGradient>
-        <radialGradient id={`${id}-dpatmo`} cx="50%" cy="50%" r="50%">
-          <stop offset="72%"  stopColor="#1a60e0" stopOpacity="0"    />
-          <stop offset="86%"  stopColor="#4090ff" stopOpacity="0.50" />
-          <stop offset="95%"  stopColor="#80c0ff" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#a0d8ff" stopOpacity="0"    />
-        </radialGradient>
-        <radialGradient id={`${id}-dpnight`} cx="18%" cy="50%" r="72%">
-          <stop offset="0%"   stopColor="#000008" stopOpacity="0.75" />
-          <stop offset="55%"  stopColor="#000008" stopOpacity="0.28" />
-          <stop offset="100%" stopColor="#000008" stopOpacity="0"    />
-        </radialGradient>
-        <clipPath id={`${id}-dpclip`}><circle cx="58" cy="24" r="4.6" /></clipPath>
+        <filter id={`${id}-polglow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="4.0" />
+        </filter>
       </defs>
 
       {/* ── Background ── */}
@@ -365,62 +376,80 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       ] as [number,number,number][]).map(([x,y,sz], i) => (
         <circle key={i} cx={x} cy={y}
           r={sz >= 6 ? 0.44 : sz >= 5 ? 0.30 : sz >= 4 ? 0.21 : 0.14}
-          fill="#fff" opacity={0.10 + (sz * 0.04)} />
+          fill="#fff" opacity={0.08 + sz * 0.036} />
       ))}
 
-      {/* ── Distant home planet — upper right, seen from the Dyson sphere ── */}
-      {(() => {
-        const PPX = 58, PPY = 24, PPR = 4.5;
+      {/* ── Polar aurora glows — north (top) and south (bottom) convergence zones ── */}
+      <ellipse cx={CX} cy={CY - 40} rx="18" ry="10"
+        fill={`url(#${id}-polN)`} filter={`url(#${id}-polglow)`} />
+      <ellipse cx={CX} cy={CY + 42} rx="18" ry="10"
+        fill={`url(#${id}-polS)`} filter={`url(#${id}-polglow)`} />
+
+      {/* ── Faint equatorial current sheet ── */}
+      <line x1="8" y1={CY} x2="62" y2={CY}
+        stroke="#ffffff" strokeWidth="0.20" strokeOpacity="0.09" />
+
+      {/* ── Magnetospheric field lines — left side ── */}
+      {shells.map(({ L, col }, i) => (
+        <g key={i}>
+          <path d={fLine(L, -1)} fill="none" stroke={col}
+            strokeWidth={3.8 - i * 0.35} strokeOpacity="0.10"
+            strokeLinecap="round" filter={`url(#${id}-flglow)`} />
+          <path d={fLine(L, -1)} fill="none" stroke={col}
+            strokeWidth={0.88 - i * 0.06} strokeOpacity={0.72 - i * 0.05}
+            strokeLinecap="round" />
+          <path d={fLine(L, -1)} fill="none" stroke="#ffffff"
+            strokeWidth="0.22" strokeOpacity="0.14" strokeLinecap="round" />
+          <circle cx={CX - L} cy={CY}
+            r={i === 2 ? 0.82 : 0.58}
+            fill="#07040e" stroke={col} strokeWidth="0.24" />
+        </g>
+      ))}
+
+      {/* ── Magnetospheric field lines — right side ── */}
+      {shells.map(({ L, col }, i) => (
+        <g key={i}>
+          <path d={fLine(L, 1)} fill="none" stroke={col}
+            strokeWidth={3.8 - i * 0.35} strokeOpacity="0.10"
+            strokeLinecap="round" filter={`url(#${id}-flglow)`} />
+          <path d={fLine(L, 1)} fill="none" stroke={col}
+            strokeWidth={0.88 - i * 0.06} strokeOpacity={0.72 - i * 0.05}
+            strokeLinecap="round" />
+          <path d={fLine(L, 1)} fill="none" stroke="#ffffff"
+            strokeWidth="0.22" strokeOpacity="0.14" strokeLinecap="round" />
+          <circle cx={CX + L} cy={CY}
+            r={i === 2 ? 0.82 : 0.58}
+            fill="#07040e" stroke={col} strokeWidth="0.24" />
+        </g>
+      ))}
+
+      {/* ── Reconnection sparks — bright nodes between adjacent shells at equator ── */}
+      {shells.slice(0, 4).map(({ L, col }, i) => {
+        const mid = (L + shells[i + 1].L) / 2;
         return (
-          <g>
-            {/* atmosphere halo */}
-            <circle cx={PPX} cy={PPY} r={PPR + 1.4} fill={`url(#${id}-dpatmo)`} />
-            {/* planet body */}
-            <circle cx={PPX} cy={PPY} r={PPR} fill={`url(#${id}-dpplanet)`} />
-            {/* planetary energy grid */}
-            <g clipPath={`url(#${id}-dpclip)`} fill="none"
-               stroke="#3a70c0" strokeWidth="0.18" strokeOpacity="0.40">
-              <line x1={PPX - PPR} y1={PPY - 2.4} x2={PPX + PPR} y2={PPY - 2.4} />
-              <line x1={PPX - PPR} y1={PPY - 0.8} x2={PPX + PPR} y2={PPY - 0.8} />
-              <line x1={PPX - PPR} y1={PPY + 0.8} x2={PPX + PPR} y2={PPY + 0.8} />
-              <line x1={PPX - PPR} y1={PPY + 2.4} x2={PPX + PPR} y2={PPY + 2.4} />
-              <line x1={PPX - 2.4} y1={PPY - PPR} x2={PPX - 2.4} y2={PPY + PPR} />
-              <line x1={PPX - 0.8} y1={PPY - PPR} x2={PPX - 0.8} y2={PPY + PPR} />
-              <line x1={PPX + 0.8} y1={PPY - PPR} x2={PPX + 0.8} y2={PPY + PPR} />
-              <line x1={PPX + 2.4} y1={PPY - PPR} x2={PPX + 2.4} y2={PPY + PPR} />
-            </g>
-            {/* land masses */}
-            <g clipPath={`url(#${id}-dpclip)`}>
-              <polygon
-                points={`${PPX+0.6},${PPY-3.4} ${PPX+2.5},${PPY-2.5} ${PPX+3.4},${PPY-1.1} ${PPX+2.5},${PPY+0.3} ${PPX+1.1},${PPY+0.8} ${PPX},${PPY-0.3} ${PPX+0.3},${PPY-2.2}`}
-                fill="#1a3828" opacity="0.70" />
-              <polygon
-                points={`${PPX-0.8},${PPY+1.4} ${PPX+1.1},${PPY+1.1} ${PPX+2.0},${PPY+2.5} ${PPX+1.1},${PPY+3.6} ${PPX-0.6},${PPY+3.9} ${PPX-2.0},${PPY+2.8} ${PPX-1.7},${PPY+1.4}`}
-                fill="#1a3828" opacity="0.65" />
-            </g>
-            {/* night-side terminator */}
-            <circle cx={PPX} cy={PPY} r={PPR} fill={`url(#${id}-dpnight)`} />
-            {/* planet edge */}
-            <circle cx={PPX} cy={PPY} r={PPR}
-              fill="none" stroke="#5090e0" strokeWidth="0.25" strokeOpacity="0.55" />
-            {/* five city nodes — pentagon, r=2.8 */}
-            {[0,1,2,3,4].map((k) => {
-              const ang = Math.PI * (-0.5 + (2 * k) / 5);
-              const nx = PPX + 2.8 * Math.cos(ang);
-              const ny = PPY + 2.8 * Math.sin(ang);
-              const col = [F,R,V,C,A][k];
-              return (
-                <g key={k}>
-                  <circle cx={nx} cy={ny} r="0.65" fill={col} opacity="0.12"
-                    clipPath={`url(#${id}-dpclip)`} />
-                  <circle cx={nx} cy={ny} r="0.26" fill={col} opacity="0.75"
-                    clipPath={`url(#${id}-dpclip)`} />
-                </g>
-              );
-            })}
+          <g key={i}>
+            <circle cx={CX + mid} cy={CY} r="0.48" fill={col} opacity="0.50" />
+            <circle cx={CX - mid} cy={CY} r="0.48" fill={col} opacity="0.50" />
           </g>
         );
-      })()}
+      })}
+
+      {/* ── Extended corona ── */}
+      <circle cx={CX} cy={CY} r="18" fill={`url(#${id}-corona)`} />
+
+      {/* ── Star bloom glow ── */}
+      <circle cx={CX} cy={CY} r="8"
+        fill={`url(#${id}-star)`}
+        filter={`url(#${id}-starglow)`} opacity="0.55" />
+
+      {/* ── Stellar core ── */}
+      <circle cx={CX} cy={CY} r="5.5" fill={`url(#${id}-star)`} />
+
+      {/* Cross-flares */}
+      <line x1={CX-10} y1={CY}    x2={CX+10} y2={CY}    stroke="#fff8c0" strokeWidth="0.42" strokeOpacity="0.42" />
+      <line x1={CX}    y1={CY-10} x2={CX}    y2={CY+10} stroke="#fff8c0" strokeWidth="0.42" strokeOpacity="0.38" />
+      <line x1={CX-7}  y1={CY-7}  x2={CX+7}  y2={CY+7}  stroke="#ffc060" strokeWidth="0.24" strokeOpacity="0.24" />
+      <line x1={CX+7}  y1={CY-7}  x2={CX-7}  y2={CY+7}  stroke="#ffc060" strokeWidth="0.24" strokeOpacity="0.24" />
 
       {/* ── T2 Border — double L-corner ── */}
       <rect x="3.5" y="3.5" width="63" height="93" rx="1.5"
@@ -458,94 +487,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         </g>
       ))}
 
-      {/* ── Tier label — integrated into top margin ── */}
+      {/* ── Tier label ── */}
       <text x="35" y="15" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="5" fill={GOLD2} opacity="0.75" letterSpacing="2">II</text>
       <line x1="30" y1="16.5" x2="40" y2="16.5"
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.52" />
-
-      {/* ── Extended corona ── */}
-      <circle cx={CX} cy={CY} r="14" fill={`url(#${id}-corona)`} />
-
-      {/* ── Dyson Rings — three concentric arc-panel rings ── */}
-      {rings.map(({ r, segs, span, step, startOff, colors }, ri) => (
-        <g key={ri}>
-          {/* dashed guide ring */}
-          <circle cx={CX} cy={CY} r={r}
-            fill="none"
-            stroke={ri === 0 ? "#3050a0" : GOLD3}
-            strokeWidth={ri === 0 ? 0.3 : 0.28}
-            strokeOpacity={ri === 0 ? 0.3 : 0.25}
-            strokeDasharray="1.5 1.5" />
-
-          {/* arc panel segments */}
-          {Array.from({ length: segs }).map((_, i) => {
-            const s   = startOff + i * step;
-            const e   = s + span;
-            const col = colors[i % colors.length];
-            const [mx, my] = pt(CX, CY, r, s + span / 2);
-            return (
-              <g key={i}>
-                {/* glow layer */}
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke={col}
-                  strokeWidth={ri === 0 ? 3.5 : ri === 1 ? 3 : 2.5}
-                  strokeOpacity="0.10" strokeLinecap="round"
-                  filter={`url(#${id}-arcglow)`} />
-                {/* solid colour layer */}
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke={col}
-                  strokeWidth={ri === 0 ? 1.5 : ri === 1 ? 1.3 : 1.1}
-                  strokeOpacity={ri === 0 ? 0.75 : ri === 1 ? 0.68 : 0.60}
-                  strokeLinecap="round" />
-                {/* white specular highlight */}
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke="#ffffff"
-                  strokeWidth="0.35" strokeOpacity="0.18"
-                  strokeLinecap="round" />
-                {/* collector node at arc midpoint */}
-                <circle cx={mx} cy={my}
-                  r={ri === 0 ? 0.9 : 0.75}
-                  fill="#080c28" stroke={GOLD3} strokeWidth="0.3" />
-              </g>
-            );
-          })}
-
-          {/* inter-ring spars connecting ring ri to ri+1 */}
-          {ri < 2 && Array.from({ length: 4 }).map((_, i) => {
-            const deg = i * 90 + startOff + span / 2;
-            const [x1, y1] = pt(CX, CY, r,              deg);
-            const [x2, y2] = pt(CX, CY, rings[ri + 1].r, deg);
-            return (
-              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.45" />
-            );
-          })}
-        </g>
-      ))}
-
-      {/* ── Energy beams ── */}
-      {[0, 60, 120, 180, 240, 300].map((deg, i) => {
-        const [x, y] = pt(CX, CY, 9, deg);
-        return (
-          <line key={i} x1={CX} y1={CY} x2={x} y2={y}
-            stroke={i % 2 === 0 ? "#ffe090" : "#ffb040"}
-            strokeWidth="0.35" strokeOpacity="0.35" />
-        );
-      })}
-
-      {/* ── Star bloom glow ── */}
-      <circle cx={CX} cy={CY} r="7"
-        fill={`url(#${id}-star)`}
-        filter={`url(#${id}-starglow)`} opacity="0.55" />
-
-      {/* ── Stellar core ── */}
-      <circle cx={CX} cy={CY} r="5.5" fill={`url(#${id}-star)`} />
-
-      <line x1={CX-9} y1={CY}   x2={CX+9} y2={CY}   stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.4" />
-      <line x1={CX}   y1={CY-9} x2={CX}   y2={CY+9} stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.4" />
-      <line x1={CX-6} y1={CY-6} x2={CX+6} y2={CY+6} stroke="#ffc060" strokeWidth="0.25" strokeOpacity="0.28" />
-      <line x1={CX+6} y1={CY-6} x2={CX-6} y2={CY+6} stroke="#ffc060" strokeWidth="0.25" strokeOpacity="0.28" />
 
       {/* ── Luminae wordmark ── */}
       <text x="35" y="91.5" textAnchor="middle" fontFamily="Georgia, serif"
