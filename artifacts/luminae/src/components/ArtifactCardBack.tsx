@@ -296,7 +296,8 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
   // at sector boundaries let star-light through. Two shell layers: outer at
   // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
-  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number };
+  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number; rawHx: number; rawHy: number };
+  type HexConn = { x1: number; y1: number; x2: number; y2: number; col: string; z: number };
 
   const SECTOR_COLS = [R, C, V, F, A];
   const getSectorCol = (angle: number, phaseOff: number): string | null => {
@@ -340,7 +341,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % solidMod) === 0;
         const sx = CX + hx * compress;
         const sy = CY + hy * compress;
-        cells.push({ verts, col, z, solid, cx: sx, cy: sy });
+        cells.push({ verts, col, z, solid, cx: sx, cy: sy, rawHx: hx, rawHy: hy });
       }
     }
     return cells.sort((a, b) => a.z - b.z);       // back → front
@@ -369,9 +370,38 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
+  // Find edges between adjacent same-affinity cells within a shell.
+  // "Adjacent" = raw grid centres within 2× the hex circumradius apart.
+  const genConnections = (cells: HexCell[], hr: number): HexConn[] => {
+    const thresh2 = (hr * 2.1) * (hr * 2.1);
+    const out: HexConn[] = [];
+    for (let a = 0; a < cells.length; a++) {
+      for (let b = a + 1; b < cells.length; b++) {
+        if (cells[a].col !== cells[b].col) continue;
+        const dx = cells[a].rawHx - cells[b].rawHx;
+        const dy = cells[a].rawHy - cells[b].rawHy;
+        if (dx * dx + dy * dy < thresh2) {
+          out.push({
+            x1: cells[a].cx, y1: cells[a].cy,
+            x2: cells[b].cx, y2: cells[b].cy,
+            col: cells[a].col,
+            z: (cells[a].z + cells[b].z) * 0.5,
+          });
+        }
+      }
+    }
+    return out;
+  };
+
   const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
   const shell1 = genShell(23, 3.0,  0);            // mid shell
   const shell2 = genShell(16, 2.4, 36);            // inner shell,  36° sector shift
+
+  const allConns: (HexConn & { sn: number })[] = [
+    ...genConnections(shell2, 2.4).map(c => ({ ...c, sn: 2 })),
+    ...genConnections(shell1, 3.0).map(c => ({ ...c, sn: 1 })),
+    ...genConnections(shell3, 3.6).map(c => ({ ...c, sn: 3 })),
+  ];
 
   // Render order: shell2 (inner, most transparent) → shell1 (mid) → shell3 (outer, most opaque).
   // Shell order is the primary key so the outer shell always sits on top of the inner ones.
@@ -473,6 +503,16 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
+
+      {/* ── Same-affinity connection lines — drawn under the panels ── */}
+      {allConns.map(({ x1, y1, x2, y2, col, z }, i) => (
+        <line key={i}
+          x1={x1.toFixed(2)} y1={y1.toFixed(2)}
+          x2={x2.toFixed(2)} y2={y2.toFixed(2)}
+          stroke={col} strokeWidth="0.10"
+          strokeOpacity={0.18 + z * 0.28}
+          strokeLinecap="round" />
+      ))}
 
       {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
       {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
