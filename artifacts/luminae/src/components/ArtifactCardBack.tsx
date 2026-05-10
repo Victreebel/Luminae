@@ -423,7 +423,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         </filter>
         {/* Soft glow for outer panel gold rim */}
         <filter id={`${id}-panelglow`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="0.22" />
+          <feGaussianBlur stdDeviation="0.12" />
         </filter>
       </defs>
 
@@ -530,7 +530,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
             {/* soft blurred gold glow — no hard line */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffe08a" strokeWidth="0.45" strokeOpacity="0.80"
+              stroke="#ffe08a" strokeWidth="0.18" strokeOpacity="0.90"
               filter={`url(#${id}-panelglow)`} />
           </g>
         );
