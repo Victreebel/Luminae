@@ -1175,14 +1175,17 @@ export default function GameBoard() {
   // renders when state/session are null on the first render cycle.
   const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
   useEffect(() => {
-    if (crystalQueueActive) {
-      if (!localStorage.getItem('luminae_undo_hint_seen')) {
-        localStorage.setItem('luminae_undo_hint_seen', '1');
-        setShowUndoHint(true);
-      }
-    } else {
+    if (!crystalQueueActive) {
       setShowUndoHint(false);
+      return;
     }
+    if (!localStorage.getItem('luminae_undo_hint_seen')) {
+      localStorage.setItem('luminae_undo_hint_seen', '1');
+      setShowUndoHint(true);
+      const timer = setTimeout(() => setShowUndoHint(false), 4000);
+      return () => clearTimeout(timer);
+    }
+    return;
   }, [crystalQueueActive]);
 
   processUpdateRef.current = (newState: GameState) => {
