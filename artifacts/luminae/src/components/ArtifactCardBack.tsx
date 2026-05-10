@@ -285,10 +285,28 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
   const CX = 35, CY = 54;
 
-  const rings = [
-    { r: 10, segs: 8, span: 35, step: 45,  startOff: -90, colors: [F,C,V,A,R,F,C,V] as string[] },
-    { r: 16, segs: 6, span: 48, step: 60,  startOff: -75, colors: [V,A,R,F,C,V]     as string[] },
-    { r: 22, segs: 4, span: 68, step: 90,  startOff: -60, colors: [C,A,F,R]         as string[] },
+  // Each ring: planet orbs at fixed angles + 5 equal-mass affinity swarm bars
+  const SC = [F, C, V, A, R]; // swarm colours — equal count per bar per ring
+  const ringDefs = [
+    {
+      r: 10,
+      planets: [{ ang: -90, col: F, pr: 2.0, gi: 0 }],
+      swarmAngs: [-30, 30, 90, 150, 210],
+    },
+    {
+      r: 16,
+      planets: [
+        { ang: -90, col: C, pr: 1.8, gi: 1 },
+        { ang:   0, col: V, pr: 1.8, gi: 2 },
+        { ang:  90, col: R, pr: 1.8, gi: 3 },
+      ],
+      swarmAngs: [-45, 45, 135, 180, 225],
+    },
+    {
+      r: 22,
+      planets: [{ ang: -90, col: A, pr: 2.2, gi: 4 }],
+      swarmAngs: [-30, 30, 90, 150, 210],
+    },
   ];
 
   return (
@@ -327,6 +345,35 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-arcglow`} x="-150%" y="-150%" width="400%" height="400%">
           <feGaussianBlur stdDeviation="1.0" />
         </filter>
+        <filter id={`${id}-plglow`} x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="1.8" />
+        </filter>
+        {/* Planet surface gradients — highlight offset to upper-left */}
+        <radialGradient id={`${id}-pg0`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%"   stopColor="#ff8050" />
+          <stop offset="50%"  stopColor="#c02010" />
+          <stop offset="100%" stopColor="#300408" />
+        </radialGradient>
+        <radialGradient id={`${id}-pg1`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%"   stopColor="#80b0ff" />
+          <stop offset="50%"  stopColor="#1040c0" />
+          <stop offset="100%" stopColor="#040828" />
+        </radialGradient>
+        <radialGradient id={`${id}-pg2`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%"   stopColor="#60e880" />
+          <stop offset="50%"  stopColor="#108030" />
+          <stop offset="100%" stopColor="#041408" />
+        </radialGradient>
+        <radialGradient id={`${id}-pg3`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%"   stopColor="#ffffff" />
+          <stop offset="50%"  stopColor="#a0b0c8" />
+          <stop offset="100%" stopColor="#182030" />
+        </radialGradient>
+        <radialGradient id={`${id}-pg4`} cx="35%" cy="30%" r="65%">
+          <stop offset="0%"   stopColor="#c080ff" />
+          <stop offset="50%"  stopColor="#6010a0" />
+          <stop offset="100%" stopColor="#100418" />
+        </radialGradient>
       </defs>
 
       {/* ── Background ── */}
@@ -394,58 +441,50 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Extended corona ── */}
       <circle cx={CX} cy={CY} r="14" fill={`url(#${id}-corona)`} />
 
-      {/* ── Dyson Rings — three concentric arc-panel rings ── */}
-      {rings.map(({ r, segs, span, step, startOff, colors }, ri) => (
+      {/* ── Dyson Rings — planet orbs + affinity swarm bars ── */}
+      {ringDefs.map(({ r, planets, swarmAngs }, ri) => (
         <g key={ri}>
-          {/* dashed guide ring */}
+          {/* dashed orbital guide ring */}
           <circle cx={CX} cy={CY} r={r}
-            fill="none"
-            stroke={ri === 0 ? "#3050a0" : GOLD3}
-            strokeWidth={ri === 0 ? 0.3 : 0.28}
-            strokeOpacity={ri === 0 ? 0.3 : 0.25}
-            strokeDasharray="1.5 1.5" />
+            fill="none" stroke={GOLD3}
+            strokeWidth="0.22" strokeOpacity="0.22"
+            strokeDasharray="1.6 1.8" />
 
-          {/* arc panel segments */}
-          {Array.from({ length: segs }).map((_, i) => {
-            const s   = startOff + i * step;
-            const e   = s + span;
-            const col = colors[i % colors.length];
-            const [mx, my] = pt(CX, CY, r, s + span / 2);
-            return (
-              <g key={i}>
-                {/* glow layer */}
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke={col}
-                  strokeWidth={ri === 0 ? 3.5 : ri === 1 ? 3 : 2.5}
-                  strokeOpacity="0.10" strokeLinecap="round"
-                  filter={`url(#${id}-arcglow)`} />
-                {/* solid colour layer */}
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke={col}
-                  strokeWidth={ri === 0 ? 1.5 : ri === 1 ? 1.3 : 1.1}
-                  strokeOpacity={ri === 0 ? 0.75 : ri === 1 ? 0.68 : 0.60}
-                  strokeLinecap="round" />
-                {/* white specular highlight */}
-                <path d={arcPath(CX, CY, r, s, e)}
-                  fill="none" stroke="#ffffff"
-                  strokeWidth="0.35" strokeOpacity="0.18"
-                  strokeLinecap="round" />
-                {/* collector node at arc midpoint */}
-                <circle cx={mx} cy={my}
-                  r={ri === 0 ? 0.9 : 0.75}
-                  fill="#080c28" stroke={GOLD3} strokeWidth="0.3" />
-              </g>
-            );
+          {/* 5 affinity swarm bars — 8 dots each, equal mass per colour */}
+          {swarmAngs.map((barAng, bi) => {
+            const col = SC[bi % 5];
+            return Array.from({ length: 8 }, (_, j) => {
+              const ang = barAng + (j - 3.5) * 2.4;
+              const rad = r + Math.sin(j * 2.1) * 0.62;
+              const [px, py] = pt(CX, CY, rad, ang);
+              const sz = j % 3 === 0 ? 0.44 : 0.30;
+              const op = 0.50 + (j % 3) * 0.10;
+              return <circle key={`${bi}-${j}`} cx={px} cy={py} r={sz} fill={col} opacity={op} />;
+            });
           })}
 
-          {/* inter-ring spars connecting ring ri to ri+1 */}
-          {ri < 2 && Array.from({ length: 4 }).map((_, i) => {
-            const deg = i * 90 + startOff + span / 2;
-            const [x1, y1] = pt(CX, CY, r,              deg);
-            const [x2, y2] = pt(CX, CY, rings[ri + 1].r, deg);
+          {/* Planet orbs */}
+          {planets.map((pl, pi) => {
+            const [px, py] = pt(CX, CY, r, pl.ang);
             return (
-              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.45" />
+              <g key={pi}>
+                {/* outer atmosphere glow */}
+                <circle cx={px} cy={py} r={pl.pr * 2.2}
+                  fill={pl.col} opacity="0.07"
+                  filter={`url(#${id}-plglow)`} />
+                {/* planet body */}
+                <circle cx={px} cy={py} r={pl.pr}
+                  fill={`url(#${id}-pg${pl.gi})`} />
+                {/* atmosphere rim */}
+                <circle cx={px} cy={py} r={pl.pr}
+                  fill="none" stroke={pl.col}
+                  strokeWidth="0.28" strokeOpacity="0.45" />
+                {/* specular highlight */}
+                <circle
+                  cx={px - pl.pr * 0.32} cy={py - pl.pr * 0.32}
+                  r={pl.pr * 0.28}
+                  fill="#ffffff" opacity="0.28" />
+              </g>
             );
           })}
         </g>
