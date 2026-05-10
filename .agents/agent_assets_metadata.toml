@@ -796,7 +796,7 @@ title = "generated_image"
 id = "7_xVFO4qQSi5mZwyT6S4b"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/entity.png"
 type = "image"
-title = "radiant keeper goddess entity"
+title = "lum_radiant entity"
 
 [[generated]]
 id = "_pUlkAorrz3xsYq0mkzBR"
@@ -1397,3 +1397,9 @@ id = "v7gTqkjuNFL7DqfB3IOcm"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
 type = "image"
 title = "Cosmic Oracle — Restored"
+
+[[outputs]]
+id = "78eZi2y3tegurLtFSduXk"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/entity.png"
+type = "image"
+title = "Radiant Keeper — New Entity"
