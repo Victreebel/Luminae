@@ -51,13 +51,16 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
   const id = 't1cb';
   const PX = 35, PY = 56, PR = 16;
 
-  const cityNodes: [number,number,string][] = [
-    [35,  44.5, F],  // Flare     — upper continent interior (unchanged)
-    [46,  51.5, R],  // Radiance  — east coast (was Continuum)
-    [42,  64.5, V],  // Verdance  — southern continent (unchanged)
-    [24,  64.0, C],  // Continuum — western ocean (was Abyss)
-    [24,  51.5, A],  // Abyss     — west coast / shadow side (was Radiance)
-  ];
+  // Regular pentagon, radius 10, centered on planet (PX, PY), first vertex pointing straight up
+  const _pR = 10;
+  const cityNodes: [number,number,string][] = [0,1,2,3,4].map((k) => {
+    const ang = (Math.PI * (-0.5 + (2 * k) / 5));
+    return [
+      Math.round((PX + _pR * Math.cos(ang)) * 10) / 10,
+      Math.round((PY + _pR * Math.sin(ang)) * 10) / 10,
+      [F, R, V, C, A][k],
+    ] as [number, number, string];
+  });
 
   const ORB_R = PR + 4.5;
 
