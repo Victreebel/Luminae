@@ -514,32 +514,30 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
-        // Flat opaque panel — 3D depth hinted only by shadow/brightness gradient
+        // Opaque panel — radial shading makes each hex read as a convex dome,
+        // not as a flat angled face. Adjacent domes cannot form the isometric
+        // cube illusion that directional (UL→LR) gradients produce.
         const shadingId = `${id}-sh-${i}`;
-        // Gradient: upper-left bright highlight → transparent mid → lower-right shadow
-        const gx1 = (cx - 2.6).toFixed(2), gy1 = (cy - 2.6).toFixed(2);
-        const gx2 = (cx + 2.6).toFixed(2), gy2 = (cy + 2.6).toFixed(2);
         return (
           <g key={i}>
             <defs>
-              <linearGradient id={shadingId}
-                x1={gx1} y1={gy1} x2={gx2} y2={gy2}
+              <radialGradient id={shadingId}
+                cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="2.8"
                 gradientUnits="userSpaceOnUse">
-                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.32" />
-                <stop offset="28%"  stopColor={lightCol} stopOpacity="0"    />
-                <stop offset="72%"  stopColor={darkCol}  stopOpacity="0"    />
-                <stop offset="100%" stopColor={darkCol}  stopOpacity="0.40" />
-              </linearGradient>
+                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.20" />
+                <stop offset="48%"  stopColor={lightCol} stopOpacity="0"    />
+                <stop offset="100%" stopColor={darkCol}  stopOpacity="0.30" />
+              </radialGradient>
             </defs>
             {/* Affinity-coloured outer glow */}
             <polygon points={ptStr} fill="none"
               stroke={col} strokeWidth="1.0" strokeOpacity="0.48"
               filter={`url(#${id}-panelglow)`} />
-            {/* Dark panel surface (PANEL_MID — not full-bright affinity) */}
+            {/* Dark panel surface */}
             <polygon points={ptStr} fill={surfCol} fillOpacity="1.0" />
-            {/* Directional shading overlay: upper-left bright, lower-right dark */}
+            {/* Per-panel convex radial shading — breaks directional cube cue */}
             <polygon points={ptStr} fill={`url(#${shadingId})`} />
-            {/* Bright hairline rim — sole geometric 3D cue */}
+            {/* Bright hairline rim */}
             <polygon points={ptStr} fill="none"
               stroke={lightCol} strokeWidth="0.10" strokeOpacity="0.65" />
           </g>
