@@ -430,42 +430,47 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 // ║  Dense 70-star field fills the card. The structure overwhelms the      ║
 // ║  eye — as a K-III civilization should.                                 ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
+// Singularity (flux) — golden yellow: distinct from the gold border metal
+const S = '#f0c040';
+
 export function CardBackTier3({ count: _count }: { count?: number }) {
   const id = 't3cb';
   const CX = 35, CY = 52; // galactic core — upper-center for arm balance
 
   // ── ARM TIPS reach all four corners ──────────────────────────────────────
+  // Corners: Continuum (NE) · Verdance (SE) · Flare (SW) · Radiance (NW)
+  // All four spiral inward and merge at the golden Singularity core.
   const armTips: [number,number,string][] = [
-    [62,  8,  F], // NE corner — Flare
-    [63,  90, C], // SE corner — Continuum
-    [7,   92, V], // SW corner — Verdance
-    [6,   12, A], // NW corner — Abyss
+    [62,  8,  C], // NE corner — Continuum
+    [63,  90, V], // SE corner — Verdance
+    [7,   92, F], // SW corner — Flare
+    [6,   12, R], // NW corner — Radiance
   ];
 
   // ── SUB-ARM TIPS reach card edges (between corners) ──────────────────────
   const subTips: [number,number,string][] = [
-    [66,  42, F], // E  edge — Flare sub
-    [50,  97, C], // S  edge — Continuum sub
-    [18,  97, V], // S  edge — Verdance sub
-    [4,   58, A], // W  edge — Abyss sub
+    [66,  42, C], // E  edge — Continuum sub
+    [50,  97, V], // S  edge — Verdance sub
+    [18,  97, F], // S  edge — Flare sub
+    [4,   58, R], // W  edge — Radiance sub
   ];
 
   // ── MID-ARM NODES (2 per main arm, along bezier path) ────────────────────
   const midNodes: [number,number,string][] = [
-    [50,  28, F], [57,  17, F], // NE arm near/far
-    [52,  71, C], [58,  82, C], // SE arm near/far
-    [18,  73, V], [11,  83, V], // SW arm near/far
-    [18,  31, A], [11,  20, A], // NW arm near/far
+    [50,  28, C], [57,  17, C], // NE arm near/far — Continuum
+    [52,  71, V], [58,  82, V], // SE arm near/far — Verdance
+    [18,  73, F], [11,  83, F], // SW arm near/far — Flare
+    [18,  31, R], [11,  20, R], // NW arm near/far — Radiance
   ];
 
-  // ── GALACTIC BAR endpoints (diagonal bar through core) ───────────────────
+  // ── GALACTIC BAR endpoints — Singularity gold ────────────────────────────
   const barNodes: [number,number,string][] = [
-    [49,  40, R], // NE bar tip
-    [21,  64, R], // SW bar tip
+    [49,  40, S], // NE bar tip
+    [21,  64, S], // SW bar tip
   ];
 
-  // Core civilization node (Radiance — stabilized galactic order)
-  const core: [number,number,string] = [CX, CY, R];
+  // Core civilization node — Singularity (all affinities unified)
+  const core: [number,number,string] = [CX, CY, S];
 
   // merged index: armTips[0-3] subTips[4-7] midNodes[8-15] barNodes[16-17] core[18]
   const merged: [number,number,string][] = [
@@ -511,18 +516,18 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
 
   // ── SPIRAL ARMS (bezier from near-core to corners) ────────────────────────
   const arms = [
-    { d: `M ${CX+7} ${CY-6} C 51 38, 59 22, 62  8`,  col: F },
-    { d: `M ${CX+7} ${CY+6} C 54 64, 61 78, 63  90`, col: C },
-    { d: `M ${CX-7} ${CY+6} C 19 68, 11 80, 7   92`, col: V },
-    { d: `M ${CX-7} ${CY-6} C 19 38, 11 24, 6   12`, col: A },
+    { d: `M ${CX+7} ${CY-6} C 51 38, 59 22, 62  8`,  col: C }, // NE — Continuum
+    { d: `M ${CX+7} ${CY+6} C 54 64, 61 78, 63  90`, col: V }, // SE — Verdance
+    { d: `M ${CX-7} ${CY+6} C 19 68, 11 80, 7   92`, col: F }, // SW — Flare
+    { d: `M ${CX-7} ${CY-6} C 19 38, 11 24, 6   12`, col: R }, // NW — Radiance
   ];
 
   // ── SUB-ARMS (branch off near the 2/3 point of each main arm) ────────────
   const subArms = [
-    { d: `M 55 22 C 61 30, 65 36, 66 42`, col: F },
-    { d: `M 58 80 C 57 87, 54 93, 50 97`, col: C },
-    { d: `M 11 80 C 13 88, 15 93, 18 97`, col: V },
-    { d: `M 13 35 C 8  44, 5  51, 4  58`, col: A },
+    { d: `M 55 22 C 61 30, 65 36, 66 42`, col: C }, // NE sub — Continuum
+    { d: `M 58 80 C 57 87, 54 93, 50 97`, col: V }, // SE sub — Verdance
+    { d: `M 11 80 C 13 88, 15 93, 18 97`, col: F }, // SW sub — Flare
+    { d: `M 13 35 C 8  44, 5  51, 4  58`, col: R }, // NW sub — Radiance
   ];
 
   // ── STAR CLUSTERS along all arms (dense) ──────────────────────────────────
@@ -568,56 +573,57 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       aria-hidden
     >
       <defs>
-        {/* Deepest void — intergalactic scale, warm violet undertone */}
+        {/* Deepest void — Abyss-tinted intergalactic dark */}
         <radialGradient id={`${id}-bg`} cx="50%" cy="50%" r="70%">
-          <stop offset="0%"   stopColor="#120a28" />
-          <stop offset="35%"  stopColor="#08051a" />
-          <stop offset="100%" stopColor="#010108" />
+          <stop offset="0%"   stopColor="#0e0618" />
+          <stop offset="35%"  stopColor="#06040f" />
+          <stop offset="100%" stopColor="#010106" />
         </radialGradient>
 
-        {/* Galactic nebula wash — fills the whole card */}
+        {/* Abyss nebula pulse — deep violet wash radiating from core */}
         <radialGradient id={`${id}-nebula`} cx="50%" cy="52%" r="60%">
-          <stop offset="0%"   stopColor="#1c1050" stopOpacity="0.9" />
-          <stop offset="30%"  stopColor="#100830" stopOpacity="0.6" />
-          <stop offset="65%"  stopColor="#060418" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#020210" stopOpacity="0"   />
+          <stop offset="0%"   stopColor="#2a0855" stopOpacity="0.88" />
+          <stop offset="22%"  stopColor="#1a0540" stopOpacity="0.65" />
+          <stop offset="50%"  stopColor="#0c0325" stopOpacity="0.32" />
+          <stop offset="80%"  stopColor="#080220" stopOpacity="0.10" />
+          <stop offset="100%" stopColor="#020108" stopOpacity="0"    />
         </radialGradient>
 
-        {/* Outer halo — faint violet fringe reaching card edges */}
+        {/* Outer Abyss halo — faint purple fringe at card edges */}
         <radialGradient id={`${id}-halo`} cx="50%" cy="52%" r="55%">
-          <stop offset="40%"  stopColor="#2a1060" stopOpacity="0"   />
-          <stop offset="75%"  stopColor="#3a1880" stopOpacity="0.15"/>
-          <stop offset="100%" stopColor="#2008a0" stopOpacity="0.05"/>
+          <stop offset="40%"  stopColor="#3b0080" stopOpacity="0"   />
+          <stop offset="72%"  stopColor="#5010a0" stopOpacity="0.14"/>
+          <stop offset="100%" stopColor="#3a0888" stopOpacity="0.07"/>
         </radialGradient>
 
-        {/* Galactic bar gradient (diagonal NE-SW) */}
+        {/* Galactic bar — Singularity gold diagonal through core */}
         <linearGradient id={`${id}-bar`} x1="30%" y1="35%" x2="70%" y2="65%">
-          <stop offset="0%"   stopColor="#5030b0" stopOpacity="0"   />
-          <stop offset="20%"  stopColor="#9060e0" stopOpacity="0.45"/>
-          <stop offset="50%"  stopColor="#d0b0ff" stopOpacity="0.8" />
-          <stop offset="80%"  stopColor="#9060e0" stopOpacity="0.45"/>
-          <stop offset="100%" stopColor="#5030b0" stopOpacity="0"   />
+          <stop offset="0%"   stopColor={S}       stopOpacity="0"   />
+          <stop offset="20%"  stopColor={S}       stopOpacity="0.40"/>
+          <stop offset="50%"  stopColor="#fff8c0" stopOpacity="0.72"/>
+          <stop offset="80%"  stopColor={S}       stopOpacity="0.40"/>
+          <stop offset="100%" stopColor={S}       stopOpacity="0"   />
         </linearGradient>
 
-        {/* Galactic core nucleus — blinding white-violet */}
+        {/* Galactic core nucleus — Singularity golden yellow */}
         <radialGradient id={`${id}-core`} cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"   />
-          <stop offset="10%"  stopColor="#e8d8ff" stopOpacity="0.95"/>
-          <stop offset="28%"  stopColor="#a060e0" stopOpacity="0.6" />
-          <stop offset="60%"  stopColor="#5020b0" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#200848" stopOpacity="0"   />
+          <stop offset="8%"   stopColor="#fff8d0" stopOpacity="0.97"/>
+          <stop offset="22%"  stopColor={S}       stopOpacity="0.80"/>
+          <stop offset="48%"  stopColor="#c08010" stopOpacity="0.35"/>
+          <stop offset="100%" stopColor="#402800" stopOpacity="0"   />
         </radialGradient>
 
-        {/* Halo rings around core */}
+        {/* Abyss pulse rings around core — concentric void shells */}
         <radialGradient id={`${id}-halo1`} cx="50%" cy="50%" r="50%">
-          <stop offset="72%"  stopColor="#6030c0" stopOpacity="0"   />
-          <stop offset="86%"  stopColor="#8050d0" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#9060e0" stopOpacity="0"   />
+          <stop offset="68%"  stopColor="#4a0090" stopOpacity="0"   />
+          <stop offset="82%"  stopColor="#6010b8" stopOpacity="0.22"/>
+          <stop offset="100%" stopColor="#7020c8" stopOpacity="0"   />
         </radialGradient>
         <radialGradient id={`${id}-halo2`} cx="50%" cy="50%" r="50%">
-          <stop offset="72%"  stopColor="#4020a0" stopOpacity="0"   />
-          <stop offset="86%"  stopColor="#5030b0" stopOpacity="0.12"/>
-          <stop offset="100%" stopColor="#6040c0" stopOpacity="0"   />
+          <stop offset="70%"  stopColor="#300068" stopOpacity="0"   />
+          <stop offset="86%"  stopColor="#4a0888" stopOpacity="0.14"/>
+          <stop offset="100%" stopColor="#580aa0" stopOpacity="0"   />
         </radialGradient>
 
         <linearGradient id={`${id}-bord`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -718,14 +724,14 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         transform={`rotate(-25 ${CX} ${CY})`}
         fill={`url(#${id}-bar)`} />
 
-      {/* ── Outer halo shell rings (concentric) ── */}
+      {/* ── Abyss pulse shells (concentric void rings around Singularity) ── */}
       <circle cx={CX} cy={CY} r="30" fill={`url(#${id}-halo1)`} />
       <circle cx={CX} cy={CY} r="22" fill={`url(#${id}-halo2)`} />
       <circle cx={CX} cy={CY} r="18"
-        fill="none" stroke="#6040c0" strokeWidth="0.35" strokeOpacity="0.18"
+        fill="none" stroke={A} strokeWidth="0.35" strokeOpacity="0.20"
         strokeDasharray="2 3" />
       <circle cx={CX} cy={CY} r="25"
-        fill="none" stroke="#5030a0" strokeWidth="0.28" strokeOpacity="0.12"
+        fill="none" stroke={A} strokeWidth="0.28" strokeOpacity="0.13"
         strokeDasharray="3 4" />
 
       {/* ── Four primary spiral arms — glow halo, body, bright spine ── */}
@@ -822,21 +828,21 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="7" fill={`url(#${id}-core)`} opacity="0.7" />
       <circle cx={CX} cy={CY} r="3.5" fill={`url(#${id}-core)`} />
 
-      {/* Core cross-flare */}
+      {/* Core cross-flare — Singularity gold rays */}
       <line x1={CX-11} y1={CY}    x2={CX+11} y2={CY}
-        stroke="#f0e8ff" strokeWidth="0.38" strokeOpacity="0.5" />
+        stroke="#fff8c0" strokeWidth="0.38" strokeOpacity="0.55" />
       <line x1={CX}    y1={CY-11} x2={CX}    y2={CY+11}
-        stroke="#f0e8ff" strokeWidth="0.38" strokeOpacity="0.5" />
+        stroke="#fff8c0" strokeWidth="0.38" strokeOpacity="0.55" />
       <line x1={CX-7}  y1={CY-7}  x2={CX+7}  y2={CY+7}
-        stroke="#d0c0ff" strokeWidth="0.22" strokeOpacity="0.32" />
+        stroke={S}       strokeWidth="0.22" strokeOpacity="0.36" />
       <line x1={CX+7}  y1={CY-7}  x2={CX-7}  y2={CY+7}
-        stroke="#d0c0ff" strokeWidth="0.22" strokeOpacity="0.32" />
+        stroke={S}       strokeWidth="0.22" strokeOpacity="0.36" />
 
-      {/* ── Central Radiance node (galactic core civilization) ── */}
-      <circle cx={CX} cy={CY} r="10" fill={R} opacity="0.07"
+      {/* ── Central Singularity node (all affinities converged) ── */}
+      <circle cx={CX} cy={CY} r="10" fill={S} opacity="0.09"
         filter={`url(#${id}-nodeglow)`} />
-      <circle cx={CX} cy={CY} r="3.2" fill="#04021a" stroke={R} strokeWidth="0.7" strokeOpacity="0.95" />
-      <circle cx={CX} cy={CY} r="1.6" fill={R} opacity="0.8" />
+      <circle cx={CX} cy={CY} r="3.2" fill="#0a0600" stroke={S} strokeWidth="0.7" strokeOpacity="0.96" />
+      <circle cx={CX} cy={CY} r="1.6" fill={S} opacity="0.85" />
       <circle cx={CX} cy={CY} r="0.6" fill="#fff" opacity="0.95" />
 
       {/* ── Luminae wordmark ── */}
