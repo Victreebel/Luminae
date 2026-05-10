@@ -835,6 +835,7 @@ export default function GameBoard() {
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
+  const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
   const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
@@ -1638,7 +1639,7 @@ export default function GameBoard() {
     const inBank = state.crystalBank[color] ?? 0;
 
     if (actionMode === 'take2') {
-      if (selectedCrystals[color] === 2) { setSelectedCrystals({}); setCrystalHistory([]); setActionMode('none'); }
+      if (selectedCrystals[color] === 2) { setSelectedCrystals({}); setCrystalHistory([]); setPrePromotionHistory(null); setActionMode('none'); }
       else if (inBank >= 4) { setSelectedCrystals({ [color]: 2 }); setCrystalHistory([color, color]); gameAudio.playCrystalPicked(color as GemKey); }
       return;
     }
@@ -1665,6 +1666,25 @@ export default function GameBoard() {
 
   const handleUndoCrystal = () => {
     if (crystalHistory.length === 0) return;
+    // If undoing a take-2 that was created via promoteToTake2, restore the
+    // pre-promotion snapshot (which may be empty) rather than removing just
+    // one history entry and leaving a stale single-crystal selection.
+    if (actionMode === 'take2' && prePromotionHistory !== null) {
+      const restored = prePromotionHistory;
+      setCrystalHistory(restored);
+      setPrePromotionHistory(null);
+      if (restored.length === 0) {
+        setSelectedCrystals({});
+        setActionMode('none');
+      } else {
+        const rebuilt: Partial<CrystalCounts> = {};
+        for (const c of restored) rebuilt[c] = (rebuilt[c] ?? 0) + 1;
+        setSelectedCrystals(rebuilt);
+        const restoredIsTake2 = Object.keys(rebuilt).length === 1 && rebuilt[restored[0]] === 2;
+        setActionMode(restoredIsTake2 ? 'take2' : 'take3');
+      }
+      return;
+    }
     const newHistory = crystalHistory.slice(0, -1);
     setCrystalHistory(newHistory);
     if (newHistory.length === 0) {
@@ -1683,6 +1703,7 @@ export default function GameBoard() {
 
   const promoteToTake2 = (color: GemKey) => {
     if (!state || (state.crystalBank[color] ?? 0) < 4) return;
+    setPrePromotionHistory(crystalHistory);
     setSelectedCrystals({ [color]: 2 });
     setCrystalHistory([color, color]);
     setActionMode('take2');
@@ -1700,6 +1721,7 @@ export default function GameBoard() {
       setActionMode('none');
       setSelectedCrystals({});
       setCrystalHistory([]);
+      setPrePromotionHistory(null);
       // resolve_summon fires from onComplete for every player who watched the
       // cutscene (including opponents who skipped the view and may be browsing
       // cards). Do not close their card sheet as a side-effect of that action.
@@ -1894,6 +1916,7 @@ export default function GameBoard() {
       setSelectedCard(null);
       setSelectedCrystals({});
       setCrystalHistory([]);
+      setPrePromotionHistory(null);
       setActionMode('none');
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Plan failed', description: err.message });
@@ -2333,7 +2356,7 @@ export default function GameBoard() {
                       variant="outline"
                       size="sm"
                       className="h-7 w-7 p-0 rounded-lg"
-                      onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); }}
+                      onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); setPrePromotionHistory(null); }}
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
