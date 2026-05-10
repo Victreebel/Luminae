@@ -543,15 +543,15 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const INNER_R = 4.8;
   const OUTER_R = 7.5;
 
-  // Secondary star systems — each main civilization controls additional systems
-  // at further distances, branching outward from the central hub axis
-  const satellites: Array<{ cx: number; cy: number; col: string; parentIdx: number }> = [
-    { cx: 19, cy: 13, col: R, parentIdx: 0 },  // Radiance — upper-left branch
-    { cx: 51, cy: 13, col: R, parentIdx: 0 },  // Radiance — upper-right branch
-    { cx: 63, cy: 37, col: C, parentIdx: 1 },  // Continuum — far-right branch
-    { cx: 59, cy: 81, col: V, parentIdx: 2 },  // Verdance — lower-right branch
-    { cx: 11, cy: 81, col: F, parentIdx: 3 },  // Flare — lower-left branch
-    { cx:  7, cy: 37, col: A, parentIdx: 4 },  // Abyss — far-left branch
+  // Secondary star systems — branching off the spiral energy arms mid-path.
+  // ax/ay = the point on the arm bezier where the branch splits off.
+  // cx/cy = where the satellite system sits (offset sideways from the arm).
+  const satellites: Array<{ cx: number; cy: number; ax: number; ay: number; col: string; parentIdx: number }> = [
+    { ax: 45, ay: 38, cx: 57, cy: 30, col: R, parentIdx: 0 },  // R arm t≈0.35 → upper-right
+    { ax: 54, ay: 57, cx: 63, cy: 62, col: C, parentIdx: 1 },  // C arm t≈0.30 → far-right
+    { ax: 39, ay: 71, cx: 52, cy: 82, col: V, parentIdx: 2 },  // V arm t≈0.20 → lower-right
+    { ax: 17, ay: 64, cx:  9, cy: 78, col: F, parentIdx: 3 },  // F arm t≈0.25 → lower-left
+    { ax: 17, ay: 38, cx:  8, cy: 27, col: A, parentIdx: 4 },  // A arm t≈0.30 → upper-left
   ];
 
   return (
@@ -713,13 +713,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           strokeDasharray="2.2 2" />
       ))}
 
-      {/* Branch arms — thin dashed lines connecting main systems to their satellites */}
-      {satellites.map(({ cx, cy, col, parentIdx }, i) => (
-        <line key={i}
-          x1={systems[parentIdx].cx} y1={systems[parentIdx].cy}
-          x2={cx} y2={cy}
-          stroke={col} strokeWidth="0.24" strokeOpacity="0.30"
-          strokeDasharray="1.8 1.8" />
+      {/* Branch arms — spur lines from a point on the spiral arm to each satellite */}
+      {satellites.map(({ cx, cy, ax, ay, col }, i) => (
+        <g key={i}>
+          {/* Junction dot — marks where the spur splits from the main arm */}
+          <circle cx={ax} cy={ay} r="0.55"
+            fill="#0a0818" stroke={col} strokeWidth="0.28" strokeOpacity="0.72" />
+          {/* Spur line from arm junction to satellite */}
+          <line x1={ax} y1={ay} x2={cx} y2={cy}
+            stroke={col} strokeWidth="0.26" strokeOpacity="0.34"
+            strokeDasharray="1.6 1.6" />
+        </g>
       ))}
 
       {/* Secondary star systems — smaller Dyson swarms at branch tips */}
