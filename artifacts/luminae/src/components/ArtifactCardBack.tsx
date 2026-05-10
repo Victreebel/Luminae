@@ -478,21 +478,37 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
         const surfCol  = PANEL_MID[col]   ?? '#303040';
 
-        // ── Shell 2 (innermost) — only solid panels have fill ────────────
+        // ── Shell 2 (innermost) — panels near star are brightly lit ─────
+        // z≈1 = near star (most illuminated), z≈0 = outer edge of this shell
         if (sn === 2) return (
           <g key={i}>
-            {solid && <polygon points={ptStr} fill={col} fillOpacity={0.08 + z * 0.10} />}
+            {solid && <>
+              {/* Base affinity fill */}
+              <polygon points={ptStr} fill={col} fillOpacity={0.10 + z * 0.18} />
+              {/* Stellar illumination overlay — brightest nearest the star */}
+              <polygon points={ptStr} fill={lightCol} fillOpacity={z * 0.42} />
+            </>}
+            {/* Affinity outline — also brightens near star */}
             <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.09" strokeOpacity={0.10 + z * 0.18} />
+              strokeWidth="0.09" strokeOpacity={0.10 + z * 0.22} />
+            {/* Star-lit highlight stroke */}
+            <polygon points={ptStr} fill="none" stroke={lightCol}
+              strokeWidth="0.07" strokeOpacity={z * 0.38} />
           </g>
         );
 
-        // ── Shell 1 (middle) — only solid panels have fill ────────────────
+        // ── Shell 1 (middle) — dimmer reflected illumination ──────────────
         if (sn === 1) return (
           <g key={i}>
-            {solid && <polygon points={ptStr} fill={col} fillOpacity={0.18 + z * 0.22} />}
+            {solid && <>
+              <polygon points={ptStr} fill={col} fillOpacity={0.18 + z * 0.22} />
+              {/* Half the stellar boost of shell 2 */}
+              <polygon points={ptStr} fill={lightCol} fillOpacity={z * 0.20} />
+            </>}
             <polygon points={ptStr} fill="none" stroke={col}
               strokeWidth="0.10" strokeOpacity={0.15 + z * 0.25} />
+            <polygon points={ptStr} fill="none" stroke={lightCol}
+              strokeWidth="0.07" strokeOpacity={z * 0.18} />
           </g>
         );
 
