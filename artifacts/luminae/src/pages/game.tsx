@@ -1104,6 +1104,9 @@ export default function GameBoard() {
   // ── Initial-load summon check ─────────────────────────────────────────────
   // Picks up any pendingSummonEvents already in the REST-loaded state (page
   // load / reconnect) where no subsequent WebSocket delta will fire a diff.
+  // Also seeds claimedThisSession with every already-resolved Luminary so
+  // idle entity overlays are restored immediately after a page reload or
+  // navigation away and back (without needing to replay the cutscene).
   // Placed after `state` is declared but before early returns so hook order
   // is always stable across renders.
   useEffect(() => {
@@ -1120,6 +1123,21 @@ export default function GameBoard() {
           lum.oblivion ? -lum.oblivion : lum.lumens, lum.flavor ?? '', evt.eventId, false,
         );
       }
+    }
+    // Seed idle overlays for Luminaries already claimed before this page load.
+    // Exclude any that still have a pending summon event — they will self-add
+    // to claimedThisSession when their cutscene completes.
+    const pendingIds = new Set(pending.map(e => e.luminaryId));
+    const alreadyClaimed: string[] = [];
+    for (const player of (state.players ?? [])) {
+      for (const lumId of ((player as any).claimedLuminaryIds ?? [])) {
+        if (!pendingIds.has(lumId) && !alreadyClaimed.includes(lumId)) {
+          alreadyClaimed.push(lumId);
+        }
+      }
+    }
+    if (alreadyClaimed.length > 0) {
+      setClaimedThisSession(alreadyClaimed);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!state]);
@@ -1157,6 +1175,7 @@ export default function GameBoard() {
       handledSummonEventIdsRef.current = new Set();
       pendingSuppressLumIdsRef.current = new Set();
       stateQueueRef.current = [];
+      setClaimedThisSession([]);
     }
       const action = newState.lastAction;
       const isMarketAction = action && (
