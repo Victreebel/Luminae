@@ -72,9 +72,9 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       aria-hidden
     >
       <defs>
-        <radialGradient id={`${id}-bg`} cx="50%" cy="54%" r="62%">
-          <stop offset="0%"   stopColor="#0a0e22" />
-          <stop offset="55%"  stopColor={BG_MID}  />
+        <radialGradient id={`${id}-bg`} cx="50%" cy="56%" r="65%">
+          <stop offset="0%"   stopColor="#12080a" />
+          <stop offset="55%"  stopColor="#08060f" />
           <stop offset="100%" stopColor={BG_DEEP} />
         </radialGradient>
         <radialGradient id={`${id}-planet`} cx="40%" cy="32%" r="72%">
@@ -83,15 +83,16 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           <stop offset="70%"  stopColor="#081438" />
           <stop offset="100%" stopColor="#030a1c" />
         </radialGradient>
-        <radialGradient id={`${id}-night`} cx="18%" cy="50%" r="72%">
-          <stop offset="0%"   stopColor="#000008" stopOpacity="0.75" />
-          <stop offset="55%"  stopColor="#000008" stopOpacity="0.3"  />
-          <stop offset="100%" stopColor="#000008" stopOpacity="0"    />
+        {/* Night-side terminator: sun is behind the planet, warm limb from upper-right */}
+        <radialGradient id={`${id}-night`} cx="28%" cy="40%" r="72%">
+          <stop offset="0%"   stopColor="#000008" stopOpacity="0.0"  />
+          <stop offset="45%"  stopColor="#000008" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#000008" stopOpacity="0.82" />
         </radialGradient>
         <radialGradient id={`${id}-atmo`} cx="50%" cy="50%" r="50%">
           <stop offset="72%"  stopColor="#1a60e0" stopOpacity="0"    />
-          <stop offset="85%"  stopColor="#4090ff" stopOpacity="0.55" />
-          <stop offset="94%"  stopColor="#80c0ff" stopOpacity="0.25" />
+          <stop offset="85%"  stopColor="#4090ff" stopOpacity="0.45" />
+          <stop offset="94%"  stopColor="#80c0ff" stopOpacity="0.20" />
           <stop offset="100%" stopColor="#a0d8ff" stopOpacity="0"    />
         </radialGradient>
         <radialGradient id={`${id}-land`} cx="50%" cy="50%" r="50%">
@@ -106,16 +107,27 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <clipPath id={`${id}-clip`}>
           <circle cx={PX} cy={PY} r={PR} />
         </clipPath>
-        {/* Distant sun gradient */}
+        {/* Solar corona behind the planet — the planet transits its own sun */}
         <radialGradient id={`${id}-sun`} cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"   />
-          <stop offset="15%"  stopColor="#fff8d0" stopOpacity="0.92"/>
-          <stop offset="38%"  stopColor="#ffe090" stopOpacity="0.55"/>
-          <stop offset="65%"  stopColor="#ffa030" stopOpacity="0.18"/>
-          <stop offset="100%" stopColor="#ff6000" stopOpacity="0"   />
+          <stop offset="12%"  stopColor="#fff8d0" stopOpacity="0.96"/>
+          <stop offset="28%"  stopColor="#ffe080" stopOpacity="0.78"/>
+          <stop offset="50%"  stopColor="#ffb030" stopOpacity="0.42"/>
+          <stop offset="72%"  stopColor="#ff6010" stopOpacity="0.14"/>
+          <stop offset="100%" stopColor="#ff3000" stopOpacity="0"   />
+        </radialGradient>
+        {/* Limb glow — warm halo visible at the planet's lit edge */}
+        <radialGradient id={`${id}-limb`} cx="50%" cy="50%" r="50%">
+          <stop offset="68%"  stopColor="#ffb040" stopOpacity="0"   />
+          <stop offset="82%"  stopColor="#ffd060" stopOpacity="0.60"/>
+          <stop offset="92%"  stopColor="#fff0a0" stopOpacity="0.28"/>
+          <stop offset="100%" stopColor="#ffffff"  stopOpacity="0"  />
         </radialGradient>
         <filter id={`${id}-sunglow`} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="4.5" />
+          <feGaussianBlur stdDeviation="5.5" />
+        </filter>
+        <filter id={`${id}-sunbloom`} x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="2.5" />
         </filter>
       </defs>
 
@@ -140,28 +152,18 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           opacity={0.10 + (sz * 0.038)} />
       ))}
 
-      {/* ── Local star — same solar system, close and bright ── */}
-      {/* Broad outer corona bloom */}
-      <circle cx="57" cy="19" r="20"
+      {/* ── Solar corona — the planet's sun, directly behind it ── */}
+      {/* Outermost soft bloom — fills most of the card with warm solar light */}
+      <circle cx={PX} cy={PY} r="42"
         fill={`url(#${id}-sun)`}
-        filter={`url(#${id}-sunglow)`} opacity="0.38" />
-      {/* Inner corona */}
-      <circle cx="57" cy="19" r="11"
+        filter={`url(#${id}-sunglow)`} opacity="0.55" />
+      {/* Mid corona */}
+      <circle cx={PX} cy={PY} r="26"
         fill={`url(#${id}-sun)`}
-        filter={`url(#${id}-sunglow)`} opacity="0.65" />
-      {/* Limb-lit disc */}
-      <circle cx="57" cy="19" r="4.2" fill={`url(#${id}-sun)`} opacity="0.94" />
-      {/* Bright point */}
-      <circle cx="57" cy="19" r="1.5" fill="#ffffff" opacity="0.98" />
-      {/* Cross-flare */}
-      <line x1="45" y1="19" x2="69" y2="19"
-        stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.38" />
-      <line x1="57" y1="7"  x2="57" y2="31"
-        stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.30" />
-      <line x1="49" y1="11" x2="65" y2="27"
-        stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
-      <line x1="65" y1="11" x2="49" y2="27"
-        stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
+        filter={`url(#${id}-sunbloom)`} opacity="0.42" />
+      {/* Inner corona disc — partially obscured by planet */}
+      <circle cx={PX} cy={PY} r="18"
+        fill={`url(#${id}-sun)`} opacity="0.30" />
 
       {/* ── T1 Border — single L-corner ── */}
       <rect x="4" y="4" width="62" height="92" rx="1.5"
@@ -190,7 +192,10 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       <line x1="31.5" y1="16" x2="38.5" y2="16"
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.5" />
 
-      {/* ── Atmospheric halo ── */}
+      {/* ── Solar limb glow — warm golden ring where sun's corona peeks past planet edge ── */}
+      <circle cx={PX} cy={PY} r={PR + 4.5} fill={`url(#${id}-limb)`} />
+
+      {/* ── Atmospheric halo — blue scatter over the solar warmth ── */}
       <circle cx={PX} cy={PY} r={PR + 3.5} fill={`url(#${id}-atmo)`} />
 
       {/* ── Planet sphere ── */}
