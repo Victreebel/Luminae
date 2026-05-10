@@ -294,13 +294,22 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     ];
   };
 
-  // Five orbital shells — varied inclinations & orientations, one per affinity
+  // Ten orbital shells — five primary + five inner companions at 84% scale.
+  // Inner rings share the same inclination/colour but are phase-shifted by half
+  // a panel-spacing (π/n) so their collectors interleave with the outer layer.
   const swarmRings = [
-    { rx: 25, ry: 5,   rot:   0, col: F, n: 28, off: 0.00 },  // equatorial — widest
-    { rx: 22, ry: 13,  rot:  38, col: C, n: 22, off: 0.52 },  // 30° inclined
-    { rx: 18, ry: 17,  rot: -28, col: V, n: 20, off: 1.10 },  // 60° inclined
-    { rx:  7, ry: 26,  rot:   8, col: A, n: 18, off: 0.80 },  // near-polar — tallest
-    { rx: 16, ry: 12,  rot: -55, col: R, n: 18, off: 0.30 },  // intermediate
+    // ── Outer rings ──────────────────────────────────────────────────────────
+    { rx: 25,   ry: 5,    rot:   0, col: F, n: 28, off: 0.00 },  // equatorial
+    { rx: 22,   ry: 13,   rot:  38, col: C, n: 22, off: 0.52 },  // 30° inclined
+    { rx: 18,   ry: 17,   rot: -28, col: V, n: 20, off: 1.10 },  // 60° inclined
+    { rx:  7,   ry: 26,   rot:   8, col: A, n: 18, off: 0.80 },  // near-polar
+    { rx: 16,   ry: 12,   rot: -55, col: R, n: 18, off: 0.30 },  // intermediate
+    // ── Inner companion rings — 84% radius, half-spacing phase shift ─────────
+    { rx: 21.0, ry:  4.2, rot:   0, col: F, n: 28, off: 0.11 },  // equatorial inner
+    { rx: 18.5, ry: 10.9, rot:  38, col: C, n: 22, off: 0.66 },  // 30° inner
+    { rx: 15.1, ry: 14.3, rot: -28, col: V, n: 20, off: 1.26 },  // 60° inner
+    { rx:  5.9, ry: 21.8, rot:   8, col: A, n: 18, off: 0.97 },  // near-polar inner
+    { rx: 13.4, ry: 10.1, rot: -55, col: R, n: 18, off: 0.47 },  // intermediate inner
   ] as { rx: number; ry: number; rot: number; col: string; n: number; off: number }[];
 
   return (
