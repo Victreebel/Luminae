@@ -964,17 +964,16 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         clipPath={`url(#${id}-disk-back)`} />
 
       {/* 2b. Far-side XZ ring — bottom arc, behind BH.
-               XZ ring projects to rx=9.5, ry≈9.2 given our ~75° viewing elevation.
-               SVG ellipse starts at right point going clockwise (downward first),
-               so first half of stroke = bottom arc = far side.
-               C ≈ 58.7, half ≈ 29.4. Vertical gradient fades at poles. */}
+               Uses horizontal disk gradient: transparent at x=25.5 and x=44.5
+               (the equatorial-crossing endpoints) and opaque at x=35 (the
+               bottom-pole midpoint). Same "fade at tips" rule as the XY ring. */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
+        fill="none" stroke={`url(#${id}-disk)`}
         strokeWidth="4.5" strokeOpacity="0.28"
         strokeDasharray="29.4 100" strokeLinecap="round"
         filter={`url(#${id}-bhblur)`} />
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
+        fill="none" stroke={`url(#${id}-disk)`}
         strokeWidth="1.8" strokeOpacity="0.50"
         strokeDasharray="29.4 100" strokeLinecap="round"
         filter={`url(#${id}-diskblur)`} />
@@ -1020,19 +1019,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         filter={`url(#${id}-diskblur)`} />
 
       {/* 5b. Near-side XZ ring — top arc, drawn in front of BH.
-               strokeDashoffset="-29.4" skips the bottom arc and draws from the
-               left equatorial point up through the top pole to the right —
-               giving the curved top arm that mirrors the horizontal ring.
-               Vertical gradient: max opacity at equatorial crossings (y=52),
-               fades to transparent at the top pole (y≈42.8). */}
+               Same horizontal disk gradient as XY ring: transparent at left/right
+               equatorial-crossing endpoints (x=25.5, x=44.5), opaque at the
+               top-pole midpoint (x=35). Endpoints blend away naturally. */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
+        fill="none" stroke={`url(#${id}-disk)`}
         strokeWidth="4.5" strokeOpacity="0.38"
         strokeDasharray="29.4 100" strokeDashoffset="-29.4"
         strokeLinecap="round"
         filter={`url(#${id}-bhblur)`} />
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
+        fill="none" stroke={`url(#${id}-disk)`}
         strokeWidth="1.8" strokeOpacity="0.88"
         strokeDasharray="29.4 100" strokeDashoffset="-29.4"
         strokeLinecap="round"
