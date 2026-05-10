@@ -54,9 +54,10 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
   }, [token]);
 
   useEffect(() => {
-    if (isOpen && token) {
-      void refresh();
-    }
+    if (!isOpen || !token) return;
+    void refresh();
+    const interval = setInterval(() => void refresh(), 30_000);
+    return () => clearInterval(interval);
   }, [isOpen, token, refresh]);
 
   const handleSendRequest = async () => {

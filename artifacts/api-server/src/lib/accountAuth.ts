@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { db } from "@workspace/db";
 import { accountSessionsTable, accountsTable } from "@workspace/db";
 import { eq, and, gt } from "drizzle-orm";
+import { touchPresence } from "./presence";
 
 function extractToken(req: Request): string | undefined {
   const authHeader = req.headers["authorization"];
@@ -54,6 +55,7 @@ export async function accountAuth(
 
   req.account = row.account;
   req.accountSessionId = row.session.id;
+  touchPresence(row.account.id);
   next();
 }
 

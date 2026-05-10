@@ -8,11 +8,14 @@ import {
   playersTable,
 } from "@workspace/db";
 import { accountAuth } from "../lib/accountAuth";
+import { getPresentIds } from "../lib/presence";
 import { z } from "zod";
 
 const router: IRouter = Router();
 
-// Helper — is account online? (has any is_connected player in a non-finished room)
+// Helper — is account online?
+// True if: actively connected inside a game room, OR seen via any authenticated
+// API call within the last 3 minutes (tracked by the in-memory presence map).
 async function getOnlineAccountIds(accountIds: string[]): Promise<Set<string>> {
   if (accountIds.length === 0) return new Set();
   const { roomsTable } = await import("@workspace/db");
@@ -26,8 +29,9 @@ async function getOnlineAccountIds(accountIds: string[]): Promise<Set<string>> {
         ne(roomsTable.status, "finished"),
       ),
     );
-  const onlineIds = new Set(rows.map((r) => r.accountId).filter((id): id is string => id !== null));
-  return new Set(accountIds.filter((id) => onlineIds.has(id)));
+  const inGameIds = new Set(rows.map((r) => r.accountId).filter((id): id is string => id !== null));
+  const recentIds = getPresentIds(accountIds);
+  return new Set(accountIds.filter((id) => inGameIds.has(id) || recentIds.has(id)));
 }
 
 // GET /api/friends — list accepted friends
