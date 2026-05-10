@@ -964,25 +964,32 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       <circle cx={HUB_X} cy={HUB_Y} r="5.8"
         fill={`url(#${id}-corona)`} opacity="0.90" />
 
-      {/* 5. Saturn-ring near-side — crosses the face of the BH.
-              The horizontal linear gradient makes the centre opaque and the
-              tips of the ellipse fade to transparency, exactly like a tilted
-              planetary ring seen edge-on. */}
-      {/* Soft glow aura of the near-side ring */}
+      {/* 5. Saturn-ring near-side — stroked bottom arc only.
+              SVG ellipses start at the rightmost point and draw clockwise,
+              so the first half of the stroke IS the bottom (near-side) arc.
+              strokeDasharray="20.5 100" draws ~half the circumference then
+              skips the rest — no clipPath, no hard horizontal cutoff.
+              strokeLinecap="round" gives naturally tapered endpoints.
+              The linear gradient (transparent→gold→transparent) fades the
+              arc from opaque at centre to transparent at the tips. */}
+      {/* Outer soft glow halo */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
-        fill={`url(#${id}-disk)`} opacity="0.55"
-        filter={`url(#${id}-bhblur)`}
-        clipPath={`url(#${id}-disk-front)`} />
-      {/* Bright opaque core — the intense equatorial crossing */}
+        fill="none" stroke={`url(#${id}-disk)`}
+        strokeWidth="6.0" strokeOpacity="0.42"
+        strokeDasharray="20.5 100" strokeLinecap="round"
+        filter={`url(#${id}-bhblur)`} />
+      {/* Main bright arc band */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
-        fill={`url(#${id}-disk)`} opacity="0.92"
-        filter={`url(#${id}-diskblur)`}
-        clipPath={`url(#${id}-disk-front)`} />
-      {/* Innermost hot band — most intense at the very centre */}
-      <ellipse cx={HUB_X} cy={HUB_Y} rx="6.0" ry="1.4"
-        fill={`url(#${id}-disk-inner)`} opacity="0.95"
-        filter={`url(#${id}-diskblur)`}
-        clipPath={`url(#${id}-disk-front)`} />
+        fill="none" stroke={`url(#${id}-disk)`}
+        strokeWidth="2.6" strokeOpacity="0.95"
+        strokeDasharray="20.5 100" strokeLinecap="round"
+        filter={`url(#${id}-diskblur)`} />
+      {/* Bright white-gold inner core line */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
+        fill="none" stroke={`url(#${id}-disk-inner)`}
+        strokeWidth="0.9" strokeOpacity="1.0"
+        strokeDasharray="20.5 100" strokeLinecap="round"
+        filter={`url(#${id}-diskblur)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
