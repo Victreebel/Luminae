@@ -304,12 +304,12 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     { rx: 18,   ry: 17,   rot: -28, col: V, n: 20, off: 1.10 },  // 60° inclined
     { rx:  7,   ry: 26,   rot:   8, col: A, n: 18, off: 0.80 },  // near-polar
     { rx: 16,   ry: 12,   rot: -55, col: R, n: 18, off: 0.30 },  // intermediate
-    // ── Inner companion rings — 84% radius, half-spacing phase shift ─────────
-    { rx: 21.0, ry:  4.2, rot:   0, col: F, n: 28, off: 0.11 },  // equatorial inner
-    { rx: 18.5, ry: 10.9, rot:  38, col: C, n: 22, off: 0.66 },  // 30° inner
-    { rx: 15.1, ry: 14.3, rot: -28, col: V, n: 20, off: 1.26 },  // 60° inner
-    { rx:  5.9, ry: 21.8, rot:   8, col: A, n: 18, off: 0.97 },  // near-polar inner
-    { rx: 13.4, ry: 10.1, rot: -55, col: R, n: 18, off: 0.47 },  // intermediate inner
+    // ── Second orbital planes — distinct inclinations, not concentric copies ──
+    { rx: 16, ry: 10, rot:  70, col: F, n: 22, off: 0.35 },  // F: 70° cross-inclined
+    { rx: 18, ry:  6, rot: -42, col: C, n: 20, off: 0.85 },  // C: near-equatorial contrast
+    { rx: 21, ry:  5, rot:  52, col: V, n: 24, off: 0.60 },  // V: flat vs 60° outer
+    { rx: 14, ry: 11, rot: -52, col: A, n: 18, off: 1.20 },  // A: intermediate vs polar
+    { rx:  8, ry: 24, rot:  28, col: R, n: 18, off: 0.65 },  // R: near-polar vs intermediate
   ] as { rx: number; ry: number; rot: number; col: string; n: number; off: number }[];
 
   return (
