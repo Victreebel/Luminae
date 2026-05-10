@@ -1044,6 +1044,19 @@ export interface SummonQueueItem {
   cardRect?: { cx: number; cy: number; w: number };
 }
 
+// Six colors drawn from across the Luminary roster — one per affinity archetype.
+// Used to paint crack-light, energy rays, and flash bloom in a full-spectrum
+// burst rather than a single Luminary hue, reflecting that the summoning tears
+// through the fabric of all affinities simultaneously.
+const RAINBOW_CRACK_COLORS = [
+  '#ef4444', // Flare / red
+  '#fbbf24', // Oracle / gold
+  '#2ecc71', // Verdance / green
+  '#3d6bff', // Continuum / blue
+  '#7c3aed', // Abyss / purple
+  '#94a3b8', // Singularity / silver
+] as const;
+
 export function LuminarySummonCutscene({
   luminaryId,
   luminaryName,
@@ -1070,6 +1083,13 @@ export function LuminarySummonCutscene({
   const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
   // RGB components of primaryColor for rgba() drop-shadows on shatter chunks
   const pRgb = `${parseInt(primaryColor.slice(1,3),16)},${parseInt(primaryColor.slice(3,5),16)},${parseInt(primaryColor.slice(5,7),16)}`;
+
+  // Per-crack-segment rainbow colors (and their RGB decompositions for rgba())
+  const RC = RAINBOW_CRACK_COLORS;
+  function hexToRgb(hex: string) {
+    return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+  }
+  const rcRgb = RC.map(hexToRgb);
   const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
 
   // Keep refs so the phase-advance closure always sees the latest callbacks
@@ -1280,16 +1300,36 @@ export function LuminarySummonCutscene({
             ? [-0.35, 0.25, -0.45, 0.3, -0.2, 0.15, 0]
             : [-0.25, 0.18, -0.3, 0.2, -0.15, 0.12, 0];
 
-  // ── Vessel glow (ramps through crack phases) ─────────────────────────────
+  // ── Vessel glow (ramps through crack phases) — rainbow multi-color ───────
   const vesselGlow: [string, string, string] = isPressure
-    ? [`0 0 10px ${primaryColor}60`, `0 0 24px ${primaryColor}90`, `0 0 10px ${primaryColor}60`]
+    ? [
+        `0 0 8px #ef444450, 0 0 6px #3d6bff38, 0 0 5px #7c3aed30`,
+        `0 0 20px #ef444478, 0 0 14px #3d6bff60, 0 0 10px #7c3aed50, 0 0 6px #fbbf2438`,
+        `0 0 8px #ef444450, 0 0 6px #3d6bff38, 0 0 5px #7c3aed30`,
+      ]
     : isFirstCrack
-      ? [`0 0 14px ${primaryColor}80`, `0 0 32px ${primaryColor}b0`, `0 0 14px ${primaryColor}80`]
+      ? [
+          `0 0 12px #ef444468, 0 0 10px #3d6bff50, 0 0 8px #7c3aed42`,
+          `0 0 28px #ef444498, 0 0 20px #3d6bff78, 0 0 14px #7c3aed68, 0 0 8px #fbbf2448`,
+          `0 0 12px #ef444468, 0 0 10px #3d6bff50, 0 0 8px #7c3aed42`,
+        ]
       : isLeaking
-        ? [`0 0 20px ${primaryColor}a0`, `0 0 42px ${primaryColor}d0, 0 0 12px ${primaryColor}50`, `0 0 20px ${primaryColor}a0`]
+        ? [
+            `0 0 18px #ef4444a0, 0 0 14px #2ecc7168, 0 0 10px #3d6bff58, 0 0 8px #7c3aed50`,
+            `0 0 38px #ef4444c8, 0 0 26px #2ecc7190, 0 0 18px #3d6bff80, 0 0 12px #7c3aed70, 0 0 8px #fbbf2448`,
+            `0 0 18px #ef4444a0, 0 0 14px #2ecc7168, 0 0 10px #3d6bff58, 0 0 8px #7c3aed50`,
+          ]
         : isSecondCrack
-          ? [`0 0 22px ${primaryColor}b0`, `0 0 48px ${primaryColor}e0, 0 0 16px ${primaryColor}68`, `0 0 22px ${primaryColor}b0`]
-          : [`0 0 26px ${primaryColor}c0`, `0 0 52px ${primaryColor}f0, 0 0 18px ${primaryColor}80`, `0 0 26px ${primaryColor}c0`];
+          ? [
+              `0 0 20px #ef4444b0, 0 0 16px #2ecc7178, 0 0 12px #3d6bff70, 0 0 10px #7c3aed60`,
+              `0 0 44px #ef4444d8, 0 0 32px #2ecc71a8, 0 0 22px #3d6bff98, 0 0 16px #7c3aed88, 0 0 10px #fbbf2458`,
+              `0 0 20px #ef4444b0, 0 0 16px #2ecc7178, 0 0 12px #3d6bff70, 0 0 10px #7c3aed60`,
+            ]
+          : [
+              `0 0 24px #ef4444c0, 0 0 18px #2ecc7188, 0 0 14px #3d6bff80, 0 0 10px #7c3aed70`,
+              `0 0 50px #ef4444f0, 0 0 38px #2ecc71c0, 0 0 26px #3d6bffb0, 0 0 18px #7c3aeda0, 0 0 10px #fbbf2460`,
+              `0 0 24px #ef4444c0, 0 0 18px #2ecc7188, 0 0 14px #3d6bff80, 0 0 10px #7c3aed70`,
+            ];
 
   // Vessel is positioned at viewport centre — the board pan brings the card
   // there before the vessel appears, so they perfectly overlap.
@@ -1427,24 +1467,28 @@ export function LuminarySummonCutscene({
                     <filter id="cgw" x="-100%" y="-100%" width="300%" height="300%">
                       <feGaussianBlur stdDeviation="9" />
                     </filter>
-                    {/* Energy ray gradients — themed to Luminary primaryColor */}
+                    {/* Energy ray gradients — each cardinal ray gets its own affinity hue */}
                     {(isSecondCrack || isCracking) && (
                       <>
                         <linearGradient id="rayUp"    x1="0" y1="1" x2="0" y2="0">
-                          <stop offset="0%"   stopColor={primaryColor} stopOpacity="0.88" />
-                          <stop offset="100%" stopColor="#ffffff"       stopOpacity="0" />
+                          <stop offset="0%"   stopColor={RC[0]} stopOpacity="0.90" />
+                          <stop offset="50%"  stopColor={RC[4]} stopOpacity="0.40" />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                         </linearGradient>
                         <linearGradient id="rayDown"  x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%"   stopColor={primaryColor} stopOpacity="0.88" />
-                          <stop offset="100%" stopColor="#ffffff"       stopOpacity="0" />
+                          <stop offset="0%"   stopColor={RC[3]} stopOpacity="0.90" />
+                          <stop offset="50%"  stopColor={RC[1]} stopOpacity="0.40" />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                         </linearGradient>
                         <linearGradient id="rayLeft"  x1="1" y1="0" x2="0" y2="0">
-                          <stop offset="0%"   stopColor={primaryColor} stopOpacity="0.80" />
-                          <stop offset="100%" stopColor="#ffffff"       stopOpacity="0" />
+                          <stop offset="0%"   stopColor={RC[2]} stopOpacity="0.82" />
+                          <stop offset="50%"  stopColor={RC[5]} stopOpacity="0.36" />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                         </linearGradient>
                         <linearGradient id="rayRight" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%"   stopColor={primaryColor} stopOpacity="0.80" />
-                          <stop offset="100%" stopColor="#ffffff"       stopOpacity="0" />
+                          <stop offset="0%"   stopColor={RC[1]} stopOpacity="0.82" />
+                          <stop offset="50%"  stopColor={RC[0]} stopOpacity="0.36" />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
                         </linearGradient>
                       </>
                     )}
@@ -1465,10 +1509,10 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
                     transition={{ duration: 0.10, ease: 'easeOut' }}
                   />
-                  {/* L2 chasing glow */}
+                  {/* L2 chasing glow — RC[0] red */}
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
-                    stroke={primaryColor} strokeWidth="22" fill="none" filter="url(#cgw)"
+                    stroke={RC[0]} strokeWidth="22" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.80, 0.20, 0] }}
                     transition={{
@@ -1479,7 +1523,7 @@ export function LuminarySummonCutscene({
                   {/* L3 residual wound glow */}
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
-                    stroke={primaryColor} strokeWidth="14" fill="none" filter="url(#cgw)"
+                    stroke={RC[0]} strokeWidth="14" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
                     transition={{ duration: 0.62, delay: 0.14, ease: 'easeOut' }}
@@ -1487,13 +1531,13 @@ export function LuminarySummonCutscene({
                   {/* L4 tinted seam */}
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
-                    stroke={primaryColor} strokeWidth="3.5" fill="none"
+                    stroke={RC[0]} strokeWidth="3.5" fill="none"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0, 0.32, 0.52, 0.45] }}
                     transition={{ duration: 0.58, delay: 0.16, ease: 'easeOut' }}
                   />
 
-                  {/* ── Branch: P→K2→RA (right edge) ─────────────────────── */}
+                  {/* ── Branch: P→K2→RA (right edge) — RC[1] gold ────────── */}
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
                     stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
@@ -1503,7 +1547,7 @@ export function LuminarySummonCutscene({
                   />
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
-                    stroke={primaryColor} strokeWidth="18" fill="none" filter="url(#cgw)"
+                    stroke={RC[1]} strokeWidth="18" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.68, 0.16, 0] }}
                     transition={{
@@ -1513,14 +1557,14 @@ export function LuminarySummonCutscene({
                   />
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
-                    stroke={primaryColor} strokeWidth="10" fill="none" filter="url(#cgw)"
+                    stroke={RC[1]} strokeWidth="10" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.54, 0.46] }}
                     transition={{ duration: 0.52, delay: 0.16, ease: 'easeOut' }}
                   />
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
-                    stroke={primaryColor} strokeWidth="2.8" fill="none"
+                    stroke={RC[1]} strokeWidth="2.8" fill="none"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0, 0.26, 0.44, 0.38] }}
                     transition={{ duration: 0.50, delay: 0.18, ease: 'easeOut' }}
@@ -1536,7 +1580,7 @@ export function LuminarySummonCutscene({
                   />
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
-                    stroke={primaryColor} strokeWidth="16" fill="none" filter="url(#cgw)"
+                    stroke={RC[2]} strokeWidth="16" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.62, 0.14, 0] }}
                     transition={{
@@ -1546,14 +1590,14 @@ export function LuminarySummonCutscene({
                   />
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
-                    stroke={primaryColor} strokeWidth="9" fill="none" filter="url(#cgw)"
+                    stroke={RC[2]} strokeWidth="9" fill="none" filter="url(#cgw)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.50, 0.42] }}
                     transition={{ duration: 0.50, delay: 0.17, ease: 'easeOut' }}
                   />
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
-                    stroke={primaryColor} strokeWidth="2.5" fill="none"
+                    stroke={RC[2]} strokeWidth="2.5" fill="none"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0, 0.24, 0.40, 0.34] }}
                     transition={{ duration: 0.48, delay: 0.19, ease: 'easeOut' }}
@@ -1570,12 +1614,18 @@ export function LuminarySummonCutscene({
                   {/* ── Light leaking through first crack (leaking+) ─────────── */}
                   {(isLeaking || isSecondCrack || isCracking) && (
                     <>
-                      {/* Diffuse light pool at P — primary junction */}
-                      <motion.circle cx={PX} cy={PY} r="20" fill={primaryColor}
+                      {/* Diffuse light pool at P — multi-color mix at junction */}
+                      <motion.circle cx={PX} cy={PY} r="20" fill={RC[0]}
                         filter="url(#cgw)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.24, 0.12, 0.30, 0.14, 0.26] }}
                         transition={{ duration: 3.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
+                      />
+                      <motion.circle cx={PX} cy={PY} r="14" fill={RC[3]}
+                        filter="url(#cgw)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.18, 0.30, 0.10, 0.22, 0.08] }}
+                        transition={{ duration: 2.9, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.6 }}
                       />
                       {/* Mote 1 — near TA, along main crack */}
                       <motion.circle cx={TAX} cy={8} r="1.1" fill="white" filter="url(#cgb)"
@@ -1626,7 +1676,7 @@ export function LuminarySummonCutscene({
                       />
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
-                        stroke={primaryColor} strokeWidth="24" fill="none" filter="url(#cgw)"
+                        stroke={RC[3]} strokeWidth="24" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.76, 0.18, 0] }}
                         transition={{
@@ -1636,20 +1686,20 @@ export function LuminarySummonCutscene({
                       />
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
-                        stroke={primaryColor} strokeWidth="16" fill="none" filter="url(#cgw)"
+                        stroke={RC[3]} strokeWidth="16" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
                         transition={{ duration: 0.68, delay: 0.12, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
-                        stroke={primaryColor} strokeWidth="4.0" fill="none"
+                        stroke={RC[3]} strokeWidth="4.0" fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0, 0.30, 0.50, 0.44] }}
                         transition={{ duration: 0.64, delay: 0.14, ease: 'easeOut' }}
                       />
 
-                      {/* ── Branch: Q→K5→K6→RB (right edge) ────────────── */}
+                      {/* ── Branch: Q→K5→K6→RB (right edge) — RC[4] purple ── */}
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
                         stroke="white" strokeWidth="1.0" fill="none" filter="url(#cgb)"
@@ -1659,7 +1709,7 @@ export function LuminarySummonCutscene({
                       />
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
-                        stroke={primaryColor} strokeWidth="14" fill="none" filter="url(#cgw)"
+                        stroke={RC[4]} strokeWidth="14" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.60, 0.14, 0] }}
                         transition={{
@@ -1669,20 +1719,20 @@ export function LuminarySummonCutscene({
                       />
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
-                        stroke={primaryColor} strokeWidth="8" fill="none" filter="url(#cgw)"
+                        stroke={RC[4]} strokeWidth="8" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.50, 0.42] }}
                         transition={{ duration: 0.54, delay: 0.30, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
-                        stroke={primaryColor} strokeWidth="2.6" fill="none"
+                        stroke={RC[4]} strokeWidth="2.6" fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0, 0.24, 0.42, 0.36] }}
                         transition={{ duration: 0.52, delay: 0.32, ease: 'easeOut' }}
                       />
 
-                      {/* ── Branch: Q→K7→LA (left edge) ─────────────────── */}
+                      {/* ── Branch: Q→K7→LA (left edge) — RC[5] silver ─────── */}
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
                         stroke="white" strokeWidth="0.85" fill="none" filter="url(#cgb)"
@@ -1692,7 +1742,7 @@ export function LuminarySummonCutscene({
                       />
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
-                        stroke={primaryColor} strokeWidth="11" fill="none" filter="url(#cgw)"
+                        stroke={RC[5]} strokeWidth="11" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.54, 0.12, 0] }}
                         transition={{
@@ -1702,14 +1752,14 @@ export function LuminarySummonCutscene({
                       />
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
-                        stroke={primaryColor} strokeWidth="6" fill="none" filter="url(#cgw)"
+                        stroke={RC[5]} strokeWidth="6" fill="none" filter="url(#cgw)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0, 0.28, 0.44, 0.36] }}
                         transition={{ duration: 0.46, delay: 0.33, ease: 'easeOut' }}
                       />
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
-                        stroke={primaryColor} strokeWidth="2.0" fill="none"
+                        stroke={RC[5]} strokeWidth="2.0" fill="none"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0, 0.20, 0.36, 0.30] }}
                         transition={{ duration: 0.44, delay: 0.35, ease: 'easeOut' }}
@@ -1724,11 +1774,17 @@ export function LuminarySummonCutscene({
                       />
 
                       {/* ── Light pools and motes along second crack ─────── */}
-                      <motion.circle cx={QX} cy={QY} r="16" fill={primaryColor}
+                      <motion.circle cx={QX} cy={QY} r="16" fill={RC[3]}
                         filter="url(#cgw)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.18, 0.09, 0.22, 0.10, 0.20] }}
                         transition={{ duration: 3.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.4 }}
+                      />
+                      <motion.circle cx={QX} cy={QY} r="10" fill={RC[4]}
+                        filter="url(#cgw)"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 0.14, 0.24, 0.08, 0.18, 0.06] }}
+                        transition={{ duration: 2.6, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 1.0 }}
                       />
                       <motion.circle cx={K4X} cy={K4Y} r="1.0" fill="white" filter="url(#cgb)"
                         initial={{ opacity: 0 }}
@@ -1764,8 +1820,8 @@ export function LuminarySummonCutscene({
                         animate={{ opacity: [0, 0.34, 0.12, 0.46, 0.10] }}
                         transition={{ repeat: Infinity, duration: 0.60, ease: 'easeInOut', delay: 0.38 }}
                       />
-                      {/* Secondary light pool at K2 (right branch kink) */}
-                      <motion.circle cx={K2X} cy={K2Y} r="10" fill={primaryColor}
+                      {/* Secondary light pool at K2 (right branch kink) — gold */}
+                      <motion.circle cx={K2X} cy={K2Y} r="10" fill={RC[1]}
                         filter="url(#cgw)"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: [0, 0.16, 0.08, 0.22, 0.10] }}
@@ -1774,21 +1830,35 @@ export function LuminarySummonCutscene({
                     </>
                   )}
 
-                  {/* ── Cracking phase: energy burst at P and Q ───────────────── */}
+                  {/* ── Cracking phase: multi-color energy burst at P and Q ────── */}
                   {isCracking && (
                     <>
-                      <motion.circle cx={PX} cy={PY} r="18" fill={primaryColor}
+                      <motion.circle cx={PX} cy={PY} r="18" fill={RC[0]}
                         filter="url(#cgw)"
                         initial={{ opacity: 0, scale: 0.3 }}
                         animate={{ opacity: [0, 0.55, 0.22], scale: [0.3, 1.8, 1.0] }}
                         transition={{ duration: 0.70, ease: 'easeOut' }}
                         style={{ transformOrigin: `${PX}px ${PY}px` }}
                       />
-                      <motion.circle cx={QX} cy={QY} r="14" fill={primaryColor}
+                      <motion.circle cx={PX} cy={PY} r="12" fill={RC[2]}
+                        filter="url(#cgw)"
+                        initial={{ opacity: 0, scale: 0.2 }}
+                        animate={{ opacity: [0, 0.45, 0.18], scale: [0.2, 1.4, 0.8] }}
+                        transition={{ duration: 0.62, delay: 0.08, ease: 'easeOut' }}
+                        style={{ transformOrigin: `${PX}px ${PY}px` }}
+                      />
+                      <motion.circle cx={QX} cy={QY} r="14" fill={RC[3]}
                         filter="url(#cgw)"
                         initial={{ opacity: 0, scale: 0.4 }}
                         animate={{ opacity: [0, 0.45, 0.18], scale: [0.4, 1.45, 0.92] }}
                         transition={{ duration: 0.58, delay: 0.12, ease: 'easeOut' }}
+                        style={{ transformOrigin: `${QX}px ${QY}px` }}
+                      />
+                      <motion.circle cx={QX} cy={QY} r="9" fill={RC[4]}
+                        filter="url(#cgw)"
+                        initial={{ opacity: 0, scale: 0.3 }}
+                        animate={{ opacity: [0, 0.38, 0.14], scale: [0.3, 1.2, 0.75] }}
+                        transition={{ duration: 0.50, delay: 0.18, ease: 'easeOut' }}
                         style={{ transformOrigin: `${QX}px ${QY}px` }}
                       />
                     </>
@@ -1823,7 +1893,7 @@ export function LuminarySummonCutscene({
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, ${primaryColor}ff 10%, ${primaryColor}dd 24%, ${primaryColor}88 50%, transparent 84%)`,
+              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ef4444ff 8%, #fbbf24ee 16%, #2ecc71dd 27%, #3d6bffcc 40%, #7c3aedaa 55%, #94a3b855 70%, transparent 84%)`,
               filter: 'blur(14px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
@@ -1839,7 +1909,12 @@ export function LuminarySummonCutscene({
       {/* Luminary's primary affinity colour via screen-blend overlay,   */}
       {/* and fade out while the entity manifests from the shattered vessel. */}
       <AnimatePresence>
-        {isShatterVisible && PANEL_PIECES.map((piece, i) => (
+        {isShatterVisible && PANEL_PIECES.map((piece, i) => {
+          // Each shard gets its own color from the rainbow palette so the
+          // six pieces dissolve into six distinct affinity hues simultaneously.
+          const cr = rcRgb[i % RC.length];  // RGB string for rgba()
+          const cc = RC[i % RC.length];      // hex for solid color fields
+          return (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
               width: BOARD_CARD_W * 1.28, height: BOARD_CARD_H * 1.28,
@@ -1852,7 +1927,7 @@ export function LuminarySummonCutscene({
               x: 0, y: 0,
               z: 0,
               rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
-              filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
+              filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${cr},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
             animate={{
               // Micro-jolt at crack moment (8% of travel in first ~0.3 s),
@@ -1867,14 +1942,14 @@ export function LuminarySummonCutscene({
               // Stay fully opaque through the "beat" (55%), then dissolve bright.
               opacity: [1, 1, 1, 0.96, 0.66, 0],
               // Filter arc: normal → affinity glow builds → pulse peak → white-hot
-              // burn-out. Chunks never go dark — they dissolve INTO affinity light.
+              // burn-out. Chunks never go dark — they dissolve INTO their unique hue.
               filter: [
-                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
-                `brightness(1.3) drop-shadow(3px -3px 4px rgba(${pRgb},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
-                `brightness(2.0) drop-shadow(5px -4px 7px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.30))`,
-                `brightness(3.6) drop-shadow(0 0 14px rgba(${pRgb},0.96)) drop-shadow(0 0 26px rgba(${pRgb},0.58))`,
-                `brightness(5.6) drop-shadow(0 0 20px rgba(${pRgb},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
-                `brightness(8.0) drop-shadow(0 0 26px rgba(${pRgb},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
+                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${cr},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
+                `brightness(1.3) drop-shadow(3px -3px 4px rgba(${cr},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
+                `brightness(2.0) drop-shadow(5px -4px 7px rgba(${cr},0.88)) drop-shadow(-3px 3px 6px rgba(${cr},0.30))`,
+                `brightness(3.6) drop-shadow(0 0 14px rgba(${cr},0.96)) drop-shadow(0 0 26px rgba(${cr},0.58))`,
+                `brightness(5.6) drop-shadow(0 0 20px rgba(${cr},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
+                `brightness(8.0) drop-shadow(0 0 26px rgba(${cr},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
               ],
             }}
             transition={{
@@ -1904,14 +1979,12 @@ export function LuminarySummonCutscene({
             ) : (
               <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
             )}
-            {/* Affinity-colour transmutation — the vessel material is consumed by the
-                Luminary's energy. Ramps to full opacity (solid affinity colour) before
-                the parent chunk fades, so the shard visibly "becomes" pure light before
-                it dissolves. Screen blend means at opacity=1 the artwork is fully washed
-                into the affinity hue and the parent brightness boosts push it to white. */}
+            {/* Rainbow transmutation — each shard dissolves into its own affinity hue.
+                Screen blend means at full opacity the artwork washes into that color
+                and the parent brightness boosts push it to white. */}
             <motion.div
               className="absolute inset-0 pointer-events-none"
-              style={{ background: primaryColor, mixBlendMode: 'screen' }}
+              style={{ background: cc, mixBlendMode: 'screen' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0, 0.18, 0.70, 1.00, 1.00, 0.85] }}
               transition={{
@@ -1921,13 +1994,14 @@ export function LuminarySummonCutscene({
                 delay: i * 0.04,
               }}
             />
-            {/* Physical slab edge — Luminary-tinted bevel, brightens with the chunk */}
+            {/* Physical slab edge — rainbow-tinted bevel, brightens with the chunk */}
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              boxShadow: `inset 0 0 0 1.5px rgba(${pRgb},0.80), inset 3px 3px 0 rgba(${pRgb},0.28), inset -3px -3px 0 rgba(0,0,20,0.55), inset 0 0 22px rgba(${pRgb},0.30)`,
+              boxShadow: `inset 0 0 0 1.5px rgba(${cr},0.80), inset 3px 3px 0 rgba(${cr},0.28), inset -3px -3px 0 rgba(0,0,20,0.55), inset 0 0 22px rgba(${cr},0.30)`,
             }} />
           </motion.div>
-        ))}
+          );
+        })}
       </AnimatePresence>
 
       {/* ── Full-viewport bloom flash — outside camera layer ────────────────── */}
@@ -1938,7 +2012,7 @@ export function LuminarySummonCutscene({
             animate={{ opacity: [1, 1, 0] }}
             transition={{ duration: 0.88, ease: 'easeInOut', times: [0, 0.28, 1] }}
             style={{
-              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, ${primaryColor}ee 20%, ${primaryColor}bb 44%, ${primaryColor}44 66%, transparent 86%)`,
+              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, #ef4444ee 12%, #fbbf24dd 22%, #2ecc71cc 34%, #3d6bffbb 46%, #7c3aed88 58%, #94a3b844 70%, transparent 86%)`,
             }}
           />
         )}
