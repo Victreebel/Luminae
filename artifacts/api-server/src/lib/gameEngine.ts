@@ -452,8 +452,8 @@ export function initializeGame(
     CARD_CATALOG.filter((c) => c.tier === 3).map((c) => c.id),
   );
 
-  // Luminaries: pick playerCount+2 from illustrated pool only
-  const lumCount = Math.min(playerCount + 2, AVAILABLE_LUMINARIES.length);
+  // Luminaries: pick playerCount+1 from illustrated pool only
+  const lumCount = Math.min(playerCount + 1, AVAILABLE_LUMINARIES.length);
   const activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
     0,
     lumCount,
@@ -1252,7 +1252,7 @@ export function normalizeState(raw: unknown): GameStateData {
         ? (state.players as unknown[]).length
         : 2;
       const lumCount = Math.min(
-        Math.max(playerCount + 2, original.length),
+        Math.max(playerCount + 1, original.length),
         AVAILABLE_LUMINARIES.length,
       );
       state.activeLuminaries = shuffle(AVAILABLE_LUMINARIES.map((l) => l.id)).slice(
