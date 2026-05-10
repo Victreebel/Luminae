@@ -481,27 +481,22 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const limbFactor = Math.min(1, dist / 26);
-        // panelOpacity: 0 near centre (star visible), 1 at outer limb (fully opaque)
-        const panelOpacity = Math.max(0, Math.min(1, (limbFactor - 0.38) / 0.24));
-
-        // Non-solid cells: only show wire at outer limb, invisible near centre
-        if (!solid) {
-          if (limbFactor < 0.52) return <g key={i} />;
-          return (
-            <g key={i}>
-              <polygon points={ptStr} fill="none" stroke={col}
-                strokeWidth="0.13" strokeOpacity={(limbFactor - 0.52) * 0.50} />
-            </g>
-          );
-        }
-
-        // Solid cells near the star centre: skip entirely
-        if (panelOpacity <= 0) return <g key={i} />;
-
         const base = PANEL_BASE[col] ?? '#0c0810';
         const nx = dist > 0 ? dx / dist : 0;
         const ny = dist > 0 ? dy / dist : 0;
         const lf2 = limbFactor * limbFactor;
+
+        if (!solid) return (
+          <g key={i}>
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+            ))}
+          </g>
+        );
+
         const edgeGlow = Array.from({ length: 6 }, (_, k) => {
           const [x1, y1] = verts[k];
           const [x2, y2] = verts[(k + 1) % 6];
@@ -514,21 +509,16 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
         return (
           <g key={i}>
-            {/* Affinity-coloured dark base — fully opaque at outer ring */}
-            <polygon points={ptStr} fill={base} fillOpacity={panelOpacity} stroke="none" />
-            {/* Affinity colour tint */}
-            <polygon points={ptStr} fill={col}
-              fillOpacity={panelOpacity * 0.18} stroke="none" />
-            {/* Metallic frame */}
+            <polygon points={ptStr} fill={base} fillOpacity="1.0" stroke="none" />
+            <polygon points={ptStr} fill={col} fillOpacity="0.18" stroke="none" />
             <polygon points={ptStr} fill="none"
               stroke="#d4b060" strokeWidth="0.28"
               strokeOpacity={0.15 + limbFactor * 0.50} />
-            {/* Outward-edge warm glow — star back-lighting limb panels */}
             {edgeGlow.map(({ x1, y1, x2, y2, outward }, k) => outward > 0.15 && (
               <line key={k} x1={x1.toFixed(2)} y1={y1.toFixed(2)}
                 x2={x2.toFixed(2)} y2={y2.toFixed(2)}
                 stroke="#ffcc60" strokeWidth="0.55"
-                strokeOpacity={outward * lf2 * panelOpacity * 0.85} />
+                strokeOpacity={outward * lf2 * 0.85} />
             ))}
           </g>
         );
