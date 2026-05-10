@@ -559,11 +559,11 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <stop offset="100%" stopColor="#ff2000" stopOpacity="0"    />
         </radialGradient>
         <linearGradient id={`${id}-disk`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#60d8ff" stopOpacity="0"   />
-          <stop offset="22%"  stopColor="#b0e8ff" stopOpacity="0.9" />
+          <stop offset="0%"   stopColor="#FFC43D" stopOpacity="0"   />
+          <stop offset="20%"  stopColor="#FFE08A" stopOpacity="0.85" />
           <stop offset="50%"  stopColor="#ffffff"  stopOpacity="1"   />
-          <stop offset="78%"  stopColor="#ffb040"  stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#ff5000"  stopOpacity="0"   />
+          <stop offset="80%"  stopColor="#FFE08A"  stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#FFC43D"  stopOpacity="0"   />
         </linearGradient>
         <filter id={`${id}-bhblur`} x="-200%" y="-200%" width="500%" height="500%">
           <feGaussianBlur stdDeviation="1.6" />
