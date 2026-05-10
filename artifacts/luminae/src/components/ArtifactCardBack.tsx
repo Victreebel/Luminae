@@ -296,7 +296,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
   // at sector boundaries let star-light through. Two shell layers: outer at
   // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
-  type HexCell = { verts: [number, number][]; col: string; z: number };
+  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean };
 
   const SECTOR_COLS = [R, C, V, F, A];
   const getSectorCol = (angle: number, phaseOff: number): string | null => {
@@ -331,7 +331,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           const vc = 1 - vd2 * 0.13;
           return [CX + vx * vc, CY + vy * vc] as [number, number];
         });
-        cells.push({ verts, col, z });
+        // Deterministic solid flag — ~every 3rd cell is a filled collector panel
+        const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % 3) === 0;
+        cells.push({ verts, col, z, solid });
       }
     }
     return cells.sort((a, b) => a.z - b.z);       // back → front
@@ -411,11 +413,13 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
       {/* ── Outer Dyson hex shell — medium cells, 0° sector start ── */}
-      {shell1.map(({ verts, col, z }, i) => (
+      {shell1.map(({ verts, col, z, solid }, i) => (
         <g key={i}>
           <polygon
             points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
-            fill="none" stroke={col}
+            fill={solid ? col : 'none'}
+            fillOpacity={solid ? 0.12 + z * 0.18 : 0}
+            stroke={col}
             strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32}
           />
           {verts.map(([vx, vy], k) => (
@@ -426,11 +430,13 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       ))}
 
       {/* ── Inner Dyson hex shell — smaller cells, 36° sector phase shift ── */}
-      {shell2.map(({ verts, col, z }, i) => (
+      {shell2.map(({ verts, col, z, solid }, i) => (
         <g key={i}>
           <polygon
             points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
-            fill="none" stroke={col}
+            fill={solid ? col : 'none'}
+            fillOpacity={solid ? 0.10 + z * 0.15 : 0}
+            stroke={col}
             strokeWidth="0.09" strokeOpacity={0.13 + z * 0.24}
           />
           {verts.map(([vx, vy], k) => (
