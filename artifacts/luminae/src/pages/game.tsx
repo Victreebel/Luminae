@@ -1168,6 +1168,21 @@ export default function GameBoard() {
     seenAiAffinityLogCountRef.current = aiAffinityCount;
   }, [state?.actionLog]);
 
+  // ── Undo hint trigger ─────────────────────────────────────────────────────
+  // Must live here — before the early returns — so hook order is stable across
+  // renders when state/session are null on the first render cycle.
+  const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
+  useEffect(() => {
+    if (crystalQueueActive) {
+      if (!localStorage.getItem('luminae_undo_hint_seen')) {
+        localStorage.setItem('luminae_undo_hint_seen', '1');
+        setShowUndoHint(true);
+      }
+    } else {
+      setShowUndoHint(false);
+    }
+  }, [crystalQueueActive]);
+
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
     const isRematch = prev?.status === 'finished' && newState.status === 'playing';
@@ -1990,19 +2005,6 @@ export default function GameBoard() {
       toast({ variant: 'destructive', title: 'Toggle failed', description: err.message });
     }
   };
-
-  const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
-
-  useEffect(() => {
-    if (crystalQueueActive) {
-      if (!localStorage.getItem('luminae_undo_hint_seen')) {
-        localStorage.setItem('luminae_undo_hint_seen', '1');
-        setShowUndoHint(true);
-      }
-    } else {
-      setShowUndoHint(false);
-    }
-  }, [crystalQueueActive]);
 
   const dismissUndoHint = () => {
     setShowUndoHint(false);
