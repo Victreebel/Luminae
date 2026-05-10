@@ -837,6 +837,7 @@ export default function GameBoard() {
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
+  const [showUndoHint, setShowUndoHint] = useState(false);
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
   const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
   const [showPurchased, setShowPurchased] = useState(false);
@@ -1991,6 +1992,22 @@ export default function GameBoard() {
   };
 
   const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
+
+  useEffect(() => {
+    if (crystalQueueActive) {
+      if (!localStorage.getItem('luminae_undo_hint_seen')) {
+        localStorage.setItem('luminae_undo_hint_seen', '1');
+        setShowUndoHint(true);
+      }
+    } else {
+      setShowUndoHint(false);
+    }
+  }, [crystalQueueActive]);
+
+  const dismissUndoHint = () => {
+    setShowUndoHint(false);
+  };
+
   const myReservedCount = me?.reservedCards.length ?? 0;
   const myTotalGems = Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0);
   const myCardCount = (me as any)?.purchasedCards?.length ?? (me as any)?.purchasedCardIds?.length ?? 0;
@@ -2342,7 +2359,25 @@ export default function GameBoard() {
                       {queueLegality.reason || 'Pick affinities'}
                     </span>
                   </div>
-                  <div className="flex gap-1.5 shrink-0">
+                  <div className="flex gap-1.5 shrink-0 relative">
+                    <AnimatePresence>
+                      {showUndoHint && (
+                        <motion.button
+                          type="button"
+                          initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 4, scale: 0.92 }}
+                          transition={{ duration: 0.2 }}
+                          onClick={dismissUndoHint}
+                          className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                          title="Dismiss hint"
+                        >
+                          <Undo2 className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                          <span>← Back removes the last crystal</span>
+                          <span className="text-white/40 ml-0.5">✕</span>
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
                     <Button
                       variant="outline"
                       size="sm"
