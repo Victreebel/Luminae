@@ -306,7 +306,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  const genShell = (shellR: number, hr: number, phaseOff: number): HexCell[] => {
+  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3): HexCell[] => {
     const cells: HexCell[] = [];
     const DX = hr * 1.5;
     const DY = hr * Math.sqrt(3);
@@ -332,14 +332,16 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           return [CX + vx * vc, CY + vy * vc] as [number, number];
         });
         // Deterministic solid flag — ~every 3rd cell is a filled collector panel
-        const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % 3) === 0;
+        // (caller can override density via solidMod)
+        const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % solidMod) === 0;
         cells.push({ verts, col, z, solid });
       }
     }
     return cells.sort((a, b) => a.z - b.z);       // back → front
   };
 
-  const shell1 = genShell(23, 3.0,  0);            // outer shell
+  const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
+  const shell1 = genShell(23, 3.0,  0);            // mid shell
   const shell2 = genShell(16, 2.4, 36);            // inner shell,  36° sector shift
 
   return (
@@ -412,7 +414,24 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Outer Dyson hex shell — medium cells, 0° sector start ── */}
+      {/* ── Outermost Dyson hex shell — largest cells, 18° sector, ~50% solid ── */}
+      {shell3.map(({ verts, col, z, solid }, i) => (
+        <g key={i}>
+          <polygon
+            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
+            fill={solid ? col : 'none'}
+            fillOpacity={solid ? 0.32 + z * 0.42 : 0}
+            stroke={col}
+            strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28}
+          />
+          {verts.map(([vx, vy], k) => (
+            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+              r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+          ))}
+        </g>
+      ))}
+
+      {/* ── Mid Dyson hex shell — medium cells, 0° sector start ── */}
       {shell1.map(({ verts, col, z, solid }, i) => (
         <g key={i}>
           <polygon
