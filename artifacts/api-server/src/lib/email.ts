@@ -23,10 +23,11 @@ export async function sendPasswordResetEmail(
     return;
   }
 
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: "Luminae <noreply@luminae.game>",
     to,
     subject: "Reset your Luminae password",
+    text: `Reset your Luminae password\n\nSomeone requested a password reset for your Luminae account.\n\nClick the link below to choose a new password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email. Your password won't change.\n\n— Luminae`,
     html: `
       <!DOCTYPE html>
       <html>
@@ -55,4 +56,12 @@ export async function sendPasswordResetEmail(
       </html>
     `,
   });
+
+  if (error) {
+    throw new Error(`Resend error: ${error.name} — ${error.message}`);
+  }
+
+  if (!data?.id) {
+    throw new Error("Resend returned no message ID — email may not have been queued");
+  }
 }
