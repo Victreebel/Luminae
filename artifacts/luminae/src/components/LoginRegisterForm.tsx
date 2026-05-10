@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { useAccount } from "@/contexts/AccountContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { ForgotPasswordForm } from "@/components/ForgotPasswordForm";
 
 interface Props {
   onSuccess?: () => void;
@@ -13,7 +14,7 @@ interface Props {
 
 export function LoginRegisterForm({ onSuccess, defaultMode = "login" }: Props) {
   const { login, register } = useAccount();
-  const [mode, setMode] = useState<"login" | "register">(defaultMode);
+  const [mode, setMode] = useState<"login" | "register" | "forgot">(defaultMode);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -38,6 +39,22 @@ export function LoginRegisterForm({ onSuccess, defaultMode = "login" }: Props) {
       setIsLoading(false);
     }
   };
+
+  if (mode === "forgot") {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="forgot"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.15 }}
+        >
+          <ForgotPasswordForm onBack={() => { setMode("login"); setError(null); }} />
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -97,7 +114,18 @@ export function LoginRegisterForm({ onSuccess, defaultMode = "login" }: Props) {
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="authPassword" className="text-sm font-medium">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="authPassword" className="text-sm font-medium">Password</Label>
+              {mode === "login" && (
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setError(null); }}
+                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Input
                 id="authPassword"

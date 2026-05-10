@@ -9,6 +9,7 @@ import Lobby from "@/pages/lobby";
 import Game from "@/pages/game";
 import Dashboard from "@/pages/dashboard";
 import FontPreview from "@/pages/font-preview";
+import ResetPassword from "@/pages/reset-password";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { AccountProvider } from "@/contexts/AccountContext";
 
@@ -57,6 +58,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/reset-password" component={ResetPassword} />
       <Route path="/lobby/:roomId" component={Lobby} />
       <Route path="/game/:roomId" component={Game} />
       {import.meta.env.DEV && <Route path="/dev/font-preview" component={FontPreview} />}

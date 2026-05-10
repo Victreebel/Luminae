@@ -87,6 +87,33 @@ export async function apiLogout(token: string): Promise<void> {
   });
 }
 
+export async function apiForgotPassword(email: string): Promise<void> {
+  const res = await fetch(apiUrl("/auth/forgot-password"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(err.error ?? "Request failed");
+  }
+}
+
+export async function apiResetPassword(data: {
+  token: string;
+  newPassword: string;
+}): Promise<void> {
+  const res = await fetch(apiUrl("/auth/reset-password"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Reset failed" }));
+    throw new Error(err.error ?? "Reset failed");
+  }
+}
+
 export async function apiGetMyGames(token: string): Promise<ActiveGame[]> {
   const res = await fetch(apiUrl("/auth/me/games"), {
     headers: { Authorization: `Bearer ${token}` },

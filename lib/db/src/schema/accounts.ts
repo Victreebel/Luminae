@@ -49,6 +49,22 @@ export const insertFriendshipSchema = createInsertSchema(friendshipsTable).omit(
 export type InsertFriendship = z.infer<typeof insertFriendshipSchema>;
 export type Friendship = typeof friendshipsTable.$inferSelect;
 
+export const passwordResetTokensTable = pgTable("password_reset_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  accountId: uuid("account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokensTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokensTable.$inferSelect;
+
 export const challengesTable = pgTable("challenges", {
   id: uuid("id").primaryKey().defaultRandom(),
   challengerAccountId: uuid("challenger_account_id").notNull().references(() => accountsTable.id, { onDelete: "cascade" }),
