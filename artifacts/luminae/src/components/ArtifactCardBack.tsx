@@ -403,6 +403,19 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-hazeglow`} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="6.0" />
         </filter>
+        {/* Limb glow — warm star-light bleeding around the outer shell edge */}
+        <radialGradient id={`${id}-limbglow`} cx="50%" cy="51%" r="50%">
+          <stop offset="0%"   stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="58%"  stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="72%"  stopColor="#ffaa40" stopOpacity="0.08" />
+          <stop offset="80%"  stopColor="#ffdd80" stopOpacity="0.40" />
+          <stop offset="86%"  stopColor="#ff8820" stopOpacity="0.22" />
+          <stop offset="94%"  stopColor="#cc4800" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#cc4800" stopOpacity="0"    />
+        </radialGradient>
+        <filter id={`${id}-limbblur`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="3.0" />
+        </filter>
       </defs>
 
       {/* ── Background ── */}
@@ -428,6 +441,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Collective thermal haze — warm sphere enveloping the entire swarm ── */}
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
+
+      {/* ── Limb glow — star-light bleeding around the outer shell edge ── */}
+      <circle cx={CX} cy={CY} r="35"
+        fill={`url(#${id}-limbglow)`} filter={`url(#${id}-limbblur)`} />
 
       {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
       {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
@@ -461,47 +478,56 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
-        // ── Shell 3 (outer) — opaque panels with star-lighting ─────────────
+        // ── Shell 3 (outer) — backlit silhouette panels ────────────────────
+        // limbFactor=0: panel at sphere centre (most occlusion, darkest)
+        // limbFactor=1: panel at outer limb (backlit, warm amber bleed)
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const lightFactor = Math.max(0, 1 - dist / 32) * (0.25 + z * 0.75);
-        const nx = dist > 0 ? dx / dist : 0;
-        const ny = dist > 0 ? dy / dist : 0;
-        const base = PANEL_BASE[col] ?? '#0c0810';
+        const limbFactor = Math.min(1, dist / 26);
+        const lf2 = limbFactor * limbFactor;   // quadratic — glow only at real edge
 
         if (!solid) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
-            {verts.map(([vx, vy], k) => (
-              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
-            ))}
+              strokeWidth="0.13" strokeOpacity={0.14 + limbFactor * 0.20} />
           </g>
         );
 
-        const edgeLit = Array.from({ length: 6 }, (_, k) => {
+        // Outward-facing edges — the star back-lights these at the limb
+        const nx = dist > 0 ? dx / dist : 0;
+        const ny = dist > 0 ? dy / dist : 0;
+        const edgeGlow = Array.from({ length: 6 }, (_, k) => {
           const [x1, y1] = verts[k];
           const [x2, y2] = verts[(k + 1) % 6];
           const emx = (x1 + x2) / 2 - cx;
           const emy = (y1 + y2) / 2 - cy;
           const el = Math.sqrt(emx * emx + emy * emy) || 1;
+          // Negative dot = edge faces outward (away from star) → back-lit at limb
           const dot = (emx / el) * nx + (emy / el) * ny;
-          return { x1, y1, x2: x2, y2: y2, dot };
+          return { x1, y1, x2: x2, y2: y2, outward: -dot };
         });
 
         return (
           <g key={i}>
-            <polygon points={ptStr} fill={base} fillOpacity="0.94" stroke="none" />
+            {/* Near-black silhouette base — deepest at sphere centre */}
+            <polygon points={ptStr} fill="#060402"
+              fillOpacity={0.96 - lf2 * 0.10} stroke="none" />
+            {/* Warm amber limb bleed — star shining behind at the edges */}
+            <polygon points={ptStr} fill="#ff8820"
+              fillOpacity={lf2 * 0.28} stroke="none" />
+            {/* Subtle affinity identity at the very edge */}
             <polygon points={ptStr} fill={col}
-              fillOpacity={0.10 + lightFactor * 0.22} stroke="none" />
+              fillOpacity={lf2 * 0.08} stroke="none" />
+            {/* Metallic frame — more visible toward limb */}
             <polygon points={ptStr} fill="none"
-              stroke="#d4b060" strokeWidth="0.30" strokeOpacity={0.35 + z * 0.40} />
-            {edgeLit.map(({ x1, y1, x2, y2, dot }, k) => dot > 0.1 && (
+              stroke="#d4b060" strokeWidth="0.28"
+              strokeOpacity={0.15 + limbFactor * 0.45} />
+            {/* Outward-edge warm glow — back-light bleed on limb panels */}
+            {edgeGlow.map(({ x1, y1, x2, y2, outward }, k) => outward > 0.15 && (
               <line key={k} x1={x1.toFixed(2)} y1={y1.toFixed(2)}
                 x2={x2.toFixed(2)} y2={y2.toFixed(2)}
-                stroke="#fffae0" strokeWidth="0.50"
-                strokeOpacity={dot * lightFactor * 0.95} />
+                stroke="#ffcc60" strokeWidth="0.55"
+                strokeOpacity={outward * lf2 * 0.90} />
             ))}
           </g>
         );
