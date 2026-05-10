@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+export interface RematchVoteUpdate {
+  voterIds: string[];
+  countdownEndsAt: number | null;
+  sessionStats: Record<string, { wins: number; losses: number; ties: number; playerName: string }>;
+}
+
 type WebSocketHookParams = {
   roomId: string;
   sessionToken: string;
@@ -9,6 +15,10 @@ type WebSocketHookParams = {
   onPlayerLeft?: (playerId: string) => void;
   onPlayerKicked?: (playerId: string) => void;
   onNavigate?: (path: string) => void;
+  onRematchVoteUpdate?: (data: RematchVoteUpdate) => void;
+  onRematchStarted?: (state: any, sessionStats: RematchVoteUpdate['sessionStats']) => void;
+  onRematchCancelled?: () => void;
+  onRematchDeclined?: (sessionStats: RematchVoteUpdate['sessionStats']) => void;
 };
 
 export function useGameWebsocket({
@@ -20,11 +30,15 @@ export function useGameWebsocket({
   onPlayerLeft,
   onPlayerKicked,
   onNavigate,
+  onRematchVoteUpdate,
+  onRematchStarted,
+  onRematchCancelled,
+  onRematchDeclined,
 }: WebSocketHookParams) {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectDelayRef = useRef(1000); // Start with 1s
+  const reconnectDelayRef = useRef(1000);
   const MAX_RECONNECT_DELAY = 16000;
 
   const onStateUpdateRef = useRef(onStateUpdate);
@@ -33,6 +47,10 @@ export function useGameWebsocket({
   const onPlayerLeftRef = useRef(onPlayerLeft);
   const onPlayerKickedRef = useRef(onPlayerKicked);
   const onNavigateRef = useRef(onNavigate);
+  const onRematchVoteUpdateRef = useRef(onRematchVoteUpdate);
+  const onRematchStartedRef = useRef(onRematchStarted);
+  const onRematchCancelledRef = useRef(onRematchCancelled);
+  const onRematchDeclinedRef = useRef(onRematchDeclined);
 
   useEffect(() => {
     onStateUpdateRef.current = onStateUpdate;
@@ -41,6 +59,10 @@ export function useGameWebsocket({
     onPlayerLeftRef.current = onPlayerLeft;
     onPlayerKickedRef.current = onPlayerKicked;
     onNavigateRef.current = onNavigate;
+    onRematchVoteUpdateRef.current = onRematchVoteUpdate;
+    onRematchStartedRef.current = onRematchStarted;
+    onRematchCancelledRef.current = onRematchCancelled;
+    onRematchDeclinedRef.current = onRematchDeclined;
   });
 
   const connect = useCallback(() => {
@@ -54,7 +76,7 @@ export function useGameWebsocket({
 
     ws.onopen = () => {
       setIsConnected(true);
-      reconnectDelayRef.current = 1000; // Reset delay on successful connection
+      reconnectDelayRef.current = 1000;
     };
 
     ws.onmessage = (event) => {
@@ -81,6 +103,24 @@ export function useGameWebsocket({
             onPlayerKickedRef.current?.(data.playerId);
             onPlayerLeftRef.current?.(data.playerId);
             break;
+          case 'rematch_vote_update':
+            onRematchVoteUpdateRef.current?.({
+              voterIds: data.voterIds ?? [],
+              countdownEndsAt: data.countdownEndsAt ?? null,
+              sessionStats: data.sessionStats ?? {},
+            });
+            break;
+          case 'rematch_started':
+            // Treat like a state update (new game) + pass along session stats
+            onStateUpdateRef.current?.(data.state);
+            onRematchStartedRef.current?.(data.state, data.sessionStats ?? {});
+            break;
+          case 'rematch_cancelled':
+            onRematchCancelledRef.current?.();
+            break;
+          case 'rematch_declined':
+            onRematchDeclinedRef.current?.(data.sessionStats ?? {});
+            break;
         }
       } catch (err) {
         console.error('Failed to parse WebSocket message', err);
@@ -91,7 +131,6 @@ export function useGameWebsocket({
       setIsConnected(false);
       wsRef.current = null;
       
-      // Exponential backoff reconnect
       reconnectTimeoutRef.current = setTimeout(() => {
         connect();
         reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, MAX_RECONNECT_DELAY);
@@ -112,7 +151,7 @@ export function useGameWebsocket({
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (wsRef.current) {
-        wsRef.current.onclose = null; // Prevent reconnect on intentional unmount
+        wsRef.current.onclose = null;
         wsRef.current.close();
       }
     };

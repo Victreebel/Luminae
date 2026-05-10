@@ -20,6 +20,7 @@ import {
 import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { armTurnTimer, updateTurnDeadline, clearTurnTimer } from "../lib/turnTimer";
+import { castVote } from "../lib/rematchManager";
 
 const router: IRouter = Router();
 
@@ -524,7 +525,10 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
   void runAiTurnsIfNeeded(rawId);
 });
 
-// POST /api/rooms/:roomId/rematch — host restarts the game with same players
+// POST /api/rooms/:roomId/rematch — any player votes to play again.
+// The first vote starts a 5-second countdown (3+ players) or waits for the
+// second confirmation (2-player). When conditions are met the server kicks off
+// a new game via rematchManager and broadcasts rematch_started / rematch_declined.
 router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.roomId)
     ? req.params.roomId[0]
@@ -551,7 +555,8 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     return;
   }
 
-  const [host] = await db
+  // Verify the caller is a member of this room (any player, not just host)
+  const [player] = await db
     .select()
     .from(playersTable)
     .where(
@@ -562,72 +567,35 @@ router.post("/rooms/:roomId/rematch", async (req, res): Promise<void> => {
     )
     .limit(1);
 
-  if (!host || !host.isHost) {
-    res.status(403).json({ error: "Only the host can start a rematch" });
+  if (!player) {
+    res.status(403).json({ error: "Not a member of this room" });
     return;
   }
 
-  const players = await db
+  const allPlayers = await db
     .select()
     .from(playersTable)
     .where(eq(playersTable.roomId, rawId))
     .orderBy(playersTable.orderIndex);
 
-  const gameData = initializeGame(
-    players.map((p) => ({ id: p.id, name: p.name })),
-    players.length,
-  );
-  gameData.turnTimerSeconds = room.turnTimerSeconds ?? null;
-  updateTurnDeadline(gameData);
-
-  await db
-    .update(roomsTable)
-    .set({ status: "playing", updatedAt: new Date() })
-    .where(eq(roomsTable.id, rawId));
-
-  await db
-    .insert(gameStatesTable)
-    .values({
-      roomId: rawId,
-      state: gameData as unknown as Record<string, unknown>,
-      version: gameData.version,
-    })
-    .onConflictDoUpdate({
-      target: gameStatesTable.roomId,
-      set: {
-        state: gameData as unknown as Record<string, unknown>,
-        version: gameData.version,
-        updatedAt: new Date(),
-      },
-    });
-
-  const connectedIds = getConnectedPlayerIds(rawId);
-  for (const p of players) {
-    if (p.isAi) connectedIds.add(p.id);
-  }
-  const avatarMap = new Map<string, string | null>(
-    players.map((p) => [p.id, p.avatarId ?? null]),
-  );
-  const aiMap = new Map(
-    players.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+  const voteInfo = await castVote(
+    rawId,
+    player.id,
+    allPlayers.map((p) => ({ id: p.id, name: p.name, isAi: p.isAi })),
   );
 
-  const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap, aiMap);
-
-  // Broadcast as state_update so all clients see status change from
-  // 'finished' → 'playing' without any navigation required.
-  for (const p of players) {
+  // Broadcast updated vote state to all players in the room
+  for (const p of allPlayers) {
     if (p.isAi) continue;
     sendToPlayer(rawId, p.id, {
-      type: "state_update",
-      state: filterStateForPlayer(formatted, p.id),
+      type: "rematch_vote_update",
+      voterIds: voteInfo.voterIds,
+      countdownEndsAt: voteInfo.countdownEndsAt,
+      sessionStats: voteInfo.sessionStats,
     });
   }
-  armTurnTimer(rawId, gameData);
 
-  res.json(filterStateForPlayer(formatted, host.id));
-
-  void runAiTurnsIfNeeded(rawId);
+  res.json(voteInfo);
 });
 
 // DELETE /api/rooms/:roomId/players/:playerId

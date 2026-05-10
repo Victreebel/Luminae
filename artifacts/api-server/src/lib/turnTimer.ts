@@ -12,6 +12,7 @@ import {
 import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
 import { withRoomLock } from "./roomLock";
 import { logger } from "./logger";
+import { recordGameResult } from "./rematchManager";
 
 const timers = new Map<string, NodeJS.Timeout>();
 
@@ -82,6 +83,11 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
           .update(roomsTable)
           .set({ status: "finished", updatedAt: new Date() })
           .where(eq(roomsTable.id, roomId));
+        recordGameResult(
+          roomId,
+          state.players.map((p: { playerId: string; playerName: string }) => ({ id: p.playerId, name: p.playerName })),
+          (state as { winnerId?: string | null }).winnerId ?? null,
+        );
       }
 
       await db

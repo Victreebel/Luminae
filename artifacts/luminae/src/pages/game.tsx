@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
-  useSubmitAction, 
-  useRematch,
+  useSubmitAction,
   getGetGameStateQueryKey
 } from '@workspace/api-client-react';
+import type { RematchVoteUpdate } from '@/hooks/use-game-websocket';
 import type { 
   GameState, 
   CrystalCounts, 
@@ -77,6 +77,33 @@ function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null;
         className="w-full h-full object-cover pointer-events-none select-none"
         draggable={false}
       />
+    </div>
+  );
+}
+
+function RematchCountdown({ endsAt }: { endsAt: number }) {
+  const [remaining, setRemaining] = useState(() => Math.max(0, endsAt - Date.now()));
+  useEffect(() => {
+    const id = setInterval(() => {
+      const r = Math.max(0, endsAt - Date.now());
+      setRemaining(r);
+      if (r === 0) clearInterval(id);
+    }, 100);
+    return () => clearInterval(id);
+  }, [endsAt]);
+  const secs = Math.ceil(remaining / 1000);
+  const pct = Math.min(100, (remaining / 5000) * 100);
+  return (
+    <div className="space-y-1">
+      <div className="h-1 rounded-full bg-secondary overflow-hidden">
+        <div
+          className="h-full bg-primary transition-all duration-100"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-center text-muted-foreground">
+        Starting in {secs}s…
+      </p>
     </div>
   );
 }
@@ -1356,6 +1383,11 @@ export default function GameBoard() {
     }
   };
 
+  // ── Rematch vote state ─────────────────────────────────────────────────────
+  const [rematchVote, setRematchVote] = useState<RematchVoteUpdate | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [votePending, setVotePending] = useState(false);
+
   useGameWebsocket({
     roomId: roomId!,
     sessionToken: session?.sessionToken || '',
@@ -1377,12 +1409,30 @@ export default function GameBoard() {
         toast({ title: "Kicked", description: "You were kicked from the room." });
         setLocation('/');
       }
-    }
+    },
+    onRematchVoteUpdate: (data) => {
+      setRematchVote(data);
+    },
+    onRematchStarted: (_state, _sessionStats) => {
+      // State was already forwarded to onStateUpdate. Reset vote UI.
+      setRematchVote(null);
+      setHasVoted(false);
+      setVotePending(false);
+    },
+    onRematchCancelled: () => {
+      setRematchVote(null);
+      setHasVoted(false);
+      setVotePending(false);
+      toast({ title: 'Rematch cancelled', description: 'Not enough players confirmed. The game has ended.' });
+    },
+    onRematchDeclined: (sessionStats) => {
+      // This player was not included — send them home after a brief message
+      toast({ title: 'Not included', description: 'The other players started a new game without you.' });
+      setTimeout(() => setLocation('/'), 3000);
+    },
   });
 
   const submitAction = useSubmitAction();
-  const rematchMutation = useRematch();
-  const rematchClickedRef = useRef(false);
 
   // ── Summon cutscene duration used for the animation barrier ───────────────
   const SUMMON_CUTSCENE_DURATION_MS = 12_000;
@@ -4206,34 +4256,97 @@ export default function GameBoard() {
                 })}
               </div>
 
+              {/* ── Session Record (appears after first vote) ───────────────── */}
+              {rematchVote && Object.keys(rematchVote.sessionStats).length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="overflow-hidden"
+                >
+                  <div className="rounded-xl bg-secondary/40 px-3 py-2 space-y-1">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5">Session Record</div>
+                    {state.players.map((p) => {
+                      const rec = rematchVote.sessionStats[p.playerId];
+                      if (!rec) return null;
+                      const isMe = p.playerId === session.playerId;
+                      return (
+                        <div key={p.playerId} className={`flex justify-between text-xs ${isMe ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}>
+                          <span>{p.playerName}</span>
+                          <span className="tabular-nums">
+                            <span className="text-emerald-400">{rec.wins}W</span>
+                            {' · '}
+                            <span className="text-red-400">{rec.losses}L</span>
+                            {rec.ties > 0 && <span className="text-yellow-400"> · {rec.ties}T</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── Play Again voting section ───────────────────────────────── */}
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 }}
                 className="flex flex-col gap-2"
               >
-                {session.isHost && (
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    disabled={rematchMutation.isPending || rematchClickedRef.current}
-                    onClick={() => {
-                      if (rematchClickedRef.current) return;
-                      rematchClickedRef.current = true;
-                      rematchMutation.mutate(
-                        { roomId, data: { sessionToken: session.sessionToken } },
-                        {
-                          onError: () => {
-                            rematchClickedRef.current = false;
-                            toast({ title: 'Rematch failed', description: 'Could not restart the game.', variant: 'destructive' });
-                          },
-                        },
-                      );
-                    }}
-                  >
-                    {rematchMutation.isPending ? 'Restarting…' : 'Rematch'}
-                  </Button>
+                {/* Who has voted */}
+                {rematchVote && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      {state.players.map((p) => {
+                        const voted = rematchVote.voterIds.includes(p.playerId);
+                        const isMe = p.playerId === session.playerId;
+                        const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
+                        return (
+                          <div key={p.playerId} className={`flex flex-col items-center gap-0.5 transition-opacity ${voted ? 'opacity-100' : 'opacity-35'}`}>
+                            <div className="relative">
+                              <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={28} />
+                              {voted && (
+                                <span className="absolute -top-1 -right-1 text-[10px] bg-emerald-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">✓</span>
+                              )}
+                            </div>
+                            <span className="text-[9px] text-muted-foreground truncate max-w-[36px]">{p.playerName.split(' ')[0]}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Countdown */}
+                    {rematchVote.countdownEndsAt !== null && (
+                      <RematchCountdown endsAt={rematchVote.countdownEndsAt} />
+                    )}
+                    {rematchVote.countdownEndsAt === null && state.players.filter(p => !p.isAi).length === 2 && !hasVoted && (
+                      <p className="text-xs text-center text-muted-foreground">Waiting for both players to confirm…</p>
+                    )}
+                  </div>
                 )}
+
+                <Button
+                  size="lg"
+                  className="w-full"
+                  disabled={hasVoted || votePending}
+                  onClick={async () => {
+                    if (hasVoted || votePending) return;
+                    setVotePending(true);
+                    try {
+                      const resp = await fetch(`/api/rooms/${roomId}/rematch`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionToken: session.sessionToken }),
+                      });
+                      if (!resp.ok) throw new Error(await resp.text());
+                      setHasVoted(true);
+                    } catch {
+                      toast({ title: 'Vote failed', description: 'Could not register your vote.', variant: 'destructive' });
+                    } finally {
+                      setVotePending(false);
+                    }
+                  }}
+                >
+                  {votePending ? 'Sending…' : hasVoted ? 'Vote cast ✓' : 'Play Again'}
+                </Button>
                 <Button size="lg" variant="outline" className="w-full" onClick={() => setLocation('/')}>Back to Home</Button>
               </motion.div>
             </motion.div>

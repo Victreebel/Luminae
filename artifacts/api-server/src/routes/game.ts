@@ -15,6 +15,7 @@ import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPla
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
+import { recordGameResult } from "../lib/rematchManager";
 
 const router: IRouter = Router();
 
@@ -265,6 +266,12 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
         .update(roomsTable)
         .set({ status: "finished", updatedAt: new Date() })
         .where(eq(roomsTable.id, rawId));
+      // Record cumulative session stats for the rematch overlay
+      recordGameResult(
+        rawId,
+        stateData.players.map((p: { playerId: string; playerName: string }) => ({ id: p.playerId, name: p.playerName })),
+        (stateData as { winnerId?: string | null }).winnerId ?? null,
+      );
     }
 
     const updated = await db
