@@ -3271,7 +3271,7 @@ export default function GameBoard() {
                           className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
                             ${pendingSheetAction === 'reserve'
                               ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                              : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                              : 'bg-[#FFC43D]/70 hover:bg-[#FFC43D]/85'
                             }`}
                           disabled={!me || !canReserveMore(me)}
                           onClick={() => {
@@ -3339,7 +3339,7 @@ export default function GameBoard() {
                           className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
                             ${pendingSheetAction === 'plan_reserve'
                               ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                              : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                              : 'bg-[#FFC43D]/70 hover:bg-[#FFC43D]/85'
                             }`}
                           disabled={!me || !canReserveMore(me)}
                           onClick={() => {
