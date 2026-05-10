@@ -844,7 +844,7 @@ title = "lum_null aura pale white blue glow"
 id = "Q7mv_mCyIMKki5qyevCmw"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/aura.png"
 type = "image"
-title = "lum_pale aura pure white silver glow"
+title = "lum_pale aura silver pearl glow"
 
 [[generated]]
 id = "weE3hzYEgxvkKMZ5sPXgr"
@@ -862,7 +862,7 @@ title = "lum_tide aura transparent blue"
 id = "Py7EOU4fRlrwLKhqpM7YU"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_void/aura.png"
 type = "image"
-title = "lum_void aura deep purple glow"
+title = "lum_void centered aura purple glow"
 
 [[generated]]
 id = "9F2beR5gCLo5BFRwZD9Gz"
