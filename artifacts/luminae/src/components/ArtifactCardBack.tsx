@@ -191,7 +191,7 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       <line x1="66" y1="50" x2="62.5" y2="50" stroke={GOLD} strokeWidth="0.6" />
 
       {/* ── Tier label — integrated into top margin ── */}
-      <text x="35" y="14.5" textAnchor="middle" fontFamily="Georgia, serif"
+      <text x="34.5" y="14.5" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="5" fill={GOLD2} opacity="0.72" letterSpacing="1">I</text>
       <line x1="31.5" y1="16" x2="38.5" y2="16"
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.5" />
@@ -590,7 +590,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       ))}
 
       {/* ── Tier label ── */}
-      <text x="35" y="15" textAnchor="middle" fontFamily="Georgia, serif"
+      <text x="34" y="15" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="5" fill={GOLD2} opacity="0.75" letterSpacing="2">II</text>
       <line x1="30" y1="16.5" x2="40" y2="16.5"
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.52" />
@@ -862,7 +862,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       ))}
 
       {/* Tier label */}
-      <text x="35" y="15" textAnchor="middle" fontFamily="Georgia, serif"
+      <text x="33.5" y="15" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="4.5" fill={GOLD2} opacity="0.65" letterSpacing="3">III</text>
       <line x1="28" y1="16.5" x2="42" y2="16.5"
         stroke={GOLD3} strokeWidth="0.38" strokeOpacity="0.48" />
