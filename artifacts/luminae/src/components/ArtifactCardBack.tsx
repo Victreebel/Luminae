@@ -442,9 +442,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Limb glow — star-light bleeding around the outer shell edge ── */}
-      <circle cx={CX} cy={CY} r="35"
-        fill={`url(#${id}-limbglow)`} filter={`url(#${id}-limbblur)`} />
 
       {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
       {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
@@ -484,50 +481,54 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const limbFactor = Math.min(1, dist / 26);
-        const lf2 = limbFactor * limbFactor;   // quadratic — glow only at real edge
+        // panelOpacity: 0 near centre (star visible), 1 at outer limb (fully opaque)
+        const panelOpacity = Math.max(0, Math.min(1, (limbFactor - 0.38) / 0.24));
 
-        if (!solid) return (
-          <g key={i}>
-            <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.13" strokeOpacity={0.14 + limbFactor * 0.20} />
-          </g>
-        );
+        // Non-solid cells: only show wire at outer limb, invisible near centre
+        if (!solid) {
+          if (limbFactor < 0.52) return <g key={i} />;
+          return (
+            <g key={i}>
+              <polygon points={ptStr} fill="none" stroke={col}
+                strokeWidth="0.13" strokeOpacity={(limbFactor - 0.52) * 0.50} />
+            </g>
+          );
+        }
 
-        // Outward-facing edges — the star back-lights these at the limb
+        // Solid cells near the star centre: skip entirely
+        if (panelOpacity <= 0) return <g key={i} />;
+
+        const base = PANEL_BASE[col] ?? '#0c0810';
         const nx = dist > 0 ? dx / dist : 0;
         const ny = dist > 0 ? dy / dist : 0;
+        const lf2 = limbFactor * limbFactor;
         const edgeGlow = Array.from({ length: 6 }, (_, k) => {
           const [x1, y1] = verts[k];
           const [x2, y2] = verts[(k + 1) % 6];
           const emx = (x1 + x2) / 2 - cx;
           const emy = (y1 + y2) / 2 - cy;
           const el = Math.sqrt(emx * emx + emy * emy) || 1;
-          // Negative dot = edge faces outward (away from star) → back-lit at limb
           const dot = (emx / el) * nx + (emy / el) * ny;
           return { x1, y1, x2: x2, y2: y2, outward: -dot };
         });
 
         return (
           <g key={i}>
-            {/* Near-black silhouette base — deepest at sphere centre */}
-            <polygon points={ptStr} fill="#060402"
-              fillOpacity={0.96 - lf2 * 0.10} stroke="none" />
-            {/* Warm amber limb bleed — star shining behind at the edges */}
-            <polygon points={ptStr} fill="#ff8820"
-              fillOpacity={lf2 * 0.28} stroke="none" />
-            {/* Subtle affinity identity at the very edge */}
+            {/* Affinity-coloured dark base — fully opaque at outer ring */}
+            <polygon points={ptStr} fill={base} fillOpacity={panelOpacity} stroke="none" />
+            {/* Affinity colour tint */}
             <polygon points={ptStr} fill={col}
-              fillOpacity={lf2 * 0.08} stroke="none" />
-            {/* Metallic frame — more visible toward limb */}
+              fillOpacity={panelOpacity * 0.18} stroke="none" />
+            {/* Metallic frame */}
             <polygon points={ptStr} fill="none"
               stroke="#d4b060" strokeWidth="0.28"
-              strokeOpacity={0.15 + limbFactor * 0.45} />
-            {/* Outward-edge warm glow — back-light bleed on limb panels */}
+              strokeOpacity={0.15 + limbFactor * 0.50} />
+            {/* Outward-edge warm glow — star back-lighting limb panels */}
             {edgeGlow.map(({ x1, y1, x2, y2, outward }, k) => outward > 0.15 && (
               <line key={k} x1={x1.toFixed(2)} y1={y1.toFixed(2)}
                 x2={x2.toFixed(2)} y2={y2.toFixed(2)}
                 stroke="#ffcc60" strokeWidth="0.55"
-                strokeOpacity={outward * lf2 * 0.90} />
+                strokeOpacity={outward * lf2 * panelOpacity * 0.85} />
             ))}
           </g>
         );
@@ -544,11 +545,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Stellar core ── */}
       <circle cx={CX} cy={CY} r="5.5" fill={`url(#${id}-star)`} />
 
-      {/* Cross-flares */}
-      <line x1={CX-11} y1={CY}    x2={CX+11} y2={CY}    stroke="#fff8c0" strokeWidth="0.44" strokeOpacity="0.44" />
-      <line x1={CX}    y1={CY-11} x2={CX}    y2={CY+11} stroke="#fff8c0" strokeWidth="0.44" strokeOpacity="0.40" />
-      <line x1={CX-8}  y1={CY-8}  x2={CX+8}  y2={CY+8}  stroke="#ffc060" strokeWidth="0.25" strokeOpacity="0.26" />
-      <line x1={CX+8}  y1={CY-8}  x2={CX-8}  y2={CY+8}  stroke="#ffc060" strokeWidth="0.25" strokeOpacity="0.26" />
 
       {/* ── T2 Border — double L-corner ── */}
       <rect x="3.5" y="3.5" width="63" height="93" rx="1.5"
