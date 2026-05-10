@@ -346,6 +346,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const PANEL_BASE: Record<string, string> = {
     [F]: '#4a1212', [C]: '#10204a', [V]: '#0d2818', [A]: '#280d4a', [R]: '#1c2030',
   };
+  // Mid-body colour — readable affinity tint so each sector is identifiable
+  const PANEL_MID: Record<string, string> = {
+    [F]: '#7a2020', [C]: '#1a3878', [V]: '#1a5028', [A]: '#4a1870', [R]: '#6a7890',
+  };
 
   const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
   const shell1 = genShell(23, 3.0,  0);            // mid shell
@@ -514,17 +518,18 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
-        // Radial gradient: dark PANEL_BASE at center → bright affinity col at rim
+        // Radial gradient: dark PANEL_BASE core → affinity mid-body → gold rim
         const gradId = `${id}-s3p-${i}`;
+        const mid = PANEL_MID[col] ?? '#404050';
         return (
           <g key={i}>
             <defs>
-              {/* Flat dark body — only the outermost rim brightens to gold */}
               <radialGradient id={gradId}
                 cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
                 gradientUnits="userSpaceOnUse">
-                <stop offset="0%"   stopColor={base}   stopOpacity="1.0" />
-                <stop offset="82%"  stopColor={base}   stopOpacity="1.0" />
+                <stop offset="0%"   stopColor={base} stopOpacity="1.0" />
+                <stop offset="55%"  stopColor={mid}  stopOpacity="1.0" />
+                <stop offset="84%"  stopColor={mid}  stopOpacity="1.0" />
                 <stop offset="100%" stopColor="#ffe08a" stopOpacity="1.0" />
               </radialGradient>
             </defs>
