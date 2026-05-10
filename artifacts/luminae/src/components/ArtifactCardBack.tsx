@@ -302,7 +302,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const getSectorCol = (angle: number, phaseOff: number): string | null => {
     const a = ((angle + phaseOff) % 360 + 360) % 360;
     const frac = (a % 72) / 72;
-    if (frac < 0.07 || frac > 0.93) return null;   // gap between sectors
+    if (frac < 0.13 || frac > 0.87) return null;   // wider gap → clear fragmentation between sectors
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
@@ -349,6 +349,20 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   // Mid-body colour — readable affinity tint so each sector is identifiable
   const PANEL_MID: Record<string, string> = {
     [F]: '#7a2020', [C]: '#1a3878', [V]: '#1a5028', [A]: '#4a1870', [R]: '#6a7890',
+  };
+  // 3D bevel shadow (dark affinity) and highlight (bright affinity) colours
+  const BEVEL_DARK: Record<string, string> = {
+    [F]: '#250606', [C]: '#050a1c', [V]: '#030b04', [A]: '#0f0320', [R]: '#090c14',
+  };
+  const BEVEL_LIGHT: Record<string, string> = {
+    [F]: '#ff8888', [C]: '#88bbff', [V]: '#66ee98', [A]: '#cc8aff', [R]: '#ffffff',
+  };
+  // Per-edge lighting: dot(outward_normal, upper-left light direction)
+  // Vertices are at angle k*PI/3 (flat-top hex); outward normal of edge k→k+1
+  // points at angle k*PI/3 + PI/6. Light comes FROM upper-left (-0.707, -0.707).
+  const edgeLightFactor = (k: number): number => {
+    const mid = (Math.PI / 3) * k + Math.PI / 6;
+    return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
   const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
@@ -425,9 +439,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-limbblur`} x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="3.0" />
         </filter>
-        {/* Soft glow for outer panel gold rim */}
-        <filter id={`${id}-panelglow`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="0.12" />
+        {/* Affinity-coloured outer glow for opaque panels */}
+        <filter id={`${id}-panelglow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="0.55" />
         </filter>
       </defs>
 
@@ -459,89 +473,132 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
       {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
         const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+        const darkCol  = BEVEL_DARK[col]  ?? '#0a0a0a';
+        const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
 
-        // ── Shell 1 (mid) ──────────────────────────────────────────────────
-        if (sn === 1) return (
-          <g key={i}>
-            <polygon points={ptStr}
-              fill={solid ? col : 'none'}
-              fillOpacity={solid ? 0.28 + z * 0.38 : 0}
-              stroke={col} strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32} />
-            {verts.map(([vx, vy], k) => (
-              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-                r="0.10" fill={col} opacity={0.28 + z * 0.48} />
-            ))}
-          </g>
+        // Inset vertices for the raised top face of the bevel
+        const BEVEL_F = 0.60;
+        const innerVerts = verts.map(([vx, vy]) =>
+          [cx + (vx - cx) * BEVEL_F, cy + (vy - cy) * BEVEL_F] as [number, number]
         );
+        const innerPts = innerVerts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
 
-        // ── Shell 2 (inner) ────────────────────────────────────────────────
-        if (sn === 2) return (
-          <g key={i}>
-            <polygon points={ptStr}
-              fill={solid ? col : 'none'}
-              fillOpacity={solid ? 0.10 + z * 0.15 : 0}
-              stroke={col} strokeWidth="0.09" strokeOpacity={0.13 + z * 0.24} />
-            {verts.map(([vx, vy], k) => (
-              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-                r="0.08" fill={col} opacity={0.20 + z * 0.36} />
-            ))}
-          </g>
-        );
+        // ── Shell 2 (innermost) — very transparent glass ──────────────────
+        if (sn === 2) {
+          const fOpacity = solid ? 0.09 + z * 0.11 : 0.03 + z * 0.04;
+          return (
+            <g key={i}>
+              {/* faint bevel side hints */}
+              {Array.from({ length: 6 }, (_, k) => {
+                const pts = [verts[k], verts[(k + 1) % 6], innerVerts[(k + 1) % 6], innerVerts[k]];
+                const ps = pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+                const lf = edgeLightFactor(k);
+                return (
+                  <polygon key={k} points={ps}
+                    fill={lf > 0.3 ? lightCol : darkCol}
+                    fillOpacity={0.06 + lf * 0.12} />
+                );
+              })}
+              {/* glassy top face */}
+              <polygon points={innerPts} fill={col} fillOpacity={fOpacity} />
+              {/* coloured edge outline */}
+              <polygon points={ptStr} fill="none" stroke={col}
+                strokeWidth="0.09" strokeOpacity={0.12 + z * 0.20} />
+            </g>
+          );
+        }
 
-        // ── Shell 3 (outer) — opaque panels with bright rim ───────────────
+        // ── Shell 1 (middle) — semi-transparent with light bevel ──────────
+        if (sn === 1) {
+          const fOpacity = solid ? 0.20 + z * 0.25 : 0.07 + z * 0.09;
+          const bevelBase = solid ? 0.55 : 0.30;
+          return (
+            <g key={i}>
+              {/* bevel side faces — moderate opacity */}
+              {Array.from({ length: 6 }, (_, k) => {
+                const pts = [verts[k], verts[(k + 1) % 6], innerVerts[(k + 1) % 6], innerVerts[k]];
+                const ps = pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+                const lf = edgeLightFactor(k);
+                return (
+                  <g key={k}>
+                    <polygon points={ps} fill={darkCol} fillOpacity={bevelBase} />
+                    {lf > 0 && <polygon points={ps} fill={lightCol} fillOpacity={lf * 0.55 * bevelBase} />}
+                  </g>
+                );
+              })}
+              {/* semi-transparent top face */}
+              <polygon points={innerPts} fill={col} fillOpacity={fOpacity} />
+              {/* coloured edge hairline */}
+              <polygon points={ptStr} fill="none" stroke={col}
+                strokeWidth="0.10" strokeOpacity={0.18 + z * 0.28} />
+            </g>
+          );
+        }
+
+        // ── Shell 3 (outermost) ────────────────────────────────────────────
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const limbFactor = Math.min(1, dist / 26);
-        const base = PANEL_BASE[col] ?? '#0c0810';
 
+        // Non-solid → wire-only outline panel (fragmentation gaps)
         if (!solid) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
-            {verts.map(([vx, vy], k) => (
-              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
-            ))}
+              strokeWidth="0.13" strokeOpacity={0.18 + z * 0.30} />
           </g>
         );
 
-        // Panels whose screen-centre is too close to the star are rendered as wire only
-        // so they never obscure the sun bloom.
+        // Too close to star core → wire only so bloom is never buried
         if (dist < 10) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
-            {verts.map(([vx, vy], k) => (
-              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
-            ))}
+              strokeWidth="0.13" strokeOpacity={0.18 + z * 0.28} />
           </g>
         );
 
-        // Radial gradient: dark PANEL_BASE core → affinity mid-body → gold rim
-        const gradId = `${id}-s3p-${i}`;
-        const mid = PANEL_MID[col] ?? '#404050';
+        // Full 3D beveled opaque panel with affinity-coloured glow
+        const topGradId = `${id}-s3t-${i}`;
         return (
           <g key={i}>
             <defs>
-              <radialGradient id={gradId}
-                cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
+              {/* Subtle centre-bright radial gradient for the top face */}
+              <radialGradient id={topGradId}
+                cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="2.8"
                 gradientUnits="userSpaceOnUse">
-                <stop offset="0%"   stopColor={base} stopOpacity="1.0" />
-                <stop offset="55%"  stopColor={mid}  stopOpacity="1.0" />
-                <stop offset="84%"  stopColor={mid}  stopOpacity="1.0" />
-                <stop offset="100%" stopColor="#ffe08a" stopOpacity="1.0" />
+                <stop offset="0%"   stopColor={lightCol} stopOpacity="0.45" />
+                <stop offset="55%"  stopColor={col}      stopOpacity="1.0"  />
+                <stop offset="100%" stopColor={darkCol}  stopOpacity="1.0"  />
               </radialGradient>
             </defs>
-            {/* blurred glow drawn first — fill below will mask the inward half */}
+
+            {/* Affinity-coloured outer glow (replaces gold glow) */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffe08a" strokeWidth="0.7" strokeOpacity="0.65"
+              stroke={col} strokeWidth="1.0" strokeOpacity="0.50"
               filter={`url(#${id}-panelglow)`} />
-            {/* opaque fill on top covers inward glow bleed, leaving only outer halo */}
-            <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
-            {/* crisp hairline on the edge itself */}
+
+            {/* 6 bevel trapezoid side faces — shadow + highlight per lighting */}
+            {Array.from({ length: 6 }, (_, k) => {
+              const pts = [verts[k], verts[(k + 1) % 6], innerVerts[(k + 1) % 6], innerVerts[k]];
+              const ps = pts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+              const lf = edgeLightFactor(k);
+              return (
+                <g key={k}>
+                  {/* Base: very dark affinity shadow */}
+                  <polygon points={ps} fill={darkCol} fillOpacity="1.0" />
+                  {/* Overlay: bright highlight proportional to lighting */}
+                  {lf > 0 && <polygon points={ps} fill={lightCol} fillOpacity={lf * 0.78} />}
+                </g>
+              );
+            })}
+
+            {/* Raised top face — affinity colour with centre highlight */}
+            <polygon points={innerPts} fill={`url(#${topGradId})`} fillOpacity="1.0" />
+
+            {/* Outer edge hairline (bright affinity) */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffe08a" strokeWidth="0.09" strokeOpacity="0.88" />
+              stroke={lightCol} strokeWidth="0.06" strokeOpacity="0.65" />
+            {/* Inner edge hairline (where bevel meets top face) */}
+            <polygon points={innerPts} fill="none"
+              stroke={lightCol} strokeWidth="0.05" strokeOpacity="0.45" />
           </g>
         );
       })}
