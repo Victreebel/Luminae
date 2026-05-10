@@ -838,6 +838,8 @@ export default function GameBoard() {
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
   const [showUndoHint, setShowUndoHint] = useState(false);
+  const [showReserveHint, setShowReserveHint] = useState(false);
+  const [showForgeHint, setShowForgeHint] = useState(false);
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
   const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
   const [showPurchased, setShowPurchased] = useState(false);
@@ -2008,6 +2010,37 @@ export default function GameBoard() {
 
   const dismissUndoHint = () => {
     setShowUndoHint(false);
+  };
+
+  useEffect(() => {
+    if (pendingSheetAction === 'reserve') {
+      if (!localStorage.getItem('luminae_reserve_hint_seen')) {
+        localStorage.setItem('luminae_reserve_hint_seen', '1');
+        setShowReserveHint(true);
+      }
+    } else {
+      setShowReserveHint(false);
+    }
+  }, [pendingSheetAction]);
+
+  const dismissReserveHint = () => {
+    setShowReserveHint(false);
+  };
+
+  useEffect(() => {
+    const affordable = isMyTurn && selectedCard && me && canAffordCard(selectedCard.card, me);
+    if (affordable) {
+      if (!localStorage.getItem('luminae_forge_hint_seen')) {
+        localStorage.setItem('luminae_forge_hint_seen', '1');
+        setShowForgeHint(true);
+      }
+    } else {
+      setShowForgeHint(false);
+    }
+  }, [isMyTurn, selectedCard, me]);
+
+  const dismissForgeHint = () => {
+    setShowForgeHint(false);
   };
 
   const myReservedCount = me?.reservedCards.length ?? 0;
@@ -3384,10 +3417,28 @@ export default function GameBoard() {
                   <>
                     <motion.div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
-                      className={`w-full${btnAnimTarget === 'forge' ? ` btn-${btnAnimType}-flash` : ''}`}
+                      className={`relative w-full${btnAnimTarget === 'forge' ? ` btn-${btnAnimType}-flash` : ''}`}
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
                     >
+                      <AnimatePresence>
+                        {showForgeHint && (
+                          <motion.button
+                            type="button"
+                            initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 4, scale: 0.92 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={dismissForgeHint}
+                            className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                            title="Dismiss hint"
+                          >
+                            <Gavel className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                            <span>Tap to spend your crystals and claim this Artifact</span>
+                            <span className="text-white/40 ml-0.5">✕</span>
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
                       <Button
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
                           ${pendingSheetAction === 'forge'
@@ -3416,10 +3467,28 @@ export default function GameBoard() {
                     {!selectedCard.fromReserve && (
                       <motion.div
                         key={btnAnimTarget === 'reserve' ? `reserve-${btnAnimKey}` : 'reserve'}
-                        className={`w-full${btnAnimTarget === 'reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
+                        className={`relative w-full${btnAnimTarget === 'reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
                         whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                         style={{ borderRadius: '0.75rem' }}
                       >
+                        <AnimatePresence>
+                          {showReserveHint && (
+                            <motion.button
+                              type="button"
+                              initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 4, scale: 0.92 }}
+                              transition={{ duration: 0.2 }}
+                              onClick={dismissReserveHint}
+                              className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                              title="Dismiss hint"
+                            >
+                              <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                              <span>Reserves hold this card — tap again to confirm</span>
+                              <span className="text-white/40 ml-0.5">✕</span>
+                            </motion.button>
+                          )}
+                        </AnimatePresence>
                         <Button
                           className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
                             ${pendingSheetAction === 'reserve'
