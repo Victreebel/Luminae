@@ -543,28 +543,31 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const INNER_R = 4.8;
   const OUTER_R = 7.5;
 
-  // Secondary star systems — branching off the spiral energy arms mid-path.
-  // ax/ay = arm junction (on the bezier).  cx/cy = satellite center.
-  // qx/qy = quadratic bezier control point (arcs outward from hub).
-  // All satellites kept within safe inner-frame bounds (x:13–57, y:23–86).
-  // ax/ay is the EXACT arm start point so spurs fork from the same point the arm originates.
-  // q1 (qx,qy) and q2 (q2x,q2y) are cubic bezier controls — q1 pulls away from the arm
-  // junction in the spur direction; q2 approaches the satellite from a natural angle.
+  // Branch junction points are mid-arm, computed at the t-parameter shown below.
+  // Each ax/ay lies ON the bezier curve of its parent arm — not at the arm tip.
+  // Satellite positions verified: ≥12u from every primary system, ≥19u between satellites,
+  // all ring extents within inner-frame bounds (x 7–63, y 7–93).
+  //
+  // arm 0: M 35 31 C 53 36, 48 48, 35 52   t≈0.35 → junction (46,38)
+  // arm 1: M 55 47 C 58 63, 45 61, 35 52   t≈0.40 → junction (52,58)
+  // arm 2: M 47 69 C 31 77, 24 63, 35 52   t≈0.20 → junction (39,71)
+  // arm 3: M 23 69 C  9 62, 17 53, 35 52   t≈0.25 → junction (17,64)
+  // arm 4: M 15 47 C 14 32, 27 34, 35 52   t≈0.30 → junction (17,38)
   const satellites: Array<{
     cx: number; cy: number; ax: number; ay: number;
     qx: number; qy: number; q2x: number; q2y: number;
     col: string; parentIdx: number;
   }> = [
-    // R — arm 0 starts at (35,31), satellite upper-right (55,20)
-    { ax: 35, ay: 31, qx: 44, qy: 27, q2x: 50, q2y: 22, cx: 55, cy: 20, col: R, parentIdx: 0 },
-    // C — arm 1 starts at (55,47), satellite lower-right (57,63)
-    { ax: 55, ay: 47, qx: 60, qy: 51, q2x: 59, q2y: 58, cx: 57, cy: 63, col: C, parentIdx: 1 },
-    // V — arm 2 starts at (47,69), satellite bottom-right (50,85)
-    { ax: 47, ay: 69, qx: 53, qy: 73, q2x: 53, q2y: 80, cx: 50, cy: 85, col: V, parentIdx: 2 },
-    // F — arm 3 starts at (23,69), satellite bottom-left (13,83)
-    { ax: 23, ay: 69, qx: 18, qy: 74, q2x: 14, q2y: 79, cx: 13, cy: 83, col: F, parentIdx: 3 },
-    // A — arm 4 starts at (15,47), satellite upper-left (13,23)
-    { ax: 15, ay: 47, qx: 12, qy: 40, q2x: 11, q2y: 31, cx: 13, cy: 23, col: A, parentIdx: 4 },
+    // R — mid arm 0 (46,38) → upper-right (57,22)
+    { ax: 46, ay: 38, qx: 52, qy: 33, q2x: 54, q2y: 26, cx: 57, cy: 22, col: R, parentIdx: 0 },
+    // C — mid arm 1 (52,58) → right (58,64); 17u from C-primary, 12u from V-primary
+    { ax: 52, ay: 58, qx: 57, qy: 57, q2x: 59, q2y: 61, cx: 58, cy: 64, col: C, parentIdx: 1 },
+    // V — mid arm 2 (39,71) → bottom-right (52,82)
+    { ax: 39, ay: 71, qx: 46, qy: 74, q2x: 51, q2y: 78, cx: 52, cy: 82, col: V, parentIdx: 2 },
+    // F — mid arm 3 (17,64) → bottom-left (16,82)
+    { ax: 17, ay: 64, qx: 12, qy: 68, q2x: 13, q2y: 76, cx: 16, cy: 82, col: F, parentIdx: 3 },
+    // A — mid arm 4 (17,38) → upper-left (14,25)
+    { ax: 17, ay: 38, qx: 12, qy: 35, q2x: 11, q2y: 29, cx: 14, cy: 25, col: A, parentIdx: 4 },
   ];
 
   return (
