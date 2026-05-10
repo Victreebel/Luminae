@@ -7,8 +7,10 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Lobby from "@/pages/lobby";
 import Game from "@/pages/game";
+import Dashboard from "@/pages/dashboard";
 import FontPreview from "@/pages/font-preview";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
+import { AccountProvider } from "@/contexts/AccountContext";
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -54,6 +56,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/lobby/:roomId" component={Lobby} />
       <Route path="/game/:roomId" component={Game} />
       {import.meta.env.DEV && <Route path="/dev/font-preview" component={FontPreview} />}
@@ -66,15 +69,17 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <div className="dark min-h-[100dvh] bg-background text-foreground">
-              <Router />
-            </div>
-          </WouterRouter>
-          <Toaster />
-          <PwaUpdatePrompt />
-        </TooltipProvider>
+        <AccountProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <div className="dark min-h-[100dvh] bg-background text-foreground">
+                <Router />
+              </div>
+            </WouterRouter>
+            <Toaster />
+            <PwaUpdatePrompt />
+          </TooltipProvider>
+        </AccountProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

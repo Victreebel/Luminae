@@ -9,6 +9,7 @@ import {
   KickPlayerBody,
   AddAiPlayerBody,
 } from "@workspace/api-zod";
+import { optionalAccountAuth } from "../lib/accountAuth";
 import { randomBytes } from "crypto";
 import {
   initializeGame,
@@ -84,7 +85,7 @@ function pickAiAvatar(existing: string[]): string {
 }
 
 // POST /api/rooms — create room
-router.post("/rooms", async (req, res): Promise<void> => {
+router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
   const parsed = CreateRoomBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -109,6 +110,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
     .insert(playersTable)
     .values({
       roomId: room.id,
+      accountId: req.account?.id ?? null,
       name: hostName,
       sessionToken,
       isHost: true,
@@ -188,7 +190,7 @@ router.get("/rooms/:inviteCode", async (req, res): Promise<void> => {
 });
 
 // POST /api/rooms/:roomId/join
-router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
+router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params.roomId)
     ? req.params.roomId[0]
     : req.params.roomId;
@@ -232,6 +234,7 @@ router.post("/rooms/:roomId/join", async (req, res): Promise<void> => {
     .insert(playersTable)
     .values({
       roomId: room.id,
+      accountId: req.account?.id ?? null,
       name: playerName,
       sessionToken,
       isHost: false,
@@ -652,5 +655,81 @@ router.delete(
     res.json({ success: true });
   },
 );
+
+// POST /api/rooms/:roomId/quit — account player forfeits/leaves a game
+router.post("/rooms/:roomId/quit", optionalAccountAuth, async (req, res): Promise<void> => {
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+
+  const { sessionToken } = req.body as { sessionToken?: string };
+  if (!sessionToken) {
+    res.status(400).json({ error: "sessionToken is required" });
+    return;
+  }
+
+  const [room] = await db
+    .select()
+    .from(roomsTable)
+    .where(eq(roomsTable.id, rawId))
+    .limit(1);
+
+  if (!room) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+
+  const [player] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+
+  // If an account token was provided, verify it matches the player's linked account
+  if (req.account && player && player.accountId !== req.account.id) {
+    res.status(403).json({ error: "Account does not match player" });
+    return;
+  }
+
+  if (!player) {
+    res.status(403).json({ error: "Not a member of this room" });
+    return;
+  }
+
+  // Record quit time (preserves accountId for history) and mark disconnected
+  await db
+    .update(playersTable)
+    .set({ isConnected: false, quitAt: new Date() })
+    .where(eq(playersTable.id, player.id));
+
+  // Finish the room only if no other human players remain (connected or not, excluding quitters)
+  const remaining = await db
+    .select()
+    .from(playersTable)
+    .where(and(eq(playersTable.roomId, rawId), eq(playersTable.isAi, false)));
+
+  const otherHumans = remaining.filter(
+    (p) => p.id !== player.id && p.quitAt === null,
+  );
+
+  if (otherHumans.length === 0 && room.status !== "finished") {
+    // No other humans connected — mark room as finished
+    await db
+      .update(roomsTable)
+      .set({ status: "finished", updatedAt: new Date() })
+      .where(eq(roomsTable.id, rawId));
+  }
+
+  broadcastToRoom(rawId, { type: "player_quit", playerId: player.id });
+  void clearTurnTimer(rawId);
+
+  req.log.info({ roomId: rawId, playerId: player.id }, "Player quit room");
+  res.json({ ok: true });
+});
 
 export default router;

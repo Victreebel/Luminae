@@ -9,6 +9,204 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface QuitRoomBody {
+  sessionToken: string;
+}
+
+export interface RegisterBody {
+  /**
+   * @minLength 2
+   * @maxLength 32
+   */
+  username: string;
+  /** @minLength 6 */
+  password: string;
+  email?: string;
+}
+
+export interface LoginBody {
+  username: string;
+  password: string;
+}
+
+export type ActiveRoomEntryStatus =
+  (typeof ActiveRoomEntryStatus)[keyof typeof ActiveRoomEntryStatus];
+
+export const ActiveRoomEntryStatus = {
+  lobby: "lobby",
+  playing: "playing",
+} as const;
+
+export interface ActiveRoomEntry {
+  roomId: string;
+  inviteCode: string;
+  status: ActiveRoomEntryStatus;
+  sessionToken: string;
+  playerId: string;
+  isHost: boolean;
+}
+
+export interface AccountInfo {
+  id: string;
+  username: string;
+  /** @nullable */
+  email?: string | null;
+  createdAt?: string;
+}
+
+export interface GetMeResponse {
+  id: string;
+  username: string;
+  /** @nullable */
+  email?: string | null;
+  createdAt?: string;
+  activeRooms: ActiveRoomEntry[];
+}
+
+export interface AccountWithToken {
+  account: AccountInfo;
+  token: string;
+  expiresAt: string;
+}
+
+export type ActiveGameStatus =
+  (typeof ActiveGameStatus)[keyof typeof ActiveGameStatus];
+
+export const ActiveGameStatus = {
+  lobby: "lobby",
+  playing: "playing",
+} as const;
+
+export interface ActiveGame {
+  roomId: string;
+  inviteCode: string;
+  status: ActiveGameStatus;
+  maxPlayers: number;
+  currentPlayers: number;
+  updatedAt: string;
+  sessionToken: string;
+  playerId: string;
+  isHost: boolean;
+  playerName: string;
+  /** @nullable */
+  avatarId?: string | null;
+}
+
+export interface ActiveGamesResponse {
+  games: ActiveGame[];
+}
+
+export interface FriendEntry {
+  friendshipId: string;
+  accountId: string;
+  username: string;
+  isOnline: boolean;
+}
+
+export interface FriendsListResponse {
+  friends: FriendEntry[];
+}
+
+export type FriendRequestEntryFrom = {
+  accountId: string;
+  username: string;
+};
+
+export interface FriendRequestEntry {
+  id: string;
+  from: FriendRequestEntryFrom;
+  createdAt: string;
+}
+
+export interface FriendRequestsResponse {
+  requests: FriendRequestEntry[];
+}
+
+export interface SendFriendRequestBody {
+  username: string;
+}
+
+export type FriendRequestActionBodyAction =
+  (typeof FriendRequestActionBodyAction)[keyof typeof FriendRequestActionBodyAction];
+
+export const FriendRequestActionBodyAction = {
+  accept: "accept",
+  decline: "decline",
+} as const;
+
+export interface FriendRequestActionBody {
+  action: FriendRequestActionBodyAction;
+}
+
+export interface ChallengeEntry {
+  id: string;
+  challengerUsername: string;
+  challengerAccountId: string;
+  roomId: string;
+  inviteCode: string;
+  expiresAt: string;
+}
+
+export interface ChallengesResponse {
+  challenges: ChallengeEntry[];
+}
+
+export interface CreateChallengeBody {
+  challengedUsername: string;
+  /**
+   * @minimum 2
+   * @maximum 4
+   */
+  maxPlayers?: number;
+  /** @nullable */
+  turnTimerSeconds?: number | null;
+}
+
+export interface ChallengeCreatedResponse {
+  id: string;
+  roomId: string;
+  inviteCode: string;
+  challengedUsername: string;
+  expiresAt: string;
+  sessionToken: string;
+  playerId: string;
+}
+
+export type ChallengeActionBodyAction =
+  (typeof ChallengeActionBodyAction)[keyof typeof ChallengeActionBodyAction];
+
+export const ChallengeActionBodyAction = {
+  accept: "accept",
+  decline: "decline",
+} as const;
+
+export interface ChallengeActionBody {
+  action: ChallengeActionBodyAction;
+}
+
+export type ChallengeAcceptedResponseRoom = {
+  id: string;
+  inviteCode: string;
+  status: string;
+  maxPlayers: number;
+  /** @nullable */
+  turnTimerSeconds?: number | null;
+};
+
+export type ChallengeAcceptedResponsePlayer = {
+  id: string;
+  name: string;
+  isHost: boolean;
+};
+
+export interface ChallengeAcceptedResponse {
+  ok: boolean;
+  resolution: string;
+  sessionToken?: string;
+  room?: ChallengeAcceptedResponseRoom;
+  player?: ChallengeAcceptedResponsePlayer;
+}
+
 export interface CreateRoomBody {
   hostName: string;
   /**

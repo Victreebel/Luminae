@@ -1,10 +1,12 @@
 import { pgTable, text, integer, boolean, timestamp, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { accountsTable } from "./accounts";
 
 export const playersTable = pgTable("players", {
   id: uuid("id").primaryKey().defaultRandom(),
   roomId: uuid("room_id").notNull(),
+  accountId: uuid("account_id").references(() => accountsTable.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   sessionToken: text("session_token").notNull().unique(),
   isHost: boolean("is_host").notNull().default(false),
@@ -13,6 +15,7 @@ export const playersTable = pgTable("players", {
   isAi: boolean("is_ai").notNull().default(false),
   aiDifficulty: text("ai_difficulty"),
   avatarId: text("avatar_id"),
+  quitAt: timestamp("quit_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -13,6 +13,12 @@ tags:
     description: Room management
   - name: game
     description: Game state and actions
+  - name: auth
+    description: Account authentication
+  - name: friends
+    description: Friends list and requests
+  - name: challenges
+    description: Player challenges
 
 paths:
   /healthz:
@@ -298,7 +304,289 @@ paths:
         "404":
           description: Player not found
 
+  /rooms/{roomId}/quit:
+    post:
+      operationId: quitRoom
+      tags: [rooms]
+      summary: Quit / forfeit a game
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuitRoomBody"
+      responses:
+        "200":
+          description: Quit successfully
+        "403":
+          description: Not a member
+        "404":
+          description: Room not found
+
+  /auth/register:
+    post:
+      operationId: registerAccount
+      tags: [auth]
+      summary: Create a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterBody"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountWithToken"
+        "400":
+          description: Validation error
+        "409":
+          description: Username or email already taken
+
+  /auth/login:
+    post:
+      operationId: loginAccount
+      tags: [auth]
+      summary: Sign in to an existing account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountWithToken"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logoutAccount
+      tags: [auth]
+      summary: Invalidate the current account session
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get the current account with active rooms
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Current account with active rooms
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetMeResponse"
+        "401":
+          description: Unauthorized
+
+  /auth/me/games:
+    get:
+      operationId: getMyGames
+      tags: [auth]
+      summary: List active (non-finished) games for the current account
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: List of active games
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveGamesResponse"
+        "401":
+          description: Unauthorized
+
+  /friends:
+    get:
+      operationId: listFriends
+      tags: [friends]
+      summary: List accepted friends with online status
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Friends list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendsListResponse"
+
+  /friends/requests:
+    get:
+      operationId: listFriendRequests
+      tags: [friends]
+      summary: List incoming pending friend requests
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Incoming requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FriendRequestsResponse"
+    post:
+      operationId: sendFriendRequest
+      tags: [friends]
+      summary: Send a friend request by username
+      security:
+        - accountToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFriendRequestBody"
+      responses:
+        "201":
+          description: Request sent
+        "404":
+          description: User not found
+        "409":
+          description: Already friends or request pending
+
+  /friends/requests/{id}:
+    patch:
+      operationId: respondToFriendRequest
+      tags: [friends]
+      summary: Accept or decline a friend request
+      security:
+        - accountToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FriendRequestActionBody"
+      responses:
+        "200":
+          description: Request updated
+        "404":
+          description: Request not found
+
+  /friends/{id}:
+    delete:
+      operationId: removeFriend
+      tags: [friends]
+      summary: Remove a friend
+      security:
+        - accountToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unfriended
+        "404":
+          description: Friendship not found
+
+  /challenges:
+    get:
+      operationId: listChallenges
+      tags: [challenges]
+      summary: List incoming pending challenges
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Pending challenges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChallengesResponse"
+    post:
+      operationId: createChallenge
+      tags: [challenges]
+      summary: Challenge a friend to a game
+      security:
+        - accountToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChallengeBody"
+      responses:
+        "201":
+          description: Challenge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChallengeCreatedResponse"
+        "403":
+          description: Not friends
+        "404":
+          description: User not found
+        "409":
+          description: Challenge already pending
+
+  /challenges/{id}:
+    patch:
+      operationId: respondToChallenge
+      tags: [challenges]
+      summary: Accept or decline a challenge
+      security:
+        - accountToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChallengeActionBody"
+      responses:
+        "200":
+          description: Challenge resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChallengeAcceptedResponse"
+        "404":
+          description: Challenge not found
+        "410":
+          description: Challenge expired
+
 components:
+  securitySchemes:
+    accountToken:
+      type: http
+      scheme: bearer
   schemas:
     HealthStatus:
       type: object
@@ -307,6 +595,364 @@ components:
           type: string
       required:
         - status
+
+    QuitRoomBody:
+      type: object
+      properties:
+        sessionToken:
+          type: string
+      required:
+        - sessionToken
+
+    RegisterBody:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 2
+          maxLength: 32
+        password:
+          type: string
+          minLength: 6
+        email:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    ActiveRoomEntry:
+      type: object
+      properties:
+        roomId:
+          type: string
+        inviteCode:
+          type: string
+        status:
+          type: string
+          enum: [lobby, playing]
+        sessionToken:
+          type: string
+        playerId:
+          type: string
+        isHost:
+          type: boolean
+      required:
+        - roomId
+        - inviteCode
+        - status
+        - sessionToken
+        - playerId
+        - isHost
+
+    AccountInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - username
+
+    GetMeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        activeRooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActiveRoomEntry"
+      required:
+        - id
+        - username
+        - activeRooms
+
+    AccountWithToken:
+      type: object
+      properties:
+        account:
+          $ref: "#/components/schemas/AccountInfo"
+        token:
+          type: string
+        expiresAt:
+          type: string
+      required:
+        - account
+        - token
+        - expiresAt
+
+    ActiveGame:
+      type: object
+      properties:
+        roomId:
+          type: string
+        inviteCode:
+          type: string
+        status:
+          type: string
+          enum: [lobby, playing]
+        maxPlayers:
+          type: integer
+        currentPlayers:
+          type: integer
+        updatedAt:
+          type: string
+        sessionToken:
+          type: string
+        playerId:
+          type: string
+        isHost:
+          type: boolean
+        playerName:
+          type: string
+        avatarId:
+          type: ["string", "null"]
+      required:
+        - roomId
+        - inviteCode
+        - status
+        - maxPlayers
+        - currentPlayers
+        - updatedAt
+        - sessionToken
+        - playerId
+        - isHost
+        - playerName
+
+    ActiveGamesResponse:
+      type: object
+      properties:
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActiveGame"
+      required:
+        - games
+
+    FriendEntry:
+      type: object
+      properties:
+        friendshipId:
+          type: string
+        accountId:
+          type: string
+        username:
+          type: string
+        isOnline:
+          type: boolean
+      required:
+        - friendshipId
+        - accountId
+        - username
+        - isOnline
+
+    FriendsListResponse:
+      type: object
+      properties:
+        friends:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendEntry"
+      required:
+        - friends
+
+    FriendRequestEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        from:
+          type: object
+          properties:
+            accountId:
+              type: string
+            username:
+              type: string
+          required:
+            - accountId
+            - username
+        createdAt:
+          type: string
+      required:
+        - id
+        - from
+        - createdAt
+
+    FriendRequestsResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: "#/components/schemas/FriendRequestEntry"
+      required:
+        - requests
+
+    SendFriendRequestBody:
+      type: object
+      properties:
+        username:
+          type: string
+      required:
+        - username
+
+    FriendRequestActionBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [accept, decline]
+      required:
+        - action
+
+    ChallengeEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        challengerUsername:
+          type: string
+        challengerAccountId:
+          type: string
+        roomId:
+          type: string
+        inviteCode:
+          type: string
+        expiresAt:
+          type: string
+      required:
+        - id
+        - challengerUsername
+        - challengerAccountId
+        - roomId
+        - inviteCode
+        - expiresAt
+
+    ChallengesResponse:
+      type: object
+      properties:
+        challenges:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChallengeEntry"
+      required:
+        - challenges
+
+    CreateChallengeBody:
+      type: object
+      properties:
+        challengedUsername:
+          type: string
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
+        turnTimerSeconds:
+          type: ["integer", "null"]
+      required:
+        - challengedUsername
+
+    ChallengeCreatedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        roomId:
+          type: string
+        inviteCode:
+          type: string
+        challengedUsername:
+          type: string
+        expiresAt:
+          type: string
+        sessionToken:
+          type: string
+        playerId:
+          type: string
+      required:
+        - id
+        - roomId
+        - inviteCode
+        - challengedUsername
+        - expiresAt
+        - sessionToken
+        - playerId
+
+    ChallengeActionBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [accept, decline]
+      required:
+        - action
+
+    ChallengeAcceptedResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        resolution:
+          type: string
+        sessionToken:
+          type: string
+        room:
+          type: object
+          properties:
+            id:
+              type: string
+            inviteCode:
+              type: string
+            status:
+              type: string
+            maxPlayers:
+              type: integer
+            turnTimerSeconds:
+              type: ["integer", "null"]
+          required:
+            - id
+            - inviteCode
+            - status
+            - maxPlayers
+        player:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            isHost:
+              type: boolean
+          required:
+            - id
+            - name
+            - isHost
+      required:
+        - ok
+        - resolution
 
     CreateRoomBody:
       type: object

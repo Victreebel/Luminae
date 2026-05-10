@@ -9,12 +9,15 @@ import {
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getSession, clearSession } from "@/lib/session";
+import { getSession, clearSession, saveSession } from "@/lib/session";
 import { useGameWebsocket } from "@/hooks/use-game-websocket";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle } from "lucide-react";
+import { Copy, Crown, X, Wifi, WifiOff, Bot, Plus, ArrowLeft, Timer, CheckCircle, Users } from "lucide-react";
 import { gameAudio } from "@/lib/audio";
+import { FriendsPanel } from "@/components/FriendsPanel";
+import { ChallengeInbox } from "@/components/ChallengeInbox";
+import { useAccount } from "@/contexts/AccountContext";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
@@ -42,11 +45,25 @@ export default function Lobby() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { account } = useAccount();
 
   const session = getSession();
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [copied, setCopied] = useState(false);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>("medium");
+  const [friendsOpen, setFriendsOpen] = useState(false);
+
+  const handleChallengeCreated = (cRoomId: string, cInviteCode: string, cSessionToken: string, cPlayerId: string) => {
+    saveSession({
+      roomId: cRoomId,
+      inviteCode: cInviteCode,
+      playerId: cPlayerId,
+      sessionToken: cSessionToken,
+      playerName: account?.username ?? "Player",
+      isHost: true,
+    });
+    setLocation(`/lobby/${cRoomId}`);
+  };
 
   const lookupKey = session?.inviteCode ?? roomId ?? "";
   const { data: roomInfo } = useGetRoomByInviteCode(lookupKey, {
@@ -174,7 +191,18 @@ export default function Lobby() {
           <img src={gemIcon} alt="" className="h-7 w-7 drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" draggable={false} />
           <img src={logoLuminae} alt="Luminae" className="h-6 w-auto drop-shadow-[0_0_12px_rgba(255,196,61,0.3)]" draggable={false} />
         </div>
-        <div className="w-16" />
+        {account ? (
+          <button
+            type="button"
+            onClick={() => setFriendsOpen(true)}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors w-16 justify-end"
+          >
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Friends</span>
+          </button>
+        ) : (
+          <div className="w-16" />
+        )}
       </header>
 
       {/* Scrollable content */}
@@ -329,6 +357,13 @@ export default function Lobby() {
           )}
         </div>
       </div>
+
+      <FriendsPanel
+        isOpen={friendsOpen}
+        onClose={() => setFriendsOpen(false)}
+        onChallengeCreated={handleChallengeCreated}
+      />
+      <ChallengeInbox />
     </div>
   );
 }

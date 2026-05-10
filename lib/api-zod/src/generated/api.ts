@@ -1339,3 +1339,211 @@ export const KickPlayerParams = zod.object({
 export const KickPlayerBody = zod.object({
   sessionToken: zod.string(),
 });
+
+/**
+ * @summary Quit / forfeit a game
+ */
+export const QuitRoomParams = zod.object({
+  roomId: zod.coerce.string(),
+});
+
+export const QuitRoomBody = zod.object({
+  sessionToken: zod.string(),
+});
+
+/**
+ * @summary Create a new account
+ */
+export const registerAccountBodyUsernameMin = 2;
+export const registerAccountBodyUsernameMax = 32;
+
+export const registerAccountBodyPasswordMin = 6;
+
+export const RegisterAccountBody = zod.object({
+  username: zod
+    .string()
+    .min(registerAccountBodyUsernameMin)
+    .max(registerAccountBodyUsernameMax),
+  password: zod.string().min(registerAccountBodyPasswordMin),
+  email: zod.string().optional(),
+});
+
+/**
+ * @summary Sign in to an existing account
+ */
+export const LoginAccountBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginAccountResponse = zod.object({
+  account: zod.object({
+    id: zod.string(),
+    username: zod.string(),
+    email: zod.string().nullish(),
+    createdAt: zod.string().optional(),
+  }),
+  token: zod.string(),
+  expiresAt: zod.string(),
+});
+
+/**
+ * @summary Get the current account with active rooms
+ */
+export const GetMeResponse = zod.object({
+  id: zod.string(),
+  username: zod.string(),
+  email: zod.string().nullish(),
+  createdAt: zod.string().optional(),
+  activeRooms: zod.array(
+    zod.object({
+      roomId: zod.string(),
+      inviteCode: zod.string(),
+      status: zod.enum(["lobby", "playing"]),
+      sessionToken: zod.string(),
+      playerId: zod.string(),
+      isHost: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary List active (non-finished) games for the current account
+ */
+export const GetMyGamesResponse = zod.object({
+  games: zod.array(
+    zod.object({
+      roomId: zod.string(),
+      inviteCode: zod.string(),
+      status: zod.enum(["lobby", "playing"]),
+      maxPlayers: zod.number(),
+      currentPlayers: zod.number(),
+      updatedAt: zod.string(),
+      sessionToken: zod.string(),
+      playerId: zod.string(),
+      isHost: zod.boolean(),
+      playerName: zod.string(),
+      avatarId: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary List accepted friends with online status
+ */
+export const ListFriendsResponse = zod.object({
+  friends: zod.array(
+    zod.object({
+      friendshipId: zod.string(),
+      accountId: zod.string(),
+      username: zod.string(),
+      isOnline: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary List incoming pending friend requests
+ */
+export const ListFriendRequestsResponse = zod.object({
+  requests: zod.array(
+    zod.object({
+      id: zod.string(),
+      from: zod.object({
+        accountId: zod.string(),
+        username: zod.string(),
+      }),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Send a friend request by username
+ */
+export const SendFriendRequestBody = zod.object({
+  username: zod.string(),
+});
+
+/**
+ * @summary Accept or decline a friend request
+ */
+export const RespondToFriendRequestParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RespondToFriendRequestBody = zod.object({
+  action: zod.enum(["accept", "decline"]),
+});
+
+/**
+ * @summary Remove a friend
+ */
+export const RemoveFriendParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+/**
+ * @summary List incoming pending challenges
+ */
+export const ListChallengesResponse = zod.object({
+  challenges: zod.array(
+    zod.object({
+      id: zod.string(),
+      challengerUsername: zod.string(),
+      challengerAccountId: zod.string(),
+      roomId: zod.string(),
+      inviteCode: zod.string(),
+      expiresAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Challenge a friend to a game
+ */
+export const createChallengeBodyMaxPlayersMin = 2;
+export const createChallengeBodyMaxPlayersMax = 4;
+
+export const CreateChallengeBody = zod.object({
+  challengedUsername: zod.string(),
+  maxPlayers: zod
+    .number()
+    .min(createChallengeBodyMaxPlayersMin)
+    .max(createChallengeBodyMaxPlayersMax)
+    .optional(),
+  turnTimerSeconds: zod.number().nullish(),
+});
+
+/**
+ * @summary Accept or decline a challenge
+ */
+export const RespondToChallengeParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RespondToChallengeBody = zod.object({
+  action: zod.enum(["accept", "decline"]),
+});
+
+export const RespondToChallengeResponse = zod.object({
+  ok: zod.boolean(),
+  resolution: zod.string(),
+  sessionToken: zod.string().optional(),
+  room: zod
+    .object({
+      id: zod.string(),
+      inviteCode: zod.string(),
+      status: zod.string(),
+      maxPlayers: zod.number(),
+      turnTimerSeconds: zod.number().nullish(),
+    })
+    .optional(),
+  player: zod
+    .object({
+      id: zod.string(),
+      name: zod.string(),
+      isHost: zod.boolean(),
+    })
+    .optional(),
+});

@@ -17,18 +17,33 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AccountWithToken,
   ActionRequest,
+  ActiveGamesResponse,
   AddAiPlayerBody,
+  ChallengeAcceptedResponse,
+  ChallengeActionBody,
+  ChallengeCreatedResponse,
+  ChallengesResponse,
+  CreateChallengeBody,
   CreateRoomBody,
+  FriendRequestActionBody,
+  FriendRequestsResponse,
+  FriendsListResponse,
   GameState,
   GetGameStateParams,
+  GetMeResponse,
   HealthStatus,
   HostActionBody,
   JoinRoomBody,
+  LoginBody,
+  QuitRoomBody,
+  RegisterBody,
   RejoinRoomBody,
   RoomInfo,
   RoomPlayer,
   RoomWithPlayer,
+  SendFriendRequestBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1007,4 +1022,1136 @@ export const useKickPlayer = <
   TContext
 > => {
   return useMutation(getKickPlayerMutationOptions(options));
+};
+
+/**
+ * @summary Quit / forfeit a game
+ */
+export const getQuitRoomUrl = (roomId: string) => {
+  return `/api/rooms/${roomId}/quit`;
+};
+
+export const quitRoom = async (
+  roomId: string,
+  quitRoomBody: QuitRoomBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getQuitRoomUrl(roomId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(quitRoomBody),
+  });
+};
+
+export const getQuitRoomMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof quitRoom>>,
+    TError,
+    { roomId: string; data: BodyType<QuitRoomBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof quitRoom>>,
+  TError,
+  { roomId: string; data: BodyType<QuitRoomBody> },
+  TContext
+> => {
+  const mutationKey = ["quitRoom"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof quitRoom>>,
+    { roomId: string; data: BodyType<QuitRoomBody> }
+  > = (props) => {
+    const { roomId, data } = props ?? {};
+
+    return quitRoom(roomId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type QuitRoomMutationResult = NonNullable<
+  Awaited<ReturnType<typeof quitRoom>>
+>;
+export type QuitRoomMutationBody = BodyType<QuitRoomBody>;
+export type QuitRoomMutationError = ErrorType<void>;
+
+/**
+ * @summary Quit / forfeit a game
+ */
+export const useQuitRoom = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof quitRoom>>,
+    TError,
+    { roomId: string; data: BodyType<QuitRoomBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof quitRoom>>,
+  TError,
+  { roomId: string; data: BodyType<QuitRoomBody> },
+  TContext
+> => {
+  return useMutation(getQuitRoomMutationOptions(options));
+};
+
+/**
+ * @summary Create a new account
+ */
+export const getRegisterAccountUrl = () => {
+  return `/api/auth/register`;
+};
+
+export const registerAccount = async (
+  registerBody: RegisterBody,
+  options?: RequestInit,
+): Promise<AccountWithToken> => {
+  return customFetch<AccountWithToken>(getRegisterAccountUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(registerBody),
+  });
+};
+
+export const getRegisterAccountMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerAccount>>,
+    TError,
+    { data: BodyType<RegisterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registerAccount>>,
+  TError,
+  { data: BodyType<RegisterBody> },
+  TContext
+> => {
+  const mutationKey = ["registerAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registerAccount>>,
+    { data: BodyType<RegisterBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return registerAccount(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegisterAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registerAccount>>
+>;
+export type RegisterAccountMutationBody = BodyType<RegisterBody>;
+export type RegisterAccountMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a new account
+ */
+export const useRegisterAccount = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registerAccount>>,
+    TError,
+    { data: BodyType<RegisterBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof registerAccount>>,
+  TError,
+  { data: BodyType<RegisterBody> },
+  TContext
+> => {
+  return useMutation(getRegisterAccountMutationOptions(options));
+};
+
+/**
+ * @summary Sign in to an existing account
+ */
+export const getLoginAccountUrl = () => {
+  return `/api/auth/login`;
+};
+
+export const loginAccount = async (
+  loginBody: LoginBody,
+  options?: RequestInit,
+): Promise<AccountWithToken> => {
+  return customFetch<AccountWithToken>(getLoginAccountUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(loginBody),
+  });
+};
+
+export const getLoginAccountMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginAccount>>,
+    TError,
+    { data: BodyType<LoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loginAccount>>,
+  TError,
+  { data: BodyType<LoginBody> },
+  TContext
+> => {
+  const mutationKey = ["loginAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loginAccount>>,
+    { data: BodyType<LoginBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return loginAccount(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LoginAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loginAccount>>
+>;
+export type LoginAccountMutationBody = BodyType<LoginBody>;
+export type LoginAccountMutationError = ErrorType<void>;
+
+/**
+ * @summary Sign in to an existing account
+ */
+export const useLoginAccount = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loginAccount>>,
+    TError,
+    { data: BodyType<LoginBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof loginAccount>>,
+  TError,
+  { data: BodyType<LoginBody> },
+  TContext
+> => {
+  return useMutation(getLoginAccountMutationOptions(options));
+};
+
+/**
+ * @summary Invalidate the current account session
+ */
+export const getLogoutAccountUrl = () => {
+  return `/api/auth/logout`;
+};
+
+export const logoutAccount = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getLogoutAccountUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getLogoutAccountMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logoutAccount>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logoutAccount>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["logoutAccount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logoutAccount>>,
+    void
+  > = () => {
+    return logoutAccount(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogoutAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logoutAccount>>
+>;
+
+export type LogoutAccountMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Invalidate the current account session
+ */
+export const useLogoutAccount = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logoutAccount>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logoutAccount>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getLogoutAccountMutationOptions(options));
+};
+
+/**
+ * @summary Get the current account with active rooms
+ */
+export const getGetMeUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getMe = async (options?: RequestInit): Promise<GetMeResponse> => {
+  return customFetch<GetMeResponse>(getGetMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMeQueryKey = () => {
+  return [`/api/auth/me`] as const;
+};
+
+export const getGetMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({
+    signal,
+  }) => getMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the current account with active rooms
+ */
+
+export function useGetMe<
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List active (non-finished) games for the current account
+ */
+export const getGetMyGamesUrl = () => {
+  return `/api/auth/me/games`;
+};
+
+export const getMyGames = async (
+  options?: RequestInit,
+): Promise<ActiveGamesResponse> => {
+  return customFetch<ActiveGamesResponse>(getGetMyGamesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyGamesQueryKey = () => {
+  return [`/api/auth/me/games`] as const;
+};
+
+export const getGetMyGamesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyGames>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyGames>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyGamesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyGames>>> = ({
+    signal,
+  }) => getMyGames({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyGames>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyGamesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyGames>>
+>;
+export type GetMyGamesQueryError = ErrorType<void>;
+
+/**
+ * @summary List active (non-finished) games for the current account
+ */
+
+export function useGetMyGames<
+  TData = Awaited<ReturnType<typeof getMyGames>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyGames>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyGamesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List accepted friends with online status
+ */
+export const getListFriendsUrl = () => {
+  return `/api/friends`;
+};
+
+export const listFriends = async (
+  options?: RequestInit,
+): Promise<FriendsListResponse> => {
+  return customFetch<FriendsListResponse>(getListFriendsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFriendsQueryKey = () => {
+  return [`/api/friends`] as const;
+};
+
+export const getListFriendsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFriends>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFriends>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFriendsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFriends>>> = ({
+    signal,
+  }) => listFriends({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFriends>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFriendsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFriends>>
+>;
+export type ListFriendsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List accepted friends with online status
+ */
+
+export function useListFriends<
+  TData = Awaited<ReturnType<typeof listFriends>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFriends>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFriendsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List incoming pending friend requests
+ */
+export const getListFriendRequestsUrl = () => {
+  return `/api/friends/requests`;
+};
+
+export const listFriendRequests = async (
+  options?: RequestInit,
+): Promise<FriendRequestsResponse> => {
+  return customFetch<FriendRequestsResponse>(getListFriendRequestsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFriendRequestsQueryKey = () => {
+  return [`/api/friends/requests`] as const;
+};
+
+export const getListFriendRequestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFriendRequests>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFriendRequests>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFriendRequestsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listFriendRequests>>
+  > = ({ signal }) => listFriendRequests({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFriendRequests>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFriendRequestsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFriendRequests>>
+>;
+export type ListFriendRequestsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List incoming pending friend requests
+ */
+
+export function useListFriendRequests<
+  TData = Awaited<ReturnType<typeof listFriendRequests>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFriendRequests>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFriendRequestsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Send a friend request by username
+ */
+export const getSendFriendRequestUrl = () => {
+  return `/api/friends/requests`;
+};
+
+export const sendFriendRequest = async (
+  sendFriendRequestBody: SendFriendRequestBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getSendFriendRequestUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendFriendRequestBody),
+  });
+};
+
+export const getSendFriendRequestMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendFriendRequest>>,
+    TError,
+    { data: BodyType<SendFriendRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendFriendRequest>>,
+  TError,
+  { data: BodyType<SendFriendRequestBody> },
+  TContext
+> => {
+  const mutationKey = ["sendFriendRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendFriendRequest>>,
+    { data: BodyType<SendFriendRequestBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendFriendRequest(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendFriendRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendFriendRequest>>
+>;
+export type SendFriendRequestMutationBody = BodyType<SendFriendRequestBody>;
+export type SendFriendRequestMutationError = ErrorType<void>;
+
+/**
+ * @summary Send a friend request by username
+ */
+export const useSendFriendRequest = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendFriendRequest>>,
+    TError,
+    { data: BodyType<SendFriendRequestBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendFriendRequest>>,
+  TError,
+  { data: BodyType<SendFriendRequestBody> },
+  TContext
+> => {
+  return useMutation(getSendFriendRequestMutationOptions(options));
+};
+
+/**
+ * @summary Accept or decline a friend request
+ */
+export const getRespondToFriendRequestUrl = (id: string) => {
+  return `/api/friends/requests/${id}`;
+};
+
+export const respondToFriendRequest = async (
+  id: string,
+  friendRequestActionBody: FriendRequestActionBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRespondToFriendRequestUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(friendRequestActionBody),
+  });
+};
+
+export const getRespondToFriendRequestMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondToFriendRequest>>,
+    TError,
+    { id: string; data: BodyType<FriendRequestActionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof respondToFriendRequest>>,
+  TError,
+  { id: string; data: BodyType<FriendRequestActionBody> },
+  TContext
+> => {
+  const mutationKey = ["respondToFriendRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof respondToFriendRequest>>,
+    { id: string; data: BodyType<FriendRequestActionBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return respondToFriendRequest(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RespondToFriendRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof respondToFriendRequest>>
+>;
+export type RespondToFriendRequestMutationBody =
+  BodyType<FriendRequestActionBody>;
+export type RespondToFriendRequestMutationError = ErrorType<void>;
+
+/**
+ * @summary Accept or decline a friend request
+ */
+export const useRespondToFriendRequest = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondToFriendRequest>>,
+    TError,
+    { id: string; data: BodyType<FriendRequestActionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof respondToFriendRequest>>,
+  TError,
+  { id: string; data: BodyType<FriendRequestActionBody> },
+  TContext
+> => {
+  return useMutation(getRespondToFriendRequestMutationOptions(options));
+};
+
+/**
+ * @summary Remove a friend
+ */
+export const getRemoveFriendUrl = (id: string) => {
+  return `/api/friends/${id}`;
+};
+
+export const removeFriend = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveFriendUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveFriendMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeFriend>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeFriend>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["removeFriend"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeFriend>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return removeFriend(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveFriendMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeFriend>>
+>;
+
+export type RemoveFriendMutationError = ErrorType<void>;
+
+/**
+ * @summary Remove a friend
+ */
+export const useRemoveFriend = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeFriend>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeFriend>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRemoveFriendMutationOptions(options));
+};
+
+/**
+ * @summary List incoming pending challenges
+ */
+export const getListChallengesUrl = () => {
+  return `/api/challenges`;
+};
+
+export const listChallenges = async (
+  options?: RequestInit,
+): Promise<ChallengesResponse> => {
+  return customFetch<ChallengesResponse>(getListChallengesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListChallengesQueryKey = () => {
+  return [`/api/challenges`] as const;
+};
+
+export const getListChallengesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listChallenges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChallenges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListChallengesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listChallenges>>> = ({
+    signal,
+  }) => listChallenges({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listChallenges>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListChallengesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listChallenges>>
+>;
+export type ListChallengesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List incoming pending challenges
+ */
+
+export function useListChallenges<
+  TData = Awaited<ReturnType<typeof listChallenges>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listChallenges>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListChallengesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Challenge a friend to a game
+ */
+export const getCreateChallengeUrl = () => {
+  return `/api/challenges`;
+};
+
+export const createChallenge = async (
+  createChallengeBody: CreateChallengeBody,
+  options?: RequestInit,
+): Promise<ChallengeCreatedResponse> => {
+  return customFetch<ChallengeCreatedResponse>(getCreateChallengeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createChallengeBody),
+  });
+};
+
+export const getCreateChallengeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChallenge>>,
+    TError,
+    { data: BodyType<CreateChallengeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createChallenge>>,
+  TError,
+  { data: BodyType<CreateChallengeBody> },
+  TContext
+> => {
+  const mutationKey = ["createChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createChallenge>>,
+    { data: BodyType<CreateChallengeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createChallenge(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createChallenge>>
+>;
+export type CreateChallengeMutationBody = BodyType<CreateChallengeBody>;
+export type CreateChallengeMutationError = ErrorType<void>;
+
+/**
+ * @summary Challenge a friend to a game
+ */
+export const useCreateChallenge = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createChallenge>>,
+    TError,
+    { data: BodyType<CreateChallengeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createChallenge>>,
+  TError,
+  { data: BodyType<CreateChallengeBody> },
+  TContext
+> => {
+  return useMutation(getCreateChallengeMutationOptions(options));
+};
+
+/**
+ * @summary Accept or decline a challenge
+ */
+export const getRespondToChallengeUrl = (id: string) => {
+  return `/api/challenges/${id}`;
+};
+
+export const respondToChallenge = async (
+  id: string,
+  challengeActionBody: ChallengeActionBody,
+  options?: RequestInit,
+): Promise<ChallengeAcceptedResponse> => {
+  return customFetch<ChallengeAcceptedResponse>(getRespondToChallengeUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(challengeActionBody),
+  });
+};
+
+export const getRespondToChallengeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondToChallenge>>,
+    TError,
+    { id: string; data: BodyType<ChallengeActionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof respondToChallenge>>,
+  TError,
+  { id: string; data: BodyType<ChallengeActionBody> },
+  TContext
+> => {
+  const mutationKey = ["respondToChallenge"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof respondToChallenge>>,
+    { id: string; data: BodyType<ChallengeActionBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return respondToChallenge(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RespondToChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof respondToChallenge>>
+>;
+export type RespondToChallengeMutationBody = BodyType<ChallengeActionBody>;
+export type RespondToChallengeMutationError = ErrorType<void>;
+
+/**
+ * @summary Accept or decline a challenge
+ */
+export const useRespondToChallenge = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof respondToChallenge>>,
+    TError,
+    { id: string; data: BodyType<ChallengeActionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof respondToChallenge>>,
+  TError,
+  { id: string; data: BodyType<ChallengeActionBody> },
+  TContext
+> => {
+  return useMutation(getRespondToChallengeMutationOptions(options));
 };

@@ -12,23 +12,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { saveSession, getSession, clearSession } from "@/lib/session";
+import { getAccountToken } from "@/lib/accountSession";
 import { getGameState } from "@workspace/api-client-react";
 import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer, AVATARS } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
+import { LoginRegisterForm } from "@/components/LoginRegisterForm";
+import { useAccount } from "@/contexts/AccountContext";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Timer, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
 
-type Mode = "home" | "create" | "join";
+type Mode = "home" | "create" | "join" | "auth";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { account, token, isLoading: accountLoading } = useAccount();
   const [activeSession, setActiveSession] = useState(() => getSession());
-  const [sessionGameStatus, setSessionGameStatus] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("home");
   const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -38,7 +41,50 @@ export default function Home() {
   const [turnTimer, setTurnTimer] = useState<string>("0");
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const [rejoinName, setRejoinName] = useState("");
+
+  // If account user has active games, redirect to dashboard; otherwise stay on home with name prefilled
+  useEffect(() => {
+    if (accountLoading) return;
+    if (!account || !token) return;
+
+    // Check URL params — ?newgame=1 always stays on home
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("newgame") === "1") return;
+
+    // Only redirect to dashboard when the account has active games
+    const base = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+    fetch(`${base}/api/auth/me/games`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d: { games?: unknown[] }) => {
+        if (d.games && d.games.length > 0) {
+          setLocation("/dashboard");
+        }
+        // else stay on home — account username pre-fill is handled separately
+      })
+      .catch(() => {
+        // network error — stay on home
+      });
+  }, [account, token, accountLoading, setLocation]);
+
+  // Pre-fill from URL ?invite= param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("invite");
+    if (code) {
+      setInviteCode(code.toUpperCase());
+      setMode("join");
+    }
+  }, []);
+
+  // Pre-fill name from account username
+  useEffect(() => {
+    if (account?.username) {
+      setHostName(account.username);
+      setPlayerName(account.username);
+    }
+  }, [account]);
 
   const handleAvatarSelect = (id: string) => {
     setAvatarId(id);
@@ -58,34 +104,26 @@ export default function Home() {
     if (!session) return;
     getGameState(session.roomId, { sessionToken: session.sessionToken })
       .then((state) => {
-        setSessionGameStatus(state.status);
-        if (state.status === 'finished') {
+        if (state.status === "finished") {
           clearSession();
           setActiveSession(null);
         }
       })
       .catch(() => {
-        // Room gone (404 or network error) — clear the stale session
         clearSession();
         setActiveSession(null);
       });
   }, []);
 
-  // Pre-fill invite code from URL ?invite= param
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("invite");
-    if (code) {
-      setInviteCode(code.toUpperCase());
-      setMode("join");
-    }
-  }, []);
+  const accountToken = getAccountToken();
 
   const handleCreate = async () => {
-    if (!hostName.trim()) return;
+    const name = account?.username ?? hostName;
+    if (!name.trim()) return;
     try {
       const res = await createRoom.mutateAsync({
-        data: { hostName, maxPlayers, turnTimerSeconds: parseInt(turnTimer) || null, avatarId },
+        data: { hostName: name, maxPlayers, turnTimerSeconds: parseInt(turnTimer) || null, avatarId },
+        ...(accountToken ? { headers: { Authorization: `Bearer ${accountToken}` } } : {}),
       });
       saveSession({
         roomId: res.room.id,
@@ -97,24 +135,26 @@ export default function Home() {
         avatarId,
       });
       setLocation(`/lobby/${res.room.id}`);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Error creating room", description: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An error occurred";
+      toast({ variant: "destructive", title: "Error creating room", description: msg });
     }
   };
 
   const handleJoin = async () => {
-    if (!playerName.trim() || !inviteCode.trim()) return;
+    const name = account?.username ?? playerName;
+    if (!name.trim() || !inviteCode.trim()) return;
     try {
       const { data: roomInfo } = await fetchRoom();
       if (!roomInfo) throw new Error("Room not found");
       const isPlaying = roomInfo.status !== "lobby";
       const alreadyMember = roomInfo.players?.some(
-        (p) => !p.isAi && p.name.toLowerCase() === playerName.trim().toLowerCase()
+        (p) => !p.isAi && p.name.toLowerCase() === name.trim().toLowerCase(),
       );
       const res =
         isPlaying || alreadyMember
-          ? await rejoinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName } })
-          : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName, avatarId } });
+          ? await rejoinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name } })
+          : await joinRoom.mutateAsync({ roomId: roomInfo.id, data: { playerName: name, avatarId } });
       saveSession({
         roomId: res.room.id,
         inviteCode: res.room.inviteCode,
@@ -126,8 +166,9 @@ export default function Home() {
       });
       if (res.room.status !== "lobby") setLocation(`/game/${res.room.id}`);
       else setLocation(`/lobby/${res.room.id}`);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Error joining room", description: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An error occurred";
+      toast({ variant: "destructive", title: "Error joining room", description: msg });
     }
   };
 
@@ -140,12 +181,22 @@ export default function Home() {
     try {
       const state = await getGameState(session.roomId, { sessionToken: session.sessionToken });
       setLocation(state.status === "playing" ? `/game/${session.roomId}` : `/lobby/${session.roomId}`);
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Couldn't rejoin", description: err.message });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An error occurred";
+      toast({ variant: "destructive", title: "Couldn't rejoin", description: msg });
     }
   };
 
   const hasSavedSession = !!activeSession?.roomId && !!activeSession?.sessionToken;
+
+  // Show loading state while checking account
+  if (accountLoading) {
+    return (
+      <div className="h-[100dvh] flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background text-foreground relative overflow-hidden">
@@ -162,17 +213,15 @@ export default function Home() {
 
       {/* Logo area */}
       <div className="relative z-10 flex-none pt-10 pb-4 flex flex-col items-center gap-3">
-        {/* Gem icon */}
         <motion.img
           initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.45, type: 'spring', stiffness: 200, damping: 18 }}
+          transition={{ duration: 0.45, type: "spring", stiffness: 200, damping: 18 }}
           src={gemIcon}
           alt=""
           className="w-16 h-16 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
           draggable={false}
         />
-        {/* Wordmark */}
         <motion.img
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -191,51 +240,50 @@ export default function Home() {
           Harness affinities. Forge cosmic artifacts. Claim Eminence.
         </motion.p>
 
-        {/* Avatar selector — always visible */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="w-full max-w-sm px-5"
-        >
-          <button
-            type="button"
-            onClick={() => setShowAvatarPicker(v => !v)}
-            className="w-full flex items-center gap-3 rounded-2xl border border-border/50 bg-card/50 backdrop-blur px-3 py-2.5 hover:border-border transition-colors"
+        {/* Avatar selector — shown for guest modes */}
+        {mode !== "auth" && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="w-full max-w-sm px-5"
           >
-            <div
-              className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2"
-              style={{ borderColor: `${getAvatarForPlayer(avatarId).accent}88` }}
+            <button
+              type="button"
+              onClick={() => setShowAvatarPicker((v) => !v)}
+              className="w-full flex items-center gap-3 rounded-2xl border border-border/50 bg-card/50 backdrop-blur px-3 py-2.5 hover:border-border transition-colors"
             >
-              <img src={getAvatarForPlayer(avatarId).image} alt="" className="w-full h-full object-cover" draggable={false} />
-            </div>
-            <div className="flex-1 text-left min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Your avatar</div>
-              <div className="text-sm font-semibold truncate">{getAvatarForPlayer(avatarId).name}</div>
-            </div>
-            {showAvatarPicker
-              ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-              : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-            }
-          </button>
-          <AnimatePresence>
-            {showAvatarPicker && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
+              <div
+                className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border-2"
+                style={{ borderColor: `${getAvatarForPlayer(avatarId).accent}88` }}
               >
-                <div className="pt-3">
-                  <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                <img src={getAvatarForPlayer(avatarId).image} alt="" className="w-full h-full object-cover" draggable={false} />
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Your avatar</div>
+                <div className="text-sm font-semibold truncate">{getAvatarForPlayer(avatarId).name}</div>
+              </div>
+              {showAvatarPicker ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+            </button>
+            <AnimatePresence>
+              {showAvatarPicker && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3">
+                    <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
       </div>
 
-      {/* Main content — slides between modes */}
+      {/* Main content */}
       <div className="relative z-10 flex-1 flex flex-col px-5 pb-8 overflow-y-auto">
         <AnimatePresence mode="wait">
           {mode === "home" && (
@@ -260,14 +308,14 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Main actions */}
+              {/* Quick game actions */}
               <Button
                 size="lg"
                 className="w-full h-16 text-lg font-bold rounded-2xl gap-3"
                 onClick={() => setMode("create")}
               >
                 <Plus className="h-5 w-5" />
-                Create Game
+                Quick Game — Create
               </Button>
               <Button
                 variant="secondary"
@@ -279,28 +327,56 @@ export default function Home() {
                 Join Game
               </Button>
 
-              <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Rejoin anywhere</div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="rejoinName" className="text-sm font-medium">Your name</Label>
-                  <Input
-                    id="rejoinName"
-                    value={rejoinName}
-                    onChange={(e) => setRejoinName(e.target.value)}
-                    placeholder="Saved player name"
-                    className="h-13 text-base bg-input/60 rounded-xl"
-                  />
+              {/* Account CTA */}
+              <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4 space-y-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                    Save progress & play with friends
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Create a free account to resume games across sessions, track active games, and challenge friends directly.
+                  </p>
                 </div>
-                <Button
-                  className="w-full h-12 mt-3 rounded-xl"
-                  onClick={handleRejoin}
-                  disabled={!getSession()}
-                >
-                  Rejoin saved game
-                </Button>
-                <p className="text-[11px] text-muted-foreground mt-2">
-                  Uses your saved room + token to restore the same seat.
-                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-10 text-sm rounded-xl gap-1.5"
+                    onClick={() => setMode("auth")}
+                  >
+                    <LogIn className="h-3.5 w-3.5" />
+                    Sign In
+                  </Button>
+                  <Button
+                    className="flex-1 h-10 text-sm rounded-xl gap-1.5 bg-primary/80 hover:bg-primary"
+                    onClick={() => setMode("auth")}
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Create Account
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {mode === "auth" && (
+            <motion.div
+              key="auth"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -40 }}
+              transition={{ duration: 0.22 }}
+              className="flex flex-col gap-5 max-w-sm mx-auto w-full"
+            >
+              <button
+                type="button"
+                onClick={() => setMode("home")}
+                className="text-sm text-muted-foreground flex items-center gap-1 hover:text-foreground transition-colors self-start"
+              >
+                ← Back
+              </button>
+              <h2 className="text-2xl font-serif font-bold">Account</h2>
+              <div className="rounded-2xl border border-border/50 bg-card/70 backdrop-blur p-5">
+                <LoginRegisterForm onSuccess={() => setMode("home")} />
               </div>
             </motion.div>
           )}
@@ -323,17 +399,25 @@ export default function Home() {
               </button>
               <h2 className="text-2xl font-serif font-bold">New Game</h2>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="hostName" className="text-sm font-medium">Your name</Label>
-                <Input
-                  id="hostName"
-                  value={hostName}
-                  onChange={(e) => setHostName(e.target.value)}
-                  placeholder="e.g. Stargazer"
-                  className="h-13 text-base bg-input/60 rounded-xl"
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                />
-              </div>
+              {!account && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="hostName" className="text-sm font-medium">Your name</Label>
+                  <Input
+                    id="hostName"
+                    value={hostName}
+                    onChange={(e) => setHostName(e.target.value)}
+                    placeholder="e.g. Stargazer"
+                    className="h-13 text-base bg-input/60 rounded-xl"
+                    onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                  />
+                </div>
+              )}
+
+              {account && (
+                <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+                  Playing as <span className="font-bold text-primary">{account.username}</span>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Players: {maxPlayers}</Label>
@@ -372,7 +456,7 @@ export default function Home() {
               <Button
                 className="w-full h-14 text-lg font-bold rounded-2xl mt-2"
                 onClick={handleCreate}
-                disabled={!hostName.trim() || createRoom.isPending}
+                disabled={(!account && !hostName.trim()) || createRoom.isPending}
               >
                 {createRoom.isPending ? "Creating..." : "Create Room"}
               </Button>
@@ -409,22 +493,30 @@ export default function Home() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="playerName" className="text-sm font-medium">Your name</Label>
-                <Input
-                  id="playerName"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="e.g. Void Walker"
-                  className="h-13 text-base bg-input/60 rounded-xl"
-                  onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-                />
-              </div>
+              {!account && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="playerName" className="text-sm font-medium">Your name</Label>
+                  <Input
+                    id="playerName"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    placeholder="e.g. Void Walker"
+                    className="h-13 text-base bg-input/60 rounded-xl"
+                    onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                  />
+                </div>
+              )}
+
+              {account && (
+                <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
+                  Joining as <span className="font-bold text-primary">{account.username}</span>
+                </div>
+              )}
 
               <Button
                 className="w-full h-14 text-lg font-bold rounded-2xl bg-accent hover:bg-accent/90 text-accent-foreground mt-2"
                 onClick={handleJoin}
-                disabled={!playerName.trim() || inviteCode.length < 8 || joinRoom.isPending}
+                disabled={(!account && !playerName.trim()) || inviteCode.length < 8 || joinRoom.isPending}
               >
                 {joinRoom.isPending ? "Joining..." : "Enter Game"}
               </Button>
