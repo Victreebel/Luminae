@@ -2403,7 +2403,7 @@ export default function GameBoard() {
                   </div>
                   <div className="flex gap-1.5 shrink-0 relative">
                     <AnimatePresence>
-                      {showUndoHint && (
+                      {showUndoHint && !showForgeHint && !showReserveHint && (
                         <motion.button
                           type="button"
                           initial={{ opacity: 0, y: 6, scale: 0.92 }}
@@ -3479,7 +3479,7 @@ export default function GameBoard() {
                         style={{ borderRadius: '0.75rem' }}
                       >
                         <AnimatePresence>
-                          {showReserveHint && (
+                          {showReserveHint && !showForgeHint && (
                             <motion.button
                               type="button"
                               initial={{ opacity: 0, y: 6, scale: 0.92 }}
