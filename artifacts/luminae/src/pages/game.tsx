@@ -1614,7 +1614,7 @@ export default function GameBoard() {
   eminenceBreakdown.other = Math.max(0, (me?.lumens ?? 0) - eminenceBreakdown.artifacts - eminenceBreakdown.luminaries + totalOblivion);
 
   const handleCrystalClick = (color: keyof CrystalCounts) => {
-    if (!isMyTurn || color === 'flux' || !state) return;
+    if ((!isMyTurn && !canPlan) || color === 'flux' || !state) return;
     const inBank = state.crystalBank[color] ?? 0;
 
     if (actionMode === 'take2') {
@@ -2147,7 +2147,8 @@ export default function GameBoard() {
             const meta = GEM_META[c];
             const count = state.crystalBank[c as keyof CrystalCounts] ?? 0;
             const queued = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-            const selectable = isMyTurn;
+            const isPlanningMode = !isActivePlayer && canPlan;
+            const selectable = isMyTurn || (!isActivePlayer && canPlan);
             const isEmpty = count === 0 && queued === 0;
             const canTake2 = selectable && count >= 4 && queued !== 2;
             return (
@@ -2162,7 +2163,13 @@ export default function GameBoard() {
                     isEmpty ? 'opacity-40' : ''
                   }`}
                   style={
-                    queued > 0
+                    queued > 0 && isPlanningMode
+                      ? {
+                          background: `linear-gradient(160deg, #92400e55 0%, #b4530040 50%, #92400e50 100%)`,
+                          border: `2px solid #fbbf24cc`,
+                          boxShadow: `0 0 18px #fbbf2488, 0 0 36px #f59e0b33, inset 0 0 14px #92400e44`,
+                        }
+                      : queued > 0
                       ? {
                           background: `linear-gradient(160deg, ${meta.hex}70 0%, ${meta.hex}45 50%, ${meta.hex}60 100%)`,
                           border: `2px solid ${meta.glowHex}ee`,
@@ -2213,7 +2220,7 @@ export default function GameBoard() {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     onClick={(e) => { e.stopPropagation(); promoteToTake2(c); }}
-                    className="mt-0.5 text-[9px] font-bold text-primary/80 hover:text-primary bg-primary/10 rounded-full px-2 py-0.5 active:bg-primary/25 transition-colors"
+                    className={`mt-0.5 text-[9px] font-bold rounded-full px-2 py-0.5 transition-colors ${isPlanningMode ? 'text-amber-400/80 hover:text-amber-300 bg-amber-400/10 active:bg-amber-400/25' : 'text-primary/80 hover:text-primary bg-primary/10 active:bg-primary/25'}`}
                   >
                     harness 2
                   </motion.button>
@@ -2231,6 +2238,11 @@ export default function GameBoard() {
               className="overflow-hidden"
             >
               <div className="px-3 pb-3 pt-1 border-t border-white/10">
+                {!isMyTurn && canPlan && (
+                  <p className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug">
+                    Planning — plans may be cancelled if the bank changes before your turn.
+                  </p>
+                )}
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1.5 flex-1 items-center flex-wrap">
                     {Object.entries(selectedCrystals).map(([c, n]) => (
