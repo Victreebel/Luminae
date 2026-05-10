@@ -168,11 +168,27 @@ function VariantC() {
           font-size: clamp(44px, 6.5vw, 76px);
           letter-spacing: 0.15em;
           line-height: 1; margin: 0; color: transparent;
-          background: linear-gradient(105deg, #0f0f1a 0%, #1a1a2e 15%, #eaf0ff 30%, #ffffff 38%, #1e1e32 45%, #0a0a14 55%, #e8d9ff 62%, #ffffff 68%, #1a1a2e 75%, #0f0f1a 100%);
-          background-size: 300% 100%;
+          background: linear-gradient(105deg,
+            #06060f  0%,
+            #06060f  6%,
+            #d0dcff 10%, #C8D4F8 13%, #d0dcff 16%,
+            #06060f 20%,
+            #06060f 27%,
+            #ff9070 31%, #FF6B52 34%, #ff9070 37%,
+            #06060f 41%,
+            #06060f 48%,
+            #8090ff 52%, #607AFF 55%, #8090ff 58%,
+            #06060f 62%,
+            #06060f 69%,
+            #50e890 73%, #2ECC71 76%, #50e890 79%,
+            #06060f 83%,
+            #06060f 90%,
+            #d080ff 94%, #B14FD8 97%, #d080ff 100%
+          );
+          background-size: 400% 100%;
           -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-          animation: shimmer-sweep 6s linear infinite;
-          filter: drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 16px rgba(180,160,255,0.35)) drop-shadow(0 0 40px rgba(120,100,200,0.18));
+          animation: shimmer-sweep 7s linear infinite;
+          filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)) drop-shadow(0 0 18px rgba(160,140,255,0.3)) drop-shadow(0 0 40px rgba(100,80,180,0.15));
           position: relative; z-index: 1;
         }
       `}</style>
