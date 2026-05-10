@@ -1356,6 +1356,18 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_tide/panel_ophanim_g.p
 type = "image"
 title = "tide architect panel g — solid crystal filled frame with visible ring entity inside"
 
+[[generated]]
+id = "j04rYifcqhcE6THVkvUu7"
+uri = "file://attached_assets/generated_images/lum_void_entity_v1.png"
+type = "image"
+title = "lum void entity obsidian throne"
+
+[[generated]]
+id = "JZ_n71Rdk7AP44gmwanKN"
+uri = "file://attached_assets/generated_images/lum_void_entity_v2.png"
+type = "image"
+title = "lum void entity single light obsidian throne"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
