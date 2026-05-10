@@ -296,7 +296,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
   // at sector boundaries let star-light through. Two shell layers: outer at
   // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
-  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean };
+  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number };
 
   const SECTOR_COLS = [R, C, V, F, A];
   const getSectorCol = (angle: number, phaseOff: number): string | null => {
@@ -334,10 +334,17 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         // Deterministic solid flag — ~every 3rd cell is a filled collector panel
         // (caller can override density via solidMod)
         const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % solidMod) === 0;
-        cells.push({ verts, col, z, solid });
+        const sx = CX + hx * compress;
+        const sy = CY + hy * compress;
+        cells.push({ verts, col, z, solid, cx: sx, cy: sy });
       }
     }
     return cells.sort((a, b) => a.z - b.z);       // back → front
+  };
+
+  // Dark absorber-surface base for each affinity (solar panel faces are near-black)
+  const PANEL_BASE: Record<string, string> = {
+    [F]: '#2a0606', [C]: '#060e2a', [V]: '#04150a', [A]: '#160426', [R]: '#0c0e12',
   };
 
   const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
@@ -414,22 +421,45 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Outermost Dyson hex shell — largest cells, 18° sector, ~50% solid ── */}
-      {shell3.map(({ verts, col, z, solid }, i) => (
-        <g key={i}>
-          <polygon
-            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
-            fill={solid ? col : 'none'}
-            fillOpacity={solid ? 0.32 + z * 0.42 : 0}
-            stroke={col}
-            strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28}
-          />
-          {verts.map(([vx, vy], k) => (
-            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-              r="0.11" fill={col} opacity={0.24 + z * 0.44} />
-          ))}
-        </g>
-      ))}
+      {/* ── Outermost Dyson hex shell — opaque panels with star-lighting ── */}
+      {shell3.map(({ verts, col, z, solid, cx, cy }, i) => {
+        const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
+        // Lighting: how far this panel is from the star (0=at star, 1=max distance)
+        const dx = CX - cx, dy = CY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const lightFactor = Math.max(0, 1 - dist / 32) * (0.25 + z * 0.75);
+        // Specular spot: offset panel center toward the star by 35% of hex radius
+        const nx = dist > 0 ? dx / dist : 0;
+        const ny = dist > 0 ? dy / dist : 0;
+        const hlx = cx + nx * 1.26;   // 3.6 * 0.35
+        const hly = cy + ny * 1.26;
+        const base = PANEL_BASE[col] ?? '#0c0810';
+        if (!solid) return (
+          <g key={i}>
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.28} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+            ))}
+          </g>
+        );
+        return (
+          <g key={i}>
+            {/* Dark absorber base — near-opaque */}
+            <polygon points={ptStr} fill={base} fillOpacity="0.90"
+              stroke={col} strokeWidth="0.14"
+              strokeOpacity={0.30 + z * 0.50} />
+            {/* Affinity colour tint — light wash */}
+            <polygon points={ptStr} fill={col}
+              fillOpacity={0.06 + lightFactor * 0.14} />
+            {/* Specular highlight toward star */}
+            <circle cx={hlx.toFixed(2)} cy={hly.toFixed(2)}
+              r={(1.44).toFixed(2)} fill="#fffae0"
+              opacity={lightFactor * 0.60} />
+          </g>
+        );
+      })}
 
       {/* ── Mid Dyson hex shell — medium cells, 0° sector start ── */}
       {shell1.map(({ verts, col, z, solid }, i) => (
