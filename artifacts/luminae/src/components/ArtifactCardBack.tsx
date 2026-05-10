@@ -454,15 +454,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           const dot = (emx / el) * nx + (emy / el) * ny;
           return { x1, y1, x2: x2, y2: y2, dot };
         });
-        // Electrode lines: run TANGENTIALLY (perpendicular to star direction) across panel
-        // px,py is the tangential axis; lines offset along star axis at ±40% of hr
-        const tpx = -ny, tpy = nx;
-        const electrodes = [-0.45, 0.45].map(t => ({
-          x1: (cx + t * nx * 3.6 + tpx * 2.6).toFixed(2),
-          y1: (cy + t * ny * 3.6 + tpy * 2.6).toFixed(2),
-          x2: (cx + t * nx * 3.6 - tpx * 2.6).toFixed(2),
-          y2: (cy + t * ny * 3.6 - tpy * 2.6).toFixed(2),
-        }));
         return (
           <g key={i}>
             {/* Opaque dark absorber base */}
@@ -470,11 +461,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             {/* Affinity colour tint — stronger near the star */}
             <polygon points={ptStr} fill={col}
               fillOpacity={0.10 + lightFactor * 0.22} stroke="none" />
-            {/* Electrode texture lines — tangential stripes across the panel face */}
-            {electrodes.map((e, k) => (
-              <line key={k} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
-                stroke={col} strokeWidth="0.26" strokeOpacity="0.65" />
-            ))}
             {/* Metallic panel frame — always-on border giving structure and punch */}
             <polygon points={ptStr} fill="none"
               stroke="#d4b060" strokeWidth="0.30" strokeOpacity={0.35 + z * 0.40} />
