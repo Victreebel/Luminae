@@ -720,16 +720,20 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           strokeDasharray="2.2 2" />
       ))}
 
-      {/* Branch arms — spur lines from a point on the spiral arm to each satellite */}
+      {/* Branch spurs — same two-layer glow beam style as the main spiral arms */}
       {satellites.map(({ cx, cy, ax, ay, col }, i) => (
         <g key={i}>
-          {/* Junction dot — marks where the spur splits from the main arm */}
-          <circle cx={ax} cy={ay} r="0.55"
-            fill="#0a0818" stroke={col} strokeWidth="0.28" strokeOpacity="0.72" />
-          {/* Spur line from arm junction to satellite */}
+          {/* Glow under-stroke */}
           <line x1={ax} y1={ay} x2={cx} y2={cy}
-            stroke={col} strokeWidth="0.26" strokeOpacity="0.34"
-            strokeDasharray="1.6 1.6" />
+            stroke={col} strokeWidth="1.8" strokeOpacity="0.11"
+            strokeLinecap="round" filter={`url(#${id}-aglow)`} />
+          {/* Bright core stroke */}
+          <line x1={ax} y1={ay} x2={cx} y2={cy}
+            stroke={col} strokeWidth="0.52" strokeOpacity="0.40"
+            strokeLinecap="round" />
+          {/* Junction dot — bifurcation node on the arm */}
+          <circle cx={ax} cy={ay} r="0.55"
+            fill="#0a0818" stroke={col} strokeWidth="0.28" strokeOpacity="0.80" />
         </g>
       ))}
 
