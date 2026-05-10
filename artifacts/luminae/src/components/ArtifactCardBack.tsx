@@ -528,8 +528,13 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
                 <stop offset="100%" stopColor="#ffe08a" stopOpacity="1.0" />
               </radialGradient>
             </defs>
+            {/* blurred glow drawn first — fill below will mask the inward half */}
+            <polygon points={ptStr} fill="none"
+              stroke="#ffe08a" strokeWidth="0.7" strokeOpacity="0.65"
+              filter={`url(#${id}-panelglow)`} />
+            {/* opaque fill on top covers inward glow bleed, leaving only outer halo */}
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
-            {/* crisp thin gold rim — no blur bleed */}
+            {/* crisp hairline on the edge itself */}
             <polygon points={ptStr} fill="none"
               stroke="#ffe08a" strokeWidth="0.09" strokeOpacity="0.88" />
           </g>
