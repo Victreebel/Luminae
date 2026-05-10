@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gt, isNull } from "drizzle-orm";
+import { eq, and, gt, lt, isNull, or, isNotNull } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { accountsTable, accountSessionsTable, passwordResetTokensTable } from "@workspace/db";
 import bcrypt from "bcryptjs";
@@ -52,6 +52,22 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
     ok: true,
     message: "If that email is registered, a reset link has been sent.",
   };
+
+  // Delete tokens that expired or were used more than 24 hours ago.
+  // Runs on every request (before the account check) so cleanup happens
+  // regardless of whether the email is registered, maximising cadence.
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await db
+    .delete(passwordResetTokensTable)
+    .where(
+      or(
+        lt(passwordResetTokensTable.expiresAt, cutoff),
+        and(
+          isNotNull(passwordResetTokensTable.usedAt),
+          lt(passwordResetTokensTable.usedAt, cutoff),
+        ),
+      ),
+    );
 
   if (!account) {
     res.json(okResponse);
