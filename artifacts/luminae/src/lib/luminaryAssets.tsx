@@ -54,7 +54,7 @@ export interface LuminaryVisuals {
 // Update this list when a new panel passes the panel hard-rules review and is
 // accepted for publication. Panels pending regeneration must NOT be added here.
 //
-// Accepted panels (11):
+// Accepted panels (12):
 //   lum_ember   — accepted (gold standard)
 //   lum_forge   — accepted (gold standard)
 //   lum_verdant — accepted (gold standard)
@@ -67,10 +67,8 @@ export interface LuminaryVisuals {
 //   lum_tide    — accepted (recursive tidal spiral, dark oceanic void bg)
 //   lum_pale    — accepted (large glassy transparent crystal facets, iridescent prismatic
 //                  light scatter, balance entity visible through crystal depth refraction)
-//
-// Pending regeneration (1):
-//   lum_astral  — REJECT: crystal reads as sphere/orb; geodesic-dome facet pattern;
-//                  crystal does not fill panel (dark corners visible)
+//   lum_astral  — accepted (cosmic arachnid embedded in dark crystal facets, constellation
+//                  line overlay, dual ruby/sapphire corner gems, fire medallion)
 // ─────────────────────────────────────────────────────────────────────────────
 export const ILLUSTRATED_IDS = new Set<string>([
   'lum_ember',
@@ -84,6 +82,7 @@ export const ILLUSTRATED_IDS = new Set<string>([
   'lum_bloom',
   'lum_tide',
   'lum_pale',
+  'lum_astral',
 ]);
 
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
@@ -914,8 +913,11 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   objectPosition?: string;
   idleCyFactor?: number;
 }> = {
-  lum_void: { scale: 1.22, objectPosition: 'center 25%' },
-  lum_tide: { idleCyFactor: 0.435 },
+  lum_void:   { scale: 1.22, objectPosition: 'center 25%' },
+  lum_tide:   { idleCyFactor: 0.435 },
+  // Cosmic arachnid spans radially — center it in the portrait card frame
+  // rather than using the default portrait 'center top' position.
+  lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
