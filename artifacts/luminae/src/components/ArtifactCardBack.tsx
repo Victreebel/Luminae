@@ -506,8 +506,8 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
                 cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
                 gradientUnits="userSpaceOnUse">
                 <stop offset="0%"   stopColor={base} stopOpacity="1.0" />
-                <stop offset="60%"  stopColor={base} stopOpacity="1.0" />
-                <stop offset="100%" stopColor={col}  stopOpacity="0.92" />
+                <stop offset="22%"  stopColor={base} stopOpacity="1.0" />
+                <stop offset="100%" stopColor={col}  stopOpacity="1.0" />
               </radialGradient>
             </defs>
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
