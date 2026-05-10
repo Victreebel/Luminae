@@ -30,7 +30,11 @@ type Mode = "home" | "create" | "join" | "auth";
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { account, token, isLoading: accountLoading } = useAccount();
+  const { account, token, isLoading: accountLoading, logout } = useAccount();
+  const handleLogout = async () => {
+    await logout();
+    setMode("home");
+  };
   const [activeSession, setActiveSession] = useState(() => getSession());
   const [mode, setMode] = useState<Mode>("home");
   const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
@@ -361,6 +365,15 @@ export default function Home() {
                     >
                       <LayoutDashboard className="h-3.5 w-3.5" />
                       Dashboard
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl p-0 text-muted-foreground hover:text-foreground hover:bg-destructive/15"
+                      onClick={handleLogout}
+                      title="Sign out"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
