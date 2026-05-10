@@ -528,10 +528,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
               </radialGradient>
             </defs>
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
-            {/* soft blurred gold glow — no hard line */}
+            {/* crisp thin gold rim — no blur bleed */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffe08a" strokeWidth="0.18" strokeOpacity="0.90"
-              filter={`url(#${id}-panelglow)`} />
+              stroke="#ffe08a" strokeWidth="0.09" strokeOpacity="0.88" />
           </g>
         );
       })}
