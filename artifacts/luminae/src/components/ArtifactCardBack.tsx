@@ -607,15 +607,33 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <stop offset="40%"  stopColor="#ffb050" stopOpacity="0.38" />
           <stop offset="100%" stopColor="#ff8020" stopOpacity="0"    />
         </radialGradient>
-        {/* Accretion disk: white-hot inner → warm cream → pale amber → transparent */}
+        {/* Accretion disk: transparent → deep amber → bright orange → white-hot inner → mirror */}
         <linearGradient id={`${id}-disk`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#ffe4a0" stopOpacity="0"    />
-          <stop offset="18%"  stopColor="#fff4d0" stopOpacity="0.80" />
-          <stop offset="40%"  stopColor="#fffcf0" stopOpacity="0.96" />
+          <stop offset="0%"   stopColor="#c05000" stopOpacity="0"    />
+          <stop offset="12%"  stopColor="#e06010" stopOpacity="0.55" />
+          <stop offset="28%"  stopColor="#ff9030" stopOpacity="0.82" />
+          <stop offset="42%"  stopColor="#ffc060" stopOpacity="0.95" />
+          <stop offset="50%"  stopColor="#fff0c0" stopOpacity="1"    />
+          <stop offset="58%"  stopColor="#ffc060" stopOpacity="0.95" />
+          <stop offset="72%"  stopColor="#ff9030" stopOpacity="0.82" />
+          <stop offset="88%"  stopColor="#e06010" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#c05000" stopOpacity="0"    />
+        </linearGradient>
+        {/* Inner disk ring: white-hot close to event horizon */}
+        <linearGradient id={`${id}-disk-inner`} x1="0%" y1="50%" x2="100%" y2="50%">
+          <stop offset="0%"   stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="20%"  stopColor="#ffd080" stopOpacity="0.70" />
           <stop offset="50%"  stopColor="#ffffff"  stopOpacity="1"   />
-          <stop offset="60%"  stopColor="#fffcf0"  stopOpacity="0.96"/>
-          <stop offset="82%"  stopColor="#fff4d0"  stopOpacity="0.80"/>
-          <stop offset="100%" stopColor="#ffe4a0"  stopOpacity="0"   />
+          <stop offset="80%"  stopColor="#ffd080" stopOpacity="0.70" />
+          <stop offset="100%" stopColor="#ff8020" stopOpacity="0"    />
+        </linearGradient>
+        {/* Lensed arc: warm glow for the gravitationally bent far-side image */}
+        <linearGradient id={`${id}-disk-lens`} x1="0%" y1="50%" x2="100%" y2="50%">
+          <stop offset="0%"   stopColor="#ff7000" stopOpacity="0"    />
+          <stop offset="30%"  stopColor="#ffb040" stopOpacity="0.85" />
+          <stop offset="50%"  stopColor="#ffe080" stopOpacity="1"    />
+          <stop offset="70%"  stopColor="#ffb040" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#ff7000" stopOpacity="0"    />
         </linearGradient>
         <filter id={`${id}-satbranchglow`} x="-400%" y="-400%" width="900%" height="900%">
           <feGaussianBlur stdDeviation="1.4" />
@@ -888,45 +906,87 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         );
       })}
 
-      {/* Singularity — black hole + accretion disk rendered in z-order layers */}
+      {/* ══════════════════════════════════════════════════════════════
+           Singularity — rendered in strict z-order for Interstellar-
+           style gravitational lensing illusion:
+             1. Jets (behind everything)
+             2. Outer disk — back half (far side, going behind BH)
+             3. Lensed arc  (bent image of far side, curves OVER the top)
+             4. Event horizon (black circle + photon ring)
+             5. Inner disk — back half (behind BH, closer to center)
+             6. Outer disk — front half (near side, crosses IN FRONT)
+             7. Inner disk — front half (hottest, brightest, in front)
+             8. Intersection hot-spots (left / right of photon sphere)
+          ══════════════════════════════════════════════════════════════ */}
 
-      {/* Relativistic jets — drawn first so both disk halves overlap them */}
-      <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 10}
-        stroke="#90d8ff" strokeWidth="0.7" strokeOpacity="0.22" strokeLinecap="round" />
-      <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
-        stroke="#90d8ff" strokeWidth="0.7" strokeOpacity="0.14" strokeLinecap="round" />
+      {/* 1. Relativistic jets */}
+      <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 11}
+        stroke="#a0e4ff" strokeWidth="1.0" strokeOpacity="0.18"
+        strokeLinecap="round" filter={`url(#${id}-bhblur)`} />
+      <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 11}
+        stroke="#d0f0ff" strokeWidth="0.35" strokeOpacity="0.30" strokeLinecap="round" />
+      <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 11}
+        stroke="#a0e4ff" strokeWidth="0.8" strokeOpacity="0.12"
+        strokeLinecap="round" filter={`url(#${id}-bhblur)`} />
+      <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 11}
+        stroke="#d0f0ff" strokeWidth="0.30" strokeOpacity="0.20" strokeLinecap="round" />
 
-      {/* ── Layer 1: Accretion disk BACK half (far side — goes behind black hole) ── */}
-      <ellipse cx={HUB_X} cy={HUB_Y + 0.5} rx="9" ry="2.4"
-        fill={`url(#${id}-disk)`} opacity="0.55"
+      {/* 2. Outer disk — back half (far side, behind BH) */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.6} rx="10" ry="2.8"
+        fill={`url(#${id}-disk)`} opacity="0.60"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-back)`} />
-      <ellipse cx={HUB_X} cy={HUB_Y + 0.3} rx="5.5" ry="1.4"
-        fill={`url(#${id}-disk)`} opacity="0.78"
+
+      {/* 3. Gravitationally lensed arc — far-side disk bent OVER the top of BH
+              Physics: light from the back of the disk curves around the BH and
+              appears as a bright arc above the event horizon. */}
+      {/* Soft glow halo of the lensed arc */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.6} rx="5.2" ry="1.9"
+        fill="none" stroke={`url(#${id}-disk-lens)`}
+        strokeWidth="2.8" strokeOpacity="0.38"
+        filter={`url(#${id}-bhblur)`}
+        clipPath={`url(#${id}-disk-back)`} />
+      {/* Sharp bright lensed arc core */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.6} rx="5.2" ry="1.9"
+        fill="none" stroke={`url(#${id}-disk-lens)`}
+        strokeWidth="0.9" strokeOpacity="0.90"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-back)`} />
 
-      {/* ── Layer 2: Event horizon ── */}
+      {/* 4. Event horizon */}
       {/* Photon sphere outer glow */}
-      <circle cx={HUB_X} cy={HUB_Y} r="4.0"
-        fill="none" stroke="#ffffff" strokeWidth="0.7"
-        strokeOpacity="0.5" filter={`url(#${id}-bhblur)`} />
+      <circle cx={HUB_X} cy={HUB_Y} r="4.2"
+        fill="none" stroke="#ff9040" strokeWidth="1.2"
+        strokeOpacity="0.30" filter={`url(#${id}-bhblur)`} />
       {/* Pure black event horizon */}
       <circle cx={HUB_X} cy={HUB_Y} r="3.3" fill="#000000" />
-      {/* Bright photon ring */}
-      <circle cx={HUB_X} cy={HUB_Y} r="3.5"
-        fill="none" stroke="#ffffff" strokeWidth="0.38" strokeOpacity="0.88" />
+      {/* Photon ring — thin bright edge */}
+      <circle cx={HUB_X} cy={HUB_Y} r="3.45"
+        fill="none" stroke="#ffe0a0" strokeWidth="0.28" strokeOpacity="0.92" />
 
-      {/* ── Layer 3: Accretion disk FRONT half (near side — crosses in front of black hole) ── */}
-      {/* Slightly brighter to read as "closer" */}
-      <ellipse cx={HUB_X} cy={HUB_Y + 0.5} rx="9" ry="2.4"
-        fill={`url(#${id}-disk)`} opacity="0.72"
+      {/* 5. Inner disk — back half (behind BH, the tight hot band) */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.4} rx="5.6" ry="1.5"
+        fill={`url(#${id}-disk-inner)`} opacity="0.72"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-back)`} />
+
+      {/* 6. Outer disk — front half (near side, sweeps in FRONT of BH) */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.6} rx="10" ry="2.8"
+        fill={`url(#${id}-disk)`} opacity="0.88"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-front)`} />
-      <ellipse cx={HUB_X} cy={HUB_Y + 0.3} rx="5.5" ry="1.4"
-        fill={`url(#${id}-disk)`} opacity="0.96"
+
+      {/* 7. Inner disk — front half (hottest band, fully in front) */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.4} rx="5.6" ry="1.5"
+        fill={`url(#${id}-disk-inner)`} opacity="1.0"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-front)`} />
+
+      {/* 8. Intersection hot-spots — where disk crosses the photon sphere edge */}
+      <circle cx={HUB_X - 5.2} cy={HUB_Y + 0.5} r="1.6"
+        fill="#ffcc60" opacity="0.55" filter={`url(#${id}-bhblur)`} />
+      <circle cx={HUB_X + 5.2} cy={HUB_Y + 0.5} r="1.6"
+        fill="#ffcc60" opacity="0.55" filter={`url(#${id}-bhblur)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
