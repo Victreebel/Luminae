@@ -327,6 +327,25 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-arcglow`} x="-150%" y="-150%" width="400%" height="400%">
           <feGaussianBlur stdDeviation="1.0" />
         </filter>
+        {/* Distant planet gradients */}
+        <radialGradient id={`${id}-dpplanet`} cx="40%" cy="32%" r="72%">
+          <stop offset="0%"   stopColor="#2248a0" />
+          <stop offset="30%"  stopColor="#102260" />
+          <stop offset="70%"  stopColor="#081438" />
+          <stop offset="100%" stopColor="#030a1c" />
+        </radialGradient>
+        <radialGradient id={`${id}-dpatmo`} cx="50%" cy="50%" r="50%">
+          <stop offset="72%"  stopColor="#1a60e0" stopOpacity="0"    />
+          <stop offset="86%"  stopColor="#4090ff" stopOpacity="0.50" />
+          <stop offset="95%"  stopColor="#80c0ff" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#a0d8ff" stopOpacity="0"    />
+        </radialGradient>
+        <radialGradient id={`${id}-dpnight`} cx="18%" cy="50%" r="72%">
+          <stop offset="0%"   stopColor="#000008" stopOpacity="0.75" />
+          <stop offset="55%"  stopColor="#000008" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#000008" stopOpacity="0"    />
+        </radialGradient>
+        <clipPath id={`${id}-dpclip`}><circle cx="58" cy="24" r="4.6" /></clipPath>
       </defs>
 
       {/* ── Background ── */}
@@ -348,6 +367,60 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           r={sz >= 6 ? 0.44 : sz >= 5 ? 0.30 : sz >= 4 ? 0.21 : 0.14}
           fill="#fff" opacity={0.10 + (sz * 0.04)} />
       ))}
+
+      {/* ── Distant home planet — upper right, seen from the Dyson sphere ── */}
+      {(() => {
+        const PPX = 58, PPY = 24, PPR = 4.5;
+        return (
+          <g>
+            {/* atmosphere halo */}
+            <circle cx={PPX} cy={PPY} r={PPR + 1.4} fill={`url(#${id}-dpatmo)`} />
+            {/* planet body */}
+            <circle cx={PPX} cy={PPY} r={PPR} fill={`url(#${id}-dpplanet)`} />
+            {/* planetary energy grid */}
+            <g clipPath={`url(#${id}-dpclip)`} fill="none"
+               stroke="#3a70c0" strokeWidth="0.18" strokeOpacity="0.40">
+              <line x1={PPX - PPR} y1={PPY - 2.4} x2={PPX + PPR} y2={PPY - 2.4} />
+              <line x1={PPX - PPR} y1={PPY - 0.8} x2={PPX + PPR} y2={PPY - 0.8} />
+              <line x1={PPX - PPR} y1={PPY + 0.8} x2={PPX + PPR} y2={PPY + 0.8} />
+              <line x1={PPX - PPR} y1={PPY + 2.4} x2={PPX + PPR} y2={PPY + 2.4} />
+              <line x1={PPX - 2.4} y1={PPY - PPR} x2={PPX - 2.4} y2={PPY + PPR} />
+              <line x1={PPX - 0.8} y1={PPY - PPR} x2={PPX - 0.8} y2={PPY + PPR} />
+              <line x1={PPX + 0.8} y1={PPY - PPR} x2={PPX + 0.8} y2={PPY + PPR} />
+              <line x1={PPX + 2.4} y1={PPY - PPR} x2={PPX + 2.4} y2={PPY + PPR} />
+            </g>
+            {/* land masses */}
+            <g clipPath={`url(#${id}-dpclip)`}>
+              <polygon
+                points={`${PPX+0.6},${PPY-3.4} ${PPX+2.5},${PPY-2.5} ${PPX+3.4},${PPY-1.1} ${PPX+2.5},${PPY+0.3} ${PPX+1.1},${PPY+0.8} ${PPX},${PPY-0.3} ${PPX+0.3},${PPY-2.2}`}
+                fill="#1a3828" opacity="0.70" />
+              <polygon
+                points={`${PPX-0.8},${PPY+1.4} ${PPX+1.1},${PPY+1.1} ${PPX+2.0},${PPY+2.5} ${PPX+1.1},${PPY+3.6} ${PPX-0.6},${PPY+3.9} ${PPX-2.0},${PPY+2.8} ${PPX-1.7},${PPY+1.4}`}
+                fill="#1a3828" opacity="0.65" />
+            </g>
+            {/* night-side terminator */}
+            <circle cx={PPX} cy={PPY} r={PPR} fill={`url(#${id}-dpnight)`} />
+            {/* planet edge */}
+            <circle cx={PPX} cy={PPY} r={PPR}
+              fill="none" stroke="#5090e0" strokeWidth="0.25" strokeOpacity="0.55" />
+            {/* five city nodes — pentagon, r=2.8 */}
+            {[0,1,2,3,4].map((k) => {
+              const ang = Math.PI * (-0.5 + (2 * k) / 5);
+              const nx = PPX + 2.8 * Math.cos(ang);
+              const ny = PPY + 2.8 * Math.sin(ang);
+              const col = [F,R,V,C,A][k];
+              return (
+                <g key={k}>
+                  <circle cx={nx} cy={ny} r="0.65" fill={col} opacity="0.12"
+                    clipPath={`url(#${id}-dpclip)`} />
+                  <circle cx={nx} cy={ny} r="0.26" fill={col} opacity="0.75"
+                    clipPath={`url(#${id}-dpclip)`} />
+                </g>
+              );
+            })}
+          </g>
+        );
+      })()}
 
       {/* ── T2 Border — double L-corner ── */}
       <rect x="3.5" y="3.5" width="63" height="93" rx="1.5"
