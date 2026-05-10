@@ -480,16 +480,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
-        // ── Shell 3 (outer) — backlit silhouette panels ────────────────────
-        // limbFactor=0: panel at sphere centre (most occlusion, darkest)
-        // limbFactor=1: panel at outer limb (backlit, warm amber bleed)
+        // ── Shell 3 (outer) — opaque panels with bright rim ───────────────
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const limbFactor = Math.min(1, dist / 26);
         const base = PANEL_BASE[col] ?? '#0c0810';
-        const nx = dist > 0 ? dx / dist : 0;
-        const ny = dist > 0 ? dy / dist : 0;
-        const lf2 = limbFactor * limbFactor;
 
         if (!solid) return (
           <g key={i}>
@@ -502,20 +497,20 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           </g>
         );
 
-        const edgeGlow = Array.from({ length: 6 }, (_, k) => {
-          const [x1, y1] = verts[k];
-          const [x2, y2] = verts[(k + 1) % 6];
-          const emx = (x1 + x2) / 2 - cx;
-          const emy = (y1 + y2) / 2 - cy;
-          const el = Math.sqrt(emx * emx + emy * emy) || 1;
-          const dot = (emx / el) * nx + (emy / el) * ny;
-          return { x1, y1, x2: x2, y2: y2, outward: -dot };
-        });
-
+        // Radial gradient: dark PANEL_BASE at center → bright affinity col at rim
+        const gradId = `${id}-s3p-${i}`;
         return (
           <g key={i}>
-            <polygon points={ptStr} fill={base} fillOpacity="1.0" stroke="none" />
-            <polygon points={ptStr} fill={col} fillOpacity="0.18" stroke="none" />
+            <defs>
+              <radialGradient id={gradId}
+                cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
+                gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stopColor={base} stopOpacity="1.0" />
+                <stop offset="60%"  stopColor={base} stopOpacity="1.0" />
+                <stop offset="100%" stopColor={col}  stopOpacity="0.92" />
+              </radialGradient>
+            </defs>
+            <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
             <polygon points={ptStr} fill="none"
               stroke="#d4b060" strokeWidth="0.28"
               strokeOpacity={0.20 + limbFactor * 0.55} />
