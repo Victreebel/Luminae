@@ -285,11 +285,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
   const CX = 35, CY = 54;
 
-  const SWARM_COLORS = [F, C, V, A, R];
-  const swarmRings = [
-    { r: 10, n: 30, phase:  0 },
-    { r: 16, n: 38, phase: 26 },
-    { r: 22, n: 45, phase: 52 },
+  const rings = [
+    { r: 10, segs: 8, span: 35, step: 45,  startOff: -90, colors: [F,C,V,A,R,F,C,V] as string[] },
+    { r: 16, segs: 6, span: 48, step: 60,  startOff: -75, colors: [V,A,R,F,C,V]     as string[] },
+    { r: 22, segs: 4, span: 68, step: 90,  startOff: -60, colors: [C,A,F,R]         as string[] },
   ];
 
   return (
@@ -395,37 +394,58 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       {/* ── Extended corona ── */}
       <circle cx={CX} cy={CY} r="14" fill={`url(#${id}-corona)`} />
 
-      {/* ── Dyson Swarm — three orbital shells of independent satellites ── */}
-      {swarmRings.map(({ r, n, phase }, ri) => (
+      {/* ── Dyson Rings — three concentric arc-panel rings ── */}
+      {rings.map(({ r, segs, span, step, startOff, colors }, ri) => (
         <g key={ri}>
-          {/* faint orbital guide ring */}
+          {/* dashed guide ring */}
           <circle cx={CX} cy={CY} r={r}
-            fill="none" stroke={GOLD3}
-            strokeWidth="0.18" strokeOpacity="0.18"
-            strokeDasharray="1.8 2.2" />
+            fill="none"
+            stroke={ri === 0 ? "#3050a0" : GOLD3}
+            strokeWidth={ri === 0 ? 0.3 : 0.28}
+            strokeOpacity={ri === 0 ? 0.3 : 0.25}
+            strokeDasharray="1.5 1.5" />
 
-          {/* satellite particles — 5 affinity colors in equal arcs (clustered) */}
-          {Array.from({ length: n }, (_, i) => {
-            const ang   = (i / n) * 360 + phase + Math.sin(i * 1.7) * 9;
-            const rad   = r + Math.sin(i * 2.3) * 0.85;
-            const col   = SWARM_COLORS[Math.floor(i * 5 / n)];
-            const sz    = ri === 0 ? 0.55 : ri === 1 ? 0.50 : 0.44;
-            const op    = 0.52 + (i % 4) * 0.1;
-            const [px, py] = pt(CX, CY, rad, ang);
+          {/* arc panel segments */}
+          {Array.from({ length: segs }).map((_, i) => {
+            const s   = startOff + i * step;
+            const e   = s + span;
+            const col = colors[i % colors.length];
+            const [mx, my] = pt(CX, CY, r, s + span / 2);
             return (
-              <circle key={i} cx={px} cy={py} r={sz} fill={col} opacity={op} />
+              <g key={i}>
+                {/* glow layer */}
+                <path d={arcPath(CX, CY, r, s, e)}
+                  fill="none" stroke={col}
+                  strokeWidth={ri === 0 ? 3.5 : ri === 1 ? 3 : 2.5}
+                  strokeOpacity="0.10" strokeLinecap="round"
+                  filter={`url(#${id}-arcglow)`} />
+                {/* solid colour layer */}
+                <path d={arcPath(CX, CY, r, s, e)}
+                  fill="none" stroke={col}
+                  strokeWidth={ri === 0 ? 1.5 : ri === 1 ? 1.3 : 1.1}
+                  strokeOpacity={ri === 0 ? 0.75 : ri === 1 ? 0.68 : 0.60}
+                  strokeLinecap="round" />
+                {/* white specular highlight */}
+                <path d={arcPath(CX, CY, r, s, e)}
+                  fill="none" stroke="#ffffff"
+                  strokeWidth="0.35" strokeOpacity="0.18"
+                  strokeLinecap="round" />
+                {/* collector node at arc midpoint */}
+                <circle cx={mx} cy={my}
+                  r={ri === 0 ? 0.9 : 0.75}
+                  fill="#080c28" stroke={GOLD3} strokeWidth="0.3" />
+              </g>
             );
           })}
 
-          {/* occasional structural collector node */}
-          {Array.from({ length: 5 }, (_, i) => {
-            const ang = phase + i * 72;
-            const [nx, ny] = pt(CX, CY, r, ang);
+          {/* inter-ring spars connecting ring ri to ri+1 */}
+          {ri < 2 && Array.from({ length: 4 }).map((_, i) => {
+            const deg = i * 90 + startOff + span / 2;
+            const [x1, y1] = pt(CX, CY, r,              deg);
+            const [x2, y2] = pt(CX, CY, rings[ri + 1].r, deg);
             return (
-              <circle key={i} cx={nx} cy={ny}
-                r={ri === 0 ? 0.85 : 0.72}
-                fill="#080c28" stroke={GOLD3}
-                strokeWidth="0.28" strokeOpacity="0.7" />
+              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.45" />
             );
           })}
         </g>
