@@ -331,9 +331,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return cells.sort((a, b) => a.z - b.z);       // back → front
   };
 
-  const shell1 = genShell(23, 3.0,  0);            // outer shell
-  const shell2 = genShell(16, 2.4, 36);            // mid shell,   36° sector shift
-  const shell3 = genShell(10, 1.8, 54);            // inner shell,  54° sector shift
+  const shell3 = genShell(30, 3.6, 18);            // outermost shell, 18° sector shift
+  const shell1 = genShell(23, 3.0,  0);            // mid shell
+  const shell2 = genShell(16, 2.4, 36);            // inner shell,  36° sector shift
 
   return (
     <svg
@@ -405,7 +405,22 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Outer Dyson hex shell — large cells, 0° sector start ── */}
+      {/* ── Outermost Dyson hex shell — largest cells, 18° sector start ── */}
+      {shell3.map(({ verts, col, z }, i) => (
+        <g key={i}>
+          <polygon
+            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
+            fill="none" stroke={col}
+            strokeWidth="0.13" strokeOpacity={0.14 + z * 0.26}
+          />
+          {verts.map(([vx, vy], k) => (
+            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+              r="0.11" fill={col} opacity={0.22 + z * 0.40} />
+          ))}
+        </g>
+      ))}
+
+      {/* ── Mid Dyson hex shell — medium cells, 0° sector start ── */}
       {shell1.map(({ verts, col, z }, i) => (
         <g key={i}>
           <polygon
@@ -431,21 +446,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           {verts.map(([vx, vy], k) => (
             <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
               r="0.08" fill={col} opacity={0.20 + z * 0.36} />
-          ))}
-        </g>
-      ))}
-
-      {/* ── Innermost Dyson hex shell — finest cells, 54° sector phase shift ── */}
-      {shell3.map(({ verts, col, z }, i) => (
-        <g key={i}>
-          <polygon
-            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
-            fill="none" stroke={col}
-            strokeWidth="0.08" strokeOpacity={0.12 + z * 0.20}
-          />
-          {verts.map(([vx, vy], k) => (
-            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-              r="0.07" fill={col} opacity={0.18 + z * 0.30} />
           ))}
         </g>
       ))}
