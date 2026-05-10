@@ -187,7 +187,7 @@ function VariantC() {
           );
           background-size: 400% 100%;
           -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-          animation: shimmer-sweep 7s linear infinite;
+          animation: shimmer-sweep 14s linear infinite;
           filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)) drop-shadow(0 0 18px rgba(160,140,255,0.3)) drop-shadow(0 0 40px rgba(100,80,180,0.15));
           position: relative; z-index: 1;
         }
@@ -219,8 +219,6 @@ function VariantC() {
       </div>
 
       <h1 className="fp-void-title">LUMINAE</h1>
-
-      <div style={{ width: "55%", height: 2, background: "linear-gradient(90deg, #C8D4F8, #FF6B52, #607AFF, #2ECC71, #B14FD8, #FFC43D)", borderRadius: 1, opacity: 0.3, position: "relative", zIndex: 1, filter: "blur(0.5px)" }} />
 
       <p style={{ margin: 0, fontSize: 8, letterSpacing: "0.45em", color: "rgba(200,210,255,0.3)", textTransform: "uppercase", fontFamily: "'Cinzel', serif", fontWeight: 400, position: "relative", zIndex: 1 }}>
         Collect · Forge · Ascend
