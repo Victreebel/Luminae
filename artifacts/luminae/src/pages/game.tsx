@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, Gavel, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -834,6 +834,7 @@ export default function GameBoard() {
 
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
+  const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
   const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
@@ -1637,8 +1638,8 @@ export default function GameBoard() {
     const inBank = state.crystalBank[color] ?? 0;
 
     if (actionMode === 'take2') {
-      if (selectedCrystals[color] === 2) { setSelectedCrystals({}); setActionMode('none'); }
-      else if (inBank >= 4) { setSelectedCrystals({ [color]: 2 }); gameAudio.playCrystalPicked(color as GemKey); }
+      if (selectedCrystals[color] === 2) { setSelectedCrystals({}); setCrystalHistory([]); setActionMode('none'); }
+      else if (inBank >= 4) { setSelectedCrystals({ [color]: 2 }); setCrystalHistory([color, color]); gameAudio.playCrystalPicked(color as GemKey); }
       return;
     }
 
@@ -1648,6 +1649,7 @@ export default function GameBoard() {
       delete next[color];
       const empty = Object.keys(next).length === 0;
       setSelectedCrystals(next);
+      setCrystalHistory(prev => prev.filter(c => c !== color));
       if (empty) setActionMode('none');
       return;
     }
@@ -1656,13 +1658,33 @@ export default function GameBoard() {
     const distinctCount = Object.keys(selectedCrystals).length;
     if (distinctCount >= 3) return;
     setSelectedCrystals({ ...selectedCrystals, [color]: 1 });
+    setCrystalHistory(prev => [...prev, color]);
     setActionMode(actionMode === 'none' ? 'take3' : actionMode);
     gameAudio.playCrystalPicked(color as GemKey);
+  };
+
+  const handleUndoCrystal = () => {
+    if (crystalHistory.length === 0) return;
+    const newHistory = crystalHistory.slice(0, -1);
+    setCrystalHistory(newHistory);
+    if (newHistory.length === 0) {
+      setSelectedCrystals({});
+      setActionMode('none');
+    } else {
+      const rebuilt: Partial<CrystalCounts> = {};
+      for (const c of newHistory) {
+        rebuilt[c] = (rebuilt[c] ?? 0) + 1;
+      }
+      setSelectedCrystals(rebuilt);
+      const isTake2 = Object.keys(rebuilt).length === 1 && rebuilt[newHistory[0]] === 2;
+      setActionMode(isTake2 ? 'take2' : 'take3');
+    }
   };
 
   const promoteToTake2 = (color: GemKey) => {
     if (!state || (state.crystalBank[color] ?? 0) < 4) return;
     setSelectedCrystals({ [color]: 2 });
+    setCrystalHistory([color, color]);
     setActionMode('take2');
     gameAudio.playCrystalPicked(color);
   };
@@ -1677,6 +1699,7 @@ export default function GameBoard() {
       await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } });
       setActionMode('none');
       setSelectedCrystals({});
+      setCrystalHistory([]);
       // resolve_summon fires from onComplete for every player who watched the
       // cutscene (including opponents who skipped the view and may be browsing
       // cards). Do not close their card sheet as a side-effect of that action.
@@ -1870,6 +1893,7 @@ export default function GameBoard() {
       toast({ title: 'Move planned', description: getPlannedActionSummary(plannedActionData) });
       setSelectedCard(null);
       setSelectedCrystals({});
+      setCrystalHistory([]);
       setActionMode('none');
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Plan failed', description: err.message });
@@ -2300,7 +2324,16 @@ export default function GameBoard() {
                       variant="outline"
                       size="sm"
                       className="h-7 w-7 p-0 rounded-lg"
-                      onClick={() => { setActionMode('none'); setSelectedCrystals({}); }}
+                      onClick={handleUndoCrystal}
+                      title="Undo last crystal"
+                    >
+                      <Undo2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 w-7 p-0 rounded-lg"
+                      onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); }}
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
