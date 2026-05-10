@@ -420,150 +420,47 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║  TIER III — Type III Galactic Civilization                              ║
+// ║  TIER III — Five-Affinity Stellar Council                               ║
 // ║                                                                          ║
-// ║  The card IS the galaxy. Four primary spiral arms reach all four        ║
-// ║  corners. Four sub-arms extend to the card edges. Twenty-two           ║
-// ║  civilization nodes (arm tips, sub-tips, mid-arm, bar, core) are       ║
-// ║  linked by 38 hyperspace lanes. A massive galactic bar spans the       ║
-// ║  center. Three concentric halo shells surround the blinding core.      ║
-// ║  Dense 70-star field fills the card. The structure overwhelms the      ║
-// ║  eye — as a K-III civilization should.                                 ║
+// ║  Five stellar civilizations — one per affinity — arranged at the       ║
+// ║  vertices of a pentagon. Each is a full Dyson star system in its       ║
+// ║  own affinity color. All five converge on a central gold hub,          ║
+// ║  the point where all affinities unify at galactic scale.               ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-// Singularity (flux) — golden yellow: distinct from the gold border metal
-const S = '#f0c040';
 
 export function CardBackTier3({ count: _count }: { count?: number }) {
   const id = 't3cb';
-  const CX = 35, CY = 52; // galactic core — upper-center for arm balance
+  const HUB_X = 35, HUB_Y = 52; // central convergence hub
 
-  // ── ARM TIPS reach all four corners ──────────────────────────────────────
-  // Corners: Continuum (NE) · Verdance (SE) · Flare (SW) · Radiance (NW)
-  // All four spiral inward and merge at the golden Singularity core.
-  const armTips: [number,number,string][] = [
-    [62,  8,  C], // NE corner — Continuum
-    [63,  90, V], // SE corner — Verdance
-    [7,   92, F], // SW corner — Flare
-    [6,   12, R], // NW corner — Radiance
+  // Five affinity star systems at pentagon vertices.
+  // Pentagon radius 21, center (35, 52), starting at top (−90°), clockwise.
+  // Each system: star + inner ring (r=4.8) + outer ring (r=7.5), monochrome in its affinity color.
+  const systems: Array<{ cx: number; cy: number; col: string }> = [
+    { cx: 35.00, cy: 31.00, col: R }, // Radiance  — top
+    { cx: 54.97, cy: 45.51, col: C }, // Continuum — top-right
+    { cx: 47.34, cy: 68.99, col: V }, // Verdance  — bottom-right
+    { cx: 22.66, cy: 68.99, col: F }, // Flare     — bottom-left
+    { cx: 15.03, cy: 45.51, col: A }, // Abyss     — top-left
   ];
 
-  // ── SUB-ARM TIPS reach card edges (between corners) ──────────────────────
-  const subTips: [number,number,string][] = [
-    [66,  42, C], // E  edge — Continuum sub
-    [50,  97, V], // S  edge — Verdance sub
-    [18,  97, F], // S  edge — Flare sub
-    [4,   58, R], // W  edge — Radiance sub
+  // Pentagon edge connections (adjacent system index pairs)
+  const pentEdges: [number, number][] = [[0,1],[1,2],[2,3],[3,4],[4,0]];
+
+  // Background starfield
+  const stars: [number, number, number][] = [
+    [5,5,3],[65,8,5],[18,12,4],[47,10,6],[32,14,2],
+    [8,20,4],[62,17,7],[14,24,3],[54,22,5],[40,18,6],
+    [4,32,4],[67,35,3],[22,30,5],[50,28,4],[63,44,6],
+    [6,48,3],[68,50,6],[11,50,5],[60,53,4],[37,45,3],
+    [5,62,6],[66,60,4],[13,65,3],[58,67,5],[42,73,4],
+    [7,78,3],[64,75,6],[19,80,5],[55,79,4],[30,85,3],
+    [6,90,5],[63,88,4],[25,93,3],[48,92,6],[35,96,4],
+    [33,7,5],[52,15,3],[26,35,6],[44,33,4],[16,40,5],
+    [60,42,3],[9,58,6],[63,70,4],[40,62,5],[23,55,3],
   ];
 
-  // ── MID-ARM NODES (2 per main arm, along bezier path) ────────────────────
-  const midNodes: [number,number,string][] = [
-    [50,  28, C], [57,  17, C], // NE arm near/far — Continuum
-    [52,  71, V], [58,  82, V], // SE arm near/far — Verdance
-    [18,  73, F], [11,  83, F], // SW arm near/far — Flare
-    [18,  31, R], [11,  20, R], // NW arm near/far — Radiance
-  ];
-
-  // ── GALACTIC BAR endpoints — Singularity gold ────────────────────────────
-  const barNodes: [number,number,string][] = [
-    [49,  40, S], // NE bar tip
-    [21,  64, S], // SW bar tip
-  ];
-
-  // Core civilization node — Singularity (all affinities unified)
-  const core: [number,number,string] = [CX, CY, S];
-
-  // merged index: armTips[0-3] subTips[4-7] midNodes[8-15] barNodes[16-17] core[18]
-  const merged: [number,number,string][] = [
-    ...armTips,   // 0-3
-    ...subTips,   // 4-7
-    ...midNodes,  // 8-15
-    ...barNodes,  // 16-17
-    core,         // 18
-  ];
-
-  // ── HYPERSPACE LANE LATTICE ───────────────────────────────────────────────
-  // 38 connections forming the galaxy-spanning civilization network
-  const lanes: [number,number][] = [
-    // Core → bar nodes
-    [18,16],[18,17],
-    // Core → near-mid nodes (4 spokes)
-    [18, 8],[18,10],[18,12],[18,14],
-    // Bar nodes → adjacent mid-near nodes
-    [16, 8],[16, 9],[17,12],[17,13],
-    // Each arm chain: near → far → tip
-    [ 8, 9],[ 9, 0],  // NE
-    [10,11],[11, 1],  // SE
-    [12,13],[13, 2],  // SW
-    [14,15],[15, 3],  // NW
-    // Sub-arm: far-mid → sub-tip
-    [ 9, 4],          // NE → E sub
-    [11, 5],          // SE → S sub
-    [13, 6],          // SW → S sub
-    [15, 7],          // NW → W sub
-    // Perimeter: adjacent arm tips connected
-    [ 0, 1],[ 1, 2],[ 2, 3],[ 3, 0],
-    // Long diagonals across the galaxy
-    [ 0, 2],[ 1, 3],
-    // Sub-tip to nearest arm tip
-    [ 4, 0],[ 4, 1],  // E sub
-    [ 5, 1],[ 6, 2],  // S subs
-    [ 7, 3],[ 7, 0],  // W sub
-    // Cross-galaxy mid-level connections
-    [ 8,14],[10,12],
-    // Additional weave
-    [ 9,11],[13,15],
-  ];
-
-  // ── SPIRAL ARMS (bezier from near-core to corners) ────────────────────────
-  const arms = [
-    { d: `M ${CX+7} ${CY-6} C 51 38, 59 22, 62  8`,  col: C }, // NE — Continuum
-    { d: `M ${CX+7} ${CY+6} C 54 64, 61 78, 63  90`, col: V }, // SE — Verdance
-    { d: `M ${CX-7} ${CY+6} C 19 68, 11 80, 7   92`, col: F }, // SW — Flare
-    { d: `M ${CX-7} ${CY-6} C 19 38, 11 24, 6   12`, col: R }, // NW — Radiance
-  ];
-
-  // ── SUB-ARMS (branch off near the 2/3 point of each main arm) ────────────
-  const subArms = [
-    { d: `M 55 22 C 61 30, 65 36, 66 42`, col: C }, // NE sub — Continuum
-    { d: `M 58 80 C 57 87, 54 93, 50 97`, col: V }, // SE sub — Verdance
-    { d: `M 11 80 C 13 88, 15 93, 18 97`, col: F }, // SW sub — Flare
-    { d: `M 13 35 C 8  44, 5  51, 4  58`, col: R }, // NW sub — Radiance
-  ];
-
-  // ── STAR CLUSTERS along all arms (dense) ──────────────────────────────────
-  const clusters: [number,number][] = [
-    // NE arm
-    [43,43],[47,36],[51,29],[55,22],[58,15],[61,10],
-    [45,39],[50,31],[54,24],[59,17],
-    // SE arm
-    [43,61],[48,68],[52,74],[57,81],[60,87],[62,91],
-    [46,57],[51,66],[55,75],[59,84],
-    // SW arm
-    [27,61],[22,68],[17,74],[12,81],[9,87],[8,91],
-    [30,58],[24,65],[18,72],[12,80],
-    // NW arm
-    [27,43],[22,36],[17,30],[12,22],[9,16],[7,11],
-    [30,47],[24,38],[19,30],[13,21],
-    // Along galactic bar
-    [43,44],[39,47],[35,52],[31,56],[27,59],
-  ];
-
-  // ── DENSE BACKGROUND STARFIELD ────────────────────────────────────────────
-  const stars: [number,number,number,number][] = [
-    // [x, y, size-variant(0-9), opacity-variant(0-9)]
-    [4,4,0,3],[64,6,2,5],[20,10,1,4],[48,8,0,6],[33,11,3,2],
-    [10,16,0,4],[60,14,2,7],[16,21,1,3],[54,19,0,5],[38,16,2,6],
-    [7,27,1,4],[66,24,0,3],[25,25,2,5],[49,23,1,7],[63,31,0,4],
-    [5,36,2,3],[67,38,1,6],[13,38,0,5],[57,35,2,4],[42,32,1,3],
-    [4,46,0,6],[68,46,2,4],[10,48,1,5],[62,50,0,3],[35,44,2,7],
-    [5,60,1,4],[67,58,0,5],[15,62,2,3],[59,63,1,6],[41,67,0,4],
-    [7,70,2,5],[65,71,1,3],[21,75,0,6],[53,74,2,4],[34,77,1,5],
-    [6,82,0,3],[64,80,2,6],[17,85,1,4],[57,84,0,5],[28,88,2,3],
-    [5,92,1,5],[63,90,0,4],[25,94,2,3],[47,93,1,6],[35,97,0,4],
-    [33,5,2,5],[52,12,0,3],[17,13,1,6],[43,30,2,4],[29,33,0,5],
-    [61,42,1,3],[8,55,2,6],[63,65,0,4],[37,60,1,5],[22,52,2,3],
-    [51,56,0,6],[14,69,2,4],[58,72,1,3],[42,82,0,5],[27,79,2,4],
-  ];
+  const INNER_R = 4.8;
+  const OUTER_R = 7.5;
 
   return (
     <svg
@@ -573,57 +470,27 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       aria-hidden
     >
       <defs>
-        {/* Deepest void — Abyss-tinted intergalactic dark */}
-        <radialGradient id={`${id}-bg`} cx="50%" cy="50%" r="70%">
-          <stop offset="0%"   stopColor="#0e0618" />
-          <stop offset="35%"  stopColor="#06040f" />
-          <stop offset="100%" stopColor="#010106" />
+        <radialGradient id={`${id}-bg`} cx="50%" cy="52%" r="70%">
+          <stop offset="0%"   stopColor="#0a0818" />
+          <stop offset="40%"  stopColor="#060410" />
+          <stop offset="100%" stopColor="#020108" />
         </radialGradient>
 
-        {/* Abyss nebula pulse — deep violet wash radiating from core */}
-        <radialGradient id={`${id}-nebula`} cx="50%" cy="52%" r="60%">
-          <stop offset="0%"   stopColor="#2a0855" stopOpacity="0.88" />
-          <stop offset="22%"  stopColor="#1a0540" stopOpacity="0.65" />
-          <stop offset="50%"  stopColor="#0c0325" stopOpacity="0.32" />
-          <stop offset="80%"  stopColor="#080220" stopOpacity="0.10" />
-          <stop offset="100%" stopColor="#020108" stopOpacity="0"    />
-        </radialGradient>
+        {/* Per-system star gradients: white-hot core → affinity color halo */}
+        {systems.map(({ col }, i) => (
+          <radialGradient key={i} id={`${id}-sg${i}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"   />
+            <stop offset="18%"  stopColor="#fffce8" stopOpacity="0.95"/>
+            <stop offset="45%"  stopColor={col}     stopOpacity="0.6" />
+            <stop offset="100%" stopColor={col}     stopOpacity="0"   />
+          </radialGradient>
+        ))}
 
-        {/* Outer Abyss halo — faint purple fringe at card edges */}
-        <radialGradient id={`${id}-halo`} cx="50%" cy="52%" r="55%">
-          <stop offset="40%"  stopColor="#3b0080" stopOpacity="0"   />
-          <stop offset="72%"  stopColor="#5010a0" stopOpacity="0.14"/>
-          <stop offset="100%" stopColor="#3a0888" stopOpacity="0.07"/>
-        </radialGradient>
-
-        {/* Galactic bar — Singularity gold diagonal through core */}
-        <linearGradient id={`${id}-bar`} x1="30%" y1="35%" x2="70%" y2="65%">
-          <stop offset="0%"   stopColor={S}       stopOpacity="0"   />
-          <stop offset="20%"  stopColor={S}       stopOpacity="0.40"/>
-          <stop offset="50%"  stopColor="#fff8c0" stopOpacity="0.72"/>
-          <stop offset="80%"  stopColor={S}       stopOpacity="0.40"/>
-          <stop offset="100%" stopColor={S}       stopOpacity="0"   />
-        </linearGradient>
-
-        {/* Galactic core nucleus — Singularity golden yellow */}
-        <radialGradient id={`${id}-core`} cx="50%" cy="50%" r="50%">
+        {/* Central hub gradient — gold convergence point */}
+        <radialGradient id={`${id}-hub`} cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"   />
-          <stop offset="8%"   stopColor="#fff8d0" stopOpacity="0.97"/>
-          <stop offset="22%"  stopColor={S}       stopOpacity="0.80"/>
-          <stop offset="48%"  stopColor="#c08010" stopOpacity="0.35"/>
-          <stop offset="100%" stopColor="#402800" stopOpacity="0"   />
-        </radialGradient>
-
-        {/* Abyss pulse rings around core — concentric void shells */}
-        <radialGradient id={`${id}-halo1`} cx="50%" cy="50%" r="50%">
-          <stop offset="68%"  stopColor="#4a0090" stopOpacity="0"   />
-          <stop offset="82%"  stopColor="#6010b8" stopOpacity="0.22"/>
-          <stop offset="100%" stopColor="#7020c8" stopOpacity="0"   />
-        </radialGradient>
-        <radialGradient id={`${id}-halo2`} cx="50%" cy="50%" r="50%">
-          <stop offset="70%"  stopColor="#300068" stopOpacity="0"   />
-          <stop offset="86%"  stopColor="#4a0888" stopOpacity="0.14"/>
-          <stop offset="100%" stopColor="#580aa0" stopOpacity="0"   />
+          <stop offset="28%"  stopColor={GOLD2}   stopOpacity="0.9" />
+          <stop offset="100%" stopColor={GOLD}    stopOpacity="0"   />
         </radialGradient>
 
         <linearGradient id={`${id}-bord`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -632,46 +499,29 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <stop offset="100%" stopColor={GOLD3} stopOpacity="0.6"  />
         </linearGradient>
 
-        <filter id={`${id}-coreglow`} x="-600%" y="-600%" width="1300%" height="1300%">
-          <feGaussianBlur stdDeviation="5.5" />
+        <filter id={`${id}-sglow`} x="-400%" y="-400%" width="900%" height="900%">
+          <feGaussianBlur stdDeviation="2.0" />
         </filter>
-        <filter id={`${id}-armglow`} x="-200%" y="-200%" width="500%" height="500%">
-          <feGaussianBlur stdDeviation="2.8" />
+        <filter id={`${id}-aglow`} x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="0.7" />
         </filter>
-        <filter id={`${id}-nodeglow`} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="2.2" />
-        </filter>
-        <filter id={`${id}-hubglow`} x="-400%" y="-400%" width="900%" height="900%">
-          <feGaussianBlur stdDeviation="3.2" />
+        <filter id={`${id}-hubglow`} x="-500%" y="-500%" width="1100%" height="1100%">
+          <feGaussianBlur stdDeviation="3.0" />
         </filter>
       </defs>
 
-      {/* ── Intergalactic void ── */}
+      {/* Background */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
 
-      {/* ── Outer violet halo fringe reaching card edges ── */}
-      <rect width="70" height="100" fill={`url(#${id}-halo)`} />
-
-      {/* ── Dense background starfield (60+ stars) ── */}
-      {stars.map(([x,y,sv,ov], i) => (
+      {/* Starfield */}
+      {stars.map(([x, y, ov], i) => (
         <circle key={i} cx={x} cy={y}
-          r={sv >= 7 ? 0.55 : sv >= 4 ? 0.35 : 0.2}
-          fill="#fff"
-          opacity={0.08 + ov * 0.032} />
+          r={ov >= 6 ? 0.42 : ov >= 4 ? 0.27 : 0.18}
+          fill="#ffffff"
+          opacity={0.06 + ov * 0.03} />
       ))}
 
-      {/* ── Three distant "background galaxy" smudges ── */}
-      <ellipse cx="11" cy="37" rx="2.5" ry="1.2" transform="rotate(-25 11 37)"
-        fill="#c0b0ff" opacity="0.05" />
-      <ellipse cx="61" cy="30" rx="2" ry="0.9" transform="rotate(20 61 30)"
-        fill="#b0c0ff" opacity="0.04" />
-      <ellipse cx="58" cy="88" rx="1.8" ry="0.8" transform="rotate(-15 58 88)"
-        fill="#c0d0ff" opacity="0.04" />
-
-      {/* ── Full-card galactic nebula wash ── */}
-      <ellipse cx={CX} cy={CY} rx="34" ry="40" fill={`url(#${id}-nebula)`} />
-
-      {/* ── T3 Border — triple L-corner, richest detail ── */}
+      {/* T3 Border — triple L-corner, richest detail */}
       <rect x="3"   y="3"   width="64" height="94" rx="2"
         fill="none" stroke={`url(#${id}-bord)`} strokeWidth="0.9" />
       <rect x="5"   y="5"   width="60" height="90" rx="1.5"
@@ -713,139 +563,137 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         </g>
       ))}
 
-      {/* ── Tier label — small, top center, subtle ── */}
+      {/* Tier label */}
       <text x="35" y="15" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="4.5" fill={GOLD2} opacity="0.65" letterSpacing="3">III</text>
       <line x1="28" y1="16.5" x2="42" y2="16.5"
         stroke={GOLD3} strokeWidth="0.38" strokeOpacity="0.48" />
 
-      {/* ── Galactic bar — bright angled structure through core ── */}
-      <rect x={CX-17} y={CY-4} width="34" height="8" rx="4"
-        transform={`rotate(-25 ${CX} ${CY})`}
-        fill={`url(#${id}-bar)`} />
-
-      {/* ── Abyss pulse shells (concentric void rings around Singularity) ── */}
-      <circle cx={CX} cy={CY} r="30" fill={`url(#${id}-halo1)`} />
-      <circle cx={CX} cy={CY} r="22" fill={`url(#${id}-halo2)`} />
-      <circle cx={CX} cy={CY} r="18"
-        fill="none" stroke={A} strokeWidth="0.35" strokeOpacity="0.20"
-        strokeDasharray="2 3" />
-      <circle cx={CX} cy={CY} r="25"
-        fill="none" stroke={A} strokeWidth="0.28" strokeOpacity="0.13"
-        strokeDasharray="3 4" />
-
-      {/* ── Four primary spiral arms — glow halo, body, bright spine ── */}
-      {arms.map(({ d, col }, i) => (
-        <g key={i}>
-          <path d={d} fill="none" stroke={col} strokeWidth="10"
-            strokeOpacity="0.05" strokeLinecap="round"
-            filter={`url(#${id}-armglow)`} />
-          <path d={d} fill="none" stroke={col} strokeWidth="3.2"
-            strokeOpacity="0.2" strokeLinecap="round" />
-          <path d={d} fill="none" stroke={col} strokeWidth="1.4"
-            strokeOpacity="0.42" strokeLinecap="round" />
-          <path d={d} fill="none" stroke="#d8e0ff" strokeWidth="0.45"
-            strokeOpacity="0.28" strokeLinecap="round" />
-        </g>
+      {/* Pentagon edge connectors — faint gold dashed links between adjacent systems */}
+      {pentEdges.map(([a, b], i) => (
+        <line key={i}
+          x1={systems[a].cx} y1={systems[a].cy}
+          x2={systems[b].cx} y2={systems[b].cy}
+          stroke={GOLD3} strokeWidth="0.28" strokeOpacity="0.38"
+          strokeDasharray="2.2 2" />
       ))}
 
-      {/* ── Four sub-arms branching to card edges ── */}
-      {subArms.map(({ d, col }, i) => (
-        <g key={i}>
-          <path d={d} fill="none" stroke={col} strokeWidth="5"
-            strokeOpacity="0.04" strokeLinecap="round"
-            filter={`url(#${id}-armglow)`} />
-          <path d={d} fill="none" stroke={col} strokeWidth="1.8"
-            strokeOpacity="0.18" strokeLinecap="round" />
-          <path d={d} fill="none" stroke="#d0d8ff" strokeWidth="0.3"
-            strokeOpacity="0.2" strokeLinecap="round" />
-        </g>
+      {/* Hub spokes — each system beams energy toward the central hub */}
+      {systems.map(({ cx, cy, col }, i) => (
+        <line key={i}
+          x1={cx} y1={cy} x2={HUB_X} y2={HUB_Y}
+          stroke={col} strokeWidth="0.25" strokeOpacity="0.20"
+          strokeDasharray="1.6 1.8" />
       ))}
 
-      {/* ── Star clusters scattered along all arms ── */}
-      {clusters.map(([x,y], i) => (
-        <circle key={i} cx={x} cy={y}
-          r={i % 7 === 0 ? 0.72 : i % 3 === 0 ? 0.44 : 0.25}
-          fill="#c8d4ff" opacity={0.18 + (i % 5) * 0.06} />
-      ))}
+      {/* Central convergence hub bloom */}
+      <circle cx={HUB_X} cy={HUB_Y} r="7"
+        fill={`url(#${id}-hub)`}
+        filter={`url(#${id}-hubglow)`} opacity="0.28" />
 
-      {/* ── Hyperspace lane lattice (38 lanes) ── */}
-      {lanes.map(([a, b], i) => {
-        const [x1,y1] = merged[a];
-        const [x2,y2] = merged[b];
+      {/* ── Five affinity star systems ── */}
+      {systems.map(({ cx, cy, col }, si) => {
+        // Inner ring: 4 arcs, 62° span, 90° step, offset varies per system
+        const startOff = -90 + si * 18;
+        const innerSegs = Array.from({ length: 4 }, (_, i) => ({
+          s: startOff + i * 90,
+          e: startOff + i * 90 + 62,
+        }));
+        // Outer ring: 3 arcs, 72° span, 120° step
+        const outerSegs = Array.from({ length: 3 }, (_, i) => ({
+          s: startOff + i * 120,
+          e: startOff + i * 120 + 72,
+        }));
+
         return (
-          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke={GOLD3} strokeWidth="0.28" strokeOpacity="0.32"
-            strokeDasharray="2 2.2" />
+          <g key={si}>
+            {/* Corona bloom */}
+            <circle cx={cx} cy={cy} r="5.5"
+              fill={col} opacity="0.07"
+              filter={`url(#${id}-sglow)`} />
+
+            {/* Dashed guide rings */}
+            <circle cx={cx} cy={cy} r={INNER_R}
+              fill="none" stroke={col} strokeWidth="0.2"
+              strokeOpacity="0.16" strokeDasharray="1 1.3" />
+            <circle cx={cx} cy={cy} r={OUTER_R}
+              fill="none" stroke={GOLD3} strokeWidth="0.18"
+              strokeOpacity="0.22" strokeDasharray="1.5 2" />
+
+            {/* Outer ring arc segments */}
+            {outerSegs.map(({ s, e }, i) => (
+              <g key={i}>
+                <path d={arcPath(cx, cy, OUTER_R, s, e)}
+                  fill="none" stroke={col} strokeWidth="2.5"
+                  strokeOpacity="0.08" strokeLinecap="round"
+                  filter={`url(#${id}-aglow)`} />
+                <path d={arcPath(cx, cy, OUTER_R, s, e)}
+                  fill="none" stroke={col} strokeWidth="1.05"
+                  strokeOpacity="0.65" strokeLinecap="round" />
+                <path d={arcPath(cx, cy, OUTER_R, s, e)}
+                  fill="none" stroke="#ffffff"
+                  strokeWidth="0.28" strokeOpacity="0.14"
+                  strokeLinecap="round" />
+                {/* Collector node at arc midpoint */}
+                {(() => {
+                  const [mx, my] = pt(cx, cy, OUTER_R, s + 36);
+                  return <circle cx={mx} cy={my} r="0.62"
+                    fill="#070510" stroke={GOLD3} strokeWidth="0.22" />;
+                })()}
+              </g>
+            ))}
+
+            {/* Inner ring arc segments */}
+            {innerSegs.map(({ s, e }, i) => (
+              <g key={i}>
+                <path d={arcPath(cx, cy, INNER_R, s, e)}
+                  fill="none" stroke={col} strokeWidth="1.8"
+                  strokeOpacity="0.08" strokeLinecap="round"
+                  filter={`url(#${id}-aglow)`} />
+                <path d={arcPath(cx, cy, INNER_R, s, e)}
+                  fill="none" stroke={col} strokeWidth="0.85"
+                  strokeOpacity="0.72" strokeLinecap="round" />
+              </g>
+            ))}
+
+            {/* Radial energy beams from star surface */}
+            {[0, 60, 120, 180, 240, 300].map((deg, i) => {
+              const [bx, by] = pt(cx, cy, 3.5, deg + startOff);
+              return (
+                <line key={i} x1={cx} y1={cy} x2={bx} y2={by}
+                  stroke={i % 2 === 0 ? "#fffce0" : col}
+                  strokeWidth="0.28" strokeOpacity="0.32" />
+              );
+            })}
+
+            {/* Star bloom glow */}
+            <circle cx={cx} cy={cy} r="4"
+              fill={`url(#${id}-sg${si})`}
+              filter={`url(#${id}-sglow)`} opacity="0.52" />
+
+            {/* Star core */}
+            <circle cx={cx} cy={cy} r="2.1" fill={`url(#${id}-sg${si})`} />
+
+            {/* Cross-flare */}
+            <line x1={cx-3.2} y1={cy} x2={cx+3.2} y2={cy}
+              stroke="#fff8e0" strokeWidth="0.32" strokeOpacity="0.45" />
+            <line x1={cx} y1={cy-3.2} x2={cx} y2={cy+3.2}
+              stroke="#fff8e0" strokeWidth="0.32" strokeOpacity="0.45" />
+            <line x1={cx-2} y1={cy-2} x2={cx+2} y2={cy+2}
+              stroke={col} strokeWidth="0.18" strokeOpacity="0.3" />
+            <line x1={cx+2} y1={cy-2} x2={cx-2} y2={cy+2}
+              stroke={col} strokeWidth="0.18" strokeOpacity="0.3" />
+          </g>
         );
       })}
 
-      {/* ── Galactic bar endpoint nodes ── */}
-      {barNodes.map(([x,y,col], i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r="4.5" fill={col} opacity="0.06"
-            filter={`url(#${id}-nodeglow)`} />
-          <circle cx={x} cy={y} r="1.6" fill="#06021c" stroke={col} strokeWidth="0.5" strokeOpacity="0.85" />
-          <circle cx={x} cy={y} r="0.7" fill={col} opacity="0.7" />
-        </g>
-      ))}
+      {/* Central convergence node */}
+      <circle cx={HUB_X} cy={HUB_Y} r="1.2"
+        fill="#070510" stroke={GOLD2} strokeWidth="0.42" strokeOpacity="0.88" />
+      <circle cx={HUB_X} cy={HUB_Y} r="0.52" fill={GOLD2} opacity="0.92" />
+      <circle cx={HUB_X} cy={HUB_Y} r="0.22" fill="#ffffff" opacity="0.95" />
 
-      {/* ── Sub-arm tip nodes (medium) ── */}
-      {subTips.map(([x,y,col], i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r="3.5" fill={col} opacity="0.07"
-            filter={`url(#${id}-nodeglow)`} />
-          <circle cx={x} cy={y} r="1.4" fill="#06021c" stroke={col} strokeWidth="0.45" strokeOpacity="0.8" />
-          <circle cx={x} cy={y} r="0.55" fill={col} opacity="0.65" />
-        </g>
-      ))}
-
-      {/* ── Mid-arm nodes (small) ── */}
-      {midNodes.map(([x,y,col], i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r="2.5" fill={col} opacity="0.06"
-            filter={`url(#${id}-nodeglow)`} />
-          <circle cx={x} cy={y} r="1.0" fill="#04021a" stroke={col} strokeWidth="0.4" strokeOpacity="0.72" />
-          <circle cx={x} cy={y} r="0.38" fill={col} opacity="0.6" />
-        </g>
-      ))}
-
-      {/* ── Arm-tip corner hubs (large — civilization capitals) ── */}
-      {armTips.map(([x,y,col], i) => (
-        <g key={i}>
-          <circle cx={x} cy={y} r="7" fill={col} opacity="0.07"
-            filter={`url(#${id}-hubglow)`} />
-          <circle cx={x} cy={y} r="3"  fill="#04021a" stroke={col} strokeWidth="0.62" strokeOpacity="0.9" />
-          <circle cx={x} cy={y} r="1.5" fill={col} opacity="0.65" />
-          <circle cx={x} cy={y} r="0.55" fill="#ffffff" opacity="0.85" />
-        </g>
-      ))}
-
-      {/* ── Massive galactic core bloom (behind the actual core node) ── */}
-      <circle cx={CX} cy={CY} r="14"
-        fill={`url(#${id}-core)`}
-        filter={`url(#${id}-coreglow)`} opacity="0.45" />
-      <circle cx={CX} cy={CY} r="7" fill={`url(#${id}-core)`} opacity="0.7" />
-      <circle cx={CX} cy={CY} r="3.5" fill={`url(#${id}-core)`} />
-
-      {/* Core cross-flare — Singularity gold rays */}
-      <line x1={CX-11} y1={CY}    x2={CX+11} y2={CY}
-        stroke="#fff8c0" strokeWidth="0.38" strokeOpacity="0.55" />
-      <line x1={CX}    y1={CY-11} x2={CX}    y2={CY+11}
-        stroke="#fff8c0" strokeWidth="0.38" strokeOpacity="0.55" />
-      <line x1={CX-7}  y1={CY-7}  x2={CX+7}  y2={CY+7}
-        stroke={S}       strokeWidth="0.22" strokeOpacity="0.36" />
-      <line x1={CX+7}  y1={CY-7}  x2={CX-7}  y2={CY+7}
-        stroke={S}       strokeWidth="0.22" strokeOpacity="0.36" />
-
-      {/* ── Central Singularity node (all affinities converged) ── */}
-      <circle cx={CX} cy={CY} r="10" fill={S} opacity="0.09"
-        filter={`url(#${id}-nodeglow)`} />
-      <circle cx={CX} cy={CY} r="3.2" fill="#0a0600" stroke={S} strokeWidth="0.7" strokeOpacity="0.96" />
-      <circle cx={CX} cy={CY} r="1.6" fill={S} opacity="0.85" />
-      <circle cx={CX} cy={CY} r="0.6" fill="#fff" opacity="0.95" />
-
-      {/* ── Luminae wordmark ── */}
+      {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="3.8" fill={GOLD} opacity="0.35" letterSpacing="2.5">LUMINAE</text>
     </svg>
