@@ -351,13 +351,18 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const shell1 = genShell(23, 3.0,  0);            // mid shell
   const shell2 = genShell(16, 2.4, 36);            // inner shell,  36° sector shift
 
-  // Merge all shells and sort globally by z so near-hemisphere outer cells
-  // correctly render in front of inner shells (not buried beneath them).
+  // Render order: shell2 (inner, most transparent) → shell1 (mid) → shell3 (outer, most opaque).
+  // Shell order is the primary key so the outer shell always sits on top of the inner ones.
+  // Within each shell, cells are still z-sorted back-to-front.
+  const SHELL_ORDER: Record<number, number> = { 2: 0, 1: 1, 3: 2 };
   const allCells = [
-    ...shell3.map(c => ({ ...c, sn: 3 as const })),
-    ...shell1.map(c => ({ ...c, sn: 1 as const })),
     ...shell2.map(c => ({ ...c, sn: 2 as const })),
-  ].sort((a, b) => a.z - b.z);
+    ...shell1.map(c => ({ ...c, sn: 1 as const })),
+    ...shell3.map(c => ({ ...c, sn: 3 as const })),
+  ].sort((a, b) => {
+    const so = SHELL_ORDER[a.sn] - SHELL_ORDER[b.sn];
+    return so !== 0 ? so : a.z - b.z;
+  });
 
   return (
     <svg
