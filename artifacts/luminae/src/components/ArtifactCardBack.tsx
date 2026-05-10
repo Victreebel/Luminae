@@ -421,6 +421,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-limbblur`} x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="3.0" />
         </filter>
+        {/* Soft glow for outer panel gold rim */}
+        <filter id={`${id}-panelglow`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="0.45" />
+        </filter>
       </defs>
 
       {/* ── Background ── */}
@@ -502,24 +506,19 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         return (
           <g key={i}>
             <defs>
+              {/* Smooth gold-rim → dark-center gradient, no sharp stops */}
               <radialGradient id={gradId}
                 cx={cx.toFixed(2)} cy={cy.toFixed(2)} r="3.6"
                 gradientUnits="userSpaceOnUse">
-                {/* dark center */}
-                <stop offset="0%"   stopColor={base} stopOpacity="1.0" />
-                <stop offset="68%"  stopColor={base} stopOpacity="1.0" />
-                {/* dim col zone — "less bright area" */}
-                <stop offset="70%"  stopColor={col}  stopOpacity="0.28" />
-                <stop offset="86%"  stopColor={col}  stopOpacity="0.32" />
-                {/* sharp jump → bright col rim */}
-                <stop offset="88%"  stopColor={col}  stopOpacity="0.92" />
-                <stop offset="100%" stopColor={col}  stopOpacity="1.0" />
+                <stop offset="0%"   stopColor={base}    stopOpacity="1.0" />
+                <stop offset="100%" stopColor="#ffe08a"  stopOpacity="1.0" />
               </radialGradient>
             </defs>
             <polygon points={ptStr} fill={`url(#${gradId})`} fillOpacity="1.0" stroke="none" />
-            {/* very bright gold outline on top */}
+            {/* soft blurred gold glow — no hard line */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffe08a" strokeWidth="0.32" strokeOpacity="1.0" />
+              stroke="#ffe08a" strokeWidth="1.0" strokeOpacity="0.72"
+              filter={`url(#${id}-panelglow)`} />
           </g>
         );
       })}
