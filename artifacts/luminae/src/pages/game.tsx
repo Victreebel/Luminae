@@ -2423,6 +2423,14 @@ export default function GameBoard() {
                     {getPlannedActionSummary(myPlannedAction)}
                   </span>
                 </div>
+                <button
+                  onClick={handleCancelPlan}
+                  className="shrink-0 ml-1 text-amber-400/70 hover:text-amber-300 transition-colors leading-none"
+                  aria-label="Cancel harvest plan"
+                  title="Cancel plan"
+                >
+                  ×
+                </button>
               </div>
             </motion.div>
           )}
