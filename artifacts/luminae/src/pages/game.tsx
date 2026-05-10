@@ -1828,12 +1828,12 @@ export default function GameBoard() {
         const parts = (CRYSTALS as string[])
           .filter(c => c !== 'flux' && (crystals[c] ?? 0) > 0)
           .map(c => GEM_META[c as GemKey]?.shortName ?? c);
-        return parts.length > 0 ? `Harvest ${parts.join(', ')}` : 'Harvest affinities';
+        return parts.length > 0 ? `Harness ${parts.join(', ')}` : 'Harness affinities';
       }
       case 'take_two_crystals':
         return action.crystal
-          ? `Harvest 2 ${GEM_META[action.crystal as GemKey]?.shortName ?? action.crystal}`
-          : 'Harvest 2 affinities';
+          ? `Harness 2 ${GEM_META[action.crystal as GemKey]?.shortName ?? action.crystal}`
+          : 'Harness 2 affinities';
       case 'toggle_luminary_affinity':
         return 'Toggle Luminary affinity';
       default:
@@ -2034,7 +2034,7 @@ export default function GameBoard() {
             {([
               { mode: 'printed' as CostMode, label: 'Printed', title: 'Show original printed cost' },
               { mode: 'after_bonuses' as CostMode, label: 'Bonuses', title: 'Cost after your permanent bonuses' },
-              { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harvest selection' },
+              { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harness selection' },
             ]).map(({ mode, label, title }) => (
               <button
                 key={mode}
@@ -2340,7 +2340,7 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        Plan Harvest
+                        Plan Harness
                       </Button>
                     ) : null}
                   </div>

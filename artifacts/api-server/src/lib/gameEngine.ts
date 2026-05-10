@@ -870,7 +870,7 @@ export function applyAction(
         return { success: false, error: "Must be different affinities" };
       for (const c of colors) {
         if ((selected[c] ?? 0) !== 1)
-          return { success: false, error: "Harvest exactly 1 of each affinity" };
+          return { success: false, error: "Harness exactly 1 of each affinity" };
         if (state.crystalBank[c] < 1)
           return { success: false, error: `No ${COLOR_LABEL[c]} available` };
       }
@@ -891,7 +891,7 @@ export function applyAction(
       if (!color || !CRYSTAL_COLORS.includes(color))
         return { success: false, error: "Invalid affinity" };
       if (state.crystalBank[color] < 4)
-        return { success: false, error: "Need at least 4 in the well to harvest 2" };
+        return { success: false, error: "Need at least 4 in the well to harness 2" };
       const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
       if (totalHeld + 2 > 10)
         return { success: false, error: "Would exceed 10 affinity limit" };
