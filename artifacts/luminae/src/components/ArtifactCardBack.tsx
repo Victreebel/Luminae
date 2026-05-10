@@ -543,6 +543,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const INNER_R = 4.8;
   const OUTER_R = 7.5;
 
+  // Secondary star systems — each main civilization controls additional systems
+  // at further distances, branching outward from the central hub axis
+  const satellites: Array<{ cx: number; cy: number; col: string; parentIdx: number }> = [
+    { cx: 19, cy: 13, col: R, parentIdx: 0 },  // Radiance — upper-left branch
+    { cx: 51, cy: 13, col: R, parentIdx: 0 },  // Radiance — upper-right branch
+    { cx: 63, cy: 37, col: C, parentIdx: 1 },  // Continuum — far-right branch
+    { cx: 59, cy: 81, col: V, parentIdx: 2 },  // Verdance — lower-right branch
+    { cx: 11, cy: 81, col: F, parentIdx: 3 },  // Flare — lower-left branch
+    { cx:  7, cy: 37, col: A, parentIdx: 4 },  // Abyss — far-left branch
+  ];
+
   return (
     <svg
       viewBox="0 0 70 100"
@@ -590,19 +601,25 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <feGaussianBlur stdDeviation="3.0" />
         </filter>
 
-        {/* Singularity — black hole */}
+        {/* Singularity — black hole: neutral warm-to-white, no faction colors */}
         <radialGradient id={`${id}-accglow`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#ff9030" stopOpacity="0.95" />
-          <stop offset="45%"  stopColor="#ff5010" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#ff2000" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#ffe8b0" stopOpacity="0.90" />
+          <stop offset="40%"  stopColor="#ffb050" stopOpacity="0.38" />
+          <stop offset="100%" stopColor="#ff8020" stopOpacity="0"    />
         </radialGradient>
+        {/* Accretion disk: white-hot inner → warm cream → pale amber → transparent */}
         <linearGradient id={`${id}-disk`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#FFC43D" stopOpacity="0"   />
-          <stop offset="20%"  stopColor="#FFE08A" stopOpacity="0.85" />
+          <stop offset="0%"   stopColor="#ffe4a0" stopOpacity="0"    />
+          <stop offset="18%"  stopColor="#fff4d0" stopOpacity="0.80" />
+          <stop offset="40%"  stopColor="#fffcf0" stopOpacity="0.96" />
           <stop offset="50%"  stopColor="#ffffff"  stopOpacity="1"   />
-          <stop offset="80%"  stopColor="#FFE08A"  stopOpacity="0.85" />
-          <stop offset="100%" stopColor="#FFC43D"  stopOpacity="0"   />
+          <stop offset="60%"  stopColor="#fffcf0"  stopOpacity="0.96"/>
+          <stop offset="82%"  stopColor="#fff4d0"  stopOpacity="0.80"/>
+          <stop offset="100%" stopColor="#ffe4a0"  stopOpacity="0"   />
         </linearGradient>
+        <filter id={`${id}-satbranchglow`} x="-400%" y="-400%" width="900%" height="900%">
+          <feGaussianBlur stdDeviation="1.4" />
+        </filter>
         <filter id={`${id}-bhblur`} x="-200%" y="-200%" width="500%" height="500%">
           <feGaussianBlur stdDeviation="1.6" />
         </filter>
@@ -696,6 +713,63 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           strokeDasharray="2.2 2" />
       ))}
 
+      {/* Branch arms — thin dashed lines connecting main systems to their satellites */}
+      {satellites.map(({ cx, cy, col, parentIdx }, i) => (
+        <line key={i}
+          x1={systems[parentIdx].cx} y1={systems[parentIdx].cy}
+          x2={cx} y2={cy}
+          stroke={col} strokeWidth="0.24" strokeOpacity="0.30"
+          strokeDasharray="1.8 1.8" />
+      ))}
+
+      {/* Secondary star systems — smaller Dyson swarms at branch tips */}
+      {satellites.map(({ cx, cy, col }, i) => {
+        const SAT_INNER = 2.8;
+        const SAT_OUTER = 4.2;
+        const tilt = 28 + i * 19;  // unique tilt per satellite
+        return (
+          <g key={i}>
+            {/* Corona bloom */}
+            <circle cx={cx} cy={cy} r="3.2"
+              fill={col} opacity="0.06"
+              filter={`url(#${id}-satbranchglow)`} />
+            {/* Inclined outer ring — Dyson swarm at tilt */}
+            <ellipse cx={cx} cy={cy} rx={SAT_OUTER} ry={SAT_OUTER * 0.38}
+              fill="none" stroke={col}
+              strokeWidth="0.22" strokeOpacity="0.28"
+              strokeDasharray="1.4 1.8"
+              transform={`rotate(${tilt} ${cx} ${cy})`} />
+            {/* Inner ring */}
+            <circle cx={cx} cy={cy} r={SAT_INNER}
+              fill="none" stroke={col}
+              strokeWidth="0.18" strokeOpacity="0.20"
+              strokeDasharray="1.0 1.2" />
+            {/* Satellite dots — 8 on outer ring */}
+            {Array.from({ length: 8 }, (_, j) => {
+              const ang = (j / 8) * 360 + i * 23;
+              const [px, py] = pt(cx, cy, SAT_OUTER, ang);
+              return (
+                <circle key={j} cx={px} cy={py}
+                  r={j % 3 === 0 ? 0.46 : 0.30}
+                  fill={col} opacity={j % 3 === 0 ? 0.80 : 0.52} />
+              );
+            })}
+            {/* Star bloom */}
+            <circle cx={cx} cy={cy} r="2.2"
+              fill={`url(#${id}-sg${satellites[i].parentIdx})`}
+              filter={`url(#${id}-satbranchglow)`} opacity="0.44" />
+            {/* Star core */}
+            <circle cx={cx} cy={cy} r="1.1"
+              fill={`url(#${id}-sg${satellites[i].parentIdx})`} />
+            {/* Mini cross-flare */}
+            <line x1={cx - 2} y1={cy} x2={cx + 2} y2={cy}
+              stroke="#fff8e0" strokeWidth="0.24" strokeOpacity="0.42" />
+            <line x1={cx} y1={cy - 2} x2={cx} y2={cy + 2}
+              stroke="#fff8e0" strokeWidth="0.24" strokeOpacity="0.38" />
+          </g>
+        );
+      })}
+
       {/* Clockwise spiral arms — energy from each system spirals into the singularity */}
       {([
         `M 35 31 C 53 36, 48 48, 35 52`,
@@ -733,10 +807,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
             {/* Dashed guide rings */}
             <circle cx={cx} cy={cy} r={INNER_R}
               fill="none" stroke={col} strokeWidth="0.2"
-              strokeOpacity="0.16" strokeDasharray="1 1.3" />
+              strokeOpacity="0.18" strokeDasharray="1 1.3" />
+            {/* Outer ring — flat equatorial orbit */}
             <circle cx={cx} cy={cy} r={OUTER_R}
-              fill="none" stroke={GOLD3} strokeWidth="0.18"
-              strokeOpacity="0.22" strokeDasharray="1.5 2" />
+              fill="none" stroke={col} strokeWidth="0.18"
+              strokeOpacity="0.18" strokeDasharray="1.5 2" />
+            {/* Inclined Dyson swarm ring — echoes T2 orbital aesthetic */}
+            <ellipse cx={cx} cy={cy} rx={OUTER_R * 1.08} ry={OUTER_R * 0.38}
+              fill="none" stroke={col}
+              strokeWidth="0.18" strokeOpacity="0.22"
+              strokeDasharray="1.3 1.8"
+              transform={`rotate(${pOff * 0.6} ${cx} ${cy})`} />
 
             {/* Outer swarm — 16 independent satellite particles */}
             {Array.from({ length: 16 }, (_, i) => {
