@@ -351,6 +351,14 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const shell1 = genShell(23, 3.0,  0);            // mid shell
   const shell2 = genShell(16, 2.4, 36);            // inner shell,  36° sector shift
 
+  // Merge all shells and sort globally by z so near-hemisphere outer cells
+  // correctly render in front of inner shells (not buried beneath them).
+  const allCells = [
+    ...shell3.map(c => ({ ...c, sn: 3 as const })),
+    ...shell1.map(c => ({ ...c, sn: 1 as const })),
+    ...shell2.map(c => ({ ...c, sn: 2 as const })),
+  ].sort((a, b) => a.z - b.z);
+
   return (
     <svg
       viewBox="0 0 70 100"
@@ -421,19 +429,46 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Outermost Dyson hex shell — opaque panels with star-lighting ── */}
-      {shell3.map(({ verts, col, z, solid, cx, cy }, i) => {
+      {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
+      {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
         const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
-        // Lighting: how far this panel is from the star (0=at star, 1=max distance)
+
+        // ── Shell 1 (mid) ──────────────────────────────────────────────────
+        if (sn === 1) return (
+          <g key={i}>
+            <polygon points={ptStr}
+              fill={solid ? col : 'none'}
+              fillOpacity={solid ? 0.28 + z * 0.38 : 0}
+              stroke={col} strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.10" fill={col} opacity={0.28 + z * 0.48} />
+            ))}
+          </g>
+        );
+
+        // ── Shell 2 (inner) ────────────────────────────────────────────────
+        if (sn === 2) return (
+          <g key={i}>
+            <polygon points={ptStr}
+              fill={solid ? col : 'none'}
+              fillOpacity={solid ? 0.10 + z * 0.15 : 0}
+              stroke={col} strokeWidth="0.09" strokeOpacity={0.13 + z * 0.24} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.08" fill={col} opacity={0.20 + z * 0.36} />
+            ))}
+          </g>
+        );
+
+        // ── Shell 3 (outer) — opaque panels with star-lighting ─────────────
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const lightFactor = Math.max(0, 1 - dist / 32) * (0.25 + z * 0.75);
-        // Specular spot: offset panel center toward the star by 35% of hex radius
         const nx = dist > 0 ? dx / dist : 0;
         const ny = dist > 0 ? dy / dist : 0;
-        const hlx = cx + nx * 1.26;   // 3.6 * 0.35
-        const hly = cy + ny * 1.26;
         const base = PANEL_BASE[col] ?? '#0c0810';
+
         if (!solid) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
@@ -444,7 +479,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             ))}
           </g>
         );
-        // Per-edge rim lighting: outward normal of each edge vs. star direction
+
         const edgeLit = Array.from({ length: 6 }, (_, k) => {
           const [x1, y1] = verts[k];
           const [x2, y2] = verts[(k + 1) % 6];
@@ -454,61 +489,23 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           const dot = (emx / el) * nx + (emy / el) * ny;
           return { x1, y1, x2: x2, y2: y2, dot };
         });
+
         return (
           <g key={i}>
-            {/* Opaque dark absorber base */}
             <polygon points={ptStr} fill={base} fillOpacity="0.94" stroke="none" />
-            {/* Affinity colour tint — stronger near the star */}
             <polygon points={ptStr} fill={col}
               fillOpacity={0.10 + lightFactor * 0.22} stroke="none" />
-            {/* Metallic panel frame — always-on border giving structure and punch */}
             <polygon points={ptStr} fill="none"
               stroke="#d4b060" strokeWidth="0.30" strokeOpacity={0.35 + z * 0.40} />
-            {/* Lit-edge glow — star-facing edges get warm highlight */}
             {edgeLit.map(({ x1, y1, x2, y2, dot }, k) => dot > 0.1 && (
               <line key={k} x1={x1.toFixed(2)} y1={y1.toFixed(2)}
                 x2={x2.toFixed(2)} y2={y2.toFixed(2)}
                 stroke="#fffae0" strokeWidth="0.50"
-                strokeOpacity={dot * lightFactor * 0.95}
-              />
+                strokeOpacity={dot * lightFactor * 0.95} />
             ))}
           </g>
         );
       })}
-
-      {/* ── Mid Dyson hex shell — medium cells, 0° sector start ── */}
-      {shell1.map(({ verts, col, z, solid }, i) => (
-        <g key={i}>
-          <polygon
-            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
-            fill={solid ? col : 'none'}
-            fillOpacity={solid ? 0.28 + z * 0.38 : 0}
-            stroke={col}
-            strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32}
-          />
-          {verts.map(([vx, vy], k) => (
-            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-              r="0.10" fill={col} opacity={0.28 + z * 0.48} />
-          ))}
-        </g>
-      ))}
-
-      {/* ── Inner Dyson hex shell — smaller cells, 36° sector phase shift ── */}
-      {shell2.map(({ verts, col, z, solid }, i) => (
-        <g key={i}>
-          <polygon
-            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
-            fill={solid ? col : 'none'}
-            fillOpacity={solid ? 0.10 + z * 0.15 : 0}
-            stroke={col}
-            strokeWidth="0.09" strokeOpacity={0.13 + z * 0.24}
-          />
-          {verts.map(([vx, vy], k) => (
-            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
-              r="0.08" fill={col} opacity={0.20 + z * 0.36} />
-          ))}
-        </g>
-      ))}
 
       {/* ── Extended corona ── */}
       <circle cx={CX} cy={CY} r="17" fill={`url(#${id}-corona)`} />
