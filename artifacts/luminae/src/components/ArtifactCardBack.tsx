@@ -404,11 +404,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             strokeWidth="0.18" strokeOpacity="0.18"
             strokeDasharray="1.8 2.2" />
 
-          {/* satellite particles — all 5 affinity colors evenly distributed */}
+          {/* satellite particles — 5 affinity colors in equal arcs (clustered) */}
           {Array.from({ length: n }, (_, i) => {
             const ang   = (i / n) * 360 + phase + Math.sin(i * 1.7) * 9;
             const rad   = r + Math.sin(i * 2.3) * 0.85;
-            const col   = SWARM_COLORS[i % 5];
+            const col   = SWARM_COLORS[Math.floor(i * 5 / n)];
             const sz    = ri === 0 ? 0.55 : ri === 1 ? 0.50 : 0.44;
             const op    = 0.52 + (i % 4) * 0.1;
             const [px, py] = pt(CX, CY, rad, ang);
