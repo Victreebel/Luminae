@@ -418,7 +418,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           <polygon
             points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
             fill={solid ? col : 'none'}
-            fillOpacity={solid ? 0.12 + z * 0.18 : 0}
+            fillOpacity={solid ? 0.28 + z * 0.38 : 0}
             stroke={col}
             strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32}
           />
