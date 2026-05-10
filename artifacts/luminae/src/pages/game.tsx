@@ -2375,6 +2375,37 @@ export default function GameBoard() {
             </p>
           </div>
         )}
+        {/* Plan queued badge — shown on the affinity bank when a harvest is waiting */}
+        <AnimatePresence>
+          {myPlannedAction && !crystalQueueActive &&
+           (myPlannedAction.type === 'take_three_crystals' || myPlannedAction.type === 'take_two_crystals') && (
+            <motion.div
+              key="harvest-plan-badge"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="mx-3 mb-3 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-950/50 border border-amber-500/40 shadow-[0_0_8px_rgba(251,191,36,0.15)]">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  {myPlannedAction.type === 'take_three_crystals'
+                    ? (CRYSTALS as string[])
+                        .filter(c => c !== 'flux' && (myPlannedAction.crystals?.[c] ?? 0) > 0)
+                        .map(c => <MiniGem key={c} color={c as GemKey} size={12} />)
+                    : myPlannedAction.crystal
+                      ? <MiniGem color={myPlannedAction.crystal as GemKey} size={12} />
+                      : null
+                  }
+                  <span className="text-[10px] text-amber-300/80 truncate ml-0.5">
+                    {getPlannedActionSummary(myPlannedAction)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
 
