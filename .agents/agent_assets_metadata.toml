@@ -706,7 +706,7 @@ title = "lum_oracle panel tri-affinity crystal"
 id = "zMQhgn_IwHA8ejgEbe41_"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
 type = "image"
-title = "generated_image"
+title = "lum_oracle entity"
 
 [[generated]]
 id = "4RJJCttnZbJi8zCxf3q4U"
@@ -1391,3 +1391,9 @@ id = "Gq3p9Rr22pB_cWO8NjqFV"
 uri = "file://luminae-card-reference.md"
 type = "text"
 title = "Luminae — Complete Card Reference"
+
+[[outputs]]
+id = "v7gTqkjuNFL7DqfB3IOcm"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_oracle/entity.png"
+type = "image"
+title = "Cosmic Oracle — New Entity"
