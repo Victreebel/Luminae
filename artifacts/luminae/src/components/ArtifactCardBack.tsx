@@ -629,6 +629,13 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         <filter id={`${id}-galblur`} x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="2.2" />
         </filter>
+        {/* Clip masks for accretion disk z-split: back half hidden behind BH, front half drawn over it */}
+        <clipPath id={`${id}-disk-back`}>
+          <rect x="0" y="0" width="70" height="52.5" />
+        </clipPath>
+        <clipPath id={`${id}-disk-front`}>
+          <rect x="0" y="52.5" width="70" height="47.5" />
+        </clipPath>
       </defs>
 
       {/* Background */}
@@ -877,28 +884,45 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         );
       })}
 
-      {/* Singularity — black hole event horizon + accretion disk */}
-      {/* Relativistic jets */}
+      {/* Singularity — black hole + accretion disk rendered in z-order layers */}
+
+      {/* Relativistic jets — drawn first so both disk halves overlap them */}
       <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 10}
         stroke="#90d8ff" strokeWidth="0.7" strokeOpacity="0.22" strokeLinecap="round" />
       <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
         stroke="#90d8ff" strokeWidth="0.7" strokeOpacity="0.14" strokeLinecap="round" />
-      {/* Accretion disk — tilted ellipses, warm-to-blue gradient */}
+
+      {/* ── Layer 1: Accretion disk BACK half (far side — goes behind black hole) ── */}
       <ellipse cx={HUB_X} cy={HUB_Y + 0.5} rx="9" ry="2.4"
-        fill={`url(#${id}-disk)`} opacity="0.62"
-        filter={`url(#${id}-diskblur)`} />
+        fill={`url(#${id}-disk)`} opacity="0.55"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-back)`} />
       <ellipse cx={HUB_X} cy={HUB_Y + 0.3} rx="5.5" ry="1.4"
-        fill={`url(#${id}-disk)`} opacity="0.88"
-        filter={`url(#${id}-diskblur)`} />
-      {/* Photon sphere glow */}
+        fill={`url(#${id}-disk)`} opacity="0.78"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-back)`} />
+
+      {/* ── Layer 2: Event horizon ── */}
+      {/* Photon sphere outer glow */}
       <circle cx={HUB_X} cy={HUB_Y} r="4.0"
         fill="none" stroke="#ffffff" strokeWidth="0.7"
         strokeOpacity="0.5" filter={`url(#${id}-bhblur)`} />
-      {/* Event horizon — pure black */}
+      {/* Pure black event horizon */}
       <circle cx={HUB_X} cy={HUB_Y} r="3.3" fill="#000000" />
-      {/* Bright photon ring edge */}
+      {/* Bright photon ring */}
       <circle cx={HUB_X} cy={HUB_Y} r="3.5"
         fill="none" stroke="#ffffff" strokeWidth="0.38" strokeOpacity="0.88" />
+
+      {/* ── Layer 3: Accretion disk FRONT half (near side — crosses in front of black hole) ── */}
+      {/* Slightly brighter to read as "closer" */}
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.5} rx="9" ry="2.4"
+        fill={`url(#${id}-disk)`} opacity="0.72"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-front)`} />
+      <ellipse cx={HUB_X} cy={HUB_Y + 0.3} rx="5.5" ry="1.4"
+        fill={`url(#${id}-disk)`} opacity="0.96"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-front)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
