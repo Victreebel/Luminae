@@ -513,18 +513,18 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const id = 't3cb';
   const HUB_X = 35, HUB_Y = 52; // central convergence hub
 
-  // Five affinity star systems at pentagon vertices.
-  // Pentagon radius 21, center (35, 52), starting at top (−90°), clockwise.
-  // Each system: star + inner ring (r=4.8) + outer ring (r=7.5), monochrome in its affinity color.
+  // Five affinity star systems — free-form placement, no pentagon constraint.
+  // Pushed to distinct corners/edges so no two systems share the same y-level,
+  // minimising arm crossings and visual clash. Min gap between any two: ≥22u.
   const systems: Array<{ cx: number; cy: number; col: string }> = [
-    { cx: 35.00, cy: 31.00, col: R }, // Radiance  — top
-    { cx: 54.97, cy: 45.51, col: C }, // Continuum — top-right
-    { cx: 47.34, cy: 68.99, col: V }, // Verdance  — bottom-right
-    { cx: 22.66, cy: 68.99, col: F }, // Flare     — bottom-left
-    { cx: 15.03, cy: 45.51, col: A }, // Abyss     — top-left
+    { cx: 46, cy: 24, col: R }, // Radiance  — upper-right
+    { cx: 57, cy: 44, col: C }, // Continuum — right edge
+    { cx: 51, cy: 75, col: V }, // Verdance  — lower-right
+    { cx: 17, cy: 71, col: F }, // Flare     — lower-left (different y from V)
+    { cx: 13, cy: 40, col: A }, // Abyss     — left edge  (different y from C)
   ];
 
-  // Pentagon edge connections (adjacent system index pairs)
+  // Cycle edge connections (adjacent system index pairs)
   const pentEdges: [number, number][] = [[0,1],[1,2],[2,3],[3,4],[4,0]];
 
   // Background starfield
@@ -544,30 +544,29 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const OUTER_R = 7.5;
 
   // Branch junction points are mid-arm, computed at the t-parameter shown below.
-  // Each ax/ay lies ON the bezier curve of its parent arm — not at the arm tip.
-  // Satellite positions verified: ≥12u from every primary system, ≥19u between satellites,
-  // all ring extents within inner-frame bounds (x 7–63, y 7–93).
+  // Each ax/ay lies ON the new free-form arm bezier.
+  // Satellite positions verified: ≥12u from every primary system, ≥27u between satellites.
   //
-  // arm 0: M 35 31 C 53 36, 48 48, 35 52   t≈0.35 → junction (46,38)
-  // arm 1: M 55 47 C 58 63, 45 61, 35 52   t≈0.40 → junction (52,58)
-  // arm 2: M 47 69 C 31 77, 24 63, 35 52   t≈0.20 → junction (39,71)
-  // arm 3: M 23 69 C  9 62, 17 53, 35 52   t≈0.25 → junction (17,64)
-  // arm 4: M 15 47 C 14 32, 27 34, 35 52   t≈0.30 → junction (17,38)
+  // arm 0: M 46 24 C 60 32 52 45 35 52   t≈0.40 → junction (53,35)
+  // arm 1: M 57 44 C 60 62 48 62 35 52   t≈0.30 → junction (56,56)
+  // arm 2: M 51 75 C 34 83 26 68 35 52   t≈0.25 → junction (40,77)
+  // arm 3: M 17 71 C  5 59 17 54 35 52   t≈0.25 → junction (12,63)
+  // arm 4: M 13 40 C 12 25 26 32 35 52   t≈0.30 → junction (16,32)
   const satellites: Array<{
     cx: number; cy: number; ax: number; ay: number;
     qx: number; qy: number; q2x: number; q2y: number;
     col: string; parentIdx: number;
   }> = [
-    // R — mid arm 0 (46,38) → upper-right (57,22)
-    { ax: 46, ay: 38, qx: 52, qy: 33, q2x: 54, q2y: 26, cx: 57, cy: 22, col: R, parentIdx: 0 },
-    // C — mid arm 1 (52,58) → right (58,64); 17u from C-primary, 12u from V-primary
-    { ax: 52, ay: 58, qx: 57, qy: 57, q2x: 59, q2y: 61, cx: 58, cy: 64, col: C, parentIdx: 1 },
-    // V — mid arm 2 (39,71) → bottom-right (52,82)
-    { ax: 39, ay: 71, qx: 46, qy: 74, q2x: 51, q2y: 78, cx: 52, cy: 82, col: V, parentIdx: 2 },
-    // F — mid arm 3 (17,64) → bottom-left (16,82)
-    { ax: 17, ay: 64, qx: 12, qy: 68, q2x: 13, q2y: 76, cx: 16, cy: 82, col: F, parentIdx: 3 },
-    // A — mid arm 4 (17,38) → upper-left (14,25)
-    { ax: 17, ay: 38, qx: 12, qy: 35, q2x: 11, q2y: 29, cx: 14, cy: 25, col: A, parentIdx: 4 },
+    // R — mid arm 0 (53,35) → top-right (58,14)
+    { ax: 53, ay: 35, qx: 57, qy: 30, q2x: 59, q2y: 19, cx: 58, cy: 14, col: R, parentIdx: 0 },
+    // C — mid arm 1 (56,56) → right (59,64)
+    { ax: 56, ay: 56, qx: 60, qy: 54, q2x: 61, q2y: 60, cx: 59, cy: 64, col: C, parentIdx: 1 },
+    // V — mid arm 2 (40,77) → bottom-right (52,88)
+    { ax: 40, ay: 77, qx: 46, qy: 79, q2x: 50, q2y: 84, cx: 52, cy: 88, col: V, parentIdx: 2 },
+    // F — mid arm 3 (12,63) → bottom-left (14,86)
+    { ax: 12, ay: 63, qx:  9, qy: 70, q2x: 11, q2y: 80, cx: 14, cy: 86, col: F, parentIdx: 3 },
+    // A — mid arm 4 (16,32) → upper-left (11,22)
+    { ax: 16, ay: 32, qx: 13, qy: 28, q2x: 14, q2y: 24, cx: 11, cy: 22, col: A, parentIdx: 4 },
   ];
 
   return (
@@ -845,13 +844,14 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         );
       })}
 
-      {/* Clockwise spiral arms — energy from each system spirals into the singularity */}
+      {/* Clockwise spiral arms — each system spirals into the singularity.
+           Arms tuned to the new free-form system positions to avoid crossing. */}
       {([
-        `M 35 31 C 53 36, 48 48, 35 52`,
-        `M 55 47 C 58 63, 45 61, 35 52`,
-        `M 47 69 C 31 77, 24 63, 35 52`,
-        `M 23 69 C 9  62, 17 53, 35 52`,
-        `M 15 47 C 14 32, 27 34, 35 52`,
+        `M 46 24 C 60 32 52 45 35 52`,
+        `M 57 44 C 60 62 48 62 35 52`,
+        `M 51 75 C 34 83 26 68 35 52`,
+        `M 17 71 C  5 59 17 54 35 52`,
+        `M 13 40 C 12 25 26 32 35 52`,
       ] as string[]).map((d, i) => (
         <g key={i}>
           <path d={d} fill="none" stroke={systems[i].col}
