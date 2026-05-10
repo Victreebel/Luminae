@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAccount } from "@/contexts/AccountContext";
@@ -83,7 +84,7 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
 
   return (
     <>
-      {/* Bell button */}
+      {/* Trigger button — stays in its natural DOM position inside the header */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -98,102 +99,109 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
         )}
       </button>
 
-      {/* Popover */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40"
-              onClick={() => setIsOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -8 }}
-              transition={{ duration: 0.15 }}
-              className="fixed right-4 top-16 z-[9999] w-80 bg-card border border-border/60 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="flex items-center justify-between p-4 border-b border-border/40">
-                <h3 className="font-bold flex items-center gap-2">
-                  <Swords className="h-4 w-4 text-primary" />
-                  Challenges
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-lg hover:bg-secondary transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+      {/* Popover rendered via portal directly on document.body so it escapes any
+          ancestor stacking context created by backdrop-filter / z-index on the nav */}
+      {createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <>
+              {/* Backdrop — closes on click outside */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[9998]"
+                onClick={() => setIsOpen(false)}
+              />
 
-              <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
-                {challenges.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No pending challenges
-                  </p>
-                ) : (
-                  challenges.map((c) => {
-                    const expiresIn = Math.max(
-                      0,
-                      Math.round((new Date(c.expiresAt).getTime() - Date.now()) / 60000),
-                    );
-                    return (
-                      <div
-                        key={c.id}
-                        className="rounded-xl border border-border/40 bg-secondary/30 p-3"
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold shrink-0">
-                            {c.challengerUsername[0]?.toUpperCase()}
+              {/* Panel */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -8 }}
+                transition={{ duration: 0.15 }}
+                className="fixed right-4 top-16 z-[9999] w-80 bg-card border border-border/60 rounded-2xl shadow-2xl overflow-hidden"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-border/40">
+                  <h3 className="font-bold flex items-center gap-2">
+                    <Swords className="h-4 w-4 text-primary" />
+                    Challenges
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="p-1 rounded-lg hover:bg-secondary transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
+                  {challenges.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">
+                      No pending challenges
+                    </p>
+                  ) : (
+                    challenges.map((c) => {
+                      const expiresIn = Math.max(
+                        0,
+                        Math.round((new Date(c.expiresAt).getTime() - Date.now()) / 60000),
+                      );
+                      return (
+                        <div
+                          key={c.id}
+                          className="rounded-xl border border-border/40 bg-secondary/30 p-3"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-bold shrink-0">
+                              {c.challengerUsername[0]?.toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-sm">{c.challengerUsername}</div>
+                              <div className="text-xs text-muted-foreground">
+                                Challenges you to a game
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Room: <span className="font-mono">{c.inviteCode}</span> · Expires in {expiresIn}m
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm">{c.challengerUsername}</div>
-                            <div className="text-xs text-muted-foreground">
-                              Challenges you to a game
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              Room: <span className="font-mono">{c.inviteCode}</span> · Expires in {expiresIn}m
-                            </div>
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              size="sm"
+                              className="flex-1 h-8 text-xs rounded-lg gap-1"
+                              onClick={() => handleRespond(c, "accept")}
+                              disabled={!!respondingId}
+                            >
+                              {respondingId === c.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                              Accept
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="flex-1 h-8 text-xs rounded-lg gap-1"
+                              onClick={() => handleRespond(c, "decline")}
+                              disabled={!!respondingId}
+                            >
+                              <X className="h-3 w-3" />
+                              Decline
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex gap-2 mt-3">
-                          <Button
-                            size="sm"
-                            className="flex-1 h-8 text-xs rounded-lg gap-1"
-                            onClick={() => handleRespond(c, "accept")}
-                            disabled={!!respondingId}
-                          >
-                            {respondingId === c.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Check className="h-3 w-3" />
-                            )}
-                            Accept
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="flex-1 h-8 text-xs rounded-lg gap-1"
-                            onClick={() => handleRespond(c, "decline")}
-                            disabled={!!respondingId}
-                          >
-                            <X className="h-3 w-3" />
-                            Decline
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </>
   );
 }
