@@ -285,27 +285,27 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
   const CX = 35, CY = 54;
 
-  // Planet angles deliberately staggered — no two on the same radial line
+  // Each ring: planet orbs at fixed angles + 5 equal-mass affinity swarm bars
   const SC = [F, C, V, A, R]; // swarm colours — equal count per bar per ring
   const ringDefs = [
     {
       r: 10,
-      planets: [{ ang: -70, col: F, pr: 2.0, gi: 0 }],
-      swarmAngs: [-10, 50, 110, 170, 230],
+      planets: [{ ang: -90, col: F, pr: 2.0, gi: 0 }],
+      swarmAngs: [-30, 30, 90, 150, 210],
     },
     {
       r: 16,
       planets: [
-        { ang: -130, col: C, pr: 1.8, gi: 1 },
-        { ang:  -10, col: V, pr: 1.8, gi: 2 },
-        { ang:  120, col: R, pr: 1.8, gi: 3 },
+        { ang: -90, col: C, pr: 1.8, gi: 1 },
+        { ang:   0, col: V, pr: 1.8, gi: 2 },
+        { ang:  90, col: R, pr: 1.8, gi: 3 },
       ],
-      swarmAngs: [-80, -45, 30, 75, 175],
+      swarmAngs: [-45, 45, 135, 180, 225],
     },
     {
       r: 22,
-      planets: [{ ang: 30, col: A, pr: 2.2, gi: 4 }],
-      swarmAngs: [90, 150, 210, 270, 330],
+      planets: [{ ang: -90, col: A, pr: 2.2, gi: 4 }],
+      swarmAngs: [-30, 30, 90, 150, 210],
     },
   ];
 
@@ -374,12 +374,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           <stop offset="50%"  stopColor="#6010a0" />
           <stop offset="100%" stopColor="#100418" />
         </radialGradient>
-        {/* Clip paths — fixed positions matching pre-computed planet coords */}
-        <clipPath id={`${id}-pclip0`}><circle cx="38.42" cy="44.60" r="2.1" /></clipPath>
-        <clipPath id={`${id}-pclip1`}><circle cx="24.72" cy="41.74" r="1.9" /></clipPath>
-        <clipPath id={`${id}-pclip2`}><circle cx="50.75" cy="51.22" r="1.9" /></clipPath>
-        <clipPath id={`${id}-pclip3`}><circle cx="27"    cy="67.86" r="1.9" /></clipPath>
-        <clipPath id={`${id}-pclip4`}><circle cx="54.05" cy="65"    r="2.3" /></clipPath>
       </defs>
 
       {/* ── Background ── */}
@@ -481,40 +475,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
                 {/* planet body */}
                 <circle cx={px} cy={py} r={pl.pr}
                   fill={`url(#${id}-pg${pl.gi})`} />
-                {/* surface texture — clipped to planet disc */}
-                <g clipPath={`url(#${id}-pclip${pl.gi})`}>
-                  {pl.gi === 0 && <>
-                    {/* Flare — fire bands + dark storm */}
-                    <ellipse cx={px} cy={py + 0.45} rx={pl.pr} ry={0.40} fill="#ff2800" opacity="0.38" />
-                    <ellipse cx={px} cy={py - 0.40} rx={pl.pr} ry={0.32} fill="#ff6820" opacity="0.22" />
-                    <circle cx={px + 0.55} cy={py + 0.25} r={0.48} fill="#1a0000" opacity="0.60" />
-                  </>}
-                  {pl.gi === 1 && <>
-                    {/* Continuum — deep ocean, faint current lines */}
-                    <ellipse cx={px} cy={py + 0.25} rx={pl.pr} ry={0.45} fill="#3070d8" opacity="0.28" />
-                    <ellipse cx={px - 0.2} cy={py - 0.45} rx={pl.pr * 0.65} ry={0.22} fill="#90c8ff" opacity="0.22" />
-                  </>}
-                  {pl.gi === 2 && <>
-                    {/* Verdance — brown land masses on green ocean */}
-                    <circle cx={px - 0.45} cy={py - 0.30} r={0.58} fill="#8b5a2b" opacity="0.58" />
-                    <circle cx={px + 0.50} cy={py + 0.38} r={0.42} fill="#a06830" opacity="0.48" />
-                    <circle cx={px - 0.15} cy={py + 0.55} r={0.30} fill="#7a4e22" opacity="0.40" />
-                  </>}
-                  {pl.gi === 3 && <>
-                    {/* Radiance — ice world, crevasse lines */}
-                    <line x1={px - pl.pr} y1={py - 0.18} x2={px + pl.pr} y2={py + 0.30}
-                      stroke="#b8dcff" strokeWidth="0.20" strokeOpacity="0.58" />
-                    <line x1={px - 0.40} y1={py - pl.pr} x2={px + 0.35} y2={py + pl.pr}
-                      stroke="#90c0ee" strokeWidth="0.15" strokeOpacity="0.48" />
-                    <ellipse cx={px + 0.35} cy={py - 0.42} rx={0.52} ry={0.28}
-                      fill="#d8f0ff" opacity="0.28" />
-                  </>}
-                  {pl.gi === 4 && <>
-                    {/* Abyss — void patches, deep purple voids */}
-                    <circle cx={px - 0.55} cy={py + 0.32} r={0.70} fill="#03000a" opacity="0.65" />
-                    <circle cx={px + 0.62} cy={py - 0.38} r={0.50} fill="#06000e" opacity="0.55" />
-                  </>}
-                </g>
                 {/* atmosphere rim */}
                 <circle cx={px} cy={py} r={pl.pr}
                   fill="none" stroke={pl.col}
