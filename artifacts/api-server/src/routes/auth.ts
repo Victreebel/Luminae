@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gt, inArray, isNull, count } from "drizzle-orm";
+import { eq, and, gt, inArray, isNull, count, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   accountsTable,
   accountSessionsTable,
   playersTable,
   roomsTable,
+  gameStatesTable,
 } from "@workspace/db";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
@@ -230,6 +231,126 @@ router.get("/auth/me/games", accountAuth, async (req: Request, res): Promise<voi
     }));
 
   res.json({ games: activeGames });
+});
+
+// GET /api/auth/me/stats — lifetime stats and recent game history for this account
+router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<void> => {
+  const account = req.account!;
+
+  // Find all finished rooms where this account had a human player
+  const finishedRows = await db
+    .select({
+      player: playersTable,
+      room: roomsTable,
+    })
+    .from(playersTable)
+    .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
+    .where(
+      and(
+        eq(playersTable.accountId, account.id),
+        eq(playersTable.isAi, false),
+        eq(roomsTable.status, "finished"),
+      ),
+    )
+    .orderBy(desc(roomsTable.updatedAt));
+
+  if (finishedRows.length === 0) {
+    res.json({
+      gamesPlayed: 0,
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      avgEminence: 0,
+      recentGames: [],
+    });
+    return;
+  }
+
+  const roomIds = finishedRows.map((r) => r.room.id);
+
+  // Load game states and human player counts for all finished rooms in parallel
+  const [gameStateRows, humanPlayerCounts] = await Promise.all([
+    db
+      .select()
+      .from(gameStatesTable)
+      .where(inArray(gameStatesTable.roomId, roomIds)),
+    db
+      .select({ roomId: playersTable.roomId, count: count() })
+      .from(playersTable)
+      .where(
+        and(
+          inArray(playersTable.roomId, roomIds),
+          eq(playersTable.isAi, false),
+        ),
+      )
+      .groupBy(playersTable.roomId),
+  ]);
+
+  const gameStateByRoomId = new Map(gameStateRows.map((gs) => [gs.roomId, gs.state as Record<string, unknown>]));
+  const humanCountByRoomId = new Map(humanPlayerCounts.map((r) => [r.roomId, Number(r.count)]));
+
+  // Tally stats
+  let wins = 0;
+  let losses = 0;
+  let ties = 0;
+  let totalEminence = 0;
+
+  interface GameHistoryEntry {
+    roomId: string;
+    inviteCode: string;
+    finishedAt: string;
+    result: "win" | "loss" | "tie";
+    eminenceEarned: number;
+    totalPlayers: number;
+  }
+
+  const recentGames: GameHistoryEntry[] = [];
+
+  for (const row of finishedRows) {
+    const state = gameStateByRoomId.get(row.room.id);
+    if (!state) continue;
+
+    const winnerId = state.winnerId as string | null;
+    const players = (state.players as Array<{ playerId: string; lumens: number }>) ?? [];
+
+    const playerData = players.find((p) => p.playerId === row.player.id);
+    const eminenceEarned = playerData?.lumens ?? 0;
+
+    let result: "win" | "loss" | "tie";
+    if (winnerId === null) {
+      result = "tie";
+      ties++;
+    } else if (winnerId === row.player.id) {
+      result = "win";
+      wins++;
+    } else {
+      result = "loss";
+      losses++;
+    }
+
+    totalEminence += eminenceEarned;
+
+    recentGames.push({
+      roomId: row.room.id,
+      inviteCode: row.room.inviteCode,
+      finishedAt: row.room.updatedAt.toISOString(),
+      result,
+      eminenceEarned,
+      totalPlayers: humanCountByRoomId.get(row.room.id) ?? players.length,
+    });
+  }
+
+  const gamesPlayed = wins + losses + ties;
+  const avgEminence = gamesPlayed > 0 ? totalEminence / gamesPlayed : 0;
+
+  res.json({
+    gamesPlayed,
+    wins,
+    losses,
+    ties,
+    avgEminence: Math.round(avgEminence * 10) / 10,
+    recentGames: recentGames.slice(0, 20),
+  });
 });
 
 export default router;

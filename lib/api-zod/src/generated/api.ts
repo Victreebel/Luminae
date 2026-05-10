@@ -1429,6 +1429,37 @@ export const GetMyGamesResponse = zod.object({
 });
 
 /**
+ * @summary Get lifetime stats and game history for the current account
+ */
+export const GetMyStatsResponse = zod.object({
+  gamesPlayed: zod.number(),
+  wins: zod.number(),
+  losses: zod.number(),
+  ties: zod.number(),
+  avgEminence: zod
+    .number()
+    .describe("Average Eminence earned across all finished games"),
+  recentGames: zod
+    .array(
+      zod.object({
+        roomId: zod.string(),
+        inviteCode: zod.string(),
+        finishedAt: zod
+          .string()
+          .describe("ISO timestamp when the game finished (room updatedAt)"),
+        result: zod.enum(["win", "loss", "tie"]),
+        eminenceEarned: zod
+          .number()
+          .describe("Eminence (lumens) earned by the player in this game"),
+        totalPlayers: zod
+          .number()
+          .describe("Number of human players in the game"),
+      }),
+    )
+    .describe("Most recent finished games, newest first (up to 20)"),
+});
+
+/**
  * @summary List accepted friends with online status
  */
 export const ListFriendsResponse = zod.object({

@@ -37,6 +37,7 @@ import type {
   HostActionBody,
   JoinRoomBody,
   LoginBody,
+  PlayerStatsResponse,
   QuitRoomBody,
   RegisterBody,
   RejoinRoomBody,
@@ -1492,6 +1493,81 @@ export function useGetMyGames<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetMyGamesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get lifetime stats and game history for the current account
+ */
+export const getGetMyStatsUrl = () => {
+  return `/api/auth/me/stats`;
+};
+
+export const getMyStats = async (
+  options?: RequestInit,
+): Promise<PlayerStatsResponse> => {
+  return customFetch<PlayerStatsResponse>(getGetMyStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyStatsQueryKey = () => {
+  return [`/api/auth/me/stats`] as const;
+};
+
+export const getGetMyStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyStats>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyStats>>> = ({
+    signal,
+  }) => getMyStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyStats>>
+>;
+export type GetMyStatsQueryError = ErrorType<void>;
+
+/**
+ * @summary Get lifetime stats and game history for the current account
+ */
+
+export function useGetMyStats<
+  TData = Awaited<ReturnType<typeof getMyStats>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

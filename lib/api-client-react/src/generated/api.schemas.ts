@@ -96,6 +96,38 @@ export interface ActiveGamesResponse {
   games: ActiveGame[];
 }
 
+export type GameHistoryEntryResult =
+  (typeof GameHistoryEntryResult)[keyof typeof GameHistoryEntryResult];
+
+export const GameHistoryEntryResult = {
+  win: "win",
+  loss: "loss",
+  tie: "tie",
+} as const;
+
+export interface GameHistoryEntry {
+  roomId: string;
+  inviteCode: string;
+  /** ISO timestamp when the game finished (room updatedAt) */
+  finishedAt: string;
+  result: GameHistoryEntryResult;
+  /** Eminence (lumens) earned by the player in this game */
+  eminenceEarned: number;
+  /** Number of human players in the game */
+  totalPlayers: number;
+}
+
+export interface PlayerStatsResponse {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  /** Average Eminence earned across all finished games */
+  avgEminence: number;
+  /** Most recent finished games, newest first (up to 20) */
+  recentGames: GameHistoryEntry[];
+}
+
 export interface FriendEntry {
   friendshipId: string;
   accountId: string;

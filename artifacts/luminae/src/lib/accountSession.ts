@@ -189,6 +189,32 @@ export async function apiRespondChallenge(
   return res.json();
 }
 
+export interface GameHistoryEntry {
+  roomId: string;
+  inviteCode: string;
+  finishedAt: string;
+  result: "win" | "loss" | "tie";
+  eminenceEarned: number;
+  totalPlayers: number;
+}
+
+export interface PlayerStats {
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  ties: number;
+  avgEminence: number;
+  recentGames: GameHistoryEntry[];
+}
+
+export async function apiGetMyStats(token: string): Promise<PlayerStats> {
+  const res = await fetch(apiUrl("/auth/me/stats"), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch stats");
+  return res.json();
+}
+
 export async function apiQuitRoom(token: string, roomId: string, sessionToken: string): Promise<void> {
   const res = await fetch(apiUrl(`/rooms/${roomId}/quit`), {
     method: "POST",

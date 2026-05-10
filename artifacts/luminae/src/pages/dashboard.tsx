@@ -3,8 +3,15 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAccount } from "@/contexts/AccountContext";
-import { apiGetMyGames, apiQuitRoom, type ActiveGame } from "@/lib/accountSession";
-import { saveSession, getSession } from "@/lib/session";
+import {
+  apiGetMyGames,
+  apiQuitRoom,
+  apiGetMyStats,
+  type ActiveGame,
+  type PlayerStats,
+  type GameHistoryEntry,
+} from "@/lib/accountSession";
+import { saveSession } from "@/lib/session";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { getGameState } from "@workspace/api-client-react";
@@ -17,6 +24,9 @@ import {
   Clock,
   RotateCcw,
   Trophy,
+  Sword,
+  TrendingUp,
+  ListOrdered,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
@@ -32,38 +42,176 @@ function formatRelative(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function ResultBadge({ result }: { result: GameHistoryEntry["result"] }) {
+  const styles = {
+    win: "bg-green-500/20 text-green-400 border-green-500/30",
+    loss: "bg-red-500/20 text-red-400 border-red-500/30",
+    tie: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  };
+  const labels = { win: "Win", loss: "Loss", tie: "Tie" };
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${styles[result]}`}>
+      {labels[result]}
+    </span>
+  );
+}
+
+function StatsBar({ stats, isLoading }: { stats: PlayerStats | null; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-1">
+            <div className="h-6 w-10 bg-muted/40 rounded animate-pulse" />
+            <div className="h-3 w-12 bg-muted/30 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!stats) return null;
+
+  const winRate = stats.gamesPlayed > 0 ? Math.round((stats.wins / stats.gamesPlayed) * 100) : 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.08 }}
+      className="grid grid-cols-3 gap-3 mb-6"
+    >
+      <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-0.5">
+        <span className="text-2xl font-bold font-serif text-primary">{stats.gamesPlayed}</span>
+        <span className="text-xs text-muted-foreground">Games</span>
+      </div>
+      <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-0.5">
+        <span className="text-2xl font-bold font-serif text-green-400">{winRate}%</span>
+        <span className="text-xs text-muted-foreground">Win Rate</span>
+      </div>
+      <div className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur p-4 flex flex-col items-center gap-0.5">
+        <span className="text-2xl font-bold font-serif text-yellow-300">{stats.avgEminence}</span>
+        <span className="text-xs text-muted-foreground">Avg Eminence</span>
+      </div>
+    </motion.div>
+  );
+}
+
+function HistoryTab({ stats, isLoading }: { stats: PlayerStats | null; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!stats || stats.recentGames.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="rounded-2xl border border-dashed border-border/60 p-8 text-center text-muted-foreground"
+      >
+        <ListOrdered className="h-8 w-8 mx-auto mb-3 opacity-40" />
+        <p className="font-medium">No finished games yet</p>
+        <p className="text-sm mt-1">Complete a game to see your history here.</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {stats.recentGames.map((game, i) => (
+        <motion.div
+          key={game.roomId}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.03 }}
+          className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4 flex items-center gap-3"
+        >
+          <ResultBadge result={game.result} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground">{game.inviteCode}</span>
+              <span className="text-xs text-muted-foreground">·</span>
+              <span className="text-xs text-muted-foreground">
+                {game.totalPlayers} player{game.totalPlayers !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatDate(game.finishedAt)}
+            </div>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-sm font-bold text-yellow-300">{game.eminenceEarned}</span>
+            <span className="text-xs text-muted-foreground">Eminence</span>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+type DashboardTab = "games" | "history";
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { account, token, logout } = useAccount();
   const { toast } = useToast();
 
+  const [activeTab, setActiveTab] = useState<DashboardTab>("games");
   const [games, setGames] = useState<ActiveGame[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingGames, setIsLoadingGames] = useState(true);
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [quittingId, setQuittingId] = useState<string | null>(null);
   const [resumingId, setResumingId] = useState<string | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
 
   const fetchGames = async () => {
     if (!token) return;
-    setIsLoading(true);
+    setIsLoadingGames(true);
     try {
       const result = await apiGetMyGames(token);
       setGames(result);
     } catch {
       toast({ variant: "destructive", title: "Could not load games" });
     } finally {
-      setIsLoading(false);
+      setIsLoadingGames(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    if (!token) return;
+    setIsLoadingStats(true);
+    try {
+      const result = await apiGetMyStats(token);
+      setStats(result);
+    } catch {
+      // Stats failing is non-critical — just swallow
+    } finally {
+      setIsLoadingStats(false);
     }
   };
 
   useEffect(() => {
     void fetchGames();
+    void fetchStats();
   }, [token]);
 
   const handleResume = async (game: ActiveGame) => {
     setResumingId(game.roomId);
     try {
-      // Verify the game is still active
       const state = await getGameState(game.roomId, { sessionToken: game.sessionToken });
       saveSession({
         roomId: game.roomId,
@@ -175,9 +323,16 @@ export default function Dashboard() {
             Welcome back, <span className="text-primary">{account.username}</span>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {isLoading ? "Loading your games..." : `${games.length} active game${games.length !== 1 ? "s" : ""}`}
+            {isLoadingStats
+              ? "Loading your profile..."
+              : stats && stats.gamesPlayed > 0
+                ? `${stats.wins}W · ${stats.losses}L${stats.ties > 0 ? ` · ${stats.ties}T` : ""} across ${stats.gamesPlayed} game${stats.gamesPlayed !== 1 ? "s" : ""}`
+                : "No finished games yet — play your first!"}
           </p>
         </motion.div>
+
+        {/* Stats bar */}
+        <StatsBar stats={stats} isLoading={isLoadingStats} />
 
         {/* Start New Game CTA */}
         <motion.div
@@ -203,82 +358,124 @@ export default function Dashboard() {
           </Button>
         </motion.div>
 
-        {/* Active games */}
-        <div className="space-y-3">
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : games.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed border-border/60 p-8 text-center text-muted-foreground"
-            >
-              <Trophy className="h-8 w-8 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">No active games</p>
-              <p className="text-sm mt-1">Create a game or challenge a friend to get started.</p>
-            </motion.div>
-          ) : (
-            games.map((game, i) => (
-              <motion.div
-                key={game.roomId}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 + 0.1 }}
-                className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                          game.status === "playing"
-                            ? "bg-green-500/20 text-green-400"
-                            : "bg-primary/20 text-primary"
-                        }`}
-                      >
-                        {game.status === "playing" ? "In Progress" : "Lobby"}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">{game.inviteCode}</span>
-                    </div>
-                    <div className="text-sm font-semibold">
-                      {game.isHost ? "Host" : "Player"} · Up to {game.maxPlayers} players
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <Clock className="h-3 w-3" />
-                      {formatRelative(game.updatedAt)}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      className="h-8 px-3 text-xs rounded-xl gap-1 whitespace-nowrap"
-                      onClick={() => handleResume(game)}
-                      disabled={resumingId === game.roomId}
-                    >
-                      {resumingId === game.roomId
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : <ArrowRight className="h-3 w-3" />}
-                      Resume
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuit(game)}
-                      disabled={quittingId === game.roomId}
-                      className="h-8 px-3 text-xs rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1 justify-center transition-colors"
-                    >
-                      {quittingId === game.roomId
-                        ? <Loader2 className="h-3 w-3 animate-spin" />
-                        : <RotateCcw className="h-3 w-3" />}
-                      Quit
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            ))
-          )}
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 bg-secondary/40 rounded-2xl p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("games")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "games"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Sword className="h-3.5 w-3.5" />
+            Active Games
+            {!isLoadingGames && games.length > 0 && (
+              <span className="ml-1 text-xs bg-primary/20 text-primary rounded-full px-1.5 py-0.5 leading-none">
+                {games.length}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "history"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingUp className="h-3.5 w-3.5" />
+            History
+            {!isLoadingStats && stats && stats.gamesPlayed > 0 && (
+              <span className="ml-1 text-xs bg-muted/60 text-muted-foreground rounded-full px-1.5 py-0.5 leading-none">
+                {stats.gamesPlayed}
+              </span>
+            )}
+          </button>
         </div>
+
+        {/* Tab content */}
+        {activeTab === "games" ? (
+          <div className="space-y-3">
+            {isLoadingGames ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : games.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="rounded-2xl border border-dashed border-border/60 p-8 text-center text-muted-foreground"
+              >
+                <Trophy className="h-8 w-8 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">No active games</p>
+                <p className="text-sm mt-1">Create a game or challenge a friend to get started.</p>
+              </motion.div>
+            ) : (
+              games.map((game, i) => (
+                <motion.div
+                  key={game.roomId}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 + 0.1 }}
+                  className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                            game.status === "playing"
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-primary/20 text-primary"
+                          }`}
+                        >
+                          {game.status === "playing" ? "In Progress" : "Lobby"}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">{game.inviteCode}</span>
+                      </div>
+                      <div className="text-sm font-semibold">
+                        {game.isHost ? "Host" : "Player"} · Up to {game.maxPlayers} players
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Clock className="h-3 w-3" />
+                        {formatRelative(game.updatedAt)}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        className="h-8 px-3 text-xs rounded-xl gap-1 whitespace-nowrap"
+                        onClick={() => handleResume(game)}
+                        disabled={resumingId === game.roomId}
+                      >
+                        {resumingId === game.roomId
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <ArrowRight className="h-3 w-3" />}
+                        Resume
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuit(game)}
+                        disabled={quittingId === game.roomId}
+                        className="h-8 px-3 text-xs rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1 justify-center transition-colors"
+                      >
+                        {quittingId === game.roomId
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <RotateCcw className="h-3 w-3" />}
+                        Quit
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))
+            )}
+          </div>
+        ) : (
+          <HistoryTab stats={stats} isLoading={isLoadingStats} />
+        )}
       </div>
 
       <FriendsPanel

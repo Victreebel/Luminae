@@ -418,6 +418,23 @@ paths:
         "401":
           description: Unauthorized
 
+  /auth/me/stats:
+    get:
+      operationId: getMyStats
+      tags: [auth]
+      summary: Get lifetime stats and game history for the current account
+      security:
+        - accountToken: []
+      responses:
+        "200":
+          description: Lifetime stats and recent game history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerStatsResponse"
+        "401":
+          description: Unauthorized
+
   /friends:
     get:
       operationId: listFriends
@@ -751,6 +768,61 @@ components:
             $ref: "#/components/schemas/ActiveGame"
       required:
         - games
+
+    GameHistoryEntry:
+      type: object
+      properties:
+        roomId:
+          type: string
+        inviteCode:
+          type: string
+        finishedAt:
+          type: string
+          description: ISO timestamp when the game finished (room updatedAt)
+        result:
+          type: string
+          enum: [win, loss, tie]
+        eminenceEarned:
+          type: integer
+          description: Eminence (lumens) earned by the player in this game
+        totalPlayers:
+          type: integer
+          description: Number of human players in the game
+      required:
+        - roomId
+        - inviteCode
+        - finishedAt
+        - result
+        - eminenceEarned
+        - totalPlayers
+
+    PlayerStatsResponse:
+      type: object
+      properties:
+        gamesPlayed:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        ties:
+          type: integer
+        avgEminence:
+          type: number
+          format: float
+          description: Average Eminence earned across all finished games
+        recentGames:
+          type: array
+          items:
+            $ref: "#/components/schemas/GameHistoryEntry"
+          description: Most recent finished games, newest first (up to 20)
+      required:
+        - gamesPlayed
+        - wins
+        - losses
+        - ties
+        - avgEminence
+        - recentGames
 
     FriendEntry:
       type: object
