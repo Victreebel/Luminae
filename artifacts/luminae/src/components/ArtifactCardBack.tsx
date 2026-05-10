@@ -1136,7 +1136,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         filter={`url(#${id}-diskblur)`} />
 
       {/* Luminae wordmark */}
-      <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
+      <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
         fontSize="3.8" fill={GOLD} opacity="0.60" letterSpacing="2.5">LUMINAE</text>
     </svg>
   );
