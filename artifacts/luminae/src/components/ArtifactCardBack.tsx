@@ -611,33 +611,33 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <stop offset="40%"  stopColor="#ffb050" stopOpacity="0.38" />
           <stop offset="100%" stopColor="#ff8020" stopOpacity="0"    />
         </radialGradient>
-        {/* Accretion disk: transparent → deep amber → bright orange → white-hot inner → mirror */}
+        {/* Accretion disk: transparent → deep gold → bright gold → warm-white gold → mirror */}
         <linearGradient id={`${id}-disk`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#c05000" stopOpacity="0"    />
-          <stop offset="12%"  stopColor="#e06010" stopOpacity="0.55" />
-          <stop offset="28%"  stopColor="#ff9030" stopOpacity="0.82" />
-          <stop offset="42%"  stopColor="#ffc060" stopOpacity="0.95" />
-          <stop offset="50%"  stopColor="#fff0c0" stopOpacity="1"    />
-          <stop offset="58%"  stopColor="#ffc060" stopOpacity="0.95" />
-          <stop offset="72%"  stopColor="#ff9030" stopOpacity="0.82" />
-          <stop offset="88%"  stopColor="#e06010" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#c05000" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#7a5800" stopOpacity="0"    />
+          <stop offset="12%"  stopColor="#b07800" stopOpacity="0.45" />
+          <stop offset="28%"  stopColor="#d4a020" stopOpacity="0.70" />
+          <stop offset="42%"  stopColor="#f0c040" stopOpacity="0.88" />
+          <stop offset="50%"  stopColor="#fde080" stopOpacity="0.95" />
+          <stop offset="58%"  stopColor="#f0c040" stopOpacity="0.88" />
+          <stop offset="72%"  stopColor="#d4a020" stopOpacity="0.70" />
+          <stop offset="88%"  stopColor="#b07800" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#7a5800" stopOpacity="0"    />
         </linearGradient>
-        {/* Inner disk ring: white-hot close to event horizon */}
+        {/* Inner disk: bright gold-white core closest to event horizon */}
         <linearGradient id={`${id}-disk-inner`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#ff8020" stopOpacity="0"    />
-          <stop offset="20%"  stopColor="#ffd080" stopOpacity="0.70" />
-          <stop offset="50%"  stopColor="#ffffff"  stopOpacity="1"   />
-          <stop offset="80%"  stopColor="#ffd080" stopOpacity="0.70" />
-          <stop offset="100%" stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#c89020" stopOpacity="0"    />
+          <stop offset="20%"  stopColor="#f0cc50" stopOpacity="0.60" />
+          <stop offset="50%"  stopColor="#fff8d0" stopOpacity="0.92" />
+          <stop offset="80%"  stopColor="#f0cc50" stopOpacity="0.60" />
+          <stop offset="100%" stopColor="#c89020" stopOpacity="0"    />
         </linearGradient>
-        {/* Lensed arc: warm glow for the gravitationally bent far-side image */}
+        {/* Lensed arc: golden glow for the gravitationally bent far-side image */}
         <linearGradient id={`${id}-disk-lens`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#ff7000" stopOpacity="0"    />
-          <stop offset="30%"  stopColor="#ffb040" stopOpacity="0.85" />
-          <stop offset="50%"  stopColor="#ffe080" stopOpacity="1"    />
-          <stop offset="70%"  stopColor="#ffb040" stopOpacity="0.85" />
-          <stop offset="100%" stopColor="#ff7000" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#8a6400" stopOpacity="0"    />
+          <stop offset="30%"  stopColor="#d4a020" stopOpacity="0.80" />
+          <stop offset="50%"  stopColor="#f8d860" stopOpacity="0.95" />
+          <stop offset="70%"  stopColor="#d4a020" stopOpacity="0.80" />
+          <stop offset="100%" stopColor="#8a6400" stopOpacity="0"    />
         </linearGradient>
         <filter id={`${id}-satbranchglow`} x="-400%" y="-400%" width="900%" height="900%">
           <feGaussianBlur stdDeviation="1.4" />
@@ -977,23 +977,23 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-back)`} />
 
-      {/* 6. Outer disk — front half (near side, sweeps in FRONT of BH) */}
+      {/* 6. Outer disk — front half (semi-transparent: black event horizon peeks through) */}
       <ellipse cx={HUB_X} cy={HUB_Y + 0.6} rx="10" ry="2.8"
-        fill={`url(#${id}-disk)`} opacity="0.88"
+        fill={`url(#${id}-disk)`} opacity="0.62"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-front)`} />
 
-      {/* 7. Inner disk — front half (hottest band, fully in front) */}
+      {/* 7. Inner disk — front half (brighter gold core, still lets darkness show at edges) */}
       <ellipse cx={HUB_X} cy={HUB_Y + 0.4} rx="5.6" ry="1.5"
-        fill={`url(#${id}-disk-inner)`} opacity="1.0"
+        fill={`url(#${id}-disk-inner)`} opacity="0.78"
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-front)`} />
 
-      {/* 8. Intersection hot-spots — where disk crosses the photon sphere edge */}
+      {/* 8. Intersection hot-spots — gold halos where disk grazes the photon sphere */}
       <circle cx={HUB_X - 5.2} cy={HUB_Y + 0.5} r="1.6"
-        fill="#ffcc60" opacity="0.55" filter={`url(#${id}-bhblur)`} />
+        fill="#e8b820" opacity="0.50" filter={`url(#${id}-bhblur)`} />
       <circle cx={HUB_X + 5.2} cy={HUB_Y + 0.5} r="1.6"
-        fill="#ffcc60" opacity="0.55" filter={`url(#${id}-bhblur)`} />
+        fill="#e8b820" opacity="0.50" filter={`url(#${id}-bhblur)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
