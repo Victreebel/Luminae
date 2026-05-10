@@ -318,14 +318,15 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
         const d2 = (hx * hx + hy * hy) / (shellR * shellR);
         if (d2 > 0.93) continue;
+        if (d2 < 0.04) continue;   // skip the centre cell — it sits over the star
         const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
         const col = getSectorCol(angle, phaseOff);
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
-        // Perspective scale: hexes shrink as they approach the star (d2→0)
-        // giving a visible depth cue — 55% size at center, full size at shell edge.
-        const perspScale = 0.55 + d2 * 0.45;
+        // Perspective scale: hexes shrink as they approach the star (d2→0).
+        // Steeper curve — 28% size near centre, full size at shell edge.
+        const perspScale = 0.28 + d2 * 0.72;
         const verts = Array.from({ length: 6 }, (_, k) => {
           const ang = (Math.PI / 3) * k;
           const vx = hx + hr * perspScale * Math.cos(ang);
@@ -499,6 +500,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
             {/* Star-lit highlight stroke */}
             <polygon points={ptStr} fill="none" stroke={lightCol}
               strokeWidth="0.07" strokeOpacity={z * 0.38} />
+            {/* Vertex connection dots */}
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.08" fill={col} opacity={0.18 + z * 0.35} />
+            ))}
           </g>
         );
 
@@ -514,6 +520,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
               strokeWidth="0.10" strokeOpacity={0.15 + z * 0.25} />
             <polygon points={ptStr} fill="none" stroke={lightCol}
               strokeWidth="0.07" strokeOpacity={z * 0.18} />
+            {/* Vertex connection dots */}
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.10" fill={col} opacity={0.22 + z * 0.40} />
+            ))}
           </g>
         );
 
@@ -525,6 +536,10 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
               strokeWidth="0.13" strokeOpacity={0.18 + z * 0.30} />
+            {verts.map(([vx, vy], k) => (
+              <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+                r="0.11" fill={col} opacity={0.24 + z * 0.44} />
+            ))}
           </g>
         );
 
