@@ -576,11 +576,12 @@ function LuminaryClaimedPortal({
       {/* Top row: eminence value (left) + floating active affinity gem (right) */}
       <div className="absolute top-2 left-0 right-0 z-10 pointer-events-none flex justify-between items-start px-2">
         <span
-          className="text-lg font-serif font-black leading-none select-none"
+          className="text-base font-serif font-black leading-none select-none px-1.5 py-0.5 rounded-md"
           style={{
-            color: '#030308',
-            WebkitTextStroke: `1px ${g2}`,
-            textShadow: `0 0 8px ${g1}cc, 0 0 16px ${g1}55`,
+            color: g1,
+            background: 'rgba(0,0,0,0.70)',
+            textShadow: `0 0 8px ${g1}bb`,
+            backdropFilter: 'blur(2px)',
           }}
         >
           {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
@@ -745,10 +746,12 @@ function LuminaryCard({
             {/* Top row — lumens/oblivion (left) + accent dot (right), mirroring ArtifactCardView */}
             <div className="flex justify-between items-start">
               <span
-                className="text-lg font-serif font-bold"
+                className="text-base font-serif font-bold px-1.5 py-0.5 rounded-md"
                 style={{
                   color: accentColor,
-                  textShadow: '-1px -1px 0 rgba(255,255,255,0.92), 1px -1px 0 rgba(255,255,255,0.92), -1px 1px 0 rgba(255,255,255,0.92), 1px 1px 0 rgba(255,255,255,0.92), 0 2px 5px rgba(0,0,0,1)',
+                  background: 'rgba(0,0,0,0.70)',
+                  textShadow: `0 0 8px ${accentColor}bb`,
+                  backdropFilter: 'blur(2px)',
                 }}
               >
                 {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
