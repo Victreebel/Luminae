@@ -472,12 +472,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
       {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
       {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
-        // Drop any panel whose centre is within the sun exclusion zone — all shells.
-        // This prevents the "contained in a cube" illusion caused by panels over/behind the star.
-        const dx = CX - cx, dy = CY - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 13) return null;
-
         const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
         const darkCol  = BEVEL_DARK[col]  ?? '#0a0a0a';
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
@@ -503,11 +497,20 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         );
 
         // ── Shell 3 (outermost) ────────────────────────────────────────────
-        // (dist < 13 already handled above — no further star-proximity guard needed)
+        const dx = CX - cx, dy = CY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
         if (!solid) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
               strokeWidth="0.13" strokeOpacity={0.18 + z * 0.30} />
+          </g>
+        );
+
+        if (dist < 10) return (
+          <g key={i}>
+            <polygon points={ptStr} fill="none" stroke={col}
+              strokeWidth="0.13" strokeOpacity={0.16 + z * 0.26} />
           </g>
         );
 
