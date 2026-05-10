@@ -407,28 +407,63 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         })
       )}
 
-      {/* ── Satellite collector dots — three size classes per ring ── */}
+      {/* ── Dyson panel arrays — rectangular solar collectors, tangent-aligned on each ring.
+           Tangent angle = atan2(ry·cosθ, −rx·sinθ) + rot.
+           Big every-5th: twin-wing array with centre coupling node.
+           Mid every-2nd: single full panel.
+           Small remainder: thin slat. ── */}
       {swarmRings.flatMap(({ rx, ry, rot, col, n, off }, ri) =>
         Array.from({ length: n }, (_, i) => {
           const theta = (2 * Math.PI * i) / n + off;
           const [sx, sy] = ePt(rx, ry, rot, theta);
+
+          // Tangent angle in degrees — aligns the panel along the orbital track
+          const tanDeg =
+            (Math.atan2(ry * Math.cos(theta), -rx * Math.sin(theta)) * 180) / Math.PI + rot;
+
           const isBig = i % 5 === 0;
           const isMid = i % 2 === 0 && !isBig;
-          const sz = isBig ? 1.00 : isMid ? 0.68 : 0.44;
-          const op = isBig ? 0.92 : isMid ? 0.78 : 0.58;
+
+          // Panel dimensions: length along orbit, thickness perpendicular
+          const pw = isBig ? 2.6 : isMid ? 1.8 : 1.1;
+          const ph = isBig ? 0.48 : isMid ? 0.30 : 0.18;
+          const op = isBig ? 0.90 : isMid ? 0.74 : 0.52;
+
+          // translate to satellite position, then rotate — rects drawn centered at (0,0)
           return (
-            <g key={`s-${ri}-${i}`}>
+            <g key={`s-${ri}-${i}`} transform={`translate(${sx} ${sy}) rotate(${tanDeg})`}>
+              {/* Glow halo behind big/mid arrays */}
               {isBig && (
-                <circle cx={sx} cy={sy} r={sz * 3.2}
-                  fill={col} opacity="0.22"
+                <ellipse cx={0} cy={0} rx={pw * 0.65} ry={pw * 0.35}
+                  fill={col} opacity="0.20"
                   filter={`url(#${id}-satglow)`} />
               )}
               {isMid && (
-                <circle cx={sx} cy={sy} r={sz * 2.0}
-                  fill={col} opacity="0.12"
+                <ellipse cx={0} cy={0} rx={pw * 0.55} ry={pw * 0.28}
+                  fill={col} opacity="0.10"
                   filter={`url(#${id}-satglow)`} />
               )}
-              <circle cx={sx} cy={sy} r={sz} fill={col} opacity={op} />
+
+              {isBig ? (
+                /* Twin-wing Dyson array: left wing | coupling node | right wing */
+                <>
+                  <rect x={-pw / 2} y={-ph / 2}
+                    width={pw * 0.44} height={ph} rx="0.07"
+                    fill={col} opacity={op} />
+                  <rect x={pw / 2 - pw * 0.44} y={-ph / 2}
+                    width={pw * 0.44} height={ph} rx="0.07"
+                    fill={col} opacity={op} />
+                  {/* Centre coupling node */}
+                  <circle cx={0} cy={0} r={ph * 0.62}
+                    fill="#07050f" stroke={col}
+                    strokeWidth="0.18" strokeOpacity="0.92" />
+                </>
+              ) : (
+                /* Single-panel slat */
+                <rect x={-pw / 2} y={-ph / 2}
+                  width={pw} height={ph} rx="0.05"
+                  fill={col} opacity={op} />
+              )}
             </g>
           );
         })
