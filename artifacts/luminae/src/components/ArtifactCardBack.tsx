@@ -963,20 +963,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         filter={`url(#${id}-diskblur)`}
         clipPath={`url(#${id}-disk-back)`} />
 
-      {/* 2b. Far-side XZ ring — bottom arc, behind BH.
-               Uses horizontal disk gradient: transparent at x=25.5 and x=44.5
-               (the equatorial-crossing endpoints) and opaque at x=35 (the
-               bottom-pole midpoint). Same "fade at tips" rule as the XY ring. */}
-      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk)`}
-        strokeWidth="4.5" strokeOpacity="0.28"
-        strokeDasharray="29.4 100" strokeLinecap="round"
-        filter={`url(#${id}-bhblur)`} />
-      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk)`}
-        strokeWidth="1.8" strokeOpacity="0.50"
-        strokeDasharray="29.4 100" strokeLinecap="round"
-        filter={`url(#${id}-diskblur)`} />
+      {/* (XZ ring drawn after corona — see below) */}
 
       {/* 3. Event horizon — pure black circle */}
       <circle cx={HUB_X} cy={HUB_Y} r="3.3" fill="#000000" />
@@ -1018,27 +1005,28 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         strokeDasharray="20.5 100" strokeLinecap="round"
         filter={`url(#${id}-diskblur)`} />
 
-      {/* 5b. Near-side XZ ring — top arc, drawn in front of BH.
-               Same horizontal disk gradient as XY ring: transparent at left/right
-               equatorial-crossing endpoints (x=25.5, x=44.5), opaque at the
-               top-pole midpoint (x=35). Endpoints blend away naturally. */}
+      {/* 5b. XZ ring — full great circle, no dasharray needed.
+               The ring's minimum distance to the BH centre (≈9.2) is far larger
+               than the BH radius (3.3), so it never overlaps the black circle
+               and needs no front/back split.
+               disk-v gradient: opaque at y=52 (left/right equatorial flanks),
+               transparent at poles (y≈42.8 top, y≈61.2 bottom).
+               The full stroke is visible at the flanks and fades naturally
+               at the top and bottom arcs. */}
+      {/* Soft outer glow */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk)`}
-        strokeWidth="4.5" strokeOpacity="0.38"
-        strokeDasharray="29.4 100" strokeDashoffset="-29.4"
-        strokeLinecap="round"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="5.5" strokeOpacity="0.30"
         filter={`url(#${id}-bhblur)`} />
+      {/* Main ring line */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk)`}
-        strokeWidth="1.8" strokeOpacity="0.88"
-        strokeDasharray="29.4 100" strokeDashoffset="-29.4"
-        strokeLinecap="round"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="1.8" strokeOpacity="0.80"
         filter={`url(#${id}-diskblur)`} />
+      {/* Inner bright core */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-inner)`}
-        strokeWidth="0.7" strokeOpacity="0.95"
-        strokeDasharray="29.4 100" strokeDashoffset="-29.4"
-        strokeLinecap="round"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="0.65" strokeOpacity="0.92"
         filter={`url(#${id}-diskblur)`} />
 
       {/* Luminae wordmark */}
