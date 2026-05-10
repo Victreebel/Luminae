@@ -283,34 +283,56 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
 // ╚══════════════════════════════════════════════════════════════════════════╝
 export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
-  const CX = 35, CY = 51;   // star center
+  const CX = 35, CY = 51;   // star / sphere center
 
-  // Point on a rotated ellipse at angle theta
-  const ePt = (rx: number, ry: number, rotDeg: number, theta: number): [number, number] => {
-    const r = (rotDeg * Math.PI) / 180;
-    return [
-      CX + rx * Math.cos(theta) * Math.cos(r) - ry * Math.sin(theta) * Math.sin(r),
-      CY + rx * Math.cos(theta) * Math.sin(r) + ry * Math.sin(theta) * Math.cos(r),
-    ];
+  // ── Hex Dyson sphere shell generator ──────────────────────────────────────
+  // Projects a flat-top hex grid onto the visible hemisphere of a sphere.
+  // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
+  // at sector boundaries let star-light through. Two shell layers: outer at
+  // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
+  type HexCell = { verts: [number, number][]; col: string; z: number };
+
+  const SECTOR_COLS = [R, C, V, F, A];
+  const getSectorCol = (angle: number, phaseOff: number): string | null => {
+    const a = ((angle + phaseOff) % 360 + 360) % 360;
+    const frac = (a % 72) / 72;
+    if (frac < 0.07 || frac > 0.93) return null;   // gap between sectors
+    return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  // Ten orbital shells — five primary + five inner companions at 84% scale.
-  // Inner rings share the same inclination/colour but are phase-shifted by half
-  // a panel-spacing (π/n) so their collectors interleave with the outer layer.
-  const swarmRings = [
-    // ── Outer rings ──────────────────────────────────────────────────────────
-    { rx: 25,   ry: 5,    rot:   0, col: F, n: 28, off: 0.00 },  // equatorial
-    { rx: 22,   ry: 13,   rot:  38, col: C, n: 22, off: 0.52 },  // 30° inclined
-    { rx: 18,   ry: 17,   rot: -28, col: V, n: 20, off: 1.10 },  // 60° inclined
-    { rx:  7,   ry: 26,   rot:   8, col: A, n: 18, off: 0.80 },  // near-polar
-    { rx: 16,   ry: 12,   rot: -55, col: R, n: 18, off: 0.30 },  // intermediate
-    // ── Second orbital planes — distinct inclinations, not concentric copies ──
-    { rx: 16, ry: 10, rot:  70, col: F, n: 22, off: 0.35 },  // F: 70° cross-inclined
-    { rx: 18, ry:  6, rot: -42, col: C, n: 20, off: 0.85 },  // C: near-equatorial contrast
-    { rx: 21, ry:  5, rot:  52, col: V, n: 24, off: 0.60 },  // V: flat vs 60° outer
-    { rx: 14, ry: 11, rot: -52, col: A, n: 18, off: 1.20 },  // A: intermediate vs polar
-    { rx:  8, ry: 24, rot:  28, col: R, n: 18, off: 0.65 },  // R: near-polar vs intermediate
-  ] as { rx: number; ry: number; rot: number; col: string; n: number; off: number }[];
+  const genShell = (shellR: number, hr: number, phaseOff: number): HexCell[] => {
+    const cells: HexCell[] = [];
+    const DX = hr * 1.5;
+    const DY = hr * Math.sqrt(3);
+    const cols = Math.ceil(shellR / DX) + 2;
+    const rows = Math.ceil(shellR / DY) + 2;
+    for (let ci = -cols; ci <= cols; ci++) {
+      for (let ri = -rows; ri <= rows; ri++) {
+        const hx = DX * ci;
+        const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
+        const d2 = (hx * hx + hy * hy) / (shellR * shellR);
+        if (d2 > 0.93) continue;
+        const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
+        const col = getSectorCol(angle, phaseOff);
+        if (!col) continue;
+        const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
+        const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
+        const verts = Array.from({ length: 6 }, (_, k) => {
+          const ang = (Math.PI / 3) * k;
+          const vx = hx + hr * Math.cos(ang);
+          const vy = hy + hr * Math.sin(ang);
+          const vd2 = Math.min((vx * vx + vy * vy) / (shellR * shellR), 1);
+          const vc = 1 - vd2 * 0.13;
+          return [CX + vx * vc, CY + vy * vc] as [number, number];
+        });
+        cells.push({ verts, col, z });
+      }
+    }
+    return cells.sort((a, b) => a.z - b.z);       // back → front
+  };
+
+  const shell1 = genShell(23, 3.0, 0);            // outer shell
+  const shell2 = genShell(16, 2.4, 36);           // inner shell, 36° sector shift
 
   return (
     <svg
@@ -356,9 +378,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-hazeglow`} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="6.0" />
         </filter>
-        <filter id={`${id}-satglow`} x="-300%" y="-300%" width="700%" height="700%">
-          <feGaussianBlur stdDeviation="1.0" />
-        </filter>
       </defs>
 
       {/* ── Background ── */}
@@ -385,98 +404,35 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
       <circle cx={CX} cy={CY} r="36"
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
-      {/* ── Orbital guide ellipses — visible dashed tracks, one per affinity ring ── */}
-      {swarmRings.map(({ rx, ry, rot, col }, ri) => (
-        <g key={ri}>
-          {/* soft glow under the track */}
-          <ellipse cx={CX} cy={CY} rx={rx} ry={ry}
+      {/* ── Outer Dyson hex shell — large cells, 0° sector start ── */}
+      {shell1.map(({ verts, col, z }, i) => (
+        <g key={i}>
+          <polygon
+            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
             fill="none" stroke={col}
-            strokeWidth="1.4" strokeOpacity="0.08"
-            transform={`rotate(${rot} ${CX} ${CY})`} />
-          {/* dashed orbital path */}
-          <ellipse cx={CX} cy={CY} rx={rx} ry={ry}
-            fill="none" stroke={col}
-            strokeWidth="0.28" strokeOpacity="0.38"
-            strokeDasharray="1.8 2.2"
-            transform={`rotate(${rot} ${CX} ${CY})`} />
+            strokeWidth="0.11" strokeOpacity={0.18 + z * 0.32}
+          />
+          {verts.map(([vx, vy], k) => (
+            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+              r="0.10" fill={col} opacity={0.28 + z * 0.48} />
+          ))}
         </g>
       ))}
 
-      {/* ── Energy collection beams — thin lines from collectors toward the star ── */}
-      {swarmRings.flatMap(({ rx, ry, rot, col, n, off }, ri) =>
-        Array.from({ length: n }, (_, i) => {
-          if (i % 4 !== 1) return null;
-          const theta = (2 * Math.PI * i) / n + off;
-          const [sx, sy] = ePt(rx, ry, rot, theta);
-          return (
-            <line key={`b-${ri}-${i}`}
-              x1={sx} y1={sy} x2={CX} y2={CY}
-              stroke={col} strokeWidth="0.20" strokeOpacity="0.20" />
-          );
-        })
-      )}
-
-      {/* ── Dyson panel arrays — rectangular solar collectors, tangent-aligned on each ring.
-           Tangent angle = atan2(ry·cosθ, −rx·sinθ) + rot.
-           Big every-5th: twin-wing array with centre coupling node.
-           Mid every-2nd: single full panel.
-           Small remainder: thin slat. ── */}
-      {swarmRings.flatMap(({ rx, ry, rot, col, n, off }, ri) =>
-        Array.from({ length: n }, (_, i) => {
-          const theta = (2 * Math.PI * i) / n + off;
-          const [sx, sy] = ePt(rx, ry, rot, theta);
-
-          // Tangent angle in degrees — aligns the panel along the orbital track
-          const tanDeg =
-            (Math.atan2(ry * Math.cos(theta), -rx * Math.sin(theta)) * 180) / Math.PI + rot;
-
-          const isBig = i % 5 === 0;
-          const isMid = i % 2 === 0 && !isBig;
-
-          // Panel dimensions: length along orbit, thickness perpendicular
-          const pw = isBig ? 2.6 : isMid ? 1.8 : 1.1;
-          const ph = isBig ? 0.48 : isMid ? 0.30 : 0.18;
-          const op = isBig ? 0.90 : isMid ? 0.74 : 0.52;
-
-          // translate to satellite position, then rotate — rects drawn centered at (0,0)
-          return (
-            <g key={`s-${ri}-${i}`} transform={`translate(${sx} ${sy}) rotate(${tanDeg})`}>
-              {/* Glow halo behind big/mid arrays */}
-              {isBig && (
-                <ellipse cx={0} cy={0} rx={pw * 0.65} ry={pw * 0.35}
-                  fill={col} opacity="0.20"
-                  filter={`url(#${id}-satglow)`} />
-              )}
-              {isMid && (
-                <ellipse cx={0} cy={0} rx={pw * 0.55} ry={pw * 0.28}
-                  fill={col} opacity="0.10"
-                  filter={`url(#${id}-satglow)`} />
-              )}
-
-              {isBig ? (
-                /* Twin-wing Dyson array: left wing | coupling node | right wing */
-                <>
-                  <rect x={-pw / 2} y={-ph / 2}
-                    width={pw * 0.44} height={ph} rx="0.07"
-                    fill={col} opacity={op} />
-                  <rect x={pw / 2 - pw * 0.44} y={-ph / 2}
-                    width={pw * 0.44} height={ph} rx="0.07"
-                    fill={col} opacity={op} />
-                  {/* Centre coupling node */}
-                  <circle cx={0} cy={0} r={ph * 0.62}
-                    fill="#07050f" stroke={col}
-                    strokeWidth="0.18" strokeOpacity="0.92" />
-                </>
-              ) : (
-                /* Single-panel slat */
-                <rect x={-pw / 2} y={-ph / 2}
-                  width={pw} height={ph} rx="0.05"
-                  fill={col} opacity={op} />
-              )}
-            </g>
-          );
-        })
-      )}
+      {/* ── Inner Dyson hex shell — smaller cells, 36° sector phase shift ── */}
+      {shell2.map(({ verts, col, z }, i) => (
+        <g key={i}>
+          <polygon
+            points={verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ')}
+            fill="none" stroke={col}
+            strokeWidth="0.09" strokeOpacity={0.13 + z * 0.24}
+          />
+          {verts.map(([vx, vy], k) => (
+            <circle key={k} cx={vx.toFixed(2)} cy={vy.toFixed(2)}
+              r="0.08" fill={col} opacity={0.20 + z * 0.36} />
+          ))}
+        </g>
+      ))}
 
       {/* ── Extended corona ── */}
       <circle cx={CX} cy={CY} r="17" fill={`url(#${id}-corona)`} />
