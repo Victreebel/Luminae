@@ -117,6 +117,10 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <filter id={`${id}-sunglow`} x="-300%" y="-300%" width="700%" height="700%">
           <feGaussianBlur stdDeviation="4.5" />
         </filter>
+        {/* Clip sun glow to card interior so bloom never bleeds past the border */}
+        <clipPath id={`${id}-cardclip`}>
+          <rect x="4" y="4" width="62" height="92" rx="1.5" />
+        </clipPath>
       </defs>
 
       {/* ── Space background ── */}
@@ -140,28 +144,30 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           opacity={0.10 + (sz * 0.038)} />
       ))}
 
-      {/* ── Local star — same solar system, close and bright ── */}
-      {/* Broad outer corona bloom */}
-      <circle cx="57" cy="19" r="20"
-        fill={`url(#${id}-sun)`}
-        filter={`url(#${id}-sunglow)`} opacity="0.38" />
-      {/* Inner corona */}
-      <circle cx="57" cy="19" r="11"
-        fill={`url(#${id}-sun)`}
-        filter={`url(#${id}-sunglow)`} opacity="0.65" />
-      {/* Limb-lit disc */}
-      <circle cx="57" cy="19" r="4.2" fill={`url(#${id}-sun)`} opacity="0.94" />
-      {/* Bright point */}
-      <circle cx="57" cy="19" r="1.5" fill="#ffffff" opacity="0.98" />
-      {/* Cross-flare */}
-      <line x1="45" y1="19" x2="69" y2="19"
-        stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.38" />
-      <line x1="57" y1="7"  x2="57" y2="31"
-        stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.30" />
-      <line x1="49" y1="11" x2="65" y2="27"
-        stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
-      <line x1="65" y1="11" x2="49" y2="27"
-        stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
+      {/* ── Local star — clipped to card interior so bloom stays within border ── */}
+      <g clipPath={`url(#${id}-cardclip)`}>
+        {/* Broad outer corona bloom */}
+        <circle cx="57" cy="19" r="20"
+          fill={`url(#${id}-sun)`}
+          filter={`url(#${id}-sunglow)`} opacity="0.38" />
+        {/* Inner corona */}
+        <circle cx="57" cy="19" r="11"
+          fill={`url(#${id}-sun)`}
+          filter={`url(#${id}-sunglow)`} opacity="0.65" />
+        {/* Limb-lit disc */}
+        <circle cx="57" cy="19" r="4.2" fill={`url(#${id}-sun)`} opacity="0.94" />
+        {/* Bright point */}
+        <circle cx="57" cy="19" r="1.5" fill="#ffffff" opacity="0.98" />
+        {/* Cross-flare */}
+        <line x1="45" y1="19" x2="69" y2="19"
+          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.38" />
+        <line x1="57" y1="7"  x2="57" y2="31"
+          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.30" />
+        <line x1="49" y1="11" x2="65" y2="27"
+          stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
+        <line x1="65" y1="11" x2="49" y2="27"
+          stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
+      </g>
 
       {/* ── T1 Border — single L-corner ── */}
       <rect x="4" y="4" width="62" height="92" rx="1.5"
