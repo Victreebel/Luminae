@@ -1188,6 +1188,70 @@ export default function GameBoard() {
     return;
   }, [crystalQueueActive]);
 
+  // ── Pre-early-return derived state ────────────────────────────────────────
+  // actionsLocked / isMyTurn / me / effectiveCost / canAffordCard are all
+  // computed here — before the early returns — so the hint useEffects below
+  // have stable closure references on every render regardless of whether
+  // state has loaded yet.  When state is null the null-safe forms produce
+  // safe false / undefined values, and the early returns below still fire.
+  const actionsLocked = !!turnAnnouncement;
+  const summonGateActive = summonQueue.length > 0;
+  const isActivePlayer = !!state && !!session && state.status === 'playing' &&
+    state.players[state.currentPlayerIndex]?.playerId === session.playerId;
+  const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
+  const me = state?.players.find(p => p.playerId === session?.playerId);
+
+  const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
+    const luminaryAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
+    const turnCount: number = (state as any)?.turnCount ?? 0;
+    const out: Record<string, number> = {};
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      let bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+      for (const la of luminaryAffinities) {
+        if (la.ownerId === p.playerId && la.activeAffinity === c && turnCount > la.summonedAtTurnCount) {
+          bonus++;
+        }
+      }
+      out[c] = Math.max(0, (card.cost[c as keyof CrystalCounts] ?? 0) - bonus);
+    }
+    return out;
+  };
+  const canAffordCard = (card: ArtifactCard, p: GamePlayerState): boolean => {
+    const cost = effectiveCost(card, p);
+    let fluxNeeded = 0;
+    for (const [c, need] of Object.entries(cost)) {
+      const have = p.crystals[c as keyof CrystalCounts] ?? 0;
+      if (have < need) fluxNeeded += need - have;
+    }
+    return fluxNeeded <= (p.crystals.flux ?? 0);
+  };
+
+  // ── Reserve hint ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (pendingSheetAction === 'reserve') {
+      if (!localStorage.getItem('luminae_reserve_hint_seen')) {
+        localStorage.setItem('luminae_reserve_hint_seen', '1');
+        setShowReserveHint(true);
+      }
+    } else {
+      setShowReserveHint(false);
+    }
+  }, [pendingSheetAction]);
+
+  // ── Forge hint ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const affordable = isMyTurn && selectedCard && me && canAffordCard(selectedCard.card, me);
+    if (affordable) {
+      if (!localStorage.getItem('luminae_forge_hint_seen')) {
+        localStorage.setItem('luminae_forge_hint_seen', '1');
+        setShowForgeHint(true);
+      }
+    } else {
+      setShowForgeHint(false);
+    }
+  }, [isMyTurn, selectedCard, me]);
+
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
     const isRematch = prev?.status === 'finished' && newState.status === 'playing';
@@ -1625,18 +1689,6 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
-  const actionsLocked = !!turnAnnouncement;
-  // Gate turn actions during any active summon cutscene so that nobody can act
-  // while the global cinematic plays out.  The server also tracks this via
-  // pendingSummonEvents but we enforce it locally for instant feedback.
-  const summonGateActive = summonQueue.length > 0;
-  // isActivePlayer: pure turn-ownership, unaffected by animation locks.
-  // isMyTurn: turn-ownership + no execution locks (animation or summon gate).
-  // These are kept separate so canPlan can be derived from isActivePlayer alone,
-  // preventing animation locks from accidentally flipping canPlan for the active player.
-  const isActivePlayer = state.status === 'playing' && (state.players[state.currentPlayerIndex]?.playerId === session.playerId);
-  const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
-  const me = state.players.find(p => p.playerId === session.playerId);
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
   const oblivionRows: Array<{ name: string; amount: number }> = (state.luminaries ?? [])
     .filter(lum => (lum.oblivion ?? 0) > 0 &&
@@ -1807,22 +1859,6 @@ export default function GameBoard() {
     };
   }) ?? [];
 
-  const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
-    const luminaryAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
-    const turnCount: number = (state as any)?.turnCount ?? 0;
-    const out: Record<string, number> = {};
-    for (const c of CRYSTALS) {
-      if (c === 'flux') continue;
-      let bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-      for (const la of luminaryAffinities) {
-        if (la.ownerId === p.playerId && la.activeAffinity === c && turnCount > la.summonedAtTurnCount) {
-          bonus++;
-        }
-      }
-      out[c] = Math.max(0, (card.cost[c as keyof CrystalCounts] ?? 0) - bonus);
-    }
-    return out;
-  };
   // ── computeCosts: returns display costs for the active costMode ──────────
   const computeCosts = (card: ArtifactCard, mode: CostMode): Partial<Record<GemKey, number>> | undefined => {
     if (!me) return undefined;
@@ -1839,15 +1875,6 @@ export default function GameBoard() {
       out[c as GemKey] = Math.max(0, eff - held - harvest);
     }
     return out;
-  };
-  const canAffordCard = (card: ArtifactCard, p: GamePlayerState): boolean => {
-    const cost = effectiveCost(card, p);
-    let fluxNeeded = 0;
-    for (const [c, need] of Object.entries(cost)) {
-      const have = p.crystals[c as keyof CrystalCounts] ?? 0;
-      if (have < need) fluxNeeded += need - have;
-    }
-    return fluxNeeded <= (p.crystals.flux ?? 0);
   };
   const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
 
@@ -2015,32 +2042,9 @@ export default function GameBoard() {
     setShowUndoHint(false);
   };
 
-  useEffect(() => {
-    if (pendingSheetAction === 'reserve') {
-      if (!localStorage.getItem('luminae_reserve_hint_seen')) {
-        localStorage.setItem('luminae_reserve_hint_seen', '1');
-        setShowReserveHint(true);
-      }
-    } else {
-      setShowReserveHint(false);
-    }
-  }, [pendingSheetAction]);
-
   const dismissReserveHint = () => {
     setShowReserveHint(false);
   };
-
-  useEffect(() => {
-    const affordable = isMyTurn && selectedCard && me && canAffordCard(selectedCard.card, me);
-    if (affordable) {
-      if (!localStorage.getItem('luminae_forge_hint_seen')) {
-        localStorage.setItem('luminae_forge_hint_seen', '1');
-        setShowForgeHint(true);
-      }
-    } else {
-      setShowForgeHint(false);
-    }
-  }, [isMyTurn, selectedCard, me]);
 
   const dismissForgeHint = () => {
     setShowForgeHint(false);

@@ -20,7 +20,7 @@ import { LoginRegisterForm } from "@/components/LoginRegisterForm";
 import { useAccount } from "@/contexts/AccountContext";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus } from "lucide-react";
+import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
@@ -345,34 +345,54 @@ export default function Home() {
                 Join Game
               </Button>
 
-              {/* Account CTA */}
-              <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4 space-y-3">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                    Save progress & play with friends
+              {/* Account CTA — guest vs signed-in */}
+              {account ? (
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 backdrop-blur p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-primary/70 mb-0.5">Signed in</div>
+                    <div className="font-bold text-sm truncate">{account.username}</div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Create a free account to resume games across sessions, track active games, and challenge friends directly.
-                  </p>
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 rounded-xl gap-1.5 text-xs border-primary/30 hover:bg-primary/20"
+                      onClick={() => setLocation("/dashboard")}
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5" />
+                      Dashboard
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-10 text-sm rounded-xl gap-1.5"
-                    onClick={() => setMode("auth")}
-                  >
-                    <LogIn className="h-3.5 w-3.5" />
-                    Sign In
-                  </Button>
-                  <Button
-                    className="flex-1 h-10 text-sm rounded-xl gap-1.5 bg-primary/80 hover:bg-primary"
-                    onClick={() => setMode("auth")}
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    Create Account
-                  </Button>
+              ) : (
+                <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4 space-y-3">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                      Save progress & play with friends
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Create a free account to resume games across sessions, track active games, and challenge friends directly.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-10 text-sm rounded-xl gap-1.5"
+                      onClick={() => setMode("auth")}
+                    >
+                      <LogIn className="h-3.5 w-3.5" />
+                      Sign In
+                    </Button>
+                    <Button
+                      className="flex-1 h-10 text-sm rounded-xl gap-1.5 bg-primary/80 hover:bg-primary"
+                      onClick={() => setMode("auth")}
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Create Account
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           )}
 
