@@ -100,14 +100,14 @@ Each Luminary represents a distinct form of cosmic living/intelligent existence.
 If a generation pass produces a humanoid figure for a Luminary that should be nonhumanoid, that is a failure to capture the concept. Ask for clarification if the intended form is not clear before generating.
 
 ### Asset review status (current — supersedes all earlier commit notes)
-- **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide — 10 panels locked.
+- **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale — 11 panels locked.
+- **lum_pale panel notes:** large glassy transparent black-and-silver crystal facets with iridescent prismatic light scatter, balance entity visible through crystal depth refraction. All three previous rejection failures resolved.
 - **Panels needing regeneration:**
   - lum_astral — REJECTED: crystal reads as a sphere/orb (banned form); facet pattern is geodesic/soccer-ball cells over a sphere (banned pattern); dark corners visible — crystal does not fill the panel. Concept: stellar fire meets cold void weaving intelligence (Flare+Abyss). Next pass must use "massive faceted crystal wall filling entire image, crystal extends past borders on all sides, large irregular triangular/trapezoidal facet planes, fire-ice gradient internal fractures, entity embedded/refracted within crystal volume."
-  - lum_pale — REJECTED: material is rough geological rock/stone, not crystal (no faceted planes, no prismatic refraction, no transparency); shape reads as a sphere/asteroid (banned); entity (balance scale glyph) floats in open space, not sealed within crystal. Concept: Abyss+Singularity cosmic exchange intelligence, nonhumanoid balance entity. Next pass must produce crystal (not rock), crystal wall filling the panel, entity embedded within the containment.
 - **Entities needing regeneration:** lum_null (thematic miss — sci-fi cyberpunk armor, does not match accepted void-body panel spec).
-- **Auras regenerated (transparent background):** lum_void (soft radial purple void glow, alpha=0 at corners), lum_pale (soft silver/pearl glow, alpha=0 at corners) — both pass screen-blend check, no opaque rectangle visible. Note: lum_pale aura is accepted even though its panel is rejected.
-- **Open concept questions:** None — lum_astral (stellar fire meets cold void weaving entity) and lum_pale (Abyss+Singularity cosmic exchange) have defined directions; next generation pass should apply crystal-wall rules strictly.
-- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` now contains the 10 accepted panels only. lum_astral and lum_pale fall back to procedural SVG art until their panels are regenerated and accepted.
+- **Auras regenerated (transparent background):** lum_void (soft radial purple void glow, alpha=0 at corners), lum_pale (soft silver/pearl glow, alpha=0 at corners) — both pass screen-blend check, no opaque rectangle visible.
+- **Open concept questions:** None — lum_astral (stellar fire meets cold void weaving entity) has a defined direction; next generation pass should apply crystal-wall rules strictly.
+- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` now contains the 11 accepted panels. lum_astral falls back to procedural SVG art until its panel is regenerated and accepted.
 
 ## System Architecture
 

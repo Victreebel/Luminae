@@ -54,7 +54,7 @@ export interface LuminaryVisuals {
 // Update this list when a new panel passes the panel hard-rules review and is
 // accepted for publication. Panels pending regeneration must NOT be added here.
 //
-// Accepted panels (10):
+// Accepted panels (11):
 //   lum_ember   — accepted (gold standard)
 //   lum_forge   — accepted (gold standard)
 //   lum_verdant — accepted (gold standard)
@@ -65,12 +65,12 @@ export interface LuminaryVisuals {
 //   lum_oracle  — accepted
 //   lum_bloom   — accepted
 //   lum_tide    — accepted (recursive tidal spiral, dark oceanic void bg)
+//   lum_pale    — accepted (large glassy transparent crystal facets, iridescent prismatic
+//                  light scatter, balance entity visible through crystal depth refraction)
 //
-// Pending regeneration (2):
+// Pending regeneration (1):
 //   lum_astral  — REJECT: crystal reads as sphere/orb; geodesic-dome facet pattern;
 //                  crystal does not fill panel (dark corners visible)
-//   lum_pale    — REJECT: material is geological rock, not crystal; sphere silhouette
-//                  readable; entity floats in open space, not sealed within crystal
 // ─────────────────────────────────────────────────────────────────────────────
 export const ILLUSTRATED_IDS = new Set<string>([
   'lum_ember',
@@ -83,6 +83,7 @@ export const ILLUSTRATED_IDS = new Set<string>([
   'lum_oracle',
   'lum_bloom',
   'lum_tide',
+  'lum_pale',
 ]);
 
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
