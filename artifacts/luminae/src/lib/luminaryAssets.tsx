@@ -47,6 +47,44 @@ export interface LuminaryVisuals {
 // the next build / Vite HMR reload automatically.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Illustrated Asset Allow-list ─────────────────────────────────────────────
+// Only Luminaries in this set will use illustrated panel/entity/aura assets.
+// IDs NOT in this set fall back to procedural SVG art automatically.
+//
+// Update this list when a new panel passes the panel hard-rules review and is
+// accepted for publication. Panels pending regeneration must NOT be added here.
+//
+// Accepted panels (10):
+//   lum_ember   — accepted (gold standard)
+//   lum_forge   — accepted (gold standard)
+//   lum_verdant — accepted (gold standard)
+//   lum_void    — accepted
+//   lum_radiant — accepted
+//   lum_null    — accepted (panel; entity pending regeneration separately)
+//   lum_compass — accepted
+//   lum_oracle  — accepted
+//   lum_bloom   — accepted
+//   lum_tide    — accepted (recursive tidal spiral, dark oceanic void bg)
+//
+// Pending regeneration (2):
+//   lum_astral  — REJECT: crystal reads as sphere/orb; geodesic-dome facet pattern;
+//                  crystal does not fill panel (dark corners visible)
+//   lum_pale    — REJECT: material is geological rock, not crystal; sphere silhouette
+//                  readable; entity floats in open space, not sealed within crystal
+// ─────────────────────────────────────────────────────────────────────────────
+export const ILLUSTRATED_IDS = new Set<string>([
+  'lum_ember',
+  'lum_forge',
+  'lum_verdant',
+  'lum_void',
+  'lum_radiant',
+  'lum_null',
+  'lum_compass',
+  'lum_oracle',
+  'lum_bloom',
+  'lum_tide',
+]);
+
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
   '../assets/luminaries/**/*.{webp,png,jpg}',
   { eager: true },
@@ -64,6 +102,7 @@ for (const [path, mod] of Object.entries(_luminaryImageModules)) {
 }
 
 function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura'): string | null {
+  if (!ILLUSTRATED_IDS.has(id)) return null;
   return _luminaryImageMap[`${id}/${slot}`] ?? null;
 }
 
