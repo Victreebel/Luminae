@@ -651,6 +651,21 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         <filter id={`${id}-galblur`} x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="2.2" />
         </filter>
+        {/* 2D flat corona — golden ring glow at the event horizon edge */}
+        <radialGradient id={`${id}-corona`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#f0c040" stopOpacity="0"    />
+          <stop offset="48%"  stopColor="#f0c040" stopOpacity="0"    />
+          <stop offset="62%"  stopColor="#f8d040" stopOpacity="0.85" />
+          <stop offset="75%"  stopColor="#e0a820" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#b07800" stopOpacity="0"    />
+        </radialGradient>
+        {/* Saturn-ring disk — clips for front/back z-split */}
+        <clipPath id={`${id}-disk-back`}>
+          <rect x="0" y="0" width="70" height="52" />
+        </clipPath>
+        <clipPath id={`${id}-disk-front`}>
+          <rect x="0" y="52" width="70" height="48" />
+        </clipPath>
       </defs>
 
       {/* Background */}
@@ -906,9 +921,15 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         );
       })}
 
-      {/* Singularity — disk sits fully behind the event horizon */}
+      {/* ── Singularity — five z-ordered layers ──────────────────────────
+           1. Jets
+           2. Far-side disk (behind BH)
+           3. Black event horizon
+           4. 2D flat corona (ring glow around BH edge, in front of BH)
+           5. Near-side Saturn ring (crosses face of BH, bright centre → fades)
+          ──────────────────────────────────────────────────────────────── */}
 
-      {/* Relativistic jets */}
+      {/* 1. Jets */}
       <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 10}
         stroke="#a0e4ff" strokeWidth="1.0" strokeOpacity="0.18"
         strokeLinecap="round" filter={`url(#${id}-bhblur)`} />
@@ -920,25 +941,48 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
         stroke="#d0f0ff" strokeWidth="0.30" strokeOpacity="0.18" strokeLinecap="round" />
 
-      {/* Outer accretion disk — full ellipse, rendered before BH */}
-      <ellipse cx={HUB_X} cy={HUB_Y + 0.5} rx="9.5" ry="2.6"
-        fill={`url(#${id}-disk)`} opacity="0.75"
-        filter={`url(#${id}-diskblur)`} />
-      {/* Inner bright ring */}
-      <ellipse cx={HUB_X} cy={HUB_Y + 0.4} rx="5.6" ry="1.5"
-        fill={`url(#${id}-disk-inner)`} opacity="0.88"
-        filter={`url(#${id}-diskblur)`} />
+      {/* 2. Far-side disk — goes behind BH (top half, dimmer) */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
+        fill={`url(#${id}-disk)`} opacity="0.55"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-back)`} />
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="6.0" ry="1.4"
+        fill={`url(#${id}-disk-inner)`} opacity="0.60"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-back)`} />
 
-      {/* Event horizon — sits on top of disk, obscuring it in the centre */}
-      {/* Photon sphere outer glow */}
-      <circle cx={HUB_X} cy={HUB_Y} r="4.2"
-        fill="none" stroke="#d4a020" strokeWidth="1.2"
-        strokeOpacity="0.28" filter={`url(#${id}-bhblur)`} />
-      {/* Pure black event horizon */}
+      {/* 3. Event horizon — pure black circle */}
       <circle cx={HUB_X} cy={HUB_Y} r="3.3" fill="#000000" />
-      {/* Photon ring — thin gold edge */}
-      <circle cx={HUB_X} cy={HUB_Y} r="3.45"
-        fill="none" stroke="#f0cc50" strokeWidth="0.28" strokeOpacity="0.90" />
+
+      {/* 4. 2D flat corona — golden ring that glows around the BH edge,
+              completely surrounding it as a 2D halo */}
+      {/* Soft outer halo */}
+      <circle cx={HUB_X} cy={HUB_Y} r="7.5"
+        fill={`url(#${id}-corona)`}
+        filter={`url(#${id}-bhblur)`} opacity="0.70" />
+      {/* Sharper inner corona ring */}
+      <circle cx={HUB_X} cy={HUB_Y} r="5.8"
+        fill={`url(#${id}-corona)`} opacity="0.90" />
+
+      {/* 5. Saturn-ring near-side — crosses the face of the BH.
+              The horizontal linear gradient makes the centre opaque and the
+              tips of the ellipse fade to transparency, exactly like a tilted
+              planetary ring seen edge-on. */}
+      {/* Soft glow aura of the near-side ring */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
+        fill={`url(#${id}-disk)`} opacity="0.55"
+        filter={`url(#${id}-bhblur)`}
+        clipPath={`url(#${id}-disk-front)`} />
+      {/* Bright opaque core — the intense equatorial crossing */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
+        fill={`url(#${id}-disk)`} opacity="0.92"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-front)`} />
+      {/* Innermost hot band — most intense at the very centre */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="6.0" ry="1.4"
+        fill={`url(#${id}-disk-inner)`} opacity="0.95"
+        filter={`url(#${id}-diskblur)`}
+        clipPath={`url(#${id}-disk-front)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="93.5" textAnchor="middle" fontFamily="Georgia, serif"
