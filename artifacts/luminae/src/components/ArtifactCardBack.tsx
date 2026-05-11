@@ -684,12 +684,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   // Arm mid-points computed at t=0.5 of each cubic bezier arm.
   const satellites: Array<{
     cx: number; cy: number; bx: number; by: number; col: string; parentIdx: number;
+    customPath?: string;
   }> = [
-    { bx: 42, by: 41, cx: 52, cy: 30, col: R, parentIdx: 0 }, // arm mid → small white galaxy, parallel to violet at y=30
+    // R: branch goes straight up then right — avoids crossing the R arm's rightward sweep
+    { bx: 42, by: 41, cx: 52, cy: 30, col: R, parentIdx: 0,
+      customPath: 'M 42 41 C 42 35 47 30 52 30' },
     { bx: 49, by: 56, cx: 59, cy: 61, col: C, parentIdx: 1 }, // C-arm mid → far right gap (C↔V)
     { bx: 39, by: 66, cx: 35, cy: 79, col: V, parentIdx: 2 }, // V-arm mid → lower center gap
     { bx: 24, by: 58, cx: 11, cy: 61, col: F, parentIdx: 3 }, // F-arm mid → far left gap (A↔F)
-    { bx: 23, by: 45, cx: 18, cy: 30, col: A, parentIdx: 4 }, // arm mid (recalculated) → small purple galaxy
+    // A: branch goes straight up then left — avoids crossing the A arm's leftward sweep
+    { bx: 23, by: 45, cx: 18, cy: 30, col: A, parentIdx: 4,
+      customPath: 'M 23 45 C 23 38 20 32 18 30' },
   ];
 
   return (
@@ -937,16 +942,20 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       {/* Branch spurs — curved bezier from mid-arm (bx/by) to each satellite.
            The curve swings perpendicular to the direct line for a natural branch feel.
            Gradient: gold at the arm junction → affinity color at the satellite. */}
-      {satellites.map(({ cx, cy, bx, by, col }, i) => {
-        const dx = cx - bx, dy = cy - by;
-        // Perpendicular offset: 30% of length, alternating side per satellite
-        const side = i % 2 === 0 ? 0.30 : -0.30;
-        const perpX = -dy * side, perpY = dx * side;
-        const c1x = (bx + dx / 3 + perpX).toFixed(1);
-        const c1y = (by + dy / 3 + perpY).toFixed(1);
-        const c2x = (bx + (2 * dx) / 3 + perpX).toFixed(1);
-        const c2y = (by + (2 * dy) / 3 + perpY).toFixed(1);
-        const d = `M ${bx} ${by} C ${c1x} ${c1y} ${c2x} ${c2y} ${cx} ${cy}`;
+      {satellites.map(({ cx, cy, bx, by, col, customPath }, i) => {
+        let d: string;
+        if (customPath) {
+          d = customPath;
+        } else {
+          const dx = cx - bx, dy = cy - by;
+          const side = i % 2 === 0 ? 0.30 : -0.30;
+          const perpX = -dy * side, perpY = dx * side;
+          const c1x = (bx + dx / 3 + perpX).toFixed(1);
+          const c1y = (by + dy / 3 + perpY).toFixed(1);
+          const c2x = (bx + (2 * dx) / 3 + perpX).toFixed(1);
+          const c2y = (by + (2 * dy) / 3 + perpY).toFixed(1);
+          d = `M ${bx} ${by} C ${c1x} ${c1y} ${c2x} ${c2y} ${cx} ${cy}`;
+        }
         return (
           <g key={i}>
             {/* Outer soft halo */}
