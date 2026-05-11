@@ -863,6 +863,10 @@ export default function GameBoard() {
   const gemBurstKeyRef = useRef(0);
   const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTakeBurstActionRef = useRef<string | null>(null);
+  // True when the local player's harvest was already animated optimistically
+  // (button-click path). processUpdateRef checks this to avoid double-firing and
+  // to detect planned harvests that need their own gem burst.
+  const directHarvestFiredRef = useRef(false);
   const [reserveBurst, setReserveBurst] = useState<{
     key: number;
     tier: 1 | 2 | 3;
@@ -1441,7 +1445,29 @@ export default function GameBoard() {
         if (takeKey !== lastTakeBurstActionRef.current) {
           lastTakeBurstActionRef.current = takeKey;
           const actorId = action.playerId as string | undefined;
-          if (actorId && actorId !== session?.playerId) {
+          const isLocalPlayer = actorId && actorId === session?.playerId;
+          if (isLocalPlayer) {
+            // Local player: if the button-click path already fired an optimistic
+            // gem burst, consume the flag and skip (avoid double animation).
+            // If the flag is not set, this harvest came from a planned action that
+            // was never animated — play the burst now so it doesn't silently execute.
+            if (directHarvestFiredRef.current) {
+              directHarvestFiredRef.current = false;
+            } else {
+              const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
+              if (player) {
+                let crystals: Partial<CrystalCounts> = {};
+                if (action.type === 'take_three_crystals') {
+                  crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
+                } else {
+                  const color = action.crystal as string;
+                  if (color) crystals = { [color]: 2 };
+                }
+                playGemBurst(crystals, player.playerName, player.avatarId ?? null);
+              }
+            }
+          } else if (actorId) {
+            // Opponent harvest — always animate.
             const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
             if (player) {
               let crystals: Partial<CrystalCounts> = {};
@@ -1895,9 +1921,11 @@ export default function GameBoard() {
   const confirmCrystals = () => {
     if (!queueLegality.ok || !me) return;
     if (queueLegality.actionType === 'take3') {
+      directHarvestFiredRef.current = true;
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
     } else if (queueLegality.actionType === 'take2') {
+      directHarvestFiredRef.current = true;
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
     }
