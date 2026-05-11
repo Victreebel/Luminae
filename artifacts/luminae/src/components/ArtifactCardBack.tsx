@@ -299,14 +299,14 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number };
 
   const SECTOR_COLS = [R, C, V, F, A];
-  const getSectorCol = (angle: number, phaseOff: number): string | null => {
+  const getSectorCol = (angle: number, phaseOff: number, gap = 0.13): string | null => {
     const a = ((angle + phaseOff) % 360 + 360) % 360;
     const frac = (a % 72) / 72;
-    if (frac < 0.13 || frac > 0.87) return null;   // wider gap → clear fragmentation between sectors
+    if (frac < gap || frac > 1 - gap) return null;
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3): HexCell[] => {
+  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3, gap = 0.13): HexCell[] => {
     const cells: HexCell[] = [];
     const DX = hr * 1.5;
     const DY = hr * Math.sqrt(3);
@@ -320,7 +320,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         if (d2 > 0.93) continue;
         if (d2 < 0.11) continue;   // keep hexes clear of the star's glow (~10 SVG units exclusion radius)
         const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
-        const col = getSectorCol(angle, phaseOff);
+        const col = getSectorCol(angle, phaseOff, gap);
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
@@ -367,7 +367,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   };
 
   const shell3     = genShell(30, 3.6, 18, 2);   // outermost shell, ~50% solid
-  const shellInner = genShell(20, 2.4, 216, 3);  // inner shell — smaller hexes, 36°+180° offset, every-3rd solid
+  const shellInner = genShell(20, 2.4, 216, 3, 0.22);  // inner shell — wider gap (22%) so sectors stay disconnected
 
   // Render inner shell behind outer: sn=2 uses the semi-transparent branch.
   const SHELL_ORDER: Record<number, number> = { 2: 0, 3: 1 };
