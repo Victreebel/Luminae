@@ -685,7 +685,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const satellites: Array<{
     cx: number; cy: number; bx: number; by: number; col: string; parentIdx: number;
   }> = [
-    { bx: 42, by: 41, cx: 52, cy: 33, col: R, parentIdx: 0 }, // arm mid → small white galaxy (cy raised to avoid overlap with arm origin)
+    { bx: 42, by: 41, cx: 52, cy: 30, col: R, parentIdx: 0 }, // arm mid → small white galaxy, parallel to violet at y=30
     { bx: 49, by: 56, cx: 59, cy: 61, col: C, parentIdx: 1 }, // C-arm mid → far right gap (C↔V)
     { bx: 39, by: 66, cx: 35, cy: 79, col: V, parentIdx: 2 }, // V-arm mid → lower center gap
     { bx: 24, by: 58, cx: 11, cy: 61, col: F, parentIdx: 3 }, // F-arm mid → far left gap (A↔F)
