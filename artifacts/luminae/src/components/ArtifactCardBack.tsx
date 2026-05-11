@@ -1041,11 +1041,9 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
               const ang = (i / 16) * 360 + pOff + Math.sin(i * 1.9) * 11;
               const rad = OUTER_R + Math.sin(i * 2.4) * 0.55;
               const [px, py] = pt(cx, cy, rad, ang);
-              return i % 4 === 0
-                ? <circle key={i} cx={px} cy={py} r="0.58"
-                    fill="#070510" stroke={GOLD3} strokeWidth="0.22" strokeOpacity="0.75" />
-                : <circle key={i} cx={px} cy={py} r="0.42"
-                    fill={col} opacity={0.55 + (i % 3) * 0.12} />;
+              return <circle key={i} cx={px} cy={py}
+                r={i % 4 === 0 ? 0.48 : 0.32}
+                fill={col} opacity={0.55 + (i % 3) * 0.15} />;
             })}
 
             {/* Inner swarm — 12 independent satellite particles */}
