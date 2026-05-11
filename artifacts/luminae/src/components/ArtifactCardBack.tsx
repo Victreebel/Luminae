@@ -1157,29 +1157,6 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         strokeDasharray="20.5 100" strokeLinecap="round"
         filter={`url(#${id}-diskblur)`} />
 
-      {/* 5b. XZ ring — full great circle, no dasharray needed.
-               The ring's minimum distance to the BH centre (≈9.2) is far larger
-               than the BH radius (3.3), so it never overlaps the black circle
-               and needs no front/back split.
-               disk-v gradient: opaque at y=52 (left/right equatorial flanks),
-               transparent at poles (y≈42.8 top, y≈61.2 bottom).
-               The full stroke is visible at the flanks and fades naturally
-               at the top and bottom arcs. */}
-      {/* Soft outer glow */}
-      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
-        strokeWidth="5.5" strokeOpacity="0.30"
-        filter={`url(#${id}-bhblur)`} />
-      {/* Main ring line */}
-      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
-        strokeWidth="1.8" strokeOpacity="0.80"
-        filter={`url(#${id}-diskblur)`} />
-      {/* Inner bright core */}
-      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
-        fill="none" stroke={`url(#${id}-disk-v)`}
-        strokeWidth="0.65" strokeOpacity="0.92"
-        filter={`url(#${id}-diskblur)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
