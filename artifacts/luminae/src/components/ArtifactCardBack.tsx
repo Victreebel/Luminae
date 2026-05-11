@@ -651,12 +651,13 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
 
   // Five affinity star systems at exact regular-pentagon vertices.
   // Hub=(35,52), R=18, vertex 0 at top (−90°), every 72° clockwise.
+  // R=22 pentagon — pushed toward card edges
   const systems: Array<{ cx: number; cy: number; col: string }> = [
-    { cx: 35, cy: 34, col: R }, // Radiance  — top
-    { cx: 52, cy: 46, col: C }, // Continuum — upper-right
-    { cx: 46, cy: 67, col: V }, // Verdance  — lower-right
-    { cx: 24, cy: 67, col: F }, // Flare     — lower-left
-    { cx: 18, cy: 46, col: A }, // Abyss     — upper-left
+    { cx: 35, cy: 30, col: R }, // Radiance  — top
+    { cx: 56, cy: 45, col: C }, // Continuum — upper-right
+    { cx: 48, cy: 70, col: V }, // Verdance  — lower-right
+    { cx: 22, cy: 70, col: F }, // Flare     — lower-left
+    { cx: 14, cy: 45, col: A }, // Abyss     — upper-left
   ];
 
   // Cycle edge connections (adjacent system index pairs)
@@ -678,22 +679,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const INNER_R = 4.8;
   const OUTER_R = 7.5;
 
-  // Branch junction points at t≈0.30 along each pentagon arm bezier.
+  // Satellite galaxies — fill inter-arm negative space near center.
+  // bx/by = mid-point of parent arm (branch origin); cx/cy = satellite position.
+  // Arm mid-points computed at t=0.5 of each cubic bezier arm.
   const satellites: Array<{
-    cx: number; cy: number; ax: number; ay: number;
-    qx: number; qy: number; q2x: number; q2y: number;
-    col: string; parentIdx: number;
+    cx: number; cy: number; bx: number; by: number; col: string; parentIdx: number;
   }> = [
-    // R — junction (35,40) on arm 0 → top-right corner (58,14)
-    { ax: 35, ay: 40, qx: 43, qy: 35, q2x: 52, q2y: 22, cx: 58, cy: 14, col: R, parentIdx: 0 },
-    // C — junction (48,48) on arm 1 → right corner (59,64)
-    { ax: 48, ay: 48, qx: 53, qy: 52, q2x: 57, q2y: 60, cx: 59, cy: 64, col: C, parentIdx: 1 },
-    // V — junction (43,63) on arm 2 → bottom-right (52,88)
-    { ax: 43, ay: 63, qx: 46, qy: 72, q2x: 50, q2y: 82, cx: 52, cy: 88, col: V, parentIdx: 2 },
-    // F — junction (27,63) on arm 3 → bottom-left (14,86)
-    { ax: 27, ay: 63, qx: 22, qy: 72, q2x: 16, q2y: 82, cx: 14, cy: 86, col: F, parentIdx: 3 },
-    // A — junction (22,48) on arm 4 → upper-left (11,22)
-    { ax: 22, ay: 48, qx: 18, qy: 40, q2x: 13, q2y: 30, cx: 11, cy: 22, col: A, parentIdx: 4 },
+    { bx: 28, by: 41, cx: 42, cy: 40, col: R, parentIdx: 0 }, // R-arm mid → upper-right gap
+    { bx: 50, by: 56, cx: 55, cy: 63, col: C, parentIdx: 1 }, // C-arm mid → right gap
+    { bx: 46, by: 60, cx: 35, cy: 67, col: V, parentIdx: 2 }, // V-arm mid → bottom gap
+    { bx: 24, by: 58, cx: 17, cy: 59, col: F, parentIdx: 3 }, // F-arm mid → left gap
+    { bx: 21, by: 41, cx: 24, cy: 36, col: A, parentIdx: 4 }, // A-arm mid → upper-left gap
   ];
 
   return (
@@ -816,6 +812,27 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         <clipPath id={`${id}-disk-front`}>
           <rect x="0" y="52" width="70" height="48" />
         </clipPath>
+
+        {/* Per-arm energy beam gradients: affinity color at system → gold at hub */}
+        {systems.map(({ cx, cy, col }, i) => (
+          <linearGradient key={i} id={`${id}-arm${i}`}
+            x1={cx} y1={cy} x2={HUB_X} y2={HUB_Y}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stopColor={col}   stopOpacity="1"   />
+            <stop offset="72%"  stopColor={GOLD}  stopOpacity="0.9" />
+            <stop offset="100%" stopColor={GOLD2} stopOpacity="0.6" />
+          </linearGradient>
+        ))}
+
+        {/* Per-branch gradients: gold at arm junction → affinity at satellite */}
+        {satellites.map(({ bx, by, cx, cy, col }, i) => (
+          <linearGradient key={i} id={`${id}-br${i}`}
+            x1={bx} y1={by} x2={cx} y2={cy}
+            gradientUnits="userSpaceOnUse">
+            <stop offset="0%"   stopColor={GOLD2} stopOpacity="0.7" />
+            <stop offset="100%" stopColor={col}   stopOpacity="1"   />
+          </linearGradient>
+        ))}
       </defs>
 
       {/* Background */}
@@ -893,25 +910,32 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
 
       {/* Pentagon edge connectors removed — avoided crossing through star systems */}
 
-      {/* Branch spurs — cubic bezier forking from the exact arm start point.
-           ax/ay IS the arm start, so the spur and the arm share the same origin.
-           Two control points (q1, q2) give an S-curve that leaves the junction
-           tangentially and approaches the satellite from a natural direction. */}
-      {satellites.map(({ cx, cy, ax, ay, qx, qy, q2x, q2y, col }, i) => {
-        const d = `M ${ax} ${ay} C ${qx} ${qy} ${q2x} ${q2y} ${cx} ${cy}`;
+      {/* Branch spurs — curved bezier from mid-arm (bx/by) to each satellite.
+           The curve swings perpendicular to the direct line for a natural branch feel.
+           Gradient: gold at the arm junction → affinity color at the satellite. */}
+      {satellites.map(({ cx, cy, bx, by, col }, i) => {
+        const dx = cx - bx, dy = cy - by;
+        // Perpendicular offset: 30% of length, alternating side per satellite
+        const side = i % 2 === 0 ? 0.30 : -0.30;
+        const perpX = -dy * side, perpY = dx * side;
+        const c1x = (bx + dx / 3 + perpX).toFixed(1);
+        const c1y = (by + dy / 3 + perpY).toFixed(1);
+        const c2x = (bx + (2 * dx) / 3 + perpX).toFixed(1);
+        const c2y = (by + (2 * dy) / 3 + perpY).toFixed(1);
+        const d = `M ${bx} ${by} C ${c1x} ${c1y} ${c2x} ${c2y} ${cx} ${cy}`;
         return (
           <g key={i}>
-            {/* Glow under-stroke */}
+            {/* Wide glow halo */}
             <path d={d} fill="none"
-              stroke={col} strokeWidth="1.8" strokeOpacity="0.11"
+              stroke={`url(#${id}-br${i})`} strokeWidth="2.4" strokeOpacity="0.18"
               strokeLinecap="round" filter={`url(#${id}-aglow)`} />
-            {/* Bright core stroke */}
+            {/* Bright core beam */}
             <path d={d} fill="none"
-              stroke={col} strokeWidth="0.52" strokeOpacity="0.40"
+              stroke={`url(#${id}-br${i})`} strokeWidth="0.5" strokeOpacity="0.62"
               strokeLinecap="round" />
-            {/* Fork node — marks the bifurcation at the arm start */}
-            <circle cx={ax} cy={ay} r="0.60"
-              fill="#0a0818" stroke={col} strokeWidth="0.30" strokeOpacity="0.85" />
+            {/* Junction node at arm mid-point */}
+            <circle cx={bx} cy={by} r="0.52"
+              fill="#0a0818" stroke={GOLD3} strokeWidth="0.25" strokeOpacity="0.80" />
           </g>
         );
       })}
@@ -964,22 +988,25 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         );
       })}
 
-      {/* Clockwise spiral arms — each system spirals into the singularity.
-           Arms tuned to the new free-form system positions to avoid crossing. */}
-      {/* Arms curve inward directly from each system — no outward swing into neighbour territory */}
+      {/* Clockwise spiral arms — dramatic curves sweep into the singularity hub.
+           Each arm is a cubic bezier that arcs in a consistent rotational sense,
+           creating a spiral galaxy silhouette. Color transitions from affinity
+           color at the system end to gold at the hub via linearGradient. */}
       {([
-        `M 35 34 C 35 40 35 47 35 52`,   // R: straight down to hub
-        `M 52 46 C 48 48 41 51 35 52`,   // C: gentle curve left-down
-        `M 46 67 C 43 62 39 57 35 52`,   // V: curves up-left
-        `M 24 67 C 27 62 31 57 35 52`,   // F: curves right-up
-        `M 18 46 C 22 48 29 51 35 52`,   // A: gentle curve right-down
+        `M 35 30 C 22 33 28 48 35 52`,   // R: sweeps left from top, curves back right
+        `M 56 45 C 60 60 44 57 35 52`,   // C: sweeps down-right, then arcs left to hub
+        `M 48 70 C 52 62 42 57 35 52`,   // V: rises right first, then sweeps left-up
+        `M 22 70 C 18 60 26 55 35 52`,   // F: dips left, then sweeps right-up to hub
+        `M 14 45 C 12 32 27 44 35 52`,   // A: sweeps up-left, arcs right to hub
       ] as string[]).map((d, i) => (
         <g key={i}>
-          <path d={d} fill="none" stroke={systems[i].col}
-            strokeWidth="2.2" strokeOpacity="0.10" strokeLinecap="round"
+          {/* Wide glow halo — gradient color */}
+          <path d={d} fill="none" stroke={`url(#${id}-arm${i})`}
+            strokeWidth="2.8" strokeOpacity="0.20" strokeLinecap="round"
             filter={`url(#${id}-aglow)`} />
-          <path d={d} fill="none" stroke={systems[i].col}
-            strokeWidth="0.6" strokeOpacity="0.42" strokeLinecap="round" />
+          {/* Bright core beam — gradient color */}
+          <path d={d} fill="none" stroke={`url(#${id}-arm${i})`}
+            strokeWidth="0.7" strokeOpacity="0.58" strokeLinecap="round" />
         </g>
       ))}
 
