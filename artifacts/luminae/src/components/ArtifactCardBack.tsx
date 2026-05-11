@@ -144,30 +144,7 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           opacity={0.10 + (sz * 0.038)} />
       ))}
 
-      {/* ── Local star — clipped to card interior so bloom stays within border ── */}
-      <g clipPath={`url(#${id}-cardclip)`}>
-        {/* Broad outer corona bloom */}
-        <circle cx="57" cy="19" r="20"
-          fill={`url(#${id}-sun)`}
-          filter={`url(#${id}-sunglow)`} opacity="0.38" />
-        {/* Inner corona */}
-        <circle cx="57" cy="19" r="11"
-          fill={`url(#${id}-sun)`}
-          filter={`url(#${id}-sunglow)`} opacity="0.65" />
-        {/* Limb-lit disc */}
-        <circle cx="57" cy="19" r="4.2" fill={`url(#${id}-sun)`} opacity="0.94" />
-        {/* Bright point */}
-        <circle cx="57" cy="19" r="1.5" fill="#ffffff" opacity="0.98" />
-        {/* Cross-flare */}
-        <line x1="45" y1="19" x2="69" y2="19"
-          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.38" />
-        <line x1="57" y1="7"  x2="57" y2="31"
-          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.30" />
-        <line x1="49" y1="11" x2="65" y2="27"
-          stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
-        <line x1="65" y1="11" x2="49" y2="27"
-          stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
-      </g>
+      {/* sun moved behind planet — rendered later, before atmosphere */}
 
       {/* ── T1 Border — single L-corner ── */}
       <rect x="4" y="4" width="62" height="92" rx="1.5"
@@ -195,6 +172,23 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         fontSize="5" fill={GOLD2} opacity="0.72" letterSpacing="1">I</text>
       <line x1="31.5" y1="16" x2="38.5" y2="16"
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.5" />
+
+      {/* ── Sun behind planet — corona blooms before atmosphere/sphere so planet occludes it ── */}
+      <g clipPath={`url(#${id}-cardclip)`}>
+        {/* Broad outer corona — visible as rim-light around planet edge */}
+        <circle cx={PX} cy={PY} r="30"
+          fill={`url(#${id}-sun)`}
+          filter={`url(#${id}-sunglow)`} opacity="0.42" />
+        {/* Tight inner corona */}
+        <circle cx={PX} cy={PY} r="20"
+          fill={`url(#${id}-sun)`}
+          filter={`url(#${id}-sunglow)`} opacity="0.72" />
+        {/* Cross-flare — subtle, clipped behind planet */}
+        <line x1={PX - 14} y1={PY} x2={PX + 14} y2={PY}
+          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.28" />
+        <line x1={PX} y1={PY - 14} x2={PX} y2={PY + 14}
+          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.22" />
+      </g>
 
       {/* ── Atmospheric halo ── */}
       <circle cx={PX} cy={PY} r={PR + 3.5} fill={`url(#${id}-atmo)`} />
@@ -235,16 +229,22 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       <circle cx={PX} cy={PY} r={PR}
         fill="none" stroke="#5090e0" strokeWidth="0.5" strokeOpacity="0.5" />
 
-      {/* ── First orbital infrastructure ── */}
-      <path d={arcPath(PX, PY, ORB_R, -135, 55)}
-        fill="none" stroke={GOLD3} strokeWidth="0.7" strokeOpacity="0.55"
-        strokeDasharray="3 1.8" />
-      {([-110, -45, 20, 45] as number[]).map((deg, i) => {
+      {/* ── Five affinity satellites — equidistant full orbit ── */}
+      {([F, C, V, A, R] as string[]).map((col, i) => {
+        const deg = -90 + i * 72;
         const [ox, oy] = pt(PX, PY, ORB_R, deg);
         return (
           <g key={i}>
-            <rect x={ox-1} y={oy-0.8} width="2" height="1.6" rx="0.3"
-              fill="#0c1a40" stroke={GOLD3} strokeWidth="0.35" />
+            {/* Body */}
+            <rect x={ox - 1.15} y={oy - 0.70} width="2.3" height="1.4" rx="0.28"
+              fill="#060d24" stroke={col} strokeWidth="0.38" opacity="0.92" />
+            {/* Solar panels */}
+            <line x1={ox - 2.5} y1={oy} x2={ox - 1.15} y2={oy}
+              stroke={col} strokeWidth="0.32" strokeOpacity="0.72" />
+            <line x1={ox + 1.15} y1={oy} x2={ox + 2.5} y2={oy}
+              stroke={col} strokeWidth="0.32" strokeOpacity="0.72" />
+            {/* Affinity glow dot */}
+            <circle cx={ox} cy={oy} r="0.42" fill={col} opacity="0.95" />
           </g>
         );
       })}
