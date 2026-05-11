@@ -366,8 +366,28 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
+  // Reassigns solid flags so every affinity colour gets exactly the same count.
+  // Groups cells by colour, finds the minimum group's fair share (minCount/solidMod),
+  // then picks that many evenly-spaced cells from each colour group.
+  const equalizeShellSolids = (cells: HexCell[], solidMod: number): HexCell[] => {
+    const byCol: Record<string, number[]> = {};
+    cells.forEach((c, i) => { (byCol[c.col] ??= []).push(i); });
+    const minCount = Math.min(...Object.values(byCol).map(g => g.length));
+    const target   = Math.max(1, Math.floor(minCount / solidMod));
+    const result   = cells.map(c => ({ ...c, solid: false }));
+    Object.values(byCol).forEach(idxs => {
+      for (let t = 0; t < target; t++) {
+        const pick = Math.round(t * (idxs.length - 1) / Math.max(target - 1, 1));
+        result[idxs[pick]].solid = true;
+      }
+    });
+    return result;
+  };
+
   const shell3     = genShell(30, 3.6, 18, 2);   // outermost shell, ~50% solid
-  const shellInner = genShell(20, 2.4, 216, 3, 0.22);  // inner shell — wider gap (22%) so sectors stay disconnected
+  const shellInner = equalizeShellSolids(
+    genShell(20, 2.4, 216, 3, 0.22), 3,           // inner shell — equal solid count per colour
+  );
 
   // Render inner shell behind outer: sn=2 uses the semi-transparent branch.
   const SHELL_ORDER: Record<number, number> = { 2: 0, 3: 1 };
