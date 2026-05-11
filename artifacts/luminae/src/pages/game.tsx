@@ -905,6 +905,9 @@ export default function GameBoard() {
   // Guard that prevents the flush effect from firing the fanfare twice if the
   // summonQueue.length dep oscillates while pendingGameOver is still true.
   const fanfareFiredForGameOverRef = useRef(false);
+  // Guard that prevents the initial-load win fanfare from firing more than once
+  // per component lifetime (covers page reloads, spectators, latecomers).
+  const winFanfareOnLoadFiredRef = useRef(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -1152,6 +1155,50 @@ export default function GameBoard() {
     if (alreadyClaimed.length > 0) {
       setClaimedThisSession(alreadyClaimed);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!state]);
+
+  // ── Initial-load win fanfare ───────────────────────────────────────────────
+  // If the page loads (or reloads) when state.status is already 'finished',
+  // play the affinity fanfare + win audio once.  This covers spectators,
+  // latecomers, and players who refresh after the game ends — none of whom
+  // experience the live status transition handled by processUpdate.
+  useEffect(() => {
+    if (winFanfareOnLoadFiredRef.current) return;
+    if (!state) return;
+    if (state.status !== 'finished') return;
+    winFanfareOnLoadFiredRef.current = true;
+    const GEM_KEY_TO_HEX: Record<string, string> = {
+      ruby:     '#ff5a3c',
+      sapphire: '#60a5fa',
+      emerald:  '#2ecc71',
+      onyx:     '#0f172a',
+      pearl:    '#fef9c3',
+      flux:     '#fbbf24',
+    };
+    const winnerPlayer = (state.players as GamePlayerState[]).find(
+      p => p.playerId === state.winnerId
+    );
+    let dominantColor = '#fbbf24';
+    if (winnerPlayer) {
+      const bonuses = winnerPlayer.bonuses;
+      const gemEntries: Array<[string, number]> = [
+        ['ruby',     bonuses.ruby],
+        ['sapphire', bonuses.sapphire],
+        ['emerald',  bonuses.emerald],
+        ['onyx',     bonuses.onyx],
+        ['pearl',    bonuses.pearl],
+        ['flux',     bonuses.flux],
+      ];
+      let maxBonus = 0;
+      let dominantKey = 'flux';
+      for (const [key, val] of gemEntries) {
+        if (val > maxBonus) { maxBonus = val; dominantKey = key; }
+      }
+      dominantColor = GEM_KEY_TO_HEX[dominantKey] ?? '#fbbf24';
+    }
+    gameAudio.playLuminaryFanfare(dominantColor);
+    setTimeout(() => gameAudio.playWin(), 1400);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!state]);
 
