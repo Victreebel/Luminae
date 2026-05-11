@@ -1348,6 +1348,8 @@ export default function GameBoard() {
                 const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                 const deckR = deckEl?.getBoundingClientRect();
                 const slotR = slotEl?.getBoundingClientRect();
+                // eslint-disable-next-line no-console
+                console.warn('[deal-anim] deck:', deckEl, deckR, '| slot:', slotEl, slotR);
                 if (deckR && slotR) {
                   setDealingCard({
                     card: newCard,
@@ -3901,48 +3903,68 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
-      {dealingCard && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none' }}>
-          <motion.div
-            key={dealingCard.card.id}
-            style={{
-              position: 'absolute',
-              left: dealingCard.deckRect.x,
-              top: dealingCard.deckRect.y,
-              width: dealingCard.deckRect.w,
-              height: dealingCard.deckRect.h,
-              transformStyle: 'preserve-3d',
-              perspective: '900px',
-            }}
-            initial={{ x: 0, y: 0, rotateY: 0 }}
-            animate={{
-              x: dealingCard.slotRect.x - dealingCard.deckRect.x,
-              y: dealingCard.slotRect.y - dealingCard.deckRect.y,
-              rotateY: 180,
-            }}
-            transition={{ duration: 0.65, ease: [0.25, 0.46, 0.45, 0.94] }}
-            onAnimationComplete={() => {
-              setDealingCard(null);
-              setHiddenSlots(new Set());
-            }}
-          >
-            {/* Card back — visible during first half of flight */}
-            <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden' }}>
-              <CardBack tier={dealingCard.tier as 1 | 2 | 3} />
-            </div>
-            {/* Card face — revealed after half-flip */}
-            <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-              <ArtifactCardView
-                card={dealingCard.card}
-                tier={dealingCard.tier}
-                onTap={() => {}}
-                tapped={false}
-                effectiveCosts={computeCosts(dealingCard.card, costMode)}
-              />
-            </div>
-          </motion.div>
-        </div>
-      )}
+      {dealingCard && (() => {
+        const dx = dealingCard.slotRect.x - dealingCard.deckRect.x;
+        const dy = dealingCard.slotRect.y - dealingCard.deckRect.y;
+        const arcY = Math.min(dy - 60, -40); // arc upward before descending
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none', perspective: '1200px' }}>
+            <motion.div
+              key={dealingCard.card.id}
+              style={{
+                position: 'absolute',
+                left: dealingCard.deckRect.x,
+                top: dealingCard.deckRect.y,
+                width: dealingCard.deckRect.w,
+                height: dealingCard.deckRect.h,
+                transformStyle: 'preserve-3d',
+              }}
+              initial={{ x: 0, y: 0, rotateY: 0, scale: 1 }}
+              animate={{
+                x: [0, dx * 0.5, dx],
+                y: [0, arcY, dy],
+                rotateY: [0, 90, 180],
+                scale: [1, 1.08, 1],
+              }}
+              transition={{
+                duration: 1.5,
+                x: { ease: 'easeInOut', times: [0, 0.4, 1] },
+                y: { ease: 'easeInOut', times: [0, 0.35, 1] },
+                rotateY: { ease: 'easeInOut', times: [0, 0.5, 1] },
+                scale: { ease: 'easeInOut', times: [0, 0.35, 1] },
+              }}
+              onAnimationComplete={() => {
+                setDealingCard(null);
+                setHiddenSlots(new Set());
+              }}
+            >
+              {/* Card back — visible during first half of flight */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+              }}>
+                <CardBack tier={dealingCard.tier as 1 | 2 | 3} />
+              </div>
+              {/* Card face — revealed after half-flip */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)',
+              }}>
+                <ArtifactCardView
+                  card={dealingCard.card}
+                  tier={dealingCard.tier}
+                  onTap={() => {}}
+                  tapped={false}
+                  effectiveCosts={computeCosts(dealingCard.card, costMode)}
+                />
+              </div>
+            </motion.div>
+          </div>
+        );
+      })()}
 
       {/* ── Purchase Celebration Burst (reserved card purchases only) ── */}
       <AnimatePresence>
