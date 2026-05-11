@@ -800,6 +800,14 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         <filter id={`${id}-galblur`} x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="2.2" />
         </filter>
+        {/* Swirling nebula — turbulence displacement + soft blur */}
+        <filter id={`${id}-nebula`} x="-80%" y="-80%" width="260%" height="260%">
+          <feTurbulence type="turbulence" baseFrequency="0.018 0.012"
+            numOctaves="4" seed="17" result="turb" />
+          <feDisplacementMap in="SourceGraphic" in2="turb"
+            scale="10" xChannelSelector="R" yChannelSelector="G" result="disp" />
+          <feGaussianBlur stdDeviation="4.5" in="disp" />
+        </filter>
         {/* 2D flat corona — golden ring glow at the event horizon edge */}
         <radialGradient id={`${id}-corona`} cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stopColor="#f0c040" stopOpacity="0"    />
@@ -840,6 +848,18 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
 
       {/* Background */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
+
+      {/* Swirling affinity nebula — one cloud per system, turbulence-distorted */}
+      <ellipse cx="35" cy="28" rx="22" ry="18" fill={R}
+        opacity="0.13" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="58" cy="44" rx="20" ry="18" fill={C}
+        opacity="0.13" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="50" cy="72" rx="20" ry="16" fill={V}
+        opacity="0.13" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="20" cy="72" rx="20" ry="16" fill={F}
+        opacity="0.13" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="12" cy="44" rx="20" ry="18" fill={A}
+        opacity="0.13" filter={`url(#${id}-nebula)`} />
 
       {/* Starfield */}
       {stars.map(([x, y, ov], i) => (
