@@ -296,7 +296,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
   // at sector boundaries let star-light through. Two shell layers: outer at
   // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
-  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number };
+  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number; rawHx: number; rawHy: number };
 
   const SECTOR_COLS = [R, C, V, F, A];
   const getSectorCol = (angle: number, phaseOff: number): string | null => {
@@ -339,7 +339,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % solidMod) === 0;
         const sx = CX + hx * compress;
         const sy = CY + hy * compress;
-        cells.push({ verts, col, z, solid, cx: sx, cy: sy });
+        cells.push({ verts, col, z, solid, cx: sx, cy: sy, rawHx: hx, rawHy: hy });
       }
     }
     return cells.sort((a, b) => a.z - b.z);       // back → front
@@ -368,10 +368,55 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
-  const shell3    = genShell(30, 3.6, 18, 2);                   // outermost shell, ~50% solid
-  // Back-hemisphere: small solar-reflective fragments behind the star.
-  // minD2=0.005 lets cells start very close to centre; usePersp shrinks them toward the star.
-  const shellBack = genShell(18, 1.6,  9, 2, 0.005, true);    // dense small fragments, perspective depth
+  // Post-process a shell: remove isolated cells (no physical neighbour) and
+  // guarantee at least one solid panel per connected cluster.
+  const ensureClusters = (cells: HexCell[], hr: number): HexCell[] => {
+    const thresh2 = (hr * 2.05) * (hr * 2.05);
+    const adjList: number[][] = cells.map(() => []);
+    for (let a = 0; a < cells.length; a++) {
+      for (let b = a + 1; b < cells.length; b++) {
+        const dx = cells[a].rawHx - cells[b].rawHx;
+        const dy = cells[a].rawHy - cells[b].rawHy;
+        if (dx * dx + dy * dy < thresh2) {
+          adjList[a].push(b);
+          adjList[b].push(a);
+        }
+      }
+    }
+    // BFS to find connected components
+    const component = new Array(cells.length).fill(-1);
+    const components: number[][] = [];
+    for (let start = 0; start < cells.length; start++) {
+      if (adjList[start].length === 0 || component[start] !== -1) continue;
+      const comp: number[] = [];
+      const queue = [start];
+      component[start] = components.length;
+      while (queue.length > 0) {
+        const curr = queue.shift()!;
+        comp.push(curr);
+        for (const nb of adjList[curr]) {
+          if (component[nb] === -1) { component[nb] = components.length; queue.push(nb); }
+        }
+      }
+      components.push(comp);
+    }
+    // For each component with no solid, force the highest-z cell solid
+    const forceSolid = new Set<number>();
+    for (const comp of components) {
+      if (!comp.some(i => cells[i].solid)) {
+        forceSolid.add(comp.reduce((best, i) => cells[i].z > cells[best].z ? i : best, comp[0]));
+      }
+    }
+    return cells
+      .map((c, i) => forceSolid.has(i) ? { ...c, solid: true } : c)
+      .filter((_, i) => adjList[i].length > 0);   // remove isolated cells
+  };
+
+  const shell3    = genShell(30, 3.6, 18, 2);                      // outermost shell, ~50% solid
+  // Back-hemisphere: small solar-reflective fragments — extends to near shell3's outer radius.
+  // minD2=0.005 starts near centre; usePersp shrinks cells toward the star.
+  const shellBackRaw = genShell(27, 1.6, 9, 2, 0.005, true);
+  const shellBack    = ensureClusters(shellBackRaw, 1.6);
 
   const allCells = [
     ...shellBack.map(c => ({ ...c, sn: 0 as const })),  // render first (behind everything)
@@ -478,21 +523,26 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
         // ── Back hemisphere — solar-reflective fragments behind the star ──
         // z≈1 = very close to star (max reflected brightness); star bloom occludes the brightest.
-        // Colors are solar warm-white / amber — not affinity-tinted.
         if (sn === 0) return (
           <g key={i}>
-            {solid && (
-              <polygon points={ptStr}
-                fill="#fffbe8" fillOpacity={0.05 + z * 0.20} />
-            )}
-            {/* Amber solar-reflection rim */}
+            {solid && <>
+              {/* Affinity-coloured base fill */}
+              <polygon points={ptStr} fill={col} fillOpacity={0.06 + z * 0.14} />
+              {/* Warm cream solar-wash over the fill */}
+              <polygon points={ptStr} fill="#fffbe8" fillOpacity={0.04 + z * 0.16} />
+            </>}
+            {/* Affinity colour outline — identifies which sector each fragment belongs to */}
             <polygon points={ptStr} fill="none"
-              stroke="#ffcc50" strokeWidth="0.09"
-              strokeOpacity={0.15 + z * 0.48} />
-            {/* White-hot inner highlight — only on bright near-star cells */}
+              stroke={col} strokeWidth="0.09"
+              strokeOpacity={0.22 + z * 0.30} />
+            {/* Amber solar-reflection overlay — brightens toward the star */}
             <polygon points={ptStr} fill="none"
-              stroke="#fffef8" strokeWidth="0.05"
-              strokeOpacity={z * 0.32} />
+              stroke="#ffcc50" strokeWidth="0.07"
+              strokeOpacity={0.10 + z * 0.38} />
+            {/* White-hot inner highlight on near-star cells */}
+            <polygon points={ptStr} fill="none"
+              stroke="#fffef8" strokeWidth="0.04"
+              strokeOpacity={z * 0.28} />
           </g>
         );
 
