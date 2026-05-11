@@ -1325,6 +1325,7 @@ export default function GameBoard() {
             cardAnimTimersRef.current = [];
             setHiddenSlots(new Set());
             setFlippingCards(new Set());
+            setDealingCard(null);
 
             if (action.type === 'purchase_card') {
               const bonusColor = exitCard.bonusColor as GemKey;
@@ -1342,14 +1343,32 @@ export default function GameBoard() {
             const t1 = setTimeout(() => {
               if (cardActionBurstKeyRef.current !== seq) return;
               setCardActionBurst(null);
-              setHiddenSlots(new Set());
               if (newCard) {
-                setFlippingCards(new Set([newCard.id]));
-                const t2 = setTimeout(() => {
-                  if (cardActionBurstKeyRef.current !== seq) return;
-                  setFlippingCards(new Set());
-                }, 800);
-                cardAnimTimersRef.current.push(t2);
+                const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+                const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                const deckR = deckEl?.getBoundingClientRect();
+                const slotR = slotEl?.getBoundingClientRect();
+                if (deckR && slotR) {
+                  setDealingCard({
+                    card: newCard,
+                    tier,
+                    deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                    slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                  });
+                  gameAudio.playCardDraw();
+                } else {
+                  // Fallback: flip in place if DOM elements not found
+                  setHiddenSlots(new Set());
+                  setFlippingCards(new Set([newCard.id]));
+                  gameAudio.playCardDraw();
+                  const t2 = setTimeout(() => {
+                    if (cardActionBurstKeyRef.current !== seq) return;
+                    setFlippingCards(new Set());
+                  }, 800);
+                  cardAnimTimersRef.current.push(t2);
+                }
+              } else {
+                setHiddenSlots(new Set());
               }
             }, 3500);
             cardAnimTimersRef.current.push(t1);
@@ -2216,6 +2235,7 @@ export default function GameBoard() {
               {/* Deck pile */}
               <button
                 type="button"
+                data-deck-tier={row.tier}
                 onClick={() => {
                   if (row.deck === 0 || !me) return;
                   if (!isMyTurn && !canPlan) return;
@@ -2237,7 +2257,7 @@ export default function GameBoard() {
                 const isHidden = hiddenSlots.has(slotKey);
 
                 if (isHidden || !c) {
-                  return <div key={c?.id ?? `empty-${i}`} className="w-28 h-40 rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
+                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className="w-28 h-40 rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
                 }
 
                 const isFlipping = flippingCards.has(c.id);
@@ -3879,6 +3899,50 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
+      {dealingCard && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none' }}>
+          <motion.div
+            key={dealingCard.card.id}
+            style={{
+              position: 'absolute',
+              left: dealingCard.deckRect.x,
+              top: dealingCard.deckRect.y,
+              width: dealingCard.deckRect.w,
+              height: dealingCard.deckRect.h,
+              transformStyle: 'preserve-3d',
+              perspective: '900px',
+            }}
+            initial={{ x: 0, y: 0, rotateY: 0 }}
+            animate={{
+              x: dealingCard.slotRect.x - dealingCard.deckRect.x,
+              y: dealingCard.slotRect.y - dealingCard.deckRect.y,
+              rotateY: 180,
+            }}
+            transition={{ duration: 0.65, ease: [0.25, 0.46, 0.45, 0.94] }}
+            onAnimationComplete={() => {
+              setDealingCard(null);
+              setHiddenSlots(new Set());
+            }}
+          >
+            {/* Card back — visible during first half of flight */}
+            <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden' }}>
+              <CardBack tier={dealingCard.tier as 1 | 2 | 3} />
+            </div>
+            {/* Card face — revealed after half-flip */}
+            <div style={{ position: 'absolute', inset: 0, backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+              <ArtifactCardView
+                card={dealingCard.card}
+                tier={dealingCard.tier}
+                onTap={() => {}}
+                tapped={false}
+                effectiveCosts={computeCosts(dealingCard.card, costMode)}
+              />
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* ── Purchase Celebration Burst (reserved card purchases only) ── */}
       <AnimatePresence>
