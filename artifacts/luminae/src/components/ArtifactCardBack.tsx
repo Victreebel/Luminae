@@ -318,16 +318,19 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
         const d2 = (hx * hx + hy * hy) / (shellR * shellR);
         if (d2 > 0.93) continue;
-        if (d2 < 0.11) continue;   // keep hexes clear of the star's glow (~10 SVG units exclusion radius)
+        if (hx === 0 && hy === 0) continue;        // skip grid-origin — sits exactly on the star point
         const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
         const col = getSectorCol(angle, phaseOff);
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
+        // Perspective depth: back-of-sphere panels (d2→0) shrink to 45 % of full size;
+        // front-rim panels (d2→0.93) stay at ~96 %. Star bloom naturally occludes the rest.
+        const perspScale = 0.45 + d2 * 0.55;
         const verts = Array.from({ length: 6 }, (_, k) => {
           const ang = (Math.PI / 3) * k;
-          const vx = hx + hr * Math.cos(ang);
-          const vy = hy + hr * Math.sin(ang);
+          const vx = hx + hr * perspScale * Math.cos(ang);
+          const vy = hy + hr * perspScale * Math.sin(ang);
           const vd2 = Math.min((vx * vx + vy * vy) / (shellR * shellR), 1);
           const vc = 1 - vd2 * 0.13;
           return [CX + vx * vc, CY + vy * vc] as [number, number];
