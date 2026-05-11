@@ -687,7 +687,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   }> = [
     { bx: 42, by: 41, cx: 52, cy: 30, col: R, parentIdx: 0 }, // arm mid → small white galaxy, streams unite
     { bx: 49, by: 56, cx: 59, cy: 61, col: C, parentIdx: 1 }, // C-arm mid → far right gap (C↔V)
-    { bx: 46, by: 60, cx: 35, cy: 79, col: V, parentIdx: 2 }, // V-arm mid → lower center gap
+    { bx: 37, by: 60, cx: 35, cy: 79, col: V, parentIdx: 2 }, // V-arm mid → lower center gap
     { bx: 24, by: 58, cx: 11, cy: 61, col: F, parentIdx: 3 }, // F-arm mid → far left gap (A↔F)
     { bx: 21, by: 41, cx: 18, cy: 30, col: A, parentIdx: 4 }, // arm mid → small purple galaxy, streams unite
   ];
@@ -992,7 +992,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       {([
         `M 35 30 C 48 33 42 48 35 52`,   // R: sweeps right from top, curves back left
         `M 56 45 C 60 60 44 57 35 52`,   // C: sweeps down-right, then arcs left to hub
-        `M 48 70 C 52 62 42 57 35 52`,   // V: rises right first, then sweeps left-up
+        `M 48 70 C 44 62 28 57 35 55`,   // V: sweeps left, connects to bottom of BH
         `M 22 70 C 18 60 26 55 35 52`,   // F: dips left, then sweeps right-up to hub
         `M 14 45 C 12 32 27 44 35 52`,   // A: sweeps up-left, arcs right to hub
       ] as string[]).map((d, i) => (
