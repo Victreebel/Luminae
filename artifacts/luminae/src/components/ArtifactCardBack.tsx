@@ -248,7 +248,6 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
               opacity="0.82"
             />
             <circle cx={mx} cy={my} r="1.1" fill={col} opacity="0.90" />
-            <circle cx={mx} cy={my} r="0.45" fill="#ffffff" opacity="0.85" />
           </g>
         );
       })}
