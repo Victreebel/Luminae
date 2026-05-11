@@ -174,6 +174,23 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /** Card dealt from deck — papery thwip + soft arc whoosh + landing thud. */
+  playCardDraw() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Short papery noise burst — card stock being pulled from a pile
+      this.noiseBlip(ctx, t,        0.03, 0.09, 1400, 9);
+      this.noiseBlip(ctx, t + 0.02, 0.05, 0.06,  700, 6);
+      // Arc whoosh — card travelling through air
+      this.noiseSweep(ctx, t + 0.03, 0.28, 0.06, 300, 1200);
+      // Soft thud — card landing in the slot
+      this.osc(ctx, 95, 'sine', t + 0.30, t + 0.46, 0.07, 0.003);
+      this.noiseBlip(ctx, t + 0.30, 0.08, 0.05, 500, 4);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Mysterious swoop + soft pad — different from purchase. */
   playCardReserved() {
     if (this.muted) return;

@@ -413,11 +413,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
   // Dark absorber-surface base — rich dark, clearly different from card void-black
   const PANEL_BASE: Record<string, string> = {
-    [F]: '#4a1212', [C]: '#10204a', [V]: '#0d2818', [A]: '#280d4a', [R]: '#1c2030',
+    [F]: '#300c0c', [C]: '#09142e', [V]: '#07160d', [A]: '#18082e', [R]: '#0e1218',
   };
   // Mid-body colour — readable affinity tint so each sector is identifiable
   const PANEL_MID: Record<string, string> = {
-    [F]: '#7a2020', [C]: '#1a3878', [V]: '#1a5028', [A]: '#4a1870', [R]: '#6a7890',
+    [F]: '#501414', [C]: '#102350', [V]: '#0f3018', [A]: '#2c0f48', [R]: '#424e5e',
   };
   // 3D bevel shadow (dark affinity) and highlight (bright affinity) colours
   const BEVEL_DARK: Record<string, string> = {

@@ -944,6 +944,12 @@ export default function GameBoard() {
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
+  const [dealingCard, setDealingCard] = useState<{
+    card: ArtifactCard;
+    tier: number;
+    deckRect: { x: number; y: number; w: number; h: number };
+    slotRect: { x: number; y: number; w: number; h: number };
+  } | null>(null);
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
