@@ -1468,7 +1468,6 @@ export default function GameBoard() {
           setPendingGameOver(true);
         } else {
           cancelTurnAnnouncement();
-          // Determine the winner's dominant affinity for a themed fanfare.
           const GEM_KEY_TO_HEX: Record<string, string> = {
             ruby:     '#ff5a3c',
             sapphire: '#60a5fa',
@@ -1481,7 +1480,24 @@ export default function GameBoard() {
             p => p.playerId === newState.winnerId
           );
           let dominantColor = '#fbbf24'; // flux fallback
-          if (winnerPlayer) {
+
+          // Prefer the bonusColor of the card that pushed the winner over 15 Eminence.
+          // The game transitions to 'finished' via advanceTurn at end-of-last-round, so
+          // lastAction may belong to any player's final turn action — not necessarily the
+          // winner's purchase. Instead we use the winner's last purchased card: cards are
+          // appended in chronological order, so the last entry is their most recent forge
+          // and the best proxy for the threshold-crossing card.
+          const winnerCards = winnerPlayer?.purchasedCards as ArtifactCard[] | undefined;
+          const lastWinnerCard = winnerCards && winnerCards.length > 0
+            ? winnerCards[winnerCards.length - 1]
+            : null;
+          const triggeringBonusKey = lastWinnerCard?.bonusColor;
+
+          if (triggeringBonusKey && GEM_KEY_TO_HEX[triggeringBonusKey]) {
+            // Use the winning card's affinity — it's the "color of the moment".
+            dominantColor = GEM_KEY_TO_HEX[triggeringBonusKey];
+          } else if (winnerPlayer) {
+            // Fall back to the winner's dominant bonus affinity count.
             const bonuses = winnerPlayer.bonuses;
             const gemEntries: Array<[string, number]> = [
               ['ruby',     bonuses.ruby],
