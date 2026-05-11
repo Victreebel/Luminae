@@ -531,9 +531,10 @@ function ForgeEntity({ size = 140, className = '' }: { size?: number; className?
 
 // ── Pale Sovereign ─────────────────────────────────────────────────────────────
 // Pale Sovereign: non-humanoid cosmic balance instrument.
-// Central axis: frosted ice-white crystal pillar with an animated balance scale
-// beam as the dominant feature — pans tip rhythmically back and forth.
-// Wing-arm crystal blades extend from the upper body. Pale/luminous throughout.
+// Form: angular crystal wings spread left/right from a central spine, with an
+// animated balance scale (see-saw beam + two concave pans) as the focal element.
+// Crystal diamond pendants hang from wingtips and bottom spike. All pale/luminous.
+// CSS @keyframes pal-tip rocks the scale beam ±10° on a 3.6 s ease-in-out cycle.
 function PaleEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
@@ -545,111 +546,174 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
             100% { transform: rotate(-10deg); }
           }
           @keyframes pal-glow-pulse {
-            0%   { opacity: 0.35; }
-            50%  { opacity: 0.65; }
-            100% { opacity: 0.35; }
+            0%   { opacity: 0.3;  }
+            50%  { opacity: 0.6;  }
+            100% { opacity: 0.3;  }
           }
-          .pal-beam { transform-origin: 50px 46px; animation: pal-tip 3.6s ease-in-out infinite; }
-          .pal-glow { animation: pal-glow-pulse 3.6s ease-in-out infinite; }
+          .pal-scale { transform-origin: 50px 66px; animation: pal-tip 3.6s ease-in-out infinite; }
+          .pal-glow  { animation: pal-glow-pulse 3.6s ease-in-out infinite; }
         `}</style>
-        <linearGradient id="pal-pillar" x1="0" y1="0" x2="0" y2="1">
+
+        {/* Spine gradient: bright at top, fading silver below */}
+        <linearGradient id="pal-spine" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor="#f8fafc" />
-          <stop offset="45%"  stopColor="#cbd5e1" />
-          <stop offset="100%" stopColor="#94a3b8" />
+          <stop offset="40%"  stopColor="#dde5ee" />
+          <stop offset="100%" stopColor="#8faabf" stopOpacity="0.7" />
         </linearGradient>
-        <linearGradient id="pal-beam-grad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%"   stopColor="#e2e8f0" />
+        {/* Wing gradient: bright at root, fading to translucent at tip */}
+        <linearGradient id="pal-wl" x1="1" y1="0.3" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#e8f0f8" stopOpacity="0.95" />
+          <stop offset="70%"  stopColor="#c8d8e8" stopOpacity="0.6"  />
+          <stop offset="100%" stopColor="#a0b8cc" stopOpacity="0.2"  />
+        </linearGradient>
+        <linearGradient id="pal-wr" x1="0" y1="0.3" x2="1" y2="1">
+          <stop offset="0%"   stopColor="#e8f0f8" stopOpacity="0.95" />
+          <stop offset="70%"  stopColor="#c8d8e8" stopOpacity="0.6"  />
+          <stop offset="100%" stopColor="#a0b8cc" stopOpacity="0.2"  />
+        </linearGradient>
+        {/* Beam gradient: bright centre */}
+        <linearGradient id="pal-beam" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stopColor="#c8d8e8" />
           <stop offset="50%"  stopColor="#f8fafc" />
-          <stop offset="100%" stopColor="#e2e8f0" />
+          <stop offset="100%" stopColor="#c8d8e8" />
         </linearGradient>
-        <linearGradient id="pal-wing-l" x1="1" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#e2e8f0" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.3" />
+        {/* Pan gradient: concave bowl */}
+        <linearGradient id="pal-pan" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#e8f0f8" />
+          <stop offset="100%" stopColor="#b0c4d8" />
         </linearGradient>
-        <linearGradient id="pal-wing-r" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%"   stopColor="#e2e8f0" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.3" />
-        </linearGradient>
-        <radialGradient id="pal-ambient" cx="50%" cy="42%">
-          <stop offset="0%"   stopColor="#e2e8f0" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#94a3b8" stopOpacity="0"   />
+        {/* Ambient radial glow */}
+        <radialGradient id="pal-amb" cx="50%" cy="38%">
+          <stop offset="0%"   stopColor="#dce8f4" stopOpacity="0.5" />
+          <stop offset="100%" stopColor="#7899b0" stopOpacity="0"   />
         </radialGradient>
       </defs>
 
-      {/* Ambient glow */}
-      <ellipse cx="50" cy="58" rx="42" ry="54" fill="url(#pal-ambient)" className="pal-glow" />
+      {/* ── Ambient glow halo ── */}
+      <ellipse cx="50" cy="50" rx="46" ry="52" fill="url(#pal-amb)" className="pal-glow" />
 
-      {/* ── Wing blades (behind pillar) ── */}
-      {/* Left wing: three angular crystal plates sweeping upper-left */}
-      <polygon points="50,30 22,18 14,30 30,38" fill="url(#pal-wing-l)" stroke="#cbd5e1" strokeWidth="0.5" opacity="0.85" />
-      <polygon points="50,36 18,26 10,40 28,44" fill="url(#pal-wing-l)" stroke="#e2e8f0" strokeWidth="0.4" opacity="0.6" />
-      <polygon points="50,42 20,36  8,52 26,52" fill="url(#pal-wing-l)" stroke="#e2e8f0" strokeWidth="0.3" opacity="0.4" />
-      {/* Right wing: mirror */}
-      <polygon points="50,30 78,18 86,30 70,38" fill="url(#pal-wing-r)" stroke="#cbd5e1" strokeWidth="0.5" opacity="0.85" />
-      <polygon points="50,36 82,26 90,40 72,44" fill="url(#pal-wing-r)" stroke="#e2e8f0" strokeWidth="0.4" opacity="0.6" />
-      <polygon points="50,42 80,36 92,52 74,52" fill="url(#pal-wing-r)" stroke="#e2e8f0" strokeWidth="0.3" opacity="0.4" />
+      {/* ══ CRYSTAL WINGS ══ */}
+      {/* Each wing is 3 layered angular crystal-plate polygons */}
 
-      {/* ── Central pillar ── */}
-      {/* Outer glow column */}
-      <rect x="47.5" y="8" width="5" height="114" rx="2" fill="#e2e8f0" opacity="0.18" />
-      {/* Main pillar */}
-      <rect x="48.5" y="10" width="3" height="110" rx="1.5" fill="url(#pal-pillar)" />
-      {/* Pillar highlight line */}
-      <rect x="49.5" y="10" width="1" height="110" rx="0.5" fill="#f8fafc" opacity="0.6" />
+      {/* Left wing — primary plate (largest, behind) */}
+      <polygon points="46,28 4,20 6,36 28,42 44,38"
+        fill="url(#pal-wl)" stroke="#c8d8ea" strokeWidth="0.6" opacity="0.9" />
+      {/* Left wing — secondary plate */}
+      <polygon points="46,33 8,28 10,44 30,48 44,42"
+        fill="url(#pal-wl)" stroke="#dde8f2" strokeWidth="0.5" opacity="0.7" />
+      {/* Left wing — tertiary tip plate */}
+      <polygon points="44,38 10,36 4,52 22,54"
+        fill="url(#pal-wl)" stroke="#dde8f2" strokeWidth="0.4" opacity="0.5" />
+      {/* Left wing highlight edge */}
+      <line x1="46" y1="28" x2="4" y2="20" stroke="#f0f6fc" strokeWidth="0.8" opacity="0.7" />
+      <line x1="4"  y1="20" x2="6" y2="36" stroke="#f0f6fc" strokeWidth="0.6" opacity="0.5" />
+
+      {/* Left wingtip curl + pendant chain */}
+      <path d="M 6,36 Q 2,44 6,52 Q 10,56 14,52" fill="none" stroke="#a8c0d4" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="10" y1="52" x2="10" y2="64" stroke="#8aacbe" strokeWidth="0.8" />
+      <line x1="10" y1="65" x2="10" y2="74" stroke="#8aacbe" strokeWidth="0.8" />
+      {/* Left tip diamond pendant */}
+      <polygon points="10,74 13,79 10,85 7,79" fill="#e8f0f8" stroke="#a8c0d4" strokeWidth="0.6" />
+      <polygon points="10,74 13,79 10,85"      fill="#f0f6fc" opacity="0.5" />
+      <line x1="10" y1="76" x2="13" y2="79"   stroke="#f0f6fc" strokeWidth="0.4" opacity="0.7" />
+
+      {/* Right wing — mirror */}
+      <polygon points="54,28 96,20 94,36 72,42 56,38"
+        fill="url(#pal-wr)" stroke="#c8d8ea" strokeWidth="0.6" opacity="0.9" />
+      <polygon points="54,33 92,28 90,44 70,48 56,42"
+        fill="url(#pal-wr)" stroke="#dde8f2" strokeWidth="0.5" opacity="0.7" />
+      <polygon points="56,38 90,36 96,52 78,54"
+        fill="url(#pal-wr)" stroke="#dde8f2" strokeWidth="0.4" opacity="0.5" />
+      <line x1="54" y1="28" x2="96" y2="20" stroke="#f0f6fc" strokeWidth="0.8" opacity="0.7" />
+      <line x1="96" y1="20" x2="94" y2="36" stroke="#f0f6fc" strokeWidth="0.6" opacity="0.5" />
+
+      {/* Right wingtip curl + pendant chain */}
+      <path d="M 94,36 Q 98,44 94,52 Q 90,56 86,52" fill="none" stroke="#a8c0d4" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="90" y1="52" x2="90" y2="64" stroke="#8aacbe" strokeWidth="0.8" />
+      <line x1="90" y1="65" x2="90" y2="74" stroke="#8aacbe" strokeWidth="0.8" />
+      {/* Right tip diamond pendant */}
+      <polygon points="90,74 93,79 90,85 87,79" fill="#e8f0f8" stroke="#a8c0d4" strokeWidth="0.6" />
+      <polygon points="90,74 93,79 90,85"       fill="#f0f6fc" opacity="0.5" />
+      <line x1="90" y1="76" x2="93" y2="79"    stroke="#f0f6fc" strokeWidth="0.4" opacity="0.7" />
+
+      {/* ══ CENTRAL SPINE ══ */}
+      {/* Glow halo around spine */}
+      <rect x="46.5" y="5" width="7" height="120" rx="3" fill="#dde8f4" opacity="0.2" />
+      {/* Main spine */}
+      <rect x="48.2" y="8" width="3.6" height="116" rx="1.8" fill="url(#pal-spine)" />
+      {/* Spine highlight */}
+      <rect x="49" y="8" width="1.2" height="116" rx="0.6" fill="#f8fafc" opacity="0.55" />
 
       {/* ── Top spike ── */}
-      <polygon points="50,2 47.5,14 52.5,14" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.4" />
-      {/* Spike facet */}
-      <polygon points="50,2 50,14 52.5,14" fill="#e2e8f0" opacity="0.5" />
+      <polygon points="50,2 47.2,14 52.8,14" fill="#f4f8fc" stroke="#b8ccd8" strokeWidth="0.4" />
+      <polygon points="50,2 50,14 52.8,14"   fill="#dce8f4" opacity="0.6" />
+      {/* Spike hub facets */}
+      <polygon points="47,14 53,14 56,22 44,22" fill="#e4eef6" stroke="#b8ccd8" strokeWidth="0.5" />
+      <line x1="44" y1="22" x2="56" y2="22" stroke="#f0f6fc" strokeWidth="0.6" opacity="0.7" />
 
-      {/* ── Pivot node at beam centre ── */}
-      <polygon points="50,40 54.5,46 50,52 45.5,46" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.6" />
-      <polygon points="50,40 54.5,46 50,52"          fill="#e2e8f0" opacity="0.4" />
+      {/* Wing-junction hub */}
+      <polygon points="44,22 56,22 58,34 42,34" fill="#dce8f4" stroke="#a8c0d4" strokeWidth="0.5" />
+      <polygon points="44,22 56,22 58,34 42,34" fill="#f4f8fc" opacity="0.2" />
+      {/* Central gem node */}
+      <polygon points="50,28 54,33 50,38 46,33" fill="#eef4fa" stroke="#a8c0d4" strokeWidth="0.6" />
+      <polygon points="50,28 54,33 50,38"       fill="#f4f8fc" opacity="0.45" />
 
-      {/* ══ ANIMATED SCALE BEAM GROUP ══ */}
-      <g className="pal-beam">
-        {/* Beam bar */}
-        <rect x="9" y="44.5" width="82" height="3" rx="1.5" fill="url(#pal-beam-grad)" stroke="#cbd5e1" strokeWidth="0.4" />
-        {/* Beam end caps */}
-        <polygon points="9,44.5 5,46 9,47.5"  fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.3" />
-        <polygon points="91,44.5 95,46 91,47.5" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.3" />
+      {/* ══ ANIMATED SCALE MECHANISM ══ */}
+      {/* Scale beam pivots around centre (50, 66) */}
+      <g className="pal-scale">
+        {/* Beam — spans x=22 to x=78 at y=65.5 */}
+        <rect x="22" y="64" width="56" height="3" rx="1.5"
+          fill="url(#pal-beam)" stroke="#b0c8d8" strokeWidth="0.5" />
+        {/* Beam end rings */}
+        <circle cx="22" cy="65.5" r="2.2" fill="#e8f0f8" stroke="#a8c0d4" strokeWidth="0.6" />
+        <circle cx="78" cy="65.5" r="2.2" fill="#e8f0f8" stroke="#a8c0d4" strokeWidth="0.6" />
 
-        {/* ── Left chain (3 links) ── */}
-        <line x1="9"  y1="47.5" x2="9"  y2="56" stroke="#94a3b8" strokeWidth="0.9" />
-        <line x1="9"  y1="58"   x2="9"  y2="66" stroke="#94a3b8" strokeWidth="0.9" />
-        <ellipse cx="9"  cy="57" rx="1.5" ry="1" fill="none" stroke="#94a3b8" strokeWidth="0.7" />
+        {/* Left chain */}
+        <line x1="22" y1="67.7" x2="21" y2="74" stroke="#8aacbe" strokeWidth="0.9" />
+        <ellipse cx="21.5" cy="71" rx="1.2" ry="0.8" fill="none" stroke="#8aacbe" strokeWidth="0.6" />
+        <line x1="21" y1="74"   x2="20" y2="80" stroke="#8aacbe" strokeWidth="0.9" />
 
-        {/* ── Right chain (3 links) ── */}
-        <line x1="91" y1="47.5" x2="91" y2="56" stroke="#94a3b8" strokeWidth="0.9" />
-        <line x1="91" y1="58"   x2="91" y2="66" stroke="#94a3b8" strokeWidth="0.9" />
-        <ellipse cx="91" cy="57" rx="1.5" ry="1" fill="none" stroke="#94a3b8" strokeWidth="0.7" />
+        {/* Right chain */}
+        <line x1="78" y1="67.7" x2="79" y2="74" stroke="#8aacbe" strokeWidth="0.9" />
+        <ellipse cx="78.5" cy="71" rx="1.2" ry="0.8" fill="none" stroke="#8aacbe" strokeWidth="0.6" />
+        <line x1="79" y1="74"   x2="80" y2="80" stroke="#8aacbe" strokeWidth="0.9" />
 
-        {/* ── Left scale pan (shallow bowl) ── */}
-        <path d="M 1,66 Q 1,74 9,74 Q 17,74 17,66 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.6" opacity="0.92" />
-        <line x1="1" y1="66" x2="17" y2="66" stroke="#94a3b8" strokeWidth="0.5" opacity="0.7" />
-        {/* Crystal in left pan */}
-        <polygon points="9,63 11.5,67 9,71 6.5,67" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.4" opacity="0.85" />
-        <polygon points="9,63 11.5,67 9,71"        fill="#e2e8f0" opacity="0.4" />
+        {/* Left pan — concave bowl at (13–29, 80–90) */}
+        <path d="M 13,80 Q 13,91 21,91 Q 29,91 29,80 Z"
+          fill="url(#pal-pan)" stroke="#a0bcd0" strokeWidth="0.7" opacity="0.92" />
+        <line x1="13" y1="80" x2="29" y2="80" stroke="#a0bcd0" strokeWidth="0.6" opacity="0.8" />
+        {/* Pan rim highlight */}
+        <path d="M 13,80 Q 21,77 29,80" fill="none" stroke="#f0f6fc" strokeWidth="0.5" opacity="0.6" />
+        {/* Small crystal in left pan */}
+        <polygon points="21,77 23.5,81 21,85 18.5,81" fill="#f0f6fc" stroke="#b0c8d8" strokeWidth="0.4" opacity="0.8" />
 
-        {/* ── Right scale pan (shallow bowl) ── */}
-        <path d="M 83,66 Q 83,74 91,74 Q 99,74 99,66 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.6" opacity="0.92" />
-        <line x1="83" y1="66" x2="99" y2="66" stroke="#94a3b8" strokeWidth="0.5" opacity="0.7" />
-        {/* Larger crystal in right pan (heavier — makes right side dip) */}
-        <polygon points="91,61 94.5,66 91,72 87.5,66" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.4" opacity="0.85" />
-        <polygon points="91,61 94.5,66 91,72"         fill="#e2e8f0" opacity="0.4" />
-        {/* Extra small gem for weight emphasis */}
-        <circle cx="89" cy="69" r="1.2" fill="#e2e8f0" opacity="0.6" />
+        {/* Right pan — concave bowl at (71–87, 80–90) */}
+        <path d="M 71,80 Q 71,91 79,91 Q 87,91 87,80 Z"
+          fill="url(#pal-pan)" stroke="#a0bcd0" strokeWidth="0.7" opacity="0.92" />
+        <line x1="71" y1="80" x2="87" y2="80" stroke="#a0bcd0" strokeWidth="0.6" opacity="0.8" />
+        <path d="M 71,80 Q 79,77 87,80" fill="none" stroke="#f0f6fc" strokeWidth="0.5" opacity="0.6" />
+        {/* Larger crystal in right pan — makes it the heavier side */}
+        <polygon points="79,74 83,80 79,87 75,80" fill="#f0f6fc" stroke="#b0c8d8" strokeWidth="0.4" opacity="0.8" />
+        <polygon points="79,74 83,80 79,87"       fill="#e8f0f8" opacity="0.3" />
       </g>
-      {/* ══ END ANIMATED GROUP ══ */}
+      {/* ══ END SCALE GROUP ══ */}
 
-      {/* ── Bottom anchor weight ── */}
-      <polygon points="50,120 44,112 50,107 56,112" fill="url(#pal-pillar)" stroke="#94a3b8" strokeWidth="0.5" />
-      <polygon points="50,120 44,112 50,107"        fill="#e2e8f0" opacity="0.35" />
-      {/* Bottom spike */}
-      <polygon points="50,130 47.5,122 52.5,122" fill="#f8fafc" stroke="#cbd5e1" strokeWidth="0.4" />
+      {/* ── Lower spine details ── */}
+      {/* Angular bracket below scale pivot */}
+      <polygon points="46,78 54,78 56,88 44,88" fill="#dce8f4" stroke="#a8c0d4" strokeWidth="0.5" opacity="0.8" />
+      <polygon points="46,88 54,88 52,96 48,96"  fill="#ccdae8" stroke="#a8c0d4" strokeWidth="0.5" opacity="0.7" />
 
-      {/* Subtle pillar rune lines */}
-      <line x1="50" y1="56" x2="50" y2="106" stroke="#f8fafc" strokeWidth="0.4" opacity="0.3" strokeDasharray="2,3" />
+      {/* ── Bottom anchor + spike ── */}
+      <polygon points="50,112 44,104 50,98 56,104" fill="#dde8f4" stroke="#a0bcd0" strokeWidth="0.5" />
+      <polygon points="50,112 44,104 50,98"        fill="#f0f6fc" opacity="0.35" />
+      <polygon points="50,128 47.2,114 52.8,114"   fill="#eef4fa" stroke="#b0c8d8" strokeWidth="0.4" />
+      <polygon points="50,128 50,114 52.8,114"     fill="#dce8f4" opacity="0.5" />
+
+      {/* Bottom pendant chain */}
+      <line x1="50" y1="128" x2="50" y2="134" stroke="#8aacbe" strokeWidth="0.9" />
+      {/* Bottom diamond pendant */}
+      <polygon points="50,134 53.5,138 50,142 46.5,138" fill="#e8f0f8" stroke="#a8c0d4" strokeWidth="0.6" />
+      <polygon points="50,134 53.5,138 50,142"           fill="#f0f6fc" opacity="0.5" />
     </svg>
   );
 }
