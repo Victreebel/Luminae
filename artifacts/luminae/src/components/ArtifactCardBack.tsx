@@ -197,20 +197,17 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
       </g>
 
-      {/* ── Atmospheric halo ── */}
-      <circle cx={PX} cy={PY} r={PR + 3.5} fill={`url(#${id}-atmo)`} />
-
-      {/* ── Per-affinity atmosphere glow — each arc spans its city-node's 72° sector ── */}
+      {/* ── Per-affinity atmosphere glow — 5 × 72° arcs cover full ring, no blue base ── */}
       {([F, R, V, C, A] as string[]).map((col, i) => {
         const deg = (-0.5 + (2 * i) / 5) * 180;
         return (
           <path key={i}
-            d={arcPath(PX, PY, PR + 3.0, deg - 36, deg + 36)}
+            d={arcPath(PX, PY, PR + 2.8, deg - 36, deg + 36)}
             fill="none"
             stroke={col}
-            strokeWidth="2.8"
+            strokeWidth="5.5"
             filter={`url(#${id}-atmoglow)`}
-            opacity="0.32"
+            opacity="0.60"
           />
         );
       })}
