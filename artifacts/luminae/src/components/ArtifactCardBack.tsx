@@ -117,9 +117,9 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <filter id={`${id}-sunglow`} x="-300%" y="-300%" width="700%" height="700%">
           <feGaussianBlur stdDeviation="4.5" />
         </filter>
-        {/* Soft blur for per-affinity atmosphere glow arcs */}
-        <filter id={`${id}-atmoglow`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="1.8" />
+        {/* Soft blur for per-affinity atmosphere colour blending — applied outside clipPath so edges feather */}
+        <filter id={`${id}-atmoglow`} x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="2.2" />
         </filter>
         {/* Clip sun glow to card interior so bloom never bleeds past the border */}
         <clipPath id={`${id}-cardclip`}>
@@ -222,12 +222,14 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
       </g>
 
-      {/* ── Per-affinity atmosphere — same radial-ring texture as original, five affinity tints ── */}
+      {/* ── Per-affinity atmosphere — blur applied AFTER clip so sector edges feather into neighbours ── */}
       {([F, R, V, C, A] as string[]).map((_, i) => (
-        <circle key={i} cx={PX} cy={PY} r={PR + 3.5}
-          fill={`url(#${id}-agrad${i})`}
-          clipPath={`url(#${id}-asec${i})`}
-        />
+        <g key={i} filter={`url(#${id}-atmoglow)`}>
+          <circle cx={PX} cy={PY} r={PR + 3.5}
+            fill={`url(#${id}-agrad${i})`}
+            clipPath={`url(#${id}-asec${i})`}
+          />
+        </g>
       ))}
 
       {/* ── Planet sphere ── */}
