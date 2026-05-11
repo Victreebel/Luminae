@@ -735,6 +735,9 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         <filter id={`${id}-aglow`} x="-200%" y="-200%" width="500%" height="500%">
           <feGaussianBlur stdDeviation="0.7" />
         </filter>
+        <filter id={`${id}-aglow2`} x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="1.8" />
+        </filter>
         <filter id={`${id}-hubglow`} x="-500%" y="-500%" width="1100%" height="1100%">
           <feGaussianBlur stdDeviation="3.0" />
         </filter>
@@ -925,13 +928,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         const d = `M ${bx} ${by} C ${c1x} ${c1y} ${c2x} ${c2y} ${cx} ${cy}`;
         return (
           <g key={i}>
-            {/* Wide glow halo */}
+            {/* Outer soft halo */}
             <path d={d} fill="none"
-              stroke={col} strokeWidth="2.4" strokeOpacity="0.18"
+              stroke={col} strokeWidth="3.5" strokeOpacity="0.10"
+              strokeLinecap="round" filter={`url(#${id}-aglow2)`} />
+            {/* Inner glow */}
+            <path d={d} fill="none"
+              stroke={col} strokeWidth="1.2" strokeOpacity="0.30"
               strokeLinecap="round" filter={`url(#${id}-aglow)`} />
-            {/* Bright core beam */}
+            {/* Bright core thread */}
             <path d={d} fill="none"
-              stroke={col} strokeWidth="0.5" strokeOpacity="0.62"
+              stroke="#ffffff" strokeWidth="0.25" strokeOpacity="0.75"
               strokeLinecap="round" />
           </g>
         );
@@ -997,13 +1004,17 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         `M 14 45 C 12 32 27 44 35 52`,   // A: sweeps up-left, arcs right to hub
       ] as string[]).map((d, i) => (
         <g key={i}>
-          {/* Wide glow halo */}
+          {/* Outer soft halo */}
           <path d={d} fill="none" stroke={systems[i].col}
-            strokeWidth="2.8" strokeOpacity="0.20" strokeLinecap="round"
+            strokeWidth="4.5" strokeOpacity="0.12" strokeLinecap="round"
+            filter={`url(#${id}-aglow2)`} />
+          {/* Inner glow */}
+          <path d={d} fill="none" stroke={systems[i].col}
+            strokeWidth="1.6" strokeOpacity="0.35" strokeLinecap="round"
             filter={`url(#${id}-aglow)`} />
-          {/* Bright core beam */}
-          <path d={d} fill="none" stroke={systems[i].col}
-            strokeWidth="0.7" strokeOpacity="0.58" strokeLinecap="round" />
+          {/* Bright core thread */}
+          <path d={d} fill="none" stroke="#ffffff"
+            strokeWidth="0.30" strokeOpacity="0.80" strokeLinecap="round" />
         </g>
       ))}
 
