@@ -173,21 +173,24 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       <line x1="31.5" y1="16" x2="38.5" y2="16"
         stroke={GOLD3} strokeWidth="0.4" strokeOpacity="0.5" />
 
-      {/* ── Sun behind planet — corona blooms before atmosphere/sphere so planet occludes it ── */}
+      {/* ── Local star — upper-right, clipped to card interior so bloom stays inside border ── */}
       <g clipPath={`url(#${id}-cardclip)`}>
-        {/* Broad outer corona — visible as rim-light around planet edge */}
-        <circle cx={PX} cy={PY} r="30"
+        <circle cx="57" cy="19" r="20"
           fill={`url(#${id}-sun)`}
-          filter={`url(#${id}-sunglow)`} opacity="0.42" />
-        {/* Tight inner corona */}
-        <circle cx={PX} cy={PY} r="20"
+          filter={`url(#${id}-sunglow)`} opacity="0.38" />
+        <circle cx="57" cy="19" r="11"
           fill={`url(#${id}-sun)`}
-          filter={`url(#${id}-sunglow)`} opacity="0.72" />
-        {/* Cross-flare — subtle, clipped behind planet */}
-        <line x1={PX - 14} y1={PY} x2={PX + 14} y2={PY}
-          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.28" />
-        <line x1={PX} y1={PY - 14} x2={PX} y2={PY + 14}
-          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.22" />
+          filter={`url(#${id}-sunglow)`} opacity="0.65" />
+        <circle cx="57" cy="19" r="4.2" fill={`url(#${id}-sun)`} opacity="0.94" />
+        <circle cx="57" cy="19" r="1.5" fill="#ffffff" opacity="0.98" />
+        <line x1="45" y1="19" x2="69" y2="19"
+          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.38" />
+        <line x1="57" y1="7"  x2="57" y2="31"
+          stroke="#fff8c0" strokeWidth="0.4" strokeOpacity="0.30" />
+        <line x1="49" y1="11" x2="65" y2="27"
+          stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
+        <line x1="65" y1="11" x2="49" y2="27"
+          stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
       </g>
 
       {/* ── Atmospheric halo ── */}
@@ -229,23 +232,19 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       <circle cx={PX} cy={PY} r={PR}
         fill="none" stroke="#5090e0" strokeWidth="0.5" strokeOpacity="0.5" />
 
-      {/* ── Five affinity satellites — equidistant full orbit ── */}
-      {([F, C, V, A, R] as string[]).map((col, i) => {
-        const deg = -90 + i * 72;
-        const [ox, oy] = pt(PX, PY, ORB_R, deg);
+      {/* ── Five affinity satellite arc bars — curved, outside atmosphere, each aligned to its city node ── */}
+      {([F, R, V, C, A] as string[]).map((col, i) => {
+        // Same angle as cityNodes[i] (pentagon, first vertex pointing up)
+        const deg = (-0.5 + (2 * i) / 5) * 180;
         return (
-          <g key={i}>
-            {/* Body */}
-            <rect x={ox - 1.15} y={oy - 0.70} width="2.3" height="1.4" rx="0.28"
-              fill="#060d24" stroke={col} strokeWidth="0.38" opacity="0.92" />
-            {/* Solar panels */}
-            <line x1={ox - 2.5} y1={oy} x2={ox - 1.15} y2={oy}
-              stroke={col} strokeWidth="0.32" strokeOpacity="0.72" />
-            <line x1={ox + 1.15} y1={oy} x2={ox + 2.5} y2={oy}
-              stroke={col} strokeWidth="0.32" strokeOpacity="0.72" />
-            {/* Affinity glow dot */}
-            <circle cx={ox} cy={oy} r="0.42" fill={col} opacity="0.95" />
-          </g>
+          <path key={i}
+            d={arcPath(PX, PY, PR + 5.5, deg - 15, deg + 15)}
+            fill="none"
+            stroke={col}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            opacity="0.82"
+          />
         );
       })}
 
