@@ -1190,8 +1190,6 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
     default:
       return "Took an action";
   }
-  // Reference player to satisfy unused-arg lint when added later
-  void player;
 }
 
 // ─── Market helpers ───────────────────────────────────────────────────────────

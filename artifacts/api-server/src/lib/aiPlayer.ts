@@ -389,7 +389,7 @@ export function chooseAiAction(
       const deck =
         tier === 1 ? state.deckTier1 : tier === 2 ? state.deckTier2 : state.deckTier3;
       if (deck.length > 0 && player.reservedCardIds.length < 3) {
-        return { type: "reserve_card", tier, cardId: "blind" };
+        return { type: "reserve_card", tier };
       }
     }
     // Absolute fallback (turn will fail validation, but engine handles it)

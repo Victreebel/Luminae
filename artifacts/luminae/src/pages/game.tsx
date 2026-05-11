@@ -1165,7 +1165,7 @@ export default function GameBoard() {
         .map((p) => p.playerId),
     );
     const aiAffinityCount = state.actionLog.filter(
-      (e) => e.summary.startsWith('attuned ') && aiPlayerIds.has(e.playerId),
+      (e) => e.summary.startsWith('switched ') && aiPlayerIds.has(e.playerId),
     ).length;
     if (!aiAffinityLogInitializedRef.current) {
       // First run: snapshot existing entries so we don't replay history as sound.
@@ -1348,8 +1348,6 @@ export default function GameBoard() {
                 const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                 const deckR = deckEl?.getBoundingClientRect();
                 const slotR = slotEl?.getBoundingClientRect();
-                // eslint-disable-next-line no-console
-                console.warn('[deal-anim] deck:', deckEl, deckR, '| slot:', slotEl, slotR);
                 if (deckR && slotR) {
                   setDealingCard({
                     card: newCard,
@@ -3068,7 +3066,7 @@ export default function GameBoard() {
               return [...(state.actionLog ?? [])].reverse().slice(0, showAllLog ? undefined : 12).map((entry, i) => {
               const isMe = entry.playerId === session.playerId;
               const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
-              const isAffinityChange = entry.summary.startsWith('attuned ');
+              const isAffinityChange = entry.summary.startsWith('switched ');
               const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
               const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
               return (
