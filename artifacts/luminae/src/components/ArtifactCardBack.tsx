@@ -933,9 +933,6 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
             <path d={d} fill="none"
               stroke={`url(#${id}-br${i})`} strokeWidth="0.5" strokeOpacity="0.62"
               strokeLinecap="round" />
-            {/* Junction node at arm mid-point */}
-            <circle cx={bx} cy={by} r="0.52"
-              fill="#0a0818" stroke={GOLD3} strokeWidth="0.25" strokeOpacity="0.80" />
           </g>
         );
       })}
