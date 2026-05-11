@@ -275,13 +275,23 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         const [mx, my] = pt(PX, PY, PR + 5.5, deg);
         return (
           <g key={i}>
+            {/* Dark backing bar */}
+            <path
+              d={arcPath(PX, PY, PR + 5.5, deg - 13, deg + 13)}
+              fill="none"
+              stroke="#050810"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              opacity="0.92"
+            />
+            {/* Affinity colour highlight on top */}
             <path
               d={arcPath(PX, PY, PR + 5.5, deg - 13, deg + 13)}
               fill="none"
               stroke={col}
-              strokeWidth="0.8"
+              strokeWidth="0.7"
               strokeLinecap="round"
-              opacity="0.97"
+              opacity="0.90"
             />
           </g>
         );
