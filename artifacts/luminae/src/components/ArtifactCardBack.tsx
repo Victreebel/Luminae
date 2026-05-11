@@ -306,7 +306,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3): HexCell[] => {
+  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3, minD2 = 0.11, usePersp = false): HexCell[] => {
     const cells: HexCell[] = [];
     const DX = hr * 1.5;
     const DY = hr * Math.sqrt(3);
@@ -318,16 +318,18 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
         const d2 = (hx * hx + hy * hy) / (shellR * shellR);
         if (d2 > 0.93) continue;
-        if (d2 < 0.11) continue;   // keep hexes clear of the star's glow (~10 SVG units exclusion radius)
+        if (d2 < minD2) continue;
         const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
         const col = getSectorCol(angle, phaseOff);
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
+        // Optional perspective depth — back-layer cells shrink toward centre
+        const perspScale = usePersp ? (0.40 + d2 * 0.60) : 1.0;
         const verts = Array.from({ length: 6 }, (_, k) => {
           const ang = (Math.PI / 3) * k;
-          const vx = hx + hr * Math.cos(ang);
-          const vy = hy + hr * Math.sin(ang);
+          const vx = hx + hr * perspScale * Math.cos(ang);
+          const vy = hy + hr * perspScale * Math.sin(ang);
           const vd2 = Math.min((vx * vx + vy * vy) / (shellR * shellR), 1);
           const vc = 1 - vd2 * 0.13;
           return [CX + vx * vc, CY + vy * vc] as [number, number];
@@ -366,9 +368,15 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
-  const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
+  const shell3    = genShell(30, 3.6, 18, 2);                   // outermost shell, ~50% solid
+  // Back-hemisphere: small solar-reflective fragments behind the star.
+  // minD2=0.005 lets cells start very close to centre; usePersp shrinks them toward the star.
+  const shellBack = genShell(18, 1.6,  9, 2, 0.005, true);    // dense small fragments, perspective depth
 
-  const allCells = shell3.map(c => ({ ...c, sn: 3 as const }));
+  const allCells = [
+    ...shellBack.map(c => ({ ...c, sn: 0 as const })),  // render first (behind everything)
+    ...shell3.map(c => ({    ...c, sn: 3 as const })),
+  ];
 
   return (
     <svg
@@ -467,6 +475,26 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
         // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
         const surfCol  = PANEL_MID[col]   ?? '#303040';
+
+        // ── Back hemisphere — solar-reflective fragments behind the star ──
+        // z≈1 = very close to star (max reflected brightness); star bloom occludes the brightest.
+        // Colors are solar warm-white / amber — not affinity-tinted.
+        if (sn === 0) return (
+          <g key={i}>
+            {solid && (
+              <polygon points={ptStr}
+                fill="#fffbe8" fillOpacity={0.05 + z * 0.20} />
+            )}
+            {/* Amber solar-reflection rim */}
+            <polygon points={ptStr} fill="none"
+              stroke="#ffcc50" strokeWidth="0.09"
+              strokeOpacity={0.15 + z * 0.48} />
+            {/* White-hot inner highlight — only on bright near-star cells */}
+            <polygon points={ptStr} fill="none"
+              stroke="#fffef8" strokeWidth="0.05"
+              strokeOpacity={z * 0.32} />
+          </g>
+        );
 
         // ── Shell 2 (innermost) — panels near star are brightly lit ─────
         // z≈1 = near star (most illuminated), z≈0 = outer edge of this shell
