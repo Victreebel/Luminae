@@ -1001,7 +1001,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         `M 56 45 C 60 60 44 57 35 52`,   // C: sweeps down-right, then arcs left to hub
         `M 48 70 C 42 70 35 63 35 55`,   // V: exits BH straight down, curves right to galaxy
         `M 22 70 C 18 60 26 55 35 52`,   // F: dips left, then sweeps right-up to hub
-        `M 14 45 C 12 32 27 44 35 52`,   // A: sweeps up-left, arcs right to hub
+        `M 14 45 C 18 40 28 47 35 52`,   // A: gentle upward sweep right to hub
       ] as string[]).map((d, i) => (
         <g key={i}>
           {/* Outer soft halo */}
