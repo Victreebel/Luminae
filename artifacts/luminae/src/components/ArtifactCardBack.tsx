@@ -296,7 +296,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   // Each cell falls into one of 5 affinity sectors (72° each). Small gaps
   // at sector boundaries let star-light through. Two shell layers: outer at
   // R=23 (hex size 3.0) and inner at R=16 (hex size 2.4, 36° sector offset).
-  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number; rawHx: number; rawHy: number };
+  type HexCell = { verts: [number, number][]; col: string; z: number; solid: boolean; cx: number; cy: number };
 
   const SECTOR_COLS = [R, C, V, F, A];
   const getSectorCol = (angle: number, phaseOff: number): string | null => {
@@ -306,9 +306,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  // perspOuterHr: if > 0, hex size grows continuously from 0.30*hr at centre to perspOuterHr at d2=1.
-  // This lets the back layer match shell3's hex size at the outer rim for a wrap-around illusion.
-  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3, minD2 = 0.11, perspOuterHr = 0): HexCell[] => {
+  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3): HexCell[] => {
     const cells: HexCell[] = [];
     const DX = hr * 1.5;
     const DY = hr * Math.sqrt(3);
@@ -320,22 +318,16 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
         const d2 = (hx * hx + hy * hy) / (shellR * shellR);
         if (d2 > 0.93) continue;
-        if (d2 < minD2) continue;
+        if (d2 < 0.11) continue;   // keep hexes clear of the star's glow (~10 SVG units exclusion radius)
         const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
         const col = getSectorCol(angle, phaseOff);
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
-        // Perspective depth: grows from 0.30 at centre to perspOuterHr/hr at the rim.
-        // With perspOuterHr matching shell3's hr, back-layer cells seamlessly approach
-        // the same physical size as front panels — creating a wrap-around sphere illusion.
-        const perspScale = perspOuterHr > 0
-          ? 0.30 + d2 * (perspOuterHr / hr - 0.30)
-          : 1.0;
         const verts = Array.from({ length: 6 }, (_, k) => {
           const ang = (Math.PI / 3) * k;
-          const vx = hx + hr * perspScale * Math.cos(ang);
-          const vy = hy + hr * perspScale * Math.sin(ang);
+          const vx = hx + hr * Math.cos(ang);
+          const vy = hy + hr * Math.sin(ang);
           const vd2 = Math.min((vx * vx + vy * vy) / (shellR * shellR), 1);
           const vc = 1 - vd2 * 0.13;
           return [CX + vx * vc, CY + vy * vc] as [number, number];
@@ -345,7 +337,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const solid = ((Math.abs(ci) * 7 + Math.abs(ri) * 13 + ci * ri) % solidMod) === 0;
         const sx = CX + hx * compress;
         const sy = CY + hy * compress;
-        cells.push({ verts, col, z, solid, cx: sx, cy: sy, rawHx: hx, rawHy: hy });
+        cells.push({ verts, col, z, solid, cx: sx, cy: sy });
       }
     }
     return cells.sort((a, b) => a.z - b.z);       // back → front
@@ -374,62 +366,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
-  // Post-process a shell: remove isolated cells (no physical neighbour) and
-  // guarantee at least one solid panel per connected cluster.
-  const ensureClusters = (cells: HexCell[], hr: number): HexCell[] => {
-    const thresh2 = (hr * 2.05) * (hr * 2.05);
-    const adjList: number[][] = cells.map(() => []);
-    for (let a = 0; a < cells.length; a++) {
-      for (let b = a + 1; b < cells.length; b++) {
-        const dx = cells[a].rawHx - cells[b].rawHx;
-        const dy = cells[a].rawHy - cells[b].rawHy;
-        if (dx * dx + dy * dy < thresh2) {
-          adjList[a].push(b);
-          adjList[b].push(a);
-        }
-      }
-    }
-    // BFS to find connected components
-    const component = new Array(cells.length).fill(-1);
-    const components: number[][] = [];
-    for (let start = 0; start < cells.length; start++) {
-      if (adjList[start].length === 0 || component[start] !== -1) continue;
-      const comp: number[] = [];
-      const queue = [start];
-      component[start] = components.length;
-      while (queue.length > 0) {
-        const curr = queue.shift()!;
-        comp.push(curr);
-        for (const nb of adjList[curr]) {
-          if (component[nb] === -1) { component[nb] = components.length; queue.push(nb); }
-        }
-      }
-      components.push(comp);
-    }
-    // For each component with no solid, force the highest-z cell solid
-    const forceSolid = new Set<number>();
-    for (const comp of components) {
-      if (!comp.some(i => cells[i].solid)) {
-        forceSolid.add(comp.reduce((best, i) => cells[i].z > cells[best].z ? i : best, comp[0]));
-      }
-    }
-    return cells
-      .map((c, i) => forceSolid.has(i) ? { ...c, solid: true } : c)
-      .filter((_, i) => adjList[i].length > 0);   // remove isolated cells
-  };
+  const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
 
-  const shell3    = genShell(30, 3.6, 18, 2);                      // outermost shell, ~50% solid
-  // Back-hemisphere: small solar-reflective fragments — extends to near shell3's outer radius.
-  // minD2=0.005 starts near centre; usePersp shrinks cells toward the star.
-  // Back layer: same radius & phase as shell3 so sectors align and hex size matches at the rim.
-  // minD2=0.005 allows cells from near-centre outward; grows to shell3 hex size at d2→1.
-  const shellBackRaw = genShell(30, 1.6, 18, 2, 0.005, 3.6);
-  const shellBack    = ensureClusters(shellBackRaw, 1.6);
-
-  const allCells = [
-    ...shellBack.map(c => ({ ...c, sn: 0 as const })),  // render first (behind everything)
-    ...shell3.map(c => ({    ...c, sn: 3 as const })),
-  ];
+  const allCells = shell3.map(c => ({ ...c, sn: 3 as const }));
 
   return (
     <svg
@@ -528,31 +467,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
         // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
         const surfCol  = PANEL_MID[col]   ?? '#303040';
-
-        // ── Back hemisphere — solar-reflective fragments behind the star ──
-        // z≈1 = very close to star (max reflected brightness); star bloom occludes the brightest.
-        if (sn === 0) return (
-          <g key={i}>
-            {solid && <>
-              {/* Affinity-coloured base fill */}
-              <polygon points={ptStr} fill={col} fillOpacity={0.06 + z * 0.14} />
-              {/* Warm cream solar-wash over the fill */}
-              <polygon points={ptStr} fill="#fffbe8" fillOpacity={0.04 + z * 0.16} />
-            </>}
-            {/* Affinity colour outline — identifies which sector each fragment belongs to */}
-            <polygon points={ptStr} fill="none"
-              stroke={col} strokeWidth="0.09"
-              strokeOpacity={0.22 + z * 0.30} />
-            {/* Amber solar-reflection overlay — brightens toward the star */}
-            <polygon points={ptStr} fill="none"
-              stroke="#ffcc50" strokeWidth="0.07"
-              strokeOpacity={0.10 + z * 0.38} />
-            {/* White-hot inner highlight on near-star cells */}
-            <polygon points={ptStr} fill="none"
-              stroke="#fffef8" strokeWidth="0.04"
-              strokeOpacity={z * 0.28} />
-          </g>
-        );
 
         // ── Shell 2 (innermost) — panels near star are brightly lit ─────
         // z≈1 = near star (most illuminated), z≈0 = outer edge of this shell
