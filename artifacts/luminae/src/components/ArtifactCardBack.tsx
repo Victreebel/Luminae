@@ -849,6 +849,27 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           opacity={0.06 + ov * 0.03} />
       ))}
 
+      {/* Inter-arm colored stars — fill negative space between the five arms */}
+      {([
+        // Upper-right gap (between R and C)
+        [46,22,R,0.38,0.22],[50,18,C,0.32,0.18],[55,26,C,0.42,0.24],[52,32,C,0.28,0.16],
+        [43,15,R,0.30,0.18],[58,22,C,0.35,0.20],[48,28,R,0.26,0.15],[62,28,C,0.32,0.19],
+        // Right gap (between C and V, right edge)
+        [64,55,C,0.40,0.22],[67,62,V,0.34,0.19],[65,68,V,0.38,0.21],[63,45,C,0.28,0.16],
+        [69,58,C,0.30,0.17],[66,72,V,0.32,0.18],[68,50,C,0.36,0.20],
+        // Lower gap (between V and F, bottom center)
+        [28,85,F,0.38,0.22],[35,90,V,0.32,0.18],[42,87,V,0.40,0.23],[22,88,F,0.28,0.16],
+        [38,95,V,0.30,0.17],[30,92,F,0.34,0.20],[46,90,V,0.26,0.15],[25,82,F,0.36,0.19],
+        // Left gap (between F and A, left edge)
+        [5,58,A,0.40,0.22],[6,65,F,0.34,0.19],[4,72,F,0.38,0.21],[7,52,A,0.28,0.16],
+        [3,68,F,0.30,0.17],[5,45,A,0.36,0.20],[4,62,F,0.32,0.18],
+        // Upper-left gap (between A and R)
+        [20,18,A,0.38,0.22],[16,22,A,0.32,0.18],[12,16,A,0.42,0.24],[24,24,R,0.28,0.16],
+        [10,26,A,0.30,0.18],[18,12,A,0.35,0.20],[25,18,R,0.26,0.15],[8,20,A,0.32,0.19],
+      ] as [number,number,string,number,number][]).map(([x,y,col,op,r], i) => (
+        <circle key={`ns${i}`} cx={x} cy={y} r={r} fill={col} opacity={op} />
+      ))}
+
       {/* Colored distant stars — tinted toward nearest stellar system */}
       {([
         // R — Radiance (white/silver), top region
