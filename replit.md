@@ -101,13 +101,14 @@ If a generation pass produces a humanoid figure for a Luminary that should be no
 
 ### Asset review status (current — supersedes all earlier commit notes)
 - **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale — 11 panels locked.
-- **lum_pale panel notes:** large glassy transparent black-and-silver crystal facets with iridescent prismatic light scatter, balance entity visible through crystal depth refraction. All three previous rejection failures resolved.
+- **lum_pale panel notes (updated):** pale glowing scales construct (vertical pillar + scale beam + pans) against dark iridescent crystal shards. Entity reads clearly as luminous ice-white against dark crystal. Scales medallion at bottom-center. Panel is `panel.png`. `entity_new.png` kept as static design reference only — NOT used in-game.
+- **lum_pale entity notes:** entity.png intentionally removed. In-game entity uses animated `PaleEntity` SVG component with CSS `@keyframes pal-tip` — balance scale beam rocks ±10° back and forth on a 3.6 s ease-in-out cycle. `entity_prev_static.png` preserved in the luminaries folder as history.
 - **Panels needing regeneration:**
   - lum_astral — REJECTED: crystal reads as a sphere/orb (banned form); facet pattern is geodesic/soccer-ball cells over a sphere (banned pattern); dark corners visible — crystal does not fill the panel. Concept: stellar fire meets cold void weaving intelligence (Flare+Abyss). Next pass must use "massive faceted crystal wall filling entire image, crystal extends past borders on all sides, large irregular triangular/trapezoidal facet planes, fire-ice gradient internal fractures, entity embedded/refracted within crystal volume."
 - **Entities needing regeneration:** lum_null (thematic miss — sci-fi cyberpunk armor, does not match accepted void-body panel spec).
 - **Auras regenerated (transparent background):** lum_void (soft radial purple void glow, alpha=0 at corners), lum_pale (soft silver/pearl glow, alpha=0 at corners) — both pass screen-blend check, no opaque rectangle visible.
 - **Open concept questions:** None — lum_astral (stellar fire meets cold void weaving entity) has a defined direction; next generation pass should apply crystal-wall rules strictly.
-- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` now contains the 11 accepted panels. lum_astral falls back to procedural SVG art until its panel is regenerated and accepted.
+- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` contains all 12 IDs. lum_pale uses illustrated panel + aura but falls back to animated SVG for entity. lum_astral falls back to procedural SVG art for all slots until its panel is regenerated and accepted.
 
 ## System Architecture
 
