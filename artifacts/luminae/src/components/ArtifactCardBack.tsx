@@ -125,6 +125,31 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <clipPath id={`${id}-cardclip`}>
           <rect x="4" y="4" width="62" height="92" rx="1.5" />
         </clipPath>
+        {/* Per-affinity atmosphere — 72° pie-sector clipPaths */}
+        {([F, R, V, C, A] as string[]).map((_, i) => {
+          const cDeg = (-0.5 + (2 * i) / 5) * 180;
+          const sRad = toRad(cDeg - 36), eRad = toRad(cDeg + 36);
+          const r2 = 32;
+          const x1 = (PX + r2 * Math.cos(sRad)).toFixed(2);
+          const y1 = (PY + r2 * Math.sin(sRad)).toFixed(2);
+          const x2 = (PX + r2 * Math.cos(eRad)).toFixed(2);
+          const y2 = (PY + r2 * Math.sin(eRad)).toFixed(2);
+          return (
+            <clipPath key={i} id={`${id}-asec${i}`} clipPathUnits="userSpaceOnUse">
+              <path d={`M ${PX} ${PY} L ${x1} ${y1} A ${r2} ${r2} 0 0 1 ${x2} ${y2} Z`} />
+            </clipPath>
+          );
+        })}
+        {/* Per-affinity atmosphere — same ring-gradient profile as base atmo, affinity-tinted */}
+        {([F, R, V, C, A] as string[]).map((col, i) => (
+          <radialGradient key={i} id={`${id}-agrad${i}`}
+            cx={PX} cy={PY} r={PR + 3.5} gradientUnits="userSpaceOnUse">
+            <stop offset="72%"  stopColor={col} stopOpacity="0"    />
+            <stop offset="85%"  stopColor={col} stopOpacity="0.55" />
+            <stop offset="94%"  stopColor={col} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={col} stopOpacity="0"    />
+          </radialGradient>
+        ))}
       </defs>
 
       {/* ── Space background ── */}
@@ -197,20 +222,13 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
           stroke="#ffeeaa" strokeWidth="0.2" strokeOpacity="0.18" />
       </g>
 
-      {/* ── Per-affinity atmosphere glow — 5 × 72° arcs cover full ring, no blue base ── */}
-      {([F, R, V, C, A] as string[]).map((col, i) => {
-        const deg = (-0.5 + (2 * i) / 5) * 180;
-        return (
-          <path key={i}
-            d={arcPath(PX, PY, PR + 2.8, deg - 36, deg + 36)}
-            fill="none"
-            stroke={col}
-            strokeWidth="5.5"
-            filter={`url(#${id}-atmoglow)`}
-            opacity="0.60"
-          />
-        );
-      })}
+      {/* ── Per-affinity atmosphere — same radial-ring texture as original, five affinity tints ── */}
+      {([F, R, V, C, A] as string[]).map((_, i) => (
+        <circle key={i} cx={PX} cy={PY} r={PR + 3.5}
+          fill={`url(#${id}-agrad${i})`}
+          clipPath={`url(#${id}-asec${i})`}
+        />
+      ))}
 
       {/* ── Planet sphere ── */}
       <circle cx={PX} cy={PY} r={PR} fill={`url(#${id}-planet)`} />
