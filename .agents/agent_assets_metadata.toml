@@ -736,13 +736,13 @@ title = "lum_compass panel crystal containment"
 id = "5BMNZw40oV8BkVa3dw6ig"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/panel.png"
 type = "image"
-title = "lum_null panel glossy obsidian sovereign crystal"
+title = "lum_null panel v3"
 
 [[generated]]
 id = "bTvEsShpuxElpFuYPeWe6"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel.png"
 type = "image"
-title = "lum_pale large glassy crystal facet planes"
+title = "lum_pale panel v3"
 
 [[generated]]
 id = "7qkJOM2YWVkRi-HLw_hil"
@@ -1415,3 +1415,15 @@ id = "78eZi2y3tegurLtFSduXk"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_radiant/entity.png"
 type = "image"
 title = "Radiant Keeper — High Fidelity Entity"
+
+[[outputs]]
+id = "rP6z6XoKMFf0XlS_yGs7K"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_null/panel.png"
+type = "image"
+title = "Null Sovereign — v3"
+
+[[outputs]]
+id = "iT4wBzVsrFX780ixLcJaN"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel.png"
+type = "image"
+title = "Pale Merchant — v3"
