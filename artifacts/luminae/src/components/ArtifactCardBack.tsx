@@ -240,10 +240,10 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         return (
           <g key={i}>
             <path
-              d={arcPath(PX, PY, PR + 5.5, deg - 8, deg + 8)}
+              d={arcPath(PX, PY, PR + 5.5, deg - 13, deg + 13)}
               fill="none"
               stroke={col}
-              strokeWidth="1.5"
+              strokeWidth="0.8"
               strokeLinecap="round"
               opacity="0.82"
             />
