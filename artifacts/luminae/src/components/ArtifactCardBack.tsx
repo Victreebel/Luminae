@@ -366,9 +366,18 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
   };
 
-  const shell3 = genShell(30, 3.6, 18, 2);         // outermost shell, ~50% solid
+  const shell3     = genShell(30, 3.6, 18, 2);   // outermost shell, ~50% solid
+  const shellInner = genShell(20, 2.4, 36, 3);   // inner shell — smaller hexes, 36° offset, every-3rd solid
 
-  const allCells = shell3.map(c => ({ ...c, sn: 3 as const }));
+  // Render inner shell behind outer: sn=2 uses the semi-transparent branch.
+  const SHELL_ORDER: Record<number, number> = { 2: 0, 3: 1 };
+  const allCells = [
+    ...shellInner.map(c => ({ ...c, sn: 2 as const })),
+    ...shell3.map(c => ({ ...c, sn: 3 as const })),
+  ].sort((a, b) => {
+    const so = SHELL_ORDER[a.sn] - SHELL_ORDER[b.sn];
+    return so !== 0 ? so : a.z - b.z;
+  });
 
   return (
     <svg
