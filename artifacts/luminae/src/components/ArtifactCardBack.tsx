@@ -477,22 +477,21 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
         const surfCol  = PANEL_MID[col]   ?? '#303040';
 
-        // ── Shell 2 (innermost) — panels near star are brightly lit ─────
-        // z≈1 = near star (most illuminated), z≈0 = outer edge of this shell
+        // ── Inner shell — affinity-highlighted, semi-transparent depth layer ──
         if (sn === 2) return (
           <g key={i}>
             {solid && <>
-              {/* Base affinity fill */}
-              <polygon points={ptStr} fill={col} fillOpacity={0.10 + z * 0.18} />
-              {/* Stellar illumination overlay — brightest nearest the star */}
-              <polygon points={ptStr} fill={lightCol} fillOpacity={z * 0.42} />
+              {/* Vivid affinity fill — clearly coloured but still semi-transparent */}
+              <polygon points={ptStr} fill={col} fillOpacity={0.48 + z * 0.16} />
+              {/* Stellar illumination overlay */}
+              <polygon points={ptStr} fill={lightCol} fillOpacity={z * 0.30} />
             </>}
-            {/* Affinity outline — also brightens near star */}
+            {/* Bold affinity outline */}
             <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.09" strokeOpacity={0.10 + z * 0.22} />
+              strokeWidth="0.11" strokeOpacity={0.38 + z * 0.28} />
             {/* Star-lit highlight stroke */}
             <polygon points={ptStr} fill="none" stroke={lightCol}
-              strokeWidth="0.07" strokeOpacity={z * 0.38} />
+              strokeWidth="0.07" strokeOpacity={z * 0.22} />
           </g>
         );
 
