@@ -1529,6 +1529,35 @@ export default function GameBoard() {
       const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
       if (remaining > 50 || queueBusy) {
         stateQueueRef.current.push(newState);
+        // Pre-hide the market slot that is about to receive a newly dealt card.
+        // Without this, queryClient.setQueryData (below) triggers a React render
+        // that shows the new card in the slot before the deal animation has a
+        // chance to run — causing a premature reveal.  By calling setHiddenSlots
+        // here in the same synchronous block, React 18 batches both updates into
+        // one render so the slot is hidden the moment the new card lands in state.
+        const eagerAction = newState.lastAction;
+        if (eagerAction && (
+          eagerAction.type === 'purchase_card' ||
+          (eagerAction.type === 'reserve_card' && eagerAction.cardId)
+        )) {
+          const eagerCardId = eagerAction.cardId as string;
+          const prevMarkets: Record<number, (ArtifactCard | null)[]> = {
+            1: prevStateRef.current?.marketTier1 ?? [],
+            2: prevStateRef.current?.marketTier2 ?? [],
+            3: prevStateRef.current?.marketTier3 ?? [],
+          };
+          for (const tierStr of ['1', '2', '3'] as const) {
+            const tier = Number(tierStr);
+            const idx = (prevMarkets[tier] as (ArtifactCard | null)[]).findIndex(
+              (c: ArtifactCard | null) => c?.id === eagerCardId,
+            );
+            if (idx >= 0) {
+              const eagerSlotKey = `${tier}-${idx}`;
+              setHiddenSlots(prev => new Set([...prev, eagerSlotKey]));
+              break;
+            }
+          }
+        }
         // Eagerly apply the new state to the data cache so that affordability
         // calculations and the planning UI (canAffordCard / "Plan: Forge" button)
         // always reflect the latest server state even while an animation is still
