@@ -306,7 +306,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return SECTOR_COLS[Math.floor(a / 72)];
   };
 
-  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3, minD2 = 0.11, usePersp = false): HexCell[] => {
+  // perspOuterHr: if > 0, hex size grows continuously from 0.30*hr at centre to perspOuterHr at d2=1.
+  // This lets the back layer match shell3's hex size at the outer rim for a wrap-around illusion.
+  const genShell = (shellR: number, hr: number, phaseOff: number, solidMod = 3, minD2 = 0.11, perspOuterHr = 0): HexCell[] => {
     const cells: HexCell[] = [];
     const DX = hr * 1.5;
     const DY = hr * Math.sqrt(3);
@@ -324,8 +326,12 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         if (!col) continue;
         const z = Math.sqrt(1 - d2);              // 0=edge → 1=center
         const compress = 1 - d2 * 0.13;           // sphere-surface foreshortening
-        // Optional perspective depth — back-layer cells shrink toward centre
-        const perspScale = usePersp ? (0.40 + d2 * 0.60) : 1.0;
+        // Perspective depth: grows from 0.30 at centre to perspOuterHr/hr at the rim.
+        // With perspOuterHr matching shell3's hr, back-layer cells seamlessly approach
+        // the same physical size as front panels — creating a wrap-around sphere illusion.
+        const perspScale = perspOuterHr > 0
+          ? 0.30 + d2 * (perspOuterHr / hr - 0.30)
+          : 1.0;
         const verts = Array.from({ length: 6 }, (_, k) => {
           const ang = (Math.PI / 3) * k;
           const vx = hx + hr * perspScale * Math.cos(ang);
@@ -415,7 +421,9 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const shell3    = genShell(30, 3.6, 18, 2);                      // outermost shell, ~50% solid
   // Back-hemisphere: small solar-reflective fragments — extends to near shell3's outer radius.
   // minD2=0.005 starts near centre; usePersp shrinks cells toward the star.
-  const shellBackRaw = genShell(27, 1.6, 9, 2, 0.005, true);
+  // Back layer: same radius & phase as shell3 so sectors align and hex size matches at the rim.
+  // minD2=0.005 allows cells from near-centre outward; grows to shell3 hex size at d2→1.
+  const shellBackRaw = genShell(30, 1.6, 18, 2, 0.005, 3.6);
   const shellBack    = ensureClusters(shellBackRaw, 1.6);
 
   const allCells = [
