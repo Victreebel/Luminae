@@ -687,7 +687,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   }> = [
     { bx: 28, by: 41, cx: 42, cy: 40, col: R, parentIdx: 0 }, // R-arm mid → upper-right gap
     { bx: 50, by: 56, cx: 55, cy: 63, col: C, parentIdx: 1 }, // C-arm mid → right gap
-    { bx: 46, by: 60, cx: 35, cy: 67, col: V, parentIdx: 2 }, // V-arm mid → bottom gap
+    { bx: 46, by: 60, cx: 35, cy: 79, col: V, parentIdx: 2 }, // V-arm mid → lower center gap
     { bx: 24, by: 58, cx: 17, cy: 59, col: F, parentIdx: 3 }, // F-arm mid → left gap
     { bx: 21, by: 41, cx: 24, cy: 36, col: A, parentIdx: 4 }, // A-arm mid → upper-left gap
   ];
