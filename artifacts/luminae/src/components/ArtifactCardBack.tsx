@@ -150,10 +150,30 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
             <stop offset="100%" stopColor={col} stopOpacity="0"    />
           </radialGradient>
         ))}
+        {/* Swirling nebula — turbulence displacement + soft blur */}
+        <filter id={`${id}-nebula`} x="-80%" y="-80%" width="260%" height="260%">
+          <feTurbulence type="turbulence" baseFrequency="0.018 0.012"
+            numOctaves="4" seed="23" result="turb" />
+          <feDisplacementMap in="SourceGraphic" in2="turb"
+            scale="9" xChannelSelector="R" yChannelSelector="G" result="disp" />
+          <feGaussianBlur stdDeviation="4.0" in="disp" />
+        </filter>
       </defs>
 
       {/* ── Space background ── */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
+
+      {/* Swirling affinity nebula — corner/edge clouds, one per affinity */}
+      <ellipse cx="50" cy="18" rx="18" ry="14" fill={R}
+        opacity="0.10" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="60" cy="32" rx="16" ry="14" fill={C}
+        opacity="0.10" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="58" cy="68" rx="16" ry="14" fill={V}
+        opacity="0.10" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="12" cy="78" rx="16" ry="14" fill={F}
+        opacity="0.10" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="12" cy="38" rx="16" ry="14" fill={A}
+        opacity="0.10" filter={`url(#${id}-nebula)`} />
 
       {/* ── Dense starfield — distant star field across the whole card ── */}
       {([
@@ -499,10 +519,30 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         <filter id={`${id}-panelglow`} x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="0.55" />
         </filter>
+        {/* Swirling nebula — turbulence displacement + soft blur */}
+        <filter id={`${id}-nebula`} x="-80%" y="-80%" width="260%" height="260%">
+          <feTurbulence type="turbulence" baseFrequency="0.018 0.012"
+            numOctaves="4" seed="31" result="turb" />
+          <feDisplacementMap in="SourceGraphic" in2="turb"
+            scale="10" xChannelSelector="R" yChannelSelector="G" result="disp" />
+          <feGaussianBlur stdDeviation="4.5" in="disp" />
+        </filter>
       </defs>
 
       {/* ── Background ── */}
       <rect width="70" height="100" fill={`url(#${id}-bg)`} />
+
+      {/* Swirling affinity nebula — sector zone clouds matching the hex shell sectors */}
+      <ellipse cx="35" cy="18" rx="20" ry="14" fill={R}
+        opacity="0.11" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="58" cy="32" rx="18" ry="14" fill={C}
+        opacity="0.11" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="56" cy="72" rx="18" ry="14" fill={V}
+        opacity="0.11" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="14" cy="72" rx="18" ry="14" fill={F}
+        opacity="0.11" filter={`url(#${id}-nebula)`} />
+      <ellipse cx="12" cy="32" rx="18" ry="14" fill={A}
+        opacity="0.11" filter={`url(#${id}-nebula)`} />
 
       {/* Starfield — sparser near center (swarm obscures background stars) */}
       {([
