@@ -992,7 +992,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
       {([
         `M 35 30 C 48 33 42 48 35 52`,   // R: sweeps right from top, curves back left
         `M 56 45 C 60 60 44 57 35 52`,   // C: sweeps down-right, then arcs left to hub
-        `M 48 70 C 44 62 28 57 35 55`,   // V: sweeps left, connects to bottom of BH
+        `M 48 70 C 38 70 26 62 35 55`,   // V: clean left arc into bottom of BH
         `M 22 70 C 18 60 26 55 35 52`,   // F: dips left, then sweeps right-up to hub
         `M 14 45 C 12 32 27 44 35 52`,   // A: sweeps up-left, arcs right to hub
       ] as string[]).map((d, i) => (
