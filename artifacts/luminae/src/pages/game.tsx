@@ -912,6 +912,12 @@ export default function GameBoard() {
   // True when status just became 'finished' but summons are still in flight.
   // The win overlay and win audio are held back until the summon queue drains.
   const [pendingGameOver, setPendingGameOver] = useState(false);
+  // summonColor of the Luminary that sealed the game (set when pendingGameOver goes
+  // true). Read by the flush effect to play the affinity fanfare before playWin().
+  const pendingGameOverLumColorRef = useRef<string>('');
+  // Guard that prevents the flush effect from firing the fanfare twice if the
+  // summonQueue.length dep oscillates while pendingGameOver is still true.
+  const fanfareFiredForGameOverRef = useRef(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -1411,6 +1417,18 @@ export default function GameBoard() {
           // Register in-flight dispatches BEFORE the enqueue loop below runs,
           // so the flush effect cannot fire before the RAFs land in summonQueue.
           enqueuingCountRef.current += toEnqueue;
+          // Capture the sealing Luminary's summonColor for the fanfare.
+          // We grab the last *new* event's Luminary (same filter used for toEnqueue).
+          const allPendingEvts: Array<{ eventId: string; luminaryId: string }> =
+            (newState as any).pendingSummonEvents ?? [];
+          const newPendingEvts = allPendingEvts.filter(
+            e => !handledSummonEventIdsRef.current.has(e.eventId)
+          );
+          if (newPendingEvts.length > 0) {
+            const lastEvt = newPendingEvts[newPendingEvts.length - 1];
+            const sealingLum = newState.luminaries.find(l => l.id === lastEvt.luminaryId);
+            pendingGameOverLumColorRef.current = (sealingLum as any)?.summonColor ?? '';
+          }
           // Defer: the flush useEffect below will fire win audio and clear the
           // hold once enqueuingCount reaches zero AND the queue drains.
           setPendingGameOver(true);
@@ -1753,10 +1771,27 @@ export default function GameBoard() {
     // Only flush when the queue is fully drained AND no events are still mid-RAF
     // chain waiting to be pushed into the queue. enqueuingCountRef drops to zero
     // synchronously when each event lands in setSummonQueue (inside enqueueSummon).
-    if (pendingGameOver && summonQueue.length === 0 && enqueuingCountRef.current === 0) {
-      setPendingGameOver(false);
+    if (
+      pendingGameOver &&
+      summonQueue.length === 0 &&
+      enqueuingCountRef.current === 0 &&
+      !fanfareFiredForGameOverRef.current
+    ) {
+      fanfareFiredForGameOverRef.current = true;
       cancelTurnAnnouncement();
-      gameAudio.playWin();
+      // Play a short affinity fanfare for the sealing Luminary.
+      // Delay releasing pendingGameOver (and hence the win overlay) until the
+      // fanfare finishes (~1.3 s), so the overlay fades in after — not during —
+      // the fanfare. playWin() fires in the same timeout, immediately after the
+      // overlay is released. If no color was captured (edge case), the fanfare
+      // gracefully falls back to the flux/default voice.
+      gameAudio.playLuminaryFanfare(pendingGameOverLumColorRef.current);
+      setTimeout(() => {
+        pendingGameOverLumColorRef.current = '';
+        fanfareFiredForGameOverRef.current = false;
+        setPendingGameOver(false);
+        gameAudio.playWin();
+      }, 1400);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summonQueue.length, pendingGameOver]);

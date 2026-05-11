@@ -10,6 +10,17 @@
 
 type GemKey = 'ruby'|'sapphire'|'emerald'|'onyx'|'pearl'|'flux';
 
+// Maps each Luminary's summonColor hex → its nearest GemKey affinity.
+// Mirrors the SUMMON_COLOR_TO_AFFINITY table in gameEngine.ts.
+const FANFARE_COLOR_MAP: Record<string, GemKey> = {
+  '#ff5a3c': 'ruby',    '#f43f5e': 'ruby',
+  '#60a5fa': 'sapphire','#38bdf8': 'sapphire', '#3d6bff': 'sapphire',
+  '#2ecc71': 'emerald', '#4ade80': 'emerald',  '#86efac': 'emerald',
+  '#0f172a': 'onyx',    '#4c1d95': 'onyx',     '#7b1fa2': 'onyx',
+  '#fef9c3': 'pearl',   '#cbd5e1': 'pearl',    '#a8b8e8': 'pearl',
+  '#fbbf24': 'flux',
+};
+
 // Luminary summon cutscene — pre-built MP3 assets, played at their phase beat times.
 // Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
 const LUMINARY_SFX = {
@@ -260,6 +271,41 @@ class GameAudio {
 
       // Noise burst
       this.noiseBlip(ctx, t + 0.1, 0.4, 0.07, 2000, 3);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  /**
+   * Short affinity-themed fanfare for the Luminary that sealed the game.
+   * Fires at the end of the summon cutscene, just before playWin().
+   * Duration ~1.3 s — distinct from (and shorter than) the full win sound.
+   * summonColor is the hex from the Luminary's summonColor field.
+   */
+  playLuminaryFanfare(summonColor: string) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const gem: GemKey = FANFARE_COLOR_MAP[summonColor.toLowerCase()] ?? 'flux';
+      const base = GEM_FREQS[gem];
+
+      // Bass bloom at the affinity root — grounding, resonant
+      this.osc(ctx, base * 0.25, 'sine', t,        t + 1.10, 0.18, 0.008);
+      this.osc(ctx, base * 0.5,  'sine', t,        t + 0.90, 0.12, 0.006);
+      this.osc(ctx, base,        'sine', t,        t + 0.65, 0.09, 0.004);
+
+      // Impact noise burst — crystalline shockwave
+      this.noiseBlip(ctx, t, 0.14, 0.10, base * 2, 4);
+
+      // Rising arpeggio — 4 notes ascending on the affinity's voice
+      const arp: number[] = [base * 0.5, base * 0.75, base, base * 1.5];
+      arp.forEach((f, i) => {
+        const at = t + 0.10 + i * 0.16;
+        this.osc(ctx, f, 'sine', at, at + Math.max(0.30, 0.65 - i * 0.05), 0.10 - i * 0.012, 0.006);
+      });
+
+      // High shimmer tail — iridescent sparkle as the portal seals
+      this.osc(ctx, base * 3.0, 'sine', t + 0.55, t + 1.25, 0.04, 0.012);
+      this.noiseBlip(ctx, t + 0.60, 0.50, 0.05, base * 4, 3);
     } catch (e) { console.warn('SFX failed', e); }
   }
 
