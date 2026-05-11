@@ -1434,7 +1434,38 @@ export default function GameBoard() {
           setPendingGameOver(true);
         } else {
           cancelTurnAnnouncement();
-          gameAudio.playWin();
+          // Determine the winner's dominant affinity for a themed fanfare.
+          const GEM_KEY_TO_HEX: Record<string, string> = {
+            ruby:     '#ff5a3c',
+            sapphire: '#60a5fa',
+            emerald:  '#2ecc71',
+            onyx:     '#0f172a',
+            pearl:    '#fef9c3',
+            flux:     '#fbbf24',
+          };
+          const winnerPlayer = (newState.players as GamePlayerState[]).find(
+            p => p.playerId === newState.winnerId
+          );
+          let dominantColor = '#fbbf24'; // flux fallback
+          if (winnerPlayer) {
+            const bonuses = winnerPlayer.bonuses;
+            const gemEntries: Array<[string, number]> = [
+              ['ruby',     bonuses.ruby],
+              ['sapphire', bonuses.sapphire],
+              ['emerald',  bonuses.emerald],
+              ['onyx',     bonuses.onyx],
+              ['pearl',    bonuses.pearl],
+              ['flux',     bonuses.flux],
+            ];
+            let maxBonus = 0;
+            let dominantKey = 'flux';
+            for (const [key, val] of gemEntries) {
+              if (val > maxBonus) { maxBonus = val; dominantKey = key; }
+            }
+            dominantColor = GEM_KEY_TO_HEX[dominantKey] ?? '#fbbf24';
+          }
+          gameAudio.playLuminaryFanfare(dominantColor);
+          setTimeout(() => gameAudio.playWin(), 1400);
         }
       }
 
