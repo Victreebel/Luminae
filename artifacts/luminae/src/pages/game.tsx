@@ -61,6 +61,15 @@ const GEM_CARD_GRADIENTS: Record<string, string> = {
   flux:     'linear-gradient(175deg, #0a0a02 0%, #282808 35%, #181804 70%, #0a0a02 100%)',
 };
 
+const GEM_KEY_TO_HEX: Record<string, string> = {
+  ruby:     '#ff5a3c',
+  sapphire: '#60a5fa',
+  emerald:  '#2ecc71',
+  onyx:     '#0f172a',
+  pearl:    '#fef9c3',
+  flux:     '#fbbf24',
+};
+
 // --- Helper Components ---
 
 function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null; name: string; size?: number }) {
@@ -1168,14 +1177,6 @@ export default function GameBoard() {
     if (!state) return;
     if (state.status !== 'finished') return;
     winFanfareOnLoadFiredRef.current = true;
-    const GEM_KEY_TO_HEX: Record<string, string> = {
-      ruby:     '#ff5a3c',
-      sapphire: '#60a5fa',
-      emerald:  '#2ecc71',
-      onyx:     '#0f172a',
-      pearl:    '#fef9c3',
-      flux:     '#fbbf24',
-    };
     const winnerPlayer = (state.players as GamePlayerState[]).find(
       p => p.playerId === state.winnerId
     );
@@ -1461,21 +1462,30 @@ export default function GameBoard() {
           if (newPendingEvts.length > 0) {
             const lastEvt = newPendingEvts[newPendingEvts.length - 1];
             const sealingLum = newState.luminaries.find(l => l.id === lastEvt.luminaryId);
-            pendingGameOverLumColorRef.current = (sealingLum as any)?.summonColor ?? '';
+            const lumSummonColor: string = (sealingLum as any)?.summonColor ?? '';
+
+            // Prefer the bonusColor of the card that completed the Luminary claim
+            // (present in lastAction.cardId when the summon was triggered by a forge).
+            // Falls back to the sealing Luminary's summonColor if no card is identifiable.
+            const triggeringCardId = (newState.lastAction as Record<string, unknown>)?.cardId as string | undefined;
+            let fanfareColor = lumSummonColor;
+            if (triggeringCardId) {
+              const allPurchased = (newState.players as GamePlayerState[]).flatMap(
+                p => (p.purchasedCards as ArtifactCard[] | undefined) ?? []
+              );
+              const trigCard = allPurchased.find(c => c.id === triggeringCardId);
+              const bonusKey = trigCard?.bonusColor;
+              if (bonusKey && GEM_KEY_TO_HEX[bonusKey]) {
+                fanfareColor = GEM_KEY_TO_HEX[bonusKey];
+              }
+            }
+            pendingGameOverLumColorRef.current = fanfareColor;
           }
           // Defer: the flush useEffect below will fire win audio and clear the
           // hold once enqueuingCount reaches zero AND the queue drains.
           setPendingGameOver(true);
         } else {
           cancelTurnAnnouncement();
-          const GEM_KEY_TO_HEX: Record<string, string> = {
-            ruby:     '#ff5a3c',
-            sapphire: '#60a5fa',
-            emerald:  '#2ecc71',
-            onyx:     '#0f172a',
-            pearl:    '#fef9c3',
-            flux:     '#fbbf24',
-          };
           const winnerPlayer = (newState.players as GamePlayerState[]).find(
             p => p.playerId === newState.winnerId
           );
