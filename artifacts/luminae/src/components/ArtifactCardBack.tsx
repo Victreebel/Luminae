@@ -238,7 +238,7 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         const deg = (-0.5 + (2 * i) / 5) * 180;
         return (
           <path key={i}
-            d={arcPath(PX, PY, PR + 5.5, deg - 15, deg + 15)}
+            d={arcPath(PX, PY, PR + 5.5, deg - 8, deg + 8)}
             fill="none"
             stroke={col}
             strokeWidth="1.5"
