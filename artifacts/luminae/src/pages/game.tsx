@@ -1767,6 +1767,13 @@ export default function GameBoard() {
   // update, `pendingGameOver` is set to hold back the win overlay and win
   // audio until the summon cutscene completes. This effect fires the deferred
   // actions as soon as the summon queue fully drains.
+
+  // Delay (ms) between the fanfare starting and the win overlay appearing /
+  // playWin() firing. Should roughly match the fanfare duration (~1.3 s).
+  // Increase to let the fanfare finish before the overlay fades in; decrease
+  // to shorten the gap. Tune without rebuilding by changing this one value.
+  const WIN_FANFARE_DELAY_MS = 1400;
+
   useEffect(() => {
     // Only flush when the queue is fully drained AND no events are still mid-RAF
     // chain waiting to be pushed into the queue. enqueuingCountRef drops to zero
@@ -1791,7 +1798,7 @@ export default function GameBoard() {
         fanfareFiredForGameOverRef.current = false;
         setPendingGameOver(false);
         gameAudio.playWin();
-      }, 1400);
+      }, WIN_FANFARE_DELAY_MS);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summonQueue.length, pendingGameOver]);

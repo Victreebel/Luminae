@@ -288,23 +288,36 @@ class GameAudio {
       const gem: GemKey = FANFARE_COLOR_MAP[summonColor.toLowerCase()] ?? 'flux';
       const base = GEM_FREQS[gem];
 
+      // ── Tuning constants ────────────────────────────────────────────────────
+      // Adjust these to change fanfare feel without rebuilding.
+      const BASS_VOL_LOW    = 0.18;  // volume of sub-bass layer (base * 0.25)
+      const BASS_VOL_MID    = 0.12;  // volume of mid-bass layer (base * 0.5)
+      const BASS_VOL_HIGH   = 0.09;  // volume of root-bass layer (base)
+      const ARP_NOTE_COUNT  = 4;     // number of ascending arpeggio notes
+      const ARP_BASE_VOL    = 0.10;  // starting volume of the first arp note
+      const ARP_VOL_DROP    = 0.012; // volume decrease per arp note
+      const SHIMMER_VOL     = 0.04;  // volume of the high shimmer tail oscillator
+      const SHIMMER_DURATION = 0.70; // seconds the shimmer tail oscillator rings (tail end = start + 0.55 + duration)
+      // ───────────────────────────────────────────────────────────────────────
+
       // Bass bloom at the affinity root — grounding, resonant
-      this.osc(ctx, base * 0.25, 'sine', t,        t + 1.10, 0.18, 0.008);
-      this.osc(ctx, base * 0.5,  'sine', t,        t + 0.90, 0.12, 0.006);
-      this.osc(ctx, base,        'sine', t,        t + 0.65, 0.09, 0.004);
+      this.osc(ctx, base * 0.25, 'sine', t,        t + 1.10, BASS_VOL_LOW,  0.008);
+      this.osc(ctx, base * 0.5,  'sine', t,        t + 0.90, BASS_VOL_MID,  0.006);
+      this.osc(ctx, base,        'sine', t,        t + 0.65, BASS_VOL_HIGH, 0.004);
 
       // Impact noise burst — crystalline shockwave
       this.noiseBlip(ctx, t, 0.14, 0.10, base * 2, 4);
 
-      // Rising arpeggio — 4 notes ascending on the affinity's voice
-      const arp: number[] = [base * 0.5, base * 0.75, base, base * 1.5];
+      // Rising arpeggio — ARP_NOTE_COUNT notes ascending on the affinity's voice
+      const arpRatios = [0.5, 0.75, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0];
+      const arp: number[] = arpRatios.slice(0, ARP_NOTE_COUNT).map(r => base * r);
       arp.forEach((f, i) => {
         const at = t + 0.10 + i * 0.16;
-        this.osc(ctx, f, 'sine', at, at + Math.max(0.30, 0.65 - i * 0.05), 0.10 - i * 0.012, 0.006);
+        this.osc(ctx, f, 'sine', at, at + Math.max(0.30, 0.65 - i * 0.05), ARP_BASE_VOL - i * ARP_VOL_DROP, 0.006);
       });
 
       // High shimmer tail — iridescent sparkle as the portal seals
-      this.osc(ctx, base * 3.0, 'sine', t + 0.55, t + 1.25, 0.04, 0.012);
+      this.osc(ctx, base * 3.0, 'sine', t + 0.55, t + 0.55 + SHIMMER_DURATION, SHIMMER_VOL, 0.012);
       this.noiseBlip(ctx, t + 0.60, 0.50, 0.05, base * 4, 3);
     } catch (e) { console.warn('SFX failed', e); }
   }
