@@ -903,6 +903,15 @@ export default function GameBoard() {
   // suppress the vortex portal during those few frames so it never flashes
   // before the cutscene starts. Cleared when the entry lands in summonQueue.
   const pendingSuppressLumIdsRef = useRef(new Set<string>());
+  // Tracks current summonQueue length for stale-closure-safe reads inside processUpdate.
+  const summonQueueLenRef = useRef(0);
+  // Counts summon events that have been dispatched to enqueueSummon but have not
+  // yet landed in summonQueue (i.e. still mid-RAF-chain). The flush effect uses
+  // this to avoid releasing pendingGameOver before the cutscenes actually start.
+  const enqueuingCountRef = useRef(0);
+  // True when status just became 'finished' but summons are still in flight.
+  // The win overlay and win audio are held back until the summon queue drains.
+  const [pendingGameOver, setPendingGameOver] = useState(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -1202,6 +1211,7 @@ export default function GameBoard() {
   // safe false / undefined values, and the early returns below still fire.
   const actionsLocked = !!turnAnnouncement;
   const summonGateActive = summonQueue.length > 0;
+  summonQueueLenRef.current = summonQueue.length;
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
   const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
@@ -1390,8 +1400,24 @@ export default function GameBoard() {
       prevStateRef.current = newState;
 
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
-        cancelTurnAnnouncement();
-        gameAudio.playWin();
+        // Count summon events that will actually be dispatched to enqueueSummon
+        // in the loop below (not yet in handledSummonEventIdsRef means not deduped).
+        const incomingPending: Array<{ eventId: string }> = (newState as any).pendingSummonEvents ?? [];
+        const toEnqueue = incomingPending.filter(
+          evt => !handledSummonEventIdsRef.current.has(evt.eventId)
+        ).length;
+        const hasPendingSummons = toEnqueue > 0 || summonQueueLenRef.current > 0 || enqueuingCountRef.current > 0;
+        if (hasPendingSummons) {
+          // Register in-flight dispatches BEFORE the enqueue loop below runs,
+          // so the flush effect cannot fire before the RAFs land in summonQueue.
+          enqueuingCountRef.current += toEnqueue;
+          // Defer: the flush useEffect below will fire win audio and clear the
+          // hold once enqueuingCount reaches zero AND the queue drains.
+          setPendingGameOver(true);
+        } else {
+          cancelTurnAnnouncement();
+          gameAudio.playWin();
+        }
       }
 
       // Detect newly arrived pendingSummonEvents and start cutscenes for ALL players.
@@ -1668,6 +1694,8 @@ export default function GameBoard() {
               { id: lumId, name: lumName, domain: lumDomain,
                 lumens: lumLumens, flavor: lumFlavor, cardRect: undefined, eventId, isDevTest },
             ]);
+            // Signal that this event has landed in the queue.
+            enqueuingCountRef.current = Math.max(0, enqueuingCountRef.current - 1);
             setAnimEndTime(SUMMON_CUTSCENE_DURATION_MS); // 8. block state drains
             return;
           }
@@ -1696,6 +1724,8 @@ export default function GameBoard() {
               { id: lumId, name: lumName, domain: lumDomain,
                 lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal, eventId, isDevTest },
             ]);
+            // Signal that this event has landed in the queue.
+            enqueuingCountRef.current = Math.max(0, enqueuingCountRef.current - 1);
             setAnimEndTime(SUMMON_CUTSCENE_DURATION_MS); // 8. block state drains
           });
         });
@@ -1713,6 +1743,23 @@ export default function GameBoard() {
   };
   // Keep the ref in sync so the pre-early-return useEffect can call it.
   enqueueSummonRef.current = enqueueSummon;
+
+  // ── Deferred game-over flush ───────────────────────────────────────────────
+  // When a Luminary summon and the win condition arrive in the same state
+  // update, `pendingGameOver` is set to hold back the win overlay and win
+  // audio until the summon cutscene completes. This effect fires the deferred
+  // actions as soon as the summon queue fully drains.
+  useEffect(() => {
+    // Only flush when the queue is fully drained AND no events are still mid-RAF
+    // chain waiting to be pushed into the queue. enqueuingCountRef drops to zero
+    // synchronously when each event lands in setSummonQueue (inside enqueueSummon).
+    if (pendingGameOver && summonQueue.length === 0 && enqueuingCountRef.current === 0) {
+      setPendingGameOver(false);
+      cancelTurnAnnouncement();
+      gameAudio.playWin();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summonQueue.length, pendingGameOver]);
 
   const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
     const gems: GemKey[] = [];
@@ -4570,7 +4617,7 @@ export default function GameBoard() {
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {state.status === 'finished' && (
+        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
