@@ -318,6 +318,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const hy = DY * (ri + (ci % 2 !== 0 ? 0.5 : 0));
         const d2 = (hx * hx + hy * hy) / (shellR * shellR);
         if (d2 > 0.93) continue;
+        if (d2 < 0.11) continue;   // keep hexes clear of the star's glow (~10 SVG units exclusion radius)
         const angle = (Math.atan2(hy, hx) * 180) / Math.PI;
         const col = getSectorCol(angle, phaseOff);
         if (!col) continue;
