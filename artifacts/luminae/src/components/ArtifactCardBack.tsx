@@ -367,7 +367,7 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   };
 
   const shell3     = genShell(30, 3.6, 18, 2);   // outermost shell, ~50% solid
-  const shellInner = genShell(20, 2.4, 36, 3);   // inner shell — smaller hexes, 36° offset, every-3rd solid
+  const shellInner = genShell(20, 2.4, 216, 3);  // inner shell — smaller hexes, 36°+180° offset, every-3rd solid
 
   // Render inner shell behind outer: sn=2 uses the semi-transparent branch.
   const SHELL_ORDER: Record<number, number> = { 2: 0, 3: 1 };
