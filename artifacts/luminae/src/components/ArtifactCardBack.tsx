@@ -236,15 +236,20 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       {([F, R, V, C, A] as string[]).map((col, i) => {
         // Same angle as cityNodes[i] (pentagon, first vertex pointing up)
         const deg = (-0.5 + (2 * i) / 5) * 180;
+        const [mx, my] = pt(PX, PY, PR + 5.5, deg);
         return (
-          <path key={i}
-            d={arcPath(PX, PY, PR + 5.5, deg - 8, deg + 8)}
-            fill="none"
-            stroke={col}
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            opacity="0.82"
-          />
+          <g key={i}>
+            <path
+              d={arcPath(PX, PY, PR + 5.5, deg - 8, deg + 8)}
+              fill="none"
+              stroke={col}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              opacity="0.82"
+            />
+            <circle cx={mx} cy={my} r="1.1" fill={col} opacity="0.90" />
+            <circle cx={mx} cy={my} r="0.45" fill="#ffffff" opacity="0.85" />
+          </g>
         );
       })}
 
