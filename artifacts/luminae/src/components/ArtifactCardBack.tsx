@@ -432,20 +432,11 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return result;
   };
 
-  const shell3     = genShell(30, 3.6, 18, 2);   // outermost shell, ~50% solid
-  const shellInner = equalizeShellSolids(
-    genShell(20, 2.4, 216, 3, 0.22), 3,           // inner shell — equal solid count per colour
-  );
+  const shell3 = genShell(30, 3.6, 18, 2);   // single outer shell
 
-  // Render inner shell behind outer: sn=2 uses the semi-transparent branch.
-  const SHELL_ORDER: Record<number, number> = { 2: 0, 3: 1 };
-  const allCells = [
-    ...shellInner.map(c => ({ ...c, sn: 2 as const })),
-    ...shell3.map(c => ({ ...c, sn: 3 as const })),
-  ].sort((a, b) => {
-    const so = SHELL_ORDER[a.sn] - SHELL_ORDER[b.sn];
-    return so !== 0 ? so : a.z - b.z;
-  });
+  const allCells = shell3
+    .map(c => ({ ...c, sn: 3 as const }))
+    .sort((a, b) => a.z - b.z);
 
   return (
     <svg
@@ -535,51 +526,12 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         fill={`url(#${id}-haze)`} filter={`url(#${id}-hazeglow)`} />
 
 
-      {/* ── All Dyson hex shells — globally z-sorted so outer near-cells render on top ── */}
-      {allCells.map(({ verts, col, z, solid, cx, cy, sn }, i) => {
-        // Panels near the star are rendered here; the star bloom is drawn afterwards
-        // so it naturally occludes them — panels appear to exist behind the sun.
+      {/* ── Dyson hex shell — z-sorted so near-cells render on top ── */}
+      {allCells.map(({ verts, col, z, solid, cx, cy }, i) => {
         const ptStr = verts.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join(' ');
         const darkCol  = BEVEL_DARK[col]  ?? '#0a0a0a';
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
-        // Darkened affinity surface for outer panels (use PANEL_MID not full-bright col)
         const surfCol  = PANEL_MID[col]   ?? '#303040';
-
-        // ── Shell 2 (innermost) — panels near star are brightly lit ─────
-        // z≈1 = near star (most illuminated), z≈0 = outer edge of this shell
-        if (sn === 2) return (
-          <g key={i}>
-            {solid && <>
-              {/* Base affinity fill */}
-              <polygon points={ptStr} fill={col} fillOpacity={0.10 + z * 0.18} />
-              {/* Stellar illumination overlay — brightest nearest the star */}
-              <polygon points={ptStr} fill={lightCol} fillOpacity={z * 0.42} />
-            </>}
-            {/* Affinity outline — also brightens near star */}
-            <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.09" strokeOpacity={0.10 + z * 0.22} />
-            {/* Star-lit highlight stroke */}
-            <polygon points={ptStr} fill="none" stroke={lightCol}
-              strokeWidth="0.07" strokeOpacity={z * 0.38} />
-          </g>
-        );
-
-        // ── Shell 1 (middle) — dimmer reflected illumination ──────────────
-        if (sn === 1) return (
-          <g key={i}>
-            {solid && <>
-              <polygon points={ptStr} fill={col} fillOpacity={0.18 + z * 0.22} />
-              {/* Half the stellar boost of shell 2 */}
-              <polygon points={ptStr} fill={lightCol} fillOpacity={z * 0.20} />
-            </>}
-            <polygon points={ptStr} fill="none" stroke={col}
-              strokeWidth="0.10" strokeOpacity={0.15 + z * 0.25} />
-            <polygon points={ptStr} fill="none" stroke={lightCol}
-              strokeWidth="0.07" strokeOpacity={z * 0.18} />
-          </g>
-        );
-
-        // ── Shell 3 (outermost) ────────────────────────────────────────────
         const dx = CX - cx, dy = CY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
