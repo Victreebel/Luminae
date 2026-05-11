@@ -117,6 +117,10 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
         <filter id={`${id}-sunglow`} x="-300%" y="-300%" width="700%" height="700%">
           <feGaussianBlur stdDeviation="4.5" />
         </filter>
+        {/* Soft blur for per-affinity atmosphere glow arcs */}
+        <filter id={`${id}-atmoglow`} x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="1.8" />
+        </filter>
         {/* Clip sun glow to card interior so bloom never bleeds past the border */}
         <clipPath id={`${id}-cardclip`}>
           <rect x="4" y="4" width="62" height="92" rx="1.5" />
@@ -196,6 +200,21 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       {/* ── Atmospheric halo ── */}
       <circle cx={PX} cy={PY} r={PR + 3.5} fill={`url(#${id}-atmo)`} />
 
+      {/* ── Per-affinity atmosphere glow — each arc spans its city-node's 72° sector ── */}
+      {([F, R, V, C, A] as string[]).map((col, i) => {
+        const deg = (-0.5 + (2 * i) / 5) * 180;
+        return (
+          <path key={i}
+            d={arcPath(PX, PY, PR + 3.0, deg - 36, deg + 36)}
+            fill="none"
+            stroke={col}
+            strokeWidth="2.8"
+            filter={`url(#${id}-atmoglow)`}
+            opacity="0.32"
+          />
+        );
+      })}
+
       {/* ── Planet sphere ── */}
       <circle cx={PX} cy={PY} r={PR} fill={`url(#${id}-planet)`} />
 
@@ -245,9 +264,8 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
               stroke={col}
               strokeWidth="0.8"
               strokeLinecap="round"
-              opacity="0.82"
+              opacity="0.97"
             />
-            <circle cx={mx} cy={my} r="1.1" fill={col} opacity="0.90" />
           </g>
         );
       })}
