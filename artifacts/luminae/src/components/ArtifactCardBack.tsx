@@ -685,7 +685,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
   const satellites: Array<{
     cx: number; cy: number; bx: number; by: number; col: string; parentIdx: number;
   }> = [
-    { bx: 37, by: 30, cx: 52, cy: 30, col: R, parentIdx: 0 }, // near R-main → right of white galaxy
+    { bx: 42, by: 41, cx: 52, cy: 30, col: R, parentIdx: 0 }, // arm mid → small white galaxy, streams unite
     { bx: 49, by: 56, cx: 59, cy: 61, col: C, parentIdx: 1 }, // C-arm mid → far right gap (C↔V)
     { bx: 46, by: 60, cx: 35, cy: 79, col: V, parentIdx: 2 }, // V-arm mid → lower center gap
     { bx: 24, by: 58, cx: 11, cy: 61, col: F, parentIdx: 3 }, // F-arm mid → far left gap (A↔F)
@@ -993,7 +993,7 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
            creating a spiral galaxy silhouette. Color transitions from affinity
            color at the system end to gold at the hub via linearGradient. */}
       {([
-        `M 35 30 C 22 33 28 48 35 52`,   // R: sweeps left from top, curves back right
+        `M 35 30 C 48 33 42 48 35 52`,   // R: sweeps right from top, curves back left
         `M 56 45 C 60 60 44 57 35 52`,   // C: sweeps down-right, then arcs left to hub
         `M 48 70 C 52 62 42 57 35 52`,   // V: rises right first, then sweeps left-up
         `M 22 70 C 18 60 26 55 35 52`,   // F: dips left, then sweeps right-up to hub
