@@ -1093,17 +1093,6 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
            5. Near-side Saturn ring (crosses face of BH, bright centre → fades)
           ──────────────────────────────────────────────────────────────── */}
 
-      {/* 1. Jets */}
-      <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 10}
-        stroke="#a0e4ff" strokeWidth="1.0" strokeOpacity="0.18"
-        strokeLinecap="round" filter={`url(#${id}-bhblur)`} />
-      <line x1={HUB_X} y1={HUB_Y - 3.5} x2={HUB_X} y2={HUB_Y - 10}
-        stroke="#d0f0ff" strokeWidth="0.35" strokeOpacity="0.28" strokeLinecap="round" />
-      <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
-        stroke="#a0e4ff" strokeWidth="0.8" strokeOpacity="0.12"
-        strokeLinecap="round" filter={`url(#${id}-bhblur)`} />
-      <line x1={HUB_X} y1={HUB_Y + 3.5} x2={HUB_X} y2={HUB_Y + 10}
-        stroke="#d0f0ff" strokeWidth="0.30" strokeOpacity="0.18" strokeLinecap="round" />
 
       {/* 2. Far-side XY disk — goes behind BH (top half, dimmer) */}
       <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="2.4"
