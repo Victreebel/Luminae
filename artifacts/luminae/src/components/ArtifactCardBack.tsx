@@ -927,11 +927,11 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <g key={i}>
             {/* Wide glow halo */}
             <path d={d} fill="none"
-              stroke={`url(#${id}-br${i})`} strokeWidth="2.4" strokeOpacity="0.18"
+              stroke={col} strokeWidth="2.4" strokeOpacity="0.18"
               strokeLinecap="round" filter={`url(#${id}-aglow)`} />
             {/* Bright core beam */}
             <path d={d} fill="none"
-              stroke={`url(#${id}-br${i})`} strokeWidth="0.5" strokeOpacity="0.62"
+              stroke={col} strokeWidth="0.5" strokeOpacity="0.62"
               strokeLinecap="round" />
           </g>
         );
@@ -997,12 +997,12 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         `M 14 45 C 12 32 27 44 35 52`,   // A: sweeps up-left, arcs right to hub
       ] as string[]).map((d, i) => (
         <g key={i}>
-          {/* Wide glow halo — gradient color */}
-          <path d={d} fill="none" stroke={`url(#${id}-arm${i})`}
+          {/* Wide glow halo */}
+          <path d={d} fill="none" stroke={systems[i].col}
             strokeWidth="2.8" strokeOpacity="0.20" strokeLinecap="round"
             filter={`url(#${id}-aglow)`} />
-          {/* Bright core beam — gradient color */}
-          <path d={d} fill="none" stroke={`url(#${id}-arm${i})`}
+          {/* Bright core beam */}
+          <path d={d} fill="none" stroke={systems[i].col}
             strokeWidth="0.7" strokeOpacity="0.58" strokeLinecap="round" />
         </g>
       ))}
