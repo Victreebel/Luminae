@@ -1157,6 +1157,22 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
         strokeDasharray="20.5 100" strokeLinecap="round"
         filter={`url(#${id}-diskblur)`} />
 
+      {/* 5b. XZ ring — full great circle */}
+      {/* Soft outer glow */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="5.5" strokeOpacity="0.30"
+        filter={`url(#${id}-bhblur)`} />
+      {/* Main ring line */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="1.8" strokeOpacity="0.80"
+        filter={`url(#${id}-diskblur)`} />
+      {/* Inner bright core */}
+      <ellipse cx={HUB_X} cy={HUB_Y} rx="9.5" ry="9.2"
+        fill="none" stroke={`url(#${id}-disk-v)`}
+        strokeWidth="0.65" strokeOpacity="0.92"
+        filter={`url(#${id}-diskblur)`} />
 
       {/* Luminae wordmark */}
       <text x="35" y="89.5" textAnchor="middle" fontFamily="Georgia, serif"
