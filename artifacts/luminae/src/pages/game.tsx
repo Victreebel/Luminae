@@ -4353,7 +4353,17 @@ export default function GameBoard() {
               })()}
 
               {/* Action buttons */}
-              <div className="flex flex-col gap-2.5">
+              <div
+                className="flex flex-col gap-2.5 rounded-xl transition-all duration-300"
+                style={{
+                  border: (['forge','reserve','plan_forge','plan_reserve'].includes(sentFlashBtn ?? ''))
+                    ? '1.5px solid #6ee7b7'
+                    : '1.5px solid transparent',
+                  boxShadow: (['forge','reserve','plan_forge','plan_reserve'].includes(sentFlashBtn ?? ''))
+                    ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
+                    : 'none',
+                }}
+              >
 
                 {/* ── Immediate actions (your active turn only) ── */}
                 {isMyTurnForCoreAction && (
@@ -4652,7 +4662,17 @@ export default function GameBoard() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex flex-col gap-2.5">
+                <div
+                  className="flex flex-col gap-2.5 rounded-xl transition-all duration-300"
+                  style={{
+                    border: sentFlashBtn === 'deck_reserve'
+                      ? '1.5px solid #6ee7b7'
+                      : '1.5px solid transparent',
+                    boxShadow: sentFlashBtn === 'deck_reserve'
+                      ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
+                      : 'none',
+                  }}
+                >
 
                   {/* ── Reserve now (active turn) ── */}
                   {isMyTurnForCoreAction && (
