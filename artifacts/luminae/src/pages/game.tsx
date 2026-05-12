@@ -2680,7 +2680,7 @@ export default function GameBoard() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
-            className="fixed bottom-[4.5rem] left-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 pointer-events-auto"
+            className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 pointer-events-auto"
           >
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/90 border border-amber-500/40 backdrop-blur-sm shadow-[0_2px_20px_rgba(251,191,36,0.18)]">
               <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
