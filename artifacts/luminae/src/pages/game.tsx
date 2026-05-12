@@ -4055,8 +4055,25 @@ export default function GameBoard() {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl px-5 pt-0 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
             >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+              {/* Sheet header: Esc hint + close button */}
+              <div className="flex items-center justify-between pb-3">
+                <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 ml-auto"
+                  aria-label="Close card actions"
+                  onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               {/* Card preview + info */}
               <div className="flex gap-4 mb-5">
                 <ArtifactCardView
