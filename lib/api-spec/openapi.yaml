@@ -1403,6 +1403,9 @@ components:
             $ref: "#/components/schemas/GamePlayerState"
         winnerId:
           type: ["string", "null"]
+        winTriggerLuminaryId:
+          type: ["string", "null"]
+          description: ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge
         lastAction:
           type: ["object", "null"]
           additionalProperties: true

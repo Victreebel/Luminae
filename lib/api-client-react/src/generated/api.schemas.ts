@@ -518,6 +518,11 @@ export interface GameState {
   players: GamePlayerState[];
   /** @nullable */
   winnerId: string | null;
+  /**
+   * ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge
+   * @nullable
+   */
+  winTriggerLuminaryId?: string | null;
   /** @nullable */
   lastAction: GameStateLastAction;
   actionLog: ActionLogEntry[];

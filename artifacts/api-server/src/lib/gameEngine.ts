@@ -99,6 +99,7 @@ export interface GameStateData {
   luminaryAffinities: LuminaryAffinity[];
   players: PlayerGameState[];
   winnerId: string | null;
+  winTriggerLuminaryId: string | null;
   lastAction: Record<string, unknown> | null;
   actionLog: ActionLogEntry[];
   turnTimerSeconds: number | null;
@@ -500,6 +501,7 @@ export function initializeGame(
     pendingSummonEvents: [],
     players: playerStates,
     winnerId: null,
+    winTriggerLuminaryId: null,
     lastAction: null,
     actionLog: [
       {
@@ -681,7 +683,19 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
           turn: state.roundNumber,
         });
       } else {
+        const lumensBeforeSummon = player.lumens;
         player.lumens += lum.lumens;
+        // Record the win trigger only when this specific Luminary summon is
+        // the action that crosses the threshold (player was below it before
+        // the lumens were added, and is at or above it after). This avoids
+        // falsely marking wins that were already secured by prior card forges.
+        if (
+          state.phase === "playing" &&
+          lumensBeforeSummon < WIN_THRESHOLD &&
+          player.lumens >= WIN_THRESHOLD
+        ) {
+          state.winTriggerLuminaryId = lumId;
+        }
         pushLog(state, {
           playerId: player.playerId,
           playerName: player.playerName,
@@ -769,6 +783,16 @@ function advanceTurn(state: GameStateData): void {
         }
       }
       state.winnerId = winnerId;
+      // Validate winTriggerLuminaryId against the actual winner — if the
+      // player who triggered last-round via Luminary isn't the final winner
+      // (e.g. someone else accumulated more lumens in the last round), clear
+      // the trigger so the fanfare falls back to the winner's card color.
+      if (state.winTriggerLuminaryId) {
+        const winnerState = state.players.find((p) => p.playerId === winnerId);
+        if (!winnerState?.luminaries.includes(state.winTriggerLuminaryId)) {
+          state.winTriggerLuminaryId = null;
+        }
+      }
     }
   }
 
@@ -999,6 +1023,9 @@ export function applyAction(
       // Player surrenders; end the game with them as last place
       state.phase = "finished";
       state.finishReason = "surrender";
+      // Clear any win-trigger from a mid-game Luminary summon — the fanfare
+      // for a surrender should not use a stale Luminary color.
+      state.winTriggerLuminaryId = null;
       // Set winner to highest lumens among remaining players (or first if tied)
       const others = state.players.filter((p) => p.playerId !== playerId);
       if (others.length > 0) {
@@ -1249,6 +1276,10 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!Array.isArray(state.pendingSummonEvents)) {
     state.pendingSummonEvents = [];
   }
+  // ensure winTriggerLuminaryId exists (added in win-fanfare Luminary color feature)
+  if (!("winTriggerLuminaryId" in state)) {
+    state.winTriggerLuminaryId = null;
+  }
   // filter activeLuminaries to only known IDs (backward compat for old saves)
   if (Array.isArray(state.activeLuminaries)) {
     const original = state.activeLuminaries as string[];
@@ -1353,6 +1384,7 @@ export function formatGameState(
     luminaryAffinities: stateData.luminaryAffinities ?? [],
     players,
     winnerId: stateData.winnerId,
+    winTriggerLuminaryId: stateData.winTriggerLuminaryId ?? null,
     lastAction: stateData.lastAction,
     actionLog: stateData.actionLog,
     turnTimerSeconds: stateData.turnTimerSeconds,

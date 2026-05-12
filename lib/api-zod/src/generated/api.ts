@@ -467,6 +467,12 @@ export const StartGameResponse = zod.object({
     }),
   ),
   winnerId: zod.string().nullable(),
+  winTriggerLuminaryId: zod
+    .string()
+    .nullish()
+    .describe(
+      "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
+    ),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
   actionLog: zod.array(
     zod.object({
@@ -733,6 +739,12 @@ export const RematchResponse = zod.object({
     }),
   ),
   winnerId: zod.string().nullable(),
+  winTriggerLuminaryId: zod
+    .string()
+    .nullish()
+    .describe(
+      "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
+    ),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
   actionLog: zod.array(
     zod.object({
@@ -999,6 +1011,12 @@ export const GetGameStateResponse = zod.object({
     }),
   ),
   winnerId: zod.string().nullable(),
+  winTriggerLuminaryId: zod
+    .string()
+    .nullish()
+    .describe(
+      "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
+    ),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
   actionLog: zod.array(
     zod.object({
@@ -1309,6 +1327,12 @@ export const SubmitActionResponse = zod.object({
     }),
   ),
   winnerId: zod.string().nullable(),
+  winTriggerLuminaryId: zod
+    .string()
+    .nullish()
+    .describe(
+      "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
+    ),
   lastAction: zod.record(zod.string(), zod.unknown()).nullable(),
   actionLog: zod.array(
     zod.object({

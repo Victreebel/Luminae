@@ -1200,7 +1200,17 @@ export default function GameBoard() {
       p => p.playerId === state.winnerId
     );
     let fanfareColor = '#fbbf24';
-    if (winnerPlayer) {
+    // If the win was sealed by a Luminary summon, use that Luminary's
+    // summonColor — it is the most thematically appropriate hue for the
+    // fanfare and matches what the live flush path captures via
+    // pendingGameOverLumColorRef.
+    const winTriggerLumId = state.winTriggerLuminaryId;
+    const sealingLuminary = winTriggerLumId
+      ? state.luminaries.find((l) => l.id === winTriggerLumId)
+      : null;
+    if (sealingLuminary?.summonColor) {
+      fanfareColor = sealingLuminary.summonColor;
+    } else if (winnerPlayer) {
       // Prefer the bonusColor of the winner's last purchased card — the best
       // proxy for the card that sealed the win, matching the flush-path logic.
       const winnerCards = winnerPlayer.purchasedCards as ArtifactCard[] | undefined;
