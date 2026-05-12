@@ -27,6 +27,7 @@ import {
   Sword,
   TrendingUp,
   ListOrdered,
+  Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
@@ -162,7 +163,74 @@ function HistoryTab({ stats, isLoading }: { stats: PlayerStats | null; isLoading
   );
 }
 
-type DashboardTab = "games" | "history";
+type CostModePref = "printed" | "after_bonuses" | "needed_now" | "remember";
+
+function SettingsTab({ accountId }: { accountId: string }) {
+  const prefKey = `luminae_cost_mode_pref_${accountId}`;
+  const [pref, setPref] = useState<CostModePref>(() => {
+    const stored = localStorage.getItem(prefKey);
+    if (stored === "printed" || stored === "after_bonuses" || stored === "needed_now") return stored;
+    return "remember";
+  });
+
+  const handleSelect = (value: CostModePref) => {
+    setPref(value);
+    if (value === "remember") {
+      localStorage.removeItem(prefKey);
+    } else {
+      localStorage.setItem(prefKey, value);
+    }
+  };
+
+  const options: { value: CostModePref; label: string; desc: string }[] = [
+    { value: "remember", label: "Remember last used", desc: "Restores whichever mode you last used in a game" },
+    { value: "printed", label: "Printed", desc: "Always show the card's base cost" },
+    { value: "after_bonuses", label: "Discounted", desc: "Always show cost after your permanent bonuses" },
+    { value: "needed_now", label: "Needed", desc: "Always show what you still need to pay right now" },
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+        <h3 className="text-sm font-semibold mb-1">Default cost view</h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          Choose which cost display mode opens when you enter a game.
+        </p>
+        <div className="space-y-2">
+          {options.map((opt) => {
+            const active = pref === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleSelect(opt.value)}
+                className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                  active
+                    ? "border-primary/60 bg-primary/10 text-foreground"
+                    : "border-border/40 bg-secondary/20 text-muted-foreground hover:border-border/70 hover:text-foreground"
+                }`}
+              >
+                <span
+                  className={`mt-0.5 h-4 w-4 rounded-full border-2 flex-shrink-0 transition-colors ${
+                    active ? "border-primary bg-primary" : "border-muted-foreground/40"
+                  }`}
+                />
+                <div>
+                  <p className={`text-sm font-semibold leading-none mb-1 ${active ? "text-foreground" : ""}`}>
+                    {opt.label}
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-snug">{opt.desc}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+type DashboardTab = "games" | "history" | "settings";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -394,6 +462,18 @@ export default function Dashboard() {
               </span>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("settings")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-semibold transition-all ${
+              activeTab === "settings"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Settings
+          </button>
         </div>
 
         {/* Tab content */}
@@ -473,8 +553,10 @@ export default function Dashboard() {
               ))
             )}
           </div>
-        ) : (
+        ) : activeTab === "history" ? (
           <HistoryTab stats={stats} isLoading={isLoadingStats} />
+        ) : (
+          <SettingsTab accountId={account.id} />
         )}
       </div>
 

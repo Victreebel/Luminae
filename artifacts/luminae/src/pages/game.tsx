@@ -16,6 +16,8 @@ import type {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
+import { useAccount } from '@/contexts/AccountContext';
+import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
@@ -835,6 +837,7 @@ export default function GameBoard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { account } = useAccount();
   const session = getSession();
 
   const isTutorial = useMemo(() => {
@@ -870,9 +873,23 @@ export default function GameBoard() {
   const [showForgeHint, setShowForgeHint] = useState(false);
   const [showDeckReserveHint, setShowDeckReserveHint] = useState(false);
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
-  const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
+  const [costMode, setCostMode] = useState<CostMode>(() => {
+    const stored = getAccountSession();
+    if (!stored) return 'printed';
+    const accountId = stored.account.id;
+    const pref = localStorage.getItem(`luminae_cost_mode_pref_${accountId}`);
+    if (pref === 'printed' || pref === 'after_bonuses' || pref === 'needed_now') return pref;
+    const last = localStorage.getItem(`luminae_cost_mode_${accountId}`);
+    if (last === 'printed' || last === 'after_bonuses' || last === 'needed_now') return last;
+    return 'printed';
+  });
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
+
+  useEffect(() => {
+    if (!account) return;
+    localStorage.setItem(`luminae_cost_mode_${account.id}`, costMode);
+  }, [costMode, account]);
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
@@ -2742,7 +2759,7 @@ export default function GameBoard() {
           <div className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5">
             {([
               { mode: 'printed' as CostMode, label: 'Printed', title: 'Show original printed cost' },
-              { mode: 'after_bonuses' as CostMode, label: 'Bonuses', title: 'Cost after your permanent bonuses' },
+              { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
               { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harness selection' },
             ]).map(({ mode, label, title }) => (
               <button
