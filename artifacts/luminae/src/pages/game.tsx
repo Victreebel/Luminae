@@ -4583,7 +4583,11 @@ export default function GameBoard() {
                   </Button>
                 </div>
                 {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
-                <div {...deckSheetScrollableProps} className="overflow-y-auto max-h-[75vh]">
+                <div
+                  {...deckSheetScrollableProps}
+                  className="overflow-y-auto max-h-[75vh]"
+                  style={isTutorial ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' } : undefined}
+                >
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
                   {/* Larger preview — 3× the sm size, matching md width */}
@@ -5266,7 +5270,11 @@ export default function GameBoard() {
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <div {...reservedSheetScrollableProps} className="px-5 overflow-y-auto max-h-[60vh] pb-4">
+              <div
+                {...reservedSheetScrollableProps}
+                className="px-5 overflow-y-auto max-h-[60vh] pb-4"
+                style={isTutorial ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' } : undefined}
+              >
                 {me.reservedCards.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No cards reserved.</p>
                 ) : (
