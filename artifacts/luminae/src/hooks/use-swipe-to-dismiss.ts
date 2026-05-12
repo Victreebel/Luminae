@@ -1,5 +1,5 @@
 import { useDragControls, animate, useMotionValue, useTransform } from 'framer-motion';
-import type { PanInfo, Transition } from 'framer-motion';
+import type { AnimationPlaybackControlsWithThen, PanInfo, Transition } from 'framer-motion';
 import type React from 'react';
 import { useRef, useEffect } from 'react';
 
@@ -174,6 +174,27 @@ export function useSwipeToDismiss(
   // Using a ref avoids stale-closure issues inside drag event handlers.
   const sheetState = useRef<'open' | 'peek'>('open');
 
+  // Ref attached to the scrollable content area (populated via scrollableAreaProps.ref).
+  // Used to save and restore scrollTop across peek ↔ open transitions so the
+  // content area never visibly jumps back to the top when snapping back to open.
+  const scrollableRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * Runs a peek→open animation while preserving the scrollable area's scroll
+   * position. The current scrollTop is captured synchronously, the spring
+   * animation is awaited, and then scrollTop is written back. Without this,
+   * some browsers reset the scroll position of a partially-offscreen element
+   * when it re-enters the fully-visible viewport during the snap.
+   */
+  const animateToOpenPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
+    const savedScroll = scrollableRef.current?.scrollTop ?? 0;
+    void panelAnimation.then(() => {
+      if (scrollableRef.current && savedScroll > 0) {
+        scrollableRef.current.scrollTop = savedScroll;
+      }
+    });
+  };
+
   // 0 = at rest / fully open, 1 = drag has reached the dismiss threshold.
   // In peek mode the base starts at 0.5 so feedback is continuous across states.
   const dragProgress = useMotionValue(0);
@@ -280,8 +301,10 @@ export function useSwipeToDismiss(
         onDismiss();
       } else if (info.offset.y < -PEEK_OPEN_OFFSET) {
         // Upward drag from peek → snap back to fully open.
+        // Scroll position is saved and restored after the spring settles so
+        // content that was scrolled before peeking does not jump back to top.
         sheetState.current = 'open';
-        void animate(panel!, { y: 0, x: 0 }, spring);
+        animateToOpenPreservingScroll(animate(panel!, { y: 0, x: 0 }, spring));
         void animate(dragProgress, 0, spring);
         void animate(peekProgress, 0, spring);
       } else if (panel) {
@@ -339,6 +362,7 @@ export function useSwipeToDismiss(
    *   top of the content.
    */
   const scrollableAreaProps = {
+    ref: scrollableRef as React.RefObject<HTMLDivElement>,
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
       const el = e.currentTarget;
       const nativeEvent = e.nativeEvent as PointerEvent;
@@ -411,12 +435,13 @@ export function useSwipeToDismiss(
 
   /**
    * Programmatically snap the sheet back to the fully open position.
+   * Scroll position of the scrollable content area is preserved across the transition.
    */
   const snapToOpen = () => {
     const panel = panelRef.current;
     if (!panel) return;
     sheetState.current = 'open';
-    void animate(panel, { y: 0, x: 0 }, spring);
+    animateToOpenPreservingScroll(animate(panel, { y: 0, x: 0 }, spring));
     void animate(dragProgress, 0, spring);
     void animate(peekProgress, 0, spring);
   };
