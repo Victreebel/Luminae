@@ -239,6 +239,20 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /** Softer, lower-pitched bell — plays when an opponent's turn begins. */
+  playOpponentTurnStart() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      // Lower fundamental: 330 Hz with shorter decay and quieter amplitude
+      this.osc(ctx, 330.0,  'sine', t, t + 1.1, 0.085, 0.005);
+      this.osc(ctx, 660.0,  'sine', t, t + 0.6, 0.035, 0.004);
+      this.osc(ctx, 990.0,  'sine', t, t + 0.4, 0.018, 0.003);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Epic win: bass boom + triumphant arpeggio + high sparkles. */
   playWin() {
     if (this.muted) return;

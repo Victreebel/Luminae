@@ -36,6 +36,13 @@ import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/Artifa
 import { TutorialOverlay } from '@/components/TutorialOverlay';
 const gemIcon = "/icon_gem.svg";
 
+function hexRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16) || 0;
+  const g = parseInt(hex.slice(3, 5), 16) || 0;
+  const b = parseInt(hex.slice(5, 7), 16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 const CARD_ART_MODULES = import.meta.glob(
   '../assets/cards/*.png',
   { eager: true, query: '?url', import: 'default' },
@@ -955,7 +962,12 @@ export default function GameBoard() {
     playerName: string;
     avatarId: string | null;
     isYou: boolean;
+    accentColor: string;
+    eminence: number;
+    turnStartedAt: number;
+    timerSeconds: number | null;
   } | null>(null);
+  const [overlayCountdown, setOverlayCountdown] = useState<number | null>(null);
   const turnAnnounceKeyRef = useRef(0);
   const turnAnnounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAnnouncedTurnRef = useRef<string | null>(null);
@@ -1068,17 +1080,28 @@ export default function GameBoard() {
   }, []);
 
   const TURN_ANNOUNCE_DURATION = 1800;
+  const OPPONENT_ANNOUNCE_DURATION = 1100;
 
   const setAnimEndTime = (durationMs: number) => {
     const end = Date.now() + durationMs;
     if (end > animationEndTimeRef.current) animationEndTimeRef.current = end;
   };
 
-  const fireTurnAnnouncement = (dedupeKey: string, playerName: string, avatarId: string | null, isYou: boolean) => {
+  const fireTurnAnnouncement = (
+    dedupeKey: string,
+    playerName: string,
+    avatarId: string | null,
+    isYou: boolean,
+    accentColor: string,
+    eminence: number,
+    timerSeconds: number | null,
+  ) => {
     if (dedupeKey === lastAnnouncedTurnRef.current) return;
     lastAnnouncedTurnRef.current = dedupeKey;
     if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
     pendingTurnAnnounceRef.current = null;
+
+    const duration = isYou ? TURN_ANNOUNCE_DURATION : OPPONENT_ANNOUNCE_DURATION;
 
     const doFire = () => {
       const stillRemaining = animationEndTimeRef.current - Date.now();
@@ -1089,13 +1112,14 @@ export default function GameBoard() {
       if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
       turnAnnounceKeyRef.current += 1;
       const seq = turnAnnounceKeyRef.current;
-      setTurnAnnouncement({ key: seq, playerName, avatarId, isYou });
-      setAnimEndTime(TURN_ANNOUNCE_DURATION);
+      setTurnAnnouncement({ key: seq, playerName, avatarId, isYou, accentColor, eminence, turnStartedAt: Date.now(), timerSeconds });
+      setAnimEndTime(duration);
       if (isYou) gameAudio.playTurnStart();
+      else gameAudio.playOpponentTurnStart();
       turnAnnounceTimerRef.current = setTimeout(() => {
         if (turnAnnounceKeyRef.current === seq) setTurnAnnouncement(null);
         turnAnnounceTimerRef.current = null;
-      }, TURN_ANNOUNCE_DURATION);
+      }, duration);
       pendingTurnAnnounceRef.current = null;
     };
 
@@ -1114,6 +1138,21 @@ export default function GameBoard() {
     turnAnnounceTimerRef.current = null;
     setTurnAnnouncement(null);
   };
+
+  useEffect(() => {
+    if (!turnAnnouncement?.timerSeconds) {
+      setOverlayCountdown(null);
+      return;
+    }
+    const { timerSeconds, turnStartedAt } = turnAnnouncement;
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - turnStartedAt) / 1000);
+      setOverlayCountdown(Math.max(0, timerSeconds - elapsed));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [turnAnnouncement?.key]);
 
   useEffect(() => {
     return () => {
@@ -1158,8 +1197,12 @@ export default function GameBoard() {
       const cp = state.players[state.currentPlayerIndex];
       if (!cp) return;
       const key = `init-${state.currentPlayerIndex}-${state.version}`;
-      if (cp.playerId === session.playerId) {
-        fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, true);
+      const isMe = cp.playerId === session.playerId;
+      if (isMe) {
+        const firstLumId = cp.claimedLuminaryIds?.[0];
+        const lum = firstLumId ? state.luminaries.find(l => l.id === firstLumId) : undefined;
+        const accentColor = lum?.summonColor ?? '#6366f1';
+        fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, true, accentColor, cp.lumens, state.turnTimerSeconds ?? null);
       }
     }
   }, [state?.status, state?.version]);
@@ -1707,9 +1750,10 @@ export default function GameBoard() {
         if (nextPlayer) {
           const isMe = nextPlayer.playerId === session?.playerId;
           const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
-          if (isMe) {
-            fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, true);
-          }
+          const firstLumId = nextPlayer.claimedLuminaryIds?.[0];
+          const lum = firstLumId ? newState.luminaries.find(l => l.id === firstLumId) : undefined;
+          const accentColor = lum?.summonColor ?? '#6366f1';
+          fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe, accentColor, nextPlayer.lumens, newState.turnTimerSeconds ?? null);
         }
       }
   };
@@ -4413,7 +4457,9 @@ export default function GameBoard() {
         {turnAnnouncement && (
           <motion.div
             key={turnAnnouncement.key}
-            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            className="fixed inset-0 z-50 flex items-center justify-center cursor-pointer"
+            style={{ pointerEvents: 'auto' }}
+            onClick={cancelTurnAnnouncement}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -4421,10 +4467,7 @@ export default function GameBoard() {
           >
             <motion.div
               className="absolute inset-0"
-              style={{ background: turnAnnouncement.isYou
-                ? 'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(99,102,241,0.25) 0%, rgba(0,0,0,0.55) 70%)'
-                : 'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.55) 70%)'
-              }}
+              style={{ background: `radial-gradient(ellipse 70% 55% at 50% 50%, ${hexRgba(turnAnnouncement.accentColor, turnAnnouncement.isYou ? 0.28 : 0.14)} 0%, rgba(0,0,0,0.55) 70%)` }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -4433,17 +4476,15 @@ export default function GameBoard() {
               className="relative flex flex-col items-center gap-3"
               initial={{ scale: 0.5, opacity: 0, y: 20 }}
               animate={{ scale: [0.5, 1.08, 1], opacity: [0, 1, 1], y: [20, -4, 0] }}
-              exit={{ scale: 0.9, opacity: 0, y: -12 }}
+              exit={{ opacity: 0, y: -20, transition: { duration: 0.16 } }}
               transition={{ duration: 0.5, times: [0, 0.6, 1], ease: 'easeOut' }}
             >
               <motion.div
                 className="rounded-full overflow-hidden border-4 shadow-lg"
                 style={{
                   width: 80, height: 80,
-                  borderColor: turnAnnouncement.isYou ? 'rgba(99,102,241,0.6)' : 'rgba(255,255,255,0.25)',
-                  boxShadow: turnAnnouncement.isYou
-                    ? '0 0 40px rgba(99,102,241,0.4), 0 0 80px rgba(99,102,241,0.15)'
-                    : '0 0 30px rgba(255,255,255,0.1)',
+                  borderColor: hexRgba(turnAnnouncement.accentColor, 0.7),
+                  boxShadow: `0 0 40px ${hexRgba(turnAnnouncement.accentColor, 0.45)}, 0 0 80px ${hexRgba(turnAnnouncement.accentColor, 0.18)}`,
                 }}
                 animate={{ scale: [1, 1.06, 1] }}
                 transition={{ duration: 1.2, repeat: 0 }}
@@ -4455,21 +4496,33 @@ export default function GameBoard() {
                   draggable={false}
                 />
               </motion.div>
-              <div className="rounded-full bg-black/70 px-4 py-1.5 backdrop-blur-sm">
-                <span className="text-sm font-semibold text-white">{turnAnnouncement.playerName}</span>
+              <div className="flex items-center gap-1 rounded-full bg-black/70 px-3 py-1 backdrop-blur-sm">
+                <Sparkles className="h-3 w-3 shrink-0" style={{ color: turnAnnouncement.accentColor }} />
+                <span className="text-sm font-semibold text-white">{turnAnnouncement.eminence} ✦</span>
               </div>
               <motion.span
-                className={`text-2xl font-serif font-bold tracking-wide ${
-                  turnAnnouncement.isYou
-                    ? 'text-primary drop-shadow-[0_0_16px_rgba(99,102,241,0.7)]'
-                    : 'text-white/80 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]'
-                }`}
+                className="text-2xl font-serif font-bold tracking-wide"
+                style={{
+                  color: turnAnnouncement.isYou ? turnAnnouncement.accentColor : 'rgba(255,255,255,0.85)',
+                  textShadow: `0 0 16px ${hexRgba(turnAnnouncement.accentColor, 0.7)}`,
+                }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
                 {turnAnnouncement.isYou ? 'Your Turn' : `${turnAnnouncement.playerName}'s Turn`}
               </motion.span>
+              {overlayCountdown !== null && (
+                <motion.div
+                  className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white/70 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3, duration: 0.2 }}
+                >
+                  <Clock className="h-3 w-3 shrink-0" />
+                  <span>{overlayCountdown}s</span>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         )}
