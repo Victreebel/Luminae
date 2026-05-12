@@ -912,6 +912,7 @@ export default function GameBoard() {
   const [coreActionSubmitted, setCoreActionSubmitted] = useState(false);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
+  const planSubmitInFlight = useRef(false);
   const [gemBurst, setGemBurst] = useState<{
     key: number;
     gems: GemKey[];
@@ -2578,6 +2579,8 @@ export default function GameBoard() {
 
   const handlePlanAction = async (plannedActionData: Record<string, unknown>) => {
     if (!me || !session) return;
+    if (planSubmitInFlight.current) return;
+    planSubmitInFlight.current = true;
     try {
       await submitAction.mutateAsync({
         roomId: roomId!,
@@ -2591,6 +2594,8 @@ export default function GameBoard() {
       setActionMode('none');
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Plan failed', description: err.message });
+    } finally {
+      planSubmitInFlight.current = false;
     }
   };
 
