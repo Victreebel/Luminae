@@ -306,6 +306,14 @@ function ArtifactCardView({
   );
 }
 
+function QueuedOverlay() {
+  return (
+    <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 0 2px #fbbf24, 0 0 12px 3px #fbbf2466' }}>
+      <span className="absolute top-1 left-1/2 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wider bg-amber-500/90 text-black rounded px-1 py-0.5 leading-none shadow">Queued</span>
+    </div>
+  );
+}
+
 function TurnCountdown({ deadline, active }: { deadline: number | null; active: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -2612,6 +2620,7 @@ export default function GameBoard() {
   // cutscenes gate it, because those require player attention.
   const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
   const myPlannedAction = (me as any)?.plannedAction ?? null;
+  const plannedCardId: string | null = myPlannedAction?.cardId ?? null;
 
   // Forge / Plan:Forge confirmed-state color — solid affinity color of the card being acted on.
   const _forgeCardMeta = selectedCard
@@ -2848,9 +2857,10 @@ export default function GameBoard() {
                 }
 
                 const isFlipping = flippingCards.has(c.id);
+                const isQueued = plannedCardId === c.id;
                 if (isFlipping) {
                   return (
-                    <div key={c.id} data-card-id={c.id} style={{ perspective: '800px' }}>
+                    <div key={c.id} data-card-id={c.id} className="relative shrink-0" style={{ perspective: '800px' }}>
                       <motion.div
                         initial={{ rotateY: 180, scale: 0.85 }}
                         animate={{ rotateY: 0, scale: 1 }}
@@ -2865,12 +2875,13 @@ export default function GameBoard() {
                           effectiveCosts={computeCosts(c, costMode)}
                         />
                       </motion.div>
+                      {isQueued && <QueuedOverlay />}
                     </div>
                   );
                 }
 
                 return (
-                  <div key={c.id} data-card-id={c.id}>
+                  <div key={c.id} data-card-id={c.id} className="relative shrink-0">
                     <ArtifactCardView
                       card={c}
                       tier={row.tier}
@@ -2878,6 +2889,7 @@ export default function GameBoard() {
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
                     />
+                    {isQueued && <QueuedOverlay />}
                   </div>
                 );
               })}
@@ -3607,16 +3619,21 @@ export default function GameBoard() {
             Reserved ({myReservedCount}/3)
           </p>
           <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-            {me?.reservedCards.map((c) => (
-              <ArtifactCardView
-                key={c.id}
-                card={c}
-                tier={c.tier}
-                onTap={() => openCardSheet(c, true)}
-                tapped={selectedCard?.card.id === c.id}
-                effectiveCosts={computeCosts(c, costMode)}
-              />
-            ))}
+            {me?.reservedCards.map((c) => {
+              const isQueued = plannedCardId === c.id;
+              return (
+                <div key={c.id} className="relative shrink-0">
+                  <ArtifactCardView
+                    card={c}
+                    tier={c.tier}
+                    onTap={() => openCardSheet(c, true)}
+                    tapped={selectedCard?.card.id === c.id}
+                    effectiveCosts={computeCosts(c, costMode)}
+                  />
+                  {isQueued && <QueuedOverlay />}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
