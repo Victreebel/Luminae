@@ -301,7 +301,7 @@ export default function Home() {
           transition={{ delay: 0.28 }}
           className="text-muted-foreground text-sm tracking-wide"
         >
-          Harness affinities. Forge cosmic artifacts. Claim Eminence.
+          Harness affinities. Forge artifacts. Shape the cosmos.
         </motion.p>
 
         {/* Avatar selector — shown for guest modes */}
