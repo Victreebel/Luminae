@@ -15,6 +15,13 @@ import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 const AI_TURN_DELAY_MS = 1800;
 const AI_TURN_DELAY_CARD_ANIM_MS = 4500;
 
+// Easy AI feels human-paced: 5–9 s for regular moves, 7–11 s for card actions
+// (card anim needs ~4.5 s to complete, so the easy floor already covers it)
+const easyDelay = (isCardAction: boolean): number =>
+  isCardAction
+    ? 7000 + Math.random() * 4000
+    : 5000 + Math.random() * 4000;
+
 // Run consecutive AI turns until the active player is human or the game ends.
 // Fire-and-forget: runs in the background. At most one runner per room is
 // active at any time (guarded by tryClaimAiRunner).
@@ -174,16 +181,20 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         }
         armTurnTimer(roomId, state);
 
-        if (isFinished) return { kind: "stop" as const, actionType: action.type };
-        return { kind: "continue" as const, actionType: action.type };
+        if (isFinished) return { kind: "stop" as const, actionType: action.type, difficulty };
+        return { kind: "continue" as const, actionType: action.type, difficulty };
       });
 
       if (outcome.kind === "stop") return;
 
+      const isCardAction =
+        outcome.actionType === "purchase_card" || outcome.actionType === "reserve_card";
       const betweenDelay =
-        outcome.actionType === "purchase_card" || outcome.actionType === "reserve_card"
-          ? AI_TURN_DELAY_CARD_ANIM_MS
-          : AI_TURN_DELAY_MS;
+        outcome.difficulty === "easy"
+          ? easyDelay(isCardAction)
+          : isCardAction
+            ? AI_TURN_DELAY_CARD_ANIM_MS
+            : AI_TURN_DELAY_MS;
       await new Promise((resolve) => setTimeout(resolve, betweenDelay));
     }
   } catch (err) {
