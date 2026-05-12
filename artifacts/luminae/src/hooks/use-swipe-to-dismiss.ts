@@ -9,11 +9,13 @@ const DEFAULT_SPRING: Transition = {
 };
 
 /**
- * Returns framer-motion drag props for a bottom-sheet panel and pointer-down
- * props for the drag handle bar.
+ * Returns framer-motion drag props for a bottom-sheet panel, pointer-down
+ * props for the drag handle bar, optional props for any scrollable content
+ * area inside the sheet, and live motion values for visual drag feedback.
  *
  * Usage:
- *   const { dragProps, handleBarProps, backdropOpacity, sheetScale } = useSwipeToDismiss(panelRef, onClose);
+ *   const { dragProps, handleBarProps, scrollableAreaProps, backdropOpacity, sheetScale } =
+ *     useSwipeToDismiss(panelRef, onClose);
  *
  *   // Outer wrapper (backdrop container):
  *   <motion.div ...>
@@ -22,12 +24,19 @@ const DEFAULT_SPRING: Transition = {
  *       <div {...handleBarProps} className="flex justify-center pt-3 pb-1">
  *         <div className="w-10 h-1 rounded-full bg-border" />
  *       </div>
- *       …scrollable content…
+ *       <div {...scrollableAreaProps} className="overflow-y-auto …">
+ *         …scrollable content…
+ *       </div>
  *     </motion.div>
  *   </motion.div>
  *
- * Dragging starts only when the user touches/clicks the handle bar, so
- * scrollable content inside the panel is never captured by the drag listener.
+ * Drag start sources:
+ *  1. Handle bar — always starts a drag immediately (existing behaviour).
+ *  2. Scrollable content area (via scrollableAreaProps) — drag starts only
+ *     when the content is scrolled to the very top (scrollTop === 0) AND the
+ *     user's first meaningful movement is downward. While the content is not
+ *     at the top the gesture is left entirely to the browser for normal scroll.
+ *
  * Releasing with a downward offset > `threshold * panelHeight` or a fast flick
  * (velocity.y > 500 px/s) triggers `onDismiss`. Aborted drags spring back
  * smoothly using the same spring config as the entry animation, using
@@ -111,5 +120,71 @@ export function useSwipeToDismiss(
     style: { touchAction: 'none', cursor: 'grab' } as React.CSSProperties,
   };
 
-  return { dragProps, handleBarProps, backdropOpacity, sheetScale };
+  /**
+   * Spread these props on any `overflow-y-auto` container inside the sheet.
+   *
+   * Behaviour:
+   * - While the scroll area is NOT at the top (scrollTop > 0), all pointer
+   *   events fall through to the browser for normal scrolling.
+   * - When the scroll area IS at the top, we watch the first pointer movement:
+   *     • Downward (positive dy) → hand off to the sheet drag controller.
+   *     • Upward (negative dy) → let the browser scroll the content.
+   * - `overscrollBehavior: 'contain'` prevents momentum from the scroll area
+   *   ever bleeding into the parent sheet when a fast upward fling reaches the
+   *   top of the content.
+   */
+  const scrollableAreaProps = {
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
+      const el = e.currentTarget;
+
+      // Content is not at the top — let the browser handle scrolling normally.
+      if (el.scrollTop > 0) return;
+
+      const nativeEvent = e.nativeEvent as PointerEvent;
+      const startY = e.clientY;
+      let settled = false;
+
+      const onMove = (moveEvent: PointerEvent) => {
+        if (moveEvent.pointerId !== nativeEvent.pointerId) return;
+        if (settled) return;
+
+        const dy = moveEvent.clientY - startY;
+
+        // Dead zone: ignore tiny movements that don't indicate clear intent.
+        if (Math.abs(dy) < 6) return;
+
+        settled = true;
+        cleanup();
+
+        if (dy > 0) {
+          // Downward swipe from the top — activate the sheet drag.
+          // Pass the original pointerdown event so framer-motion anchors
+          // the drag origin correctly (no visible jump).
+          dragControls.start(nativeEvent as unknown as React.PointerEvent);
+        }
+        // Upward swipe — do nothing; browser scrolls normally.
+      };
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onUp);
+      };
+
+      const onUp = () => {
+        settled = true;
+        cleanup();
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp, { once: true });
+      window.addEventListener('pointercancel', onUp, { once: true });
+    },
+    style: {
+      touchAction: 'pan-y',
+      overscrollBehavior: 'contain',
+    } as React.CSSProperties,
+  };
+
+  return { dragProps, handleBarProps, scrollableAreaProps, backdropOpacity, sheetScale };
 }

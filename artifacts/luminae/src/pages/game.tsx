@@ -1213,16 +1213,20 @@ export default function GameBoard() {
     () => { setShowForgedOverlay(false); setForgedFilter(null); },
   );
 
-  // Swipe-to-dismiss: drag handle → swipe down ≥30% height dismisses the sheet
-  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale } =
+  // Swipe-to-dismiss: drag handle → swipe down ≥30% height dismisses the sheet.
+  // scrollableAreaProps can be spread on any overflow-y-auto child so that a
+  // downward swipe from scrollTop=0 also activates the drag, while normal
+  // scroll is never interrupted when the content is not at the top.
+  // backdropOpacity / sheetScale are live motion values for visual drag feedback.
+  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, scrollableAreaProps: cardSheetScrollableProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale } =
     useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); });
-  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale } =
+  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, scrollableAreaProps: deckSheetScrollableProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale } =
     useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); });
-  const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps, backdropOpacity: rulesSheetBackdropOpacity, sheetScale: rulesSheetScale } =
+  const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps, scrollableAreaProps: rulesSheetScrollableProps, backdropOpacity: rulesSheetBackdropOpacity, sheetScale: rulesSheetScale } =
     useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false));
-  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale } =
+  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, scrollableAreaProps: reservedSheetScrollableProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale } =
     useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false));
-  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale } =
+  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, scrollableAreaProps: forgedSheetScrollableProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale } =
     useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); });
 
   const TURN_ANNOUNCE_DURATION = 1800;
@@ -4125,6 +4129,8 @@ export default function GameBoard() {
                 <div className="w-10 h-1 rounded-full bg-border" />
                 <SwipeHintBar />
               </div>
+              {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
+              <div {...cardSheetScrollableProps} className="overflow-y-auto max-h-[75vh]">
               {/* Sheet header: Esc hint + close button */}
               <div className="flex items-center justify-between pb-3">
                 <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
@@ -4416,6 +4422,7 @@ export default function GameBoard() {
                   Close
                 </Button>
               </div>
+              </div>{/* end scrollable body */}
             </motion.div>
           </motion.div>
         )}
@@ -4461,6 +4468,8 @@ export default function GameBoard() {
                   <div className="w-10 h-1 rounded-full bg-border" />
                   <SwipeHintBar />
                 </div>
+                {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
+                <div {...deckSheetScrollableProps} className="overflow-y-auto max-h-[75vh]">
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
                   {/* Larger preview — 3× the sm size, matching md width */}
@@ -4583,6 +4592,7 @@ export default function GameBoard() {
                     Close
                   </Button>
                 </div>
+                </div>{/* end scrollable body */}
               </motion.div>
             </motion.div>
           );
@@ -5042,7 +5052,7 @@ export default function GameBoard() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="px-5 overflow-y-auto max-h-[60vh] space-y-4 pb-4">
+              <div {...rulesSheetScrollableProps} className="px-5 overflow-y-auto max-h-[60vh] space-y-4 pb-4">
                 {[
                   {
                     icon: '💎',
@@ -5141,7 +5151,7 @@ export default function GameBoard() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="px-5 overflow-y-auto overscroll-contain max-h-[60vh] pb-4">
+              <div {...reservedSheetScrollableProps} className="px-5 overflow-y-auto max-h-[60vh] pb-4">
                 {me.reservedCards.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No cards reserved.</p>
                 ) : (
@@ -5281,7 +5291,7 @@ export default function GameBoard() {
                   );
                 })}
               </div>
-              <div className="px-5 overflow-y-auto max-h-[55vh] pb-4">
+              <div {...forgedSheetScrollableProps} className="px-5 overflow-y-auto max-h-[55vh] pb-4">
                 {(() => {
                   const cards = forgedFilter
                     ? (me.purchasedCards ?? []).filter(card => card.bonusColor === forgedFilter)
