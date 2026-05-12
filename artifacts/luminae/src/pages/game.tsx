@@ -2501,26 +2501,6 @@ export default function GameBoard() {
           </div>
         </div>
 
-        {/* Plan queued badge — shown on the card market when a reserve is waiting */}
-        <AnimatePresence>
-          {myPlannedAction && myPlannedAction.type === 'reserve_card' && (
-            <motion.div
-              key="reserve-plan-badge"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-950/50 border border-amber-500/40 shadow-[0_0_8px_rgba(251,191,36,0.15)]">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
-                <span className="text-[10px] text-amber-300/80 truncate">
-                  {getPlannedActionSummary(myPlannedAction)}
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {[
           { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Sovereigns & absolutes — apex relics that bend the cosmos to your will' },
@@ -2857,45 +2837,6 @@ export default function GameBoard() {
             </p>
           </div>
         )}
-        {/* Plan queued badge — shown on the affinity bank when a harvest is waiting */}
-        <AnimatePresence>
-          {myPlannedAction && !crystalQueueActive &&
-           (myPlannedAction.type === 'take_three_crystals' || myPlannedAction.type === 'take_two_crystals') && (
-            <motion.div
-              key="harvest-plan-badge"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="mx-3 mb-3 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-amber-950/50 border border-amber-500/40 shadow-[0_0_8px_rgba(251,191,36,0.15)]">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
-                <div className="flex items-center gap-1 flex-1 min-w-0">
-                  {myPlannedAction.type === 'take_three_crystals'
-                    ? (CRYSTALS as string[])
-                        .filter(c => c !== 'flux' && (myPlannedAction.crystals?.[c] ?? 0) > 0)
-                        .map(c => <MiniGem key={c} color={c as GemKey} size={12} />)
-                    : myPlannedAction.crystal
-                      ? <MiniGem color={myPlannedAction.crystal as GemKey} size={12} />
-                      : null
-                  }
-                  <span className="text-[10px] text-amber-300/80 truncate ml-0.5">
-                    {getPlannedActionSummary(myPlannedAction)}
-                  </span>
-                </div>
-                <button
-                  onClick={handleCancelPlan}
-                  className="shrink-0 ml-1 text-amber-400/70 hover:text-amber-300 transition-colors leading-none"
-                  aria-label="Cancel harvest plan"
-                  title="Cancel plan"
-                >
-                  ×
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
 
@@ -3475,6 +3416,35 @@ export default function GameBoard() {
         {activeTab === 'log' && LogTab()}
       </main>
 
+      {/* ── Planned action floating bar (between board and player panel) ── */}
+      <AnimatePresence>
+        {myPlannedAction && (
+          <motion.div
+            key="planned-action-bar"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden shrink-0 z-20"
+          >
+            <div className="flex items-center gap-2 px-3 py-2 bg-black/50 backdrop-blur border-t border-amber-500/20">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70 shrink-0">Queued</span>
+              <span className="text-[10px] text-amber-200/70 flex-1 truncate">
+                {getPlannedActionSummary(myPlannedAction)}
+              </span>
+              <button
+                type="button"
+                onClick={handleCancelPlan}
+                className="flex items-center gap-1 text-[10px] font-semibold text-amber-300/80 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-800/40 border border-amber-500/30 rounded-md px-2 py-0.5 shrink-0 transition-colors"
+              >
+                <CalendarX className="h-3 w-3" />
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Player Info Panel (pinned above nav) ── */}
       {me && (
         <div
@@ -3512,22 +3482,6 @@ export default function GameBoard() {
               </button>
             </div>
           </div>
-          {/* Planned move status row */}
-          {myPlannedAction && (
-            <div className="flex items-center gap-2 mb-2 px-0.5 py-1 rounded-lg bg-amber-950/40 border border-amber-500/30">
-              <span className="text-[10px] text-amber-300/90 flex-1 truncate pl-1.5">
-                ⏳ Planned: {getPlannedActionSummary(myPlannedAction)}
-              </span>
-              <button
-                type="button"
-                onClick={handleCancelPlan}
-                className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-900/60 hover:bg-amber-800/60 border border-amber-500/40 rounded-md px-2 py-0.5 shrink-0 animate-pulse"
-              >
-                <CalendarX className="h-3 w-3" />
-                Cancel
-              </button>
-            </div>
-          )}
           {/* ── Pinned Player Info Panel affinity boxes (6-col flex row) ── */}
           <div className="flex gap-1.5">
             {CRYSTALS.map((c) => {
