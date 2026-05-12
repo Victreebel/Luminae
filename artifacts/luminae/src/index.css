@@ -161,6 +161,16 @@
   50%       { opacity: 0.62; }
 }
 
+@keyframes seal-glow-pulse {
+  0%, 100% { box-shadow: 0 0 18px 3px var(--seal-glow-dim, rgba(255,255,255,0.2)); }
+  50%       { box-shadow: 0 0 48px 14px var(--seal-glow-bright, rgba(255,255,255,0.5)); }
+}
+.seal-glow-pulse {
+  animation: seal-glow-pulse 2.2s ease-in-out infinite;
+  animation-delay: 0.9s;
+  animation-fill-mode: both;
+}
+
 /* ── Luminary internal-pressure trembling ────────────────────────────────────
    Uses individual CSS transform properties (translate, rotate) so they compose
    additively with Framer Motion's transform shorthand on the same element.    */

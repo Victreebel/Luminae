@@ -4921,28 +4921,37 @@ export default function GameBoard() {
                 return (
                   <motion.div
                     key="sealing-luminary"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.65 }}
+                    initial={{ opacity: 0, scale: 0.55, y: 14 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{
+                      delay: 0.65,
+                      type: 'spring',
+                      stiffness: 240,
+                      damping: 16,
+                    }}
                     className="flex flex-col items-center gap-2"
                   >
                     <div
-                      className="relative rounded-xl overflow-hidden border-2 shrink-0"
+                      className="relative rounded-xl overflow-hidden border-2 shrink-0 seal-glow-pulse"
                       style={{
                         width: 80,
                         height: 80,
                         borderColor: accentColor,
-                        boxShadow: `0 0 22px ${glowColor}`,
-                      }}
+                        '--seal-glow-dim': `${accentColor}44`,
+                        '--seal-glow-bright': `${accentColor}cc`,
+                      } as React.CSSProperties}
                     >
                       <LuminaryPanelArt luminaryId={lumId} size={80} claimed={false} />
                     </div>
-                    <p
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1.0 }}
                       className="text-xs font-semibold uppercase tracking-widest"
                       style={{ color: accentColor, textShadow: `0 0 10px ${glowColor}` }}
                     >
                       {label} {lum?.name ?? lumId}
-                    </p>
+                    </motion.p>
                   </motion.div>
                 );
               })()}
