@@ -900,6 +900,7 @@ export default function GameBoard() {
     cardRect?: { cx: number; cy: number; w: number };
     eventId: string;    // stable server event ID (or 'dev-test-<id>' for dev panel)
     isDevTest: boolean; // dev tests skip the server resolve_summon call
+    winSealingColor?: string; // summonColor of the Luminary when this event seals a win
   }>>([]);
   // Tracks which server summon eventIds have already been pushed into the queue
   // so that duplicate WebSocket / reconnect deliveries are safely deduped.
@@ -1159,12 +1160,17 @@ export default function GameBoard() {
     checkedInitialSummonRef.current = true;
     const pending: Array<{ eventId: string; luminaryId: string }> =
       (state as any)?.pendingSummonEvents ?? [];
+    // If the game was already finished when we loaded, identify the sealing
+    // Luminary so its cutscene burst visuals can use the correct summonColor.
+    const initialWinTrigId = (state as any).winTriggerLuminaryId as string | undefined;
     for (const evt of pending) {
       const lum = (state as any).luminaries?.find((l: any) => l.id === evt.luminaryId);
       if (lum) {
+        const isSealing = initialWinTrigId && evt.luminaryId === initialWinTrigId;
+        const wsc: string | undefined = isSealing ? (lum.summonColor ?? '') || undefined : undefined;
         enqueueSummonRef.current(
           evt.luminaryId, lum.name, lum.domain ?? '',
-          lum.oblivion ? -lum.oblivion : lum.lumens, lum.flavor ?? '', evt.eventId, false,
+          lum.oblivion ? -lum.oblivion : lum.lumens, lum.flavor ?? '', evt.eventId, false, wsc,
         );
       }
     }
@@ -1493,6 +1499,11 @@ export default function GameBoard() {
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
 
+      // Track the event ID and raw summonColor of the win-sealing Luminary so the
+      // enqueue loop below can color that specific cutscene's particles to match.
+      let sealingEventId = '';
+      let sealingLumSummonColor = '';
+
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         // Count summon events that will actually be dispatched to enqueueSummon
         // in the loop below (not yet in handledSummonEventIdsRef means not deduped).
@@ -1516,6 +1527,11 @@ export default function GameBoard() {
             const lastEvt = newPendingEvts[newPendingEvts.length - 1];
             const sealingLum = newState.luminaries.find(l => l.id === lastEvt.luminaryId);
             const lumSummonColor: string = (sealingLum as any)?.summonColor ?? '';
+
+            // Store the raw summonColor for the cutscene visual burst override.
+            // This is the Luminary's canonical color and is what the task requires.
+            sealingEventId = lastEvt.eventId;
+            sealingLumSummonColor = lumSummonColor;
 
             // Always use the sealing Luminary's summonColor for Luminary-triggered wins.
             // Card bonusColor is intentionally not used here so both the live flush path
@@ -1596,6 +1612,10 @@ export default function GameBoard() {
             }
             const lum = newState.luminaries.find(l => l.id === evt.luminaryId);
             if (lum) {
+              // Pass winSealingColor for the event that sealed the win so its
+              // cutscene burst visuals match the Luminary's summonColor.
+              const wsc = (sealingEventId && evt.eventId === sealingEventId)
+                ? sealingLumSummonColor : undefined;
               enqueueSummon(
                 evt.luminaryId,
                 lum.name,
@@ -1604,6 +1624,7 @@ export default function GameBoard() {
                 (lum as any).flavor ?? '',
                 evt.eventId,
                 false,
+                wsc,
               );
             }
           }
@@ -1813,6 +1834,7 @@ export default function GameBoard() {
     lumFlavor: string,
     eventId: string,
     isDevTest: boolean,
+    winSealingColor?: string,
   ) => {
     // 1. Dedup guard (skip for dev tests which intentionally replay)
     if (!isDevTest) {
@@ -1842,7 +1864,7 @@ export default function GameBoard() {
             setSummonQueue(q => [
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
-                lumens: lumLumens, flavor: lumFlavor, cardRect: undefined, eventId, isDevTest },
+                lumens: lumLumens, flavor: lumFlavor, cardRect: undefined, eventId, isDevTest, winSealingColor },
             ]);
             // Signal that this event has landed in the queue.
             enqueuingCountRef.current = Math.max(0, enqueuingCountRef.current - 1);
@@ -1872,7 +1894,7 @@ export default function GameBoard() {
             setSummonQueue(q => [                   // 7. start the cutscene
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
-                lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal, eventId, isDevTest },
+                lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal, eventId, isDevTest, winSealingColor },
             ]);
             // Signal that this event has landed in the queue.
             enqueuingCountRef.current = Math.max(0, enqueuingCountRef.current - 1);
@@ -5047,6 +5069,7 @@ export default function GameBoard() {
                 lumens={entry.lumens}
                 flavor={entry.flavor}
                 cardRect={entry.cardRect}
+                overrideColor={entry.winSealingColor}
                 onFlash={() => setCutscenePostFlash(true)}
                 onSkip={() => {
                   console.log(`[Luminae] Summon view skipped locally for eventId="${entry.eventId}"`);

@@ -1214,6 +1214,7 @@ export function LuminarySummonCutscene({
   onComplete,
   onFlash,
   onSkip,
+  overrideColor,
 }: {
   luminaryId: string;
   luminaryName: string;
@@ -1224,10 +1225,17 @@ export function LuminarySummonCutscene({
   onComplete: () => void;
   onFlash?: () => void;
   onSkip?: () => void;
+  overrideColor?: string;
 }) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
-  const { EntityArt, primaryColor, secondaryColor, glowColor } = vis;
+  const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor } = vis;
+  // When overrideColor is provided (win-sealing summon), use it for all burst/particle
+  // visuals so they match the sealing Luminary's summonColor rather than the generic
+  // LUMINARY_VISUALS primaryColor.
+  const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
+    ? overrideColor
+    : visPrimaryColor;
   // RGB components of primaryColor for rgba() drop-shadows on shatter chunks
   const pRgb = `${parseInt(primaryColor.slice(1,3),16)},${parseInt(primaryColor.slice(3,5),16)},${parseInt(primaryColor.slice(5,7),16)}`;
   const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
