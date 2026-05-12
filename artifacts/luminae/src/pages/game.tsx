@@ -1199,25 +1199,37 @@ export default function GameBoard() {
     const winnerPlayer = (state.players as GamePlayerState[]).find(
       p => p.playerId === state.winnerId
     );
-    let dominantColor = '#fbbf24';
+    let fanfareColor = '#fbbf24';
     if (winnerPlayer) {
-      const bonuses = winnerPlayer.bonuses;
-      const gemEntries: Array<[string, number]> = [
-        ['ruby',     bonuses.ruby],
-        ['sapphire', bonuses.sapphire],
-        ['emerald',  bonuses.emerald],
-        ['onyx',     bonuses.onyx],
-        ['pearl',    bonuses.pearl],
-        ['flux',     bonuses.flux],
-      ];
-      let maxBonus = 0;
-      let dominantKey = 'flux';
-      for (const [key, val] of gemEntries) {
-        if (val > maxBonus) { maxBonus = val; dominantKey = key; }
+      // Prefer the bonusColor of the winner's last purchased card — the best
+      // proxy for the card that sealed the win, matching the flush-path logic.
+      const winnerCards = winnerPlayer.purchasedCards as ArtifactCard[] | undefined;
+      const lastWinnerCard = winnerCards && winnerCards.length > 0
+        ? winnerCards[winnerCards.length - 1]
+        : null;
+      const lastCardBonusKey = lastWinnerCard?.bonusColor;
+      if (lastCardBonusKey && GEM_KEY_TO_HEX[lastCardBonusKey]) {
+        fanfareColor = GEM_KEY_TO_HEX[lastCardBonusKey];
+      } else {
+        // Fall back to the winner's dominant bonus affinity count.
+        const bonuses = winnerPlayer.bonuses;
+        const gemEntries: Array<[string, number]> = [
+          ['ruby',     bonuses.ruby],
+          ['sapphire', bonuses.sapphire],
+          ['emerald',  bonuses.emerald],
+          ['onyx',     bonuses.onyx],
+          ['pearl',    bonuses.pearl],
+          ['flux',     bonuses.flux],
+        ];
+        let maxBonus = 0;
+        let dominantKey = 'flux';
+        for (const [key, val] of gemEntries) {
+          if (val > maxBonus) { maxBonus = val; dominantKey = key; }
+        }
+        fanfareColor = GEM_KEY_TO_HEX[dominantKey] ?? '#fbbf24';
       }
-      dominantColor = GEM_KEY_TO_HEX[dominantKey] ?? '#fbbf24';
     }
-    gameAudio.playLuminaryFanfare(dominantColor);
+    gameAudio.playLuminaryFanfare(fanfareColor);
     setTimeout(() => gameAudio.playWin(), 1400);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!state]);
