@@ -2662,7 +2662,7 @@ export default function GameBoard() {
   const flashSent = (id: string) => {
     if (sentFlashRef.current) clearTimeout(sentFlashRef.current);
     setSentFlashBtn(id);
-    sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 650);
+    sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 900);
   };
 
   // canPlan is available to any player whenever the game is active and there is
@@ -4419,7 +4419,7 @@ export default function GameBoard() {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('forge', 'confirm');
                             handleBuy(selectedCard.card, selectedCard.fromReserve);
                             flashSent('forge');
-                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
+                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('forge', 'select');
                             setPendingSheetAction('forge');
@@ -4477,7 +4477,7 @@ export default function GameBoard() {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('reserve', 'confirm');
                               handleReserveCard(selectedCard.card);
                               flashSent('reserve');
-                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
+                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
                             } else {
                               gameAudio.playButtonSelect(); triggerBtnAnim('reserve', 'select');
                               setPendingSheetAction('reserve');
@@ -4526,7 +4526,7 @@ export default function GameBoard() {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
                             handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
                             flashSent('plan_forge');
-                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
+                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('plan_forge', 'select');
                             setPendingSheetAction('plan_forge');
@@ -4571,7 +4571,7 @@ export default function GameBoard() {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('plan_reserve', 'confirm');
                               handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
                               flashSent('plan_reserve');
-                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
+                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
                             } else {
                               gameAudio.playButtonSelect(); triggerBtnAnim('plan_reserve', 'select');
                               setPendingSheetAction('plan_reserve');
@@ -4755,7 +4755,7 @@ export default function GameBoard() {
                             gameAudio.playButtonConfirm();
                             handleReserveDeck(deckTier);
                             flashSent('deck_reserve');
-                            setTimeout(() => closeDeckSheet(), 500);
+                            setTimeout(() => closeDeckSheet(), 750);
                           } else {
                             gameAudio.playButtonSelect();
                             setPendingDeckConfirm(true);
