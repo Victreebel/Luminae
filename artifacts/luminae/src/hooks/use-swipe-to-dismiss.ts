@@ -174,18 +174,26 @@ export function useSwipeToDismiss(
   // Using a ref avoids stale-closure issues inside drag event handlers.
   const sheetState = useRef<'open' | 'peek'>('open');
 
-  // Reset to 'open' whenever the sheet becomes visible again so that sheets
-  // closed via non-drag paths (backdrop tap, close button, external state
-  // toggle) never carry stale 'peek' state into the next open cycle.
-  useEffect(() => {
-    if (isOpen) {
-      sheetState.current = 'open';
-    }
-  }, [isOpen]);
-
   // 0 = at rest / fully open, 1 = drag has reached the dismiss threshold.
   // In peek mode the base starts at 0.5 so feedback is continuous across states.
   const dragProgress = useMotionValue(0);
+
+  // 0 = sheet is fully open (or no peek), 1 = sheet is in the peek position.
+  // Animated to 1 when snapping to peek and back to 0 on open/dismiss so
+  // consumers can drive a "swipe up to expand" indicator without re-renders.
+  // Declared before the isOpen effect so the effect closure captures it safely.
+  const peekProgress = useMotionValue(0);
+
+  // Reset to 'open' whenever the sheet opens or closes so that sheets dismissed
+  // via non-drag paths (backdrop tap, close button, external state toggle) never
+  // carry stale 'peek' state or a stale peekProgress value into the next open
+  // cycle.  Resetting on both transitions (false→true and true→false) keeps
+  // peekProgress at 0 regardless of which path closed the sheet last time.
+  useEffect(() => {
+    sheetState.current = 'open';
+    peekProgress.set(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   // Backdrop dims as progress increases (fully opaque → nearly transparent)
   const backdropOpacity = useTransform(dragProgress, [0, 1], [1, 0.45]);
@@ -251,10 +259,12 @@ export function useSwipeToDismiss(
         sheetState.current = 'peek';
         void animate(panel!, { y: getPeekOffset(), x: 0 }, spring);
         void animate(dragProgress, 0.5, spring);
+        void animate(peekProgress, 1, spring);
       } else if (panel) {
         // Sub-threshold: spring back to fully open on both axes.
         void animate(panel, { y: 0, x: 0 }, spring);
         void animate(dragProgress, 0, spring);
+        void animate(peekProgress, 0, spring);
       }
     } else {
       // From peek state — horizontal dismiss also works here.
@@ -265,6 +275,7 @@ export function useSwipeToDismiss(
       ) {
         // Downward drag, fast flick, or horizontal gesture → dismiss fully.
         dragProgress.set(0);
+        peekProgress.set(0);
         sheetState.current = 'open';
         onDismiss();
       } else if (info.offset.y < -PEEK_OPEN_OFFSET) {
@@ -272,10 +283,12 @@ export function useSwipeToDismiss(
         sheetState.current = 'open';
         void animate(panel!, { y: 0, x: 0 }, spring);
         void animate(dragProgress, 0, spring);
+        void animate(peekProgress, 0, spring);
       } else if (panel) {
         // Small drag in any direction → snap back to peek.
         void animate(panel, { y: getPeekOffset(), x: 0 }, spring);
         void animate(dragProgress, 0.5, spring);
+        void animate(peekProgress, 1, spring);
       }
     }
   };
@@ -393,6 +406,7 @@ export function useSwipeToDismiss(
     sheetState.current = 'peek';
     void animate(panel, { y: getPeekOffset(), x: 0 }, spring);
     void animate(dragProgress, 0.5, spring);
+    void animate(peekProgress, 1, spring);
   };
 
   /**
@@ -404,6 +418,7 @@ export function useSwipeToDismiss(
     sheetState.current = 'open';
     void animate(panel, { y: 0, x: 0 }, spring);
     void animate(dragProgress, 0, spring);
+    void animate(peekProgress, 0, spring);
   };
 
   return {
@@ -416,5 +431,11 @@ export function useSwipeToDismiss(
     snapToOpen,
     /** Current sheet state ref — 'open' or 'peek'. Read via .current. */
     sheetState,
+    /**
+     * MotionValue that goes from 0 (fully open) to 1 (peek position).
+     * Animate-driven — safe to use in `motion.div` style props without
+     * triggering React re-renders. Use to drive a "swipe up to expand" hint.
+     */
+    peekProgress,
   };
 }

@@ -1223,7 +1223,7 @@ export default function GameBoard() {
   // peekHeight is set on the card-detail sheet: a partial drag snaps to 40 %
   // visible so players can glance at the board mid-review; each sheet can opt
   // in independently by adding peekHeight to its own options object.
-  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, scrollableAreaProps: cardSheetScrollableProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale } =
+  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, scrollableAreaProps: cardSheetScrollableProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale, peekProgress: cardSheetPeekProgress } =
     useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); }, { isOpen: selectedCard !== null, peekHeight: 0.4 });
   const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, scrollableAreaProps: deckSheetScrollableProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale } =
     useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); }, { isOpen: selectedDeckTier !== null });
@@ -4132,7 +4132,7 @@ export default function GameBoard() {
               {/* Drag handle */}
               <div {...cardSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
-                <SwipeHintBar />
+                <SwipeHintBar peekProgress={cardSheetPeekProgress} />
               </div>
               {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
               <div {...cardSheetScrollableProps} className="overflow-y-auto max-h-[75vh]">
