@@ -2971,19 +2971,71 @@ export default function GameBoard() {
                         );
                       })()
                     ) : canPlan && queueLegality.ok ? (
-                      <Button
-                        size="sm"
-                        className="h-7 px-3 rounded-lg text-xs font-bold text-black bg-amber-400 hover:bg-amber-300 ring-1 ring-amber-200 ring-offset-1 ring-offset-black shadow-[0_0_10px_rgba(251,191,36,0.65)] animate-pulse"
-                        onClick={() => {
-                          if (queueLegality.actionType === 'take3') {
-                            handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });
-                          } else if (queueLegality.actionType === 'take2') {
-                            handlePlanAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
-                          }
-                        }}
-                      >
-                        Plan Harness
-                      </Button>
+                      (() => {
+                        const planSelKeys = Object.keys(selectedCrystals) as GemKey[];
+                        const planHasColors = planSelKeys.length > 0;
+                        const planBorderColor = planHasColors
+                          ? `${GEM_META[planSelKeys[0]].hex}70`
+                          : 'rgba(255,255,255,0.18)';
+                        const planConicGradient = planSelKeys.length === 1
+                          ? `conic-gradient(${GEM_META[planSelKeys[0]].hex} 0deg, ${GEM_META[planSelKeys[0]].hex}44 180deg, ${GEM_META[planSelKeys[0]].hex} 360deg)`
+                          : `conic-gradient(${planSelKeys.map((k, i) => {
+                              const deg1 = Math.round((i / planSelKeys.length) * 360);
+                              const deg2 = Math.round(((i + 1) / planSelKeys.length) * 360);
+                              return `${GEM_META[k].hex} ${deg1}deg ${deg2}deg`;
+                            }).join(', ')})`;
+                        return (
+                          <motion.div
+                            whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                            className="relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              borderColor: planBorderColor,
+                              boxShadow: planHasColors
+                                ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[planSelKeys[0]].hex}44`
+                                : 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                              backdropFilter: 'blur(6px)',
+                              WebkitBackdropFilter: 'blur(6px)',
+                            }}
+                            onClick={() => {
+                              if (queueLegality.actionType === 'take3') {
+                                handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });
+                              } else if (queueLegality.actionType === 'take2') {
+                                handlePlanAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+                              }
+                            }}
+                          >
+                            {/* Swirling affinity color fill — reduced opacity for plan/queued state */}
+                            {planSelKeys.length > 0 && (
+                              <div
+                                style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}
+                              >
+                                <div
+                                  className="w-full h-full harness-swirl-ring"
+                                  style={{
+                                    background: planConicGradient,
+                                    opacity: 0.32,
+                                    filter: 'blur(8px)',
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {/* Glass top-shine */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.13] to-transparent pointer-events-none" />
+                            {/* Label */}
+                            <span
+                              className="relative z-10 text-xs font-bold transition-colors duration-300 select-none flex items-center gap-1"
+                              style={{
+                                color: planHasColors ? '#fff' : 'rgba(255,255,255,0.35)',
+                                textShadow: planHasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none',
+                              }}
+                            >
+                              <span style={{ fontSize: '10px', opacity: 0.85 }}>⏱</span>
+                              Plan Harness
+                            </span>
+                          </motion.div>
+                        );
+                      })()
                     ) : null}
                   </div>
                 </div>
