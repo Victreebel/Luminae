@@ -215,6 +215,22 @@ export function useSwipeToDismiss(
     });
   };
 
+  /**
+   * Runs an open→peek animation while preserving the scrollable area's scroll
+   * position. Some browsers may reset the scroll of a partially-offscreen
+   * element as it moves out of the fully-visible viewport during the peek snap.
+   * Capturing scrollTop before the animation and writing it back once the
+   * spring settles prevents any visible jump on entry into the peek state.
+   */
+  const animateToPeekPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
+    const savedScroll = scrollableRef.current?.scrollTop ?? 0;
+    void panelAnimation.then(() => {
+      if (scrollableRef.current && savedScroll > 0) {
+        scrollableRef.current.scrollTop = savedScroll;
+      }
+    });
+  };
+
   // 0 = at rest / fully open, 1 = drag has reached the dismiss threshold.
   // In peek mode the base starts at 0.5 so feedback is continuous across states.
   const dragProgress = useMotionValue(0);
@@ -297,8 +313,11 @@ export function useSwipeToDismiss(
         onDismiss();
       } else if (peekHeight !== undefined && slowVerticalPastThreshold) {
         // Slow vertical drag past threshold with peek enabled → snap to peek.
+        // Scroll position is saved and restored after the spring settles so a
+        // browser that resets scroll on partial-offscreen entry does not produce
+        // a visible jump when the sheet enters the peek state.
         sheetState.current = 'peek';
-        void animate(panel!, { y: getPeekOffset(), x: 0 }, spring);
+        animateToPeekPreservingScroll(animate(panel!, { y: getPeekOffset(), x: 0 }, spring));
         void animate(dragProgress, 0.5, spring);
         void animate(peekProgress, 1, spring);
       } else if (panel) {
@@ -492,13 +511,16 @@ export function useSwipeToDismiss(
 
   /**
    * Programmatically snap the sheet to its peek position.
+   * Scroll position of the scrollable content area is preserved across the
+   * transition so a browser that resets scroll on partial-offscreen entry
+   * does not produce a visible jump when the sheet enters the peek state.
    * No-op if `peekHeight` was not provided to the hook.
    */
   const snapToPeek = () => {
     const panel = panelRef.current;
     if (!panel || peekHeight === undefined) return;
     sheetState.current = 'peek';
-    void animate(panel, { y: getPeekOffset(), x: 0 }, spring);
+    animateToPeekPreservingScroll(animate(panel, { y: getPeekOffset(), x: 0 }, spring));
     void animate(dragProgress, 0.5, spring);
     void animate(peekProgress, 1, spring);
   };
