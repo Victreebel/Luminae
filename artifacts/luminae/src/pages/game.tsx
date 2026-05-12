@@ -2930,6 +2930,7 @@ export default function GameBoard() {
                   );
                 }
 
+                const showTutorialGlow = isTutorial && (tutorialStep === 2 || tutorialStep === 3) && !selectedCard;
                 return (
                   <div key={c.id} data-card-id={c.id} className="relative shrink-0">
                     <ArtifactCardView
@@ -2939,6 +2940,14 @@ export default function GameBoard() {
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
                     />
+                    {showTutorialGlow && (
+                      <div
+                        className="pointer-events-none absolute inset-0 rounded-xl animate-pulse"
+                        style={{
+                          boxShadow: '0 0 0 2px rgba(250,204,21,0.7), 0 0 14px 4px rgba(250,204,21,0.35)',
+                        }}
+                      />
+                    )}
                     {isQueued && <QueuedOverlay />}
                   </div>
                 );
