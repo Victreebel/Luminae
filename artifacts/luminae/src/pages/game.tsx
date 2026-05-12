@@ -1965,6 +1965,30 @@ export default function GameBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summonQueue.length, pendingGameOver]);
 
+  // In tutorial mode, suppress the summon cutscene entirely — immediately drain
+  // any queued summon entries by running the onComplete logic synchronously.
+  // This prevents the near-opaque cinematic overlay from blacking out the tutorial
+  // UI for the ~9.5 s cutscene duration. resolve_summon is still dispatched
+  // (now allowed through the tutorial gate above) so the server gate clears correctly.
+  useEffect(() => {
+    if (!isTutorial) return;
+    if (summonQueue.length === 0) return;
+    const entry = summonQueue[0];
+    if (!entry) return;
+    setSummonQueue(q => q.slice(1));
+    setClaimedThisSession(prev =>
+      prev.includes(entry.id) ? prev : [...prev, entry.id]
+    );
+    if (!entry.isDevTest) {
+      executeAction({ type: 'resolve_summon', eventId: entry.eventId });
+    }
+  // summonQueue is the reactive dep that re-runs this effect whenever a new
+  // entry is pushed. executeAction is omitted from the dep array intentionally:
+  // it is re-created each render but the latest version is always captured
+  // through the closure when this effect fires due to summonQueue changing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTutorial, summonQueue]);
+
   const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
     const gems: GemKey[] = [];
     for (const [color, count] of Object.entries(crystals)) {
@@ -2096,7 +2120,9 @@ export default function GameBoard() {
     // Steps 0–3 each have specific permitted types; step 4 (Luminaries intro,
     // requiresConfirm) has an empty list, so ALL actions are blocked until the
     // player taps "Got it" and the overlay dismisses (tutorialStep goes to -1).
-    if (isTutorial && tutorialStep >= 0 && tutorialStep <= 4) {
+    // resolve_summon must always reach the server to clear the summon gate,
+    // even during tutorial steps where all other action types are gated.
+    if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep <= 4) {
       const tutorialPermitted: Record<number, string[]> = {
         0: ['take_three_crystals'],
         1: ['take_two_crystals', 'take_three_crystals'],
@@ -5085,9 +5111,12 @@ export default function GameBoard() {
           CSS (visibility:hidden) but the component stays mounted so its internal
           timer chain still runs and fires onComplete at the correct moment.
           onComplete sends resolve_summon to the server (clearing the global gate)
-          and advances the local queue, at which point the "waiting" chip clears. */}
+          and advances the local queue, at which point the "waiting" chip clears.
+          In tutorial mode the queue is drained silently by a useEffect above —
+          the component must never mount here so the full-screen dark overlay
+          (z-9000, up to 88% opacity) never appears during the tutorial. */}
       <AnimatePresence>
-        {summonQueue.length > 0 && summonQueue[0] && (() => {
+        {!isTutorial && summonQueue.length > 0 && summonQueue[0] && (() => {
           const entry = summonQueue[0];
           return (
             <div
