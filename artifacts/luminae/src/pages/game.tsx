@@ -1009,6 +1009,7 @@ export default function GameBoard() {
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
+  const overlayOpenRef = useRef(false);
   // Tracks how many AI affinity-change log entries have already triggered the
   // switch sound, so that we only fire for genuinely new entries.
   const seenAiAffinityLogCountRef = useRef(0);
@@ -1053,6 +1054,10 @@ export default function GameBoard() {
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      // Do not forward touch events while any overlay is open — doing so
+      // corrupts the main scroll position and leaves it stuck after dismiss.
+      if (overlayOpenRef.current) return;
+
       const currentY   = e.touches[0].clientY;
       const totalDelta = startY - currentY; // +ve = swipe up
 
@@ -1084,6 +1089,35 @@ export default function GameBoard() {
       main .removeEventListener('touchstart', onMainTouchStart);
     };
   }, []);
+
+  // Keep overlayOpenRef in sync so the touch-forwarding handler above can
+  // read it without being re-registered on every state change.
+  useEffect(() => {
+    overlayOpenRef.current = !!(selectedCard || showReservedOverlay);
+  }, [selectedCard, showReservedOverlay]);
+
+  // Body scroll lock — prevent the background board from scrolling while
+  // either overlay is open.  Also re-focuses <main> after dismiss so the
+  // browser re-establishes it as the active scroll container.
+  useEffect(() => {
+    const isOpen = !!(selectedCard || showReservedOverlay);
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      // Restore scroll focus to <main> after dismiss so a subsequent swipe
+      // immediately scrolls the board without a stray tap.
+      const main = mainScrollRef.current;
+      if (main) {
+        requestAnimationFrame(() => {
+          main.focus({ preventScroll: true });
+        });
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedCard, showReservedOverlay]);
 
   const TURN_ANNOUNCE_DURATION = 1800;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
@@ -3782,7 +3816,8 @@ export default function GameBoard() {
       <main
         data-game-board="true"
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
-        className="flex-1 overflow-y-auto overflow-x-hidden z-10"
+        tabIndex={-1}
+        className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none"
         onPointerDown={() => {
           // Fallback for non-iOS (Android Chrome, desktop): blur any focused
           // panel element as soon as a pointer gesture starts in the board.
@@ -4956,7 +4991,7 @@ export default function GameBoard() {
                   <X className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="px-5 overflow-y-auto max-h-[60vh] pb-4">
+              <div className="px-5 overflow-y-auto overscroll-contain max-h-[60vh] pb-4">
                 {me.reservedCards.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No cards reserved.</p>
                 ) : (
