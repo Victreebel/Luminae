@@ -1,6 +1,7 @@
 import { useDragControls, animate, useMotionValue, useTransform } from 'framer-motion';
 import type { PanInfo, Transition } from 'framer-motion';
 import type React from 'react';
+import { useRef, useEffect } from 'react';
 
 // ─── Centralized dismiss constants ────────────────────────────────────────────
 /** Fraction of panel height the drag must exceed before a slow downward drag dismisses. */
@@ -38,6 +39,18 @@ const RUBBERBAND_ELASTIC = 0.15;
  * the vertical rubberband so horizontal flicks feel light and effortless.
  */
 const HORIZONTAL_ELASTIC = 0.2;
+
+/**
+ * Minimum absolute pixel offset (from the peek position) required to trigger
+ * dismissal on a slow drag from the peek state.
+ */
+const PEEK_DISMISS_OFFSET = 40;
+
+/**
+ * Minimum absolute pixel offset (upward, from the peek position) required to
+ * snap the sheet back to fully open when the user drags upward from peek.
+ */
+const PEEK_OPEN_OFFSET = 40;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -50,6 +63,35 @@ const SNAP_BACK_SPRING: Transition = {
   damping: 22,
   stiffness: 380,
 };
+
+export interface SwipeToDismissOptions {
+  /** Fraction of panel height the drag must exceed before a slow drag dismisses (default 0.3). */
+  threshold?: number;
+  /** Spring overrides for snap-back/snap-to-peek animations. */
+  springConfig?: Transition;
+  /**
+   * When provided, enables a half-open "peek" intermediate state.
+   *
+   * `peekHeight` is the fraction of the panel height that remains visible when
+   * the sheet is in the peek position (e.g. `0.4` means 40 % of the sheet is
+   * visible above the bottom edge). Valid range: 0 < peekHeight < 1.
+   *
+   * State machine:
+   *   open  ──slow-vertical-drag-past-threshold──► peek
+   *   open  ──fast-flick (vertical or horizontal)──► dismissed
+   *   peek  ──downward-drag / horizontal-flick────► dismissed
+   *   peek  ──upward-drag──────────────────────────► open
+   */
+  peekHeight?: number;
+  /**
+   * Whether the sheet is currently open/visible. Pass the same boolean that
+   * controls the sheet's AnimatePresence mount. When this transitions from
+   * `false` to `true` the internal state is reset to `'open'` so that sheets
+   * closed via non-drag paths (backdrop tap, close button, programmatic state
+   * toggle) always start fresh the next time they open.
+   */
+  isOpen?: boolean;
+}
 
 /**
  * Returns framer-motion drag props for a bottom-sheet panel, pointer-down
@@ -89,6 +131,15 @@ const SNAP_BACK_SPRING: Transition = {
  *  - |Horizontal offset| > HORIZONTAL_DISMISS_THRESHOLD × panelWidth, OR
  *  - |Horizontal velocity| > HORIZONTAL_VELOCITY_THRESHOLD px/s.
  *
+ * Peek state (opt-in via options.peekHeight):
+ *  - A slow vertical drag past the dismiss threshold snaps to the peek position
+ *    instead of dismissing. Fast vertical flicks and all horizontal dismisses
+ *    still dismiss directly from open, bypassing peek.
+ *  - From the peek state, any downward drag ≥ PEEK_DISMISS_OFFSET px, a fast
+ *    vertical flick, or a horizontal dismiss gesture dismisses the sheet fully.
+ *  - From the peek state, an upward drag ≥ PEEK_OPEN_OFFSET px snaps back to
+ *    fully open.
+ *
  * Snap-back:
  *  - Sub-threshold releases spring back with SNAP_BACK_SPRING (bouncy).
  *  - Upward over-drag past the resting position (y < 0) is rubberbanded via
@@ -102,20 +153,38 @@ const SNAP_BACK_SPRING: Transition = {
  * Both values animate back to their resting state on a sub-threshold release
  * using the same spring as the panel snap-back.
  *
- * @param springConfig - Optional spring overrides for the snap-back animation.
- *   Defaults to SNAP_BACK_SPRING { damping: 22, stiffness: 380 }.
+ * @param options - Optional configuration: threshold, springConfig, peekHeight, isOpen.
  */
 export function useSwipeToDismiss(
   panelRef: React.RefObject<HTMLElement | null>,
   onDismiss: () => void,
-  threshold = DISMISS_THRESHOLD,
-  springConfig?: Transition,
+  options: SwipeToDismissOptions = {},
 ) {
-  const dragControls = useDragControls();
+  const {
+    threshold = DISMISS_THRESHOLD,
+    springConfig,
+    peekHeight,
+    isOpen,
+  } = options;
 
+  const dragControls = useDragControls();
   const spring: Transition = { ...SNAP_BACK_SPRING, ...springConfig };
 
-  // 0 = at rest / fully open, 1 = drag has reached the dismiss threshold
+  // Tracks whether the sheet is currently in the peek position.
+  // Using a ref avoids stale-closure issues inside drag event handlers.
+  const sheetState = useRef<'open' | 'peek'>('open');
+
+  // Reset to 'open' whenever the sheet becomes visible again so that sheets
+  // closed via non-drag paths (backdrop tap, close button, external state
+  // toggle) never carry stale 'peek' state into the next open cycle.
+  useEffect(() => {
+    if (isOpen) {
+      sheetState.current = 'open';
+    }
+  }, [isOpen]);
+
+  // 0 = at rest / fully open, 1 = drag has reached the dismiss threshold.
+  // In peek mode the base starts at 0.5 so feedback is continuous across states.
   const dragProgress = useMotionValue(0);
 
   // Backdrop dims as progress increases (fully opaque → nearly transparent)
@@ -124,43 +193,90 @@ export function useSwipeToDismiss(
   // Sheet scales down very subtly so the drag feels live and physical
   const sheetScale = useTransform(dragProgress, [0, 1], [1, 0.97]);
 
+  /** Pixel Y offset for the peek position (panel dragged down, only peekHeight fraction visible). */
+  const getPeekOffset = () => {
+    const panel = panelRef.current;
+    if (!panel || !peekHeight) return 0;
+    return panel.getBoundingClientRect().height * (1 - peekHeight);
+  };
+
   const handleDragStart = () => {
-    // Ensure feedback values always start from rest at the beginning of each
-    // gesture — guards against stale state after a previous dismiss.
-    dragProgress.set(0);
+    // Start feedback from the appropriate baseline depending on current state.
+    dragProgress.set(sheetState.current === 'peek' ? 0.5 : 0);
   };
 
   const handleDrag = (_: unknown, info: PanInfo) => {
     const panel = panelRef.current;
     const rect = panel ? panel.getBoundingClientRect() : { height: 600, width: 400 };
 
-    // Drive progress from whichever axis is closer to its dismiss threshold.
-    const verticalProgress = Math.min(1, Math.max(0, info.offset.y / (rect.height * threshold)));
+    // Horizontal progress is always computed — a horizontal flick should
+    // show feedback regardless of peek state.
     const horizontalProgress = Math.min(
       1,
       Math.abs(info.offset.x) / (rect.width * HORIZONTAL_DISMISS_THRESHOLD),
     );
-    dragProgress.set(Math.max(verticalProgress, horizontalProgress));
+
+    if (sheetState.current === 'open') {
+      const verticalProgress = Math.min(1, Math.max(0, info.offset.y / (rect.height * threshold)));
+      dragProgress.set(Math.max(verticalProgress, horizontalProgress));
+    } else {
+      // Already at peek: downward drag increases feedback from the 0.5 baseline;
+      // upward drag decreases it toward 0 (approaching fully open).
+      const verticalProgress = Math.min(
+        1,
+        Math.max(0, 0.5 + info.offset.y / (rect.height * threshold)),
+      );
+      dragProgress.set(Math.max(verticalProgress, horizontalProgress));
+    }
   };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const panel = panelRef.current;
     const rect = panel ? panel.getBoundingClientRect() : { height: 600, width: 400 };
 
-    const verticalDismiss =
-      info.offset.y > rect.height * threshold || info.velocity.y > VELOCITY_THRESHOLD;
     const horizontalDismiss =
       Math.abs(info.offset.x) > rect.width * HORIZONTAL_DISMISS_THRESHOLD ||
       Math.abs(info.velocity.x) > HORIZONTAL_VELOCITY_THRESHOLD;
 
-    if (verticalDismiss || horizontalDismiss) {
-      // Reset feedback immediately before dismiss so the next open starts clean.
-      dragProgress.set(0);
-      onDismiss();
-    } else if (panel) {
-      // Sub-threshold: spring the panel back on both axes.
-      void animate(panel, { y: 0, x: 0 }, spring);
-      void animate(dragProgress, 0, spring);
+    if (sheetState.current === 'open') {
+      const fastVerticalFlick = info.velocity.y > VELOCITY_THRESHOLD;
+      const slowVerticalPastThreshold = info.offset.y > rect.height * threshold;
+
+      if (fastVerticalFlick || horizontalDismiss) {
+        // Fast flick (either axis) dismisses directly — peek is bypassed.
+        dragProgress.set(0);
+        onDismiss();
+      } else if (peekHeight !== undefined && slowVerticalPastThreshold) {
+        // Slow vertical drag past threshold with peek enabled → snap to peek.
+        sheetState.current = 'peek';
+        void animate(panel!, { y: getPeekOffset(), x: 0 }, spring);
+        void animate(dragProgress, 0.5, spring);
+      } else if (panel) {
+        // Sub-threshold: spring back to fully open on both axes.
+        void animate(panel, { y: 0, x: 0 }, spring);
+        void animate(dragProgress, 0, spring);
+      }
+    } else {
+      // From peek state — horizontal dismiss also works here.
+      if (
+        info.offset.y > PEEK_DISMISS_OFFSET ||
+        info.velocity.y > VELOCITY_THRESHOLD ||
+        horizontalDismiss
+      ) {
+        // Downward drag, fast flick, or horizontal gesture → dismiss fully.
+        dragProgress.set(0);
+        sheetState.current = 'open';
+        onDismiss();
+      } else if (info.offset.y < -PEEK_OPEN_OFFSET) {
+        // Upward drag from peek → snap back to fully open.
+        sheetState.current = 'open';
+        void animate(panel!, { y: 0, x: 0 }, spring);
+        void animate(dragProgress, 0, spring);
+      } else if (panel) {
+        // Small drag in any direction → snap back to peek.
+        void animate(panel, { y: getPeekOffset(), x: 0 }, spring);
+        void animate(dragProgress, 0.5, spring);
+      }
     }
   };
 
@@ -267,5 +383,38 @@ export function useSwipeToDismiss(
     } as React.CSSProperties,
   };
 
-  return { dragProps, handleBarProps, scrollableAreaProps, backdropOpacity, sheetScale };
+  /**
+   * Programmatically snap the sheet to its peek position.
+   * No-op if `peekHeight` was not provided to the hook.
+   */
+  const snapToPeek = () => {
+    const panel = panelRef.current;
+    if (!panel || peekHeight === undefined) return;
+    sheetState.current = 'peek';
+    void animate(panel, { y: getPeekOffset(), x: 0 }, spring);
+    void animate(dragProgress, 0.5, spring);
+  };
+
+  /**
+   * Programmatically snap the sheet back to the fully open position.
+   */
+  const snapToOpen = () => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    sheetState.current = 'open';
+    void animate(panel, { y: 0, x: 0 }, spring);
+    void animate(dragProgress, 0, spring);
+  };
+
+  return {
+    dragProps,
+    handleBarProps,
+    scrollableAreaProps,
+    backdropOpacity,
+    sheetScale,
+    snapToPeek,
+    snapToOpen,
+    /** Current sheet state ref — 'open' or 'peek'. Read via .current. */
+    sheetState,
+  };
 }

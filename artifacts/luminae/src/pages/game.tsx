@@ -1218,16 +1218,21 @@ export default function GameBoard() {
   // downward swipe from scrollTop=0 also activates the drag, while normal
   // scroll is never interrupted when the content is not at the top.
   // backdropOpacity / sheetScale are live motion values for visual drag feedback.
+  // isOpen is passed so the hook can reset internal peek state whenever the
+  // sheet re-opens via a non-drag path (backdrop tap, close button, etc.).
+  // peekHeight is set on the card-detail sheet: a partial drag snaps to 40 %
+  // visible so players can glance at the board mid-review; each sheet can opt
+  // in independently by adding peekHeight to its own options object.
   const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, scrollableAreaProps: cardSheetScrollableProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale } =
-    useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); });
+    useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); }, { isOpen: selectedCard !== null, peekHeight: 0.4 });
   const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, scrollableAreaProps: deckSheetScrollableProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale } =
-    useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); });
+    useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); }, { isOpen: selectedDeckTier !== null });
   const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps, scrollableAreaProps: rulesSheetScrollableProps, backdropOpacity: rulesSheetBackdropOpacity, sheetScale: rulesSheetScale } =
-    useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false));
+    useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false), { isOpen: showRules });
   const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, scrollableAreaProps: reservedSheetScrollableProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale } =
-    useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false));
+    useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false), { isOpen: showReservedOverlay });
   const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, scrollableAreaProps: forgedSheetScrollableProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale } =
-    useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); });
+    useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); }, { isOpen: showForgedOverlay });
 
   const TURN_ANNOUNCE_DURATION = 1800;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
