@@ -99,9 +99,16 @@ export function TutorialOverlay({
 
     const lastEntry = state.actionLog[logLen - 1];
     if (!lastEntry) return;
+    // Filter out any entry not authored by the session player (e.g. AI summon_luminary)
     if (lastEntry.playerId !== sessionPlayerId) return;
 
-    const lastActionType = state.lastAction?.['type'] as string | undefined;
+    // Also guard on lastAction.playerId so that if state.lastAction reflects an AI
+    // action (e.g. summon_luminary from an AI-claimed Luminary that arrived in the
+    // same state snapshot), we do not mistakenly use it to advance a tutorial step.
+    const lastAction = state.lastAction;
+    if (!lastAction || lastAction['playerId'] !== sessionPlayerId) return;
+
+    const lastActionType = lastAction['type'] as string | undefined;
     const currentStep = TUTORIAL_STEPS[tutorialStep];
     if (!currentStep) return;
 
