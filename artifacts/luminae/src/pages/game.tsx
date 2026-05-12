@@ -1097,14 +1097,34 @@ export default function GameBoard() {
   }, [selectedCard, showReservedOverlay]);
 
   // Body scroll lock — prevent the background board from scrolling while
-  // either overlay is open.  Also re-focuses <main> after dismiss so the
-  // browser re-establishes it as the active scroll container.
+  // either overlay is open.  On iOS Safari, simply setting overflow:hidden
+  // causes the page to snap to the top before the overlay appears.  The fix
+  // is to capture the current scrollY, pin the body at that offset with a
+  // negative top, then restore position and scroll in the cleanup callback
+  // (the single authoritative restore point — no restore logic elsewhere).
   useEffect(() => {
     const isOpen = !!(selectedCard || showReservedOverlay);
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
+    // Only act when an overlay is open.  Returning early with no cleanup
+    // registered means neither the open nor the closed-state path runs on
+    // initial render or after dismiss, preventing spurious scrollTo(0) calls.
+    if (!isOpen) return;
+
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      // Single restore point: runs when the overlay closes OR on unmount.
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
       document.body.style.overflow = '';
+      // Restore the exact scroll position captured at open time.
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
       // Restore scroll focus to <main> after dismiss so a subsequent swipe
       // immediately scrolls the board without a stray tap.
       const main = mainScrollRef.current;
@@ -1113,9 +1133,6 @@ export default function GameBoard() {
           main.focus({ preventScroll: true });
         });
       }
-    }
-    return () => {
-      document.body.style.overflow = '';
     };
   }, [selectedCard, showReservedOverlay]);
 
