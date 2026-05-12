@@ -4134,20 +4134,34 @@ export default function GameBoard() {
                 <div className="w-10 h-1 rounded-full bg-border" />
                 <SwipeHintBar peekProgress={cardSheetPeekProgress} />
               </div>
-              {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
-              <div {...cardSheetScrollableProps} className="overflow-y-auto max-h-[75vh]">
-              {/* Sheet header: Esc hint + close button */}
-              <div className="flex items-center justify-between pb-3">
-                <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
+              {/* Sticky peek header — always visible even when the sheet is in the 40 % peek position.
+                  Contains the card name + affinity gem so players can identify the card at a glance
+                  without needing to expand the sheet.  The close button lives here too so it remains
+                  reachable when peeked.  Hidden visually when the scrollable body covers it naturally,
+                  but the element is always in the DOM so focus-trap / keyboard close still works. */}
+              <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
+                <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
+                <span className="font-semibold text-sm leading-tight flex-1 truncate">{selectedCard.card.name}</span>
+                {(selectedCard.card.lumens ?? 0) > 0 && (
+                  <span className="flex items-center gap-0.5 text-xs font-bold text-primary shrink-0">
+                    <Sparkles className="h-3 w-3" />{selectedCard.card.lumens}
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 ml-auto"
+                  className="h-7 w-7 shrink-0"
                   aria-label="Close card actions"
                   onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </Button>
+              </div>
+              {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
+              <div {...cardSheetScrollableProps} className="overflow-y-auto max-h-[70vh]">
+              {/* Sheet header: Esc hint (desktop convenience text, less critical on mobile) */}
+              <div className="flex items-center justify-end pb-3">
+                <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
               </div>
               {/* Card preview + info */}
               <div className="flex gap-4 mb-5">
