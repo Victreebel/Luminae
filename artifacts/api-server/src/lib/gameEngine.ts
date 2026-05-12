@@ -536,6 +536,7 @@ export interface ActionPayload {
   type: ActionType;
   crystals?: Partial<CrystalCounts>;
   crystal?: CrystalColor;
+  returnCrystals?: Partial<CrystalCounts>;
   cardId?: string;
   tier?: 1 | 2 | 3;
   luminaryId?: string;
@@ -908,14 +909,41 @@ export function applyAction(
         if (state.crystalBank[c] < 1)
           return { success: false, error: `No ${COLOR_LABEL[c]} available` };
       }
-      // Hand limit: 10 total
       const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
-      if (totalHeld + colors.length > 10) {
-        return { success: false, error: "Would exceed 10 affinity limit" };
-      }
+      const postTakeTotal = totalHeld + colors.length;
       for (const c of colors) {
         player.crystals[c]++;
         state.crystalBank[c]--;
+      }
+      if (postTakeTotal > 10) {
+        const excessCount = postTakeTotal - 10;
+        const returnMap = action.returnCrystals ?? {};
+        const returnColorsWithFlux = (Object.keys(returnMap) as CrystalColorWithFlux[]).filter((c) => (returnMap[c] ?? 0) > 0);
+        // Validate: all return counts must be non-negative integers
+        for (const c of returnColorsWithFlux) {
+          const count = returnMap[c] ?? 0;
+          if (!Number.isInteger(count) || count < 0) {
+            for (const col of colors) { player.crystals[col]--; state.crystalBank[col]++; }
+            return { success: false, error: "Return counts must be non-negative integers" };
+          }
+        }
+        const totalReturned = returnColorsWithFlux.reduce((s, c) => s + (returnMap[c] ?? 0), 0);
+        if (totalReturned < excessCount) {
+          for (const c of colors) { player.crystals[c]--; state.crystalBank[c]++; }
+          return { success: false, error: `Must return ${excessCount} crystal(s) to stay within the 10-crystal limit` };
+        }
+        for (const c of returnColorsWithFlux) {
+          const count = returnMap[c] ?? 0;
+          if ((player.crystals[c] ?? 0) < count) {
+            for (const col of colors) { player.crystals[col]--; state.crystalBank[col]++; }
+            return { success: false, error: `Cannot return ${COLOR_LABEL[c as CrystalColor] ?? "Singularity"} you do not hold` };
+          }
+        }
+        for (const c of returnColorsWithFlux) {
+          const count = returnMap[c] ?? 0;
+          player.crystals[c] -= count;
+          state.crystalBank[c] += count;
+        }
       }
       break;
     }
@@ -927,10 +955,39 @@ export function applyAction(
       if (state.crystalBank[color] < 4)
         return { success: false, error: "Need at least 4 in the well to harness 2" };
       const totalHeld = CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
-      if (totalHeld + 2 > 10)
-        return { success: false, error: "Would exceed 10 affinity limit" };
+      const postTakeTotal = totalHeld + 2;
       player.crystals[color] += 2;
       state.crystalBank[color] -= 2;
+      if (postTakeTotal > 10) {
+        const excessCount = postTakeTotal - 10;
+        const returnMap = action.returnCrystals ?? {};
+        const returnColorsWithFlux = (Object.keys(returnMap) as CrystalColorWithFlux[]).filter((c) => (returnMap[c] ?? 0) > 0);
+        // Validate: all return counts must be non-negative integers
+        for (const c of returnColorsWithFlux) {
+          const count = returnMap[c] ?? 0;
+          if (!Number.isInteger(count) || count < 0) {
+            player.crystals[color] -= 2; state.crystalBank[color] += 2;
+            return { success: false, error: "Return counts must be non-negative integers" };
+          }
+        }
+        const totalReturned = returnColorsWithFlux.reduce((s, c) => s + (returnMap[c] ?? 0), 0);
+        if (totalReturned < excessCount) {
+          player.crystals[color] -= 2; state.crystalBank[color] += 2;
+          return { success: false, error: `Must return ${excessCount} crystal(s) to stay within the 10-crystal limit` };
+        }
+        for (const c of returnColorsWithFlux) {
+          const count = returnMap[c] ?? 0;
+          if ((player.crystals[c] ?? 0) < count) {
+            player.crystals[color] -= 2; state.crystalBank[color] += 2;
+            return { success: false, error: `Cannot return ${COLOR_LABEL[c as CrystalColor] ?? "Singularity"} you do not hold` };
+          }
+        }
+        for (const c of returnColorsWithFlux) {
+          const count = returnMap[c] ?? 0;
+          player.crystals[c] -= count;
+          state.crystalBank[c] += count;
+        }
+      }
       break;
     }
 
@@ -1182,14 +1239,31 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
       const parts = CRYSTAL_COLORS
         .filter((c) => (sel[c] ?? 0) > 0)
         .map((c) => `${sel[c]} ${COLOR_LABEL[c]}`);
-      return parts.length === 0
+      const base = parts.length === 0
         ? "Harnessed nothing"
         : `Harnessed ${parts.join(", ")}`;
+      const ret = action.returnCrystals;
+      if (ret) {
+        const retParts = (Object.keys(ret) as CrystalColorWithFlux[])
+          .filter((c) => (ret[c] ?? 0) > 0)
+          .map((c) => `${ret[c]} ${COLOR_LABEL[c as CrystalColor] ?? "Singularity"}`);
+        if (retParts.length > 0) return `${base} (returned ${retParts.join(", ")})`;
+      }
+      return base;
     }
-    case "take_two_crystals":
-      return action.crystal
+    case "take_two_crystals": {
+      const base = action.crystal
         ? `Harnessed 2 ${COLOR_LABEL[action.crystal]}`
         : "Harnessed 2 affinities";
+      const ret = action.returnCrystals;
+      if (ret) {
+        const retParts = (Object.keys(ret) as CrystalColorWithFlux[])
+          .filter((c) => (ret[c] ?? 0) > 0)
+          .map((c) => `${ret[c]} ${COLOR_LABEL[c as CrystalColor] ?? "Singularity"}`);
+        if (retParts.length > 0) return `${base} (returned ${retParts.join(", ")})`;
+      }
+      return base;
+    }
     case "reserve_card": {
       if (action.cardId) {
         const lore = getCardLore(action.cardId);

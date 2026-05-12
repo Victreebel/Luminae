@@ -858,6 +858,12 @@ export default function GameBoard() {
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
+  const [returnPhase, setReturnPhase] = useState<{
+    pendingTake: Partial<CrystalCounts>;
+    actionType: 'take3' | 'take2';
+    excessCount: number;
+  } | null>(null);
+  const [returnSelections, setReturnSelections] = useState<Partial<CrystalCounts>>({});
   const [showUndoHint, setShowUndoHint] = useState(false);
   const [showReserveHint, setShowReserveHint] = useState(false);
   const [showForgeHint, setShowForgeHint] = useState(false);
@@ -2231,20 +2237,39 @@ export default function GameBoard() {
     if (total === 0) return { ok: false, reason: '', actionType: null };
     const distinct = Object.keys(selectedCrystals);
     const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
-    if (handTotal + total > 10) return { ok: false, reason: `Hand limit is 10 (you'd have ${handTotal + total})`, actionType: null };
+    const overLimit = handTotal + total > 10;
+    const excess = handTotal + total - 10;
     if (distinct.length === 1 && (selectedCrystals[distinct[0] as keyof CrystalCounts] ?? 0) === 2) {
       const c = distinct[0] as keyof CrystalCounts;
-      if ((state.crystalBank[c] ?? 0) >= 4) return { ok: true, reason: `Harness 2 ${GEM_META[c as GemKey].name}`, actionType: 'take2' };
+      if ((state.crystalBank[c] ?? 0) >= 4) {
+        const reason = overLimit
+          ? `Harness 2 ${GEM_META[c as GemKey].name} (return ${excess})`
+          : `Harness 2 ${GEM_META[c as GemKey].name}`;
+        return { ok: true, reason, actionType: 'take2' };
+      }
       return { ok: false, reason: `Need 4+ in well to harness 2`, actionType: null };
     }
     if (distinct.every(c => (selectedCrystals[c as keyof CrystalCounts] ?? 0) === 1) && distinct.length <= 3) {
-      return { ok: true, reason: distinct.length === 3 ? 'Harness 3 different' : `Harness ${distinct.length}`, actionType: 'take3' };
+      const base = distinct.length === 3 ? 'Harness 3 different' : `Harness ${distinct.length}`;
+      const reason = overLimit ? `${base} (return ${excess})` : base;
+      return { ok: true, reason, actionType: 'take3' };
     }
     return { ok: false, reason: 'Invalid combination', actionType: null };
   })();
 
   const confirmCrystals = () => {
     if (!queueLegality.ok || !me) return;
+    const total = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
+    const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+    if (handTotal + total > 10) {
+      setReturnPhase({
+        pendingTake: { ...selectedCrystals },
+        actionType: queueLegality.actionType!,
+        excessCount: handTotal + total - 10,
+      });
+      setReturnSelections({});
+      return;
+    }
     if (queueLegality.actionType === 'take3') {
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
@@ -2252,6 +2277,29 @@ export default function GameBoard() {
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
     }
+  };
+
+  const cancelReturnPhase = () => {
+    setReturnPhase(null);
+    setReturnSelections({});
+    setActionMode('none');
+    setSelectedCrystals({});
+    setCrystalHistory([]);
+    setPrePromotionHistory(null);
+  };
+
+  const confirmReturnPhase = () => {
+    if (!returnPhase || !me) return;
+    const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+    if (totalSelected < returnPhase.excessCount) return;
+    playGemBurst(returnPhase.pendingTake, me.playerName, session.avatarId ?? null);
+    if (returnPhase.actionType === 'take3') {
+      executeAction({ type: 'take_three_crystals', crystals: returnPhase.pendingTake, returnCrystals: returnSelections });
+    } else {
+      executeAction({ type: 'take_two_crystals', crystal: Object.keys(returnPhase.pendingTake)[0], returnCrystals: returnSelections });
+    }
+    setReturnPhase(null);
+    setReturnSelections({});
   };
 
   const gemBurstView = gemBurst?.gems.map((gem, index) => {
@@ -2943,7 +2991,144 @@ export default function GameBoard() {
             </motion.div>
           )}
         </AnimatePresence>
-        {isMyTurn && !crystalQueueActive && (
+        <AnimatePresence>
+          {returnPhase && isMyTurn && me && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="px-3 pb-3 pt-2 border-t border-amber-500/40 bg-amber-950/25">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-2.5">
+                  <div>
+                    <p className="text-[11px] font-bold text-amber-300">
+                      Return {returnPhase.excessCount} crystal{returnPhase.excessCount > 1 ? 's' : ''} — hand limit is 10
+                    </p>
+                    {(() => {
+                      const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+                      const remaining = returnPhase.excessCount - sel;
+                      return (
+                        <p className="text-[10px] text-white/50 mt-0.5">
+                          {remaining > 0
+                            ? `Tap crystals below to select ${remaining} more to return`
+                            : 'Selection complete — confirm to harness'}
+                        </p>
+                      );
+                    })()}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={cancelReturnPhase}
+                    className="h-7 w-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
+                    title="Cancel and re-pick"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {/* Projected hand — crystals currently held + pending take */}
+                <div className="grid grid-cols-6 gap-1.5 mb-3">
+                  {(CRYSTALS as GemKey[]).map((c) => {
+                    const held = me.crystals[c as keyof CrystalCounts] ?? 0;
+                    const taking = returnPhase.pendingTake[c as keyof CrystalCounts] ?? 0;
+                    const have = held + taking;
+                    const returning = returnSelections[c as keyof CrystalCounts] ?? 0;
+                    const available = have - returning;
+                    if (have === 0) return null;
+                    const meta = GEM_META[c as GemKey];
+                    const isMarkedReturn = returning > 0;
+                    const totalSel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+                    const canAdd = available > 0 && totalSel < returnPhase.excessCount + 5;
+                    return (
+                      <div key={c} className="flex flex-col items-center gap-0.5">
+                        <motion.button
+                          type="button"
+                          whileTap={canAdd ? { scale: 0.88 } : {}}
+                          onClick={() => {
+                            if (!canAdd) return;
+                            setReturnSelections(prev => ({ ...prev, [c]: (prev[c as keyof CrystalCounts] ?? 0) + 1 }));
+                          }}
+                          className="relative w-full aspect-square rounded-xl flex flex-col items-center justify-center overflow-hidden transition-all"
+                          style={isMarkedReturn ? {
+                            background: `linear-gradient(160deg, #7f1d1d99 0%, #991b1b70 100%)`,
+                            border: `2px solid #f87171cc`,
+                            boxShadow: `0 0 16px #f8717166`,
+                            opacity: canAdd ? 1 : 0.85,
+                          } : {
+                            background: `linear-gradient(160deg, ${meta.hex}30 0%, ${meta.hex}12 100%)`,
+                            border: `1px solid ${meta.glowHex}55`,
+                            opacity: canAdd ? 1 : 0.4,
+                          }}
+                        >
+                          <img
+                            src={meta.image} alt={meta.name}
+                            className="w-[55%] h-[55%] object-contain pointer-events-none select-none"
+                            style={{ filter: `drop-shadow(0 0 6px ${meta.glowHex}80)` }}
+                            draggable={false}
+                          />
+                          <span
+                            className="text-xs font-black font-mono leading-none text-white"
+                            style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
+                          >{available}</span>
+                          {isMarkedReturn && (
+                            <div className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white leading-none shadow">
+                              -{returning}
+                            </div>
+                          )}
+                        </motion.button>
+                        <span className="text-[8px] font-semibold uppercase tracking-wider leading-none" style={{ color: `${meta.glowHex}88` }}>
+                          {meta.shortName}
+                        </span>
+                        {returning > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setReturnSelections(prev => {
+                              const curr = prev[c as keyof CrystalCounts] ?? 0;
+                              if (curr <= 1) { const next = { ...prev }; delete next[c as keyof CrystalCounts]; return next; }
+                              return { ...prev, [c]: curr - 1 };
+                            })}
+                            className="text-[8px] text-red-400/70 hover:text-red-400 font-bold leading-none"
+                          >
+                            undo
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Confirm button */}
+                {(() => {
+                  const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+                  const ready = sel >= returnPhase.excessCount;
+                  return (
+                    <motion.button
+                      type="button"
+                      whileTap={ready ? { scale: 0.96 } : {}}
+                      disabled={!ready}
+                      onClick={confirmReturnPhase}
+                      className="w-full h-9 rounded-xl text-sm font-bold transition-all"
+                      style={ready ? {
+                        background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                        color: '#fff',
+                        boxShadow: '0 0 18px rgba(124,58,237,0.55)',
+                        border: '1px solid rgba(167,139,250,0.5)',
+                      } : {
+                        background: 'rgba(255,255,255,0.04)',
+                        color: 'rgba(255,255,255,0.25)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        cursor: 'not-allowed',
+                      }}
+                    >
+                      {ready ? 'Confirm Return & Harness' : `Select ${returnPhase.excessCount - Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0)} more to return`}
+                    </motion.button>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {isMyTurn && !crystalQueueActive && !returnPhase && (
           <div className="px-3 pb-2.5">
             <p className="text-[9px] text-muted-foreground text-center italic">
               Tap to harness affinities · up to 3 different or 2 of the same

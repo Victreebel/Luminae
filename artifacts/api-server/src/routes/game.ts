@@ -10,6 +10,7 @@ import {
   type GameStateData,
   type ActionPayload,
   type CrystalColor,
+  type CrystalCounts,
 } from "../lib/gameEngine";
 import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
@@ -220,6 +221,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     tier: actionData.tier as 1 | 2 | 3 | undefined,
     crystal: actionData.crystal as CrystalColor | undefined,
     crystals: actionData.crystals as Partial<Record<string, number>> | undefined,
+    returnCrystals: actionData.returnCrystals as Partial<CrystalCounts> | undefined,
     luminaryId: actionData.luminaryId ?? undefined,
     affinity: actionData.affinity as CrystalColor | undefined,
     eventId: actionData.eventId ?? undefined,

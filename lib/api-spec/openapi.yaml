@@ -1477,6 +1477,22 @@ components:
         eventId:
           type: string
           description: Event ID for resolve_summon action
+        returnCrystals:
+          type: object
+          description: Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned)
+          properties:
+            ruby:
+              type: integer
+            sapphire:
+              type: integer
+            emerald:
+              type: integer
+            onyx:
+              type: integer
+            pearl:
+              type: integer
+            flux:
+              type: integer
         plannedActionData:
           type: object
           additionalProperties: true

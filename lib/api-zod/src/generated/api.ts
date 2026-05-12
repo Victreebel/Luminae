@@ -1085,6 +1085,19 @@ export const SubmitActionBody = zod.object({
     .string()
     .optional()
     .describe("Event ID for resolve_summon action"),
+  returnCrystals: zod
+    .object({
+      ruby: zod.number().optional(),
+      sapphire: zod.number().optional(),
+      emerald: zod.number().optional(),
+      onyx: zod.number().optional(),
+      pearl: zod.number().optional(),
+      flux: zod.number().optional(),
+    })
+    .optional()
+    .describe(
+      "Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned)",
+    ),
   plannedActionData: zod
     .record(zod.string(), zod.unknown())
     .optional()

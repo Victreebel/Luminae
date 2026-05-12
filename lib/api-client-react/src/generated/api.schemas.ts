@@ -579,6 +579,18 @@ export const ActionRequestAffinity = {
 } as const;
 
 /**
+ * Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned)
+ */
+export type ActionRequestReturnCrystals = {
+  ruby?: number;
+  sapphire?: number;
+  emerald?: number;
+  onyx?: number;
+  pearl?: number;
+  flux?: number;
+};
+
+/**
  * Nested action payload for plan_action type
  */
 export type ActionRequestPlannedActionData = { [key: string]: unknown };
@@ -596,6 +608,8 @@ export interface ActionRequest {
   affinity?: ActionRequestAffinity;
   /** Event ID for resolve_summon action */
   eventId?: string;
+  /** Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned) */
+  returnCrystals?: ActionRequestReturnCrystals;
   /** Nested action payload for plan_action type */
   plannedActionData?: ActionRequestPlannedActionData;
 }

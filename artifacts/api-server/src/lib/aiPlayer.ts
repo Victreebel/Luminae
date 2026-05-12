@@ -9,6 +9,7 @@ import {
   effectiveBonuses,
   type ActionPayload,
   type CrystalColor,
+  type CrystalColorWithFlux,
   type CrystalCounts,
   type GameStateData,
   type PlayerGameState,
@@ -310,6 +311,72 @@ function pickReserveCard(
   return null;
 }
 
+// Selects which crystals to return when a harvest would exceed 10
+// Least useful first: prefer returning colors with surplus over what target cards need.
+function pickCrystalsToReturn(
+  projected: Record<CrystalColor, number>,
+  excessCount: number,
+  player: PlayerGameState,
+  state: GameStateData,
+  difficulty: AiDifficulty,
+): Partial<CrystalCounts> {
+  const allColors: CrystalColor[] = ["ruby", "sapphire", "emerald", "onyx", "pearl"];
+
+  if (difficulty === "easy") {
+    // Easy: just return excess of the most-held colors
+    const order = [...allColors].sort((a, b) => (projected[b] ?? 0) - (projected[a] ?? 0));
+    const returnMap: Partial<CrystalCounts> = {};
+    let remaining = excessCount;
+    for (const c of order) {
+      if (remaining <= 0) break;
+      const avail = projected[c] ?? 0;
+      if (avail > 0) {
+        returnMap[c] = 1;
+        remaining--;
+      }
+    }
+    return returnMap;
+  }
+
+  // Medium/hard: compute how useful each color is for target cards
+  const ranked = [...CARD_MAP.values()]
+    .filter(card => !player.purchasedCardIds.includes(card.id) && !player.reservedCardIds.includes(card.id))
+    .sort((a, b) => scoreCard(b, player, state, difficulty) - scoreCard(a, player, state, difficulty))
+    .slice(0, 6);
+
+  const colorNeed: Record<CrystalColor, number> = { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0 };
+  for (const card of ranked) {
+    const cost = effectiveCost(card, player, state);
+    for (const c of allColors) {
+      const shortfall = Math.max(0, cost[c] - projected[c]);
+      colorNeed[c] = Math.max(colorNeed[c], shortfall);
+    }
+  }
+
+  // Score: lower = less useful = return first
+  const utilityOrder = [...allColors].sort((a, b) => {
+    const needA = colorNeed[a] ?? 0;
+    const needB = colorNeed[b] ?? 0;
+    if (needA !== needB) return needA - needB;
+    // Tiebreak: return more of the same color (higher surplus = less marginal value)
+    return (projected[b] ?? 0) - (projected[a] ?? 0);
+  });
+
+  // Also consider flux (least useful to return since it's versatile, but if we must)
+  const allWithFlux: CrystalColorWithFlux[] = [...utilityOrder, "flux" as const];
+  const returnMap: Partial<CrystalCounts> = {};
+  let remaining = excessCount;
+  for (const cwf of allWithFlux) {
+    if (remaining <= 0) break;
+    const avail = cwf === "flux" ? player.crystals.flux : (projected[cwf] ?? 0);
+    if (avail > 0) {
+      returnMap[cwf] = 1;
+      remaining--;
+    }
+  }
+  return returnMap;
+}
+
 // Main AI brain
 export function chooseAiAction(
   state: GameStateData,
@@ -369,8 +436,22 @@ export function chooseAiAction(
   if (numPicked === 0) {
     // Bank empty of regular crystals — try take 2 of any with >=4
     for (const c of CRYSTAL_COLORS) {
-      if (state.crystalBank[c] >= 4 && totalHeld + 2 <= 10) {
-        return { type: "take_two_crystals", crystal: c };
+      if (state.crystalBank[c] >= 4) {
+        if (totalHeld + 2 <= 10) {
+          return { type: "take_two_crystals", crystal: c };
+        }
+        // Over limit: compute which crystals to return
+        const excessCount = totalHeld + 2 - 10;
+        const projected: Record<CrystalColor, number> = {
+          ruby: player.crystals.ruby,
+          sapphire: player.crystals.sapphire,
+          emerald: player.crystals.emerald,
+          onyx: player.crystals.onyx,
+          pearl: player.crystals.pearl,
+        };
+        projected[c] = (projected[c] ?? 0) + 2;
+        const returnMap = pickCrystalsToReturn(projected, excessCount, player, state, difficulty);
+        return { type: "take_two_crystals", crystal: c, returnCrystals: returnMap };
       }
     }
     // Last resort: try to reserve a card
@@ -396,24 +477,22 @@ export function chooseAiAction(
     return { type: "take_three_crystals", crystals: {} };
   }
 
-  // Cap crystals so we don't exceed 10
-  const remaining = 10 - totalHeld;
-  if (numPicked > remaining) {
-    const trimmed: Partial<CrystalCounts> = {};
-    let count = 0;
-    for (const k of Object.keys(crystals)) {
-      if (count >= remaining) break;
-      trimmed[k as CrystalColor] = 1;
-      count++;
+  // If taking these crystals would exceed 10, compute return crystals
+  if (totalHeld + numPicked > 10) {
+    const excessCount = totalHeld + numPicked - 10;
+    // Build projected hand after taking
+    const projected: Record<CrystalColor, number> = {
+      ruby:     player.crystals.ruby,
+      sapphire: player.crystals.sapphire,
+      emerald:  player.crystals.emerald,
+      onyx:     player.crystals.onyx,
+      pearl:    player.crystals.pearl,
+    };
+    for (const c of Object.keys(crystals) as CrystalColor[]) {
+      projected[c] = (projected[c] ?? 0) + (crystals[c] ?? 0);
     }
-    if (Object.keys(trimmed).length === 0) {
-      // Nothing fits — try a reserve
-      const reserve = pickReserveCard(state, player, difficulty);
-      if (reserve?.cardId) {
-        return { type: "reserve_card", cardId: reserve.cardId };
-      }
-    }
-    return { type: "take_three_crystals", crystals: trimmed };
+    const returnMap = pickCrystalsToReturn(projected, excessCount, player, state, difficulty);
+    return { type: "take_three_crystals", crystals, returnCrystals: returnMap };
   }
 
   return { type: "take_three_crystals", crystals };
