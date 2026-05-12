@@ -2662,18 +2662,18 @@ export default function GameBoard() {
     return (
     <div className="flex flex-col gap-5 p-3 pb-6">
 
-      {/* ── Planned action announcement box ── */}
+      {/* ── Planned action announcement box ── (fixed overlay — does not affect document flow) */}
       <AnimatePresence>
         {myPlannedAction && (
           <motion.div
             key="planned-action-box"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="overflow-hidden"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.18, ease: 'easeInOut' }}
+            className="fixed bottom-[4.5rem] left-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 pointer-events-auto"
           >
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/50 border border-amber-500/30 backdrop-blur shadow-[0_0_8px_rgba(251,191,36,0.1)]">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/90 border border-amber-500/40 backdrop-blur-sm shadow-[0_2px_20px_rgba(251,191,36,0.18)]">
               <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
               <span className="text-[10px] text-amber-200/70 flex-1 truncate">
                 {getPlannedActionSummary(myPlannedAction)}
@@ -2695,16 +2695,17 @@ export default function GameBoard() {
       <div>
         <div className="flex items-center justify-between mb-2 px-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Luminaries</p>
-          {(() => {
+          {/* Reserved-height slot — always occupies space so header row never shifts */}
+          <span className="text-[9px] italic" style={{ visibility: (() => {
             const tc: number = (state as any)?.turnCount ?? 0;
             const lumAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
             const hasTogglable = lumAffinities.some(la =>
               la.ownerId === session?.playerId && tc > la.summonedAtTurnCount && (la.eligibleAffinities?.length ?? 0) >= 2
             );
-            return hasTogglable
-              ? <span className="text-[9px] text-white/40 italic">tap card to change affinity ↻</span>
-              : null;
-          })()}
+            return hasTogglable ? 'visible' : 'hidden';
+          })() as React.CSSProperties['visibility'], color: 'rgba(255,255,255,0.4)' }}>
+            tap card to change affinity ↻
+          </span>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
           {safeLuminaries.map(l => {
@@ -3003,17 +3004,19 @@ export default function GameBoard() {
                 <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-1.5 leading-none" style={{ color: `${meta.glowHex}88` }}>
                   {meta.shortName}
                 </span>
-                {canTake2 && (
-                  <motion.button
-                    type="button"
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    onClick={(e) => { e.stopPropagation(); promoteToTake2(c); }}
-                    className={`mt-0.5 text-[9px] font-bold rounded-full px-2 py-0.5 transition-colors ${isPlanningMode ? 'text-amber-400/80 hover:text-amber-300 bg-amber-400/10 active:bg-amber-400/25' : 'text-primary/80 hover:text-primary bg-primary/10 active:bg-primary/25'}`}
-                  >
-                    harness 2
-                  </motion.button>
-                )}
+                {/* Always rendered — visibility toggled so the cell height never shifts */}
+                <motion.button
+                  type="button"
+                  aria-hidden={!canTake2}
+                  tabIndex={canTake2 ? 0 : -1}
+                  animate={{ opacity: canTake2 ? 1 : 0 }}
+                  transition={{ duration: 0.15 }}
+                  onClick={(e) => { if (!canTake2) return; e.stopPropagation(); promoteToTake2(c); }}
+                  style={{ pointerEvents: canTake2 ? 'auto' : 'none', visibility: canTake2 ? 'visible' : 'hidden' }}
+                  className={`mt-0.5 text-[9px] font-bold rounded-full px-2 py-0.5 transition-colors ${isPlanningMode ? 'text-amber-400/80 hover:text-amber-300 bg-amber-400/10 active:bg-amber-400/25' : 'text-primary/80 hover:text-primary bg-primary/10 active:bg-primary/25'}`}
+                >
+                  harness 2
+                </motion.button>
               </div>
             );
           })}
