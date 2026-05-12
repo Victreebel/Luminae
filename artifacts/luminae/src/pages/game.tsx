@@ -1124,20 +1124,24 @@ export default function GameBoard() {
     };
   }, []);
 
+  // Single source of truth for "any overlay is open".  Add future overlays
+  // here only — the two effects below automatically pick up the change.
+  const isAnyOverlayOpen = !!(selectedCard || showReservedOverlay || showForgedOverlay);
+
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
   // read it without being re-registered on every state change.
   useEffect(() => {
-    overlayOpenRef.current = !!(selectedCard || showReservedOverlay);
-  }, [selectedCard, showReservedOverlay]);
+    overlayOpenRef.current = isAnyOverlayOpen;
+  }, [isAnyOverlayOpen]);
 
   // Body scroll lock — prevent the background board from scrolling while
-  // either overlay is open.  On iOS Safari, simply setting overflow:hidden
+  // any overlay is open.  On iOS Safari, simply setting overflow:hidden
   // causes the page to snap to the top before the overlay appears.  The fix
   // is to capture the current scrollY, pin the body at that offset with a
   // negative top, then restore position and scroll in the cleanup callback
   // (the single authoritative restore point — no restore logic elsewhere).
   useEffect(() => {
-    const isOpen = !!(selectedCard || showReservedOverlay);
+    const isOpen = isAnyOverlayOpen;
     // Only act when an overlay is open.  Returning early with no cleanup
     // registered means neither the open nor the closed-state path runs on
     // initial render or after dismiss, preventing spurious scrollTo(0) calls.
@@ -1172,7 +1176,7 @@ export default function GameBoard() {
         });
       }
     };
-  }, [selectedCard, showReservedOverlay]);
+  }, [isAnyOverlayOpen]);
 
   // Focus-trap: card action sheet
   useFocusTrap(
