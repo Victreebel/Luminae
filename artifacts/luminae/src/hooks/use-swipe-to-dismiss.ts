@@ -158,9 +158,11 @@ export function useSwipeToDismiss(
 
         if (dy > 0) {
           // Downward swipe from the top — activate the sheet drag.
-          // Pass the original pointerdown event so framer-motion anchors
-          // the drag origin correctly (no visible jump).
-          dragControls.start(nativeEvent as unknown as React.PointerEvent);
+          // Pass the *current* moveEvent (not the original pointerdown) so
+          // framer-motion anchors the drag origin to where the finger is right
+          // now. Using nativeEvent here would cause a visible jump because the
+          // pointer has already travelled ≥6 px (the dead zone) since touchdown.
+          dragControls.start(moveEvent as unknown as React.PointerEvent);
         }
         // Upward swipe — do nothing; browser scrolls normally.
       };
