@@ -840,58 +840,60 @@ interface SelectedCard {
   effectiveCosts?: Partial<Record<GemKey, number>>;
 }
 
-// --- Ref-counted body scroll lock ---
-// Each overlay independently calls this hook with its open boolean.  The body
-// is pinned only when the count goes 0→1 (first overlay opens) and restored
-// only when the count goes 1→0 (last overlay closes).  Overlapping open/close
-// sequences — e.g. one overlay dismisses while a second is already open —
-// therefore never trigger a spurious restore or capture a stale scrollY.
-function useScrollLockSlot(
-  isOpen: boolean,
-  lockCountRef: React.MutableRefObject<number>,
-  lockedScrollYRef: React.MutableRefObject<number>,
+// --- Centralized body scroll lock ---
+// Pass ALL overlay open-states as a single array.  The body is pinned when
+// any entry is true and restored when all entries are false.  Adding a new
+// overlay is a one-line change in that array — no separately wired effect,
+// no manually shared refs, no ref-counting boilerplate.
+//
+// Implementation note: a single useEffect that watches the derived
+// `isAnyOpen` boolean is semantically equivalent to the old per-slot
+// ref-counting approach.  React's effect lifecycle handles the
+// lock/unlock transitions:
+//   false → true  : effect body runs  → lock fires
+//   true  → false : cleanup runs      → unlock fires
+//   true  → true  : no re-run         → no spurious re-lock or restore
+function useScrollLock(
+  overlays: readonly boolean[],
   mainScrollRef: React.RefObject<HTMLElement | null>,
 ) {
-  useEffect(() => {
-    if (!isOpen) return;
+  const lockedScrollYRef = useRef(0);
+  const isAnyOpen = overlays.some(Boolean);
 
-    lockCountRef.current += 1;
-    if (lockCountRef.current === 1) {
-      // First overlay: capture scroll position and pin the body.
-      lockedScrollYRef.current = window.scrollY;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${lockedScrollYRef.current}px`;
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.overflow = 'hidden';
-    }
+  useEffect(() => {
+    if (!isAnyOpen) return;
+
+    // First (or only) overlay open: capture scroll position and pin the body.
+    lockedScrollYRef.current = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${lockedScrollYRef.current}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
 
     return () => {
-      lockCountRef.current = Math.max(0, lockCountRef.current - 1);
-      if (lockCountRef.current === 0) {
-        // Last overlay closed: restore the body and scroll position.
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.overflow = '';
-        window.scrollTo({ top: lockedScrollYRef.current, behavior: 'auto' });
-        // Restore scroll focus to <main> so the next swipe immediately
-        // scrolls the board — but only if the focus trap hasn't already
-        // placed focus on a specific trigger element.
-        const main = mainScrollRef.current;
-        if (main) {
-          requestAnimationFrame(() => {
-            const active = document.activeElement;
-            if (!active || active === document.body || active === main) {
-              main.focus({ preventScroll: true });
-            }
-          });
-        }
+      // All overlays closed: restore the body and scroll position.
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      window.scrollTo({ top: lockedScrollYRef.current, behavior: 'auto' });
+      // Restore scroll focus to <main> so the next swipe immediately
+      // scrolls the board — but only if the focus trap hasn't already
+      // placed focus on a specific trigger element.
+      const main = mainScrollRef.current;
+      if (main) {
+        requestAnimationFrame(() => {
+          const active = document.activeElement;
+          if (!active || active === document.body || active === main) {
+            main.focus({ preventScroll: true });
+          }
+        });
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isAnyOpen]);
 }
 
 // --- Main Page ---
@@ -1100,8 +1102,6 @@ export default function GameBoard() {
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const overlayOpenRef = useRef(false);
-  const overlayLockCountRef = useRef(0);
-  const lockedScrollYRef = useRef(0);
   // Tracks how many AI affinity-change log entries have already triggered the
   // switch sound, so that we only fire for genuinely new entries.
   const seenAiAffinityLogCountRef = useRef(0);
@@ -1182,13 +1182,12 @@ export default function GameBoard() {
     };
   }, []);
 
-  // Derived boolean used by the touch-forwarding ref and focus-trap hooks.
-  // IMPORTANT — when adding a new overlay, you must update TWO places:
-  //   1. This expression (so overlayOpenRef and the focus-traps see it), AND
-  //   2. A new useScrollLockSlot(...) call below (so the body scroll lock
-  //      counts it correctly).
-  // Missing either one will silently break the relevant behaviour.
-  const isAnyOverlayOpen = !!(selectedCard || showReservedOverlay || showForgedOverlay);
+  // All overlay open-states in one place.
+  // IMPORTANT — when adding a new overlay, add its boolean here.
+  // useScrollLock below reads this same array, so you only need to update
+  // this one list; no separately wired scroll-lock effect is required.
+  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay] as const;
+  const isAnyOverlayOpen = overlayStates.some(Boolean);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
   // read it without being re-registered on every state change.
@@ -1196,12 +1195,9 @@ export default function GameBoard() {
     overlayOpenRef.current = isAnyOverlayOpen;
   }, [isAnyOverlayOpen]);
 
-  // Body scroll lock — one slot per overlay, ref-counted so that overlapping
-  // open/close sequences never fire a spurious restore or capture a stale
-  // scrollY.  See useScrollLockSlot above for the full lock/restore logic.
-  useScrollLockSlot(!!selectedCard,       overlayLockCountRef, lockedScrollYRef, mainScrollRef);
-  useScrollLockSlot(showReservedOverlay,  overlayLockCountRef, lockedScrollYRef, mainScrollRef);
-  useScrollLockSlot(showForgedOverlay,    overlayLockCountRef, lockedScrollYRef, mainScrollRef);
+  // Body scroll lock — a single call covering all overlays at once.
+  // To add a new overlay, append its boolean to the overlayStates array above.
+  useScrollLock(overlayStates, mainScrollRef);
 
   // Focus-trap: card action sheet
   useFocusTrap(
