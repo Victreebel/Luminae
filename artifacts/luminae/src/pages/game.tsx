@@ -946,6 +946,10 @@ export default function GameBoard() {
   const [previewedPortals, setPreviewedPortals] = useState<Set<string>>(new Set());
   // Dev-only: affinity index per luminary for portal preview testing (not sent to server)
   const [devPortalAffinityIdx, setDevPortalAffinityIdx] = useState<Record<string, number>>({});
+  // Dev-only: when true the Summon Test panel passes a win-sealing color override to the cutscene.
+  const [devSummonWinSeal, setDevSummonWinSeal] = useState(false);
+  // Dev-only: custom hex to use as overrideColor; empty string means use the Luminary's own summonColor.
+  const [devSummonCustomColor, setDevSummonCustomColor] = useState('');
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -5139,30 +5143,87 @@ export default function GameBoard() {
           {/* Summon Test — plays the cinematic without touching server state */}
           <details className="fixed bottom-16 right-2 z-[8000] text-[10px]" open>
             <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">⚗ Summon Test</summary>
-            <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 max-h-60 overflow-y-auto min-w-36">
-              {Object.values(LUMINARY_VISUALS).map(v => (
-                <button
-                  key={v.id}
-                  className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-                  style={{ borderLeft: `3px solid ${v.primaryColor}` }}
-                  onClick={() => {
-                    const lumData = safeLuminaries.find(l => l.id === v.id);
-                    enqueueSummon(
-                      v.id,
-                      lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                      (lumData as { domain?: string } | undefined)?.domain ?? '',
-                      (lumData as { oblivion?: number } | undefined)?.oblivion
-                        ? -((lumData as { oblivion?: number }).oblivion as number)
-                        : (lumData?.lumens ?? 0),
-                      (lumData as { flavor?: string } | undefined)?.flavor ?? '',
-                      `dev-test-${v.id}-${Date.now()}`, // unique each click
-                      true,                             // isDevTest — no server resolve
-                    );
-                  }}
-                >
-                  {v.id}
-                </button>
-              ))}
+            <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 min-w-44">
+              {/* Win-seal burst controls */}
+              <div className="flex items-center gap-1.5 px-1 pb-1 border-b border-white/10">
+                <label className="flex items-center gap-1 cursor-pointer select-none text-white/60 hover:text-white">
+                  <input
+                    type="checkbox"
+                    checked={devSummonWinSeal}
+                    onChange={e => setDevSummonWinSeal(e.target.checked)}
+                    className="accent-amber-400"
+                  />
+                  Win-seal burst
+                </label>
+              </div>
+              {devSummonWinSeal && (
+                <div className="flex items-center gap-1.5 px-1 pb-1 border-b border-white/10">
+                  <span className="text-white/40 shrink-0">Override color:</span>
+                  <input
+                    type="color"
+                    value={devSummonCustomColor || '#ffffff'}
+                    onChange={e => setDevSummonCustomColor(e.target.value)}
+                    className="w-6 h-5 rounded cursor-pointer border-0 bg-transparent"
+                    title="Custom hex override — leave blank to use each Luminary's own summonColor"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Lum color"
+                    value={devSummonCustomColor}
+                    onChange={e => setDevSummonCustomColor(e.target.value)}
+                    className="w-20 bg-white/10 rounded px-1 py-0.5 text-white/80 outline-none font-mono"
+                    maxLength={7}
+                  />
+                  {devSummonCustomColor && (
+                    <button
+                      className="text-white/40 hover:text-white"
+                      onClick={() => setDevSummonCustomColor('')}
+                      title="Clear — use each Luminary's own summonColor"
+                    >✕</button>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
+                {Object.values(LUMINARY_VISUALS).map(v => {
+                  const lumData = safeLuminaries.find(l => l.id === v.id);
+                  const lumSummonColor = (lumData as { summonColor?: string } | undefined)?.summonColor ?? '';
+                  // Resolved win-seal color: custom input > Luminary's own summonColor
+                  const isValidHex = /^#[0-9a-fA-F]{6}$/.test(devSummonCustomColor);
+                  const resolvedSealColor = devSummonWinSeal
+                    ? (isValidHex ? devSummonCustomColor : lumSummonColor || undefined)
+                    : undefined;
+                  return (
+                    <button
+                      key={v.id}
+                      className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center gap-1"
+                      style={{ borderLeft: `3px solid ${v.primaryColor}` }}
+                      onClick={() => {
+                        enqueueSummon(
+                          v.id,
+                          lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
+                          (lumData as { domain?: string } | undefined)?.domain ?? '',
+                          (lumData as { oblivion?: number } | undefined)?.oblivion
+                            ? -((lumData as { oblivion?: number }).oblivion as number)
+                            : (lumData?.lumens ?? 0),
+                          (lumData as { flavor?: string } | undefined)?.flavor ?? '',
+                          `dev-test-${v.id}-${Date.now()}`, // unique each click
+                          true,                             // isDevTest — no server resolve
+                          resolvedSealColor,
+                        );
+                      }}
+                    >
+                      <span>{v.id}</span>
+                      {devSummonWinSeal && resolvedSealColor && (
+                        <span
+                          className="ml-auto w-2.5 h-2.5 rounded-full shrink-0 border border-white/20"
+                          style={{ background: resolvedSealColor }}
+                          title={resolvedSealColor}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </details>
 
