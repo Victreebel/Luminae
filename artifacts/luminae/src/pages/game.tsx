@@ -39,7 +39,6 @@ import { TutorialOverlay } from '@/components/TutorialOverlay';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
-import { useSwipeToChange } from '@/hooks/use-swipe-to-change';
 const gemIcon = "/icon_gem.svg";
 
 function hexRgba(hex: string, alpha: number): string {
@@ -889,17 +888,6 @@ export default function GameBoard() {
   const [showPurchased, setShowPurchased] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
 
-  const TAB_ORDER: ActiveTab[] = ['board', 'hand', 'log'];
-  const { tabSwipeProps } = useSwipeToChange(
-    () => {
-      const idx = TAB_ORDER.indexOf(activeTab);
-      if (idx < TAB_ORDER.length - 1) setActiveTab(TAB_ORDER[idx + 1]);
-    },
-    () => {
-      const idx = TAB_ORDER.indexOf(activeTab);
-      if (idx > 0) setActiveTab(TAB_ORDER[idx - 1]);
-    },
-  );
 
   useEffect(() => {
     if (!account) return;
@@ -3933,7 +3921,6 @@ export default function GameBoard() {
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         tabIndex={-1}
         className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none"
-        {...tabSwipeProps}
         onPointerDown={() => {
           // Fallback for non-iOS (Android Chrome, desktop): blur any focused
           // panel element as soon as a pointer gesture starts in the board.

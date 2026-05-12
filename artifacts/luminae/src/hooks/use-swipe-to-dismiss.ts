@@ -223,11 +223,14 @@ export function useSwipeToDismiss(
    * spring settles prevents any visible jump on entry into the peek state.
    */
   const animateToPeekPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
-    const savedScroll = scrollableRef.current?.scrollTop ?? 0;
+    const saved = new Map<HTMLElement, number>();
+    scrollableElements.current.forEach(el => {
+      if (el.scrollTop > 0) saved.set(el, el.scrollTop);
+    });
     void panelAnimation.then(() => {
-      if (scrollableRef.current && savedScroll > 0) {
-        scrollableRef.current.scrollTop = savedScroll;
-      }
+      saved.forEach((scrollTop, el) => {
+        el.scrollTop = scrollTop;
+      });
     });
   };
 
