@@ -1222,10 +1222,10 @@ export default function GameBoard() {
   const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, makeScrollableAreaProps: forgedSheetMakeScrollableAreaProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale, peekProgress: forgedSheetPeekProgress } =
     useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); }, { isOpen: showForgedOverlay, peekHeight: 0.4 });
   // Two separate scrollable areas in the forged sheet: the filter-pill header row
-  // (which can grow tall when many affinity types are forged) and the card grid body.
+  // (overflow-x-auto, single line) and the card grid body (overflow-y-auto).
   // Each area gets its own makeScrollableAreaProps() instance so both scroll positions
   // are independently preserved across peek↔open transitions.
-  const forgedPillsScrollableProps = forgedSheetMakeScrollableAreaProps();
+  const forgedPillsScrollableProps = forgedSheetMakeScrollableAreaProps({ axis: 'horizontal' });
   const forgedBodyScrollableProps = forgedSheetMakeScrollableAreaProps();
 
   const TURN_ANNOUNCE_DURATION = 1800;
@@ -5298,13 +5298,13 @@ export default function GameBoard() {
                   </Button>
                 </div>
               </div>
-              {/* Color filter pills — second scrollable area in this sheet.
-                  max-h + overflow-y-auto caps the height when many affinities are forged
-                  so the pills never push the body area out of view.
-                  forgedPillsScrollableProps registers this element with the hook so its
-                  scroll position is preserved across peek↔open transitions alongside the
-                  card grid below. */}
-              <div {...forgedPillsScrollableProps} className="px-5 pb-2 overflow-y-auto max-h-16 flex gap-1.5 flex-wrap">
+              {/* Color filter pills — single-line horizontally-scrollable row.
+                  overflow-x-auto whitespace-nowrap keeps all pills on one line so the
+                  header height is always fixed regardless of how many affinity types are
+                  forged. axis:'horizontal' in forgedPillsScrollableProps sets pan-x touch
+                  action (native swipe-to-scroll) and only intercepts downward drags for
+                  the sheet; horizontal scroll position is preserved across peek↔open. */}
+              <div {...forgedPillsScrollableProps} className="px-5 pb-2 overflow-x-auto whitespace-nowrap flex gap-1.5">
                 {CRYSTALS.filter(c => c !== 'flux').map((c) => {
                   const count = (me.purchasedCards ?? []).filter(card => card.bonusColor === c).length;
                   if (count === 0) return null;

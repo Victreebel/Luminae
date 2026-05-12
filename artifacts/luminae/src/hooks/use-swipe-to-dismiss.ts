@@ -197,20 +197,21 @@ export function useSwipeToDismiss(
 
   /**
    * Runs a peek→open animation while preserving the scroll position of every
-   * registered scrollable area. The current scrollTop of each element is
-   * captured synchronously, the spring animation is awaited, and then each
-   * scrollTop is written back. Without this, some browsers reset the scroll
+   * registered scrollable area. Both scrollTop and scrollLeft of each element
+   * are captured synchronously, the spring animation is awaited, and then each
+   * value is written back. Without this, some browsers reset the scroll
    * position of partially-offscreen elements when they re-enter the fully-
    * visible viewport during the snap.
    */
   const animateToOpenPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
-    const saved = new Map<HTMLElement, number>();
+    const saved = new Map<HTMLElement, { scrollTop: number; scrollLeft: number }>();
     scrollableElements.current.forEach(el => {
-      if (el.scrollTop > 0) saved.set(el, el.scrollTop);
+      if (el.scrollTop > 0 || el.scrollLeft > 0) saved.set(el, { scrollTop: el.scrollTop, scrollLeft: el.scrollLeft });
     });
     void panelAnimation.then(() => {
-      saved.forEach((scrollTop, el) => {
+      saved.forEach(({ scrollTop, scrollLeft }, el) => {
         el.scrollTop = scrollTop;
+        el.scrollLeft = scrollLeft;
       });
     });
   };
@@ -229,13 +230,14 @@ export function useSwipeToDismiss(
    * `makeScrollableAreaProps`) are handled correctly.
    */
   const animateToPeekPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
-    const saved = new Map<HTMLElement, number>();
+    const saved = new Map<HTMLElement, { scrollTop: number; scrollLeft: number }>();
     scrollableElements.current.forEach(el => {
-      if (el.scrollTop > 0) saved.set(el, el.scrollTop);
+      if (el.scrollTop > 0 || el.scrollLeft > 0) saved.set(el, { scrollTop: el.scrollTop, scrollLeft: el.scrollLeft });
     });
     void panelAnimation.then(() => {
-      saved.forEach((scrollTop, el) => {
+      saved.forEach(({ scrollTop, scrollLeft }, el) => {
         el.scrollTop = scrollTop;
+        el.scrollLeft = scrollLeft;
       });
     });
   };
@@ -394,30 +396,40 @@ export function useSwipeToDismiss(
   };
 
   /**
-   * Creates props for one `overflow-y-auto` region inside the sheet.
+   * Creates props for one scrollable region inside the sheet.
    *
    * Each call registers an independent scrollable element whose scroll position
-   * is preserved across peek ↔ open transitions alongside all other registered
-   * areas. Call once per scrollable region at the top level of your component
-   * (it is a plain factory function, not a hook):
+   * (both scrollTop and scrollLeft) is preserved across peek ↔ open transitions
+   * alongside all other registered areas. Call once per scrollable region at the
+   * top level of your component (it is a plain factory function, not a hook):
    *
    *   const listProps   = makeScrollableAreaProps();
-   *   const headerProps = makeScrollableAreaProps();
+   *   const headerProps = makeScrollableAreaProps({ axis: 'horizontal' });
    *
    * Then spread each result onto the corresponding DOM element:
    *
-   *   <div {...headerProps} className="overflow-y-auto …">…</div>
+   *   <div {...headerProps} className="overflow-x-auto whitespace-nowrap …">…</div>
    *   <div {...listProps}   className="overflow-y-auto …">…</div>
    *
-   * Behaviour of each registered area:
-   * - Primarily horizontal movements are intercepted at any scroll position and
-   *   handed off to the sheet drag controller (horizontal dismiss path).
+   * `axis` controls the scroll direction of the registered area (default 'vertical'):
+   *
+   * 'vertical' (default) — for overflow-y-auto areas:
+   * - Primarily horizontal movements are intercepted and handed off to the sheet
+   *   drag controller (horizontal dismiss path).
    * - While the area is NOT at the top (scrollTop > 0) and the gesture is not
    *   primarily horizontal, all pointer events fall through for normal scrolling.
    * - When the area IS at the top, a downward swipe hands off to the sheet drag
    *   controller; an upward swipe lets the browser scroll the content.
-   * - `overscrollBehavior: 'contain'` prevents momentum from bleeding into the
-   *   parent sheet on a fast upward fling that reaches the top of the content.
+   * - Sets `touchAction: 'pan-y'` so the browser handles vertical panning natively.
+   *
+   * 'horizontal' — for overflow-x-auto areas (e.g. a single-line pill row):
+   * - Horizontal movements are NOT intercepted — the browser handles them natively
+   *   as `touchAction: 'pan-x'` horizontal scrolling.
+   * - Only primarily-vertical downward drags are handed off to the sheet drag
+   *   controller so the sheet can still be dragged down from the area.
+   *
+   * `overscrollBehavior: 'contain'` prevents momentum bleeding into the parent
+   * sheet in either case.
    *
    * Note: the callback ref returned in the props object registers the element
    * into the shared `scrollableElements` set on mount and removes it on unmount.
@@ -425,7 +437,8 @@ export function useSwipeToDismiss(
    * props object is recreated between renders — the registration logic handles
    * this correctly (remove-then-add leaves the set state unchanged).
    */
-  const makeScrollableAreaProps = useCallback((): ScrollableAreaProps => {
+  const makeScrollableAreaProps = useCallback((options: { axis?: 'vertical' | 'horizontal' } = {}): ScrollableAreaProps => {
+    const axis = options.axis ?? 'vertical';
     let registeredEl: HTMLElement | null = null;
 
     const callbackRef: React.RefCallback<HTMLDivElement> = (el) => {
@@ -460,18 +473,26 @@ export function useSwipeToDismiss(
 
         const isPrimarilyHorizontal = Math.abs(dx) > Math.abs(dy);
 
-        if (isPrimarilyHorizontal) {
-          // Horizontal flick — activate sheet drag regardless of scroll position.
-          dragControls.start(moveEvent as unknown as React.PointerEvent);
-        } else if (dy > 0 && el.scrollTop === 0) {
-          // Downward swipe from the top — activate the sheet drag.
-          // Pass the *current* moveEvent (not the original pointerdown) so
-          // framer-motion anchors the drag origin to where the finger is right
-          // now. Using nativeEvent here would cause a visible jump because the
-          // pointer has already travelled ≥6 px (the dead zone) since touchdown.
-          dragControls.start(moveEvent as unknown as React.PointerEvent);
+        if (axis === 'horizontal') {
+          // Horizontal scroll area: only intercept downward-vertical drags for
+          // the sheet. Horizontal drags are left to the browser's native pan-x.
+          if (!isPrimarilyHorizontal && dy > 0) {
+            dragControls.start(moveEvent as unknown as React.PointerEvent);
+          }
+        } else {
+          if (isPrimarilyHorizontal) {
+            // Horizontal flick — activate sheet drag regardless of scroll position.
+            dragControls.start(moveEvent as unknown as React.PointerEvent);
+          } else if (dy > 0 && el.scrollTop === 0) {
+            // Downward swipe from the top — activate the sheet drag.
+            // Pass the *current* moveEvent (not the original pointerdown) so
+            // framer-motion anchors the drag origin to where the finger is right
+            // now. Using nativeEvent here would cause a visible jump because the
+            // pointer has already travelled ≥6 px (the dead zone) since touchdown.
+            dragControls.start(moveEvent as unknown as React.PointerEvent);
+          }
+          // Upward swipe or downward-when-not-at-top — let the browser handle.
         }
-        // Upward swipe or downward-when-not-at-top — let the browser handle.
       };
 
       const cleanup = () => {
@@ -494,7 +515,7 @@ export function useSwipeToDismiss(
       ref: callbackRef,
       onPointerDown,
       style: {
-        touchAction: 'pan-y',
+        touchAction: axis === 'horizontal' ? 'pan-x' : 'pan-y',
         overscrollBehavior: 'contain',
       } as React.CSSProperties,
     };
