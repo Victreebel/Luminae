@@ -1225,14 +1225,14 @@ export default function GameBoard() {
   // in independently by adding peekHeight to its own options object.
   const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, scrollableAreaProps: cardSheetScrollableProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale, peekProgress: cardSheetPeekProgress } =
     useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); }, { isOpen: selectedCard !== null, peekHeight: 0.4 });
-  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, scrollableAreaProps: deckSheetScrollableProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale } =
-    useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); }, { isOpen: selectedDeckTier !== null });
+  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, scrollableAreaProps: deckSheetScrollableProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale, peekProgress: deckSheetPeekProgress } =
+    useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); }, { isOpen: selectedDeckTier !== null, peekHeight: 0.4 });
   const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps, scrollableAreaProps: rulesSheetScrollableProps, backdropOpacity: rulesSheetBackdropOpacity, sheetScale: rulesSheetScale } =
     useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false), { isOpen: showRules });
-  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, scrollableAreaProps: reservedSheetScrollableProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale } =
-    useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false), { isOpen: showReservedOverlay });
-  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, scrollableAreaProps: forgedSheetScrollableProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale } =
-    useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); }, { isOpen: showForgedOverlay });
+  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, scrollableAreaProps: reservedSheetScrollableProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale, peekProgress: reservedSheetPeekProgress } =
+    useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false), { isOpen: showReservedOverlay, peekHeight: 0.4 });
+  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, scrollableAreaProps: forgedSheetScrollableProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale, peekProgress: forgedSheetPeekProgress } =
+    useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); }, { isOpen: showForgedOverlay, peekHeight: 0.4 });
 
   const TURN_ANNOUNCE_DURATION = 1800;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
@@ -4485,7 +4485,24 @@ export default function GameBoard() {
                 {/* Drag handle */}
                 <div {...deckSheetHandleBarProps} className="flex flex-col items-center -mt-2 mb-2 gap-1">
                   <div className="w-10 h-1 rounded-full bg-border" />
-                  <SwipeHintBar />
+                  <SwipeHintBar peekProgress={deckSheetPeekProgress} />
+                </div>
+                {/* Compact peek header — always visible when the sheet is in the 40 % peek position.
+                    Shows the tier title and close button so the sheet is identifiable at a glance. */}
+                <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
+                  <span className="font-semibold text-sm leading-tight flex-1 truncate">
+                    Tier {deckTier} Deck
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">{deckCount} remaining</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0"
+                    aria-label="Close deck sheet"
+                    onClick={closeDeckSheet}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
                 {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
                 <div {...deckSheetScrollableProps} className="overflow-y-auto max-h-[75vh]">
@@ -5159,15 +5176,16 @@ export default function GameBoard() {
             >
               <div {...reservedSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
-                <SwipeHintBar />
+                <SwipeHintBar peekProgress={reservedSheetPeekProgress} />
               </div>
-              <div className="px-5 pb-2 flex items-center justify-between">
-                <h2 className="text-lg font-serif font-bold flex items-center gap-2">
-                  <Bookmark className="h-5 w-5 text-muted-foreground" />
+              {/* Compact peek header — identifiable while sheet is in 40 % peek position */}
+              <div className="px-5 pb-2 flex items-center justify-between border-b border-border/40 mb-1">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Bookmark className="h-4 w-4 text-muted-foreground" />
                   Reserved Artifacts ({me.reservedCards.length}/3)
                 </h2>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowReservedOverlay(false)}>
-                  <X className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowReservedOverlay(false)}>
+                  <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <div {...reservedSheetScrollableProps} className="px-5 overflow-y-auto max-h-[60vh] pb-4">
@@ -5261,11 +5279,12 @@ export default function GameBoard() {
             >
               <div {...forgedSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
-                <SwipeHintBar />
+                <SwipeHintBar peekProgress={forgedSheetPeekProgress} />
               </div>
-              <div className="px-5 pb-2 flex items-center justify-between">
-                <h2 className="text-lg font-serif font-bold flex items-center gap-2">
-                  <Package className="h-5 w-5 text-muted-foreground" />
+              {/* Compact peek header — identifiable while sheet is in 40 % peek position */}
+              <div className="px-5 pb-2 flex items-center justify-between border-b border-border/40 mb-1">
+                <h2 className="text-base font-semibold flex items-center gap-2">
+                  <Package className="h-4 w-4 text-muted-foreground" />
                   {forgedFilter
                     ? <>{GEM_META[forgedFilter].name} Artifacts</>
                     : <>Forged Artifacts ({me.purchasedCards?.length ?? 0})</>
@@ -5281,8 +5300,8 @@ export default function GameBoard() {
                       show all
                     </button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
-                    <X className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
+                    <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
