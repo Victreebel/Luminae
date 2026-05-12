@@ -34,6 +34,7 @@ import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { TutorialOverlay } from '@/components/TutorialOverlay';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 const gemIcon = "/icon_gem.svg";
 
 function hexRgba(hex: string, alpha: number): string {
@@ -901,6 +902,8 @@ export default function GameBoard() {
   } | null>(null);
   const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
+  const cardSheetContainerRef = useRef<HTMLElement | null>(null);
+  const reservedOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
   const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
@@ -1126,15 +1129,33 @@ export default function GameBoard() {
       // Restore the exact scroll position captured at open time.
       window.scrollTo({ top: scrollY, behavior: 'auto' });
       // Restore scroll focus to <main> after dismiss so a subsequent swipe
-      // immediately scrolls the board without a stray tap.
+      // immediately scrolls the board without a stray tap — but only if the
+      // focus trap has not already placed focus on a specific trigger element.
       const main = mainScrollRef.current;
       if (main) {
         requestAnimationFrame(() => {
-          main.focus({ preventScroll: true });
+          const active = document.activeElement;
+          if (!active || active === document.body || active === main) {
+            main.focus({ preventScroll: true });
+          }
         });
       }
     };
   }, [selectedCard, showReservedOverlay]);
+
+  // Focus-trap: card action sheet
+  useFocusTrap(
+    cardSheetContainerRef,
+    !!selectedCard,
+    () => { setSelectedCard(null); setPendingSheetAction(null); },
+  );
+
+  // Focus-trap: reserved cards overlay
+  useFocusTrap(
+    reservedOverlayContainerRef,
+    showReservedOverlay,
+    () => setShowReservedOverlay(false),
+  );
 
   const TURN_ANNOUNCE_DURATION = 1800;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
@@ -4017,6 +4038,10 @@ export default function GameBoard() {
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
+              ref={(el) => { cardSheetContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Card actions"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -4989,6 +5014,10 @@ export default function GameBoard() {
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
+              ref={(el) => { reservedOverlayContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Reserved cards"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
