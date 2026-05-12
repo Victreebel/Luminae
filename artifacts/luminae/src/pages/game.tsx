@@ -37,6 +37,7 @@ import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { TutorialOverlay } from '@/components/TutorialOverlay';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 const gemIcon = "/icon_gem.svg";
 
 function hexRgba(hex: string, alpha: number): string {
@@ -1197,6 +1198,18 @@ export default function GameBoard() {
     showForgedOverlay,
     () => { setShowForgedOverlay(false); setForgedFilter(null); },
   );
+
+  // Swipe-to-dismiss: drag handle → swipe down ≥30% height dismisses the sheet
+  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps } =
+    useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); });
+  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps } =
+    useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); });
+  const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps } =
+    useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false));
+  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps } =
+    useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false));
+  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps } =
+    useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); });
 
   const TURN_ANNOUNCE_DURATION = 1800;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
@@ -4089,9 +4102,10 @@ export default function GameBoard() {
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl px-5 pt-0 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              {...cardSheetDragProps}
             >
               {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1">
+              <div {...cardSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
               </div>
               {/* Sheet header: Esc hint + close button */}
@@ -4422,7 +4436,12 @@ export default function GameBoard() {
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
                 ref={(el) => { deckSheetContainerRef.current = el; }}
+                {...deckSheetDragProps}
               >
+                {/* Drag handle */}
+                <div {...deckSheetHandleBarProps} className="flex justify-center -mt-2 mb-2">
+                  <div className="w-10 h-1 rounded-full bg-border" />
+                </div>
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
                   {/* Larger preview — 3× the sm size, matching md width */}
@@ -4990,9 +5009,10 @@ export default function GameBoard() {
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              {...rulesSheetDragProps}
             >
               {/* Handle bar */}
-              <div className="flex justify-center pt-3 pb-1">
+              <div {...rulesSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
@@ -5084,8 +5104,9 @@ export default function GameBoard() {
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              {...reservedSheetDragProps}
             >
-              <div className="flex justify-center pt-3 pb-1">
+              <div {...reservedSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
@@ -5183,8 +5204,9 @@ export default function GameBoard() {
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              {...forgedSheetDragProps}
             >
-              <div className="flex justify-center pt-3 pb-1">
+              <div {...forgedSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
