@@ -4895,9 +4895,25 @@ export default function GameBoard() {
                 </>
               )}
 
-              {/* Sealing Luminary badge — shown when a Luminary claim triggered the win */}
-              {state.winTriggerLuminaryId && (() => {
-                const lumId = state.winTriggerLuminaryId!;
+              {/* Luminary badge on win screen */}
+              {(() => {
+                let lumId: string | null = null;
+                let label = "";
+                if (state.winTriggerLuminaryId) {
+                  lumId = state.winTriggerLuminaryId;
+                  label = "Sealed by";
+                } else if (state.winnerId) {
+                  const winner = state.players.find(p => p.playerId === state.winnerId);
+                  const winnerClaimedIds = winner?.claimedLuminaryIds ?? [];
+                  const winnerClaimed = (state.luminaries ?? [])
+                    .filter(l => winnerClaimedIds.includes(l.id))
+                    .sort((a, b) => (b.lumens ?? 0) - (a.lumens ?? 0));
+                  if (winnerClaimed.length > 0) {
+                    lumId = winnerClaimed[0].id;
+                    label = "Champion of";
+                  }
+                }
+                if (!lumId) return null;
                 const lum = state.luminaries?.find(l => l.id === lumId);
                 const vis = getLuminaryVisuals(lumId);
                 const accentColor = lum?.summonColor ?? vis.primaryColor;
@@ -4925,7 +4941,7 @@ export default function GameBoard() {
                       className="text-xs font-semibold uppercase tracking-widest"
                       style={{ color: accentColor, textShadow: `0 0 10px ${glowColor}` }}
                     >
-                      Sealed by {lum?.name ?? lumId}
+                      {label} {lum?.name ?? lumId}
                     </p>
                   </motion.div>
                 );
