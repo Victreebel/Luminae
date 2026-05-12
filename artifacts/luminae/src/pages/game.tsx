@@ -3232,9 +3232,17 @@ export default function GameBoard() {
                                 textShadow: hasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none',
                               }}
                             >
-                              {sentFlashBtn === 'harness'
-                                ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-3 w-3" />Sent</span>
-                                : 'Harness'}
+                              <AnimatePresence mode="wait" initial={false}>
+                                {sentFlashBtn === 'harness' ? (
+                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                    <Check className="h-3 w-3" />Sent
+                                  </motion.span>
+                                ) : (
+                                  <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                    Harness
+                                  </motion.span>
+                                )}
+                              </AnimatePresence>
                             </span>
                           </motion.div>
                         );
@@ -3294,18 +3302,22 @@ export default function GameBoard() {
                             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.10] to-transparent pointer-events-none" />
                             {/* Label — amber PLAN badge + action name */}
                             <span className="relative z-10 text-xs font-bold select-none flex items-center gap-1.5">
-                              {sentFlashBtn === 'plan_harness' ? (
-                                <span className="flex items-center gap-1 text-emerald-300"><Check className="h-3 w-3" />Sent</span>
-                              ) : (
-                                <>
-                                  <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">
-                                    PLAN
-                                  </span>
-                                  <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>
-                                    Harness
-                                  </span>
-                                </>
-                              )}
+                              <AnimatePresence mode="wait" initial={false}>
+                                {sentFlashBtn === 'plan_harness' ? (
+                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                    <Check className="h-3 w-3" />Sent
+                                  </motion.span>
+                                ) : (
+                                  <motion.span key="label" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                    <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">
+                                      PLAN
+                                    </span>
+                                    <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>
+                                      Harness
+                                    </span>
+                                  </motion.span>
+                                )}
+                              </AnimatePresence>
                             </span>
                           </motion.div>
                         );
@@ -4415,9 +4427,17 @@ export default function GameBoard() {
                         }}
                       >
                         <Gavel className="h-5 w-5 mr-2" />
-                        {sentFlashBtn === 'forge'
-                          ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
-                          : pendingSheetAction === 'forge' ? 'Confirm: Forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
+                        <AnimatePresence mode="wait" initial={false}>
+                          {sentFlashBtn === 'forge' ? (
+                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              <Check className="h-4 w-4" />Sent!
+                            </motion.span>
+                          ) : (
+                            <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              {pendingSheetAction === 'forge' ? 'Confirm: Forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
                       </Button>
                     </motion.div>
                     {!selectedCard.fromReserve && (
@@ -4465,9 +4485,17 @@ export default function GameBoard() {
                           }}
                         >
                           <Bookmark className="h-5 w-5 mr-2" />
-                          {sentFlashBtn === 'reserve'
-                            ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
-                            : pendingSheetAction === 'reserve' ? 'Confirm: Reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
+                          <AnimatePresence mode="wait" initial={false}>
+                            {sentFlashBtn === 'reserve' ? (
+                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                <Check className="h-4 w-4" />Sent!
+                              </motion.span>
+                            ) : (
+                              <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                {pendingSheetAction === 'reserve' ? 'Confirm: Reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </Button>
                       </motion.div>
                     )}
@@ -4507,11 +4535,19 @@ export default function GameBoard() {
                       >
                         <span className="flex items-center gap-2">
                           <Gavel className="h-5 w-5 shrink-0" />
-                          {sentFlashBtn === 'plan_forge'
-                            ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
-                            : pendingSheetAction === 'plan_forge'
-                              ? 'Confirm: Plan: Forge'
-                              : <><span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/60 rounded px-[5px] py-[1px] leading-none">PLAN</span> Forge this Artifact</>}
+                          <AnimatePresence mode="wait" initial={false}>
+                            {sentFlashBtn === 'plan_forge' ? (
+                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                <Check className="h-4 w-4" />Sent!
+                              </motion.span>
+                            ) : (
+                              <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                {pendingSheetAction === 'plan_forge'
+                                  ? 'Confirm: Plan: Forge'
+                                  : <><span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/60 rounded px-[5px] py-[1px] leading-none">PLAN</span> Forge this Artifact</>}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </span>
                       </Button>
                     </motion.div>
@@ -4543,9 +4579,17 @@ export default function GameBoard() {
                           }}
                         >
                           <Bookmark className="h-5 w-5 mr-2" />
-                          {sentFlashBtn === 'plan_reserve'
-                            ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
-                            : pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
+                          <AnimatePresence mode="wait" initial={false}>
+                            {sentFlashBtn === 'plan_reserve' ? (
+                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                <Check className="h-4 w-4" />Sent!
+                              </motion.span>
+                            ) : (
+                              <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </Button>
                       </motion.div>
                     )}
@@ -4719,13 +4763,21 @@ export default function GameBoard() {
                         }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {sentFlashBtn === 'deck_reserve'
-                          ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
-                          : pendingDeckConfirm
-                          ? 'Confirm: Reserve Hidden Card'
-                          : canReserve
-                          ? 'Reserve Hidden Card'
-                          : 'Reserve pile full (3 max)'}
+                        <AnimatePresence mode="wait" initial={false}>
+                          {sentFlashBtn === 'deck_reserve' ? (
+                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              <Check className="h-4 w-4" />Sent!
+                            </motion.span>
+                          ) : (
+                            <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              {pendingDeckConfirm
+                                ? 'Confirm: Reserve Hidden Card'
+                                : canReserve
+                                ? 'Reserve Hidden Card'
+                                : 'Reserve pile full (3 max)'}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
                       </Button>
                     </motion.div>
                   )}
