@@ -840,6 +840,60 @@ interface SelectedCard {
   effectiveCosts?: Partial<Record<GemKey, number>>;
 }
 
+// --- Ref-counted body scroll lock ---
+// Each overlay independently calls this hook with its open boolean.  The body
+// is pinned only when the count goes 0→1 (first overlay opens) and restored
+// only when the count goes 1→0 (last overlay closes).  Overlapping open/close
+// sequences — e.g. one overlay dismisses while a second is already open —
+// therefore never trigger a spurious restore or capture a stale scrollY.
+function useScrollLockSlot(
+  isOpen: boolean,
+  lockCountRef: React.MutableRefObject<number>,
+  lockedScrollYRef: React.MutableRefObject<number>,
+  mainScrollRef: React.RefObject<HTMLElement | null>,
+) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    lockCountRef.current += 1;
+    if (lockCountRef.current === 1) {
+      // First overlay: capture scroll position and pin the body.
+      lockedScrollYRef.current = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${lockedScrollYRef.current}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      lockCountRef.current = Math.max(0, lockCountRef.current - 1);
+      if (lockCountRef.current === 0) {
+        // Last overlay closed: restore the body and scroll position.
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.overflow = '';
+        window.scrollTo({ top: lockedScrollYRef.current, behavior: 'auto' });
+        // Restore scroll focus to <main> so the next swipe immediately
+        // scrolls the board — but only if the focus trap hasn't already
+        // placed focus on a specific trigger element.
+        const main = mainScrollRef.current;
+        if (main) {
+          requestAnimationFrame(() => {
+            const active = document.activeElement;
+            if (!active || active === document.body || active === main) {
+              main.focus({ preventScroll: true });
+            }
+          });
+        }
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+}
+
 // --- Main Page ---
 
 export default function GameBoard() {
@@ -1046,6 +1100,8 @@ export default function GameBoard() {
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const overlayOpenRef = useRef(false);
+  const overlayLockCountRef = useRef(0);
+  const lockedScrollYRef = useRef(0);
   // Tracks how many AI affinity-change log entries have already triggered the
   // switch sound, so that we only fire for genuinely new entries.
   const seenAiAffinityLogCountRef = useRef(0);
@@ -1126,8 +1182,12 @@ export default function GameBoard() {
     };
   }, []);
 
-  // Single source of truth for "any overlay is open".  Add future overlays
-  // here only — the two effects below automatically pick up the change.
+  // Derived boolean used by the touch-forwarding ref and focus-trap hooks.
+  // IMPORTANT — when adding a new overlay, you must update TWO places:
+  //   1. This expression (so overlayOpenRef and the focus-traps see it), AND
+  //   2. A new useScrollLockSlot(...) call below (so the body scroll lock
+  //      counts it correctly).
+  // Missing either one will silently break the relevant behaviour.
   const isAnyOverlayOpen = !!(selectedCard || showReservedOverlay || showForgedOverlay);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
@@ -1136,49 +1196,12 @@ export default function GameBoard() {
     overlayOpenRef.current = isAnyOverlayOpen;
   }, [isAnyOverlayOpen]);
 
-  // Body scroll lock — prevent the background board from scrolling while
-  // any overlay is open.  On iOS Safari, simply setting overflow:hidden
-  // causes the page to snap to the top before the overlay appears.  The fix
-  // is to capture the current scrollY, pin the body at that offset with a
-  // negative top, then restore position and scroll in the cleanup callback
-  // (the single authoritative restore point — no restore logic elsewhere).
-  useEffect(() => {
-    const isOpen = isAnyOverlayOpen;
-    // Only act when an overlay is open.  Returning early with no cleanup
-    // registered means neither the open nor the closed-state path runs on
-    // initial render or after dismiss, preventing spurious scrollTo(0) calls.
-    if (!isOpen) return;
-
-    const scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      // Single restore point: runs when the overlay closes OR on unmount.
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.overflow = '';
-      // Restore the exact scroll position captured at open time.
-      window.scrollTo({ top: scrollY, behavior: 'auto' });
-      // Restore scroll focus to <main> after dismiss so a subsequent swipe
-      // immediately scrolls the board without a stray tap — but only if the
-      // focus trap has not already placed focus on a specific trigger element.
-      const main = mainScrollRef.current;
-      if (main) {
-        requestAnimationFrame(() => {
-          const active = document.activeElement;
-          if (!active || active === document.body || active === main) {
-            main.focus({ preventScroll: true });
-          }
-        });
-      }
-    };
-  }, [isAnyOverlayOpen]);
+  // Body scroll lock — one slot per overlay, ref-counted so that overlapping
+  // open/close sequences never fire a spurious restore or capture a stale
+  // scrollY.  See useScrollLockSlot above for the full lock/restore logic.
+  useScrollLockSlot(!!selectedCard,       overlayLockCountRef, lockedScrollYRef, mainScrollRef);
+  useScrollLockSlot(showReservedOverlay,  overlayLockCountRef, lockedScrollYRef, mainScrollRef);
+  useScrollLockSlot(showForgedOverlay,    overlayLockCountRef, lockedScrollYRef, mainScrollRef);
 
   // Focus-trap: card action sheet
   useFocusTrap(
