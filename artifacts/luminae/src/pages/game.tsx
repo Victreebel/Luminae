@@ -3040,8 +3040,10 @@ export default function GameBoard() {
                         <span className="text-xs font-bold text-white">×{n}</span>
                       </div>
                     ))}
-                    <span className={`text-[10px] font-medium ${queueLegality.ok ? 'text-green-400' : 'text-amber-400'}`}>
-                      {queueLegality.reason || 'Pick affinities'}
+                    <span className={`text-[10px] font-medium ${queueLegality.ok ? (!isMyTurn && canPlan ? 'text-amber-400' : 'text-green-400') : 'text-amber-400'}`}>
+                      {(!isMyTurn && canPlan && queueLegality.reason
+                        ? `Plan: ${queueLegality.reason}`
+                        : queueLegality.reason) || 'Pick affinities'}
                     </span>
                   </div>
                   <div className="flex gap-1.5 shrink-0 relative">
@@ -3161,13 +3163,13 @@ export default function GameBoard() {
                         return (
                           <motion.div
                             whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                            className="relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
+                            className="relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
                             style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              borderColor: planBorderColor,
+                              background: planHasColors ? 'rgba(120,70,0,0.18)' : 'rgba(120,70,0,0.08)',
+                              borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)',
                               boxShadow: planHasColors
-                                ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[planSelKeys[0]].hex}44`
-                                : 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                                ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px rgba(251,191,36,0.25)'
+                                : 'inset 0 1px 0 rgba(255,255,255,0.06)',
                               backdropFilter: 'blur(6px)',
                               WebkitBackdropFilter: 'blur(6px)',
                             }}
@@ -3179,33 +3181,31 @@ export default function GameBoard() {
                               }
                             }}
                           >
-                            {/* Swirling affinity color fill — reduced opacity for plan/queued state */}
-                            {planSelKeys.length > 0 && (
+                            {/* Amber plan glow — swirls only when affinities are selected */}
+                            {planHasColors && (
                               <div
                                 style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}
                               >
                                 <div
                                   className="w-full h-full harness-swirl-ring"
                                   style={{
-                                    background: planConicGradient,
-                                    opacity: 0.32,
+                                    background: `conic-gradient(rgba(251,191,36,0.7) 0deg, rgba(251,191,36,0.2) 180deg, rgba(251,191,36,0.7) 360deg)`,
+                                    opacity: 0.30,
                                     filter: 'blur(8px)',
                                   }}
                                 />
                               </div>
                             )}
                             {/* Glass top-shine */}
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.13] to-transparent pointer-events-none" />
-                            {/* Label */}
-                            <span
-                              className="relative z-10 text-xs font-bold transition-colors duration-300 select-none flex items-center gap-1"
-                              style={{
-                                color: planHasColors ? '#fff' : 'rgba(255,255,255,0.35)',
-                                textShadow: planHasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none',
-                              }}
-                            >
-                              <span style={{ fontSize: '10px', opacity: 0.85 }}>⏱</span>
-                              Plan Harness
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.10] to-transparent pointer-events-none" />
+                            {/* Label — amber PLAN badge + action name */}
+                            <span className="relative z-10 text-xs font-bold select-none flex items-center gap-1.5">
+                              <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">
+                                PLAN
+                              </span>
+                              <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>
+                                Harness
+                              </span>
                             </span>
                           </motion.div>
                         );
@@ -4358,14 +4358,14 @@ export default function GameBoard() {
                       style={{ borderRadius: '0.75rem' }}
                     >
                       <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
+                        className={`w-full h-12 text-base font-bold transition-all duration-150
                           ${pendingSheetAction === 'plan_forge'
-                            ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
-                            : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200 opacity-80'
+                            ? `border-0 ${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
+                            : 'bg-amber-950/50 hover:bg-amber-900/60 text-amber-200 border border-amber-500/50'
                           }`}
                         style={pendingSheetAction === 'plan_forge'
                           ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
-                          : {}}
+                          : { boxShadow: '0 0 8px rgba(251,191,36,0.12)' }}
                         onClick={() => {
                           if (pendingSheetAction === 'plan_forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
@@ -4381,7 +4381,7 @@ export default function GameBoard() {
                           <Gavel className="h-5 w-5 shrink-0" />
                           {pendingSheetAction === 'plan_forge'
                             ? 'Confirm: Plan: Forge'
-                            : <><span style={{ fontSize: '13px', opacity: 0.85 }}>⏱</span> Plan: Forge this Artifact</>}
+                            : <><span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/60 rounded px-[5px] py-[1px] leading-none">PLAN</span> Forge this Artifact</>}
                         </span>
                       </Button>
                     </motion.div>
@@ -5233,7 +5233,7 @@ export default function GameBoard() {
                                 }}
                               >
                                 <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                                {isMyTurn ? (canBuy ? 'Forge…' : 'Cannot afford') : <><span style={{ fontSize: '11px', opacity: 0.85 }}>⏱</span> Plan: Forge…</>}
+                                {isMyTurn ? (canBuy ? 'Forge…' : 'Cannot afford') : <><span className="text-[7px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/50 rounded px-[4px] py-[1px] leading-none mr-1">PLAN</span>Forge…</>}
                               </Button>
                             )}
                           </div>
