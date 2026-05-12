@@ -36,6 +36,7 @@ import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { TutorialOverlay } from '@/components/TutorialOverlay';
+import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 const gemIcon = "/icon_gem.svg";
@@ -4105,8 +4106,9 @@ export default function GameBoard() {
               {...cardSheetDragProps}
             >
               {/* Drag handle */}
-              <div {...cardSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
+              <div {...cardSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
+                <SwipeHintBar />
               </div>
               {/* Sheet header: Esc hint + close button */}
               <div className="flex items-center justify-between pb-3">
@@ -4439,8 +4441,9 @@ export default function GameBoard() {
                 {...deckSheetDragProps}
               >
                 {/* Drag handle */}
-                <div {...deckSheetHandleBarProps} className="flex justify-center -mt-2 mb-2">
+                <div {...deckSheetHandleBarProps} className="flex flex-col items-center -mt-2 mb-2 gap-1">
                   <div className="w-10 h-1 rounded-full bg-border" />
+                  <SwipeHintBar />
                 </div>
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
@@ -5012,8 +5015,9 @@ export default function GameBoard() {
               {...rulesSheetDragProps}
             >
               {/* Handle bar */}
-              <div {...rulesSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
+              <div {...rulesSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
+                <SwipeHintBar />
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
                 <h2 className="text-lg font-serif font-bold">How to Play</h2>
@@ -5106,8 +5110,9 @@ export default function GameBoard() {
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
               {...reservedSheetDragProps}
             >
-              <div {...reservedSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
+              <div {...reservedSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
+                <SwipeHintBar />
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
                 <h2 className="text-lg font-serif font-bold flex items-center gap-2">
@@ -5206,8 +5211,9 @@ export default function GameBoard() {
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
               {...forgedSheetDragProps}
             >
-              <div {...forgedSheetHandleBarProps} className="flex justify-center pt-3 pb-1">
+              <div {...forgedSheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
                 <div className="w-10 h-1 rounded-full bg-border" />
+                <SwipeHintBar />
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
                 <h2 className="text-lg font-serif font-bold flex items-center gap-2">
