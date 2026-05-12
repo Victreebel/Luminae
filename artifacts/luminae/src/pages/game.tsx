@@ -2746,16 +2746,47 @@ export default function GameBoard() {
       <div className="rounded-2xl bg-secondary/40 border border-border/50 backdrop-blur overflow-hidden">
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinities · Harness cosmic essence</p>
-          {(() => {
-            const fluxCount = state.crystalBank.flux ?? 0;
-            return (
-              <div className="flex items-center gap-1.5 opacity-80">
-                <MiniGem color="flux" size={14} />
-                <span className="text-[10px] font-mono font-bold text-amber-300/80">{fluxCount}</span>
-                <span className="text-[9px] text-muted-foreground">Singularity</span>
-              </div>
-            );
-          })()}
+          <div className="flex items-center gap-3">
+            {me && (() => {
+              const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+              const pendingTotal = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
+              const projected = heldTotal + pendingTotal;
+              const isRed    = projected >= 10;
+              const isAmber  = !isRed && projected >= 8;
+              const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.45)';
+              const barFill  = isRed ? '#f87171' : isAmber ? '#fbbf24' : '#6366f1';
+              const fillPct  = Math.min(projected / 10, 1) * 100;
+              return (
+                <div className="flex flex-col items-end gap-0.5" title={`Hand: ${projected} / 10 crystals`}>
+                  <div className="flex items-center gap-1">
+                    <Hand className="h-2.5 w-2.5" style={{ color: numColor }} />
+                    <span
+                      className="text-[10px] font-mono font-bold leading-none tabular-nums transition-colors duration-300"
+                      style={{ color: numColor }}
+                    >
+                      {projected}&thinsp;/&thinsp;10
+                    </span>
+                  </div>
+                  <div className="w-12 h-[3px] rounded-full overflow-hidden bg-white/10">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${fillPct}%`, background: barFill, boxShadow: projected >= 8 ? `0 0 4px ${barFill}` : 'none' }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+            {(() => {
+              const fluxCount = state.crystalBank.flux ?? 0;
+              return (
+                <div className="flex items-center gap-1.5 opacity-80">
+                  <MiniGem color="flux" size={14} />
+                  <span className="text-[10px] font-mono font-bold text-amber-300/80">{fluxCount}</span>
+                  <span className="text-[9px] text-muted-foreground">Singularity</span>
+                </div>
+              );
+            })()}
+          </div>
         </div>
         <div className="px-3 pb-3 grid grid-cols-5 gap-1">
           {CRYSTALS.filter(c => c !== 'flux').map((c) => {
