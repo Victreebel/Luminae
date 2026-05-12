@@ -31,7 +31,7 @@ import { getAvatarForPlayer } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { TutorialOverlay } from '@/components/TutorialOverlay';
 const gemIcon = "/icon_gem.svg";
@@ -4892,7 +4892,14 @@ export default function GameBoard() {
               initial={{ scale: 0.75, y: 40, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}
-              className="w-full max-w-sm text-center space-y-5 p-8 rounded-3xl border border-primary/40 bg-card/95 shadow-[0_0_100px_rgba(99,102,241,0.25)]"
+              className="w-full max-w-sm text-center space-y-5 p-8 rounded-3xl border bg-card/95"
+              style={(() => {
+                const lumId = state.winTriggerLuminaryId;
+                if (!lumId) return { borderColor: 'hsl(var(--primary) / 0.4)', boxShadow: '0 0 100px rgba(99,102,241,0.25)' };
+                const lum = state.luminaries?.find(l => l.id === lumId);
+                const accentColor = lum?.summonColor ?? getLuminaryVisuals(lumId).primaryColor;
+                return { borderColor: accentColor + '66', boxShadow: `0 0 100px ${accentColor}55` };
+              })()}
             >
               {state.winnerId === session.playerId ? (
                 <>
@@ -4929,6 +4936,42 @@ export default function GameBoard() {
                   </div>
                 </>
               )}
+
+              {/* Sealing Luminary badge — shown when a Luminary claim triggered the win */}
+              {state.winTriggerLuminaryId && (() => {
+                const lumId = state.winTriggerLuminaryId!;
+                const lum = state.luminaries?.find(l => l.id === lumId);
+                const vis = getLuminaryVisuals(lumId);
+                const accentColor = lum?.summonColor ?? vis.primaryColor;
+                const glowColor = `${accentColor}88`;
+                return (
+                  <motion.div
+                    key="sealing-luminary"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.65 }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <div
+                      className="relative rounded-xl overflow-hidden border-2 shrink-0"
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderColor: accentColor,
+                        boxShadow: `0 0 22px ${glowColor}`,
+                      }}
+                    >
+                      <LuminaryPanelArt luminaryId={lumId} size={80} claimed={false} />
+                    </div>
+                    <p
+                      className="text-xs font-semibold uppercase tracking-widest"
+                      style={{ color: accentColor, textShadow: `0 0 10px ${glowColor}` }}
+                    >
+                      Sealed by {lum?.name ?? lumId}
+                    </p>
+                  </motion.div>
+                );
+              })()}
 
               {/* Final scores — staggered in */}
               <div className="flex flex-col gap-2 pt-1">
