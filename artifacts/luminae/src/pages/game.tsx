@@ -2965,7 +2965,17 @@ export default function GameBoard() {
       </div>
 
       {/* Crystal Bank */}
-      <div className="rounded-2xl bg-secondary/40 border border-border/50 backdrop-blur overflow-hidden">
+      <div
+        className="rounded-2xl bg-secondary/40 backdrop-blur overflow-hidden transition-all duration-300"
+        style={{
+          border: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
+            ? '1.5px solid #6ee7b7'
+            : '1px solid hsl(var(--border) / 0.5)',
+          boxShadow: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
+            ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
+            : 'none',
+        }}
+      >
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinities · Harness cosmic essence</p>
           <div className="flex items-center gap-3">
