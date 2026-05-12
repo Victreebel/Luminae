@@ -909,6 +909,7 @@ export default function GameBoard() {
   const [btnAnimTarget, setBtnAnimTarget] = useState<string | null>(null);
   const [btnAnimType, setBtnAnimType] = useState<'select' | 'confirm'>('select');
   const [harnessPulseKey, setHarnessPulseKey] = useState(0);
+  const [coreActionSubmitted, setCoreActionSubmitted] = useState(false);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{
@@ -1352,6 +1353,10 @@ export default function GameBoard() {
   }, [error, isTutorial, setLocation]);
 
   useEffect(() => {
+    setCoreActionSubmitted(false);
+  }, [state?.currentPlayerIndex]);
+
+  useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
       initialTurnFiredRef.current = true;
       setAnimEndTime(1200);
@@ -1525,6 +1530,7 @@ export default function GameBoard() {
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
   const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
+  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
@@ -2352,6 +2358,10 @@ export default function GameBoard() {
       const permitted = tutorialPermitted[tutorialStep] ?? [];
       if (!permitted.includes(payload.type)) return;
     }
+    const CORE_ACTION_TYPES = ['take_three_crystals', 'take_two_crystals', 'purchase_card', 'purchase_reserved', 'reserve_card'];
+    if (CORE_ACTION_TYPES.includes(payload.type)) {
+      setCoreActionSubmitted(true);
+    }
     try {
       const normalized = { ...payload };
       delete normalized._tier;
@@ -2382,6 +2392,9 @@ export default function GameBoard() {
         setTimeout(() => setPurchaseBurst(null), 1400);
       }
     } catch (err: any) {
+      if (CORE_ACTION_TYPES.includes(payload.type)) {
+        setCoreActionSubmitted(false);
+      }
       toast({ variant: 'destructive', title: 'Action failed', description: err.message });
     }
   };
@@ -2413,7 +2426,7 @@ export default function GameBoard() {
   })();
 
   const confirmCrystals = () => {
-    if (!queueLegality.ok || !me) return;
+    if (!isMyTurnForCoreAction || !queueLegality.ok || !me) return;
     const total = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
     const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
     if (handTotal + total > 10) {
@@ -2444,7 +2457,7 @@ export default function GameBoard() {
   };
 
   const confirmReturnPhase = () => {
-    if (!returnPhase || !me) return;
+    if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
     playGemBurst(returnPhase.pendingTake, me.playerName, session.avatarId ?? null);
@@ -2489,15 +2502,15 @@ export default function GameBoard() {
   const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
 
   const handleBuy = (card: ArtifactCard, fromReserve = false) => {
-    if (!isMyTurn) return;
+    if (!isMyTurnForCoreAction) return;
     executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id, cardRef: card });
   };
   const handleReserveCard = (card: ArtifactCard) => {
-    if (!isMyTurn) return;
+    if (!isMyTurnForCoreAction) return;
     executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
   };
   const handleReserveDeck = (tier: number) => {
-    if (!isMyTurn) return;
+    if (!isMyTurnForCoreAction) return;
     executeAction({ type: 'reserve_card', tier, _tier: tier });
   };
   const openDeckSheet = (tier: 1 | 2 | 3) => {
@@ -2514,8 +2527,8 @@ export default function GameBoard() {
     setPendingSheetAction(null);
     setSelectedCard({
       card, fromReserve,
-      canBuy: isMyTurn && canAffordCard(card, me),
-      canReserve: isMyTurn && !fromReserve && canReserveMore(me),
+      canBuy: isMyTurnForCoreAction && canAffordCard(card, me),
+      canReserve: isMyTurnForCoreAction && !fromReserve && canReserveMore(me),
       effectiveCosts: computeCosts(card, costMode),
     });
   };
@@ -3101,7 +3114,7 @@ export default function GameBoard() {
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
-                    {isMyTurn ? (
+                    {isMyTurnForCoreAction ? (
                       (() => {
                         const selKeys = Object.keys(selectedCrystals) as GemKey[];
                         const hasColors = selKeys.length > 0 && queueLegality.ok;
@@ -4269,7 +4282,7 @@ export default function GameBoard() {
               <div className="flex flex-col gap-2.5">
 
                 {/* ── Immediate actions (your active turn only) ── */}
-                {isMyTurn && (
+                {isMyTurnForCoreAction && (
                   <>
                     <motion.div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
@@ -4372,7 +4385,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
-                {canPlan && !isMyTurn && (
+                {canPlan && !isMyTurnForCoreAction && (
                   <>
                     {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
@@ -4478,7 +4491,7 @@ export default function GameBoard() {
             : deckTier === 2
             ? 'Forged instruments — crucibles and sigils of focused cosmic mastery'
             : 'Fragments & sparks — raw nascent shards that seed any engine';
-          const canReserve = isMyTurn && !!me && canReserveMore(me);
+          const canReserve = isMyTurnForCoreAction && !!me && canReserveMore(me);
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -4552,7 +4565,7 @@ export default function GameBoard() {
                 <div className="flex flex-col gap-2.5">
 
                   {/* ── Reserve now (active turn) ── */}
-                  {isMyTurn && (
+                  {isMyTurnForCoreAction && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
@@ -4605,7 +4618,7 @@ export default function GameBoard() {
                   )}
 
                   {/* ── Plan: reserve from deck (off-turn) ── */}
-                  {canPlan && !isMyTurn && me && canReserveMore(me) && (
+                  {canPlan && !isMyTurnForCoreAction && me && canReserveMore(me) && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
@@ -5240,24 +5253,24 @@ export default function GameBoard() {
                                 <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
                               </div>
                             )}
-                            {(isMyTurn || (canPlan && canBuy)) && (
+                            {(isMyTurnForCoreAction || (canPlan && canBuy)) && (
                               <Button
                                 size="sm"
                                 className={`mt-1 w-full font-bold border-0
-                                  ${isMyTurn
+                                  ${isMyTurnForCoreAction
                                     ? canBuy
                                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                                       : 'bg-secondary text-muted-foreground'
                                     : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200 opacity-80'
                                   }`}
-                                disabled={isMyTurn && !canBuy}
+                                disabled={isMyTurnForCoreAction && !canBuy}
                                 onClick={() => {
                                   setShowReservedOverlay(false);
                                   openCardSheet(c, true);
                                 }}
                               >
                                 <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                                {isMyTurn ? (canBuy ? 'Forge…' : 'Cannot afford') : <><span className="text-[7px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/50 rounded px-[4px] py-[1px] leading-none mr-1">PLAN</span>Forge…</>}
+                                {isMyTurnForCoreAction ? (canBuy ? 'Forge…' : 'Cannot afford') : <><span className="text-[7px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/50 rounded px-[4px] py-[1px] leading-none mr-1">PLAN</span>Forge…</>}
                               </Button>
                             )}
                           </div>
