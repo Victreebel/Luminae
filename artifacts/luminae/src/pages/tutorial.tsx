@@ -5,7 +5,7 @@ import {
   useStartGame,
   useAddAiPlayer,
 } from "@workspace/api-client-react";
-import { saveSession, getSession } from "@/lib/session";
+import { saveSession, getSession, clearSession } from "@/lib/session";
 import { getSavedAvatarId } from "@/lib/avatars";
 import { getAccountToken } from "@/lib/accountSession";
 import { useAccount } from "@/contexts/AccountContext";
@@ -25,16 +25,9 @@ export default function Tutorial() {
   const startGame = useStartGame();
 
   useEffect(() => {
-    // If we already have a session for a tutorial game in flight, just navigate there
-    const existing = getSession();
-    if (existing?.roomId && existing.isTutorial) {
-      setLocation(`/game/${existing.roomId}?tutorial=1`);
-      return;
-    }
-
     let cancelled = false;
 
-    const run = async () => {
+    const createFreshRoom = async () => {
       const avatarId = getSavedAvatarId();
       const accountToken = getAccountToken();
       const hostName = account?.username ?? "Traveler";
@@ -94,7 +87,6 @@ export default function Tutorial() {
         return;
       }
 
-      // Ensure hints are on for tutorial players (don't override if user already set a preference)
       if (!localStorage.getItem("luminae_hints_enabled")) {
         localStorage.setItem("luminae_hints_enabled", "1");
       }
@@ -102,6 +94,31 @@ export default function Tutorial() {
       if (!cancelled) {
         setLocation(`/game/${room.id}?tutorial=1`);
       }
+    };
+
+    const run = async () => {
+      // If we already have a session for a tutorial game, verify the room is
+      // still alive before redirecting. If it has expired, clear it and create
+      // a fresh one transparently.
+      const existing = getSession();
+      if (existing?.roomId && existing.isTutorial) {
+        try {
+          const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+          const res = await fetch(
+            `${base}/api/rooms/${existing.roomId}/state?sessionToken=${encodeURIComponent(existing.sessionToken)}`
+          );
+          if (res.ok) {
+            if (!cancelled) setLocation(`/game/${existing.roomId}?tutorial=1`);
+            return;
+          }
+        } catch {
+          // Network error — fall through and create a fresh room
+        }
+        // Room is gone or session is invalid — discard and start fresh
+        clearSession();
+      }
+
+      await createFreshRoom();
     };
 
     run();

@@ -15,7 +15,7 @@ import type {
   LuminaryActiveState,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getSession } from '@/lib/session';
+import { getSession, clearSession } from '@/lib/session';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
@@ -1136,6 +1136,20 @@ export default function GameBoard() {
     { sessionToken: session?.sessionToken || '' },
     { query: { enabled: !!roomId && !!session, queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }) } }
   );
+
+  // When a tutorial game fails to load due to a stale/missing room (401, 403,
+  // or 404), silently clear the session and restart the tutorial instead of
+  // leaving the player on a dead error screen. Transient network errors are
+  // intentionally excluded so a brief outage does not force a full re-enroll.
+  useEffect(() => {
+    if (error && isTutorial) {
+      const status = (error as { status?: number }).status;
+      if (status === 401 || status === 403 || status === 404) {
+        clearSession();
+        setLocation('/tutorial');
+      }
+    }
+  }, [error, isTutorial, setLocation]);
 
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
