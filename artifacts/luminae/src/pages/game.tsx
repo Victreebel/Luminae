@@ -35,7 +35,7 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { TutorialOverlay } from '@/components/TutorialOverlay';
+import { TutorialOverlay, TUTORIAL_STEP_COUNT } from '@/components/TutorialOverlay';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
@@ -2691,7 +2691,12 @@ export default function GameBoard() {
 
   const BoardTab = () => {
     return (
-    <div className="flex flex-col gap-5 p-3 pb-6">
+    <div
+      className="flex flex-col gap-5 p-3 pb-6"
+      style={isTutorial && tutorialStep >= 0 && tutorialStep < TUTORIAL_STEP_COUNT
+        ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' }
+        : undefined}
+    >
 
       {/* ── Planned action announcement box ── (fixed overlay — does not affect document flow) */}
       <AnimatePresence>
@@ -4193,7 +4198,13 @@ export default function GameBoard() {
                 </Button>
               </div>
               {/* Scrollable body: enables dismiss-from-content when at scrollTop=0 */}
-              <div {...cardSheetScrollableProps} className="overflow-y-auto max-h-[70vh]">
+              <div
+                {...cardSheetScrollableProps}
+                className="overflow-y-auto max-h-[70vh]"
+                style={isTutorial && (tutorialStep === 2 || tutorialStep === 3)
+                  ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' }
+                  : undefined}
+              >
               {/* Sheet header: Esc hint (desktop convenience text, less critical on mobile) */}
               <div className="flex items-center justify-end pb-3">
                 <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>

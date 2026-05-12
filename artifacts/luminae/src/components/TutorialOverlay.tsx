@@ -68,6 +68,8 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   },
 ];
 
+export const TUTORIAL_STEP_COUNT = TUTORIAL_STEPS.length;
+
 interface Props {
   state: GameState | null | undefined;
   sessionPlayerId: string;
@@ -85,8 +87,37 @@ export function TutorialOverlay({
   const [showCompletion, setShowCompletion] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const prevLogLenRef = useRef(0);
+  const innerPanelRef = useRef<HTMLDivElement | null>(null);
 
   const step = TUTORIAL_STEPS[tutorialStep] ?? null;
+
+  const panelVisible = tutorialStep >= 0 && tutorialStep < TUTORIAL_STEPS.length && !!step && !showCompletion;
+
+  // Keep --tutorial-panel-height CSS variable in sync with the rendered panel height.
+  // This lets layout-aware siblings (card sheet, board scroll area) add bottom clearance
+  // so the tutorial panel never obscures actionable buttons.
+  useEffect(() => {
+    const el = innerPanelRef.current;
+    if (!el || !panelVisible) {
+      document.documentElement.style.removeProperty('--tutorial-panel-height');
+      return;
+    }
+    const update = () => {
+      const cardHeight = el.offsetHeight;
+      // mb-3 (12 px) bottom margin + safe-area-inset-bottom
+      document.documentElement.style.setProperty(
+        '--tutorial-panel-height',
+        `calc(${cardHeight + 12}px + env(safe-area-inset-bottom, 0px))`,
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      document.documentElement.style.removeProperty('--tutorial-panel-height');
+    };
+  }, [panelVisible]);
 
   // Detect step completion by watching action log
   useEffect(() => {
@@ -261,7 +292,7 @@ export function TutorialOverlay({
             className="fixed left-0 right-0 z-[200]"
             style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
           >
-            <div className="mx-3 mb-3 rounded-2xl border border-white/10 bg-slate-950/96 shadow-2xl shadow-black/60 overflow-hidden backdrop-blur-md">
+            <div ref={innerPanelRef} className="mx-3 mb-3 rounded-2xl border border-white/10 bg-slate-950/96 shadow-2xl shadow-black/60 overflow-hidden backdrop-blur-md">
               {/* Progress bar */}
               <div className="h-0.5 bg-white/5">
                 <motion.div
