@@ -905,6 +905,8 @@ export default function GameBoard() {
   const cardSheetContainerRef = useRef<HTMLElement | null>(null);
   const reservedOverlayContainerRef = useRef<HTMLElement | null>(null);
   const deckSheetContainerRef = useRef<HTMLElement | null>(null);
+  const rulesSheetContainerRef = useRef<HTMLElement | null>(null);
+  const forgedOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
   const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
@@ -1163,6 +1165,20 @@ export default function GameBoard() {
     deckSheetContainerRef,
     selectedDeckTier !== null,
     () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); },
+  );
+
+  // Focus-trap: rules sheet
+  useFocusTrap(
+    rulesSheetContainerRef,
+    showRules,
+    () => setShowRules(false),
+  );
+
+  // Focus-trap: forged cards overlay
+  useFocusTrap(
+    forgedOverlayContainerRef,
+    showForgedOverlay,
+    () => { setShowForgedOverlay(false); setForgedFilter(null); },
   );
 
   const TURN_ANNOUNCE_DURATION = 1800;
@@ -4950,6 +4966,7 @@ export default function GameBoard() {
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
+              ref={(el) => { rulesSheetContainerRef.current = el; }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -5142,6 +5159,7 @@ export default function GameBoard() {
           >
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
+              ref={(el) => { forgedOverlayContainerRef.current = el; }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
