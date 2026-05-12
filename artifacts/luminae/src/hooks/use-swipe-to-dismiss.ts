@@ -1,7 +1,7 @@
 import { useDragControls, animate, useMotionValue, useTransform } from 'framer-motion';
 import type { AnimationPlaybackControlsWithThen, PanInfo, Transition } from 'framer-motion';
 import type React from 'react';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 // ─── Centralized dismiss constants ────────────────────────────────────────────
 /** Fraction of panel height the drag must exceed before a slow downward drag dismisses. */
@@ -93,35 +93,46 @@ export interface SwipeToDismissOptions {
   isOpen?: boolean;
 }
 
+/** Props returned by {@link useSwipeToDismiss.makeScrollableAreaProps} for one scrollable region. */
+export interface ScrollableAreaProps {
+  ref: React.RefCallback<HTMLDivElement>;
+  onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
+  style: React.CSSProperties;
+}
+
 /**
  * Returns framer-motion drag props for a bottom-sheet panel, pointer-down
- * props for the drag handle bar, optional props for any scrollable content
- * area inside the sheet, and live motion values for visual drag feedback.
+ * props for the drag handle bar, props for one or more scrollable content
+ * areas inside the sheet, and live motion values for visual drag feedback.
  *
- * Usage:
+ * Usage (single scrollable area — same as before):
  *   const { dragProps, handleBarProps, scrollableAreaProps, backdropOpacity, sheetScale } =
  *     useSwipeToDismiss(panelRef, onClose);
  *
- *   // Outer wrapper (backdrop container):
- *   <motion.div ...>
- *     <motion.div style={{ opacity: backdropOpacity }} className="absolute inset-0 bg-black/60 ..." />
- *     <motion.div {...dragProps} style={{ scale: sheetScale }} ref={panelRef} …>
- *       <div {...handleBarProps} className="flex justify-center pt-3 pb-1">
- *         <div className="w-10 h-1 rounded-full bg-border" />
- *       </div>
- *       <div {...scrollableAreaProps} className="overflow-y-auto …">
- *         …scrollable content…
- *       </div>
- *     </motion.div>
- *   </motion.div>
+ *   <div {...scrollableAreaProps} className="overflow-y-auto …">…</div>
+ *
+ * Usage (multiple scrollable areas):
+ *   const { dragProps, handleBarProps, makeScrollableAreaProps, backdropOpacity, sheetScale } =
+ *     useSwipeToDismiss(panelRef, onClose);
+ *
+ *   // Call once per scrollable region at the top level of the component (no hooks rules issues —
+ *   // makeScrollableAreaProps is a plain function, not a hook).
+ *   const listScrollProps   = makeScrollableAreaProps();
+ *   const headerScrollProps = makeScrollableAreaProps();
+ *
+ *   <div {...headerScrollProps} className="overflow-y-auto sticky-header-area">…</div>
+ *   <div {...listScrollProps}   className="overflow-y-auto flex-1">…</div>
+ *
+ * All scroll positions registered through either `scrollableAreaProps` or
+ * `makeScrollableAreaProps()` are preserved across peek ↔ open transitions.
  *
  * Drag start sources:
  *  1. Handle bar — always starts a drag immediately (existing behaviour).
- *  2. Scrollable content area (via scrollableAreaProps) — vertical drag starts
- *     only when the content is scrolled to the very top (scrollTop === 0) AND
- *     the user's first meaningful movement is downward. Horizontal drags on
- *     the scroll area are intercepted at any scroll position. While neither
- *     condition is met the gesture is left entirely to the browser.
+ *  2. Any registered scrollable area — vertical drag starts only when the
+ *     content is scrolled to the very top (scrollTop === 0) AND the user's
+ *     first meaningful movement is downward. Horizontal drags are intercepted
+ *     at any scroll position. While neither condition is met the gesture is
+ *     left entirely to the browser.
  *
  * Dismiss triggers (vertical):
  *  - Downward offset > DISMISS_THRESHOLD × panelHeight, OR
@@ -174,24 +185,33 @@ export function useSwipeToDismiss(
   // Using a ref avoids stale-closure issues inside drag event handlers.
   const sheetState = useRef<'open' | 'peek'>('open');
 
-  // Ref attached to the scrollable content area (populated via scrollableAreaProps.ref).
-  // Used to save and restore scrollTop across peek ↔ open transitions so the
-  // content area never visibly jumps back to the top when snapping back to open.
-  const scrollableRef = useRef<HTMLElement | null>(null);
+  /**
+   * All scrollable elements registered with this hook instance.
+   * Elements are added/removed via the callback refs returned by
+   * makeScrollableAreaProps (and by scrollableAreaProps, which is backed by the
+   * same factory). Scroll positions of every element in this set are saved and
+   * restored on peek ↔ open transitions so no visible jump occurs regardless of
+   * which area the user had previously scrolled.
+   */
+  const scrollableElements = useRef<Set<HTMLElement>>(new Set());
 
   /**
-   * Runs a peek→open animation while preserving the scrollable area's scroll
-   * position. The current scrollTop is captured synchronously, the spring
-   * animation is awaited, and then scrollTop is written back. Without this,
-   * some browsers reset the scroll position of a partially-offscreen element
-   * when it re-enters the fully-visible viewport during the snap.
+   * Runs a peek→open animation while preserving the scroll position of every
+   * registered scrollable area. The current scrollTop of each element is
+   * captured synchronously, the spring animation is awaited, and then each
+   * scrollTop is written back. Without this, some browsers reset the scroll
+   * position of partially-offscreen elements when they re-enter the fully-
+   * visible viewport during the snap.
    */
   const animateToOpenPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
-    const savedScroll = scrollableRef.current?.scrollTop ?? 0;
+    const saved = new Map<HTMLElement, number>();
+    scrollableElements.current.forEach(el => {
+      if (el.scrollTop > 0) saved.set(el, el.scrollTop);
+    });
     void panelAnimation.then(() => {
-      if (scrollableRef.current && savedScroll > 0) {
-        scrollableRef.current.scrollTop = savedScroll;
-      }
+      saved.forEach((scrollTop, el) => {
+        el.scrollTop = scrollTop;
+      });
     });
   };
 
@@ -301,8 +321,9 @@ export function useSwipeToDismiss(
         onDismiss();
       } else if (info.offset.y < -PEEK_OPEN_OFFSET) {
         // Upward drag from peek → snap back to fully open.
-        // Scroll position is saved and restored after the spring settles so
-        // content that was scrolled before peeking does not jump back to top.
+        // Scroll positions of all registered areas are saved and restored after
+        // the spring settles so content that was scrolled before peeking does
+        // not jump back to top.
         sheetState.current = 'open';
         animateToOpenPreservingScroll(animate(panel!, { y: 0, x: 0 }, spring));
         void animate(dragProgress, 0, spring);
@@ -345,25 +366,51 @@ export function useSwipeToDismiss(
   };
 
   /**
-   * Spread these props on any `overflow-y-auto` container inside the sheet.
+   * Creates props for one `overflow-y-auto` region inside the sheet.
    *
-   * Behaviour:
-   * - Primarily horizontal movements are intercepted at any scroll position
-   *   and handed off to the sheet drag controller (horizontal dismiss path).
-   * - While the scroll area is NOT at the top (scrollTop > 0) and the gesture
-   *   is not primarily horizontal, all pointer events fall through to the
-   *   browser for normal scrolling.
-   * - When the scroll area IS at the top, we watch the first pointer movement:
-   *     • Downward (positive dy, not primarily horizontal) → hand off to the
-   *       sheet drag controller.
-   *     • Upward (negative dy) → let the browser scroll the content.
-   * - `overscrollBehavior: 'contain'` prevents momentum from the scroll area
-   *   ever bleeding into the parent sheet when a fast upward fling reaches the
-   *   top of the content.
+   * Each call registers an independent scrollable element whose scroll position
+   * is preserved across peek ↔ open transitions alongside all other registered
+   * areas. Call once per scrollable region at the top level of your component
+   * (it is a plain factory function, not a hook):
+   *
+   *   const listProps   = makeScrollableAreaProps();
+   *   const headerProps = makeScrollableAreaProps();
+   *
+   * Then spread each result onto the corresponding DOM element:
+   *
+   *   <div {...headerProps} className="overflow-y-auto …">…</div>
+   *   <div {...listProps}   className="overflow-y-auto …">…</div>
+   *
+   * Behaviour of each registered area:
+   * - Primarily horizontal movements are intercepted at any scroll position and
+   *   handed off to the sheet drag controller (horizontal dismiss path).
+   * - While the area is NOT at the top (scrollTop > 0) and the gesture is not
+   *   primarily horizontal, all pointer events fall through for normal scrolling.
+   * - When the area IS at the top, a downward swipe hands off to the sheet drag
+   *   controller; an upward swipe lets the browser scroll the content.
+   * - `overscrollBehavior: 'contain'` prevents momentum from bleeding into the
+   *   parent sheet on a fast upward fling that reaches the top of the content.
+   *
+   * Note: the callback ref returned in the props object registers the element
+   * into the shared `scrollableElements` set on mount and removes it on unmount.
+   * React will call the callback with `null` and then with the element if the
+   * props object is recreated between renders — the registration logic handles
+   * this correctly (remove-then-add leaves the set state unchanged).
    */
-  const scrollableAreaProps = {
-    ref: scrollableRef as React.RefObject<HTMLDivElement>,
-    onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
+  const makeScrollableAreaProps = useCallback((): ScrollableAreaProps => {
+    let registeredEl: HTMLElement | null = null;
+
+    const callbackRef: React.RefCallback<HTMLDivElement> = (el) => {
+      if (registeredEl) {
+        scrollableElements.current.delete(registeredEl);
+      }
+      registeredEl = el;
+      if (el) {
+        scrollableElements.current.add(el);
+      }
+    };
+
+    const onPointerDown = (e: React.PointerEvent<HTMLElement>) => {
       const el = e.currentTarget;
       const nativeEvent = e.nativeEvent as PointerEvent;
       const startY = e.clientY;
@@ -413,12 +460,35 @@ export function useSwipeToDismiss(
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp, { once: true });
       window.addEventListener('pointercancel', onUp, { once: true });
-    },
-    style: {
-      touchAction: 'pan-y',
-      overscrollBehavior: 'contain',
-    } as React.CSSProperties,
-  };
+    };
+
+    return {
+      ref: callbackRef,
+      onPointerDown,
+      style: {
+        touchAction: 'pan-y',
+        overscrollBehavior: 'contain',
+      } as React.CSSProperties,
+    };
+  // dragControls is stable for the lifetime of the hook; scrollableElements is a ref.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragControls]);
+
+  /**
+   * Props for the primary scrollable content area inside the sheet.
+   *
+   * This is a convenience alias — identical to calling `makeScrollableAreaProps()`
+   * once. For sheets with a single `overflow-y-auto` region, spread these props
+   * directly. For sheets with multiple scrollable regions, prefer calling
+   * `makeScrollableAreaProps()` once per region instead.
+   *
+   * Spread on any `overflow-y-auto` container inside the sheet:
+   *
+   *   <div {...scrollableAreaProps} className="overflow-y-auto …">
+   *     …scrollable content…
+   *   </div>
+   */
+  const scrollableAreaProps = makeScrollableAreaProps();
 
   /**
    * Programmatically snap the sheet to its peek position.
@@ -435,7 +505,8 @@ export function useSwipeToDismiss(
 
   /**
    * Programmatically snap the sheet back to the fully open position.
-   * Scroll position of the scrollable content area is preserved across the transition.
+   * Scroll positions of all registered scrollable areas are preserved across
+   * the transition.
    */
   const snapToOpen = () => {
     const panel = panelRef.current;
@@ -449,7 +520,20 @@ export function useSwipeToDismiss(
   return {
     dragProps,
     handleBarProps,
+    /**
+     * Props for the primary scrollable area. Convenience alias for
+     * `makeScrollableAreaProps()` — identical in behaviour. Provided for
+     * backward compatibility; prefer `makeScrollableAreaProps()` when the sheet
+     * contains more than one scrollable region.
+     */
     scrollableAreaProps,
+    /**
+     * Factory that creates props for an additional `overflow-y-auto` region.
+     * Call once per extra scrollable region at the top level of the component.
+     * All areas registered through this factory have their scroll positions
+     * preserved alongside the primary `scrollableAreaProps` area.
+     */
+    makeScrollableAreaProps,
     backdropOpacity,
     sheetScale,
     snapToPeek,
