@@ -3234,7 +3234,7 @@ export default function GameBoard() {
                             >
                               <AnimatePresence mode="wait" initial={false}>
                                 {sentFlashBtn === 'harness' ? (
-                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                                     <Check className="h-3 w-3" />Sent
                                   </motion.span>
                                 ) : (
@@ -3304,7 +3304,7 @@ export default function GameBoard() {
                             <span className="relative z-10 text-xs font-bold select-none flex items-center gap-1.5">
                               <AnimatePresence mode="wait" initial={false}>
                                 {sentFlashBtn === 'plan_harness' ? (
-                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                                     <Check className="h-3 w-3" />Sent
                                   </motion.span>
                                 ) : (
@@ -4429,7 +4429,7 @@ export default function GameBoard() {
                         <Gavel className="h-5 w-5 mr-2" />
                         <AnimatePresence mode="wait" initial={false}>
                           {sentFlashBtn === 'forge' ? (
-                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                               <Check className="h-4 w-4" />Sent!
                             </motion.span>
                           ) : (
@@ -4487,7 +4487,7 @@ export default function GameBoard() {
                           <Bookmark className="h-5 w-5 mr-2" />
                           <AnimatePresence mode="wait" initial={false}>
                             {sentFlashBtn === 'reserve' ? (
-                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                                 <Check className="h-4 w-4" />Sent!
                               </motion.span>
                             ) : (
@@ -4537,7 +4537,7 @@ export default function GameBoard() {
                           <Gavel className="h-5 w-5 shrink-0" />
                           <AnimatePresence mode="wait" initial={false}>
                             {sentFlashBtn === 'plan_forge' ? (
-                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                                 <Check className="h-4 w-4" />Sent!
                               </motion.span>
                             ) : (
@@ -4581,7 +4581,7 @@ export default function GameBoard() {
                           <Bookmark className="h-5 w-5 mr-2" />
                           <AnimatePresence mode="wait" initial={false}>
                             {sentFlashBtn === 'plan_reserve' ? (
-                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                                 <Check className="h-4 w-4" />Sent!
                               </motion.span>
                             ) : (
@@ -4765,7 +4765,7 @@ export default function GameBoard() {
                         <Bookmark className="h-5 w-5 mr-2" />
                         <AnimatePresence mode="wait" initial={false}>
                           {sentFlashBtn === 'deck_reserve' ? (
-                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
                               <Check className="h-4 w-4" />Sent!
                             </motion.span>
                           ) : (
