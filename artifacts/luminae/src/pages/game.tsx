@@ -3423,7 +3423,11 @@ export default function GameBoard() {
         <div className="flex items-center gap-2 min-w-0">
           {/* Turn pill */}
           <div className={`pl-1 pr-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
-            <PlayerAvatar avatarId={session.avatarId} name={session.playerName} size={22} />
+            <PlayerAvatar
+              avatarId={isMyTurn ? session.avatarId : (state.players[state.currentPlayerIndex]?.avatarId ?? null)}
+              name={isMyTurn ? session.playerName : currentPlayerName}
+              size={22}
+            />
             {!isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
             <span className="truncate max-w-[80px]">{isMyTurn ? 'Your turn' : currentPlayerName}</span>
           </div>
