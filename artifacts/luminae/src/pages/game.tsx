@@ -35,7 +35,7 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { TutorialOverlay, TUTORIAL_STEP_COUNT } from '@/components/TutorialOverlay';
+import { LumyTutorial, LUMY_BEAT_COUNT, LUMY_BEAT_GATES } from '@/components/LumyTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
@@ -2370,16 +2370,9 @@ export default function GameBoard() {
     // player taps "Got it" and the overlay dismisses (tutorialStep goes to -1).
     // resolve_summon must always reach the server to clear the summon gate,
     // even during tutorial steps where all other action types are gated.
-    if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep <= 4) {
-      const tutorialPermitted: Record<number, string[]> = {
-        0: ['take_three_crystals'],
-        1: ['take_two_crystals', 'take_three_crystals'],
-        2: ['reserve_card'],
-        3: ['purchase_card', 'purchase_reserved'],
-        4: [], // read-only step — no game actions allowed until "Got it"
-      };
-      const permitted = tutorialPermitted[tutorialStep] ?? [];
-      if (!permitted.includes(payload.type)) return;
+    if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep < LUMY_BEAT_COUNT) {
+      const permitted = LUMY_BEAT_GATES[tutorialStep] ?? [];
+      if (!permitted.includes(payload.type as string)) return;
     }
     const CORE_ACTION_TYPES = ['take_three_crystals', 'take_two_crystals', 'purchase_card', 'purchase_reserved', 'reserve_card'];
     if (CORE_ACTION_TYPES.includes(payload.type)) {
@@ -2723,8 +2716,8 @@ export default function GameBoard() {
     return (
     <div
       className="flex flex-col gap-5 p-3 pb-6"
-      style={isTutorial && tutorialStep >= 0 && tutorialStep < TUTORIAL_STEP_COUNT
-        ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' }
+      style={isTutorial && tutorialStep >= 0 && tutorialStep < LUMY_BEAT_COUNT
+        ? { paddingBottom: 'var(--tutorial-panel-height, 0px)' }
         : undefined}
     >
 
@@ -2937,7 +2930,7 @@ export default function GameBoard() {
                   );
                 }
 
-                const showTutorialGlow = isTutorial && (tutorialStep === 2 || tutorialStep === 3) && !selectedCard;
+                const showTutorialGlow = isTutorial && (tutorialStep === 5 || tutorialStep === 7) && !selectedCard;
                 return (
                   <div key={c.id} data-card-id={c.id} className="relative shrink-0">
                     <ArtifactCardView
@@ -4271,8 +4264,8 @@ export default function GameBoard() {
               <div
                 {...cardSheetScrollableProps}
                 className="overflow-y-auto max-h-[70vh]"
-                style={isTutorial && (tutorialStep === 2 || tutorialStep === 3)
-                  ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' }
+                style={isTutorial && (tutorialStep === 5 || tutorialStep === 7)
+                  ? { paddingBottom: 'var(--tutorial-panel-height, 0px)' }
                   : undefined}
               >
               {/* Sheet header: Esc hint (desktop convenience text, less critical on mobile) */}
@@ -5965,13 +5958,14 @@ export default function GameBoard() {
         />
       ))}
 
-      {/* Tutorial overlay — rendered when ?tutorial=1 is in the URL */}
+      {/* Lumy tutorial — rendered when ?tutorial=1 is in the URL */}
       {isTutorial && (
-        <TutorialOverlay
+        <LumyTutorial
           state={state}
           sessionPlayerId={session?.playerId ?? ''}
           tutorialStep={tutorialStep}
           setTutorialStep={setTutorialStep}
+          executeAction={executeAction}
         />
       )}
 

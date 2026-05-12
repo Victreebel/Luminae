@@ -530,7 +530,8 @@ export type ActionType =
   | "toggle_luminary_affinity"
   | "resolve_summon"
   | "plan_action"
-  | "cancel_plan";
+  | "cancel_plan"
+  | "tutorial_fast_forward";
 
 export interface ActionPayload {
   type: ActionType;
@@ -853,12 +854,13 @@ export function applyAction(
   }
 
   // Non-turn-gated actions: toggle_luminary_affinity, resolve_summon,
-  // plan_action, cancel_plan may be sent by any player at any time.
+  // plan_action, cancel_plan, tutorial_fast_forward may be sent at any time.
   const isTurnGated =
     action.type !== "toggle_luminary_affinity" &&
     action.type !== "resolve_summon" &&
     action.type !== "plan_action" &&
-    action.type !== "cancel_plan";
+    action.type !== "cancel_plan" &&
+    action.type !== "tutorial_fast_forward";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx)
     return { success: false, error: "Not your turn" };
 
@@ -1179,6 +1181,69 @@ export function applyAction(
       // Stamp lastAction so the broadcast doesn't carry a stale market-action
       // type, which would confuse animation-queue gating on the client.
       state.lastAction = { type: "cancel_plan", playerId };
+      state.version++;
+      return { success: true };
+    }
+
+    case "tutorial_fast_forward": {
+      // Non-turn-gated tutorial action. Sets up a scripted endgame state where
+      // the player is one Verdance Artifact away from summoning lum_verdant and
+      // winning. Uses specific card IDs to guarantee a deterministic scenario.
+      const ENDGAME_PURCHASED = [
+        "t2e01", "t2e02", "t2e03", "t2e04", "t2e06", // 5 emerald bonuses — 8 lumens
+        "t2r01", "t2r02", "t2r03",                    // 3 ruby bonuses — 5 lumens
+      ];                                               // total: 13 lumens, 5 emerald bonuses
+      const ENDGAME_RESERVED = ["t1e07"]; // emerald, cost onyx=2 pearl=1
+      const allEndgameCards = [...ENDGAME_PURCHASED, ...ENDGAME_RESERVED];
+
+      // Remove endgame cards from market and deck pools
+      for (const arr of [
+        state.marketTier1, state.marketTier2, state.marketTier3,
+        state.deckTier1,   state.deckTier2,   state.deckTier3,
+      ]) {
+        for (const id of allEndgameCards) {
+          const idx = arr.indexOf(id);
+          if (idx >= 0) arr.splice(idx, 1);
+        }
+      }
+
+      // Refill market rows to 4 face-up cards from remaining decks
+      while (state.marketTier1.length < 4 && state.deckTier1.length > 0) {
+        state.marketTier1.push(state.deckTier1.shift()!);
+      }
+      while (state.marketTier2.length < 4 && state.deckTier2.length > 0) {
+        state.marketTier2.push(state.deckTier2.shift()!);
+      }
+      while (state.marketTier3.length < 4 && state.deckTier3.length > 0) {
+        state.marketTier3.push(state.deckTier3.shift()!);
+      }
+
+      // Ensure lum_verdant is an active Luminary for this game
+      if (!state.activeLuminaries.includes("lum_verdant")) {
+        state.activeLuminaries.push("lum_verdant");
+      }
+
+      // Set up the player's endgame state
+      player.purchasedCardIds = [...ENDGAME_PURCHASED];
+      player.reservedCardIds  = [...ENDGAME_RESERVED];
+      player.crystals  = { ruby: 0, sapphire: 0, emerald: 0, onyx: 3, pearl: 2, flux: 0 };
+      player.bonuses   = { ruby: 3, sapphire: 0, emerald: 5, onyx: 0, pearl: 0, flux: 0 };
+      player.lumens    = 13;
+      player.luminaries = [];
+      player.plannedAction = null;
+      player.plannedActionCancelReason = null;
+
+      // Ensure it is the player's turn
+      state.currentPlayerIndex = playerIdx;
+
+      // Advance turnCount so living Luminary bonuses are not artificially blocked
+      if (state.turnCount < 20) state.turnCount = 20;
+      if (state.roundNumber < 5) state.roundNumber = 5;
+
+      // Clear any pending summon events
+      state.pendingSummonEvents = [];
+
+      state.lastAction = { type: "tutorial_fast_forward", playerId };
       state.version++;
       return { success: true };
     }

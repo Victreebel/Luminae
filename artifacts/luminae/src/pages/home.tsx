@@ -406,8 +406,8 @@ export default function Home() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {tutorialSeen
-                      ? "Walk through the basics again vs. an Easy AI"
-                      : "5-step guided intro vs. an Easy AI — takes about 10 min"}
+                      ? "Walk through the full arc again with Lumy as your guide"
+                      : "Guided walkthrough with Lumy — harvest, forge, summon, win"}
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
