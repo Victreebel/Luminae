@@ -3509,8 +3509,11 @@ export default function GameBoard() {
               <span className="text-xs font-semibold truncate">{me.playerName}</span>
               {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
             </div>
-            <div className="flex items-center gap-3 shrink-0 text-[11px] text-muted-foreground">
-              <span><span className="font-semibold text-foreground/80">{myTotalGems}</span> Affinity</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="flex items-baseline gap-1">
+                <span className="font-serif font-black text-lg text-foreground leading-none">{myTotalGems}</span>
+                <span className="text-[10px] text-muted-foreground">Affinity</span>
+              </span>
               <button
                 type="button"
                 onClick={() => setShowEminenceBreakdown(true)}
