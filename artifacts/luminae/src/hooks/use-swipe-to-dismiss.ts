@@ -3,7 +3,7 @@ import type { PanInfo, Transition } from 'framer-motion';
 import type React from 'react';
 
 // ─── Centralized dismiss constants ────────────────────────────────────────────
-/** Fraction of panel height the drag must exceed before a slow drag dismisses. */
+/** Fraction of panel height the drag must exceed before a slow downward drag dismisses. */
 const DISMISS_THRESHOLD = 0.3;
 
 /**
@@ -14,11 +14,30 @@ const DISMISS_THRESHOLD = 0.3;
 const VELOCITY_THRESHOLD = 250;
 
 /**
+ * Fraction of panel width a horizontal drag must exceed before a slow
+ * horizontal drag dismisses (independent of the vertical threshold).
+ */
+const HORIZONTAL_DISMISS_THRESHOLD = 0.4;
+
+/**
+ * Horizontal flick velocity (px/s) that dismisses the sheet regardless of
+ * how far it has been dragged sideways. Set higher than the vertical threshold
+ * because lateral flicks on a bottom sheet are a stronger intentional signal.
+ */
+const HORIZONTAL_VELOCITY_THRESHOLD = 400;
+
+/**
  * Elastic resistance factor for upward over-drag (past the panel's resting
  * position). Higher values feel more rubbery; lower values feel stiffer.
  * framer-motion multiplies the over-drag distance by this fraction.
  */
 const RUBBERBAND_ELASTIC = 0.15;
+
+/**
+ * Elastic resistance for leftward / rightward over-drag. Slightly softer than
+ * the vertical rubberband so horizontal flicks feel light and effortless.
+ */
+const HORIZONTAL_ELASTIC = 0.2;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -56,19 +75,26 @@ const SNAP_BACK_SPRING: Transition = {
  *
  * Drag start sources:
  *  1. Handle bar — always starts a drag immediately (existing behaviour).
- *  2. Scrollable content area (via scrollableAreaProps) — drag starts only
- *     when the content is scrolled to the very top (scrollTop === 0) AND the
- *     user's first meaningful movement is downward. While the content is not
- *     at the top the gesture is left entirely to the browser for normal scroll.
+ *  2. Scrollable content area (via scrollableAreaProps) — vertical drag starts
+ *     only when the content is scrolled to the very top (scrollTop === 0) AND
+ *     the user's first meaningful movement is downward. Horizontal drags on
+ *     the scroll area are intercepted at any scroll position. While neither
+ *     condition is met the gesture is left entirely to the browser.
  *
- * Dismiss triggers:
+ * Dismiss triggers (vertical):
  *  - Downward offset > DISMISS_THRESHOLD × panelHeight, OR
  *  - Downward velocity > VELOCITY_THRESHOLD px/s (quick flick detection).
+ *
+ * Dismiss triggers (horizontal):
+ *  - |Horizontal offset| > HORIZONTAL_DISMISS_THRESHOLD × panelWidth, OR
+ *  - |Horizontal velocity| > HORIZONTAL_VELOCITY_THRESHOLD px/s.
  *
  * Snap-back:
  *  - Sub-threshold releases spring back with SNAP_BACK_SPRING (bouncy).
  *  - Upward over-drag past the resting position (y < 0) is rubberbanded via
  *    framer-motion's dragElastic so the sheet feels physically anchored.
+ *  - Aborted horizontal drags spring back on the x-axis the same way and
+ *    do not interfere with the vertical snap-back.
  *
  * Live visual feedback (motion values, never trigger re-renders):
  *   - `backdropOpacity` — dims the backdrop as the user drags toward threshold (1 → 0.45)
@@ -106,39 +132,53 @@ export function useSwipeToDismiss(
 
   const handleDrag = (_: unknown, info: PanInfo) => {
     const panel = panelRef.current;
-    const panelHeight = panel ? panel.getBoundingClientRect().height : 600;
-    // Only drive feedback progress for downward drag (positive offset).
-    // Upward over-drag feedback is handled by the rubberband elastic itself.
-    const progress = Math.min(1, Math.max(0, info.offset.y / (panelHeight * threshold)));
-    dragProgress.set(progress);
+    const rect = panel ? panel.getBoundingClientRect() : { height: 600, width: 400 };
+
+    // Drive progress from whichever axis is closer to its dismiss threshold.
+    const verticalProgress = Math.min(1, Math.max(0, info.offset.y / (rect.height * threshold)));
+    const horizontalProgress = Math.min(
+      1,
+      Math.abs(info.offset.x) / (rect.width * HORIZONTAL_DISMISS_THRESHOLD),
+    );
+    dragProgress.set(Math.max(verticalProgress, horizontalProgress));
   };
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const panel = panelRef.current;
-    const panelHeight = panel ? panel.getBoundingClientRect().height : 600;
-    if (info.offset.y > panelHeight * threshold || info.velocity.y > VELOCITY_THRESHOLD) {
+    const rect = panel ? panel.getBoundingClientRect() : { height: 600, width: 400 };
+
+    const verticalDismiss =
+      info.offset.y > rect.height * threshold || info.velocity.y > VELOCITY_THRESHOLD;
+    const horizontalDismiss =
+      Math.abs(info.offset.x) > rect.width * HORIZONTAL_DISMISS_THRESHOLD ||
+      Math.abs(info.velocity.x) > HORIZONTAL_VELOCITY_THRESHOLD;
+
+    if (verticalDismiss || horizontalDismiss) {
       // Reset feedback immediately before dismiss so the next open starts clean.
-      // The sheet subtree unmounts via AnimatePresence but the hook instance
-      // stays alive for the lifetime of the parent, so an explicit reset is required.
       dragProgress.set(0);
       onDismiss();
     } else if (panel) {
-      // Sub-threshold: spring the panel back with a satisfying elastic bounce
-      void animate(panel, { y: 0 }, spring);
+      // Sub-threshold: spring the panel back on both axes.
+      void animate(panel, { y: 0, x: 0 }, spring);
       void animate(dragProgress, 0, spring);
     }
   };
 
   const dragProps = {
-    drag: 'y' as const,
+    // Allow both axes so horizontal flicks can also dismiss the sheet.
+    drag: true as const,
     dragControls,
     dragListener: false as const,
-    // top: 0 creates the constraint boundary that RUBBERBAND_ELASTIC acts against
-    // when the user drags upward past the panel's resting position.
-    // bottom: 0 keeps framer-motion from auto-constraining downward movement so
-    // the sheet follows the pointer 1:1 before we decide to dismiss or snap back.
-    dragConstraints: { top: 0, bottom: 0 },
-    dragElastic: { top: RUBBERBAND_ELASTIC, bottom: 0 },
+    // Constraints anchor the panel at rest; elastic factors control resistance.
+    // Vertical: rubberband upward, free downward (dismissed manually above).
+    // Horizontal: symmetric elastic resistance on both sides.
+    dragConstraints: { top: 0, bottom: 0, left: 0, right: 0 },
+    dragElastic: {
+      top: RUBBERBAND_ELASTIC,
+      bottom: 0,
+      left: HORIZONTAL_ELASTIC,
+      right: HORIZONTAL_ELASTIC,
+    },
     onDragStart: handleDragStart,
     onDrag: handleDrag,
     onDragEnd: handleDragEnd,
@@ -156,10 +196,14 @@ export function useSwipeToDismiss(
    * Spread these props on any `overflow-y-auto` container inside the sheet.
    *
    * Behaviour:
-   * - While the scroll area is NOT at the top (scrollTop > 0), all pointer
-   *   events fall through to the browser for normal scrolling.
+   * - Primarily horizontal movements are intercepted at any scroll position
+   *   and handed off to the sheet drag controller (horizontal dismiss path).
+   * - While the scroll area is NOT at the top (scrollTop > 0) and the gesture
+   *   is not primarily horizontal, all pointer events fall through to the
+   *   browser for normal scrolling.
    * - When the scroll area IS at the top, we watch the first pointer movement:
-   *     • Downward (positive dy) → hand off to the sheet drag controller.
+   *     • Downward (positive dy, not primarily horizontal) → hand off to the
+   *       sheet drag controller.
    *     • Upward (negative dy) → let the browser scroll the content.
    * - `overscrollBehavior: 'contain'` prevents momentum from the scroll area
    *   ever bleeding into the parent sheet when a fast upward fling reaches the
@@ -168,12 +212,9 @@ export function useSwipeToDismiss(
   const scrollableAreaProps = {
     onPointerDown: (e: React.PointerEvent<HTMLElement>) => {
       const el = e.currentTarget;
-
-      // Content is not at the top — let the browser handle scrolling normally.
-      if (el.scrollTop > 0) return;
-
       const nativeEvent = e.nativeEvent as PointerEvent;
       const startY = e.clientY;
+      const startX = e.clientX;
       let settled = false;
 
       const onMove = (moveEvent: PointerEvent) => {
@@ -181,14 +222,20 @@ export function useSwipeToDismiss(
         if (settled) return;
 
         const dy = moveEvent.clientY - startY;
+        const dx = moveEvent.clientX - startX;
 
         // Dead zone: ignore tiny movements that don't indicate clear intent.
-        if (Math.abs(dy) < 6) return;
+        if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
 
         settled = true;
         cleanup();
 
-        if (dy > 0) {
+        const isPrimarilyHorizontal = Math.abs(dx) > Math.abs(dy);
+
+        if (isPrimarilyHorizontal) {
+          // Horizontal flick — activate sheet drag regardless of scroll position.
+          dragControls.start(moveEvent as unknown as React.PointerEvent);
+        } else if (dy > 0 && el.scrollTop === 0) {
           // Downward swipe from the top — activate the sheet drag.
           // Pass the *current* moveEvent (not the original pointerdown) so
           // framer-motion anchors the drag origin to where the finger is right
@@ -196,7 +243,7 @@ export function useSwipeToDismiss(
           // pointer has already travelled ≥6 px (the dead zone) since touchdown.
           dragControls.start(moveEvent as unknown as React.PointerEvent);
         }
-        // Upward swipe — do nothing; browser scrolls normally.
+        // Upward swipe or downward-when-not-at-top — let the browser handle.
       };
 
       const cleanup = () => {
