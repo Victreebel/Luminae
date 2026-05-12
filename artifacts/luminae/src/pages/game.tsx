@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, Gavel, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -965,6 +965,9 @@ export default function GameBoard() {
   const [btnAnimTarget, setBtnAnimTarget] = useState<string | null>(null);
   const [btnAnimType, setBtnAnimType] = useState<'select' | 'confirm'>('select');
   const [harnessPulseKey, setHarnessPulseKey] = useState(0);
+  const [sentFlashBtn, setSentFlashBtn] = useState<string | null>(null);
+  const sentFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (sentFlashRef.current) clearTimeout(sentFlashRef.current); }, []);
   const [coreActionSubmitted, setCoreActionSubmitted] = useState(false);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
@@ -2461,9 +2464,11 @@ export default function GameBoard() {
     if (queueLegality.actionType === 'take3') {
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
+      flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+      flashSent('harness');
     }
   };
 
@@ -2652,6 +2657,12 @@ export default function GameBoard() {
     setBtnAnimKey(k => k + 1);
     setBtnAnimTarget(target);
     setBtnAnimType(type);
+  };
+
+  const flashSent = (id: string) => {
+    if (sentFlashRef.current) clearTimeout(sentFlashRef.current);
+    setSentFlashBtn(id);
+    sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 650);
   };
 
   // canPlan is available to any player whenever the game is active and there is
@@ -3211,7 +3222,9 @@ export default function GameBoard() {
                                 textShadow: hasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none',
                               }}
                             >
-                              Harness
+                              {sentFlashBtn === 'harness'
+                                ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-3 w-3" />Sent</span>
+                                : 'Harness'}
                             </span>
                           </motion.div>
                         );
@@ -3249,6 +3262,7 @@ export default function GameBoard() {
                               } else if (queueLegality.actionType === 'take2') {
                                 handlePlanAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
                               }
+                              flashSent('plan_harness');
                             }}
                           >
                             {/* Amber plan glow — swirls only when affinities are selected */}
@@ -3270,12 +3284,18 @@ export default function GameBoard() {
                             <div className="absolute inset-0 bg-gradient-to-b from-white/[0.10] to-transparent pointer-events-none" />
                             {/* Label — amber PLAN badge + action name */}
                             <span className="relative z-10 text-xs font-bold select-none flex items-center gap-1.5">
-                              <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">
-                                PLAN
-                              </span>
-                              <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>
-                                Harness
-                              </span>
+                              {sentFlashBtn === 'plan_harness' ? (
+                                <span className="flex items-center gap-1 text-emerald-300"><Check className="h-3 w-3" />Sent</span>
+                              ) : (
+                                <>
+                                  <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">
+                                    PLAN
+                                  </span>
+                                  <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>
+                                    Harness
+                                  </span>
+                                </>
+                              )}
                             </span>
                           </motion.div>
                         );
@@ -4366,7 +4386,8 @@ export default function GameBoard() {
                           if (pendingSheetAction === 'forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('forge', 'confirm');
                             handleBuy(selectedCard.card, selectedCard.fromReserve);
-                            setSelectedCard(null); setPendingSheetAction(null);
+                            flashSent('forge');
+                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('forge', 'select');
                             setPendingSheetAction('forge');
@@ -4374,7 +4395,9 @@ export default function GameBoard() {
                         }}
                       >
                         <Gavel className="h-5 w-5 mr-2" />
-                        {pendingSheetAction === 'forge' ? 'Confirm: Forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
+                        {sentFlashBtn === 'forge'
+                          ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
+                          : pendingSheetAction === 'forge' ? 'Confirm: Forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
                       </Button>
                     </motion.div>
                     {!selectedCard.fromReserve && (
@@ -4413,7 +4436,8 @@ export default function GameBoard() {
                             if (pendingSheetAction === 'reserve') {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('reserve', 'confirm');
                               handleReserveCard(selectedCard.card);
-                              setSelectedCard(null); setPendingSheetAction(null);
+                              flashSent('reserve');
+                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
                             } else {
                               gameAudio.playButtonSelect(); triggerBtnAnim('reserve', 'select');
                               setPendingSheetAction('reserve');
@@ -4421,7 +4445,9 @@ export default function GameBoard() {
                           }}
                         >
                           <Bookmark className="h-5 w-5 mr-2" />
-                          {pendingSheetAction === 'reserve' ? 'Confirm: Reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
+                          {sentFlashBtn === 'reserve'
+                            ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
+                            : pendingSheetAction === 'reserve' ? 'Confirm: Reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
                         </Button>
                       </motion.div>
                     )}
@@ -4451,7 +4477,8 @@ export default function GameBoard() {
                           if (pendingSheetAction === 'plan_forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
                             handlePlanAction({ type: selectedCard.fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: selectedCard.card.id });
-                            setSelectedCard(null); setPendingSheetAction(null);
+                            flashSent('plan_forge');
+                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('plan_forge', 'select');
                             setPendingSheetAction('plan_forge');
@@ -4460,9 +4487,11 @@ export default function GameBoard() {
                       >
                         <span className="flex items-center gap-2">
                           <Gavel className="h-5 w-5 shrink-0" />
-                          {pendingSheetAction === 'plan_forge'
-                            ? 'Confirm: Plan: Forge'
-                            : <><span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/60 rounded px-[5px] py-[1px] leading-none">PLAN</span> Forge this Artifact</>}
+                          {sentFlashBtn === 'plan_forge'
+                            ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
+                            : pendingSheetAction === 'plan_forge'
+                              ? 'Confirm: Plan: Forge'
+                              : <><span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/60 rounded px-[5px] py-[1px] leading-none">PLAN</span> Forge this Artifact</>}
                         </span>
                       </Button>
                     </motion.div>
@@ -4485,7 +4514,8 @@ export default function GameBoard() {
                             if (pendingSheetAction === 'plan_reserve') {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('plan_reserve', 'confirm');
                               handlePlanAction({ type: 'reserve_card', cardId: selectedCard.card.id, tier: selectedCard.card.tier });
-                              setSelectedCard(null); setPendingSheetAction(null);
+                              flashSent('plan_reserve');
+                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 500);
                             } else {
                               gameAudio.playButtonSelect(); triggerBtnAnim('plan_reserve', 'select');
                               setPendingSheetAction('plan_reserve');
@@ -4493,7 +4523,9 @@ export default function GameBoard() {
                           }}
                         >
                           <Bookmark className="h-5 w-5 mr-2" />
-                          {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
+                          {sentFlashBtn === 'plan_reserve'
+                            ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
+                            : pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
                         </Button>
                       </motion.div>
                     )}
@@ -4648,7 +4680,8 @@ export default function GameBoard() {
                           if (pendingDeckConfirm) {
                             gameAudio.playButtonConfirm();
                             handleReserveDeck(deckTier);
-                            closeDeckSheet();
+                            flashSent('deck_reserve');
+                            setTimeout(() => closeDeckSheet(), 500);
                           } else {
                             gameAudio.playButtonSelect();
                             setPendingDeckConfirm(true);
@@ -4656,7 +4689,9 @@ export default function GameBoard() {
                         }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {pendingDeckConfirm
+                        {sentFlashBtn === 'deck_reserve'
+                          ? <span className="flex items-center gap-1 text-emerald-300"><Check className="h-4 w-4" />Sent!</span>
+                          : pendingDeckConfirm
                           ? 'Confirm: Reserve Hidden Card'
                           : canReserve
                           ? 'Reserve Hidden Card'
