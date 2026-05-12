@@ -790,7 +790,7 @@ title = "null sovereign obsidian void entity"
 id = "CBEvY_O6dtnqI3DFsy6bI"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/entity.png"
 type = "image"
-title = "lum_pale entity — pale wing-frame + scale pans"
+title = "generated_image"
 
 [[generated]]
 id = "7_xVFO4qQSi5mZwyT6S4b"
@@ -844,7 +844,7 @@ title = "lum_null aura pale white blue glow"
 id = "Q7mv_mCyIMKki5qyevCmw"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/aura.png"
 type = "image"
-title = "lum_pale aura silver pearl glow"
+title = "generated_image"
 
 [[generated]]
 id = "weE3hzYEgxvkKMZ5sPXgr"
@@ -1373,6 +1373,24 @@ id = "XrBkhYLJ2pGXIfm1dY03w"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/entity_new.png"
 type = "image"
 title = "lum_pale entity — pale scales construct"
+
+[[generated]]
+id = "U2vG_v7lxbyotLZV29g1z"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/aura_v2.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vDxuZYGMkeuc378fOKQkv"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel_v2.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "hS3u13GM2A7V-Kh2l4EbT"
+uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel_v3.png"
+type = "image"
+title = "generated_image"
 
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
