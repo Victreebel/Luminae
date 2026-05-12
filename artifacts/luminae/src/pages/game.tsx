@@ -1413,7 +1413,7 @@ export default function GameBoard() {
               (newState.crystalBank.flux ?? 0) < (prev.crystalBank.flux ?? 0);
 
             cardActionBurstKeyRef.current += 1;
-            setAnimEndTime(4300);
+            setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
             setCardActionBurst({
               key: cardActionBurstKeyRef.current,
               card: exitCard,
@@ -1463,6 +1463,7 @@ export default function GameBoard() {
                 const deckR = deckEl?.getBoundingClientRect();
                 const slotR = slotEl?.getBoundingClientRect();
                 if (deckR && slotR) {
+                  setAnimEndTime(1700); // extend lock to cover the 1500ms deal animation
                   setDealingCard({
                     card: newCard,
                     tier,
@@ -1471,13 +1472,16 @@ export default function GameBoard() {
                   });
                   gameAudio.playCardDraw();
                 } else {
-                  // Fallback: flip in place if DOM elements not found
-                  setHiddenSlots(new Set());
+                  // Fallback: flip in place if DOM elements not found.
+                  // Keep the slot hidden until the flip completes — do NOT clear
+                  // hiddenSlots immediately or the new card pops in before the flip.
+                  setAnimEndTime(900);
                   setFlippingCards(new Set([newCard.id]));
                   gameAudio.playCardDraw();
                   const t2 = setTimeout(() => {
                     if (cardActionBurstKeyRef.current !== seq) return;
                     setFlippingCards(new Set());
+                    setHiddenSlots(new Set());
                   }, 800);
                   cardAnimTimersRef.current.push(t2);
                 }
