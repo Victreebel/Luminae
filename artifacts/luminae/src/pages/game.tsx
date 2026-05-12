@@ -1219,8 +1219,14 @@ export default function GameBoard() {
     useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false), { isOpen: showRules });
   const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, scrollableAreaProps: reservedSheetScrollableProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale, peekProgress: reservedSheetPeekProgress } =
     useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false), { isOpen: showReservedOverlay, peekHeight: 0.4 });
-  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, scrollableAreaProps: forgedSheetScrollableProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale, peekProgress: forgedSheetPeekProgress } =
+  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, makeScrollableAreaProps: forgedSheetMakeScrollableAreaProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale, peekProgress: forgedSheetPeekProgress } =
     useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); }, { isOpen: showForgedOverlay, peekHeight: 0.4 });
+  // Two separate scrollable areas in the forged sheet: the filter-pill header row
+  // (which can grow tall when many affinity types are forged) and the card grid body.
+  // Each area gets its own makeScrollableAreaProps() instance so both scroll positions
+  // are independently preserved across peek↔open transitions.
+  const forgedPillsScrollableProps = forgedSheetMakeScrollableAreaProps();
+  const forgedBodyScrollableProps = forgedSheetMakeScrollableAreaProps();
 
   const TURN_ANNOUNCE_DURATION = 1800;
   const OPPONENT_ANNOUNCE_DURATION = 1100;
@@ -5292,8 +5298,13 @@ export default function GameBoard() {
                   </Button>
                 </div>
               </div>
-              {/* Color filter pills */}
-              <div className="px-5 pb-2 flex gap-1.5 flex-wrap">
+              {/* Color filter pills — second scrollable area in this sheet.
+                  max-h + overflow-y-auto caps the height when many affinities are forged
+                  so the pills never push the body area out of view.
+                  forgedPillsScrollableProps registers this element with the hook so its
+                  scroll position is preserved across peek↔open transitions alongside the
+                  card grid below. */}
+              <div {...forgedPillsScrollableProps} className="px-5 pb-2 overflow-y-auto max-h-16 flex gap-1.5 flex-wrap">
                 {CRYSTALS.filter(c => c !== 'flux').map((c) => {
                   const count = (me.purchasedCards ?? []).filter(card => card.bonusColor === c).length;
                   if (count === 0) return null;
@@ -5316,7 +5327,7 @@ export default function GameBoard() {
                   );
                 })}
               </div>
-              <div {...forgedSheetScrollableProps} className="px-5 overflow-y-auto max-h-[55vh] pb-4">
+              <div {...forgedBodyScrollableProps} className="px-5 overflow-y-auto max-h-[55vh] pb-4">
                 {(() => {
                   const cards = forgedFilter
                     ? (me.purchasedCards ?? []).filter(card => card.bonusColor === forgedFilter)

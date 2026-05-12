@@ -216,11 +216,17 @@ export function useSwipeToDismiss(
   };
 
   /**
-   * Runs an open→peek animation while preserving the scrollable area's scroll
-   * position. Some browsers may reset the scroll of a partially-offscreen
-   * element as it moves out of the fully-visible viewport during the peek snap.
-   * Capturing scrollTop before the animation and writing it back once the
-   * spring settles prevents any visible jump on entry into the peek state.
+   * Runs an open→peek animation while preserving the scroll position of every
+   * registered scrollable area. Some browsers may reset the scroll of a
+   * partially-offscreen element as it moves out of the fully-visible viewport
+   * during the peek snap. Capturing each element's scrollTop before the
+   * animation and writing it back once the spring settles prevents any visible
+   * jump on entry into the peek state.
+   *
+   * This mirrors {@link animateToOpenPreservingScroll} — both directions must
+   * save/restore across the full set of registered scrollable areas so that
+   * sheets with more than one `overflow-y-auto` region (tracked via
+   * `makeScrollableAreaProps`) are handled correctly.
    */
   const animateToPeekPreservingScroll = (panelAnimation: AnimationPlaybackControlsWithThen) => {
     const saved = new Map<HTMLElement, number>();
