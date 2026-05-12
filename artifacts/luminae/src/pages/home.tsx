@@ -20,7 +20,7 @@ import { LoginRegisterForm } from "@/components/LoginRegisterForm";
 import { useAccount } from "@/contexts/AccountContext";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X } from "lucide-react";
+import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 const gemIcon = "/icon_gem.svg";
 
@@ -31,6 +31,7 @@ export default function Home() {
   const { toast } = useToast();
   const { account, token, isLoading: accountLoading, logout } = useAccount();
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
   const handleLogout = async () => {
     await logout();
     setConfirmLogout(false);
@@ -389,6 +390,28 @@ export default function Home() {
                 <Users className="h-5 w-5" />
                 Join Game
               </Button>
+
+              {/* Tutorial */}
+              <button
+                type="button"
+                onClick={() => setLocation("/tutorial")}
+                className="w-full flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur px-5 py-3.5 text-left hover:border-border/70 hover:bg-card/60 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-4.5 w-4.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm">
+                    {tutorialSeen ? "Replay Tutorial" : "New? Try the Tutorial"}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {tutorialSeen
+                      ? "Walk through the basics again vs. an Easy AI"
+                      : "5-step guided intro vs. an Easy AI — takes about 10 min"}
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
 
               {/* Account CTA — guest vs signed-in */}
               {account ? (

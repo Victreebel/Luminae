@@ -33,6 +33,7 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
+import { TutorialOverlay } from '@/components/TutorialOverlay';
 const gemIcon = "/icon_gem.svg";
 
 const CARD_ART_MODULES = import.meta.glob(
@@ -828,6 +829,23 @@ export default function GameBoard() {
   const queryClient = useQueryClient();
   const session = getSession();
 
+  const isTutorial = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tutorial') === '1';
+  }, []);
+  const [tutorialStep, setTutorialStep] = useState<number>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tutorial') === '1' ? 0 : -1;
+  });
+  const [hintsEnabled, setHintsEnabled] = useState<boolean>(
+    () => localStorage.getItem('luminae_hints_enabled') !== '0'
+  );
+  const toggleHints = () => {
+    const next = !hintsEnabled;
+    setHintsEnabled(next);
+    localStorage.setItem('luminae_hints_enabled', next ? '1' : '0');
+  };
+
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
@@ -836,6 +854,7 @@ export default function GameBoard() {
   const [showUndoHint, setShowUndoHint] = useState(false);
   const [showReserveHint, setShowReserveHint] = useState(false);
   const [showForgeHint, setShowForgeHint] = useState(false);
+  const [showDeckReserveHint, setShowDeckReserveHint] = useState(false);
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
   const [costMode, setCostMode] = useState<CostMode>('after_bonuses');
   const [showPurchased, setShowPurchased] = useState(false);
@@ -1235,14 +1254,14 @@ export default function GameBoard() {
       setShowUndoHint(false);
       return;
     }
-    if (!localStorage.getItem('luminae_undo_hint_seen')) {
+    if (hintsEnabled && !localStorage.getItem('luminae_undo_hint_seen')) {
       localStorage.setItem('luminae_undo_hint_seen', '1');
       setShowUndoHint(true);
       const timer = setTimeout(() => setShowUndoHint(false), 4000);
       return () => clearTimeout(timer);
     }
     return;
-  }, [crystalQueueActive]);
+  }, [crystalQueueActive, hintsEnabled]);
 
   // ── Pre-early-return derived state ────────────────────────────────────────
   // actionsLocked / isMyTurn / me / effectiveCost / canAffordCard are all
@@ -1287,27 +1306,39 @@ export default function GameBoard() {
   // ── Reserve hint ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (pendingSheetAction === 'reserve') {
-      if (!localStorage.getItem('luminae_reserve_hint_seen')) {
+      if (hintsEnabled && !localStorage.getItem('luminae_reserve_hint_seen')) {
         localStorage.setItem('luminae_reserve_hint_seen', '1');
         setShowReserveHint(true);
       }
     } else {
       setShowReserveHint(false);
     }
-  }, [pendingSheetAction]);
+  }, [pendingSheetAction, hintsEnabled]);
+
+  // ── Deck-reserve hint ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedDeckTier) {
+      setShowDeckReserveHint(false);
+      return;
+    }
+    if (hintsEnabled && !localStorage.getItem('luminae_deck_reserve_hint_seen')) {
+      localStorage.setItem('luminae_deck_reserve_hint_seen', '1');
+      setShowDeckReserveHint(true);
+    }
+  }, [selectedDeckTier, hintsEnabled]);
 
   // ── Forge hint ────────────────────────────────────────────────────────────
   useEffect(() => {
     const affordable = isMyTurn && selectedCard && me && canAffordCard(selectedCard.card, me);
     if (affordable) {
-      if (!localStorage.getItem('luminae_forge_hint_seen')) {
+      if (hintsEnabled && !localStorage.getItem('luminae_forge_hint_seen')) {
         localStorage.setItem('luminae_forge_hint_seen', '1');
         setShowForgeHint(true);
       }
     } else {
       setShowForgeHint(false);
     }
-  }, [isMyTurn, selectedCard, me]);
+  }, [isMyTurn, selectedCard, me, hintsEnabled]);
 
   processUpdateRef.current = (newState: GameState) => {
     const prev = prevStateRef.current;
@@ -2021,6 +2052,21 @@ export default function GameBoard() {
   };
 
   const executeAction = async (payload: any) => {
+    // Tutorial gate — only permit the action type for the current step.
+    // Steps 0–3 each have specific permitted types; step 4 (Luminaries intro,
+    // requiresConfirm) has an empty list, so ALL actions are blocked until the
+    // player taps "Got it" and the overlay dismisses (tutorialStep goes to -1).
+    if (isTutorial && tutorialStep >= 0 && tutorialStep <= 4) {
+      const tutorialPermitted: Record<number, string[]> = {
+        0: ['take_three_crystals'],
+        1: ['take_two_crystals', 'take_three_crystals'],
+        2: ['reserve_card'],
+        3: ['purchase_card', 'purchase_reserved'],
+        4: [], // read-only step — no game actions allowed until "Got it"
+      };
+      const permitted = tutorialPermitted[tutorialStep] ?? [];
+      if (!permitted.includes(payload.type)) return;
+    }
     try {
       const normalized = { ...payload };
       delete normalized._tier;
@@ -2285,6 +2331,10 @@ export default function GameBoard() {
 
   const dismissForgeHint = () => {
     setShowForgeHint(false);
+  };
+
+  const dismissDeckReserveHint = () => {
+    setShowDeckReserveHint(false);
   };
 
   const myReservedCount = me?.reservedCards.length ?? 0;
@@ -3913,7 +3963,26 @@ export default function GameBoard() {
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
+                      className="relative"
                     >
+                      <AnimatePresence>
+                        {showDeckReserveHint && (
+                          <motion.button
+                            type="button"
+                            initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                            transition={{ duration: 0.3 }}
+                            onClick={dismissDeckReserveHint}
+                            className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                            title="Dismiss hint"
+                          >
+                            <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                            <span>Tap twice to confirm — you'll receive a random hidden card</span>
+                            <span className="text-white/40 ml-0.5">✕</span>
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
                       <Button
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
                           ${pendingDeckConfirm
@@ -4465,6 +4534,25 @@ export default function GameBoard() {
                     </div>
                   </div>
                 ))}
+                {/* Hints toggle */}
+                <div className="mt-2 pt-4 border-t border-border/50 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm">In-game hints</div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Show tips for undo, reserve, and forge the first time you use them.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleHints}
+                    className={`relative shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${hintsEnabled ? 'bg-primary' : 'bg-secondary'}`}
+                    aria-label={hintsEnabled ? 'Hints on — tap to turn off' : 'Hints off — tap to turn on'}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${hintsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+                    />
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -4997,6 +5085,16 @@ export default function GameBoard() {
           hidden={activeTab !== 'board' || (summonQueue.length > 0 && !cutscenePostFlash)}
         />
       ))}
+
+      {/* Tutorial overlay — rendered when ?tutorial=1 is in the URL */}
+      {isTutorial && (
+        <TutorialOverlay
+          state={state}
+          sessionPlayerId={session?.playerId ?? ''}
+          tutorialStep={tutorialStep}
+          setTutorialStep={setTutorialStep}
+        />
+      )}
 
       {/* Dev test panels — visible in development only, tree-shaken from production */}
       {import.meta.env.DEV && (

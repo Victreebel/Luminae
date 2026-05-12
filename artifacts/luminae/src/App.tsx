@@ -10,6 +10,7 @@ import Game from "@/pages/game";
 import Dashboard from "@/pages/dashboard";
 import FontPreview from "@/pages/font-preview";
 import ResetPassword from "@/pages/reset-password";
+import Tutorial from "@/pages/tutorial";
 import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { AccountProvider } from "@/contexts/AccountContext";
 
@@ -59,6 +60,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/tutorial" component={Tutorial} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/lobby/:roomId" component={Lobby} />
