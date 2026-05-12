@@ -730,6 +730,47 @@ function PaleEntityFallback({ size = 140, className = '' }: { size?: number; cla
   );
 }
 
+// ── Pale Sovereign Entity (Animated) ──────────────────────────────────────────
+// Renders the illustrated entity.png with a continuous balance-seesaw animation.
+// The whole figure gently rocks left-right around the beam-center pivot so the
+// scale pans tip as if perpetually weighing souls.
+// Falls back to PaleEntityFallback if the PNG is unavailable at build time.
+function PaleEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const src = _getLuminaryImage('lum_pale', 'entity');
+  if (!src) return <PaleEntityFallback size={size} className={className} />;
+
+  // The entity PNG is 3:4 portrait — height is 4/3 × width.
+  const w = size;
+  const h = Math.round(size * (4 / 3));
+
+  return (
+    <motion.div
+      className={className}
+      style={{
+        width: w,
+        height: h,
+        transformOrigin: '50% 62%', // pivot at the balance-beam center
+        display: 'inline-block',
+        flexShrink: 0,
+      }}
+      animate={{ rotate: [-3.5, 3.5] }}
+      transition={{
+        duration: 5.2,
+        repeat: Infinity,
+        repeatType: 'mirror',
+        ease: [0.45, 0, 0.55, 1], // smooth sinusoidal seesaw
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+      />
+    </motion.div>
+  );
+}
+
 // ─── Luminary Visuals Map ─────────────────────────────────────────────────────
 // Colors derived from each Luminary's requirement gem palette.
 // Synced with backend summonColor/summonSecondaryColor in gameEngine.ts.
@@ -742,7 +783,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_radiant: { id: 'lum_radiant', primaryColor: '#e2e8f0', secondaryColor: '#2ecc71', glowColor: 'rgba(226,232,240,0.5)',  EntityArt: RadiantEntity },
   lum_astral:  { id: 'lum_astral',  primaryColor: '#ef4444', secondaryColor: '#3d6bff', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: AstralEntity  },
   lum_forge:   { id: 'lum_forge',   primaryColor: '#166534', secondaryColor: '#1c1917', glowColor: 'rgba(22,101,52,0.6)',    EntityArt: ForgeEntity   },
-  lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntityFallback },
+  lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity },
   lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity   },
   lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity },
   lum_oracle:  { id: 'lum_oracle',  primaryColor: '#fbbf24', secondaryColor: '#ef4444', glowColor: 'rgba(251,191,36,0.65)',  EntityArt: OracleEntity  },
