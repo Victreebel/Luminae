@@ -2427,6 +2427,35 @@ export default function GameBoard() {
     return (
     <div className="flex flex-col gap-5 p-3 pb-6">
 
+      {/* ── Planned action announcement box ── */}
+      <AnimatePresence>
+        {myPlannedAction && (
+          <motion.div
+            key="planned-action-box"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/50 border border-amber-500/30 backdrop-blur shadow-[0_0_8px_rgba(251,191,36,0.1)]">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
+              <span className="text-[10px] text-amber-200/70 flex-1 truncate">
+                {getPlannedActionSummary(myPlannedAction)}
+              </span>
+              <button
+                type="button"
+                onClick={handleCancelPlan}
+                className="flex items-center gap-1 text-[10px] font-semibold text-amber-300/80 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-800/40 border border-amber-500/30 rounded-md px-2 py-0.5 shrink-0 transition-colors"
+              >
+                <CalendarX className="h-3 w-3" />
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Luminaries */}
       <div>
         <div className="flex items-center justify-between mb-2 px-1">
@@ -3455,35 +3484,6 @@ export default function GameBoard() {
         {activeTab === 'hand' && HandTab()}
         {activeTab === 'log' && LogTab()}
       </main>
-
-      {/* ── Planned action floating bar (between board and player panel) ── */}
-      <AnimatePresence>
-        {myPlannedAction && (
-          <motion.div
-            key="planned-action-bar"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="overflow-hidden shrink-0 z-20"
-          >
-            <div className="flex items-center gap-2 px-3 py-2 bg-black/50 backdrop-blur border-t border-amber-500/20">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70 shrink-0">Queued</span>
-              <span className="text-[10px] text-amber-200/70 flex-1 truncate">
-                {getPlannedActionSummary(myPlannedAction)}
-              </span>
-              <button
-                type="button"
-                onClick={handleCancelPlan}
-                className="flex items-center gap-1 text-[10px] font-semibold text-amber-300/80 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-800/40 border border-amber-500/30 rounded-md px-2 py-0.5 shrink-0 transition-colors"
-              >
-                <CalendarX className="h-3 w-3" />
-                Cancel
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Player Info Panel (pinned above nav) ── */}
       {me && (
