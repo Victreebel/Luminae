@@ -1348,7 +1348,7 @@ export default function GameBoard() {
       if (!cp) return;
       const key = `init-${state.currentPlayerIndex}-${state.version}`;
       const isMe = cp.playerId === session.playerId;
-      if (isMe) {
+      if (isMe && !isTutorial) {
         const firstLumId = cp.claimedLuminaryIds?.[0];
         const lum = firstLumId ? state.luminaries.find(l => l.id === firstLumId) : undefined;
         const accentColor = lum?.summonColor ?? '#6366f1';
@@ -1897,7 +1897,7 @@ export default function GameBoard() {
 
       if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
         const nextPlayer = newState.players[newState.currentPlayerIndex];
-        if (nextPlayer) {
+        if (nextPlayer && !isTutorial) {
           const isMe = nextPlayer.playerId === session?.playerId;
           const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
           const firstLumId = nextPlayer.claimedLuminaryIds?.[0];
