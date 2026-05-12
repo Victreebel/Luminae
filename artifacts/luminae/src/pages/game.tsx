@@ -1214,15 +1214,15 @@ export default function GameBoard() {
   );
 
   // Swipe-to-dismiss: drag handle → swipe down ≥30% height dismisses the sheet
-  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps } =
+  const { dragProps: cardSheetDragProps, handleBarProps: cardSheetHandleBarProps, backdropOpacity: cardSheetBackdropOpacity, sheetScale: cardSheetScale } =
     useSwipeToDismiss(cardSheetContainerRef, () => { setSelectedCard(null); setPendingSheetAction(null); });
-  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps } =
+  const { dragProps: deckSheetDragProps, handleBarProps: deckSheetHandleBarProps, backdropOpacity: deckSheetBackdropOpacity, sheetScale: deckSheetScale } =
     useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); });
-  const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps } =
+  const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps, backdropOpacity: rulesSheetBackdropOpacity, sheetScale: rulesSheetScale } =
     useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false));
-  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps } =
+  const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale } =
     useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false));
-  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps } =
+  const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale } =
     useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); });
 
   const TURN_ANNOUNCE_DURATION = 1800;
@@ -4105,7 +4105,7 @@ export default function GameBoard() {
             className="fixed inset-0 z-40 flex items-end"
             onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div style={{ opacity: cardSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
               ref={(el) => { cardSheetContainerRef.current = el; }}
               role="dialog"
@@ -4115,6 +4115,7 @@ export default function GameBoard() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{ scale: cardSheetScale }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl px-5 pt-0 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
               {...cardSheetDragProps}
@@ -4443,12 +4444,13 @@ export default function GameBoard() {
               className="fixed inset-0 z-40 flex items-end"
               onClick={closeDeckSheet}
             >
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <motion.div style={{ opacity: deckSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
               <motion.div
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                style={{ scale: deckSheetScale }}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
                 ref={(el) => { deckSheetContainerRef.current = el; }}
@@ -5017,13 +5019,14 @@ export default function GameBoard() {
             className="fixed inset-0 z-40 flex items-end"
             onClick={() => setShowRules(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div style={{ opacity: rulesSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
               ref={(el) => { rulesSheetContainerRef.current = el; }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{ scale: rulesSheetScale }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
               {...rulesSheetDragProps}
@@ -5110,7 +5113,7 @@ export default function GameBoard() {
             className="fixed inset-0 z-40 flex items-end"
             onClick={() => setShowReservedOverlay(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div style={{ opacity: reservedSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
               ref={(el) => { reservedOverlayContainerRef.current = el; }}
               role="dialog"
@@ -5120,6 +5123,7 @@ export default function GameBoard() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{ scale: reservedSheetScale }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
               {...reservedSheetDragProps}
@@ -5214,13 +5218,14 @@ export default function GameBoard() {
             className="fixed inset-0 z-40 flex items-end"
             onClick={() => setShowForgedOverlay(false)}
           >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div style={{ opacity: forgedSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
               ref={(el) => { forgedOverlayContainerRef.current = el; }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{ scale: forgedSheetScale }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
               {...forgedSheetDragProps}
