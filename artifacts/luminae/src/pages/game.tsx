@@ -904,6 +904,7 @@ export default function GameBoard() {
   const reserveBurstActionRef = useRef<string | null>(null);
   const cardSheetContainerRef = useRef<HTMLElement | null>(null);
   const reservedOverlayContainerRef = useRef<HTMLElement | null>(null);
+  const deckSheetContainerRef = useRef<HTMLElement | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
   const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
@@ -1155,6 +1156,13 @@ export default function GameBoard() {
     reservedOverlayContainerRef,
     showReservedOverlay,
     () => setShowReservedOverlay(false),
+  );
+
+  // Focus-trap: deck reserve sheet
+  useFocusTrap(
+    deckSheetContainerRef,
+    selectedDeckTier !== null,
+    () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); },
   );
 
   const TURN_ANNOUNCE_DURATION = 1800;
@@ -4363,6 +4371,7 @@ export default function GameBoard() {
                 transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+                ref={(el) => { deckSheetContainerRef.current = el; }}
               >
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
