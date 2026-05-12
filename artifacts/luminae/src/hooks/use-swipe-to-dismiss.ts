@@ -2,10 +2,34 @@ import { useDragControls, animate, useMotionValue, useTransform } from 'framer-m
 import type { PanInfo, Transition } from 'framer-motion';
 import type React from 'react';
 
-const DEFAULT_SPRING: Transition = {
+// ─── Centralized dismiss constants ────────────────────────────────────────────
+/** Fraction of panel height the drag must exceed before a slow drag dismisses. */
+const DISMISS_THRESHOLD = 0.3;
+
+/**
+ * Downward flick velocity (px/s) that dismisses the sheet regardless of how
+ * far it has been dragged. Intentionally lower than the old 500 px/s so quick
+ * handle flicks dismiss instantly without waiting for a large offset.
+ */
+const VELOCITY_THRESHOLD = 250;
+
+/**
+ * Elastic resistance factor for upward over-drag (past the panel's resting
+ * position). Higher values feel more rubbery; lower values feel stiffer.
+ * framer-motion multiplies the over-drag distance by this fraction.
+ */
+const RUBBERBAND_ELASTIC = 0.15;
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Spring for snap-back after an aborted drag. Higher stiffness and slightly
+ * less damping than the open/close entry animation produces a satisfying
+ * elastic bounce while still settling quickly.
+ */
+const SNAP_BACK_SPRING: Transition = {
   type: 'spring',
-  damping: 28,
-  stiffness: 300,
+  damping: 22,
+  stiffness: 380,
 };
 
 /**
@@ -37,11 +61,14 @@ const DEFAULT_SPRING: Transition = {
  *     user's first meaningful movement is downward. While the content is not
  *     at the top the gesture is left entirely to the browser for normal scroll.
  *
- * Releasing with a downward offset > `threshold * panelHeight` or a fast flick
- * (velocity.y > 500 px/s) triggers `onDismiss`. Aborted drags spring back
- * smoothly using the same spring config as the entry animation, using
- * framer-motion's imperative animate so AnimatePresence entry/exit are
- * unaffected.
+ * Dismiss triggers:
+ *  - Downward offset > DISMISS_THRESHOLD × panelHeight, OR
+ *  - Downward velocity > VELOCITY_THRESHOLD px/s (quick flick detection).
+ *
+ * Snap-back:
+ *  - Sub-threshold releases spring back with SNAP_BACK_SPRING (bouncy).
+ *  - Upward over-drag past the resting position (y < 0) is rubberbanded via
+ *    framer-motion's dragElastic so the sheet feels physically anchored.
  *
  * Live visual feedback (motion values, never trigger re-renders):
  *   - `backdropOpacity` — dims the backdrop as the user drags toward threshold (1 → 0.45)
@@ -50,17 +77,17 @@ const DEFAULT_SPRING: Transition = {
  * using the same spring as the panel snap-back.
  *
  * @param springConfig - Optional spring overrides for the snap-back animation.
- *   Defaults to { damping: 28, stiffness: 300 }, matching the open/close spring.
+ *   Defaults to SNAP_BACK_SPRING { damping: 22, stiffness: 380 }.
  */
 export function useSwipeToDismiss(
   panelRef: React.RefObject<HTMLElement | null>,
   onDismiss: () => void,
-  threshold = 0.3,
+  threshold = DISMISS_THRESHOLD,
   springConfig?: Transition,
 ) {
   const dragControls = useDragControls();
 
-  const spring: Transition = { ...DEFAULT_SPRING, ...springConfig };
+  const spring: Transition = { ...SNAP_BACK_SPRING, ...springConfig };
 
   // 0 = at rest / fully open, 1 = drag has reached the dismiss threshold
   const dragProgress = useMotionValue(0);
@@ -80,7 +107,8 @@ export function useSwipeToDismiss(
   const handleDrag = (_: unknown, info: PanInfo) => {
     const panel = panelRef.current;
     const panelHeight = panel ? panel.getBoundingClientRect().height : 600;
-    // Clamp to [0, 1] so we don't over-dim the backdrop past the threshold
+    // Only drive feedback progress for downward drag (positive offset).
+    // Upward over-drag feedback is handled by the rubberband elastic itself.
     const progress = Math.min(1, Math.max(0, info.offset.y / (panelHeight * threshold)));
     dragProgress.set(progress);
   };
@@ -88,14 +116,14 @@ export function useSwipeToDismiss(
   const handleDragEnd = (_: unknown, info: PanInfo) => {
     const panel = panelRef.current;
     const panelHeight = panel ? panel.getBoundingClientRect().height : 600;
-    if (info.offset.y > panelHeight * threshold || info.velocity.y > 500) {
+    if (info.offset.y > panelHeight * threshold || info.velocity.y > VELOCITY_THRESHOLD) {
       // Reset feedback immediately before dismiss so the next open starts clean.
       // The sheet subtree unmounts via AnimatePresence but the hook instance
       // stays alive for the lifetime of the parent, so an explicit reset is required.
       dragProgress.set(0);
       onDismiss();
     } else if (panel) {
-      // Sub-threshold: spring the panel back and animate the feedback values together
+      // Sub-threshold: spring the panel back with a satisfying elastic bounce
       void animate(panel, { y: 0 }, spring);
       void animate(dragProgress, 0, spring);
     }
@@ -105,8 +133,12 @@ export function useSwipeToDismiss(
     drag: 'y' as const,
     dragControls,
     dragListener: false as const,
+    // top: 0 creates the constraint boundary that RUBBERBAND_ELASTIC acts against
+    // when the user drags upward past the panel's resting position.
+    // bottom: 0 keeps framer-motion from auto-constraining downward movement so
+    // the sheet follows the pointer 1:1 before we decide to dismiss or snap back.
     dragConstraints: { top: 0, bottom: 0 },
-    dragElastic: { top: 0, bottom: 0 },
+    dragElastic: { top: RUBBERBAND_ELASTIC, bottom: 0 },
     onDragStart: handleDragStart,
     onDrag: handleDrag,
     onDragEnd: handleDragEnd,
