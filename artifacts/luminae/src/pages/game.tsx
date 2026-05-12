@@ -4138,7 +4138,7 @@ export default function GameBoard() {
                     {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
                       key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
-                      className={`w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
+                      className={`relative w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
                     >
@@ -4146,7 +4146,7 @@ export default function GameBoard() {
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
                           ${pendingSheetAction === 'plan_forge'
                             ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
-                            : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200'
+                            : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200 opacity-80'
                           }`}
                         style={pendingSheetAction === 'plan_forge'
                           ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
@@ -4162,8 +4162,12 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        <Gavel className="h-5 w-5 mr-2" />
-                        {pendingSheetAction === 'plan_forge' ? 'Confirm: Plan: Forge' : 'Plan: Forge this Artifact'}
+                        <span className="flex items-center gap-2">
+                          <Gavel className="h-5 w-5 shrink-0" />
+                          {pendingSheetAction === 'plan_forge'
+                            ? 'Confirm: Plan: Forge'
+                            : <><span style={{ fontSize: '13px', opacity: 0.85 }}>⏱</span> Plan: Forge this Artifact</>}
+                        </span>
                       </Button>
                     </motion.div>
                     )}
@@ -4959,12 +4963,12 @@ export default function GameBoard() {
                             {(isMyTurn || (canPlan && canBuy)) && (
                               <Button
                                 size="sm"
-                                className={`mt-1 w-full font-bold border-0 text-black
+                                className={`mt-1 w-full font-bold border-0
                                   ${isMyTurn
                                     ? canBuy
                                       ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                                       : 'bg-secondary text-muted-foreground'
-                                    : 'bg-amber-600 hover:bg-amber-500'
+                                    : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200 opacity-80'
                                   }`}
                                 disabled={isMyTurn && !canBuy}
                                 onClick={() => {
@@ -4973,7 +4977,7 @@ export default function GameBoard() {
                                 }}
                               >
                                 <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                                {isMyTurn ? (canBuy ? 'Forge…' : 'Cannot afford') : 'Plan: Forge…'}
+                                {isMyTurn ? (canBuy ? 'Forge…' : 'Cannot afford') : <><span style={{ fontSize: '11px', opacity: 0.85 }}>⏱</span> Plan: Forge…</>}
                               </Button>
                             )}
                           </div>
