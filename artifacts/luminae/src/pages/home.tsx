@@ -22,112 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
-// ─── Singularity icon (black hole with accretion disk) ───────────────────────
-function SingularityIcon({ size = 56 }: { size?: number }) {
-  return (
-    <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Outer corona — animated breathing pulse */}
-      <motion.div
-        animate={{ scale: [1, 1.22, 1], opacity: [0.5, 0.82, 0.5] }}
-        transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          position: "absolute",
-          inset: "-48%",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(255,115,20,0.82) 0%, rgba(180,50,5,0.42) 38%, transparent 70%)",
-          filter: "blur(10px)",
-          pointerEvents: "none",
-        }}
-      />
-      {/* Secondary inner corona — offset phase for depth */}
-      <motion.div
-        animate={{ scale: [1, 1.14, 1], opacity: [0.35, 0.6, 0.35] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: 1.1 }}
-        style={{
-          position: "absolute",
-          inset: "-22%",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(255,160,40,0.65) 0%, rgba(220,80,10,0.25) 50%, transparent 75%)",
-          filter: "blur(6px)",
-          pointerEvents: "none",
-        }}
-      />
-      {/* Black-hole SVG */}
-      <svg
-        viewBox="0 0 100 100"
-        width={size}
-        height={size}
-        style={{ position: "relative", zIndex: 1, overflow: "visible" }}
-      >
-        <defs>
-          {/* Front half clip (below centre line = in front of black hole) */}
-          <clipPath id="sg_front_i">
-            <rect x="0" y="50" width="100" height="50" />
-          </clipPath>
-          {/* Back half clip (above centre line = behind black hole) */}
-          <clipPath id="sg_back_i">
-            <rect x="0" y="0" width="100" height="50" />
-          </clipPath>
-          {/* Soft glow filter for photon ring */}
-          <filter id="sg_glow_i" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          {/* Blur filter for back-disk */}
-          <filter id="sg_bdisk_i" x="-30%" y="-60%" width="160%" height="220%">
-            <feGaussianBlur stdDeviation="2.5" />
-          </filter>
-        </defs>
-
-        {/* Back half of accretion disk — dimmer, blurred */}
-        <ellipse
-          cx="50" cy="50" rx="43" ry="13"
-          fill="none" stroke="#b03506" strokeWidth="7" opacity="0.4"
-          clipPath="url(#sg_back_i)"
-          filter="url(#sg_bdisk_i)"
-          transform="rotate(-14,50,50)"
-        />
-
-        {/* Event horizon */}
-        <circle cx="50" cy="50" r="23" fill="black" />
-
-        {/* Photon ring — thin bright halo just outside event horizon */}
-        <circle
-          cx="50" cy="50" r="25.5"
-          fill="none" stroke="rgba(255,248,195,0.92)" strokeWidth="1.6"
-          filter="url(#sg_glow_i)"
-        />
-
-        {/* Front disk — wide warm glow band */}
-        <ellipse
-          cx="50" cy="50" rx="43" ry="13"
-          fill="none" stroke="#ff5505" strokeWidth="12" opacity="0.42"
-          clipPath="url(#sg_front_i)"
-          transform="rotate(-14,50,50)"
-        />
-        {/* Front disk — main orange-gold band */}
-        <ellipse
-          cx="50" cy="50" rx="43" ry="13"
-          fill="none" stroke="#ffac36" strokeWidth="6" opacity="0.92"
-          clipPath="url(#sg_front_i)"
-          transform="rotate(-14,50,50)"
-        />
-        {/* Front disk — inner white-hot edge */}
-        <ellipse
-          cx="50" cy="50" rx="35" ry="10"
-          fill="none" stroke="#fff2a8" strokeWidth="2.5" opacity="0.78"
-          clipPath="url(#sg_front_i)"
-          transform="rotate(-14,50,50)"
-        />
-      </svg>
-    </div>
-  );
-}
+const gemIcon = "/icon_gem.svg";
 
 type Mode = "home" | "create" | "join" | "auth";
 
@@ -348,6 +243,15 @@ export default function Home() {
 
       {/* Logo area */}
       <div className="relative z-10 flex-none pt-10 pb-4 flex flex-col items-center gap-3">
+        <motion.img
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.45, type: "spring", stiffness: 200, damping: 18 }}
+          src={gemIcon}
+          alt=""
+          className="w-16 h-16 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
+          draggable={false}
+        />
         <style>{`
           @keyframes home-shimmer {
             0%   { background-position: -200% center; }
@@ -383,36 +287,14 @@ export default function Home() {
                     drop-shadow(0 0 40px rgba(100,80,180,0.15));
           }
         `}</style>
-
-        {/* Title + singularity — relative wrapper so the icon can be anchored to the text */}
-        <div className="relative">
-          {/* Singularity icon — floats above the "I" in LUMINAE */}
-          {/* left≈51% centres on the "I" (4th of 7 letters in Cinzel Decorative proportions) */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.55, type: "spring", stiffness: 180, damping: 16, delay: 0.06 }}
-            style={{
-              position: "absolute",
-              bottom: "100%",
-              left: "51%",
-              transform: "translateX(-50%)",
-              marginBottom: 6,
-              pointerEvents: "none",
-            }}
-          >
-            <SingularityIcon size={56} />
-          </motion.div>
-
-          <motion.h1
-            className="home-luminae-title text-5xl"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.12 }}
-          >
-            LUMINAE
-          </motion.h1>
-        </div>
+        <motion.h1
+          className="home-luminae-title text-5xl"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.12 }}
+        >
+          LUMINAE
+        </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
