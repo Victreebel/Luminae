@@ -307,30 +307,26 @@ export default function Home() {
               height: 34,
             }}
           >
-            {/* Gravitational lensing halo */}
+            {/* Gravitational lensing halo — gold, matching the disk */}
             <div style={{
               position: "absolute",
               inset: -7,
               borderRadius: "50%",
-              background: "radial-gradient(circle, transparent 36%, rgba(110,55,220,0.22) 50%, rgba(170,100,255,0.1) 68%, transparent 82%)",
+              background: "radial-gradient(circle, transparent 36%, rgba(255,205,0,0.2) 50%, rgba(255,215,0,0.08) 68%, transparent 82%)",
               filter: "blur(4px)",
             }} />
 
-            {/* Accretion disk — counter-clockwise, pure gold/yellow */}
-            <motion.div
-              animate={{ rotate: -360 }}
-              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-              style={{
-                position: "absolute",
-                width: 34,
-                height: 8,
-                borderRadius: "50%",
-                background:
-                  "conic-gradient(from 0deg, rgba(255,210,0,0.88), rgba(255,238,80,1), rgba(255,252,200,0.95), rgba(255,230,60,0.9), rgba(220,175,0,0.72), rgba(255,210,0,0.88))",
-                filter: "blur(1.5px)",
-                boxShadow: "0 0 9px 3px rgba(255,215,0,0.55)",
-              }}
-            />
+            {/* Accretion disk — static flat ellipse, gold glow */}
+            <div style={{
+              position: "absolute",
+              width: 34,
+              height: 8,
+              borderRadius: "50%",
+              background:
+                "linear-gradient(90deg, rgba(200,160,0,0.55) 0%, rgba(255,230,60,0.95) 30%, rgba(255,252,180,1) 50%, rgba(255,230,60,0.95) 70%, rgba(200,160,0,0.55) 100%)",
+              filter: "blur(1.2px)",
+              boxShadow: "0 0 10px 4px rgba(255,215,0,0.5)",
+            }} />
 
             {/* Event horizon — the black hole itself */}
             <div style={{
@@ -339,9 +335,9 @@ export default function Home() {
               width: 14,
               height: 14,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 34%, #070114 0%, #000000 100%)",
+              background: "radial-gradient(circle at 38% 34%, #0a0800 0%, #000000 100%)",
               boxShadow:
-                "0 0 5px 2px rgba(95,45,200,0.42), 0 0 11px 4px rgba(130,65,235,0.18)",
+                "0 0 5px 2px rgba(180,140,0,0.4), 0 0 10px 3px rgba(255,200,0,0.15)",
             }} />
           </motion.div>
         </div>
