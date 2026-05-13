@@ -22,7 +22,6 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
-const gemIcon = "/icon_gem.svg";
 
 type Mode = "home" | "create" | "join" | "auth";
 
@@ -242,16 +241,7 @@ export default function Home() {
       />
 
       {/* Logo area */}
-      <div className="relative z-10 flex-none pt-10 pb-4 flex flex-col items-center gap-3">
-        <motion.img
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.45, type: "spring", stiffness: 200, damping: 18 }}
-          src={gemIcon}
-          alt=""
-          className="w-16 h-16 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
-          draggable={false}
-        />
+      <div className="relative z-10 flex-none pt-[116px] pb-4 flex flex-col items-center gap-3">
         <style>{`
           @keyframes home-shimmer {
             0%   { background-position: -200% center; }
