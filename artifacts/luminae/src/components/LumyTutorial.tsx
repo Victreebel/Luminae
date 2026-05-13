@@ -46,17 +46,31 @@ function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: bool
         }}
       />
 
-      {/* ── THE SPHERE — crisp circular body, this is what makes it a ball ── */}
+      {/* ── THE SPHERE — rotating multicolor conic, all six affinity hues ── */}
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: excited ? 4 : 10, repeat: Infinity, ease: "linear" }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "50%",
+          background:
+            "conic-gradient(from 0deg, #f97316 0deg, #fbbf24 60deg, #22c55e 120deg, #3b82f6 180deg, #a855f7 240deg, #e2e8f0 300deg, #f97316 360deg)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Sphere depth shading — darkens the rim to give 3D curvature */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle at 38% 34%, #ffffff 0%, #f4f8ff 28%, #dce9ff 56%, #b8d0f8 80%, #9cbcea 100%)",
+            "radial-gradient(circle at 42% 38%, transparent 0%, transparent 32%, rgba(0,0,10,0.22) 65%, rgba(0,0,18,0.52) 100%)",
           boxShadow: excited
-            ? "0 0 26px 11px rgba(200,222,255,0.98), 0 0 52px 22px rgba(155,190,255,0.6), 0 0 76px 32px rgba(200,130,255,0.28)"
-            : "0 0 16px 6px rgba(200,222,255,0.88), 0 0 34px 14px rgba(155,190,255,0.42), 0 0 54px 24px rgba(200,130,255,0.18)",
+            ? "0 0 26px 11px rgba(249,115,22,0.55), 0 0 46px 20px rgba(59,130,246,0.4), 0 0 68px 30px rgba(168,85,247,0.28)"
+            : "0 0 16px 6px rgba(249,115,22,0.38), 0 0 32px 13px rgba(59,130,246,0.28), 0 0 50px 22px rgba(168,85,247,0.18)",
           pointerEvents: "none",
         }}
       />
@@ -71,7 +85,7 @@ function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: bool
           height: "30%",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle at 30% 30%, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%)",
+            "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0) 100%)",
           pointerEvents: "none",
         }}
       />
