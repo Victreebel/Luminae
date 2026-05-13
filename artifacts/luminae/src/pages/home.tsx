@@ -296,7 +296,7 @@ export default function Home() {
             style={{
               position: "absolute",
               bottom: "calc(100% + 10px)",
-              left: "calc(50% - 20px)",
+              left: "calc(50% - 34px)",
               transform: "translateX(-50%)",
               pointerEvents: "none",
               zIndex: 10,
@@ -307,63 +307,63 @@ export default function Home() {
               height: 44,
             }}
           >
-            {/* ── Wide horizontal ray glow — light shooting out along disk plane ── */}
+            {/* ── Widest ray glow — long horizontal streak along disk equator ── */}
             <div style={{
               position: "absolute",
-              width: 110,
-              height: 14,
+              width: 130,
+              height: 10,
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
               borderRadius: "50%",
               background:
-                "linear-gradient(90deg, transparent 0%, rgba(200,155,5,0.08) 12%, rgba(255,220,60,0.18) 30%, rgba(255,245,140,0.22) 50%, rgba(255,220,60,0.18) 70%, rgba(200,155,5,0.08) 88%, transparent 100%)",
-              filter: "blur(5px)",
+                "linear-gradient(90deg, transparent 0%, rgba(180,140,0,0.06) 10%, rgba(255,215,30,0.22) 28%, rgba(255,248,150,0.32) 50%, rgba(255,215,30,0.22) 72%, rgba(180,140,0,0.06) 90%, transparent 100%)",
+              filter: "blur(6px)",
               zIndex: 0,
             }} />
 
-            {/* ── Outer diffuse corona — gold, wide elliptical spread ── */}
+            {/* ── Outer corona — warm gold, elliptical ── */}
             <div style={{
               position: "absolute",
-              inset: -16,
+              inset: -18,
               borderRadius: "50%",
               background:
-                "radial-gradient(ellipse 160% 55% at 50% 60%, rgba(255,215,40,0.28) 0%, rgba(220,170,0,0.12) 35%, rgba(160,120,0,0.04) 60%, transparent 78%)",
-              filter: "blur(7px)",
+                "radial-gradient(ellipse 170% 50% at 50% 58%, rgba(255,225,50,0.32) 0%, rgba(220,170,5,0.14) 32%, rgba(160,115,0,0.05) 58%, transparent 76%)",
+              filter: "blur(8px)",
               zIndex: 0,
             }} />
 
-            {/* ── Circular lensing ring glow ── */}
+            {/* ── Circular gravitational lensing ring ── */}
             <div style={{
               position: "absolute",
-              inset: -2,
+              inset: 0,
               borderRadius: "50%",
               background:
-                "radial-gradient(circle, transparent 44%, rgba(255,230,80,0.12) 58%, rgba(255,210,30,0.06) 72%, transparent 86%)",
-              filter: "blur(2px)",
-              zIndex: 0,
-            }} />
-
-            {/* ── Layer 1: Full back disk — dim, behind event horizon ── */}
-            <div style={{
-              position: "absolute",
-              width: 68,
-              height: 12,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(90deg, rgba(110,80,0,0.12) 0%, rgba(180,140,0,0.35) 18%, rgba(235,190,20,0.52) 36%, rgba(255,230,80,0.58) 50%, rgba(235,190,20,0.52) 64%, rgba(180,140,0,0.35) 82%, rgba(110,80,0,0.12) 100%)",
+                "radial-gradient(circle, transparent 46%, rgba(255,235,90,0.15) 58%, rgba(255,215,40,0.07) 70%, transparent 84%)",
               filter: "blur(2.5px)",
+              zIndex: 0,
+            }} />
+
+            {/* ── Layer 1: Full back disk — muted gold, sits behind event horizon ── */}
+            <div style={{
+              position: "absolute",
+              width: 72,
+              height: 13,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(90deg, rgba(100,72,0,0.1) 0%, rgba(190,148,0,0.38) 16%, rgba(245,200,25,0.56) 34%, rgba(255,240,90,0.62) 50%, rgba(245,200,25,0.56) 66%, rgba(190,148,0,0.38) 84%, rgba(100,72,0,0.1) 100%)",
+              filter: "blur(2.8px)",
               zIndex: 1,
             }} />
 
-            {/* ── Layer 2: Event horizon — absolute black circle ── */}
+            {/* ── Layer 2: Event horizon — absolute black ── */}
             <div style={{
               position: "absolute",
-              width: 20,
-              height: 20,
+              width: 22,
+              height: 22,
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
@@ -372,79 +372,79 @@ export default function Home() {
               zIndex: 2,
             }} />
 
-            {/* ── Layer 3: Photon ring — tight bright halo at horizon edge ── */}
+            {/* ── Layer 3: Photon ring — bright crisp halo tracing the horizon ── */}
             <div style={{
               position: "absolute",
-              width: 25,
-              height: 25,
+              width: 28,
+              height: 28,
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
               borderRadius: "50%",
               boxShadow:
-                "0 0 0 1.5px rgba(255,240,120,0.75), 0 0 5px 2px rgba(255,220,60,0.4), 0 0 10px 3px rgba(255,200,20,0.18)",
+                "0 0 0 1.5px rgba(255,250,190,0.92), 0 0 4px 2px rgba(255,230,80,0.55), 0 0 9px 4px rgba(255,210,30,0.25), 0 0 16px 5px rgba(220,175,0,0.1)",
               zIndex: 3,
             }} />
 
-            {/* ── Layer 4: Lensed top arc — prominent, almost as bright as front ── */}
+            {/* ── Layer 4: Lensed top arc — bright, nearly matches front ── */}
             <div style={{
               position: "absolute",
-              width: 68,
-              height: 12,
+              width: 72,
+              height: 13,
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
               borderRadius: "50%",
               background:
-                "linear-gradient(90deg, rgba(90,65,0,0.1) 0%, rgba(200,160,5,0.48) 20%, rgba(255,235,80,0.72) 38%, rgba(255,252,170,0.78) 50%, rgba(255,235,80,0.72) 62%, rgba(200,160,5,0.48) 80%, rgba(90,65,0,0.1) 100%)",
-              filter: "blur(1.2px)",
-              clipPath: "inset(0 0 56% 0)",
+                "linear-gradient(90deg, rgba(80,58,0,0.08) 0%, rgba(210,168,5,0.56) 18%, rgba(255,240,90,0.82) 36%, rgba(255,255,190,0.88) 50%, rgba(255,240,90,0.82) 64%, rgba(210,168,5,0.56) 82%, rgba(80,58,0,0.08) 100%)",
+              filter: "blur(1px)",
+              clipPath: "inset(0 0 57% 0)",
               zIndex: 3,
             }} />
 
-            {/* ── Layer 5: Front disk — bright lower arc, white-gold spine ── */}
+            {/* ── Layer 5: Front arc — white-hot center, bright gold wings ── */}
             <div style={{
               position: "absolute",
-              width: 68,
-              height: 12,
+              width: 72,
+              height: 13,
               top: "50%",
               left: "50%",
               transform: "translate(-50%, -50%)",
               borderRadius: "50%",
               background:
-                "linear-gradient(90deg, rgba(110,80,0,0.2) 0%, rgba(220,175,10,0.75) 16%, rgba(255,230,60,0.94) 32%, rgba(255,250,180,1) 50%, rgba(255,230,60,0.94) 68%, rgba(220,175,10,0.75) 84%, rgba(110,80,0,0.2) 100%)",
-              filter: "blur(0.6px)",
-              clipPath: "inset(46% 0 0 0)",
-              boxShadow: "0 5px 14px 6px rgba(255,210,30,0.38)",
+                "linear-gradient(90deg, rgba(100,72,0,0.18) 0%, rgba(230,185,10,0.82) 14%, rgba(255,235,70,0.97) 30%, rgba(255,255,200,1) 50%, rgba(255,235,70,0.97) 70%, rgba(230,185,10,0.82) 86%, rgba(100,72,0,0.18) 100%)",
+              filter: "blur(0.5px)",
+              clipPath: "inset(45% 0 0 0)",
+              boxShadow: "0 6px 16px 7px rgba(255,215,20,0.42)",
               zIndex: 4,
             }} />
 
-            {/* ── Layer 6: Bright spine — white-hot core running through front arc ── */}
+            {/* ── Layer 6: White spine — near-pure-white core of front arc ── */}
             <div style={{
               position: "absolute",
-              width: 44,
-              height: 3,
+              width: 48,
+              height: 3.5,
               top: "50%",
               left: "50%",
-              transform: "translate(-50%, 3px)",
+              transform: "translate(-50%, 4px)",
               borderRadius: "50%",
               background:
-                "linear-gradient(90deg, transparent 0%, rgba(255,252,220,0.55) 20%, rgba(255,255,240,0.9) 50%, rgba(255,252,220,0.55) 80%, transparent 100%)",
-              filter: "blur(0.8px)",
+                "linear-gradient(90deg, transparent 0%, rgba(255,254,230,0.6) 18%, rgba(255,255,245,0.96) 50%, rgba(255,254,230,0.6) 82%, transparent 100%)",
+              filter: "blur(0.7px)",
               zIndex: 5,
             }} />
 
-            {/* ── Layer 7: Central hot spot ── */}
+            {/* ── Layer 7: Peak hot spot ── */}
             <div style={{
               position: "absolute",
-              width: 10,
+              width: 11,
               height: 4,
               top: "50%",
               left: "50%",
-              transform: "translate(-50%, 5px)",
+              transform: "translate(-50%, 5.5px)",
               borderRadius: "50%",
-              background: "rgba(255,255,235,0.85)",
-              filter: "blur(1.5px)",
+              background: "rgba(255,255,240,0.92)",
+              filter: "blur(1.2px)",
               zIndex: 6,
             }} />
           </motion.div>
