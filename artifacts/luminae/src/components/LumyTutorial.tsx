@@ -8,99 +8,78 @@ import { clearSession } from "@/lib/session";
 // ─── Lumy Orb ────────────────────────────────────────────────────────────────
 
 function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
-  const eyeW = Math.max(4, Math.round(size * 0.09));
-  const eyeH = Math.max(5, Math.round(size * 0.11));
   return (
     <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Outer corona / bloom — soft warm-white radial glow */}
+      {/* Rotating colour aura */}
       <motion.div
-        animate={{
-          scale: excited ? [1, 1.26, 1.1, 1] : [1, 1.16, 1],
-          opacity: excited ? [0.55, 0.9, 0.65, 0.55] : [0.42, 0.72, 0.42],
-        }}
-        transition={{ duration: excited ? 1.3 : 2.8, repeat: Infinity, ease: "easeInOut" }}
+        animate={{ scale: excited ? [1, 1.18, 1.05] : [1, 1.12, 1], opacity: [0.45, 0.8, 0.45] }}
+        transition={{ duration: excited ? 1.6 : 2.4, repeat: Infinity, ease: "easeInOut" }}
         style={{
           position: "absolute",
-          inset: "-52%",
+          inset: "-38%",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(255,252,235,0.95) 0%, rgba(200,225,255,0.5) 38%, transparent 70%)",
-          filter: "blur(14px)",
-          pointerEvents: "none",
+            "conic-gradient(from 0deg, #f97316, #3b82f6, #22c55e, #a855f7, #e2e8f0, #fbbf24, #f97316)",
+          filter: "blur(18px)",
+          opacity: 0.55,
         }}
       />
-      {/* Subtle prismatic rim — very slow rotation, barely visible colour wash */}
+      {/* Main orb body — slowly rotating conic gradient */}
       <motion.div
         animate={{ rotate: 360 }}
-        transition={{ duration: 14, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: excited ? 3.5 : 7, repeat: Infinity, ease: "linear" }}
         style={{
-          position: "absolute",
-          inset: 0,
+          width: "100%",
+          height: "100%",
           borderRadius: "50%",
           background:
-            "conic-gradient(from 0deg, rgba(249,115,22,0.15), rgba(59,130,246,0.15), rgba(34,197,94,0.15), rgba(168,85,247,0.15), rgba(226,232,240,0.12), rgba(251,191,36,0.15), rgba(249,115,22,0.15))",
-          filter: "blur(3px)",
-          pointerEvents: "none",
+            "conic-gradient(from 0deg, #f97316 0deg, #fbbf24 60deg, #22c55e 120deg, #3b82f6 180deg, #a855f7 240deg, #e2e8f0 300deg, #f97316 360deg)",
         }}
       />
-      {/* Main body — white-hot centre fading to cool blue-white rim */}
+      {/* Inner frosted shine — static, gives depth */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
+          top: "10%",
+          left: "12%",
+          width: "44%",
+          height: "38%",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle at 40% 36%, #ffffff 0%, #eef4ff 28%, #cfe0ff 56%, #b0c8f8 80%, #96b4f0 100%)",
-          boxShadow: excited
-            ? "0 0 22px 9px rgba(215,232,255,0.95), 0 0 44px 18px rgba(170,205,255,0.55)"
-            : "0 0 14px 5px rgba(210,228,255,0.85), 0 0 30px 12px rgba(170,205,255,0.38)",
+            "radial-gradient(circle at 38% 38%, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0) 100%)",
           pointerEvents: "none",
         }}
       />
-      {/* Inner specular highlight — sharp bright spot, top-left */}
+      {/* Eyes */}
       <div
         style={{
           position: "absolute",
-          top: "7%",
-          left: "11%",
-          width: "38%",
-          height: "32%",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle at 32% 32%, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%)",
-          pointerEvents: "none",
-        }}
-      />
-      {/* Eyes — soft deep-blue on the bright surface */}
-      <div
-        style={{
-          position: "absolute",
-          top: "43%",
+          top: "40%",
           left: "50%",
           transform: "translateX(-50%)",
           display: "flex",
-          gap: Math.round(size * 0.13),
+          gap: Math.round(size * 0.12),
           alignItems: "center",
         }}
       >
         <motion.div
-          animate={excited ? { scaleY: [1, 0.1, 1] } : { scaleY: 1 }}
-          transition={{ duration: 0.15, repeat: excited ? Infinity : 0, repeatDelay: 1.7 }}
+          animate={excited ? { scaleY: [1, 0.15, 1] } : { scaleY: 1 }}
+          transition={{ duration: 0.18, repeat: excited ? Infinity : 0, repeatDelay: 1.4 }}
           style={{
-            width: eyeW,
-            height: eyeH,
+            width: Math.max(5, Math.round(size * 0.1)),
+            height: Math.max(7, Math.round(size * 0.13)),
             borderRadius: "50%",
-            background: "rgba(25,55,115,0.7)",
+            background: "rgba(0,0,0,0.75)",
           }}
         />
         <motion.div
-          animate={excited ? { scaleY: [1, 0.1, 1] } : { scaleY: 1 }}
-          transition={{ duration: 0.15, repeat: excited ? Infinity : 0, repeatDelay: 1.7, delay: 0.06 }}
+          animate={excited ? { scaleY: [1, 0.15, 1] } : { scaleY: 1 }}
+          transition={{ duration: 0.18, repeat: excited ? Infinity : 0, repeatDelay: 1.4, delay: 0.04 }}
           style={{
-            width: eyeW,
-            height: eyeH,
+            width: Math.max(5, Math.round(size * 0.1)),
+            height: Math.max(7, Math.round(size * 0.13)),
             borderRadius: "50%",
-            background: "rgba(25,55,115,0.7)",
+            background: "rgba(0,0,0,0.75)",
           }}
         />
       </div>

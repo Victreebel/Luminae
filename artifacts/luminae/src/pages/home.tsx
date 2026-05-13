@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
+const gemIcon = "/icon_gem.svg";
 
 type Mode = "home" | "create" | "join" | "auth";
 
@@ -241,7 +242,16 @@ export default function Home() {
       />
 
       {/* Logo area */}
-      <div className="relative z-10 flex-none pt-[116px] pb-4 flex flex-col items-center gap-3">
+      <div className="relative z-10 flex-none pt-10 pb-4 flex flex-col items-center gap-3">
+        <motion.img
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.45, type: "spring", stiffness: 200, damping: 18 }}
+          src={gemIcon}
+          alt=""
+          className="w-16 h-16 drop-shadow-[0_0_28px_rgba(80,130,255,0.55)]"
+          draggable={false}
+        />
         <style>{`
           @keyframes home-shimmer {
             0%   { background-position: -200% center; }
@@ -277,178 +287,14 @@ export default function Home() {
                     drop-shadow(0 0 40px rgba(100,80,180,0.15));
           }
         `}</style>
-        {/* Title + singularity "dot" over the I */}
-        <div style={{ position: "relative" }}>
-          <motion.h1
-            className="home-luminae-title text-5xl"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.12 }}
-          >
-            LUMINAE
-          </motion.h1>
-
-          {/* Singularity — pinned above the 'I' (≈ horizontal center of "LUMINAE") */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.2 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.55, duration: 0.7, type: "spring", stiffness: 190, damping: 17 }}
-            style={{
-              position: "absolute",
-              bottom: "calc(100% + 10px)",
-              left: "calc(50% - 34px)",
-              transform: "translateX(-50%)",
-              pointerEvents: "none",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 44,
-              height: 44,
-            }}
-          >
-            {/* ── Widest ray glow — long horizontal streak along disk equator ── */}
-            <div style={{
-              position: "absolute",
-              width: 130,
-              height: 10,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(90deg, transparent 0%, rgba(180,140,0,0.06) 10%, rgba(255,215,30,0.22) 28%, rgba(255,248,150,0.32) 50%, rgba(255,215,30,0.22) 72%, rgba(180,140,0,0.06) 90%, transparent 100%)",
-              filter: "blur(6px)",
-              zIndex: 0,
-            }} />
-
-            {/* ── Outer corona — warm gold, elliptical ── */}
-            <div style={{
-              position: "absolute",
-              inset: -18,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(ellipse 170% 50% at 50% 58%, rgba(255,225,50,0.32) 0%, rgba(220,170,5,0.14) 32%, rgba(160,115,0,0.05) 58%, transparent 76%)",
-              filter: "blur(8px)",
-              zIndex: 0,
-            }} />
-
-            {/* ── Circular gravitational lensing ring ── */}
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              borderRadius: "50%",
-              background:
-                "radial-gradient(circle, transparent 46%, rgba(255,235,90,0.15) 58%, rgba(255,215,40,0.07) 70%, transparent 84%)",
-              filter: "blur(2.5px)",
-              zIndex: 0,
-            }} />
-
-            {/* ── Layer 1: Full back disk — muted gold, sits behind event horizon ── */}
-            <div style={{
-              position: "absolute",
-              width: 72,
-              height: 13,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(90deg, rgba(100,72,0,0.1) 0%, rgba(190,148,0,0.38) 16%, rgba(245,200,25,0.56) 34%, rgba(255,240,90,0.62) 50%, rgba(245,200,25,0.56) 66%, rgba(190,148,0,0.38) 84%, rgba(100,72,0,0.1) 100%)",
-              filter: "blur(2.8px)",
-              zIndex: 1,
-            }} />
-
-            {/* ── Layer 2: Event horizon — absolute black ── */}
-            <div style={{
-              position: "absolute",
-              width: 22,
-              height: 22,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background: "#000000",
-              zIndex: 2,
-            }} />
-
-            {/* ── Layer 3: Photon ring — bright crisp halo tracing the horizon ── */}
-            <div style={{
-              position: "absolute",
-              width: 28,
-              height: 28,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              boxShadow:
-                "0 0 0 1.5px rgba(255,250,190,0.92), 0 0 4px 2px rgba(255,230,80,0.55), 0 0 9px 4px rgba(255,210,30,0.25), 0 0 16px 5px rgba(220,175,0,0.1)",
-              zIndex: 3,
-            }} />
-
-            {/* ── Layer 4: Lensed top arc — bright, nearly matches front ── */}
-            <div style={{
-              position: "absolute",
-              width: 72,
-              height: 13,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(90deg, rgba(80,58,0,0.08) 0%, rgba(210,168,5,0.56) 18%, rgba(255,240,90,0.82) 36%, rgba(255,255,190,0.88) 50%, rgba(255,240,90,0.82) 64%, rgba(210,168,5,0.56) 82%, rgba(80,58,0,0.08) 100%)",
-              filter: "blur(1px)",
-              clipPath: "inset(0 0 57% 0)",
-              zIndex: 3,
-            }} />
-
-            {/* ── Layer 5: Front arc — white-hot center, bright gold wings ── */}
-            <div style={{
-              position: "absolute",
-              width: 72,
-              height: 13,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(90deg, rgba(100,72,0,0.18) 0%, rgba(230,185,10,0.82) 14%, rgba(255,235,70,0.97) 30%, rgba(255,255,200,1) 50%, rgba(255,235,70,0.97) 70%, rgba(230,185,10,0.82) 86%, rgba(100,72,0,0.18) 100%)",
-              filter: "blur(0.5px)",
-              clipPath: "inset(45% 0 0 0)",
-              boxShadow: "0 6px 16px 7px rgba(255,215,20,0.42)",
-              zIndex: 4,
-            }} />
-
-            {/* ── Layer 6: White spine — near-pure-white core of front arc ── */}
-            <div style={{
-              position: "absolute",
-              width: 48,
-              height: 3.5,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, 4px)",
-              borderRadius: "50%",
-              background:
-                "linear-gradient(90deg, transparent 0%, rgba(255,254,230,0.6) 18%, rgba(255,255,245,0.96) 50%, rgba(255,254,230,0.6) 82%, transparent 100%)",
-              filter: "blur(0.7px)",
-              zIndex: 5,
-            }} />
-
-            {/* ── Layer 7: Peak hot spot ── */}
-            <div style={{
-              position: "absolute",
-              width: 11,
-              height: 4,
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, 5.5px)",
-              borderRadius: "50%",
-              background: "rgba(255,255,240,0.92)",
-              filter: "blur(1.2px)",
-              zIndex: 6,
-            }} />
-          </motion.div>
-        </div>
+        <motion.h1
+          className="home-luminae-title text-5xl"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.12 }}
+        >
+          LUMINAE
+        </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
