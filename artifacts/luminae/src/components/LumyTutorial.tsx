@@ -10,70 +10,73 @@ import { clearSession } from "@/lib/session";
 function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
   const eyeW = Math.max(4, Math.round(size * 0.09));
   const eyeH = Math.max(5, Math.round(size * 0.11));
-  const blurOuter = Math.round(size * 0.32);
-  const blurMid = Math.round(size * 0.22);
-  const blurCore = Math.round(size * 0.1);
-  const rotateDur = excited ? 3.5 : 9;
   return (
     <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Outer multicolor corona bloom — bleeds outward with no hard edge */}
+
+      {/* Affinity corona — coloured light bleeding outward from the sphere edge */}
       <motion.div
         animate={{
-          scale: excited ? [1, 1.45, 1.2, 1] : [1, 1.22, 1],
-          opacity: excited ? [0.75, 1, 0.85, 0.75] : [0.55, 0.8, 0.55],
+          scale: excited ? [1, 1.28, 1.1, 1] : [1, 1.16, 1],
+          opacity: excited ? [0.62, 0.92, 0.7, 0.62] : [0.44, 0.72, 0.44],
         }}
         transition={{ duration: excited ? 1.3 : 2.8, repeat: Infinity, ease: "easeInOut" }}
         style={{
           position: "absolute",
-          inset: "-70%",
+          inset: "-52%",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(255,255,220,0.55) 0%, rgba(249,115,22,0.3) 18%, rgba(59,130,246,0.25) 33%, rgba(34,197,94,0.2) 48%, rgba(168,85,247,0.18) 62%, rgba(251,191,36,0.12) 75%, transparent 88%)",
-          filter: `blur(${blurOuter}px)`,
+            "radial-gradient(circle, rgba(255,252,235,0.9) 0%, rgba(249,115,22,0.32) 22%, rgba(59,130,246,0.26) 38%, rgba(168,85,247,0.2) 54%, rgba(34,197,94,0.14) 68%, transparent 82%)",
+          filter: "blur(13px)",
           pointerEvents: "none",
         }}
       />
-      {/* Primary rotating conic — all six affinity hues, heavily blurred into pure light */}
+
+      {/* Slowly rotating colour wash — sits just behind the sphere, tints the halo */}
       <motion.div
         animate={{ rotate: 360 }}
-        transition={{ duration: rotateDur, repeat: Infinity, ease: "linear" }}
+        transition={{ duration: excited ? 5 : 11, repeat: Infinity, ease: "linear" }}
         style={{
           position: "absolute",
-          inset: "-45%",
+          inset: "-14%",
           borderRadius: "50%",
           background:
-            "conic-gradient(from 0deg, rgba(249,115,22,0.95), rgba(239,68,68,0.8), rgba(59,130,246,0.95), rgba(34,197,94,0.9), rgba(168,85,247,0.85), rgba(226,232,240,0.75), rgba(251,191,36,0.95), rgba(249,115,22,0.95))",
-          filter: `blur(${blurMid}px)`,
+            "conic-gradient(from 0deg, rgba(249,115,22,0.55), rgba(59,130,246,0.55), rgba(34,197,94,0.5), rgba(168,85,247,0.48), rgba(251,191,36,0.52), rgba(249,115,22,0.55))",
+          filter: `blur(${Math.round(size * 0.13)}px)`,
           pointerEvents: "none",
         }}
       />
-      {/* Counter-rotating conic layer — offset hues for depth and churn */}
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: rotateDur * 1.7, repeat: Infinity, ease: "linear" }}
-        style={{
-          position: "absolute",
-          inset: "-30%",
-          borderRadius: "50%",
-          background:
-            "conic-gradient(from 120deg, rgba(168,85,247,0.8), rgba(251,191,36,0.85), rgba(34,197,94,0.75), rgba(249,115,22,0.8), rgba(59,130,246,0.85), rgba(226,232,240,0.6), rgba(168,85,247,0.8))",
-          filter: `blur(${Math.round(size * 0.18)}px)`,
-          pointerEvents: "none",
-        }}
-      />
-      {/* White-hot core — no hard edge, fades to transparent */}
+
+      {/* ── THE SPHERE — crisp circular body, this is what makes it a ball ── */}
       <div
         style={{
           position: "absolute",
-          inset: "-8%",
+          inset: 0,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,252,240,0.75) 22%, rgba(255,240,200,0.35) 50%, transparent 72%)",
-          filter: `blur(${blurCore}px)`,
+            "radial-gradient(circle at 38% 34%, #ffffff 0%, #f4f8ff 28%, #dce9ff 56%, #b8d0f8 80%, #9cbcea 100%)",
+          boxShadow: excited
+            ? "0 0 26px 11px rgba(200,222,255,0.98), 0 0 52px 22px rgba(155,190,255,0.6), 0 0 76px 32px rgba(200,130,255,0.28)"
+            : "0 0 16px 6px rgba(200,222,255,0.88), 0 0 34px 14px rgba(155,190,255,0.42), 0 0 54px 24px rgba(200,130,255,0.18)",
           pointerEvents: "none",
         }}
       />
-      {/* Eyes — deep dark voids punched through the light for clear legibility */}
+
+      {/* Specular highlight — sharp bright glint top-left */}
+      <div
+        style={{
+          position: "absolute",
+          top: "8%",
+          left: "10%",
+          width: "36%",
+          height: "30%",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle at 30% 30%, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 100%)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Eyes — soft deep-blue, clearly readable on bright sphere */}
       <div
         style={{
           position: "absolute",
@@ -89,24 +92,12 @@ function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: bool
         <motion.div
           animate={excited ? { scaleY: [1, 0.1, 1] } : { scaleY: 1 }}
           transition={{ duration: 0.15, repeat: excited ? Infinity : 0, repeatDelay: 1.7 }}
-          style={{
-            width: eyeW,
-            height: eyeH,
-            borderRadius: "50%",
-            background: "rgba(8, 8, 18, 0.95)",
-            boxShadow: "0 0 4px 2px rgba(0,0,0,0.6)",
-          }}
+          style={{ width: eyeW, height: eyeH, borderRadius: "50%", background: "rgba(14,34,100,0.72)" }}
         />
         <motion.div
           animate={excited ? { scaleY: [1, 0.1, 1] } : { scaleY: 1 }}
           transition={{ duration: 0.15, repeat: excited ? Infinity : 0, repeatDelay: 1.7, delay: 0.06 }}
-          style={{
-            width: eyeW,
-            height: eyeH,
-            borderRadius: "50%",
-            background: "rgba(8, 8, 18, 0.95)",
-            boxShadow: "0 0 4px 2px rgba(0,0,0,0.6)",
-          }}
+          style={{ width: eyeW, height: eyeH, borderRadius: "50%", background: "rgba(14,34,100,0.72)" }}
         />
       </div>
     </div>
