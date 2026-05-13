@@ -2970,7 +2970,7 @@ export default function GameBoard() {
         }}
       >
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinities · Harness cosmic essence</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinity Well · Harness cosmic essence</p>
           <div className="flex items-center gap-3">
             {me && (() => {
               const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
