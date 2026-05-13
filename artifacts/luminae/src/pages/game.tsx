@@ -35,7 +35,7 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { LumyTutorial, LUMY_BEAT_COUNT, LUMY_BEAT_GATES, LUMY_ZONE_HIGHLIGHTS, LUMY_ATTENTION, type LumiiAttentionState } from '@/components/LumyTutorial';
+import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
@@ -915,8 +915,8 @@ export default function GameBoard() {
     return params.get('tutorial') === '1' ? 0 : -1;
   });
   const [tutorialNudgeTick, setTutorialNudgeTick] = useState(0);
-  const tutorialZone = (isTutorial && tutorialStep >= 0) ? (LUMY_ZONE_HIGHLIGHTS[tutorialStep] ?? null) : null;
-  const tutorialAttention: LumiiAttentionState | null = (isTutorial && tutorialStep >= 0) ? (LUMY_ATTENTION[tutorialStep] ?? null) : null;
+  const tutorialZone = (isTutorial && tutorialStep >= 0) ? (LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null) : null;
+  const tutorialAttention: LumiiAttentionState | null = (isTutorial && tutorialStep >= 0) ? (LUMII_ATTENTION[tutorialStep] ?? null) : null;
   const [hintsEnabled, setHintsEnabled] = useState<boolean>(
     () => localStorage.getItem('luminae_hints_enabled') !== '0'
   );
@@ -2373,8 +2373,8 @@ export default function GameBoard() {
     // player taps "Got it" and the overlay dismisses (tutorialStep goes to -1).
     // resolve_summon must always reach the server to clear the summon gate,
     // even during tutorial steps where all other action types are gated.
-    if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep < LUMY_BEAT_COUNT) {
-      const permitted = LUMY_BEAT_GATES[tutorialStep] ?? [];
+    if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep < LUMII_BEAT_COUNT) {
+      const permitted = LUMII_BEAT_GATES[tutorialStep] ?? [];
       if (!permitted.includes(payload.type as string)) {
         setTutorialNudgeTick(t => t + 1);
         return;
@@ -2722,7 +2722,7 @@ export default function GameBoard() {
     return (
     <div
       className="flex flex-col gap-5 p-3 pb-6"
-      style={isTutorial && tutorialStep >= 0 && tutorialStep < LUMY_BEAT_COUNT
+      style={isTutorial && tutorialStep >= 0 && tutorialStep < LUMII_BEAT_COUNT
         ? { paddingBottom: 'var(--tutorial-panel-height, 0px)' }
         : undefined}
     >
@@ -6001,9 +6001,9 @@ export default function GameBoard() {
         />
       ))}
 
-      {/* Lumy tutorial — rendered when ?tutorial=1 is in the URL */}
+      {/* Lumii tutorial — rendered when ?tutorial=1 is in the URL */}
       {isTutorial && (
-        <LumyTutorial
+        <LumiiTutorial
           state={state}
           sessionPlayerId={session?.playerId ?? ''}
           tutorialStep={tutorialStep}

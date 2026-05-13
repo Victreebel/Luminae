@@ -5,9 +5,9 @@ import { X, ArrowRight } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
 
-// ─── Lumy Orb ────────────────────────────────────────────────────────────────
+// ─── Lumii Orb ────────────────────────────────────────────────────────────────
 
-function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
+function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
   const blur = Math.round(size * 0.45);
   const innerBlur = Math.max(2, Math.round(size * 0.06));
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
@@ -181,7 +181,7 @@ interface BubbleProps {
   onClick: () => void;
 }
 
-function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective, onClick }: BubbleProps) {
+function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective, onClick }: BubbleProps) {
   const showNext = !isActionBeat || !isLastLine;
   const actionPrompt = isLastLine && isActionBeat ? "Go ahead — do it!" : null;
 
@@ -217,7 +217,7 @@ function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective
           className="text-[9px] font-bold uppercase"
           style={{ letterSpacing: "0.17em", color: "rgba(255,255,255,0.5)" }}
         >
-          LUMY · AFFINITY ECHO
+          LUMII · AFFINITY ECHO
         </span>
         {phase === 2 && (
           <span
@@ -296,7 +296,7 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 1,
     lines: [
-      "Psst! Over here! ✨ I'm Lumy — a living mote of cosmic energy, and I'm here to guide your civilization through Luminae.",
+      "Psst! Over here! ✨ I'm Lumii — a living mote of cosmic energy, and I'm here to guide your civilization through Luminae.",
       "You are shaping a civilization across the fabric of the cosmos — driving it toward 15 Eminence before your opponent reaches theirs.",
       "Three forces carry you there: affinity currents flowing through the cosmos, relic technologies forged into your civilization, and Luminaries — ancient archetypes waiting to be called forth. Let me show you.",
     ],
@@ -452,9 +452,9 @@ const BEATS: Beat[] = [
   },
 ];
 
-export const LUMY_BEAT_COUNT = BEATS.length;
+export const LUMII_BEAT_COUNT = BEATS.length;
 
-export const LUMY_BEAT_GATES: Record<number, string[]> = {
+export const LUMII_BEAT_GATES: Record<number, string[]> = {
   0: [],
   1: [],
   2: ["take_three_crystals", "take_two_crystals"],
@@ -471,7 +471,7 @@ export const LUMY_BEAT_GATES: Record<number, string[]> = {
   13: [],
 };
 
-export const LUMY_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" | "filters" | "luminaries">> = {
+export const LUMII_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" | "filters" | "luminaries">> = {
   1: "harvest",
   2: "harvest",
   3: "harvest",
@@ -490,7 +490,7 @@ export type LumiiAttentionState = "listening" | "look_here" | "action";
 
 /** Per-beat attention state. Used by game.tsx to modulate highlight intensity
  *  and by the tutorial component to drive the dim overlay and orb excitement. */
-export const LUMY_ATTENTION: Record<number, LumiiAttentionState> = {
+export const LUMII_ATTENTION: Record<number, LumiiAttentionState> = {
   0: "listening",   // intro — Lumii explains the cosmos
   1: "look_here",   // affinity well intro — showing the well
   2: "action",      // first harvest — waiting for player action
@@ -559,7 +559,7 @@ function getEntryOffset(from: BeatPosition): { x: number; y: number } {
   return { x, y };
 }
 
-function LumyLayout({
+function LumiiLayout({
   layout,
   orb,
   bubble,
@@ -617,7 +617,7 @@ interface Props {
   nudgeTick?: number;
 }
 
-export function LumyTutorial({
+export function LumiiTutorial({
   state,
   sessionPlayerId,
   tutorialStep,
@@ -639,7 +639,7 @@ export function LumyTutorial({
   const prevPositionRef = useRef<BeatPosition>("center");
 
   const beat = BEATS[tutorialStep] ?? null;
-  const currentAttention = LUMY_ATTENTION[tutorialStep] ?? "listening";
+  const currentAttention = LUMII_ATTENTION[tutorialStep] ?? "listening";
 
   useEffect(() => {
     document.documentElement.style.setProperty("--tutorial-panel-height", "0px");
@@ -793,7 +793,7 @@ export function LumyTutorial({
               animate={{ rotate: 360 }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             >
-              <LumyOrb size={80} excited />
+              <LumiiOrb size={80} excited />
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -870,7 +870,7 @@ export function LumyTutorial({
                 animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <LumyOrb size={68} excited />
+                <LumiiOrb size={68} excited />
               </motion.div>
               <h2 className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
               <p className="text-sm text-muted-foreground mb-4">
@@ -902,7 +902,7 @@ export function LumyTutorial({
         )}
       </AnimatePresence>
 
-      {/* ── Lumy orb + speech bubble ── */}
+      {/* ── Lumii orb + speech bubble ── */}
       <AnimatePresence mode="wait">
         {beat && !showCompletion && !isFastForwarding && (
           <motion.div
@@ -915,7 +915,7 @@ export function LumyTutorial({
             className="fixed z-[500] pointer-events-none"
             style={posStyle.fixed}
           >
-            <LumyLayout
+            <LumiiLayout
               layout={posStyle.layout}
               tether={tetherEl}
               orb={
@@ -923,13 +923,13 @@ export function LumyTutorial({
                   animate={{ y: [0, -9, 0] }}
                   transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <LumyOrb size={72} excited={currentAttention === "action" || (currentPhase === 2 && tutorialStep === BEATS.length - 1)} />
+                  <LumiiOrb size={72} excited={currentAttention === "action" || (currentPhase === 2 && tutorialStep === BEATS.length - 1)} />
                 </motion.div>
               }
               bubble={
                 <div className="relative">
                   <AnimatePresence mode="wait">
-                    <LumyBubble
+                    <LumiiBubble
                       key={`${tutorialStep}-${lineIdx}`}
                       text={beat.lines[lineIdx] ?? beat.lines[0] ?? ""}
                       isActionBeat={isActionBeat}

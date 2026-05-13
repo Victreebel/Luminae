@@ -396,7 +396,7 @@ export default function Home() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {tutorialSeen
-                      ? "Guide your civilization to legend again with Lumy"
+                      ? "Guide your civilization to legend again with Lumii"
                       : "Guide your civilization to legend — harvest, forge, summon, ascend"}
                   </div>
                 </div>
