@@ -8,26 +8,39 @@ import { clearSession } from "@/lib/session";
 // ─── Lumy Orb ────────────────────────────────────────────────────────────────
 
 function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
-  const blur = Math.round(size * 0.42);
+  const blur = Math.round(size * 0.45);
   const innerBlur = Math.max(2, Math.round(size * 0.06));
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
   const innerMask = "radial-gradient(circle, rgba(0,0,0,0.9) 18%, rgba(0,0,0,0.35) 50%, transparent 70%)";
   return (
     <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Outer diffuse aura — large blurred cloud, breathes with state */}
+      {/* Outer prismatic halo — large blurred cloud, high contrast */}
       <motion.div
         animate={{
-          scale: excited ? [1, 1.3, 1.1, 1.3, 1] : [1, 1.13, 1],
-          opacity: excited ? [0.55, 1, 0.65, 1, 0.55] : [0.28, 0.52, 0.28],
+          scale: excited ? [1, 1.38, 1.12, 1.38, 1] : [1, 1.18, 1],
+          opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52],
         }}
-        transition={{ duration: excited ? 1.6 : 4.0, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
         style={{
           position: "absolute",
-          inset: "-58%",
+          inset: "-62%",
           borderRadius: "50%",
           background:
-            "conic-gradient(from 0deg, #f9731648, #3b82f648, #22c55e48, #a855f748, #e2e8f028, #fbbf2448, #f9731648)",
+            "conic-gradient(from 0deg, #f97316aa, #3b82f6aa, #22c55eaa, #a855f7aa, #e2e8f066, #fbbf24aa, #f97316aa)",
           filter: `blur(${blur}px)`,
+        }}
+      />
+      {/* Secondary tighter halo ring — brighter inner prismatic band */}
+      <motion.div
+        animate={{ opacity: excited ? [0.5, 0.88, 0.5] : [0.28, 0.58, 0.28] }}
+        transition={{ duration: excited ? 1.2 : 3.0, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          position: "absolute",
+          inset: "-28%",
+          borderRadius: "50%",
+          background:
+            "conic-gradient(from 180deg, #fbbf24cc, #a855f7cc, #3b82f6cc, #22c55ecc, #f97316cc, #fbbf24cc)",
+          filter: `blur(${Math.round(size * 0.18)}px)`,
         }}
       />
       {/* Primary affinity current — rotating, edge-faded to transparent */}
@@ -90,6 +103,41 @@ function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: bool
   );
 }
 
+// ─── Tether Beam ──────────────────────────────────────────────────────────────
+
+function TetherBeam({ direction }: { direction: "down" | "left" }) {
+  const isVert = direction === "down";
+  const DOT_COLORS = ["#a855f7", "#fbbf24", "#3b82f6"];
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: isVert ? "column" : "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 4,
+        flexShrink: 0,
+        padding: isVert ? "3px 0" : "0 3px",
+      }}
+    >
+      {DOT_COLORS.map((color, i) => (
+        <motion.div
+          key={i}
+          animate={{ opacity: [0.1, 0.82, 0.1], scale: [0.55, 1.1, 0.55] }}
+          transition={{ duration: 1.3, repeat: Infinity, ease: "easeInOut", delay: i * 0.26 }}
+          style={{
+            width: isVert ? 2 : 5,
+            height: isVert ? 5 : 2,
+            borderRadius: "50%",
+            background: color,
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Speech Bubble ────────────────────────────────────────────────────────────
 
 interface BubbleProps {
@@ -98,10 +146,11 @@ interface BubbleProps {
   isLastLine: boolean;
   isFfBeat: boolean;
   phase: 1 | 2;
+  objective?: string;
   onClick: () => void;
 }
 
-function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, onClick }: BubbleProps) {
+function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective, onClick }: BubbleProps) {
   const showNext = !isActionBeat || !isLastLine;
   const actionPrompt = isLastLine && isActionBeat ? "Go ahead — do it!" : null;
 
@@ -116,10 +165,7 @@ function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, onClick }
       onClick={onClick}
       className="pointer-events-auto text-left max-w-[240px] rounded-2xl border border-white/20 shadow-xl focus:outline-none"
       style={{
-        background:
-          phase === 2
-            ? "rgba(20, 12, 36, 0.96)"
-            : "rgba(10, 16, 36, 0.96)",
+        background: phase === 2 ? "rgba(20, 12, 36, 0.96)" : "rgba(10, 16, 36, 0.96)",
         backdropFilter: "blur(12px)",
         padding: "12px 14px 10px",
       }}
@@ -160,6 +206,22 @@ function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, onClick }
       {/* Dialogue text */}
       <p className="text-[13px] text-white/92 leading-relaxed mb-2.5">{text}</p>
 
+      {/* Objective label — shown on last line of beats that carry an objective */}
+      {objective && isLastLine && (
+        <div
+          className="flex items-center gap-1.5 mb-2 px-2 py-1 rounded-lg"
+          style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}
+        >
+          <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#a855f7", flexShrink: 0 }} />
+          <span
+            className="text-[9px] uppercase font-semibold"
+            style={{ letterSpacing: "0.12em", color: "rgba(168,85,247,0.85)" }}
+          >
+            {objective}
+          </span>
+        </div>
+      )}
+
       {/* Footer action */}
       {actionPrompt ? (
         <div className="flex items-center gap-1.5 text-[11px] text-amber-300/80 font-semibold">
@@ -182,7 +244,7 @@ function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, onClick }
 
 // ─── Beat Script ──────────────────────────────────────────────────────────────
 
-type BeatPosition = "center" | "harvest" | "market" | "luminaries";
+type BeatPosition = "center" | "harvest" | "market" | "filters" | "luminaries";
 type BeatAdvance =
   | { type: "click" }
   | { type: "action"; actions: string[] }
@@ -192,7 +254,8 @@ interface Beat {
   position: BeatPosition;
   lines: string[];
   advance: BeatAdvance;
-  highlightZone?: "market" | "luminaries";
+  highlightZone?: "harvest" | "market" | "filters" | "luminaries";
+  objective?: string;
   phase: 1 | 2;
 }
 
@@ -212,6 +275,7 @@ const BEATS: Beat[] = [
   {
     position: "harvest",
     phase: 1,
+    highlightZone: "harvest",
     lines: [
       "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from each turn.",
       "Each current is a distinct mode of existence: Flare 🔴, Continuum 🔵, Verdance 🟢, Abyss 🟣, Radiance ⚪ — each a survival philosophy that shapes the cosmos.",
@@ -223,6 +287,8 @@ const BEATS: Beat[] = [
   {
     position: "harvest",
     phase: 1,
+    highlightZone: "harvest",
+    objective: "Objective: gather affinity",
     lines: [
       "Your turn! Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
     ],
@@ -232,6 +298,8 @@ const BEATS: Beat[] = [
   {
     position: "harvest",
     phase: 1,
+    highlightZone: "harvest",
+    objective: "Objective: gather affinity",
     lines: [
       "Your civilization deepens its reach. Do it again — draw 3 different currents, or 2 of the same if there are 4 or more of that current available in the Well.",
     ],
@@ -241,26 +309,40 @@ const BEATS: Beat[] = [
   {
     position: "market",
     phase: 1,
+    highlightZone: "market",
     lines: [
       "These are the relic technologies your civilization can incorporate — Artifact cards in three tiers, from foundational components to civilization-defining works.",
       "Each Artifact permanently bonds an affinity to your civilization's infrastructure. The most significant ones carry Eminence — the measure of your civilization's ascension.",
       "When your civilization expresses an affinity path with enough depth, a Luminary archetype stirs and answers. That is when things become legendary.",
     ],
     advance: { type: "click" },
-    highlightZone: "market",
   },
-  // 5 — Reserve instruction (wait for action)
+  // 5 — Filter controls (new beat)
+  {
+    position: "filters",
+    phase: 1,
+    highlightZone: "filters",
+    objective: "Objective: use the filters",
+    lines: [
+      "See those three labels above the market — Printed, Discounted, and Needed?",
+      "Discounted shows costs after your permanent affinity depth: the Artifacts your civilization is already closer to shaping.",
+      "Needed shows only what you still lack right now. It's the fastest way to see which Artifacts are within reach this turn.",
+    ],
+    advance: { type: "click" },
+  },
+  // 6 — Reserve instruction (wait for action)
   {
     position: "market",
     phase: 1,
+    highlightZone: "market",
+    objective: "Objective: reserve an Artifact",
     lines: [
       "Tap any Artifact to examine it. You can Forge it into your civilization now, or Reserve it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
       "Reserve one now. Tap any Artifact in the market and hit Reserve.",
     ],
     advance: { type: "action", actions: ["reserve_card"] },
-    highlightZone: "market",
   },
-  // 6 — Post-reserve
+  // 7 — Post-reserve
   {
     position: "market",
     phase: 1,
@@ -270,30 +352,31 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "click" },
   },
-  // 7 — Forge instruction (wait for action)
+  // 8 — Forge instruction (wait for action)
   {
     position: "market",
     phase: 1,
+    highlightZone: "market",
+    objective: "Objective: forge an Artifact",
     lines: [
       "Now Forge. Artifacts with green costs are within your civilization's current reach. Tap one and hit Forge Artifact.",
       "Every Forged Artifact becomes permanent infrastructure — it deepens your affinity in that path, making future relic technologies of that kind easier to incorporate.",
     ],
     advance: { type: "action", actions: ["purchase_card"] },
-    highlightZone: "market",
   },
-  // 8 — Luminaries intro
+  // 9 — Luminaries intro
   {
     position: "luminaries",
     phase: 1,
+    highlightZone: "luminaries",
     lines: [
       "Look up. Those are the Luminaries — cosmic archetypes that exist beyond ordinary civilization, each one a survival philosophy made manifest.",
       "When your civilization expresses an affinity path with enough depth, the corresponding Luminary stirs and emerges — and your civilization receives a surge of Eminence.",
       "A Luminary of one affinity brings 2 Eminence; dual-affinity brings 3; triple-affinity, 4. They are the turning points of ascension. Let me show you one.",
     ],
     advance: { type: "click" },
-    highlightZone: "luminaries",
   },
-  // 9 — Fast-forward trigger
+  // 10 — Fast-forward trigger
   {
     position: "center",
     phase: 1,
@@ -302,7 +385,7 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "fast_forward" },
   },
-  // 10 — Endgame intro (Phase 2)
+  // 11 — Endgame intro (Phase 2)
   {
     position: "center",
     phase: 2,
@@ -313,17 +396,19 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "click" },
   },
-  // 11 — Endgame forge instruction (wait for action)
+  // 12 — Endgame forge instruction (wait for action)
   {
     position: "market",
     phase: 2,
+    highlightZone: "market",
+    objective: "Objective: forge your reserved Artifact",
     lines: [
       "You have a Verdance Artifact reserved — it costs Abyss and Radiance currents, and your civilization holds both.",
       "Open your Reserved cards (tap the card icon button, or find it in your hand) and Forge it. The Verdant Oracle is waiting.",
     ],
     advance: { type: "action", actions: ["purchase_reserved"] },
   },
-  // 12 — Completion celebration
+  // 13 — Completion celebration
   {
     position: "center",
     phase: 2,
@@ -338,22 +423,45 @@ const BEATS: Beat[] = [
 
 export const LUMY_BEAT_COUNT = BEATS.length;
 
-// Maps each beat index to the action types allowed by the tutorial gate in game.tsx.
-// Exported so game.tsx can use it directly.
 export const LUMY_BEAT_GATES: Record<number, string[]> = {
   0: [],
   1: [],
   2: ["take_three_crystals", "take_two_crystals"],
   3: ["take_three_crystals", "take_two_crystals"],
   4: [],
-  5: ["reserve_card"],
-  6: [],
-  7: ["purchase_card"],
-  8: [],
-  9: ["tutorial_fast_forward"],
-  10: [],
-  11: ["purchase_reserved"],
-  12: [],
+  5: [],
+  6: ["reserve_card"],
+  7: [],
+  8: ["purchase_card"],
+  9: [],
+  10: ["tutorial_fast_forward"],
+  11: [],
+  12: ["purchase_reserved"],
+  13: [],
+};
+
+export const LUMY_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" | "filters" | "luminaries">> = {
+  1: "harvest",
+  2: "harvest",
+  3: "harvest",
+  4: "market",
+  5: "filters",
+  6: "market",
+  7: "market",
+  8: "market",
+  9: "luminaries",
+  12: "market",
+};
+
+// ─── Nudge messages — shown when a blocked action is attempted ────────────────
+
+const NUDGE_MESSAGES: Partial<Record<number, string>> = {
+  2: "Select affinity currents from the Affinity Well below, then tap Harness.",
+  3: "Draw more currents from the Affinity Well, then tap Harness.",
+  5: "Explore the Discounted and Needed filters above the market, then tap to continue.",
+  6: "Tap any Artifact card in the market, then tap Reserve to hold it.",
+  8: "Tap an affordable Artifact (green costs shown) and hit Forge Artifact.",
+  12: "Find your reserved card in your hand and tap Forge Artifact.",
 };
 
 // ─── Position helpers ─────────────────────────────────────────────────────────
@@ -363,31 +471,21 @@ type LayoutVariant = "above" | "below" | "left" | "right";
 interface PositionStyle {
   fixed: React.CSSProperties;
   layout: LayoutVariant;
+  tether?: "down" | "left";
 }
 
 function getPositionStyle(pos: BeatPosition): PositionStyle {
   switch (pos) {
     case "harvest":
-      return {
-        fixed: { bottom: 156, left: 14 },
-        layout: "above",
-      };
+      return { fixed: { bottom: 156, left: 14 }, layout: "above", tether: "down" };
     case "market":
-      return {
-        fixed: { top: "44%", right: 12, transform: "translateY(-50%)" },
-        layout: "left",
-      };
+    case "filters":
+      return { fixed: { top: "44%", right: 12, transform: "translateY(-50%)" }, layout: "left", tether: "left" };
     case "luminaries":
-      return {
-        fixed: { top: 112, left: "50%", transform: "translateX(-50%)" },
-        layout: "below",
-      };
+      return { fixed: { top: 112, left: "50%", transform: "translateX(-50%)" }, layout: "below", tether: "down" };
     case "center":
     default:
-      return {
-        fixed: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" },
-        layout: "below",
-      };
+      return { fixed: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }, layout: "below" };
   }
 }
 
@@ -395,39 +493,44 @@ function LumyLayout({
   layout,
   orb,
   bubble,
+  tether,
 }: {
   layout: LayoutVariant;
   orb: React.ReactNode;
   bubble: React.ReactNode;
+  tether?: React.ReactNode;
 }) {
   if (layout === "above") {
     return (
-      <div className="flex flex-col-reverse items-center gap-2">
-        {orb}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         {bubble}
+        {orb}
+        {tether}
       </div>
     );
   }
   if (layout === "below") {
     return (
-      <div className="flex flex-col items-center gap-2">
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         {orb}
+        {tether}
         {bubble}
       </div>
     );
   }
   if (layout === "left") {
     return (
-      <div className="flex flex-row-reverse items-start gap-2.5">
+      <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "flex-start", gap: 10 }}>
         {orb}
+        {tether}
         {bubble}
       </div>
     );
   }
-  // right
   return (
-    <div className="flex flex-row items-start gap-2.5">
+    <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
       {orb}
+      {tether}
       {bubble}
     </div>
   );
@@ -441,6 +544,7 @@ interface Props {
   tutorialStep: number;
   setTutorialStep: (step: number) => void;
   executeAction: (payload: Record<string, unknown>) => Promise<void>;
+  nudgeTick?: number;
 }
 
 export function LumyTutorial({
@@ -449,20 +553,21 @@ export function LumyTutorial({
   tutorialStep,
   setTutorialStep,
   executeAction,
+  nudgeTick = 0,
 }: Props) {
   const [, setLocation] = useLocation();
   const [lineIdx, setLineIdx] = useState(0);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [nudgeText, setNudgeText] = useState<string | null>(null);
   const prevLogLenRef = useRef(0);
   const ffTriggeredRef = useRef(false);
   const lumyPanelRef = useRef<HTMLDivElement | null>(null);
+  const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const beat = BEATS[tutorialStep] ?? null;
 
-  // Zero out the panel-height CSS variable so board content doesn't add
-  // unnecessary padding (Lumy floats freely rather than using a fixed panel).
   useEffect(() => {
     document.documentElement.style.setProperty("--tutorial-panel-height", "0px");
     return () => {
@@ -470,12 +575,21 @@ export function LumyTutorial({
     };
   }, []);
 
-  // Reset line index whenever the beat changes
   useEffect(() => {
     setLineIdx(0);
   }, [tutorialStep]);
 
-  // ── Advance helpers ──
+  // Show nudge when a blocked action is signalled from game.tsx
+  useEffect(() => {
+    if (nudgeTick === 0) return;
+    const msg = NUDGE_MESSAGES[tutorialStep];
+    if (!msg) return;
+    setNudgeText(msg);
+    if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
+    nudgeTimerRef.current = setTimeout(() => setNudgeText(null), 2800);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nudgeTick]);
+
   const advanceBeat = useCallback(() => {
     const next = tutorialStep + 1;
     if (next >= BEATS.length) {
@@ -485,44 +599,33 @@ export function LumyTutorial({
     }
   }, [tutorialStep, setTutorialStep]);
 
-  // ── Click / tap handler ──
   const handleClick = useCallback(() => {
     if (!beat || showCompletion || isFastForwarding) return;
-
     if (lineIdx < beat.lines.length - 1) {
-      // More lines remain in this beat
       setLineIdx((l) => l + 1);
       return;
     }
-
-    // On last line: advance based on beat type
     if (beat.advance.type === "click") {
       advanceBeat();
     } else if (beat.advance.type === "fast_forward") {
       triggerFastForward();
     }
-    // "action" beats: clicking does nothing — player must complete the action
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat, lineIdx, advanceBeat, showCompletion, isFastForwarding]);
 
-  // ── Watch actionLog for action-beat completion ──
   useEffect(() => {
     if (!beat || beat.advance.type !== "action") return;
     if (!state?.actionLog?.length) return;
-
     const logLen = state.actionLog.length;
     if (logLen <= prevLogLenRef.current) return;
     prevLogLenRef.current = logLen;
-
     const lastAction = state.lastAction as { type?: string; playerId?: string } | null;
     if (!lastAction?.type || lastAction.playerId !== sessionPlayerId) return;
-
     if (beat.advance.actions.includes(lastAction.type)) {
       advanceBeat();
     }
   }, [state?.actionLog?.length, beat, sessionPlayerId, advanceBeat]);
 
-  // ── Fast-forward trigger ──
   const triggerFastForward = useCallback(async () => {
     if (ffTriggeredRef.current) return;
     ffTriggeredRef.current = true;
@@ -530,13 +633,11 @@ export function LumyTutorial({
     try {
       await executeAction({ type: "tutorial_fast_forward" });
     } catch {
-      // If the action fails, unblock
       ffTriggeredRef.current = false;
       setIsFastForwarding(false);
     }
   }, [executeAction]);
 
-  // ── Watch for fast-forward state to arrive (lumens jumps to 13) ──
   useEffect(() => {
     if (!isFastForwarding) return undefined;
     const myPlayer = state?.players?.find((p) => p.playerId === sessionPlayerId);
@@ -551,10 +652,8 @@ export function LumyTutorial({
     return undefined;
   }, [isFastForwarding, state, sessionPlayerId, advanceBeat]);
 
-  // ── Auto-advance to completion when game finishes (win) during endgame ──
   useEffect(() => {
-    if (state?.status === "finished" && tutorialStep >= 10 && tutorialStep < BEATS.length - 1) {
-      // Let beat 11→12 advance naturally via actionLog, but if game ends first, jump to completion
+    if (state?.status === "finished" && tutorialStep >= 11 && tutorialStep < BEATS.length - 1) {
       const timer = setTimeout(() => {
         if (tutorialStep < BEATS.length - 1) {
           setTutorialStep(BEATS.length - 1);
@@ -566,7 +665,6 @@ export function LumyTutorial({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.status]);
 
-  // ── Skip handlers ──
   const handleSkip = () => {
     setShowSkipConfirm(false);
     localStorage.setItem("luminae_tutorial_seen", "1");
@@ -589,6 +687,7 @@ export function LumyTutorial({
   const isFfBeat = beat?.advance.type === "fast_forward";
   const currentPhase: 1 | 2 = beat?.phase ?? 1;
   const posStyle = beat ? getPositionStyle(beat.position) : getPositionStyle("center");
+  const tetherEl = posStyle.tether ? <TetherBeam direction={posStyle.tether} /> : undefined;
 
   return (
     <>
@@ -602,7 +701,6 @@ export function LumyTutorial({
             transition={{ duration: 0.7 }}
             className="fixed inset-0 z-[9000] bg-black flex flex-col items-center justify-center gap-4"
           >
-            {/* Lumy spins in the center while time passes */}
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
@@ -679,7 +777,6 @@ export function LumyTutorial({
               transition={{ type: "spring", stiffness: 280, damping: 22 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl text-center"
             >
-              {/* Lumy celebration */}
               <motion.div
                 className="flex justify-center mb-4"
                 animate={{ y: [0, -8, 0] }}
@@ -732,6 +829,7 @@ export function LumyTutorial({
           >
             <LumyLayout
               layout={posStyle.layout}
+              tether={tetherEl}
               orb={
                 <motion.div
                   animate={{ y: [0, -9, 0] }}
@@ -741,24 +839,54 @@ export function LumyTutorial({
                 </motion.div>
               }
               bubble={
-                <AnimatePresence mode="wait">
-                  <LumyBubble
-                    key={`${tutorialStep}-${lineIdx}`}
-                    text={beat.lines[lineIdx] ?? beat.lines[0] ?? ""}
-                    isActionBeat={isActionBeat}
-                    isLastLine={isLastLine}
-                    isFfBeat={isFfBeat}
-                    phase={currentPhase}
-                    onClick={handleClick}
-                  />
-                </AnimatePresence>
+                <div className="relative">
+                  <AnimatePresence mode="wait">
+                    <LumyBubble
+                      key={`${tutorialStep}-${lineIdx}`}
+                      text={beat.lines[lineIdx] ?? beat.lines[0] ?? ""}
+                      isActionBeat={isActionBeat}
+                      isLastLine={isLastLine}
+                      isFfBeat={isFfBeat}
+                      phase={currentPhase}
+                      objective={beat.objective}
+                      onClick={handleClick}
+                    />
+                  </AnimatePresence>
+                  {/* Nudge — brief explanation when a disallowed action is attempted */}
+                  <AnimatePresence>
+                    {nudgeText && (
+                      <motion.div
+                        key="nudge"
+                        initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute inset-x-0 pointer-events-none"
+                        style={{ top: "calc(100% + 6px)" }}
+                      >
+                        <div
+                          className="rounded-xl px-3 py-2 text-[11px] leading-snug"
+                          style={{
+                            background: "rgba(168,85,247,0.18)",
+                            border: "1px solid rgba(168,85,247,0.38)",
+                            backdropFilter: "blur(8px)",
+                            color: "rgba(255,255,255,0.82)",
+                          }}
+                        >
+                          <span style={{ color: "#a855f7", fontWeight: 700, marginRight: 5 }}>✦</span>
+                          {nudgeText}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               }
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── Skip button (always visible during active tutorial) ── */}
+      {/* ── Skip button ── */}
       {!showCompletion && !isFastForwarding && beat && (
         <motion.button
           type="button"
@@ -774,7 +902,7 @@ export function LumyTutorial({
 
       {/* ── Phase 2 scene label ── */}
       <AnimatePresence>
-        {currentPhase === 2 && !showCompletion && !isFastForwarding && tutorialStep >= 10 && (
+        {currentPhase === 2 && !showCompletion && !isFastForwarding && tutorialStep >= 11 && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}

@@ -35,7 +35,7 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { LumyTutorial, LUMY_BEAT_COUNT, LUMY_BEAT_GATES } from '@/components/LumyTutorial';
+import { LumyTutorial, LUMY_BEAT_COUNT, LUMY_BEAT_GATES, LUMY_ZONE_HIGHLIGHTS } from '@/components/LumyTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
@@ -914,6 +914,8 @@ export default function GameBoard() {
     const params = new URLSearchParams(window.location.search);
     return params.get('tutorial') === '1' ? 0 : -1;
   });
+  const [tutorialNudgeTick, setTutorialNudgeTick] = useState(0);
+  const tutorialZone = (isTutorial && tutorialStep >= 0) ? (LUMY_ZONE_HIGHLIGHTS[tutorialStep] ?? null) : null;
   const [hintsEnabled, setHintsEnabled] = useState<boolean>(
     () => localStorage.getItem('luminae_hints_enabled') !== '0'
   );
@@ -2372,7 +2374,10 @@ export default function GameBoard() {
     // even during tutorial steps where all other action types are gated.
     if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep < LUMY_BEAT_COUNT) {
       const permitted = LUMY_BEAT_GATES[tutorialStep] ?? [];
-      if (!permitted.includes(payload.type as string)) return;
+      if (!permitted.includes(payload.type as string)) {
+        setTutorialNudgeTick(t => t + 1);
+        return;
+      }
     }
     const CORE_ACTION_TYPES = ['take_three_crystals', 'take_two_crystals', 'purchase_card', 'purchase_reserved', 'reserve_card'];
     if (CORE_ACTION_TYPES.includes(payload.type)) {
@@ -2751,7 +2756,13 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* Luminaries */}
-      <div>
+      <div
+        style={tutorialZone === 'luminaries' ? {
+          borderRadius: 12,
+          boxShadow: '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)',
+          transition: 'box-shadow 0.3s',
+        } : undefined}
+      >
         <div className="flex items-center justify-between mb-2 px-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Luminaries</p>
           {/* Reserved-height slot — always occupies space so header row never shifts */}
@@ -2842,11 +2853,25 @@ export default function GameBoard() {
       </div>
 
       {/* Market rows */}
-      <div className="flex flex-col gap-4">
+      <div
+        className="flex flex-col gap-4"
+        style={(tutorialZone === 'market' || tutorialZone === 'filters') ? {
+          borderRadius: 12,
+          boxShadow: '0 0 0 2px rgba(168,85,247,0.35), 0 0 20px 5px rgba(168,85,247,0.08)',
+          transition: 'box-shadow 0.3s',
+        } : undefined}
+      >
         {/* Cost toggle */}
         <div className="flex items-center justify-between px-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Artifacts · Forge using Affinities</p>
-          <div className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5">
+          <div
+            className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5"
+            style={tutorialZone === 'filters' ? {
+              boxShadow: '0 0 0 2px rgba(168,85,247,0.65), 0 0 14px 4px rgba(168,85,247,0.22)',
+              borderColor: 'rgba(168,85,247,0.5)',
+              transition: 'box-shadow 0.3s, border-color 0.3s',
+            } : undefined}
+          >
             {([
               { mode: 'printed' as CostMode, label: 'Printed', title: 'Show original printed cost' },
               { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
@@ -2930,7 +2955,7 @@ export default function GameBoard() {
                   );
                 }
 
-                const showTutorialGlow = isTutorial && (tutorialStep === 5 || tutorialStep === 7) && !selectedCard;
+                const showTutorialGlow = isTutorial && (tutorialStep === 6 || tutorialStep === 8) && !selectedCard;
                 return (
                   <div key={c.id} data-card-id={c.id} className="relative shrink-0">
                     <ArtifactCardView
@@ -2966,7 +2991,10 @@ export default function GameBoard() {
             : '1px solid hsl(var(--border) / 0.5)',
           boxShadow: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
             ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
+            : (tutorialZone === 'harvest')
+            ? '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)'
             : 'none',
+          transition: 'box-shadow 0.3s, border 0.3s',
         }}
       >
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
@@ -4264,7 +4292,7 @@ export default function GameBoard() {
               <div
                 {...cardSheetScrollableProps}
                 className="overflow-y-auto max-h-[70vh]"
-                style={isTutorial && (tutorialStep === 5 || tutorialStep === 7)
+                style={isTutorial && (tutorialStep === 6 || tutorialStep === 8)
                   ? { paddingBottom: 'var(--tutorial-panel-height, 0px)' }
                   : undefined}
               >
@@ -5966,6 +5994,7 @@ export default function GameBoard() {
           tutorialStep={tutorialStep}
           setTutorialStep={setTutorialStep}
           executeAction={executeAction}
+          nudgeTick={tutorialNudgeTick}
         />
       )}
 
