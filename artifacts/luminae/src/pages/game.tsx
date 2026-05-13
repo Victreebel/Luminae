@@ -35,7 +35,7 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { LumyTutorial, LUMY_BEAT_COUNT, LUMY_BEAT_GATES, LUMY_ZONE_HIGHLIGHTS } from '@/components/LumyTutorial';
+import { LumyTutorial, LUMY_BEAT_COUNT, LUMY_BEAT_GATES, LUMY_ZONE_HIGHLIGHTS, LUMY_ATTENTION, type LumiiAttentionState } from '@/components/LumyTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
@@ -916,6 +916,7 @@ export default function GameBoard() {
   });
   const [tutorialNudgeTick, setTutorialNudgeTick] = useState(0);
   const tutorialZone = (isTutorial && tutorialStep >= 0) ? (LUMY_ZONE_HIGHLIGHTS[tutorialStep] ?? null) : null;
+  const tutorialAttention: LumiiAttentionState | null = (isTutorial && tutorialStep >= 0) ? (LUMY_ATTENTION[tutorialStep] ?? null) : null;
   const [hintsEnabled, setHintsEnabled] = useState<boolean>(
     () => localStorage.getItem('luminae_hints_enabled') !== '0'
   );
@@ -2759,7 +2760,9 @@ export default function GameBoard() {
       <div
         style={tutorialZone === 'luminaries' ? {
           borderRadius: 12,
-          boxShadow: '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)',
+          boxShadow: tutorialAttention === 'action'
+            ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
+            : '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)',
           transition: 'box-shadow 0.3s',
         } : undefined}
       >
@@ -2857,7 +2860,9 @@ export default function GameBoard() {
         className="flex flex-col gap-4"
         style={(tutorialZone === 'market' || tutorialZone === 'filters') ? {
           borderRadius: 12,
-          boxShadow: '0 0 0 2px rgba(168,85,247,0.35), 0 0 20px 5px rgba(168,85,247,0.08)',
+          boxShadow: tutorialAttention === 'action'
+            ? '0 0 0 2px rgba(168,85,247,0.68), 0 0 34px 10px rgba(168,85,247,0.18)'
+            : '0 0 0 2px rgba(168,85,247,0.35), 0 0 20px 5px rgba(168,85,247,0.08)',
           transition: 'box-shadow 0.3s',
         } : undefined}
       >
@@ -2992,7 +2997,9 @@ export default function GameBoard() {
           boxShadow: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
             ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
             : (tutorialZone === 'harvest')
-            ? '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)'
+            ? tutorialAttention === 'action'
+              ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
+              : '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)'
             : 'none',
           transition: 'box-shadow 0.3s, border 0.3s',
         }}
@@ -3134,7 +3141,14 @@ export default function GameBoard() {
           animate={{ opacity: crystalQueueActive ? 1 : 0 }}
           transition={{ duration: 0.2 }}
           aria-hidden={!crystalQueueActive}
-          style={{ pointerEvents: crystalQueueActive ? 'auto' : 'none' }}
+          style={{
+            pointerEvents: crystalQueueActive ? 'auto' : 'none',
+            ...(tutorialZone === 'harvest' && tutorialAttention === 'action' ? {
+              borderRadius: 12,
+              boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
+              transition: 'box-shadow 0.3s',
+            } : {}),
+          }}
         >
               <div className="px-3 pb-3 pt-1 border-t border-white/10">
                 {!isMyTurn && canPlan && (
@@ -4109,6 +4123,11 @@ export default function GameBoard() {
                 onClick={() => setShowEminenceBreakdown(true)}
                 className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:text-foreground transition-colors"
                 title="View eminence breakdown"
+                style={isTutorial && (tutorialStep === 9 || tutorialStep === 11) ? {
+                  boxShadow: '0 0 0 2px rgba(168,85,247,0.6), 0 0 12px 3px rgba(168,85,247,0.22)',
+                  borderRadius: 8,
+                  transition: 'box-shadow 0.3s',
+                } : undefined}
               >
                 <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
                 <Sparkles className="h-3 w-3 text-primary" />

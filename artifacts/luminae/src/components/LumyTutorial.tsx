@@ -105,32 +105,63 @@ function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: bool
 
 // ─── Tether Beam ──────────────────────────────────────────────────────────────
 
-function TetherBeam({ direction }: { direction: "down" | "left" }) {
-  const isVert = direction === "down";
-  const DOT_COLORS = ["#a855f7", "#fbbf24", "#3b82f6"];
+function TetherBeam({ direction }: { direction: "down" | "left" | "up" }) {
+  const isVert = direction === "down" || direction === "up";
+  const isDown = direction === "down";
+  const LENGTH = 58;
+  const CROSS = 18;
+  const gradDir = isVert ? (isDown ? "to bottom" : "to top") : "to left";
+  // Dots travel from the orb toward the highlighted zone
+  const dotKeyframe = isVert
+    ? (isDown ? [2, LENGTH - 10, 2] : [LENGTH - 10, 2, LENGTH - 10])
+    : [LENGTH - 10, 2, LENGTH - 10];
+  const DOT_COLORS = ["#a855f7", "#fbbf24", "#3b82f6"] as const;
+
   return (
     <div
       style={{
-        display: "flex",
-        flexDirection: isVert ? "column" : "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 4,
+        width: isVert ? CROSS : LENGTH,
+        height: isVert ? LENGTH : CROSS,
+        position: "relative",
         flexShrink: 0,
-        padding: isVert ? "3px 0" : "0 3px",
       }}
     >
+      {/* Gradient glow arm */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `linear-gradient(${gradDir}, rgba(168,85,247,0.55), rgba(59,130,246,0.28), transparent)`,
+          borderRadius: 10,
+          filter: "blur(4px)",
+        }}
+      />
+      {/* Sharper centre line */}
+      <div
+        style={{
+          position: "absolute",
+          ...(isVert
+            ? { top: 0, bottom: 0, left: "50%", width: 1, transform: "translateX(-50%)" }
+            : { left: 0, right: 0, top: "50%", height: 1, transform: "translateY(-50%)" }),
+          background: `linear-gradient(${gradDir}, rgba(168,85,247,0.45), transparent)`,
+        }}
+      />
+      {/* Travelling dots */}
       {DOT_COLORS.map((color, i) => (
         <motion.div
           key={i}
-          animate={{ opacity: [0.1, 0.82, 0.1], scale: [0.55, 1.1, 0.55] }}
-          transition={{ duration: 1.3, repeat: Infinity, ease: "easeInOut", delay: i * 0.26 }}
+          animate={isVert ? { y: dotKeyframe } : { x: dotKeyframe }}
+          transition={{ duration: 1.55, repeat: Infinity, delay: i * 0.38, ease: "easeInOut" }}
           style={{
-            width: isVert ? 2 : 5,
-            height: isVert ? 5 : 2,
+            position: "absolute",
+            width: 5,
+            height: 5,
             borderRadius: "50%",
             background: color,
-            flexShrink: 0,
+            boxShadow: `0 0 7px ${color}`,
+            ...(isVert
+              ? { left: "50%", top: 0, transform: "translateX(-50%)" }
+              : { top: "50%", left: 0, transform: "translateY(-50%)" }),
           }}
         />
       ))}
@@ -453,6 +484,29 @@ export const LUMY_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" |
   12: "market",
 };
 
+// ─── Tutorial attention states ────────────────────────────────────────────────
+
+export type LumiiAttentionState = "listening" | "look_here" | "action";
+
+/** Per-beat attention state. Used by game.tsx to modulate highlight intensity
+ *  and by the tutorial component to drive the dim overlay and orb excitement. */
+export const LUMY_ATTENTION: Record<number, LumiiAttentionState> = {
+  0: "listening",   // intro — Lumii explains the cosmos
+  1: "look_here",   // affinity well intro — showing the well
+  2: "action",      // first harvest — waiting for player action
+  3: "action",      // second harvest — waiting for player action
+  4: "look_here",   // market intro — showing the market
+  5: "look_here",   // filters — click to continue
+  6: "action",      // reserve — waiting for player action
+  7: "look_here",   // post-reserve explanation
+  8: "action",      // forge — waiting for player action
+  9: "look_here",   // luminaries intro — showing luminaries + eminence
+  10: "listening",  // fast-forward transition
+  11: "listening",  // endgame intro
+  12: "action",     // endgame forge — waiting for player action
+  13: "listening",  // completion celebration
+};
+
 // ─── Nudge messages — shown when a blocked action is attempted ────────────────
 
 const NUDGE_MESSAGES: Partial<Record<number, string>> = {
@@ -471,7 +525,7 @@ type LayoutVariant = "above" | "below" | "left" | "right";
 interface PositionStyle {
   fixed: React.CSSProperties;
   layout: LayoutVariant;
-  tether?: "down" | "left";
+  tether?: "down" | "left" | "up";
 }
 
 function getPositionStyle(pos: BeatPosition): PositionStyle {
@@ -482,11 +536,27 @@ function getPositionStyle(pos: BeatPosition): PositionStyle {
     case "filters":
       return { fixed: { top: "44%", right: 12, transform: "translateY(-50%)" }, layout: "left", tether: "left" };
     case "luminaries":
-      return { fixed: { top: 112, left: "50%", transform: "translateX(-50%)" }, layout: "below", tether: "down" };
+      // Position below the luminary panel header — tether flows up toward the cards
+      return { fixed: { top: 88, left: "50%", transform: "translateX(-50%)" }, layout: "below", tether: "down" };
     case "center":
     default:
       return { fixed: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }, layout: "below" };
   }
+}
+
+// Slide-in offset when a new beat enters — gives the illusion of Lumii travelling
+// from the previous position to the current one.
+const POSITION_VECTOR: Record<BeatPosition, [number, number]> = {
+  center:    [0,   14],
+  harvest:   [-22, 18],
+  market:    [22,  0],
+  filters:   [22,  0],
+  luminaries:[0,  -18],
+};
+
+function getEntryOffset(from: BeatPosition): { x: number; y: number } {
+  const [x, y] = POSITION_VECTOR[from] ?? [0, 14];
+  return { x, y };
 }
 
 function LumyLayout({
@@ -565,8 +635,11 @@ export function LumyTutorial({
   const ffTriggeredRef = useRef(false);
   const lumyPanelRef = useRef<HTMLDivElement | null>(null);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tracks the previous beat's position so the next beat can slide in from that direction
+  const prevPositionRef = useRef<BeatPosition>("center");
 
   const beat = BEATS[tutorialStep] ?? null;
+  const currentAttention = LUMY_ATTENTION[tutorialStep] ?? "listening";
 
   useEffect(() => {
     document.documentElement.style.setProperty("--tutorial-panel-height", "0px");
@@ -589,6 +662,12 @@ export function LumyTutorial({
     nudgeTimerRef.current = setTimeout(() => setNudgeText(null), 2800);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nudgeTick]);
+
+  // Record the departing beat's position AFTER it has rendered, so the incoming
+  // beat can use it to compute its directional slide-in offset.
+  useEffect(() => {
+    prevPositionRef.current = beat?.position ?? "center";
+  }, [beat?.position]);
 
   const advanceBeat = useCallback(() => {
     const next = tutorialStep + 1;
@@ -688,9 +767,18 @@ export function LumyTutorial({
   const currentPhase: 1 | 2 = beat?.phase ?? 1;
   const posStyle = beat ? getPositionStyle(beat.position) : getPositionStyle("center");
   const tetherEl = posStyle.tether ? <TetherBeam direction={posStyle.tether} /> : undefined;
+  const entryOffset = getEntryOffset(prevPositionRef.current);
 
   return (
     <>
+      {/* ── Listening-state background dim — independent of beat lifecycle ── */}
+      <motion.div
+        className="fixed inset-0 pointer-events-none"
+        style={{ zIndex: 485, background: "black" }}
+        animate={{ opacity: !showCompletion && !isFastForwarding && currentAttention === "listening" ? 0.34 : 0 }}
+        transition={{ duration: 0.55 }}
+      />
+
       {/* ── Fast-forward blackout overlay ── */}
       <AnimatePresence>
         {isFastForwarding && (
@@ -820,10 +908,10 @@ export function LumyTutorial({
           <motion.div
             key={`beat-${tutorialStep}`}
             ref={lumyPanelRef}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, x: entryOffset.x, y: entryOffset.y, scale: 0.9 }}
+            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.88 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
             className="fixed z-[500] pointer-events-none"
             style={posStyle.fixed}
           >
@@ -835,7 +923,7 @@ export function LumyTutorial({
                   animate={{ y: [0, -9, 0] }}
                   transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <LumyOrb size={72} excited={currentPhase === 2 && tutorialStep === BEATS.length - 1} />
+                  <LumyOrb size={72} excited={currentAttention === "action" || (currentPhase === 2 && tutorialStep === BEATS.length - 1)} />
                 </motion.div>
               }
               bubble={
