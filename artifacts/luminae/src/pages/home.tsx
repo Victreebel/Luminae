@@ -277,14 +277,74 @@ export default function Home() {
                     drop-shadow(0 0 40px rgba(100,80,180,0.15));
           }
         `}</style>
-        <motion.h1
-          className="home-luminae-title text-5xl"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.12 }}
-        >
-          LUMINAE
-        </motion.h1>
+        {/* Title + singularity "dot" over the I */}
+        <div style={{ position: "relative" }}>
+          <motion.h1
+            className="home-luminae-title text-5xl"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.12 }}
+          >
+            LUMINAE
+          </motion.h1>
+
+          {/* Singularity — pinned above the 'I' (≈ horizontal center of "LUMINAE") */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.2 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.55, duration: 0.7, type: "spring", stiffness: 190, damping: 17 }}
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 10px)",
+              left: "50%",
+              transform: "translateX(-50%)",
+              pointerEvents: "none",
+              zIndex: 10,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 34,
+              height: 34,
+            }}
+          >
+            {/* Gravitational lensing halo */}
+            <div style={{
+              position: "absolute",
+              inset: -7,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, transparent 36%, rgba(110,55,220,0.22) 50%, rgba(170,100,255,0.1) 68%, transparent 82%)",
+              filter: "blur(4px)",
+            }} />
+
+            {/* Accretion disk — slowly rotating, warm gradient ellipse */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+              style={{
+                position: "absolute",
+                width: 34,
+                height: 8,
+                borderRadius: "50%",
+                background:
+                  "conic-gradient(from 0deg, rgba(255,135,12,0.92), rgba(255,218,72,1), rgba(255,248,180,0.96), rgba(255,195,55,0.82), rgba(205,72,8,0.55), rgba(255,135,12,0.92))",
+                filter: "blur(1.5px)",
+                boxShadow: "0 0 9px 3px rgba(255,152,22,0.48)",
+              }}
+            />
+
+            {/* Event horizon — the black hole itself */}
+            <div style={{
+              position: "relative",
+              zIndex: 2,
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: "radial-gradient(circle at 38% 34%, #070114 0%, #000000 100%)",
+              boxShadow:
+                "0 0 5px 2px rgba(95,45,200,0.42), 0 0 11px 4px rgba(130,65,235,0.18)",
+            }} />
+          </motion.div>
+        </div>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
