@@ -307,37 +307,113 @@ export default function Home() {
               height: 34,
             }}
           >
-            {/* Gravitational lensing halo — gold, matching the disk */}
+            {/* ── Layer 0: Outer scattered-light corona ── */}
             <div style={{
               position: "absolute",
-              inset: -7,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, transparent 36%, rgba(255,205,0,0.2) 50%, rgba(255,215,0,0.08) 68%, transparent 82%)",
-              filter: "blur(4px)",
-            }} />
-
-            {/* Accretion disk — static flat ellipse, gold glow */}
-            <div style={{
-              position: "absolute",
-              width: 34,
-              height: 8,
+              inset: -14,
               borderRadius: "50%",
               background:
-                "linear-gradient(90deg, rgba(200,160,0,0.55) 0%, rgba(255,230,60,0.95) 30%, rgba(255,252,180,1) 50%, rgba(255,230,60,0.95) 70%, rgba(200,160,0,0.55) 100%)",
-              filter: "blur(1.2px)",
-              boxShadow: "0 0 10px 4px rgba(255,215,0,0.5)",
+                "radial-gradient(ellipse 140% 60% at 50% 64%, rgba(255,120,0,0.42) 0%, rgba(220,85,0,0.18) 32%, rgba(160,55,0,0.06) 58%, transparent 78%)",
+              filter: "blur(6px)",
             }} />
 
-            {/* Event horizon — the black hole itself */}
+            {/* ── Layer 0b: Second diffuse ring — warm outer halo ── */}
             <div style={{
-              position: "relative",
-              zIndex: 2,
-              width: 14,
-              height: 14,
+              position: "absolute",
+              inset: -5,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 34%, #0a0800 0%, #000000 100%)",
+              background:
+                "radial-gradient(circle, transparent 42%, rgba(255,170,20,0.16) 56%, rgba(255,140,0,0.08) 70%, transparent 84%)",
+              filter: "blur(3px)",
+            }} />
+
+            {/* ── Layer 1: Back disk — dim, sits behind the event horizon ── */}
+            <div style={{
+              position: "absolute",
+              width: 46,
+              height: 11,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(90deg, rgba(100,45,0,0.2) 0%, rgba(190,95,0,0.45) 20%, rgba(240,155,20,0.55) 38%, rgba(255,195,50,0.58) 50%, rgba(240,155,20,0.55) 62%, rgba(190,95,0,0.45) 80%, rgba(100,45,0,0.2) 100%)",
+              filter: "blur(2px)",
+              zIndex: 1,
+            }} />
+
+            {/* ── Layer 2: Event horizon — absolute black ── */}
+            <div style={{
+              position: "absolute",
+              width: 18,
+              height: 18,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              background: "radial-gradient(circle at 38% 34%, #060400 0%, #000000 55%)",
+              zIndex: 2,
+            }} />
+
+            {/* ── Layer 3: Photon ring — tight bright ring at horizon edge ── */}
+            <div style={{
+              position: "absolute",
+              width: 22,
+              height: 22,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
               boxShadow:
-                "0 0 5px 2px rgba(180,140,0,0.4), 0 0 10px 3px rgba(255,200,0,0.15)",
+                "0 0 0 1px rgba(255,225,90,0.65), 0 0 4px 2px rgba(255,200,40,0.35)",
+              zIndex: 3,
+            }} />
+
+            {/* ── Layer 4: Lensed back-disk arc at top (Interstellar effect) ── */}
+            <div style={{
+              position: "absolute",
+              width: 46,
+              height: 11,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(90deg, rgba(80,35,0,0.1) 0%, rgba(160,80,0,0.32) 22%, rgba(220,140,20,0.4) 50%, rgba(160,80,0,0.32) 78%, rgba(80,35,0,0.1) 100%)",
+              filter: "blur(1.5px)",
+              clipPath: "inset(0 0 58% 0)",
+              zIndex: 3,
+            }} />
+
+            {/* ── Layer 5: Front disk — bright, clips to lower arc, in front ── */}
+            <div style={{
+              position: "absolute",
+              width: 46,
+              height: 11,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              borderRadius: "50%",
+              background:
+                "linear-gradient(90deg, rgba(140,65,0,0.35) 0%, rgba(255,150,10,0.88) 18%, rgba(255,215,60,0.97) 38%, rgba(255,248,160,1) 50%, rgba(255,215,60,0.97) 62%, rgba(255,150,10,0.88) 82%, rgba(140,65,0,0.35) 100%)",
+              filter: "blur(0.7px)",
+              clipPath: "inset(44% 0 0 0)",
+              boxShadow: "0 4px 12px 5px rgba(255,155,0,0.45)",
+              zIndex: 4,
+            }} />
+
+            {/* ── Layer 6: Hot-spot — peak brightness where front arc peaks ── */}
+            <div style={{
+              position: "absolute",
+              width: 12,
+              height: 5,
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, 6px)",
+              borderRadius: "50%",
+              background: "rgba(255,250,210,0.75)",
+              filter: "blur(2px)",
+              zIndex: 5,
             }} />
           </motion.div>
         </div>
