@@ -384,35 +384,35 @@ export default function Home() {
           }
         `}</style>
 
-        {/* Title + singularity — relative wrapper so the icon can be anchored to the text */}
-        <div className="relative">
-          {/* Singularity icon — floats above the "I" in LUMINAE */}
-          {/* left≈51% centres on the "I" (4th of 7 letters in Cinzel Decorative proportions) */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.55, type: "spring", stiffness: 180, damping: 16, delay: 0.06 }}
-            style={{
-              position: "absolute",
-              bottom: "100%",
-              left: "51%",
-              transform: "translateX(-50%)",
-              marginBottom: 6,
-              pointerEvents: "none",
-            }}
-          >
-            <SingularityIcon size={56} />
-          </motion.div>
-
-          <motion.h1
-            className="home-luminae-title text-5xl"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.12 }}
-          >
-            LUMINAE
-          </motion.h1>
-        </div>
+        {/* Title — the singularity is anchored inside the "I" span for pixel-perfect positioning */}
+        <motion.h1
+          className="home-luminae-title text-5xl"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.12 }}
+        >
+          {"LUM"}
+          <span style={{ position: "relative" }}>
+            {"I"}
+            {/* Singularity floats above the "I" — centred on the letter, clear of the text */}
+            <motion.span
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.55, type: "spring", stiffness: 180, damping: 16, delay: 0.06 }}
+              style={{
+                position: "absolute",
+                bottom: "120%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                display: "inline-block",
+                pointerEvents: "none",
+              }}
+            >
+              <SingularityIcon size={56} />
+            </motion.span>
+          </span>
+          {"NAE"}
+        </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
