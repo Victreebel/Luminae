@@ -186,20 +186,20 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 1,
     lines: [
-      "Psst! Over here! ✨ I'm Lumy — a little orb of pure cosmic energy, here to guide you through Luminae!",
-      "You and your opponent are cosmic collectors, racing to earn 15 Eminence before anyone else.",
-      "The tools of the trade: coloured affinities, Artifact cards, and powerful Luminary patrons. Let me show you everything!",
+      "Psst! Over here! ✨ I'm Lumy — a living mote of cosmic energy, and I'm here to guide your civilization through Luminae.",
+      "You are shaping a civilization across the fabric of the cosmos — driving it toward 15 Eminence before your opponent reaches theirs.",
+      "Three forces carry you there: affinity currents flowing through the cosmos, relic technologies forged into your civilization, and Luminaries — ancient archetypes waiting to be called forth. Let me show you.",
     ],
     advance: { type: "click" },
   },
-  // 1 — Crystal Bank intro
+  // 1 — Affinity Well intro
   {
     position: "harvest",
     phase: 1,
     lines: [
-      "This glowing strip at the bottom is your Crystal Bank — the source of all your power!",
-      "Each colour is a different cosmic affinity: Flare 🔴, Continuum 🔵, Verdance 🟢, Abyss 🟣, and Radiance ⚪.",
-      "That shimmering gold one? That's Singularity — the wild-card affinity. Each turn, you Harness crystals from the bank.",
+      "This flowing band is the Affinity Well — the raw cosmic substrate your civilization draws from each turn.",
+      "Each current is a distinct mode of existence: Flare 🔴, Continuum 🔵, Verdance 🟢, Abyss 🟣, Radiance ⚪ — each a survival philosophy that shapes the cosmos.",
+      "That shimmering gold current? That's Singularity — the convergence point where all affinities meet. Each turn, you Harness currents from the Well.",
     ],
     advance: { type: "click" },
   },
@@ -208,7 +208,7 @@ const BEATS: Beat[] = [
     position: "harvest",
     phase: 1,
     lines: [
-      "Your turn! Tap 3 different affinity crystals in the bank to select them, then tap Harness to claim them!",
+      "Your turn! Tap 3 different affinity currents from the Well to draw them into your civilization, then tap Harness to claim them.",
     ],
     advance: { type: "action", actions: ["take_three_crystals", "take_two_crystals"] },
   },
@@ -217,7 +217,7 @@ const BEATS: Beat[] = [
     position: "harvest",
     phase: 1,
     lines: [
-      "Excellent! Feel that? Your collection is growing! Do it again — 3 different affinities, or 2 of the same if there are 4+ of that colour in the bank.",
+      "Your civilization deepens its reach. Do it again — draw 3 different currents, or 2 of the same if there are 4 or more of that current available in the Well.",
     ],
     advance: { type: "action", actions: ["take_three_crystals", "take_two_crystals"] },
   },
@@ -226,9 +226,9 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 1,
     lines: [
-      "Now look at the Artifact cards in the market! Three tiers: Tier 1 (bottom, cheap, quick), Tier 2 (middle), Tier 3 (top, powerful, expensive).",
-      "Each card has a colour bonus and may award Eminence when forged. Build a collection of the right colours...",
-      "...and you automatically summon a Luminary patron, earning a burst of Eminence! More on those in a moment.",
+      "These are the relic technologies your civilization can incorporate — Artifact cards in three tiers, from foundational components to civilization-defining works.",
+      "Each Artifact permanently bonds an affinity to your civilization's infrastructure. The most significant ones carry Eminence — the measure of your civilization's ascension.",
+      "When your civilization expresses an affinity path with enough depth, a Luminary archetype stirs and answers. That is when things become legendary.",
     ],
     advance: { type: "click" },
     highlightZone: "market",
@@ -238,8 +238,8 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 1,
     lines: [
-      "Tap any Artifact card to inspect it. You can Forge it now, or Reserve it to hold it safely — and get 1 Singularity crystal as a bonus!",
-      "Let's Reserve one. Tap any card in the market and hit Reserve!",
+      "Tap any Artifact to examine it. You can Forge it into your civilization now, or Reserve it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
+      "Reserve one now. Tap any Artifact in the market and hit Reserve.",
     ],
     advance: { type: "action", actions: ["reserve_card"] },
     highlightZone: "market",
@@ -249,8 +249,8 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 1,
     lines: [
-      "Perfect! That card is now safely in your hand — no one else can touch it.",
-      "Reserved cards wait patiently until you have enough affinities to Forge them. You also got a free Singularity crystal!",
+      "Good. That Artifact is held within your civilization — no other civilization can claim it.",
+      "It waits until your affinity currents are sufficient to Forge it. You also received a Singularity current — the cosmos rewards decisive action.",
     ],
     advance: { type: "click" },
   },
@@ -259,8 +259,8 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 1,
     lines: [
-      "Now let's Forge! Cards with green costs are ones you can afford right now. Tap an affordable card and hit Forge Artifact!",
-      "Every Forged card is yours permanently — it adds an affinity bonus, making all future cards of that colour cheaper!",
+      "Now Forge. Artifacts with green costs are within your civilization's current reach. Tap one and hit Forge Artifact.",
+      "Every Forged Artifact becomes permanent infrastructure — it deepens your affinity in that path, making future relic technologies of that kind easier to incorporate.",
     ],
     advance: { type: "action", actions: ["purchase_card"] },
     highlightZone: "market",
@@ -270,9 +270,9 @@ const BEATS: Beat[] = [
     position: "luminaries",
     phase: 1,
     lines: [
-      "Look up at those magnificent figures — those are the Luminaries! Cosmic patrons of immense power.",
-      "Each one shows which affinity bonuses you need to claim them. Build that collection and you automatically summon the Luminary, earning Eminence!",
-      "Mono-colour Luminaries give 2 Eminence, dual-colour give 3, and triple-colour give 4. They're the key to winning. Let me show you the endgame!",
+      "Look up. Those are the Luminaries — cosmic archetypes that exist beyond ordinary civilization, each one a survival philosophy made manifest.",
+      "When your civilization expresses an affinity path with enough depth, the corresponding Luminary stirs and emerges — and your civilization receives a surge of Eminence.",
+      "A Luminary of one affinity brings 2 Eminence; dual-affinity brings 3; triple-affinity, 4. They are the turning points of ascension. Let me show you one.",
     ],
     advance: { type: "click" },
     highlightZone: "luminaries",
@@ -282,7 +282,7 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 1,
     lines: [
-      "I'm going to fast-forward us a few turns ahead to show you the most exciting moment in any game... ⏩",
+      "I'm going to skip us ahead — several turns of development, so you can witness what a civilization on the edge of legend actually looks like. ⏩",
     ],
     advance: { type: "fast_forward" },
   },
@@ -291,9 +291,9 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 2,
     lines: [
-      "Here we are — several turns ahead! Look at your collection. You've built a powerful Verdance engine!",
-      "You have 5 Verdance bonuses and 13 Eminence. One more Verdance Artifact will summon the Verdant Oracle Luminary!",
-      "The Verdant Oracle gives 2 Eminence. 13 + 2 = 15 — that's the winning number. One move away!",
+      "Here. Several turns forward. Your civilization has taken the Verdance path — life becoming infrastructure, growth woven into every component.",
+      "You carry 5 Verdance depth and 13 Eminence. One more Verdance Artifact will call forth the Verdant Oracle — the archetype of life that has made itself eternal.",
+      "The Verdant Oracle brings 2 Eminence. 13 + 2 = 15. That is the threshold where a civilization crosses from survival into legend. You are one move away.",
     ],
     advance: { type: "click" },
   },
@@ -302,8 +302,8 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 2,
     lines: [
-      "You have a Verdance Artifact reserved in your hand. It costs Abyss and Radiance — and you have plenty of both!",
-      "Open your Reserved Cards (tap the card icon button, or find it in your hand), then Forge it to seal the victory!",
+      "You have a Verdance Artifact reserved — it costs Abyss and Radiance currents, and your civilization holds both.",
+      "Open your Reserved cards (tap the card icon button, or find it in your hand) and Forge it. The Verdant Oracle is waiting.",
     ],
     advance: { type: "action", actions: ["purchase_reserved"] },
   },
@@ -312,9 +312,9 @@ const BEATS: Beat[] = [
     position: "center",
     phase: 2,
     lines: [
-      "YES!! 🌿 The Verdant Oracle is summoned! That's 2 Eminence — you're at 15 and you WIN!",
-      "Every real game is different — different cards, different Luminaries, different opponents, different strategies.",
-      "But now you know the whole arc. Go forge your destiny! ✨",
+      "🌿 The Verdant Oracle answers. Your civilization, rooted deeply enough in the living path, has called it forth — and crossed into legend.",
+      "Every civilization is different. Different affinities, different relic technologies, different Luminaries, different paths to 15 Eminence.",
+      "Now you know the shape of ascension. Go build yours. ✨",
     ],
     advance: { type: "click" },
   },
@@ -600,9 +600,9 @@ export function LumyTutorial({
               className="text-center"
             >
               <div className="text-lg font-serif font-semibold text-white/90 mb-1">
-                Fast-forwarding time...
+                Advancing through time...
               </div>
-              <div className="text-sm text-white/50">Several turns are passing</div>
+              <div className="text-sm text-white/50">Several turns of civilization are passing</div>
             </motion.div>
           </motion.div>
         )}
@@ -623,9 +623,9 @@ export function LumyTutorial({
               exit={{ scale: 0.9, y: 12 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl"
             >
-              <h2 className="text-lg font-bold mb-2">Skip the tutorial?</h2>
+              <h2 className="text-lg font-bold mb-2">Leave the ascension path?</h2>
               <p className="text-sm text-muted-foreground mb-5">
-                You'll be taken back to the home screen. You can always start a normal game from there.
+                You'll return to the home screen. You can begin your civilization's journey from there at any time.
               </p>
               <div className="flex gap-3">
                 <button
@@ -671,17 +671,17 @@ export function LumyTutorial({
               >
                 <LumyOrb size={68} excited />
               </motion.div>
-              <h2 className="text-xl font-bold font-serif mb-1">You're ready!</h2>
+              <h2 className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                You've seen the full arc of a Luminae game.
+                You've seen the full arc of ascension in Luminae.
               </p>
               <ul className="text-left text-sm space-y-2 mb-5">
                 {[
-                  "Harnessing affinities (3 different or 2 of the same)",
-                  "Reserving cards to hold them for later",
-                  "Forging Artifacts for permanent bonuses",
-                  "Summoning Luminaries by meeting their requirements",
-                  "Chasing 15 Eminence to win",
+                  "Harnessing affinity currents from the Affinity Well",
+                  "Reserving Artifacts to hold them for your civilization",
+                  "Forging relic technologies as permanent infrastructure",
+                  "Calling forth Luminaries by expressing a deep affinity path",
+                  "Reaching 15 Eminence — crossing from survival into legend",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
@@ -694,7 +694,7 @@ export function LumyTutorial({
                 onClick={handleFinish}
                 className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-bold text-base hover:bg-primary/90 transition-colors"
               >
-                Start a real game →
+                Begin your civilization →
               </button>
             </motion.div>
           </motion.div>
@@ -767,7 +767,7 @@ export function LumyTutorial({
           >
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold backdrop-blur-sm">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Endgame Scenario
+              Civilization on the Edge of Legend
             </div>
           </motion.div>
         )}
