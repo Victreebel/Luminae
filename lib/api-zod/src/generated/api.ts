@@ -1057,6 +1057,7 @@ export const SubmitActionBody = zod.object({
     "resolve_summon",
     "plan_action",
     "cancel_plan",
+    "tutorial_fast_forward",
   ]),
   crystals: zod
     .object({

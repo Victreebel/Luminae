@@ -551,6 +551,7 @@ export const ActionRequestType = {
   resolve_summon: "resolve_summon",
   plan_action: "plan_action",
   cancel_plan: "cancel_plan",
+  tutorial_fast_forward: "tutorial_fast_forward",
 } as const;
 
 export type ActionRequestCrystal =
