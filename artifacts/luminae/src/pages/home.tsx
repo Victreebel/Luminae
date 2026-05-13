@@ -296,7 +296,7 @@ export default function Home() {
             style={{
               position: "absolute",
               bottom: "calc(100% + 10px)",
-              left: "50%",
+              left: "calc(50% - 20px)",
               transform: "translateX(-50%)",
               pointerEvents: "none",
               zIndex: 10,
@@ -316,9 +316,9 @@ export default function Home() {
               filter: "blur(4px)",
             }} />
 
-            {/* Accretion disk — slowly rotating, warm gradient ellipse */}
+            {/* Accretion disk — counter-clockwise, pure gold/yellow */}
             <motion.div
-              animate={{ rotate: 360 }}
+              animate={{ rotate: -360 }}
               transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
               style={{
                 position: "absolute",
@@ -326,9 +326,9 @@ export default function Home() {
                 height: 8,
                 borderRadius: "50%",
                 background:
-                  "conic-gradient(from 0deg, rgba(255,135,12,0.92), rgba(255,218,72,1), rgba(255,248,180,0.96), rgba(255,195,55,0.82), rgba(205,72,8,0.55), rgba(255,135,12,0.92))",
+                  "conic-gradient(from 0deg, rgba(255,210,0,0.88), rgba(255,238,80,1), rgba(255,252,200,0.95), rgba(255,230,60,0.9), rgba(220,175,0,0.72), rgba(255,210,0,0.88))",
                 filter: "blur(1.5px)",
-                boxShadow: "0 0 9px 3px rgba(255,152,22,0.48)",
+                boxShadow: "0 0 9px 3px rgba(255,215,0,0.55)",
               }}
             />
 
