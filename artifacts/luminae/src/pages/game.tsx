@@ -3130,14 +3130,12 @@ export default function GameBoard() {
             );
           })}
         </div>
-        <AnimatePresence>
-          {crystalQueueActive && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
+        <motion.div
+          animate={{ opacity: crystalQueueActive ? 1 : 0 }}
+          transition={{ duration: 0.2 }}
+          aria-hidden={!crystalQueueActive}
+          style={{ pointerEvents: crystalQueueActive ? 'auto' : 'none' }}
+        >
               <div className="px-3 pb-3 pt-1 border-t border-white/10">
                 {!isMyTurn && canPlan && (
                   <p className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug">
@@ -3347,9 +3345,7 @@ export default function GameBoard() {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </motion.div>
         <AnimatePresence>
           {returnPhase && isMyTurn && me && (
             <motion.div
