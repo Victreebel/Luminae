@@ -1,9 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { X, ArrowRight } from "lucide-react";
+import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
+
+// ─── Viewport height hook ────────────────────────────────────────────────────
+
+function useViewportH(): number {
+  const [h, setH] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 844));
+  useEffect(() => {
+    const fn = () => setH(window.innerHeight);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return h;
+}
 
 // ─── Lumii Orb ────────────────────────────────────────────────────────────────
 
@@ -14,7 +26,7 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
   const innerMask = "radial-gradient(circle, rgba(0,0,0,0.9) 18%, rgba(0,0,0,0.35) 50%, transparent 70%)";
   return (
     <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Outer prismatic halo — large blurred cloud, high contrast */}
+      {/* Outer prismatic halo */}
       <motion.div
         animate={{
           scale: excited ? [1, 1.38, 1.12, 1.38, 1] : [1, 1.18, 1],
@@ -30,7 +42,7 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
           filter: `blur(${blur}px)`,
         }}
       />
-      {/* Secondary tighter halo ring — brighter inner prismatic band */}
+      {/* Secondary tighter halo */}
       <motion.div
         animate={{ opacity: excited ? [0.5, 0.88, 0.5] : [0.28, 0.58, 0.28] }}
         transition={{ duration: excited ? 1.2 : 3.0, repeat: Infinity, ease: "easeInOut" }}
@@ -43,7 +55,7 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
           filter: `blur(${Math.round(size * 0.18)}px)`,
         }}
       />
-      {/* Primary affinity current — rotating, edge-faded to transparent */}
+      {/* Primary affinity current — rotating */}
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: excited ? 4.5 : 11, repeat: Infinity, ease: "linear" }}
@@ -57,7 +69,7 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
           WebkitMaskImage: mask,
         }}
       />
-      {/* Counter-rotating inner current — crossing flow layer */}
+      {/* Counter-rotating inner current */}
       <motion.div
         animate={{ rotate: -360 }}
         transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
@@ -71,7 +83,7 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
           WebkitMaskImage: innerMask,
         }}
       />
-      {/* Singularity core shimmer — slow irregular gold/white pulse */}
+      {/* Singularity core shimmer */}
       <motion.div
         animate={{ opacity: [0, 0.85, 0.15, 0.72, 0], scale: [0.18, 0.55, 0.28, 0.5, 0.18] }}
         transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 2.2 }}
@@ -84,38 +96,63 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
           filter: `blur(${innerBlur}px)`,
         }}
       />
-      {/* Presence pulse ring — expands and fades, no face */}
+      {/* Presence pulse ring */}
       <motion.div
         animate={{
-          scale: excited ? [0.82, 1.45, 0.82] : [0.88, 1.24, 0.88],
-          opacity: excited ? [0.65, 0, 0.65] : [0.35, 0, 0.35],
+          scale: excited ? [0.82, 1.55, 0.82] : [0.88, 1.24, 0.88],
+          opacity: excited ? [0.75, 0, 0.75] : [0.35, 0, 0.35],
         }}
-        transition={{ duration: excited ? 1.0 : 2.5, repeat: Infinity, ease: "easeOut" }}
+        transition={{ duration: excited ? 0.85 : 2.5, repeat: Infinity, ease: "easeOut" }}
         style={{
           position: "absolute",
           inset: "-7%",
           borderRadius: "50%",
-          border: "1px solid rgba(255,255,255,0.22)",
+          border: excited ? "1.5px solid rgba(251,191,36,0.5)" : "1px solid rgba(255,255,255,0.22)",
           pointerEvents: "none",
         }}
       />
+      {/* Second pulse ring (action only) */}
+      {excited && (
+        <motion.div
+          animate={{ scale: [1, 1.85, 1], opacity: [0.55, 0, 0.55] }}
+          transition={{ duration: 1.3, repeat: Infinity, ease: "easeOut", delay: 0.42 }}
+          style={{
+            position: "absolute",
+            inset: "-7%",
+            borderRadius: "50%",
+            border: "1px solid rgba(251,191,36,0.3)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Tether Beam ──────────────────────────────────────────────────────────────
 
-function TetherBeam({ direction }: { direction: "down" | "left" | "up" }) {
+function TetherBeam({
+  direction,
+  attention = "listening",
+}: {
+  direction: "down" | "left" | "up";
+  attention?: LumiiAttentionState;
+}) {
   const isVert = direction === "down" || direction === "up";
   const isDown = direction === "down";
+  const isAction = attention === "action";
   const LENGTH = 58;
   const CROSS = 18;
   const gradDir = isVert ? (isDown ? "to bottom" : "to top") : "to left";
-  // Dots travel from the orb toward the highlighted zone
   const dotKeyframe = isVert
     ? (isDown ? [2, LENGTH - 10, 2] : [LENGTH - 10, 2, LENGTH - 10])
     : [LENGTH - 10, 2, LENGTH - 10];
-  const DOT_COLORS = ["#a855f7", "#fbbf24", "#3b82f6"] as const;
+  const DOT_COLORS = isAction
+    ? (["#fbbf24", "#f97316", "#fbbf24"] as const)
+    : (["#a855f7", "#fbbf24", "#3b82f6"] as const);
+  const dotDuration = isAction ? 0.85 : 1.55;
+  const glowSize = isAction ? 10 : 7;
+  const tipColor = isAction ? "#fbbf24" : "#a855f7";
 
   return (
     <div
@@ -131,7 +168,9 @@ function TetherBeam({ direction }: { direction: "down" | "left" | "up" }) {
         style={{
           position: "absolute",
           inset: 0,
-          background: `linear-gradient(${gradDir}, rgba(168,85,247,0.55), rgba(59,130,246,0.28), transparent)`,
+          background: isAction
+            ? `linear-gradient(${gradDir}, rgba(251,191,36,0.65), rgba(249,115,22,0.32), transparent)`
+            : `linear-gradient(${gradDir}, rgba(168,85,247,0.55), rgba(59,130,246,0.28), transparent)`,
           borderRadius: 10,
           filter: "blur(4px)",
         }}
@@ -143,7 +182,9 @@ function TetherBeam({ direction }: { direction: "down" | "left" | "up" }) {
           ...(isVert
             ? { top: 0, bottom: 0, left: "50%", width: 1, transform: "translateX(-50%)" }
             : { left: 0, right: 0, top: "50%", height: 1, transform: "translateY(-50%)" }),
-          background: `linear-gradient(${gradDir}, rgba(168,85,247,0.45), transparent)`,
+          background: isAction
+            ? `linear-gradient(${gradDir}, rgba(251,191,36,0.6), transparent)`
+            : `linear-gradient(${gradDir}, rgba(168,85,247,0.45), transparent)`,
         }}
       />
       {/* Travelling dots */}
@@ -151,21 +192,71 @@ function TetherBeam({ direction }: { direction: "down" | "left" | "up" }) {
         <motion.div
           key={i}
           animate={isVert ? { y: dotKeyframe } : { x: dotKeyframe }}
-          transition={{ duration: 1.55, repeat: Infinity, delay: i * 0.38, ease: "easeInOut" }}
+          transition={{ duration: dotDuration, repeat: Infinity, delay: i * 0.28, ease: "easeInOut" }}
           style={{
             position: "absolute",
-            width: 5,
-            height: 5,
+            width: isAction ? 6 : 5,
+            height: isAction ? 6 : 5,
             borderRadius: "50%",
             background: color,
-            boxShadow: `0 0 7px ${color}`,
+            boxShadow: `0 0 ${glowSize}px ${color}`,
             ...(isVert
               ? { left: "50%", top: 0, transform: "translateX(-50%)" }
               : { top: "50%", left: 0, transform: "translateY(-50%)" }),
           }}
         />
       ))}
+      {/* Pulsing tip indicator — action beats only */}
+      {isAction && (
+        <motion.div
+          animate={{ scale: [0.7, 1.5, 0.7], opacity: [0.9, 0, 0.9] }}
+          transition={{ duration: 0.9, repeat: Infinity, ease: "easeOut" }}
+          style={{
+            position: "absolute",
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: tipColor,
+            ...(isVert && isDown ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
+              : isVert ? { top: 0, left: "50%", transform: "translateX(-50%)" }
+              : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Attention Arrow ──────────────────────────────────────────────────────────
+
+function AttentionArrow({
+  direction,
+  attention,
+}: {
+  direction: "down" | "left" | "up";
+  attention: LumiiAttentionState;
+}) {
+  const isAction = attention === "action";
+  const color = isAction ? "#fbbf24" : "#a855f7";
+  const dur = isAction ? 0.65 : 1.3;
+  const bounce =
+    direction === "down" ? { y: [0, 7, 0] } :
+    direction === "up"   ? { y: [0, -7, 0] } :
+    { x: [0, -7, 0] };
+
+  const Icon =
+    direction === "down" ? ChevronDown :
+    direction === "up"   ? ChevronUp   :
+    ChevronLeft;
+
+  return (
+    <motion.div
+      animate={{ ...bounce, opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] }}
+      transition={{ duration: dur, repeat: Infinity, ease: "easeInOut" }}
+      style={{ color, lineHeight: 0, flexShrink: 0 }}
+    >
+      <Icon style={{ width: 18, height: 18 }} />
+    </motion.div>
   );
 }
 
@@ -196,8 +287,8 @@ function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objectiv
       onClick={onClick}
       className="pointer-events-auto text-left max-w-[240px] rounded-2xl border border-white/20 shadow-xl focus:outline-none"
       style={{
-        background: phase === 2 ? "rgba(20, 12, 36, 0.96)" : "rgba(10, 16, 36, 0.96)",
-        backdropFilter: "blur(12px)",
+        background: phase === 2 ? "rgba(20, 12, 36, 0.97)" : "rgba(10, 16, 36, 0.97)",
+        backdropFilter: "blur(14px)",
         padding: "12px 14px 10px",
       }}
     >
@@ -336,28 +427,27 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "action", actions: ["take_three_crystals", "take_two_crystals"] },
   },
-  // 4 — Market intro
+  // 4 — Market intro + cost explanation
   {
     position: "market",
     phase: 1,
     highlightZone: "market",
     lines: [
-      "These are the relic technologies your civilization can incorporate — Artifact cards in three tiers, from foundational components to civilization-defining works.",
-      "Each Artifact permanently bonds an affinity to your civilization's infrastructure. The most significant ones carry Eminence — the measure of your civilization's ascension.",
-      "When your civilization expresses an affinity path with enough depth, a Luminary archetype stirs and answers. That is when things become legendary.",
+      "These are Artifact cards — relic technologies in three tiers. Each shows an affinity cost: the currents needed to Forge it into your civilization.",
+      "When all cost pips appear green, you can afford that Artifact right now. Orange means you're short — the exact gap is shown so you always know how close you are.",
+      "Every Artifact you Forge builds permanent affinity depth. That depth automatically discounts future Artifacts of the same type — so each Forge makes the next one cheaper.",
     ],
     advance: { type: "click" },
   },
-  // 5 — Filter controls (new beat)
+  // 5 — Filter controls
   {
     position: "filters",
     phase: 1,
     highlightZone: "filters",
-    objective: "Objective: use the filters",
     lines: [
-      "See those three labels above the market — Printed, Discounted, and Needed?",
-      "Discounted shows costs after your permanent affinity depth: the Artifacts your civilization is already closer to shaping.",
-      "Needed shows only what you still lack right now. It's the fastest way to see which Artifacts are within reach this turn.",
+      "Above the market, three filters control how costs are displayed: Printed, Discounted, and Needed.",
+      "Discounted applies your built affinity depth as automatic discounts. Forge two Flare Artifacts and every Flare cost here drops by 2. This is your real cost after civilization depth.",
+      "Needed strips away any cost already covered by your depth — only what you still lack appears. Switch to Needed to instantly spot which Artifacts are within reach this turn.",
     ],
     advance: { type: "click" },
   },
@@ -373,13 +463,14 @@ const BEATS: Beat[] = [
     ],
     advance: { type: "action", actions: ["reserve_card"] },
   },
-  // 7 — Post-reserve
+  // 7 — Post-reserve + bonus explanation
   {
     position: "market",
     phase: 1,
     lines: [
-      "Good. That Artifact is held within your civilization — no other civilization can claim it.",
-      "It waits until your affinity currents are sufficient to Forge it. You also received a Singularity current — the cosmos rewards decisive action.",
+      "Good. That Artifact is secured — no other civilization can claim it. It waits in your Hand panel until your affinity currents are sufficient to Forge it.",
+      "You also received one Singularity current — the gold affinity. Singularity acts as a wildcard: it substitutes for any affinity when Forging, stretching whatever you hold.",
+      "Every Artifact you Forge adds a permanent bonus to that affinity. These bonuses appear in your Hand panel and automatically reduce all future costs of that type, every turn.",
     ],
     advance: { type: "click" },
   },
@@ -390,20 +481,20 @@ const BEATS: Beat[] = [
     highlightZone: "market",
     objective: "Objective: forge an Artifact",
     lines: [
-      "Now Forge. Artifacts with green costs are within your civilization's current reach. Tap one and hit Forge Artifact.",
-      "Every Forged Artifact becomes permanent infrastructure — it deepens your affinity in that path, making future relic technologies of that kind easier to incorporate.",
+      "Now Forge. Tap any Artifact with green costs — those are within reach right now. Hit Forge Artifact to claim it permanently.",
+      "Try switching to Discounted view to see your depth discounts at work, or Needed to see only what you're still short on. Both help you find a good target fast.",
     ],
     advance: { type: "action", actions: ["purchase_card"] },
   },
-  // 9 — Luminaries intro
+  // 9 — Luminaries + Eminence intro
   {
     position: "luminaries",
     phase: 1,
     highlightZone: "luminaries",
     lines: [
-      "Look up. Those are the Luminaries — cosmic archetypes that exist beyond ordinary civilization, each one a survival philosophy made manifest.",
-      "When your civilization expresses an affinity path with enough depth, the corresponding Luminary stirs and emerges — and your civilization receives a surge of Eminence.",
-      "A Luminary of one affinity brings 2 Eminence; dual-affinity brings 3; triple-affinity, 4. They are the turning points of ascension. Let me show you one.",
+      "Look up — those are the Luminaries. Each one stirs when your civilization expresses enough affinity depth of its required types. When it answers, you receive Eminence and a living bonus.",
+      "Eminence is your civilization's ascension score. Check your Hand panel for your current total — it's shown prominently at the top. Reach 15 Eminence first and you win.",
+      "Single-affinity Luminaries bring 2 Eminence; dual bring 3; triple bring 4. Stack multiple Luminaries and compound your ascension — they are the turning points of legend.",
     ],
     advance: { type: "click" },
   },
@@ -435,7 +526,7 @@ const BEATS: Beat[] = [
     objective: "Objective: forge your reserved Artifact",
     lines: [
       "You have a Verdance Artifact reserved — it costs Abyss and Radiance currents, and your civilization holds both.",
-      "Open your Reserved cards (tap the card icon button, or find it in your hand) and Forge it. The Verdant Oracle is waiting.",
+      "Tap the Hand panel, find your reserved card, and Forge it. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
     ],
     advance: { type: "action", actions: ["purchase_reserved"] },
   },
@@ -455,16 +546,16 @@ const BEATS: Beat[] = [
 export const LUMII_BEAT_COUNT = BEATS.length;
 
 export const LUMII_BEAT_GATES: Record<number, string[]> = {
-  0: [],
-  1: [],
-  2: ["take_three_crystals", "take_two_crystals"],
-  3: ["take_three_crystals", "take_two_crystals"],
-  4: [],
-  5: [],
-  6: ["reserve_card"],
-  7: [],
-  8: ["purchase_card"],
-  9: [],
+  0:  [],
+  1:  [],
+  2:  ["take_three_crystals", "take_two_crystals"],
+  3:  ["take_three_crystals", "take_two_crystals"],
+  4:  [],
+  5:  [],
+  6:  ["reserve_card"],
+  7:  [],
+  8:  ["purchase_card"],
+  9:  [],
   10: ["tutorial_fast_forward"],
   11: [],
   12: ["purchase_reserved"],
@@ -472,15 +563,15 @@ export const LUMII_BEAT_GATES: Record<number, string[]> = {
 };
 
 export const LUMII_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" | "filters" | "luminaries">> = {
-  1: "harvest",
-  2: "harvest",
-  3: "harvest",
-  4: "market",
-  5: "filters",
-  6: "market",
-  7: "market",
-  8: "market",
-  9: "luminaries",
+  1:  "harvest",
+  2:  "harvest",
+  3:  "harvest",
+  4:  "market",
+  5:  "filters",
+  6:  "market",
+  7:  "market",
+  8:  "market",
+  9:  "luminaries",
   12: "market",
 };
 
@@ -488,37 +579,35 @@ export const LUMII_ZONE_HIGHLIGHTS: Partial<Record<number, "harvest" | "market" 
 
 export type LumiiAttentionState = "listening" | "look_here" | "action";
 
-/** Per-beat attention state. Used by game.tsx to modulate highlight intensity
- *  and by the tutorial component to drive the dim overlay and orb excitement. */
 export const LUMII_ATTENTION: Record<number, LumiiAttentionState> = {
-  0: "listening",   // intro — Lumii explains the cosmos
-  1: "look_here",   // affinity well intro — showing the well
-  2: "action",      // first harvest — waiting for player action
-  3: "action",      // second harvest — waiting for player action
-  4: "look_here",   // market intro — showing the market
-  5: "look_here",   // filters — click to continue
-  6: "action",      // reserve — waiting for player action
-  7: "look_here",   // post-reserve explanation
-  8: "action",      // forge — waiting for player action
-  9: "look_here",   // luminaries intro — showing luminaries + eminence
-  10: "listening",  // fast-forward transition
-  11: "listening",  // endgame intro
-  12: "action",     // endgame forge — waiting for player action
-  13: "listening",  // completion celebration
+  0:  "listening",
+  1:  "look_here",
+  2:  "action",
+  3:  "action",
+  4:  "look_here",
+  5:  "look_here",
+  6:  "action",
+  7:  "look_here",
+  8:  "action",
+  9:  "look_here",
+  10: "listening",
+  11: "listening",
+  12: "action",
+  13: "listening",
 };
 
-// ─── Nudge messages — shown when a blocked action is attempted ────────────────
+// ─── Nudge messages ───────────────────────────────────────────────────────────
 
 const NUDGE_MESSAGES: Partial<Record<number, string>> = {
-  2: "Select affinity currents from the Affinity Well below, then tap Harness.",
-  3: "Draw more currents from the Affinity Well, then tap Harness.",
-  5: "Explore the Discounted and Needed filters above the market, then tap to continue.",
-  6: "Tap any Artifact card in the market, then tap Reserve to hold it.",
-  8: "Tap an affordable Artifact (green costs shown) and hit Forge Artifact.",
-  12: "Find your reserved card in your hand and tap Forge Artifact.",
+  2:  "Tap affinity currents in the Well below to select them, then tap Harness.",
+  3:  "Draw more currents from the Affinity Well, then tap Harness.",
+  5:  "Tap Discounted or Needed above the market to try the filters, then tap Lumii to continue.",
+  6:  "Tap any Artifact card in the market, then tap Reserve to hold it.",
+  8:  "Tap an Artifact with green costs and hit Forge Artifact.",
+  12: "Open your Hand panel, find your reserved card, and tap Forge Artifact.",
 };
 
-// ─── Position helpers ─────────────────────────────────────────────────────────
+// ─── Position helpers (pixel-based, no transforms) ───────────────────────────
 
 type LayoutVariant = "above" | "below" | "left" | "right";
 
@@ -528,79 +617,85 @@ interface PositionStyle {
   tether?: "down" | "left" | "up";
 }
 
-function getPositionStyle(pos: BeatPosition): PositionStyle {
+function getPositionStyle(pos: BeatPosition, vpH: number): PositionStyle {
   switch (pos) {
     case "harvest":
-      return { fixed: { bottom: 156, left: 14 }, layout: "above", tether: "down" };
+      // Sit above the Affinity Well at the bottom; bottom: value adapts to all screen heights
+      return { fixed: { bottom: 168, left: 14 }, layout: "above", tether: "down" };
     case "market":
     case "filters":
-      return { fixed: { top: "44%", right: 12, transform: "translateY(-50%)" }, layout: "left", tether: "left" };
+      // Right side of screen, vertically centred in the market area
+      return {
+        fixed: { top: Math.round(vpH * 0.44) - 36, right: 14 },
+        layout: "left",
+        tether: "left",
+      };
     case "luminaries":
-      // Position below the luminary panel header — tether flows up toward the cards
-      return { fixed: { top: 88, left: "50%", transform: "translateX(-50%)" }, layout: "below", tether: "down" };
+      // Near the top, horizontally centred — tether points down toward the Luminary cards
+      return { fixed: { top: 90, left: "calc(50% - 36px)" }, layout: "below", tether: "down" };
     case "center":
     default:
-      return { fixed: { top: "50%", left: "50%", transform: "translate(-50%, -50%)" }, layout: "below" };
+      return {
+        fixed: { top: Math.round(vpH * 0.5) - 88, left: "calc(50% - 36px)" },
+        layout: "below",
+      };
   }
 }
 
-// Slide-in offset when a new beat enters — gives the illusion of Lumii travelling
-// from the previous position to the current one.
-const POSITION_VECTOR: Record<BeatPosition, [number, number]> = {
-  center:    [0,   14],
-  harvest:   [-22, 18],
-  market:    [22,  0],
-  filters:   [22,  0],
-  luminaries:[0,  -18],
-};
-
-function getEntryOffset(from: BeatPosition): { x: number; y: number } {
-  const [x, y] = POSITION_VECTOR[from] ?? [0, 14];
-  return { x, y };
-}
+// ─── Lumii Layout ─────────────────────────────────────────────────────────────
 
 function LumiiLayout({
   layout,
   orb,
   bubble,
   tether,
+  arrow,
 }: {
   layout: LayoutVariant;
   orb: React.ReactNode;
   bubble: React.ReactNode;
   tether?: React.ReactNode;
+  arrow?: React.ReactNode;
 }) {
   if (layout === "above") {
+    // bubble → orb → tether → arrow (visual top→bottom, orb hovers above target)
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         {bubble}
         {orb}
         {tether}
+        {arrow}
       </div>
     );
   }
   if (layout === "below") {
+    // orb → tether → arrow → bubble (visual top→bottom, orb above everything)
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
         {orb}
         {tether}
+        {arrow}
         {bubble}
       </div>
     );
   }
   if (layout === "left") {
+    // [bubble] [arrow] [tether] [orb] left→right, orb nearest the target element on the right
     return (
-      <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "flex-start", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
         {orb}
         {tether}
+        {arrow}
         {bubble}
       </div>
     );
   }
+  // right layout: orb on left, bubble extends right
   return (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
       {orb}
       {tether}
+      {arrow}
       {bubble}
     </div>
   );
@@ -626,6 +721,7 @@ export function LumiiTutorial({
   nudgeTick = 0,
 }: Props) {
   const [, setLocation] = useLocation();
+  const vpH = useViewportH();
   const [lineIdx, setLineIdx] = useState(0);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
@@ -633,14 +729,12 @@ export function LumiiTutorial({
   const [nudgeText, setNudgeText] = useState<string | null>(null);
   const prevLogLenRef = useRef(0);
   const ffTriggeredRef = useRef(false);
-  const lumyPanelRef = useRef<HTMLDivElement | null>(null);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Tracks the previous beat's position so the next beat can slide in from that direction
-  const prevPositionRef = useRef<BeatPosition>("center");
 
   const beat = BEATS[tutorialStep] ?? null;
   const currentAttention = LUMII_ATTENTION[tutorialStep] ?? "listening";
 
+  // Register the tutorial panel height CSS var so the board content pads itself
   useEffect(() => {
     document.documentElement.style.setProperty("--tutorial-panel-height", "0px");
     return () => {
@@ -648,26 +742,21 @@ export function LumiiTutorial({
     };
   }, []);
 
+  // Reset to first line on beat change
   useEffect(() => {
     setLineIdx(0);
   }, [tutorialStep]);
 
-  // Show nudge when a blocked action is signalled from game.tsx
+  // Show nudge when a blocked action fires from game.tsx
   useEffect(() => {
     if (nudgeTick === 0) return;
     const msg = NUDGE_MESSAGES[tutorialStep];
     if (!msg) return;
     setNudgeText(msg);
     if (nudgeTimerRef.current) clearTimeout(nudgeTimerRef.current);
-    nudgeTimerRef.current = setTimeout(() => setNudgeText(null), 2800);
+    nudgeTimerRef.current = setTimeout(() => setNudgeText(null), 3200);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nudgeTick]);
-
-  // Record the departing beat's position AFTER it has rendered, so the incoming
-  // beat can use it to compute its directional slide-in offset.
-  useEffect(() => {
-    prevPositionRef.current = beat?.position ?? "center";
-  }, [beat?.position]);
 
   const advanceBeat = useCallback(() => {
     const next = tutorialStep + 1;
@@ -692,6 +781,7 @@ export function LumiiTutorial({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat, lineIdx, advanceBeat, showCompletion, isFastForwarding]);
 
+  // Detect when the required action completes
   useEffect(() => {
     if (!beat || beat.advance.type !== "action") return;
     if (!state?.actionLog?.length) return;
@@ -765,18 +855,32 @@ export function LumiiTutorial({
   const isActionBeat = beat?.advance.type === "action";
   const isFfBeat = beat?.advance.type === "fast_forward";
   const currentPhase: 1 | 2 = beat?.phase ?? 1;
-  const posStyle = beat ? getPositionStyle(beat.position) : getPositionStyle("center");
-  const tetherEl = posStyle.tether ? <TetherBeam direction={posStyle.tether} /> : undefined;
-  const entryOffset = getEntryOffset(prevPositionRef.current);
+  const posStyle = beat ? getPositionStyle(beat.position, vpH) : getPositionStyle("center", vpH);
+  const tetherEl = posStyle.tether ? (
+    <TetherBeam direction={posStyle.tether} attention={currentAttention} />
+  ) : undefined;
+  const arrowEl = posStyle.tether ? (
+    <AttentionArrow direction={posStyle.tether} attention={currentAttention} />
+  ) : undefined;
+
+  // Dim overlay opacity varies by attention state:
+  // listening = Lumii is speaking, player just reads → stronger dim
+  // look_here = pointing at a zone, player can see it → mild dim
+  // action     = player needs to interact → no dim
+  const dimOpacity =
+    showCompletion || isFastForwarding ? 0 :
+    currentAttention === "listening"  ? 0.38 :
+    currentAttention === "look_here"  ? 0.22 :
+    0;
 
   return (
     <>
-      {/* ── Listening-state background dim — independent of beat lifecycle ── */}
+      {/* ── Background dim — fades in/out based on attention state ── */}
       <motion.div
         className="fixed inset-0 pointer-events-none"
         style={{ zIndex: 485, background: "black" }}
-        animate={{ opacity: !showCompletion && !isFastForwarding && currentAttention === "listening" ? 0.34 : 0 }}
-        transition={{ duration: 0.55 }}
+        animate={{ opacity: dimOpacity }}
+        transition={{ duration: 0.6 }}
       />
 
       {/* ── Fast-forward blackout overlay ── */}
@@ -879,8 +983,9 @@ export function LumiiTutorial({
               <ul className="text-left text-sm space-y-2 mb-5">
                 {[
                   "Harnessing affinity currents from the Affinity Well",
-                  "Reserving Artifacts to hold them for your civilization",
-                  "Forging relic technologies as permanent infrastructure",
+                  "Reserving Artifacts — securing them and earning Singularity",
+                  "Forging relic technologies to build permanent affinity depth",
+                  "Using Discounted and Needed filters to find affordable Artifacts",
                   "Calling forth Luminaries by expressing a deep affinity path",
                   "Reaching 15 Eminence — crossing from survival into legend",
                 ].map((item) => (
@@ -902,28 +1007,42 @@ export function LumiiTutorial({
         )}
       </AnimatePresence>
 
-      {/* ── Lumii orb + speech bubble ── */}
-      <AnimatePresence mode="wait">
+      {/* ── Lumii orb + speech bubble — PERSISTENT, uses layout animation between beats ── */}
+      <AnimatePresence>
         {beat && !showCompletion && !isFastForwarding && (
           <motion.div
-            key={`beat-${tutorialStep}`}
-            ref={lumyPanelRef}
-            initial={{ opacity: 0, x: entryOffset.x, y: entryOffset.y, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.88 }}
-            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            key="lumii"
+            layout
+            layoutDependency={`${beat.position}-${vpH}`}
+            initial={{ opacity: 0, scale: 0.82 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.82 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="fixed z-[500] pointer-events-none"
             style={posStyle.fixed}
           >
             <LumiiLayout
               layout={posStyle.layout}
               tether={tetherEl}
+              arrow={arrowEl}
               orb={
                 <motion.div
-                  animate={{ y: [0, -9, 0] }}
-                  transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                  animate={{
+                    y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
+                  }}
+                  transition={{
+                    duration: currentAttention === "action" ? 1.8 : 2.8,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                 >
-                  <LumiiOrb size={72} excited={currentAttention === "action" || (currentPhase === 2 && tutorialStep === BEATS.length - 1)} />
+                  <LumiiOrb
+                    size={72}
+                    excited={
+                      currentAttention === "action" ||
+                      (currentPhase === 2 && tutorialStep === BEATS.length - 1)
+                    }
+                  />
                 </motion.div>
               }
               bubble={
@@ -948,7 +1067,7 @@ export function LumiiTutorial({
                         initial={{ opacity: 0, y: 6, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.22 }}
                         className="absolute inset-x-0 pointer-events-none"
                         style={{ top: "calc(100% + 6px)" }}
                       >

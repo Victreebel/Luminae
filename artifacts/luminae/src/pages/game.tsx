@@ -960,6 +960,13 @@ export default function GameBoard() {
     if (!account) return;
     localStorage.setItem(`luminae_cost_mode_${account.id}`, costMode);
   }, [costMode, account]);
+
+  // Scroll the highlighted tutorial zone into view whenever it changes
+  useEffect(() => {
+    if (!isTutorial || !tutorialZone) return;
+    const el = document.querySelector(`[data-tutorial-zone="${tutorialZone}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [isTutorial, tutorialZone]);
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
   const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
@@ -2758,6 +2765,7 @@ export default function GameBoard() {
 
       {/* Luminaries */}
       <div
+        data-tutorial-zone="luminaries"
         style={tutorialZone === 'luminaries' ? {
           borderRadius: 12,
           boxShadow: tutorialAttention === 'action'
@@ -2857,11 +2865,12 @@ export default function GameBoard() {
 
       {/* Market rows */}
       <div
+        data-tutorial-zone="market"
         className="flex flex-col gap-4"
         style={(tutorialZone === 'market' || tutorialZone === 'filters') ? {
           borderRadius: 12,
           boxShadow: tutorialAttention === 'action'
-            ? '0 0 0 2px rgba(168,85,247,0.68), 0 0 34px 10px rgba(168,85,247,0.18)'
+            ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
             : '0 0 0 2px rgba(168,85,247,0.35), 0 0 20px 5px rgba(168,85,247,0.08)',
           transition: 'box-shadow 0.3s',
         } : undefined}
@@ -2870,6 +2879,7 @@ export default function GameBoard() {
         <div className="flex items-center justify-between px-1">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Artifacts · Forge using Affinities</p>
           <div
+            data-tutorial-zone="filters"
             className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5"
             style={tutorialZone === 'filters' ? {
               boxShadow: '0 0 0 2px rgba(168,85,247,0.65), 0 0 14px 4px rgba(168,85,247,0.22)',
@@ -2881,17 +2891,25 @@ export default function GameBoard() {
               { mode: 'printed' as CostMode, label: 'Printed', title: 'Show original printed cost' },
               { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
               { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harness selection' },
-            ]).map(({ mode, label, title }) => (
-              <button
-                key={mode}
-                type="button"
-                title={title}
-                onClick={() => setCostMode(mode)}
-                className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-colors leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                {label}
-              </button>
-            ))}
+            ]).map(({ mode, label, title }) => {
+              const isTutorialFilterHighlight = isTutorial && tutorialStep === 5 && (mode === 'after_bonuses' || mode === 'needed_now');
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  title={title}
+                  onClick={() => setCostMode(mode)}
+                  className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  style={isTutorialFilterHighlight ? {
+                    boxShadow: '0 0 0 1.5px rgba(168,85,247,0.8), 0 0 8px 2px rgba(168,85,247,0.4)',
+                    color: costMode === mode ? undefined : 'rgba(200,170,255,0.9)',
+                    transition: 'box-shadow 0.3s, color 0.3s',
+                  } : undefined}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -2989,6 +3007,7 @@ export default function GameBoard() {
 
       {/* Crystal Bank */}
       <div
+        data-tutorial-zone="harvest"
         className="rounded-2xl bg-secondary/40 backdrop-blur overflow-hidden transition-all duration-300"
         style={{
           border: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
