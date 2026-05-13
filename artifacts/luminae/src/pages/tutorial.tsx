@@ -12,7 +12,7 @@ import { useAccount } from "@/contexts/AccountContext";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 const gemIcon = "/icon_gem.svg";
 
-type Phase = "idle" | "creating" | "adding_ai" | "starting" | "error";
+type Phase = "idle" | "creating" | "adding_placeholder" | "starting" | "error";
 
 export default function Tutorial() {
   const [, setLocation] = useLocation();
@@ -59,15 +59,15 @@ export default function Tutorial() {
         isTutorial: true,
       });
 
-      setPhase("adding_ai");
+      setPhase("adding_placeholder");
       try {
         await addAiPlayer.mutateAsync({
           roomId: room.id,
-          data: { sessionToken, difficulty: "easy" },
+          data: { sessionToken, difficulty: "passive" },
         });
       } catch (err: unknown) {
         if (!cancelled) {
-          setErrorMsg(err instanceof Error ? err.message : "Could not add AI player");
+          setErrorMsg(err instanceof Error ? err.message : "Could not prepare tutorial session");
           setPhase("error");
         }
         return;
@@ -129,7 +129,7 @@ export default function Tutorial() {
   const PHASE_LABELS: Record<Phase, string> = {
     idle: "Preparing tutorial…",
     creating: "Creating your tutorial room…",
-    adding_ai: "Summoning an AI opponent…",
+    adding_placeholder: "Setting up your session…",
     starting: "Starting the game…",
     error: "Something went wrong",
   };

@@ -199,7 +199,7 @@ export const AddAiPlayerParams = zod.object({
 
 export const AddAiPlayerBody = zod.object({
   sessionToken: zod.string(),
-  difficulty: zod.enum(["easy", "medium", "hard"]),
+  difficulty: zod.enum(["easy", "medium", "hard", "passive"]),
 });
 
 export const AddAiPlayerResponse = zod.object({

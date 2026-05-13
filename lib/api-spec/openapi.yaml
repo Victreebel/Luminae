@@ -1079,7 +1079,7 @@ components:
           type: string
         difficulty:
           type: string
-          enum: [easy, medium, hard]
+          enum: [easy, medium, hard, passive]
       required:
         - sessionToken
         - difficulty

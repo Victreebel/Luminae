@@ -282,6 +282,7 @@ export const AddAiPlayerBodyDifficulty = {
   easy: "easy",
   medium: "medium",
   hard: "hard",
+  passive: "passive",
 } as const;
 
 export interface AddAiPlayerBody {

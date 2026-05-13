@@ -18,7 +18,7 @@ import {
   type LuminaryDef,
 } from "./gameEngine";
 
-export type AiDifficulty = "easy" | "medium" | "hard";
+export type AiDifficulty = "easy" | "medium" | "hard" | "passive";
 
 function totalCrystals(c: CrystalCounts): number {
   return c.ruby + c.sapphire + c.emerald + c.onyx + c.pearl + c.flux;
@@ -383,6 +383,11 @@ export function chooseAiAction(
   playerId: string,
   difficulty: AiDifficulty,
 ): ActionPayload {
+  // Passive placeholder: takes no affinities, forges no cards, cannot win.
+  if (difficulty === "passive") {
+    return { type: "take_three_crystals", crystals: {} };
+  }
+
   const player = state.players.find((p) => p.playerId === playerId);
   if (!player) {
     // Should never happen, but provide safe fallback

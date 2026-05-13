@@ -1451,7 +1451,7 @@ function withLore(card: ArtifactCard) {
   return { ...card, name: lore.name, flavor: lore.flavor };
 }
 
-export type AiDifficulty = "easy" | "medium" | "hard";
+export type AiDifficulty = "easy" | "medium" | "hard" | "passive";
 
 export function formatGameState(
   roomId: string,

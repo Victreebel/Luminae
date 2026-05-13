@@ -190,11 +190,13 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
       const isCardAction =
         outcome.actionType === "purchase_card" || outcome.actionType === "reserve_card";
       const betweenDelay =
-        outcome.difficulty === "easy"
-          ? easyDelay(isCardAction)
-          : isCardAction
-            ? AI_TURN_DELAY_CARD_ANIM_MS
-            : AI_TURN_DELAY_MS;
+        outcome.difficulty === "passive"
+          ? 400
+          : outcome.difficulty === "easy"
+            ? easyDelay(isCardAction)
+            : isCardAction
+              ? AI_TURN_DELAY_CARD_ANIM_MS
+              : AI_TURN_DELAY_MS;
       await new Promise((resolve) => setTimeout(resolve, betweenDelay));
     }
   } catch (err) {
