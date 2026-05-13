@@ -1,88 +1,91 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
-import { X, ArrowRight, Sparkles } from "lucide-react";
+import { X, ArrowRight } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
 
 // ─── Lumy Orb ────────────────────────────────────────────────────────────────
 
 function LumyOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
+  const blur = Math.round(size * 0.42);
+  const innerBlur = Math.max(2, Math.round(size * 0.06));
+  const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
+  const innerMask = "radial-gradient(circle, rgba(0,0,0,0.9) 18%, rgba(0,0,0,0.35) 50%, transparent 70%)";
   return (
     <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Rotating colour aura */}
+      {/* Outer diffuse aura — large blurred cloud, breathes with state */}
       <motion.div
-        animate={{ scale: excited ? [1, 1.18, 1.05] : [1, 1.12, 1], opacity: [0.45, 0.8, 0.45] }}
-        transition={{ duration: excited ? 1.6 : 2.4, repeat: Infinity, ease: "easeInOut" }}
+        animate={{
+          scale: excited ? [1, 1.3, 1.1, 1.3, 1] : [1, 1.13, 1],
+          opacity: excited ? [0.55, 1, 0.65, 1, 0.55] : [0.28, 0.52, 0.28],
+        }}
+        transition={{ duration: excited ? 1.6 : 4.0, repeat: Infinity, ease: "easeInOut" }}
         style={{
           position: "absolute",
-          inset: "-38%",
+          inset: "-58%",
           borderRadius: "50%",
           background:
-            "conic-gradient(from 0deg, #f97316, #3b82f6, #22c55e, #a855f7, #e2e8f0, #fbbf24, #f97316)",
-          filter: "blur(18px)",
-          opacity: 0.55,
+            "conic-gradient(from 0deg, #f9731648, #3b82f648, #22c55e48, #a855f748, #e2e8f028, #fbbf2448, #f9731648)",
+          filter: `blur(${blur}px)`,
         }}
       />
-      {/* Main orb body — slowly rotating conic gradient */}
+      {/* Primary affinity current — rotating, edge-faded to transparent */}
       <motion.div
         animate={{ rotate: 360 }}
-        transition={{ duration: excited ? 3.5 : 7, repeat: Infinity, ease: "linear" }}
-        style={{
-          width: "100%",
-          height: "100%",
-          borderRadius: "50%",
-          background:
-            "conic-gradient(from 0deg, #f97316 0deg, #fbbf24 60deg, #22c55e 120deg, #3b82f6 180deg, #a855f7 240deg, #e2e8f0 300deg, #f97316 360deg)",
-        }}
-      />
-      {/* Inner frosted shine — static, gives depth */}
-      <div
+        transition={{ duration: excited ? 4.5 : 11, repeat: Infinity, ease: "linear" }}
         style={{
           position: "absolute",
-          top: "10%",
-          left: "12%",
-          width: "44%",
-          height: "38%",
+          inset: 0,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle at 38% 38%, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0) 100%)",
+            "conic-gradient(from 0deg, #f97316cc, #fbbf2499, #22c55ecc, #3b82f6cc, #a855f7cc, #e2e8f055, #f97316cc)",
+          maskImage: mask,
+          WebkitMaskImage: mask,
+        }}
+      />
+      {/* Counter-rotating inner current — crossing flow layer */}
+      <motion.div
+        animate={{ rotate: -360 }}
+        transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
+        style={{
+          position: "absolute",
+          inset: "13%",
+          borderRadius: "50%",
+          background:
+            "conic-gradient(from 120deg, #3b82f6bb, #a855f7bb, #22c55ebb, #e2e8f040, #f97316bb, #3b82f6bb)",
+          maskImage: innerMask,
+          WebkitMaskImage: innerMask,
+        }}
+      />
+      {/* Singularity core shimmer — slow irregular gold/white pulse */}
+      <motion.div
+        animate={{ opacity: [0, 0.85, 0.15, 0.72, 0], scale: [0.18, 0.55, 0.28, 0.5, 0.18] }}
+        transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 2.2 }}
+        style={{
+          position: "absolute",
+          inset: "24%",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(255,255,255,0.95) 0%, #fbbf24cc 42%, transparent 80%)",
+          filter: `blur(${innerBlur}px)`,
+        }}
+      />
+      {/* Presence pulse ring — expands and fades, no face */}
+      <motion.div
+        animate={{
+          scale: excited ? [0.82, 1.45, 0.82] : [0.88, 1.24, 0.88],
+          opacity: excited ? [0.65, 0, 0.65] : [0.35, 0, 0.35],
+        }}
+        transition={{ duration: excited ? 1.0 : 2.5, repeat: Infinity, ease: "easeOut" }}
+        style={{
+          position: "absolute",
+          inset: "-7%",
+          borderRadius: "50%",
+          border: "1px solid rgba(255,255,255,0.22)",
           pointerEvents: "none",
         }}
       />
-      {/* Eyes */}
-      <div
-        style={{
-          position: "absolute",
-          top: "40%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          display: "flex",
-          gap: Math.round(size * 0.12),
-          alignItems: "center",
-        }}
-      >
-        <motion.div
-          animate={excited ? { scaleY: [1, 0.15, 1] } : { scaleY: 1 }}
-          transition={{ duration: 0.18, repeat: excited ? Infinity : 0, repeatDelay: 1.4 }}
-          style={{
-            width: Math.max(5, Math.round(size * 0.1)),
-            height: Math.max(7, Math.round(size * 0.13)),
-            borderRadius: "50%",
-            background: "rgba(0,0,0,0.75)",
-          }}
-        />
-        <motion.div
-          animate={excited ? { scaleY: [1, 0.15, 1] } : { scaleY: 1 }}
-          transition={{ duration: 0.18, repeat: excited ? Infinity : 0, repeatDelay: 1.4, delay: 0.04 }}
-          style={{
-            width: Math.max(5, Math.round(size * 0.1)),
-            height: Math.max(7, Math.round(size * 0.13)),
-            borderRadius: "50%",
-            background: "rgba(0,0,0,0.75)",
-          }}
-        />
-      </div>
     </div>
   );
 }
@@ -121,22 +124,35 @@ function LumyBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, onClick }
         padding: "12px 14px 10px",
       }}
     >
-      {/* Name badge */}
-      <div className="flex items-center gap-1.5 mb-2">
-        <Sparkles className="h-3 w-3 text-amber-300/80" />
-        <span
-          className="text-[10px] font-bold uppercase tracking-widest"
+      {/* Source label */}
+      <div className="flex items-center gap-2 mb-2">
+        <div
           style={{
-            background: "linear-gradient(90deg, #f97316, #fbbf24, #22c55e, #3b82f6, #a855f7)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            width: 14,
+            height: 2,
+            borderRadius: 1,
+            background: "linear-gradient(90deg, #f97316, #22c55e, #3b82f6, #a855f7, #e2e8f0)",
+            opacity: 0.7,
+            flexShrink: 0,
           }}
+        />
+        <span
+          className="text-[9px] font-bold uppercase"
+          style={{ letterSpacing: "0.17em", color: "rgba(255,255,255,0.5)" }}
         >
-          Lumy
+          LUMY · AFFINITY ECHO
         </span>
         {phase === 2 && (
-          <span className="ml-1 text-[9px] font-semibold uppercase tracking-wider text-emerald-400/80 border border-emerald-500/30 rounded-full px-1.5 py-0.5">
-            Endgame
+          <span
+            className="ml-auto text-[8px] font-semibold uppercase tracking-wider"
+            style={{
+              color: "rgba(52,211,153,0.65)",
+              border: "1px solid rgba(52,211,153,0.2)",
+              borderRadius: 3,
+              padding: "1px 5px",
+            }}
+          >
+            ASCENSION
           </span>
         )}
       </div>
