@@ -1848,24 +1848,72 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const lumiiTarget = beat.lumiiZone;
 
   const LUMII_ZONE_POS: Record<string, { x: string; y: string }> = {
-    "market-t1": { x: "20%", y: "72%" },
-    "market-t2": { x: "20%", y: "55%" },
-    "market-t3": { x: "20%", y: "38%" },
-    "card-cost": { x: "78%", y: "68%" },
-    well: { x: "80%", y: "78%" },
-    hand: { x: "80%", y: "90%" },
-    storage: { x: "15%", y: "90%" },
-    eminence: { x: "88%", y: "12%" },
-    "discounted-tab": { x: "42%", y: "28%" },
-    "needed-tab": { x: "52%", y: "28%" },
-    "top-center": { x: "50%", y: "10%" },
-    center: { x: "50%", y: "50%" },
-    luminary: { x: "50%", y: "30%" },
+    // Market-focused beats — camera at top; Lumii sits right-side, clear of cards & dialogue
+    "market-t1":      { x: "87%", y: "26%" },
+    "market-t2":      { x: "87%", y: "20%" },
+    "market-t3":      { x: "87%", y: "14%" },
+    // Card-explanation beats — camera at top; Lumii right-side at mid height (dialogue floats beside her)
+    "card-cost":      { x: "78%", y: "40%" },
+    // Well-focused beats — camera scrolled to bottom; Lumii parks at top-right, well clear of the well
+    well:             { x: "87%", y: "12%" },
+    // Storage / hand beats — camera mid; Lumii left-side out of the way
+    hand:             { x: "13%", y: "20%" },
+    storage:          { x: "13%", y: "20%" },
+    // Eminence is in the pinned panel (top-right corner of the panel) — Lumii just above it
+    eminence:         { x: "88%", y: "12%" },
+    // Tab-switch beats — camera at top; Lumii left, tabs are center
+    "discounted-tab": { x: "13%", y: "20%" },
+    "needed-tab":     { x: "13%", y: "20%" },
+    // Generic positions
+    "top-center":     { x: "50%", y: "10%" },
+    center:           { x: "50%", y: "38%" },
+    luminary:         { x: "50%", y: "28%" },
   };
   const lumiiPos = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "88%" };
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
+
+  // ── Camera / scroll control ──────────────────────────────────────────────
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Which section should be in view for this beat + subStep
+  const cameraFocus: "market" | "well" | "storage" = (() => {
+    if (beatId === "b8_first_harness") return "well";
+    if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
+    if (beatId === "b12_tier2" && subStep === 1) return "well";
+    if (beatId === "b16_final_forge" && subStep === 0) return "well";
+    if (beatId === "b9b_forge_complete" || beatId === "b14_win_condition") return "storage";
+    if (beatId === "b10b_reserve_granted") return "storage";
+    return "market";
+  })();
+
+  // Auto-scroll to the right section whenever beat or subStep changes
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    if (cameraFocus === "well") {
+      container.scrollTo({ top: maxScroll, behavior: "smooth" });
+    } else if (cameraFocus === "storage") {
+      container.scrollTo({ top: Math.round(maxScroll * 0.5), behavior: "smooth" });
+    } else {
+      container.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [beatId, subStep, cameraFocus]);
+
+  // Disable user-initiated scroll so the camera position is always controlled
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const prevent = (e: Event) => e.preventDefault();
+    container.addEventListener("wheel", prevent, { passive: false });
+    container.addEventListener("touchmove", prevent, { passive: false });
+    return () => {
+      container.removeEventListener("wheel", prevent);
+      container.removeEventListener("touchmove", prevent);
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden">
@@ -1912,8 +1960,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         </div>
       </header>
 
-      {/* Scrollable board content */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 pb-4">
+      {/* Scrollable board content — scroll is locked; camera moves programmatically per beat */}
+      <div ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 pb-4">
         {/* Market section */}
         <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
           <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
@@ -2099,9 +2147,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         );
       })()}
 
-      {/* Dialogue box — sits above the pinned player panel; suppressed for beats whose dialogue floats with Lumii */}
+      {/* Dialogue box — repositions based on camera focus to avoid covering the active section */}
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
-        <div className="fixed bottom-[152px] left-0 right-0 z-50 px-4">
+        <div className={`fixed ${cameraFocus === "well" ? "top-[54px]" : "bottom-[152px]"} left-0 right-0 z-50 px-4`}>
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${beatId}-${s.dlgLine}-${s.nudge}`}
