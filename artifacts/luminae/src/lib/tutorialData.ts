@@ -177,7 +177,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "Almost. You've been wandering along the border." },
       { text: "There you are." },
       { text: "Hello, Architect." },
       { text: "I am Lumii." },
@@ -204,7 +203,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "You stand at the border." },
+      { text: "Almost. You've been wandering along the border." },
       { text: "Whatever you choose, I will light your way." },
     ],
     completion: { type: "dialogue" },
