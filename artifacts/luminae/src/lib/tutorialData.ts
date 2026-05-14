@@ -161,7 +161,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "Are you there?" },
     ],
     completion: { type: "dialogue" },
-    playerResponse: "I'm here.",
+    playerResponse: "Who's there?",
   },
   {
     id: "b1_locate",
