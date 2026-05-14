@@ -190,7 +190,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "An Architect is one who shapes the direction of cosmic society — what its inhabitants reach for, and what they become." },
+      { text: "As an Architect, you shape the direction of cosmic society." },
+      { text: "You determine what its people reach for, and what they become." },
       { text: "You stand at the border of a new Universe." },
       { text: "Whatever you decide, I will carry the light forward with you." },
     ],
