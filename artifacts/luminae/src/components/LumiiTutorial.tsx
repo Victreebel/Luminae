@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
@@ -607,7 +608,7 @@ const NUDGE_MESSAGES: Partial<Record<number, string>> = {
   12: "Open your Hand panel, find your reserved card, and tap Forge Artifact.",
 };
 
-// ─── Position helpers (pixel-based, no transforms) ───────────────────────────
+// ─── Position helpers ─────────────────────────────────────────────────────────
 
 type LayoutVariant = "above" | "below" | "left" | "right";
 
@@ -615,29 +616,40 @@ interface PositionStyle {
   fixed: React.CSSProperties;
   layout: LayoutVariant;
   tether?: "down" | "left" | "up";
+  /** When true, content is wrapped in a plain div with translateX(-50%) so
+   *  the assembly centres on the 50vw point. vw units are always viewport-
+   *  relative; the plain wrapper is never managed by Framer Motion. */
+  centered?: boolean;
 }
 
 function getPositionStyle(pos: BeatPosition, vpH: number): PositionStyle {
   switch (pos) {
     case "harvest":
-      // Sit above the Affinity Well at the bottom; bottom: value adapts to all screen heights
       return { fixed: { bottom: 168, left: 14 }, layout: "above", tether: "down" };
     case "market":
     case "filters":
-      // Right side of screen, vertically centred in the market area
       return {
         fixed: { top: Math.round(vpH * 0.44) - 36, right: 14 },
         layout: "left",
         tether: "left",
       };
     case "luminaries":
-      // Near the top, horizontally centred — tether points down toward the Luminary cards
-      return { fixed: { top: 90, left: "calc(50% - 36px)" }, layout: "below", tether: "down" };
+      // left:50vw places the element's left edge at the viewport horizontal centre.
+      // 50vw is always viewport-relative regardless of containing block or transforms.
+      // The centered:true flag adds a plain-div wrapper with translateX(-50%) to
+      // shift the assembly left by half its own width, centering it perfectly.
+      return {
+        fixed: { top: 90, left: "50vw" },
+        layout: "below",
+        tether: "down",
+        centered: true,
+      };
     case "center":
     default:
       return {
-        fixed: { top: Math.round(vpH * 0.5) - 88, left: "calc(50% - 36px)" },
+        fixed: { top: Math.round(vpH * 0.5) - 88, left: "50vw" },
         layout: "below",
+        centered: true,
       };
   }
 }
@@ -1007,122 +1019,144 @@ export function LumiiTutorial({
         )}
       </AnimatePresence>
 
-      {/* ── Lumii orb + speech bubble — PERSISTENT, uses layout animation between beats ── */}
-      <AnimatePresence>
-        {beat && !showCompletion && !isFastForwarding && (
-          <motion.div
-            key="lumii"
-            layout
-            layoutDependency={`${beat.position}-${vpH}`}
-            initial={{ opacity: 0, scale: 0.82 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.82 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed z-[500] pointer-events-none"
-            style={posStyle.fixed}
-          >
-            <LumiiLayout
-              layout={posStyle.layout}
-              tether={tetherEl}
-              arrow={arrowEl}
-              orb={
+      {/* ── All fixed overlays portaled to document.body so that no ancestor
+            Framer Motion transform (rotate, scale, etc.) in the game component
+            tree can act as a containing block and shift position: fixed elements ── */}
+      {createPortal(
+        <>
+          {/* Lumii orb + speech bubble */}
+          <AnimatePresence>
+            {beat && !showCompletion && !isFastForwarding && (
+              <motion.div
+                key="lumii"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed z-[500] pointer-events-none"
+                style={{ ...posStyle.fixed, transition: "top 0.35s ease, bottom 0.35s ease, left 0.35s ease, right 0.35s ease" }}
+              >
+                {/*
+                  When centered=true the outer motion.div is positioned at left:50vw
+                  (always viewport-centre — vw units ignore containing block & transforms).
+                  This plain div shifts left by 50% of the content's own width, perfectly
+                  centring the assembly. Framer Motion never manages a plain div's
+                  transform, so it can never override this centering shift.
+                */}
+                <div style={posStyle.centered ? { transform: "translateX(-50%)" } : undefined}>
                 <motion.div
-                  animate={{
-                    y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
-                  }}
-                  transition={{
-                    duration: currentAttention === "action" ? 1.8 : 2.8,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  initial={{ scale: 0.82 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0.82 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 >
-                  <LumiiOrb
-                    size={72}
-                    excited={
-                      currentAttention === "action" ||
-                      (currentPhase === 2 && tutorialStep === BEATS.length - 1)
+                  <LumiiLayout
+                    layout={posStyle.layout}
+                    tether={tetherEl}
+                    arrow={arrowEl}
+                    orb={
+                      <motion.div
+                        animate={{
+                          y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
+                        }}
+                        transition={{
+                          duration: currentAttention === "action" ? 1.8 : 2.8,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      >
+                        <LumiiOrb
+                          size={72}
+                          excited={
+                            currentAttention === "action" ||
+                            (currentPhase === 2 && tutorialStep === BEATS.length - 1)
+                          }
+                        />
+                      </motion.div>
+                    }
+                    bubble={
+                      <div className="relative">
+                        <AnimatePresence mode="wait">
+                          <LumiiBubble
+                            key={`${tutorialStep}-${lineIdx}`}
+                            text={beat.lines[lineIdx] ?? beat.lines[0] ?? ""}
+                            isActionBeat={isActionBeat}
+                            isLastLine={isLastLine}
+                            isFfBeat={isFfBeat}
+                            phase={currentPhase}
+                            objective={beat.objective}
+                            onClick={handleClick}
+                          />
+                        </AnimatePresence>
+                        {/* Nudge — brief explanation when a disallowed action is attempted */}
+                        <AnimatePresence>
+                          {nudgeText && (
+                            <motion.div
+                              key="nudge"
+                              initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                              transition={{ duration: 0.22 }}
+                              className="absolute inset-x-0 pointer-events-none"
+                              style={{ top: "calc(100% + 6px)" }}
+                            >
+                              <div
+                                className="rounded-xl px-3 py-2 text-[11px] leading-snug"
+                                style={{
+                                  background: "rgba(168,85,247,0.18)",
+                                  border: "1px solid rgba(168,85,247,0.38)",
+                                  backdropFilter: "blur(8px)",
+                                  color: "rgba(255,255,255,0.82)",
+                                }}
+                              >
+                                <span style={{ color: "#a855f7", fontWeight: 700, marginRight: 5 }}>✦</span>
+                                {nudgeText}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     }
                   />
                 </motion.div>
-              }
-              bubble={
-                <div className="relative">
-                  <AnimatePresence mode="wait">
-                    <LumiiBubble
-                      key={`${tutorialStep}-${lineIdx}`}
-                      text={beat.lines[lineIdx] ?? beat.lines[0] ?? ""}
-                      isActionBeat={isActionBeat}
-                      isLastLine={isLastLine}
-                      isFfBeat={isFfBeat}
-                      phase={currentPhase}
-                      objective={beat.objective}
-                      onClick={handleClick}
-                    />
-                  </AnimatePresence>
-                  {/* Nudge — brief explanation when a disallowed action is attempted */}
-                  <AnimatePresence>
-                    {nudgeText && (
-                      <motion.div
-                        key="nudge"
-                        initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                        transition={{ duration: 0.22 }}
-                        className="absolute inset-x-0 pointer-events-none"
-                        style={{ top: "calc(100% + 6px)" }}
-                      >
-                        <div
-                          className="rounded-xl px-3 py-2 text-[11px] leading-snug"
-                          style={{
-                            background: "rgba(168,85,247,0.18)",
-                            border: "1px solid rgba(168,85,247,0.38)",
-                            backdropFilter: "blur(8px)",
-                            color: "rgba(255,255,255,0.82)",
-                          }}
-                        >
-                          <span style={{ color: "#a855f7", fontWeight: 700, marginRight: 5 }}>✦</span>
-                          {nudgeText}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
-              }
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {/* ── Skip button ── */}
-      {!showCompletion && !isFastForwarding && beat && (
-        <motion.button
-          type="button"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed top-3 right-3 z-[501] flex items-center gap-1 text-[11px] text-white/40 hover:text-white/70 transition-colors rounded-lg px-2 py-1.5 hover:bg-white/5 pointer-events-auto"
-          onClick={() => setShowSkipConfirm(true)}
-        >
-          <X className="h-3 w-3" />
-          Skip tutorial
-        </motion.button>
+          {/* Skip button */}
+          {!showCompletion && !isFastForwarding && beat && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed top-3 right-3 z-[501] flex items-center gap-1 text-[11px] text-white/40 hover:text-white/70 transition-colors rounded-lg px-2 py-1.5 hover:bg-white/5 pointer-events-auto"
+              onClick={() => setShowSkipConfirm(true)}
+            >
+              <X className="h-3 w-3" />
+              Skip tutorial
+            </motion.button>
+          )}
+
+          {/* Phase 2 scene label */}
+          <AnimatePresence>
+            {currentPhase === 2 && !showCompletion && !isFastForwarding && tutorialStep >= 11 && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed top-3 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
+              >
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold backdrop-blur-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Civilization on the Edge of Legend
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
       )}
-
-      {/* ── Phase 2 scene label ── */}
-      <AnimatePresence>
-        {currentPhase === 2 && !showCompletion && !isFastForwarding && tutorialStep >= 11 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="fixed top-3 left-1/2 -translate-x-1/2 z-[500] pointer-events-none"
-          >
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-[11px] text-emerald-300 font-semibold backdrop-blur-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Civilization on the Edge of Legend
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }
