@@ -1236,7 +1236,7 @@ function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
   const BG = 'radial-gradient(ellipse at 50% 43%, #0c0c1f 0%, #040408 100%)';
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
 
       {/* ── Six crystal shard panels ────────────────────────────────────── */}
       {FS_SHARDS.map((sh, i) => (
@@ -1469,7 +1469,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
             initial={isLocate ? { x: 160, opacity: 0 } : { opacity: 0, scale: 0.8 }}
             animate={{ x: 0, opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
-            className="absolute z-10"
+            className="absolute z-30"
             style={{ top: "35%", left: "50%", transform: "translate(-50%, -50%)" }}
           >
             <LumiiOrb size={88} excited={s.beat === 2} />
