@@ -191,7 +191,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "An Architect is what we call those who have the power to shape cosmic society in my universe." },
+      { text: "In my Universe, that is what we call those who have the power to shape cosmic society." },
       { text: "You can determine what my people reach for, and what we become." },
       { text: "Architects do not rule." },
       { text: "You provide us with the tools to shine brilliantly throughout the cosmos." },
