@@ -21,7 +21,8 @@ export type LumiiZone =
   | "eminence"
   | "discounted-tab"
   | "needed-tab"
-  | "luminary";
+  | "luminary"
+  | "card-cost";
 
 export interface TutorialDialogueLine {
   text: string;
@@ -263,7 +264,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b7_artifact_cost",
     mode: "look",
-    lumiiZone: "market-t1",
+    lumiiZone: "card-cost",
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [

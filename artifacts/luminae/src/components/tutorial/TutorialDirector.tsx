@@ -1794,6 +1794,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const purchaseBurstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
   const gemBurstKeyRef = useRef(0);
+  // Tracks whether a forge just fired so Lumii bounces excitedly at the artifact
+  const [forgeJustHappened, setForgeJustHappened] = useState(false);
 
   useEffect(() => {
     const trigger = s.animTrigger;
@@ -1802,6 +1804,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       purchaseBurstKeyRef.current += 1;
       setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name });
       setTimeout(() => setPurchaseBurst(null), 1500);
+      setForgeJustHappened(true);
+      setTimeout(() => setForgeJustHappened(false), 3600);
     } else if (trigger.type === "harvest") {
       const { gems } = trigger;
       gemBurstKeyRef.current += 1;
@@ -1831,6 +1835,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "market-t1": { x: "20%", y: "72%" },
     "market-t2": { x: "20%", y: "55%" },
     "market-t3": { x: "20%", y: "38%" },
+    "card-cost": { x: "78%", y: "68%" },
     well: { x: "80%", y: "78%" },
     hand: { x: "80%", y: "90%" },
     storage: { x: "15%", y: "90%" },
@@ -2000,15 +2005,20 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         </div>
       </div>
 
-      {/* Floating Lumii + "over here" hint */}
+      {/* Floating Lumii — moves between zones, bounces to draw attention */}
       {(() => {
         const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
-        // Clickable when hint is showing AND there's still a dialogue line to dismiss
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
-        // Dart to top-right corner while burst animations are playing so Lumii
-        // doesn't compete with the centred token / forge animations.
+        // Dart to top-right corner while burst animations are playing
         const burstActive = !!(purchaseBurst || gemBurst);
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
+        // Beats where dialogue floats beside Lumii instead of fixed at bottom
+        const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b7_artifact_cost"]);
+        const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
+        // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
+        const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
+        // Excited bounce: action hint pending OR Lumii just celebrated a forge
+        const shouldExcitedBounce = hintVisible || forgeJustHappened;
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
@@ -2020,13 +2030,38 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             className="fixed z-[60] pointer-events-none"
             style={{ transform: "translate(-50%, -50%)" }}
           >
-            {/* Attention bounce when ready for player action, gentle float otherwise */}
+            {/* Speech bubble anchored to Lumii for card-explanation beats */}
+            {showFloatingDlg && (
+              <div
+                className="absolute pointer-events-auto"
+                style={lumiiIsLeft
+                  ? { left: 36, top: -64, width: 216 }
+                  : { right: 36, top: -64, width: 216 }
+                }
+              >
+                <AnimatePresence mode="wait">
+                  <DialogueBox
+                    key={`float-${beatId}-${s.dlgLine}`}
+                    lines={beat.dialogue}
+                    lineIndex={s.dlgLine}
+                    onTap={() => {
+                      if (s.nudge) dispatch({ type: "NUDGE", msg: null });
+                      else dispatch({ type: "NEXT_DLG" });
+                    }}
+                    nudge={s.nudge}
+                    mode={beat.mode}
+                    showOrb={false}
+                  />
+                </AnimatePresence>
+              </div>
+            )}
+            {/* Orb: excited bounce when action pending or forge just fired; gentle float otherwise */}
             <motion.div
-              animate={hintVisible
+              animate={shouldExcitedBounce
                 ? { y: [0, -22, 3, -15, 1, -8, 0, 0, 0] }
                 : { y: [0, -6, 0] }
               }
-              transition={hintVisible
+              transition={shouldExcitedBounce
                 ? {
                     duration: 2.0,
                     repeat: Infinity,
@@ -2041,15 +2076,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={isActMode} />
+                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} />
               </div>
             </motion.div>
           </motion.div>
         );
       })()}
 
-      {/* Dialogue box — sits above the pinned player panel (~152px tall) */}
-      {s.dlgLine < beat.dialogue.length && (
+      {/* Dialogue box — sits above the pinned player panel; suppressed for beats whose dialogue floats with Lumii */}
+      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
         <div className="fixed bottom-[152px] left-0 right-0 z-50 px-4">
           <AnimatePresence mode="wait">
             <DialogueBox
