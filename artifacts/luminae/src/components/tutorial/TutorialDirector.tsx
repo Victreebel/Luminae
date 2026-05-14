@@ -1481,8 +1481,8 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
             background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,230,1.0) 0%, rgba(255,220,140,0.85) 22%, rgba(251,191,36,0.50) 45%, rgba(251,191,36,0.10) 68%, transparent 85%)',
           }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.30, 0.80, 1.0, 0.85, 0.55] }}
-          transition={{ duration: 3.2, times: [0, 0.08, 0.22, 0.42, 0.68, 1.0], ease: 'easeInOut' }}
+          animate={{ opacity: [0, 0.35, 0.90, 1.0, 0.65, 0] }}
+          transition={{ duration: 2.2, times: [0, 0.07, 0.20, 0.40, 0.65, 1.0], ease: 'easeInOut' }}
         />
       )}
 
