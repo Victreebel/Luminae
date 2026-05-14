@@ -1138,6 +1138,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
               onTap={() => dispatch({ type: "NEXT_DLG" })}
               nudge={null}
               mode={beat.mode}
+              showOrb={false}
             />
           </AnimatePresence>
         </div>
@@ -1277,6 +1278,7 @@ function LuminaryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               onTap={() => dispatch({ type: "NEXT_DLG" })}
               nudge={null}
               mode="listen"
+              showOrb={false}
             />
           </AnimatePresence>
         </div>
@@ -1313,6 +1315,7 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
               onTap={() => dispatch({ type: "NEXT_DLG" })}
               nudge={null}
               mode="listen"
+              showOrb={false}
             />
           </AnimatePresence>
         </div>
