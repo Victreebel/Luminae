@@ -1870,7 +1870,7 @@ export function LuminarySummonCutscene({
               opacity: isFlashing ? 0 : [0, 0.84, 0.98, 0.96, 0.82, 0.46, 0],
               scale:   isFlashing ? 0.16 : [0.08, 0.40, 0.78, 1.02, 1.20, 1.30, 1.26],
             }}
-            exit={{ opacity: 0, transition: { duration: 0.30 } }}
+            exit={{ opacity: 0, transition: { duration: 0.85, ease: 'easeOut' } }}
             transition={{
               opacity: { duration: 1.08, times: [0, 0.10, 0.24, 0.42, 0.64, 0.84, 1.0], ease: 'easeInOut' },
               scale:   { duration: 1.08, times: [0, 0.10, 0.26, 0.44, 0.64, 0.84, 1.0], ease: [0.16, 1, 0.3, 1] },
@@ -1879,7 +1879,7 @@ export function LuminarySummonCutscene({
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, ${primaryColor}ff 10%, ${primaryColor}dd 24%, ${primaryColor}88 50%, transparent 84%)`,
+              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #FFE255ff 10%, #FFD04Add 24%, #FFD04A88 50%, transparent 84%)`,
               filter: 'blur(14px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
@@ -1991,10 +1991,10 @@ export function LuminarySummonCutscene({
         {isFlashing && (
           <motion.div key="flash" className="absolute inset-0 pointer-events-none"
             initial={{ opacity: 1 }}
-            animate={{ opacity: [1, 1, 0] }}
-            transition={{ duration: 0.88, ease: 'easeInOut', times: [0, 0.28, 1] }}
+            animate={{ opacity: [1, 1, 0.72, 0] }}
+            transition={{ duration: 1.50, ease: 'easeOut', times: [0, 0.22, 0.60, 1] }}
             style={{
-              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, ${primaryColor}ee 20%, ${primaryColor}bb 44%, ${primaryColor}44 66%, transparent 86%)`,
+              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, #FFE255ee 18%, #FFD04Abb 42%, #FFD04A44 64%, transparent 86%)`,
             }}
           />
         )}
