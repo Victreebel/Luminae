@@ -237,6 +237,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "Every civilization in Luminae channels the cosmos through Affinities." },
       { text: "They are the elemental forces of existence — the energy behind everything you will build." },
+      { text: "The five Affinities are..." },
     ],
     completion: { type: "dialogue" },
   },

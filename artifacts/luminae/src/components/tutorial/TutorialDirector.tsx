@@ -1385,6 +1385,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const [showLumii, setShowLumii] = useState(false);
   const [panDone, setPanDone] = useState(false);
   const [affIdx, setAffIdx] = useState(-1);
+  const [shatterReady, setShatterReady] = useState(false);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -1401,6 +1402,9 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
     const t3 = setTimeout(() => { dispatch({ type: "NEXT_BEAT" }); }, 3000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [isLocate, dispatch]);
+
+  // Reset shatterReady whenever the beat changes
+  useEffect(() => { setShatterReady(false); }, [s.beat]);
 
   // Beat b5b: init affinity token sequence on entry
   useEffect(() => {
@@ -1431,8 +1435,8 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
     >
       {s.beat >= 5 && <div className="absolute inset-0 bg-black/60" />}
 
-      {/* Fullscreen shatter animation */}
-      {isShatter && <FullscreenShatterOverlay onDone={() => dispatch({ type: "NEXT_BEAT" })} />}
+      {/* Fullscreen shatter animation — only starts after player taps "Welcome to Luminae." */}
+      {isShatter && shatterReady && <FullscreenShatterOverlay onDone={() => dispatch({ type: "NEXT_BEAT" })} />}
 
       {/* Affinity token sequence — click-gated, Lumii stays in front at z-30 */}
       {isAffinityTokens && (
@@ -1496,14 +1500,21 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
       </AnimatePresence>
 
       {/* Dialogue */}
-      {!isLocate && !isAffinityTokens && !isShatter && (
+      {!isLocate && !isAffinityTokens && !(isShatter && shatterReady) && (
         <div className="absolute bottom-16 left-0 right-0 z-30 px-6">
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${s.beat}-${s.dlgLine}`}
               lines={beat.dialogue}
               lineIndex={s.dlgLine}
-              onTap={() => dispatch({ type: "NEXT_DLG" })}
+              onTap={() => {
+                if (isShatter) {
+                  // Tapping "Welcome to Luminae." triggers the unskippable shatter
+                  setShatterReady(true);
+                } else {
+                  dispatch({ type: "NEXT_DLG" });
+                }
+              }}
               nudge={null}
               mode={beat.mode}
               showOrb={false}
