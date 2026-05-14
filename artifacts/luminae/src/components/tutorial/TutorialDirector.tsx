@@ -184,9 +184,16 @@ function reducer(s: TutState, a: TAction): TutState {
     case "SEL_AFF": {
       const cur = s.wellSel[a.gem] ?? 0;
       const next = Math.max(0, cur + a.delta);
-      const totalSel = Object.values({ ...s.wellSel, [a.gem]: next }).reduce((a, b) => a + b, 0);
-      if (totalSel > 10) return { ...s, nudge: "You have reached the affinity limit. To gather more, release some affinity first." };
-      return { ...s, wellSel: { ...s.wellSel, [a.gem]: next }, nudge: null };
+      const newSel = { ...s.wellSel, [a.gem]: next };
+      if (a.delta < 0) {
+        return { ...s, wellSel: newSel, nudge: null };
+      }
+      const totalSel = Object.values(newSel).reduce((a, b) => a + b, 0);
+      if (totalSel > 10) return { ...s, nudge: "You have reached the affinity limit. Release some first." };
+      const maxSingle = Math.max(0, ...Object.values(newSel).filter(v => v > 0));
+      // Mirror game rule: max 2 of the same affinity in one harvest
+      if (maxSingle > 2) return { ...s, nudge: "You can harness at most 2 of the same affinity at once." };
+      return { ...s, wellSel: newSel, nudge: null };
     }
 
     case "CLEAR_SEL":
@@ -213,10 +220,10 @@ function reducer(s: TutState, a: TAction): TutState {
         }
       }
 
-      // Beat 12, subStep 1: must select onyx:3
+      // Beat 12, subStep 1: must select onyx:2 (player already has 1 onyx from prior carry-over)
       if (beatId === "b12_tier2" && s.subStep === 1) {
-        if ((sel.onyx ?? 0) !== 3) {
-          return { ...s, nudge: "Gather the Abyss affinities — Singularity will bridge the Verdance gap." };
+        if ((sel.onyx ?? 0) !== 2) {
+          return { ...s, nudge: "Gather 2 Abyss affinities — Singularity will bridge the Verdance gap." };
         }
       }
 
@@ -381,9 +388,15 @@ function reducer(s: TutState, a: TAction): TutState {
           return { ...s, nudge: "Gather the required affinities first." };
         }
         const forgeResult = applyForge(s, cardId);
+        // Carry over 1 Onyx into the next beat — the player needs 3 total for the
+        // tier-2 card but the game allows max 2 of the same per harvest, so this
+        // simulates having gathered 1 Onyx in a prior turn.
+        const carriedCrystals = { ...(forgeResult.crystals ?? s.crystals) };
+        carriedCrystals.onyx = (carriedCrystals.onyx ?? 0) + 1;
         return {
           ...s,
           ...forgeResult,
+          crystals: carriedCrystals,
           reserved: s.reserved.filter(id => id !== cardId),
           beat: s.beat + 1,
           dlgLine: 0,
@@ -714,7 +727,7 @@ function AffinityWell({
   const guidedGems: Partial<Record<GemKey, number>> = (() => {
     if (beatId === "b8_first_harness") return { ruby: 1, sapphire: 1, pearl: 1 };
     if (beatId === "b11_forge_reserved" && subStep === 0) return { onyx: 2, pearl: 1 };
-    if (beatId === "b12_tier2" && subStep === 1) return { onyx: 3 };
+    if (beatId === "b12_tier2" && subStep === 1) return { onyx: 2 };
     if (beatId === "b16_final_forge" && subStep === 0) return { sapphire: 2 };
     return {};
   })();
@@ -730,7 +743,10 @@ function AffinityWell({
           const cur = s.wellSel[gem] ?? 0;
           const guided = guidedGems[gem] ?? 0;
           const isHighlighted = isGuidedBeat && guided > 0;
-          const canAdd = wellEnabled && (!isGuidedBeat || guided > cur);
+          // Disable if adding 1 more of this gem would exceed the 2-same-color limit
+          const projCount = cur + 1;
+          const wouldExceedSameLimit = projCount > 2;
+          const canAdd = wellEnabled && !wouldExceedSameLimit && (!isGuidedBeat || guided > cur);
           const canRemove = wellEnabled && cur > 0;
 
           return (
