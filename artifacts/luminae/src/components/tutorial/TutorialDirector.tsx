@@ -55,6 +55,7 @@ interface TutState {
   lumDone: boolean;
   showLuminary: boolean;
   navigateTo: string | null;
+  animTrigger?: { type: "forge"; lumens: number; name: string } | { type: "harvest"; gems: GemKey[] };
 }
 
 const INIT_CRYSTALS: Record<GemKey, number> = {
@@ -226,15 +227,18 @@ function reducer(s: TutState, a: TAction): TutState {
       }
 
       const addedCrystals = { ...s.crystals };
+      const flatGems: GemKey[] = [];
       for (const [k, v] of Object.entries(sel) as [GemKey, number][]) {
         addedCrystals[k] = (addedCrystals[k] ?? 0) + v;
+        for (let i = 0; i < v; i++) flatGems.push(k);
       }
+      const harvestTrigger = { type: "harvest" as const, gems: flatGems };
 
       const nextSubStep = s.subStep + 1;
       if (beatId === "b8_first_harness") {
-        return { ...s, crystals: addedCrystals, wellSel: {}, nudge: null, beat: s.beat + 1, dlgLine: 0, subStep: 0 };
+        return { ...s, crystals: addedCrystals, wellSel: {}, nudge: null, beat: s.beat + 1, dlgLine: 0, subStep: 0, animTrigger: harvestTrigger };
       }
-      return { ...s, crystals: addedCrystals, wellSel: {}, nudge: null, subStep: nextSubStep };
+      return { ...s, crystals: addedCrystals, wellSel: {}, nudge: null, subStep: nextSubStep, animTrigger: harvestTrigger };
     }
 
     case "SET_VIEW": {
@@ -281,11 +285,13 @@ function reducer(s: TutState, a: TAction): TutState {
       }
 
       // Beat 9: must forge FIRST_FORGE_ID
+      const forgeTrigger = { type: "forge" as const, lumens: card.lumens, name: card.name };
+
       if (beatId === "b9_first_forge") {
         if (cardId !== FIRST_FORGE_ID) {
           return { ...s, nudge: "Forge the artifact Lumii highlighted." };
         }
-        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, animTrigger: forgeTrigger };
       }
 
       // Beat 12: must forge TIER2_SINGULARITY_ID
@@ -296,7 +302,7 @@ function reducer(s: TutState, a: TAction): TutState {
         if (s.subStep < 2) {
           return { ...s, nudge: "Gather the required affinities first." };
         }
-        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, view: "all" };
+        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, view: "all", animTrigger: forgeTrigger };
       }
 
       // Beat 13: must forge one of the Tier 3 Verdance cards
@@ -308,7 +314,7 @@ function reducer(s: TutState, a: TAction): TutState {
           return { ...s, nudge: beat.wrongClickNudge ?? "Choose a Verdance artifact." };
         }
         const forgeResult = applyForge(s, cardId);
-        const remaining = FAST_FORWARD_CARDS.filter(id => id !== cardId);
+        const t13Trigger = { type: "forge" as const, lumens: card.lumens, name: card.name };
         return {
           ...s,
           ...forgeResult,
@@ -317,6 +323,7 @@ function reducer(s: TutState, a: TAction): TutState {
           dlgLine: 0,
           subStep: 0,
           nudge: null,
+          animTrigger: t13Trigger,
         };
       }
 
@@ -339,6 +346,7 @@ function reducer(s: TutState, a: TAction): TutState {
           subStep: 0,
           nudge: null,
           showLuminary: true,
+          animTrigger: forgeTrigger,
         };
       }
 
@@ -380,6 +388,7 @@ function reducer(s: TutState, a: TAction): TutState {
           dlgLine: 0,
           subStep: 0,
           nudge: null,
+          animTrigger: { type: "forge" as const, lumens: card.lumens, name: card.name },
         };
       }
       return s;
@@ -1418,12 +1427,13 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   }, [isAffinityTokens]);
 
   // Tap handler — advances token or exits when all 5 seen
+  // Note: dispatch must NOT be called inside a state updater (React 18 concurrent mode).
   const handleAffTap = () => {
-    setAffIdx(i => {
-      if (i < 4) return i + 1;
+    if (affIdx >= 4) {
       dispatch({ type: "NEXT_BEAT" });
-      return i;
-    });
+    } else {
+      setAffIdx(i => i + 1);
+    }
   };
 
   const dlgText = beat.dialogue[s.dlgLine]?.text ?? "";
@@ -1741,6 +1751,29 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const beatId = beat.id;
   const subStep = s.subStep;
 
+  // ── Burst animation state ──────────────────────────────────────────────────
+  const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
+  const purchaseBurstKeyRef = useRef(0);
+  const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
+  const gemBurstKeyRef = useRef(0);
+
+  useEffect(() => {
+    const trigger = s.animTrigger;
+    if (!trigger) return;
+    if (trigger.type === "forge") {
+      purchaseBurstKeyRef.current += 1;
+      setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name });
+      setTimeout(() => setPurchaseBurst(null), 1500);
+    } else if (trigger.type === "harvest") {
+      const { gems } = trigger;
+      gemBurstKeyRef.current += 1;
+      const key = gemBurstKeyRef.current;
+      setGemBurst({ key, gems });
+      const burstDuration = (gems.length - 1) * 0.78 + 1.25 + 0.5 + 0.05;
+      setTimeout(() => setGemBurst(null), (burstDuration + 0.35) * 1000);
+    }
+  }, [s.animTrigger]);
+
   // Dim mode: listen/look dims the interactive areas
   const isDimmed = beat.mode === "listen" || beat.mode === "look";
   const isWellEnabled = (beat.mode === "act" || beat.mode === "semiOpen") &&
@@ -1920,6 +1953,117 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           </AnimatePresence>
         </div>
       )}
+
+      {/* ── Forge Burst Overlay ─────────────────────────────────────────── */}
+      <AnimatePresence>
+        {purchaseBurst && (
+          <motion.div
+            key={purchaseBurst.key}
+            className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 1.4, ease: "easeOut" }}
+          >
+            <motion.div
+              className="absolute rounded-full border-2 border-amber-400"
+              initial={{ width: 60, height: 60, opacity: 0.9 }}
+              animate={{ width: 360, height: 360, opacity: 0 }}
+              transition={{ duration: 0.85, ease: "easeOut" }}
+            />
+            <motion.div
+              className="absolute rounded-full border border-amber-300/50"
+              initial={{ width: 40, height: 40, opacity: 0.7 }}
+              animate={{ width: 250, height: 250, opacity: 0 }}
+              transition={{ duration: 0.70, ease: "easeOut", delay: 0.09 }}
+            />
+            <motion.div
+              className="flex flex-col items-center gap-1"
+              initial={{ y: 0, opacity: 1, scale: 0.8 }}
+              animate={{ y: -90, opacity: 0, scale: 1.12 }}
+              transition={{ duration: 1.15, ease: "easeOut" }}
+            >
+              <span className="text-3xl font-serif font-black text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.85)]">
+                Forged!
+              </span>
+              {purchaseBurst.lumens > 0 && (
+                <span className="flex items-center gap-1.5 text-lg font-bold text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.7)]">
+                  +{purchaseBurst.lumens} Eminence
+                </span>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Gem Pickup Burst Overlay ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {gemBurst && (() => {
+          const count = gemBurst.gems.length;
+          const spacing = 74;
+          const offset = ((count - 1) / 2) * spacing;
+          const burstDuration = (count - 1) * 0.78 + 1.25 + 0.5 + 0.05;
+          return (
+            <motion.div
+              key={gemBurst.key}
+              className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-black/35"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.25 }}
+              />
+              <div className="relative h-72 w-[18rem]">
+                {gemBurst.gems.map((gem, index) => {
+                  const x = index * spacing - offset;
+                  const delay = index * 0.78 + 0.05;
+                  return (
+                    <motion.div
+                      key={`${gemBurst.key}-${gem}-${index}`}
+                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0, rotateY: 0, scale: 0.4, x: 0, y: 64 }}
+                      animate={{
+                        opacity: [0, 0, 1, 1, 0],
+                        rotateY: [0, 180, 360, 540, 720],
+                        scale: [0.4, 0.68, 1.12, 1.02, 0.9],
+                        x: [0, x * 0.35, x * 0.95, x, x],
+                        y: [64, 18, 0, -6, -18],
+                      }}
+                      transition={{ duration: 1.25, delay, times: [0, 0.18, 0.46, 0.74, 1] }}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="rounded-full bg-black/50 p-2 shadow-[0_0_24px_rgba(255,255,255,0.2)]">
+                          <MiniGem gem={gem} size={52} />
+                        </div>
+                        <span
+                          className="text-xs font-bold uppercase tracking-widest"
+                          style={{ color: GEM_META[gem].glowHex }}
+                        >
+                          {GEM_META[gem].shortName}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              <motion.div
+                className="fixed left-0 right-0 flex items-center justify-center"
+                style={{ bottom: "22%" }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: [0, 1, 1, 0], y: [16, 0, 0, -8] }}
+                transition={{ duration: burstDuration, times: [0, 0.15, 0.75, 1] }}
+              >
+                <span className="text-sm font-semibold text-white/80 tracking-widest uppercase">
+                  Affinities gathered
+                </span>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
     </div>
   );
 }
