@@ -1511,7 +1511,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
                 }
               }}
               nudge={null}
-              mode={beat.mode}
+              mode={isShatter ? "listen" : beat.mode}
               showOrb={false}
               playerResponse={beat.playerResponse}
               onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
