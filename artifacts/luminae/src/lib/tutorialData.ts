@@ -190,10 +190,9 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "As an Architect, you shape the direction of cosmic society." },
-      { text: "You determine what its people reach for, and what they become." },
-      { text: "You stand at the border of a brand new Universe." },
-      { text: "Whatever you decide, I will carry the light forward with you." },
+      { text: "An Architect is what we call those who have the power to shape cosmic society in my universe." },
+      { text: "You can determine what my people reach for, and what we become." },
+      { text: "Architects do not rule like a Monarch. You grant the inhabitants the tools to shine brilliantly throughout the cosmos." },
     ],
     completion: { type: "dialogue" },
     choices: [
