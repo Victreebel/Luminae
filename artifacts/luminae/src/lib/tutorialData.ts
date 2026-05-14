@@ -53,6 +53,7 @@ export interface TutorialBeat {
   completion: CompletionTrigger;
   wrongClickNudge?: string;
   subSteps?: TutorialSubStep[];
+  playerResponse?: string;
 }
 
 export interface TutorialSubStep {
@@ -159,6 +160,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "Are you there?" },
     ],
     completion: { type: "dialogue" },
+    playerResponse: "I'm here.",
   },
   {
     id: "b1_locate",
@@ -187,10 +189,11 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "And you are its Architect." },
       { text: "An Architect does not rule." },
-      { text: "An Architect shapes the direction of a people." },
-      { text: "You will decide what they reach for — and what they become." },
+      { text: "An Architect shapes the direction of a people — what they reach for, and what they become." },
+      { text: "I have been waiting for you. Wherever you lead, I will carry the light forward with you." },
     ],
     completion: { type: "dialogue" },
+    playerResponse: "Guide me.",
   },
   {
     id: "b4_shatter",
@@ -329,12 +332,13 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "market-t3",
     highlightZone: "market-t3",
     dialogue: [
-      { text: "Now choose." },
+      { text: "Now something changes." },
       { text: "Any of these Verdance artifacts will deepen the path you have shaped." },
-      { text: "I will hold the flow of time still. Gather what you need, then choose what your society will shape next." },
+      { text: "This choice belongs to you alone. I will hold the boundary still — gather what you need, then choose." },
     ],
     completion: { type: "action", action: "forge_market" },
     wrongClickNudge: "That path is beyond this society's reach for now. Its cost is too distant from what you have already shaped.",
+    playerResponse: "I'll choose the path.",
   },
   {
     id: "b14_win_condition",

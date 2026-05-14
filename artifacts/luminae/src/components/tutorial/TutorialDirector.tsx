@@ -75,6 +75,7 @@ type TAction =
   | { type: "NEXT_DLG" }
   | { type: "NEXT_BEAT" }
   | { type: "RESET" }
+  | { type: "PLAYER_RESPONSE" }
   | { type: "SEL_AFF"; gem: GemKey; delta: 1 | -1 }
   | { type: "CLEAR_SEL" }
   | { type: "HARNESS" }
@@ -380,6 +381,17 @@ function reducer(s: TutState, a: TAction): TutState {
     case "RESET":
       return { ...INIT_STATE };
 
+    case "PLAYER_RESPONSE": {
+      const beat = TUTORIAL_BEATS[s.beat];
+      if (!beat) return s;
+      if (beat.completion.type === "dialogue") {
+        // dialogue-completion beats (b0, b3): response = advance beat
+        return { ...s, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+      }
+      // act/semiOpen beats (b13): response = dismiss dialogue, player now acts freely
+      return { ...s, dlgLine: beat.dialogue.length, nudge: null };
+    }
+
     case "NUDGE":
       return { ...s, nudge: a.msg };
 
@@ -451,6 +463,7 @@ function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
 // ─── DialogueBox ──────────────────────────────────────────────────────────────
 function DialogueBox({
   lines, lineIndex, onTap, nudge, mode, showOrb = true,
+  playerResponse, onPlayerResponse,
 }: {
   lines: { text: string }[];
   lineIndex: number;
@@ -458,14 +471,18 @@ function DialogueBox({
   nudge: string | null;
   mode: string;
   showOrb?: boolean;
+  playerResponse?: string;
+  onPlayerResponse?: () => void;
 }) {
   const text = nudge ?? (lines[lineIndex]?.text ?? "");
   const isLast = lineIndex >= lines.length - 1;
   const isPassiveMode = mode === "listen" || mode === "look";
-  const canTap = isPassiveMode || !isLast;
+  // Show tap-to-continue on non-last lines, or last line of listen/look without a response button
+  const showResponseBtn = !nudge && isLast && !!playerResponse && !!onPlayerResponse;
+  const canTap = !showResponseBtn && (isPassiveMode || !isLast);
 
   const hintText = (() => {
-    if (nudge) return null;
+    if (nudge || showResponseBtn) return null;
     if (!isLast) return "tap to continue";
     if (isPassiveMode) return "tap to continue";
     return null;
@@ -493,6 +510,22 @@ function DialogueBox({
             )}
           </div>
         </div>
+        {showResponseBtn && (
+          <motion.button
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
+            onClick={onPlayerResponse}
+            className="mt-3 w-full py-2.5 rounded-xl text-sm font-medium tracking-wide text-amber-200 select-none cursor-pointer"
+            style={{
+              background: "rgba(251,191,36,0.08)",
+              border: "1px solid rgba(251,191,36,0.3)",
+              boxShadow: "0 0 12px rgba(251,191,36,0.1)",
+            }}
+          >
+            {playerResponse}
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
@@ -1139,6 +1172,8 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
               nudge={null}
               mode={beat.mode}
               showOrb={false}
+              playerResponse={beat.playerResponse}
+              onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
             />
           </AnimatePresence>
         </div>
@@ -1456,26 +1491,30 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         </motion.div>
       </motion.div>
 
-      {/* Dialogue box */}
-      <div className="fixed bottom-4 left-0 right-0 z-50 px-4">
-        <AnimatePresence mode="wait">
-          <DialogueBox
-            key={`${beatId}-${s.dlgLine}-${s.nudge}`}
-            lines={beat.dialogue}
-            lineIndex={s.dlgLine}
-            onTap={() => {
-              if (s.nudge) {
-                dispatch({ type: "NUDGE", msg: null });
-              } else {
-                dispatch({ type: "NEXT_DLG" });
-              }
-            }}
-            nudge={s.nudge}
-            mode={beat.mode}
-            showOrb={false}
-          />
-        </AnimatePresence>
-      </div>
+      {/* Dialogue box — hidden once player response dismisses it */}
+      {s.dlgLine < beat.dialogue.length && (
+        <div className="fixed bottom-4 left-0 right-0 z-50 px-4">
+          <AnimatePresence mode="wait">
+            <DialogueBox
+              key={`${beatId}-${s.dlgLine}-${s.nudge}`}
+              lines={beat.dialogue}
+              lineIndex={s.dlgLine}
+              onTap={() => {
+                if (s.nudge) {
+                  dispatch({ type: "NUDGE", msg: null });
+                } else {
+                  dispatch({ type: "NEXT_DLG" });
+                }
+              }}
+              nudge={s.nudge}
+              mode={beat.mode}
+              showOrb={false}
+              playerResponse={beat.playerResponse}
+              onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
+            />
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
