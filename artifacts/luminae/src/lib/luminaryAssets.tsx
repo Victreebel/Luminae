@@ -1991,10 +1991,11 @@ export function LuminarySummonCutscene({
         {isFlashing && (
           <motion.div key="flash" className="absolute inset-0 pointer-events-none"
             initial={{ opacity: 1 }}
-            animate={{ opacity: [1, 1, 0.72, 0] }}
-            transition={{ duration: 1.50, ease: 'easeOut', times: [0, 0.22, 0.60, 1] }}
+            animate={{ opacity: [1, 1, 0.90, 0.62, 0.28, 0] }}
+            transition={{ duration: 3.60, ease: 'easeOut', times: [0, 0.10, 0.32, 0.58, 0.80, 1] }}
+            exit={{ opacity: 0, transition: { duration: 3.80, ease: [0.06, 0, 0.10, 1] } }}
             style={{
-              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, #FFE255ee 18%, #FFD04Abb 42%, #FFD04A44 64%, transparent 86%)`,
+              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, #FFE255cc 22%, #FFD04A88 50%, #FFD04A28 72%, transparent 92%)`,
             }}
           />
         )}
