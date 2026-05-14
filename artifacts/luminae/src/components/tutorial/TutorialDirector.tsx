@@ -1,0 +1,1478 @@
+import { useEffect, useReducer, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
+import { GEM_META, type GemKey } from "@/lib/gemMeta";
+import {
+  TUTORIAL_BEATS,
+  TUTORIAL_CARDS,
+  T3_PURCHASABLE_IDS,
+  T3_IMPOSSIBLE_ID,
+  FAST_FORWARD_CARDS,
+  FINAL_T2_ID,
+  FIRST_FORGE_ID,
+  RESERVE_CARD_ID,
+  TIER2_SINGULARITY_ID,
+  VERDANCE_LUMINARY_EMINENCE,
+  AFFINITY_SEQ_KEYS,
+  AFFINITY_SEQ_NAMES,
+  type TutorialCard,
+  type TutorialMarketView,
+} from "@/lib/tutorialData";
+import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
+import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
+
+// ─── Card art ─────────────────────────────────────────────────────────────────
+const CARD_ART_MODULES = import.meta.glob(
+  "../../assets/cards/*.png",
+  { eager: true, query: "?url", import: "default" }
+) as Record<string, string>;
+const CARD_ART: Record<string, string> = {};
+for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
+  const id = path.split("/").pop()!.replace(".png", "");
+  CARD_ART[id] = url;
+}
+
+// ─── Gem images ───────────────────────────────────────────────────────────────
+const ALL_GEMS: GemKey[] = ["ruby", "sapphire", "emerald", "onyx", "pearl", "flux"];
+const GEM_KEYS_NO_FLUX: GemKey[] = ["ruby", "sapphire", "emerald", "onyx", "pearl"];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+interface TutState {
+  beat: number;
+  dlgLine: number;
+  subStep: number;
+  crystals: Record<GemKey, number>;
+  bonuses: Record<GemKey, number>;
+  reserved: string[];
+  forged: string[];
+  eminence: number;
+  wellSel: Partial<Record<GemKey, number>>;
+  nudge: string | null;
+  view: TutorialMarketView;
+  t3choice: string | null;
+  ffDone: boolean;
+  lumDone: boolean;
+  showLuminary: boolean;
+}
+
+const INIT_CRYSTALS: Record<GemKey, number> = {
+  ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0,
+};
+const INIT_BONUSES: Record<GemKey, number> = {
+  ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0,
+};
+
+const INIT_STATE: TutState = {
+  beat: 0, dlgLine: 0, subStep: 0,
+  crystals: { ...INIT_CRYSTALS },
+  bonuses: { ...INIT_BONUSES },
+  reserved: [], forged: [], eminence: 0,
+  wellSel: {}, nudge: null, view: "all",
+  t3choice: null, ffDone: false, lumDone: false, showLuminary: false,
+};
+
+type TAction =
+  | { type: "NEXT_DLG" }
+  | { type: "NEXT_BEAT" }
+  | { type: "RESET" }
+  | { type: "SEL_AFF"; gem: GemKey; delta: 1 | -1 }
+  | { type: "CLEAR_SEL" }
+  | { type: "HARNESS" }
+  | { type: "FORGE_MARKET"; cardId: string }
+  | { type: "FORGE_RESERVED"; cardId: string }
+  | { type: "RESERVE"; cardId: string }
+  | { type: "SET_VIEW"; view: TutorialMarketView }
+  | { type: "NUDGE"; msg: string | null }
+  | { type: "FF_DONE" }
+  | { type: "LUM_DONE" };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function effectiveCost(
+  card: TutorialCard,
+  bonuses: Record<GemKey, number>
+): Partial<Record<GemKey, number>> {
+  const out: Partial<Record<GemKey, number>> = {};
+  for (const [k, v] of Object.entries(card.cost) as [GemKey, number][]) {
+    if (v > 0) out[k] = Math.max(0, v - (bonuses[k] ?? 0));
+  }
+  return out;
+}
+
+function canAfford(
+  card: TutorialCard,
+  crystals: Record<GemKey, number>,
+  bonuses: Record<GemKey, number>
+): boolean {
+  const eff = effectiveCost(card, bonuses);
+  let shortfall = 0;
+  for (const [k, need] of Object.entries(eff) as [GemKey, number][]) {
+    const have = crystals[k] ?? 0;
+    if (have < need) shortfall += need - have;
+  }
+  return shortfall <= (crystals.flux ?? 0);
+}
+
+function spendForCard(
+  crystals: Record<GemKey, number>,
+  card: TutorialCard,
+  bonuses: Record<GemKey, number>
+): Record<GemKey, number> {
+  const next = { ...crystals };
+  const eff = effectiveCost(card, bonuses);
+  let fluxLeft = next.flux ?? 0;
+  for (const [k, need] of Object.entries(eff) as [GemKey, number][]) {
+    const have = next[k] ?? 0;
+    if (have >= need) {
+      next[k] = have - need;
+    } else {
+      const gap = need - have;
+      next[k] = 0;
+      fluxLeft -= gap;
+    }
+  }
+  next.flux = Math.max(0, fluxLeft);
+  return next;
+}
+
+function applyForge(s: TutState, cardId: string): Partial<TutState> {
+  const card = TUTORIAL_CARDS[cardId];
+  if (!card) return {};
+  const newCrystals = spendForCard(s.crystals, card, s.bonuses);
+  const newBonuses = { ...s.bonuses };
+  if (card.bonusColor !== "flux") {
+    newBonuses[card.bonusColor] = (newBonuses[card.bonusColor] ?? 0) + 1;
+  }
+  return {
+    crystals: newCrystals,
+    bonuses: newBonuses,
+    forged: [...s.forged, cardId],
+    eminence: s.eminence + card.lumens,
+  };
+}
+
+// ─── Reducer ──────────────────────────────────────────────────────────────────
+function reducer(s: TutState, a: TAction): TutState {
+  const beat = TUTORIAL_BEATS[s.beat];
+  const isLastDlg = s.dlgLine >= beat.dialogue.length - 1;
+
+  switch (a.type) {
+    case "NEXT_DLG": {
+      if (!isLastDlg) return { ...s, dlgLine: s.dlgLine + 1, nudge: null };
+      if (beat.completion.type === "dialogue") {
+        const nextBeat = s.beat + 1;
+        return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null };
+      }
+      return { ...s, dlgLine: s.dlgLine, nudge: null };
+    }
+
+    case "NEXT_BEAT": {
+      const nextBeat = s.beat + 1;
+      if (nextBeat >= TUTORIAL_BEATS.length) return s;
+      return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null, wellSel: {} };
+    }
+
+    case "SEL_AFF": {
+      const cur = s.wellSel[a.gem] ?? 0;
+      const next = Math.max(0, cur + a.delta);
+      const totalSel = Object.values({ ...s.wellSel, [a.gem]: next }).reduce((a, b) => a + b, 0);
+      if (totalSel > 10) return { ...s, nudge: "You have reached the affinity limit. To gather more, release some affinity first." };
+      return { ...s, wellSel: { ...s.wellSel, [a.gem]: next }, nudge: null };
+    }
+
+    case "CLEAR_SEL":
+      return { ...s, wellSel: {}, nudge: null };
+
+    case "HARNESS": {
+      const sel = s.wellSel;
+      const total = Object.values(sel).reduce((a, b) => a + b, 0);
+      if (total === 0) return { ...s, nudge: "Select the affinities you need first." };
+
+      const beatId = beat.id;
+
+      // Beat 8: must select ruby:1, sap:1, pearl:1
+      if (beatId === "b8_first_harness") {
+        if ((sel.ruby ?? 0) !== 1 || (sel.sapphire ?? 0) !== 1 || (sel.pearl ?? 0) !== 1) {
+          return { ...s, nudge: "Not yet. Follow the cost first — Flare, Continuum, and Radiance." };
+        }
+      }
+
+      // Beat 11, subStep 0: must select onyx:2, pearl:1
+      if (beatId === "b11_forge_reserved" && s.subStep === 0) {
+        if ((sel.onyx ?? 0) !== 2 || (sel.pearl ?? 0) !== 1) {
+          return { ...s, nudge: "Gather the Abyss and Radiance affinities shown in the cost." };
+        }
+      }
+
+      // Beat 12, subStep 1: must select onyx:3
+      if (beatId === "b12_tier2" && s.subStep === 1) {
+        if ((sel.onyx ?? 0) !== 3) {
+          return { ...s, nudge: "Gather the Abyss affinities — Singularity will bridge the Verdance gap." };
+        }
+      }
+
+      // Beat 16, subStep 0: must harness sapphire:2
+      if (beatId === "b16_final_forge" && s.subStep === 0) {
+        if ((sel.sapphire ?? 0) !== 2) {
+          return { ...s, nudge: "The final artifact requires Continuum. Gather 2 more." };
+        }
+      }
+
+      const addedCrystals = { ...s.crystals };
+      for (const [k, v] of Object.entries(sel) as [GemKey, number][]) {
+        addedCrystals[k] = (addedCrystals[k] ?? 0) + v;
+      }
+
+      const nextSubStep = s.subStep + 1;
+      if (beatId === "b8_first_harness") {
+        return { ...s, crystals: addedCrystals, wellSel: {}, nudge: null, beat: s.beat + 1, dlgLine: 0, subStep: 0 };
+      }
+      return { ...s, crystals: addedCrystals, wellSel: {}, nudge: null, subStep: nextSubStep };
+    }
+
+    case "SET_VIEW": {
+      const nextView = a.view;
+      const beatId = beat.id;
+      if (beatId === "b10_reserve" && nextView === "discounted" && s.subStep === 0) {
+        return { ...s, view: nextView, subStep: 1, nudge: null };
+      }
+      if (beatId === "b12_tier2" && nextView === "needed" && s.subStep === 0) {
+        return { ...s, view: nextView, subStep: 1, nudge: null };
+      }
+      return { ...s, view: nextView };
+    }
+
+    case "RESERVE": {
+      const cardId = a.cardId;
+      const beatId = beat.id;
+      if (beatId === "b10_reserve") {
+        if (cardId !== RESERVE_CARD_ID) {
+          return { ...s, nudge: "Reserve the highlighted artifact." };
+        }
+        const newCrystals = { ...s.crystals, flux: (s.crystals.flux ?? 0) + 1 };
+        return {
+          ...s,
+          reserved: [...s.reserved, cardId],
+          crystals: newCrystals,
+          beat: s.beat + 1,
+          dlgLine: 0,
+          subStep: 0,
+          nudge: null,
+        };
+      }
+      return s;
+    }
+
+    case "FORGE_MARKET": {
+      const cardId = a.cardId;
+      const beatId = beat.id;
+      const card = TUTORIAL_CARDS[cardId];
+      if (!card) return s;
+
+      if (!canAfford(card, s.crystals, s.bonuses)) {
+        return { ...s, nudge: "Gather the required affinities first." };
+      }
+
+      // Beat 9: must forge FIRST_FORGE_ID
+      if (beatId === "b9_first_forge") {
+        if (cardId !== FIRST_FORGE_ID) {
+          return { ...s, nudge: "Forge the artifact Lumii highlighted." };
+        }
+        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+      }
+
+      // Beat 12: must forge TIER2_SINGULARITY_ID
+      if (beatId === "b12_tier2") {
+        if (cardId !== TIER2_SINGULARITY_ID) {
+          return { ...s, nudge: "Forge the Verdance artifact Lumii highlighted." };
+        }
+        if (s.subStep < 2) {
+          return { ...s, nudge: "Gather the required affinities first." };
+        }
+        return { ...s, ...applyForge(s, cardId), beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, view: "all" };
+      }
+
+      // Beat 13: must forge one of the Tier 3 Verdance cards
+      if (beatId === "b13_tier3") {
+        if (cardId === T3_IMPOSSIBLE_ID) {
+          return { ...s, nudge: beat.wrongClickNudge ?? "That path is beyond this society's reach for now." };
+        }
+        if (!T3_PURCHASABLE_IDS.includes(cardId)) {
+          return { ...s, nudge: beat.wrongClickNudge ?? "Choose a Verdance artifact." };
+        }
+        const forgeResult = applyForge(s, cardId);
+        const remaining = FAST_FORWARD_CARDS.filter(id => id !== cardId);
+        return {
+          ...s,
+          ...forgeResult,
+          t3choice: cardId,
+          beat: s.beat + 1,
+          dlgLine: 0,
+          subStep: 0,
+          nudge: null,
+        };
+      }
+
+      // Beat 16: final forge
+      if (beatId === "b16_final_forge") {
+        if (cardId !== FINAL_T2_ID) {
+          return { ...s, nudge: "Forge the final artifact Lumii highlighted." };
+        }
+        if (s.subStep < 1) {
+          return { ...s, nudge: "Gather the affinities first." };
+        }
+        const forgeResult = applyForge(s, cardId);
+        const totalEm = (forgeResult.eminence ?? s.eminence) + VERDANCE_LUMINARY_EMINENCE;
+        return {
+          ...s,
+          ...forgeResult,
+          eminence: totalEm,
+          beat: s.beat + 1,
+          dlgLine: 0,
+          subStep: 0,
+          nudge: null,
+          showLuminary: true,
+        };
+      }
+
+      return { ...s, nudge: "That is not the right moment." };
+    }
+
+    case "FORGE_RESERVED": {
+      const cardId = a.cardId;
+      const beatId = beat.id;
+      const card = TUTORIAL_CARDS[cardId];
+      if (!card) return s;
+
+      // Beat 11: forge the reserved Tier 1 card (no flux allowed)
+      if (beatId === "b11_forge_reserved") {
+        if (cardId !== RESERVE_CARD_ID) {
+          return { ...s, nudge: "Forge the reserved artifact." };
+        }
+        if (s.subStep < 1) {
+          return { ...s, nudge: "Gather the required affinities first." };
+        }
+        // Block flux usage
+        const eff = effectiveCost(card, s.bonuses);
+        const shortfall = Object.entries(eff).reduce((acc, [k, need]) => {
+          const have = s.crystals[k as GemKey] ?? 0;
+          return acc + Math.max(0, need - have);
+        }, 0);
+        if (shortfall > 0) {
+          if (s.crystals.flux > 0) {
+            return { ...s, nudge: "Hold that Singularity for now. A harder path is coming." };
+          }
+          return { ...s, nudge: "Gather the required affinities first." };
+        }
+        const forgeResult = applyForge(s, cardId);
+        return {
+          ...s,
+          ...forgeResult,
+          reserved: s.reserved.filter(id => id !== cardId),
+          beat: s.beat + 1,
+          dlgLine: 0,
+          subStep: 0,
+          nudge: null,
+        };
+      }
+      return s;
+    }
+
+    case "RESET":
+      return { ...INIT_STATE };
+
+    case "NUDGE":
+      return { ...s, nudge: a.msg };
+
+    case "FF_DONE": {
+      // Inject fast-forward state: two remaining Tier 3 Verdance cards
+      const remaining = FAST_FORWARD_CARDS.filter(id => id !== s.t3choice);
+      let nextState = { ...s, ffDone: true };
+      for (const cardId of remaining) {
+        const card = TUTORIAL_CARDS[cardId];
+        if (!card) continue;
+        const bonus = card.bonusColor as GemKey;
+        nextState = {
+          ...nextState,
+          forged: [...nextState.forged, cardId],
+          eminence: nextState.eminence + card.lumens,
+          bonuses: {
+            ...nextState.bonuses,
+            [bonus]: (nextState.bonuses[bonus] ?? 0) + 1,
+          },
+        };
+      }
+      // Give player starting crystals for beat 16
+      nextState.crystals = { ...nextState.crystals, sapphire: (nextState.crystals.sapphire ?? 0) + 3 };
+      return { ...nextState, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+    }
+
+    case "LUM_DONE":
+      return { ...s, lumDone: true, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+
+    default:
+      return s;
+  }
+}
+
+// ─── LumiiOrb ─────────────────────────────────────────────────────────────────
+function LumiiOrb({ size = 64, excited = false }: { size?: number; excited?: boolean }) {
+  const blur = Math.round(size * 0.45);
+  const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
+  return (
+    <div style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}>
+      <motion.div
+        animate={{ scale: excited ? [1, 1.4, 1.1, 1.4, 1] : [1, 1.18, 1], opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52] }}
+        transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
+        style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: "conic-gradient(from 0deg,#f97316aa,#3b82f6aa,#22c55eaa,#a855f7aa,#e2e8f066,#fbbf24aa,#f97316aa)", filter: `blur(${blur}px)` }}
+      />
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: excited ? 4.5 : 11, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "conic-gradient(from 0deg,#f97316cc,#fbbf2499,#22c55ecc,#3b82f6cc,#a855f7cc,#e2e8f055,#f97316cc)", maskImage: mask, WebkitMaskImage: mask }}
+      />
+      <motion.div
+        animate={{ rotate: -360 }}
+        transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
+        style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: "conic-gradient(from 90deg,#3b82f6bb,#22c55e99,#fbbf24bb,#a855f7bb,#f9731699,#3b82f6bb)", maskImage: mask, WebkitMaskImage: mask }}
+      />
+      <div style={{ position: "absolute", inset: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(220,240,255,0.65) 45%,transparent 70%)", boxShadow: "0 0 12px 4px rgba(180,220,255,0.5)" }} />
+    </div>
+  );
+}
+
+// ─── MiniGem ──────────────────────────────────────────────────────────────────
+function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
+  const meta = GEM_META[gem];
+  return (
+    <img src={meta.image} alt={meta.name} style={{ width: size, height: size, objectFit: "contain" }} draggable={false} />
+  );
+}
+
+// ─── DialogueBox ──────────────────────────────────────────────────────────────
+function DialogueBox({
+  lines, lineIndex, onTap, nudge, mode
+}: {
+  lines: { text: string }[];
+  lineIndex: number;
+  onTap: () => void;
+  nudge: string | null;
+  mode: string;
+}) {
+  const text = nudge ?? (lines[lineIndex]?.text ?? "");
+  const isLast = lineIndex >= lines.length - 1;
+  // In listen/look: tap advances and can complete the beat.
+  // In act/semiOpen: tap only advances through non-last dialogue lines;
+  // on the last line the player must perform the required action.
+  const isPassiveMode = mode === "listen" || mode === "look";
+  const canTap = isPassiveMode || !isLast; // allow tap unless we're at last line of an action beat
+
+  const hintText = (() => {
+    if (nudge) return null;
+    if (!isLast) return "tap to continue";
+    if (isPassiveMode) return "tap to continue";
+    return null; // last line of act beat — no tap hint, action required
+  })();
+
+  return (
+    <motion.div
+      key={nudge ? "nudge" : `line-${lineIndex}`}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="relative"
+    >
+      <div
+        className={`bg-black/85 border border-white/15 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-sm select-none ${canTap ? "cursor-pointer" : ""}`}
+        onClick={canTap ? onTap : undefined}
+        style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.8)" }}
+      >
+        <div className="flex items-start gap-3">
+          <LumiiOrb size={32} excited={!!nudge} />
+          <div className="flex-1">
+            <p className="text-sm text-white/90 leading-relaxed">{text}</p>
+            {hintText && (
+              <p className="text-[10px] text-white/35 mt-2">{hintText}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── TutorialCard ─────────────────────────────────────────────────────────────
+function TutorialCard({
+  card,
+  bonuses,
+  crystals,
+  onForge,
+  onReserve,
+  forgeEnabled,
+  reserveEnabled,
+  highlighted,
+  foreground,
+  forged,
+  impossible,
+}: {
+  card: TutorialCard;
+  bonuses: Record<GemKey, number>;
+  crystals: Record<GemKey, number>;
+  onForge?: () => void;
+  onReserve?: () => void;
+  forgeEnabled?: boolean;
+  reserveEnabled?: boolean;
+  highlighted?: boolean;
+  foreground?: boolean;
+  forged?: boolean;
+  impossible?: boolean;
+}) {
+  const eff = effectiveCost(card, bonuses);
+  const artUrl = CARD_ART[card.id];
+  const bonusMeta = GEM_META[card.bonusColor];
+  const affordable = canAfford(card, crystals, bonuses);
+
+  const bgStyle: React.CSSProperties = artUrl
+    ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
+
+  return (
+    <motion.div
+      animate={foreground ? { scale: 1.08, y: -8 } : { scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 260, damping: 22 }}
+      className="relative shrink-0"
+      style={{ width: foreground ? 112 : 88, height: foreground ? 156 : 124 }}
+    >
+      <div
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        style={bgStyle}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
+        {highlighted && (
+          <motion.div
+            animate={{ opacity: [0.3, 0.8, 0.3] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className="absolute inset-0 bg-amber-400/15 rounded-xl"
+          />
+        )}
+        <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+          <div className="flex justify-between items-start">
+            <span className="text-base font-serif font-bold text-white drop-shadow">{card.lumens > 0 ? card.lumens : ""}</span>
+            <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
+              <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[8px] font-semibold text-white drop-shadow line-clamp-2 leading-tight">{card.name}</div>
+            <div className="flex flex-wrap gap-0.5 justify-end">
+              {(Object.entries(card.cost) as [GemKey, number][]).map(([k, v]) => {
+                if (!v || v <= 0) return null;
+                const ek = eff[k] ?? 0;
+                const reduced = ek < v;
+                const free = ek === 0;
+                return (
+                  <div key={k} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${free ? "bg-green-900/80" : reduced ? "bg-blue-900/80" : "bg-black/60"}`}>
+                    {reduced && !free && <span className="text-[6px] text-white/30 line-through mr-0.5">{v}</span>}
+                    <span className={`text-[9px] font-bold ${free ? "text-green-300" : reduced ? "text-blue-200" : "text-white"}`}>{free ? "✓" : ek}</span>
+                    <MiniGem gem={k} size={9} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        {forged && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-[10px] text-white/50 font-semibold bg-black/60 rounded px-2 py-0.5">Forged</span>
+          </div>
+        )}
+      </div>
+      {!forged && (
+        <div className="absolute -bottom-9 left-0 right-0 flex gap-1 justify-center">
+          {onForge && (
+            <button
+              onClick={forgeEnabled ? onForge : undefined}
+              disabled={!forgeEnabled || !affordable}
+              className={`text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${forgeEnabled && affordable ? "bg-amber-500 text-black hover:bg-amber-400 shadow-lg" : "bg-white/8 text-white/30 cursor-not-allowed"}`}
+            >Forge</button>
+          )}
+          {onReserve && (
+            <button
+              onClick={reserveEnabled ? onReserve : undefined}
+              disabled={!reserveEnabled}
+              className={`text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${reserveEnabled ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg" : "bg-white/8 text-white/30 cursor-not-allowed"}`}
+            >Reserve</button>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ─── Affinity Well ─────────────────────────────────────────────────────────────
+function AffinityWell({
+  s, dispatch, beatId, subStep, wellEnabled,
+}: {
+  s: TutState;
+  dispatch: React.Dispatch<TAction>;
+  beatId: string;
+  subStep: number;
+  wellEnabled: boolean;
+}) {
+  const totalSel = Object.values(s.wellSel).reduce((a, b) => a + b, 0);
+
+  // Compute which gems should be highlighted per beat/subStep
+  const guidedGems: Partial<Record<GemKey, number>> = (() => {
+    if (beatId === "b8_first_harness") return { ruby: 1, sapphire: 1, pearl: 1 };
+    if (beatId === "b11_forge_reserved" && subStep === 0) return { onyx: 2, pearl: 1 };
+    if (beatId === "b12_tier2" && subStep === 1) return { onyx: 3 };
+    if (beatId === "b16_final_forge" && subStep === 0) return { sapphire: 2 };
+    return {};
+  })();
+
+  const isGuidedBeat = Object.keys(guidedGems).length > 0;
+
+  return (
+    <div className="bg-black/50 border border-white/10 rounded-2xl p-3">
+      <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
+      <div className="flex gap-2 flex-wrap justify-center mb-3">
+        {GEM_KEYS_NO_FLUX.map(gem => {
+          const meta = GEM_META[gem];
+          const cur = s.wellSel[gem] ?? 0;
+          const guided = guidedGems[gem] ?? 0;
+          const isHighlighted = isGuidedBeat && guided > 0;
+          const canAdd = wellEnabled && (!isGuidedBeat || guided > cur);
+          const canRemove = wellEnabled && cur > 0;
+
+          return (
+            <div key={gem} className="flex flex-col items-center gap-1">
+              <motion.div
+                animate={isHighlighted && cur < guided ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                transition={{ duration: 1.2, repeat: Infinity }}
+                className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${isHighlighted ? "border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]" : "border-white/15"} ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
+                style={{ borderColor: cur > 0 ? meta.hex : undefined }}
+              >
+                <img src={meta.image} alt={meta.name} className="w-6 h-6 object-contain" draggable={false} />
+              </motion.div>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => canRemove && dispatch({ type: "SEL_AFF", gem, delta: -1 })}
+                  disabled={!canRemove}
+                  className="w-4 h-4 rounded text-white/50 hover:text-white text-xs flex items-center justify-center disabled:opacity-20"
+                >−</button>
+                <span className="text-[11px] font-bold text-white w-4 text-center">{cur}</span>
+                <button
+                  onClick={() => canAdd && dispatch({ type: "SEL_AFF", gem, delta: 1 })}
+                  disabled={!canAdd}
+                  className={`w-4 h-4 rounded text-xs flex items-center justify-center ${isHighlighted && canAdd ? "text-amber-300 hover:text-amber-200" : "text-white/50 hover:text-white"} disabled:opacity-20`}
+                >+</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 items-center justify-between">
+        <div className="text-[10px] text-white/40">
+          {totalSel > 0 ? `Selected: ${totalSel}` : "Select affinities to gather"}
+        </div>
+        <div className="flex gap-1">
+          {totalSel > 0 && (
+            <button
+              onClick={() => dispatch({ type: "CLEAR_SEL" })}
+              className="text-[9px] px-2 py-1 rounded-lg bg-white/8 text-white/50 hover:bg-white/15"
+            >Clear</button>
+          )}
+          <button
+            onClick={() => wellEnabled && totalSel > 0 && dispatch({ type: "HARNESS" })}
+            disabled={!wellEnabled || totalSel === 0}
+            className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${wellEnabled && totalSel > 0 ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md" : "bg-white/8 text-white/20 cursor-not-allowed"}`}
+          >Harness</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Player Hand (reserved) ───────────────────────────────────────────────────
+function PlayerHand({ s, dispatch, beatId, subStep }: { s: TutState; dispatch: React.Dispatch<TAction>; beatId: string; subStep: number }) {
+  if (s.reserved.length === 0) return null;
+  const isForgeReservedBeat = beatId === "b11_forge_reserved";
+  const forgeEnabled = isForgeReservedBeat && subStep >= 1;
+
+  return (
+    <div className="bg-black/50 border border-white/10 rounded-2xl p-3">
+      <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Reserved</div>
+      <div className="flex gap-3 flex-wrap">
+        {s.reserved.map(id => {
+          const card = TUTORIAL_CARDS[id];
+          if (!card) return null;
+          const isHighlighted = isForgeReservedBeat;
+          return (
+            <div key={id} className="mb-10">
+              <TutorialCard
+                card={card}
+                bonuses={s.bonuses}
+                crystals={s.crystals}
+                onForge={() => dispatch({ type: "FORGE_RESERVED", cardId: id })}
+                forgeEnabled={forgeEnabled}
+                highlighted={isHighlighted}
+                foreground={isHighlighted}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Player Storage (forged) ──────────────────────────────────────────────────
+function PlayerStorage({ s, highlighted }: { s: TutState; highlighted: boolean }) {
+  const bonusTotals: Partial<Record<GemKey, number>> = {};
+  for (const [k, v] of Object.entries(s.bonuses) as [GemKey, number][]) {
+    if (v > 0) bonusTotals[k] = v;
+  }
+
+  return (
+    <div className={`bg-black/50 border rounded-2xl p-3 transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}>
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">Forged Artifacts</div>
+        {Object.keys(bonusTotals).length > 0 && (
+          <div className="flex gap-1">
+            {(Object.entries(bonusTotals) as [GemKey, number][]).map(([k, v]) => (
+              <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1.5 py-0.5">
+                <span className="text-[9px] text-emerald-300 font-bold">+{v}</span>
+                <MiniGem gem={k} size={9} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex gap-1 flex-wrap min-h-[36px] items-center">
+        {s.forged.length === 0 && <span className="text-[10px] text-white/20">No artifacts yet</span>}
+        {s.forged.map(id => {
+          const card = TUTORIAL_CARDS[id];
+          if (!card) return null;
+          const bonusMeta = GEM_META[card.bonusColor];
+          return (
+            <div key={id} className="flex items-center gap-1 bg-black/40 rounded-lg px-2 py-1 border border-white/10">
+              <img src={bonusMeta.image} alt="" className="w-3 h-3 object-contain" draggable={false} />
+              <span className="text-[8px] text-white/70">{card.name}</span>
+              {card.lumens > 0 && <span className="text-[8px] font-bold text-amber-300">+{card.lumens}</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Player Stats ─────────────────────────────────────────────────────────────
+function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) {
+  return (
+    <div className={`bg-black/50 border rounded-2xl p-3 transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}>
+      <div className="flex items-center gap-3">
+        <div>
+          <div className="text-[9px] text-white/40 uppercase tracking-wider">Eminence</div>
+          <motion.div
+            key={s.eminence}
+            initial={{ scale: 1.3, color: "#fbbf24" }}
+            animate={{ scale: 1, color: "#ffffff" }}
+            className="text-2xl font-serif font-bold text-white"
+          >{s.eminence}</motion.div>
+          <div className="text-[9px] text-white/30">of 15</div>
+        </div>
+        <div className="flex-1 bg-white/5 rounded-full h-1.5">
+          <motion.div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400"
+            animate={{ width: `${Math.min(100, (s.eminence / 15) * 100)}%` }}
+            transition={{ type: "spring", stiffness: 100 }}
+          />
+        </div>
+        {s.crystals.flux > 0 && (
+          <div className="flex items-center gap-1 bg-amber-900/40 rounded-lg px-2 py-1">
+            <span className="text-[9px] font-bold text-amber-300">{s.crystals.flux}</span>
+            <MiniGem gem="flux" size={12} />
+            <span className="text-[8px] text-white/50">Singularity</span>
+          </div>
+        )}
+      </div>
+      {Object.values(s.crystals).some(v => v > 0) && (
+        <div className="flex gap-1 mt-2 flex-wrap">
+          {(Object.entries(s.crystals) as [GemKey, number][]).map(([k, v]) => {
+            if (!v || v === 0) return null;
+            return (
+              <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1.5 py-0.5">
+                <span className="text-[10px] font-bold text-white">{v}</span>
+                <MiniGem gem={k} size={10} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Market view tabs ─────────────────────────────────────────────────────────
+function MarketTabs({
+  view, dispatch, beatId, subStep, highlightDiscounted, highlightNeeded,
+}: {
+  view: TutorialMarketView;
+  dispatch: React.Dispatch<TAction>;
+  beatId: string;
+  subStep: number;
+  highlightDiscounted: boolean;
+  highlightNeeded: boolean;
+}) {
+  const tabs: { key: TutorialMarketView; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "discounted", label: "Discounted" },
+    { key: "needed", label: "Needed" },
+  ];
+  return (
+    <div className="flex gap-1 mb-3">
+      {tabs.map(tab => {
+        const isActive = view === tab.key;
+        const isHl = (tab.key === "discounted" && highlightDiscounted) || (tab.key === "needed" && highlightNeeded);
+        return (
+          <motion.button
+            key={tab.key}
+            onClick={() => dispatch({ type: "SET_VIEW", view: tab.key })}
+            animate={isHl ? { boxShadow: ["0 0 0px transparent", "0 0 10px rgba(251,191,36,0.6)", "0 0 0px transparent"] } : {}}
+            transition={{ duration: 1.5, repeat: Infinity }}
+            className={`text-[10px] font-semibold px-3 py-1.5 rounded-lg transition-all ${isActive ? "bg-white/15 text-white" : "bg-black/30 text-white/40 hover:bg-white/8"} ${isHl ? "ring-1 ring-amber-400" : ""}`}
+          >{tab.label}</motion.button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Scripted Market ──────────────────────────────────────────────────────────
+function ScriptedMarket({ s, dispatch, beatId, subStep }: {
+  s: TutState;
+  dispatch: React.Dispatch<TAction>;
+  beatId: string;
+  subStep: number;
+}) {
+  const inFF = beatId === "b15_fast_forward" || s.ffDone;
+
+  // Determine which cards appear per tier per beat phase
+  const t1Cards: string[] = [];
+  const t2Cards: string[] = [];
+  const t3Cards: string[] = [];
+
+  const earlyBeats = ["b6_forge_appears", "b7_artifact_cost", "b8_first_harness", "b9_first_forge", "b9b_forge_complete"];
+  const midBeats = ["b10_reserve", "b10b_reserve_granted", "b11_forge_reserved", "b12_tier2"];
+  const lateBeats = ["b13_tier3", "b14_win_condition", "b15_fast_forward"];
+  const finalBeat = ["b16_final_forge"];
+
+  if (earlyBeats.includes(beatId)) {
+    t1Cards.push(FIRST_FORGE_ID);
+  } else if (midBeats.includes(beatId)) {
+    if (!s.forged.includes(FIRST_FORGE_ID)) t1Cards.push(FIRST_FORGE_ID);
+    else t1Cards.push(FIRST_FORGE_ID); // show as forged
+    t1Cards.push(RESERVE_CARD_ID);
+    if (!s.forged.includes(TIER2_SINGULARITY_ID) && !s.reserved.includes(TIER2_SINGULARITY_ID)) {
+      t2Cards.push(TIER2_SINGULARITY_ID);
+    }
+  } else if (lateBeats.includes(beatId)) {
+    t3Cards.push(...T3_PURCHASABLE_IDS, T3_IMPOSSIBLE_ID);
+  } else if (finalBeat.includes(beatId)) {
+    t2Cards.push(FINAL_T2_ID);
+  }
+
+  // Beat-specific card interactions
+  const isForgeMarketBeat = ["b9_first_forge", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId);
+  const isReserveBeat = beatId === "b10_reserve";
+  const highlightDiscounted = beatId === "b10_reserve";
+  const highlightNeeded = beatId === "b12_tier2" && subStep === 0;
+
+  const getCardForgeEnabled = (cardId: string) => {
+    if (!isForgeMarketBeat) return false;
+    if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID && subStep >= 2;
+    if (beatId === "b13_tier3") return T3_PURCHASABLE_IDS.includes(cardId);
+    if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID && subStep >= 1;
+    return false;
+  };
+
+  const getCardReserveEnabled = (cardId: string) => {
+    if (!isReserveBeat) return false;
+    return cardId === RESERVE_CARD_ID && (s.subStep >= 1 || subStep >= 1);
+  };
+
+  const getHighlighted = (cardId: string) => {
+    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID && (s.subStep >= 1 || subStep >= 1);
+    if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
+    if (beatId === "b13_tier3") return T3_PURCHASABLE_IDS.includes(cardId) && !s.forged.includes(cardId);
+    if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID;
+    return false;
+  };
+
+  const getForeground = (cardId: string) => {
+    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
+    if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID;
+    return false;
+  };
+
+  const filterByView = (cardId: string): boolean => {
+    const card = TUTORIAL_CARDS[cardId];
+    if (!card) return false;
+    if (s.view === "all") return true;
+    if (s.view === "discounted") {
+      return Object.entries(card.cost).some(([k, v]) => (v as number) > 0 && (s.bonuses[k as GemKey] ?? 0) > 0);
+    }
+    if (s.view === "needed") {
+      return card.bonusColor === "emerald";
+    }
+    return true;
+  };
+
+  const renderTierRow = (tier: number, cardIds: string[], label: string) => {
+    if (cardIds.length === 0) return null;
+    const visible = cardIds.filter(id => {
+      if (id === T3_IMPOSSIBLE_ID) return s.view === "all"; // impossible only shows in "all"
+      return filterByView(id);
+    });
+    if (visible.length === 0) return null;
+    return (
+      <div key={tier} className="mb-4">
+        <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">Tier {tier} — {label}</div>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {visible.map(cardId => {
+            const card = TUTORIAL_CARDS[cardId];
+            if (!card) return null;
+            const isForged = s.forged.includes(cardId);
+            const isReserved = s.reserved.includes(cardId);
+            if (isReserved) return null;
+            const isImpossible = cardId === T3_IMPOSSIBLE_ID;
+            return (
+              <div key={cardId} className="mb-10">
+                <TutorialCard
+                  card={card}
+                  bonuses={s.bonuses}
+                  crystals={s.crystals}
+                  onForge={isImpossible ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." }) : () => dispatch({ type: "FORGE_MARKET", cardId })}
+                  onReserve={!isImpossible ? () => dispatch({ type: "RESERVE", cardId }) : undefined}
+                  forgeEnabled={getCardForgeEnabled(cardId)}
+                  reserveEnabled={getCardReserveEnabled(cardId)}
+                  highlighted={getHighlighted(cardId)}
+                  foreground={getForeground(cardId)}
+                  forged={isForged}
+                  impossible={isImpossible}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <MarketTabs
+        view={s.view}
+        dispatch={dispatch}
+        beatId={beatId}
+        subStep={subStep}
+        highlightDiscounted={highlightDiscounted}
+        highlightNeeded={highlightNeeded}
+      />
+      {renderTierRow(3, t3Cards, "Frontier")}
+      {renderTierRow(2, t2Cards, "Ascendant")}
+      {renderTierRow(1, t1Cards, "Foundation")}
+    </div>
+  );
+}
+
+// ─── Cinematic Phase ──────────────────────────────────────────────────────────
+function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+  const beat = TUTORIAL_BEATS[s.beat];
+  const [showLumii, setShowLumii] = useState(false);
+  const [panDone, setPanDone] = useState(false);
+  const [shatterDone, setShatterDone] = useState(false);
+  const [affIdx, setAffIdx] = useState(-1);
+  const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
+  const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
+
+  const isContact = beat.id === "b0_contact";
+  const isLocate = beat.id === "b1_locate";
+  const isShatter = beat.id === "b4_shatter";
+  const isAffinity = beat.id === "b5_affinities";
+
+  // Beat 1: pan then reveal lumii
+  useEffect(() => {
+    if (!isLocate) return;
+    const t1 = setTimeout(() => setShowLumii(true), 600);
+    const t2 = setTimeout(() => { setPanDone(true); }, 1800);
+    const t3 = setTimeout(() => { dispatch({ type: "NEXT_BEAT" }); }, 3000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [isLocate, dispatch]);
+
+  // Beat 4: shatter then advance
+  useEffect(() => {
+    if (!isShatter) return;
+    const t1 = setTimeout(() => setShatterDone(true), 1200);
+    const t2 = setTimeout(() => dispatch({ type: "NEXT_BEAT" }), 2600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [isShatter, dispatch]);
+
+  // Beat 5: affinity sequence
+  useEffect(() => {
+    if (!isAffinity) return;
+    let idx = 0;
+    setAffIdx(0);
+    const interval = setInterval(() => {
+      idx++;
+      if (idx >= 5) {
+        clearInterval(interval);
+        setTimeout(() => dispatch({ type: "NEXT_BEAT" }), 1200);
+      } else {
+        setAffIdx(idx);
+      }
+    }, 900);
+    return () => clearInterval(interval);
+  }, [isAffinity, dispatch]);
+
+  const dlgText = beat.dialogue[s.dlgLine]?.text ?? "";
+  const isLastDlg = s.dlgLine >= beat.dialogue.length - 1;
+
+  return (
+    <div
+      className="fixed inset-0 flex items-center justify-center select-none"
+      style={{
+        background: s.beat >= 4
+          ? `url(${backgroundCosmos}) center/cover`
+          : "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)",
+      }}
+    >
+      {s.beat >= 4 && <div className="absolute inset-0 bg-black/60" />}
+
+      {/* Shatter overlay */}
+      {isShatter && (
+        <AnimatePresence>
+          {!shatterDone && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.6, 0.9, 0.6, 0] }}
+              transition={{ duration: 2.4, times: [0, 0.2, 0.5, 0.8, 1] }}
+              className="absolute inset-0 z-20 pointer-events-none"
+              style={{
+                background: "radial-gradient(ellipse at 50% 50%, rgba(251,191,36,0.4) 0%, rgba(251,191,36,0.1) 40%, transparent 70%)",
+              }}
+            />
+          )}
+        </AnimatePresence>
+      )}
+      {isShatter && (
+        <motion.div
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: [0, 1, 0.5, 0] }}
+          transition={{ duration: 2.2, times: [0, 0.2, 0.6, 1] }}
+          className="absolute inset-0 z-20 pointer-events-none"
+          style={{
+            background: "linear-gradient(105deg, transparent 40%, rgba(251,191,36,0.3) 50%, transparent 60%)",
+          }}
+        />
+      )}
+
+      {/* Affinity token sequence */}
+      {isAffinity && (
+        <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+          <AnimatePresence mode="wait">
+            {affIdx >= 0 && affIdx < 5 && (
+              <motion.div
+                key={affIdx}
+                initial={{ x: -120, opacity: 0, scale: 0.7 }}
+                animate={{ x: 0, opacity: 1, scale: 1.1 }}
+                exit={{ x: 120, opacity: 0, scale: 0.7 }}
+                transition={{ type: "spring", stiffness: 200, damping: 22 }}
+                className="flex flex-col items-center gap-3"
+              >
+                <img
+                  src={GEM_META[affKeys[affIdx]].image}
+                  alt=""
+                  className="w-16 h-16 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+                  draggable={false}
+                />
+                <span className="text-white font-serif text-2xl tracking-widest">{affinityNames[affIdx]}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Lumii orb */}
+      <AnimatePresence>
+        {(s.beat >= 2 || showLumii) && !isAffinity && (
+          <motion.div
+            initial={isLocate ? { x: 160, opacity: 0 } : { opacity: 0, scale: 0.8 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
+            className="absolute z-10"
+            style={{ top: "35%", left: "50%", transform: "translate(-50%, -50%)" }}
+          >
+            <LumiiOrb size={88} excited={s.beat === 2} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Dialogue */}
+      {!isLocate && !isAffinity && !isShatter && (
+        <div className="absolute bottom-16 left-0 right-0 z-30 px-6">
+          <AnimatePresence mode="wait">
+            <DialogueBox
+              key={`${s.beat}-${s.dlgLine}`}
+              lines={beat.dialogue}
+              lineIndex={s.dlgLine}
+              onTap={() => dispatch({ type: "NEXT_DLG" })}
+              nudge={null}
+              mode={beat.mode}
+            />
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Beat 1 locate: "over here" text */}
+      {isLocate && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="absolute z-30 text-white/80 font-serif text-xl"
+          style={{ right: "10%", top: "50%" }}
+        >
+          Over here.
+        </motion.div>
+      )}
+
+      {/* Affinity closing dialogue */}
+      {isAffinity && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 5.2 }}
+          className="absolute bottom-16 left-0 right-0 z-30 px-6 text-center"
+        >
+          <p className="text-white/70 font-serif text-base">Through them, a society chooses the kind of future it will build.</p>
+        </motion.div>
+      )}
+
+      {/* Subtle star field for early beats */}
+      {s.beat <= 3 && (
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(30)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-white"
+              style={{
+                width: Math.random() * 2 + 1,
+                height: Math.random() * 2 + 1,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: Math.random() * 0.5 + 0.1,
+              }}
+              animate={{ opacity: [0.1, 0.6, 0.1] }}
+              transition={{ duration: Math.random() * 4 + 2, repeat: Infinity, delay: Math.random() * 3 }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Fast-forward Cinematic ───────────────────────────────────────────────────
+function FastForwardCinematic({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+  const remaining = FAST_FORWARD_CARDS.filter(id => id !== s.t3choice);
+  const [cardStep, setCardStep] = useState(0);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setCardStep(1), 1200);
+    const t2 = setTimeout(() => setCardStep(2), 2600);
+    const t3 = setTimeout(() => dispatch({ type: "FF_DONE" }), 4200);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [dispatch]);
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
+      <div className="absolute inset-0 bg-black/70" />
+      {/* Blue time-stream */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        animate={{ opacity: [0, 0.4, 0.6, 0.3, 0] }}
+        transition={{ duration: 4, times: [0, 0.2, 0.5, 0.8, 1] }}
+        style={{ background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.3) 30%, rgba(99,179,237,0.4) 50%, rgba(59,130,246,0.3) 70%, transparent)" }}
+      />
+      <div className="relative z-10 flex flex-col items-center gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-white/80 font-serif text-xl text-center px-8"
+        >Now I will let the centuries pass.</motion.div>
+        <LumiiOrb size={64} excited />
+        <div className="flex gap-8 mt-4">
+          {remaining.map((cardId, idx) => {
+            const card = TUTORIAL_CARDS[cardId];
+            if (!card) return null;
+            return (
+              <AnimatePresence key={cardId}>
+                {cardStep > idx && (
+                  <motion.div
+                    initial={{ y: -60, opacity: 0, scale: 0.7 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <TutorialCard card={card} bonuses={s.bonuses} crystals={s.crystals} />
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4 }}
+                      className="text-[10px] text-emerald-400 font-semibold"
+                    >+{card.lumens} Eminence</motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Luminary Phase ───────────────────────────────────────────────────────────
+function LuminaryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+  const beat = TUTORIAL_BEATS[s.beat];
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="relative z-10 flex flex-col items-center gap-6 w-full">
+        <LuminarySummonCutscene
+          luminaryId="lum_verdant"
+          luminaryName="The Verdant Oracle"
+          domain="Verdance"
+          lumens={2}
+          flavor="She reads the future in the rings of trees that have not yet been planted."
+          onComplete={() => dispatch({ type: "LUM_DONE" })}
+          onSkip={() => dispatch({ type: "LUM_DONE" })}
+        />
+        <div className="px-6 w-full max-w-sm">
+          <AnimatePresence mode="wait">
+            <DialogueBox
+              key={`lum-${s.dlgLine}`}
+              lines={beat.dialogue}
+              lineIndex={s.dlgLine}
+              onTap={() => dispatch({ type: "NEXT_DLG" })}
+              nudge={null}
+              mode="listen"
+            />
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Victory Phase ────────────────────────────────────────────────────────────
+function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+  const beat = TUTORIAL_BEATS[s.beat];
+  const [, setLocation] = useLocation();
+  const showButtons = s.dlgLine >= beat.dialogue.length - 1;
+
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm px-6">
+        <LumiiOrb size={80} excited />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <div className="font-serif text-3xl font-bold text-white mb-1">{s.eminence} Eminence</div>
+          <div className="text-white/50 text-sm">Victory through Verdance</div>
+        </motion.div>
+        <div className="w-full">
+          <AnimatePresence mode="wait">
+            <DialogueBox
+              key={`vic-${s.dlgLine}`}
+              lines={beat.dialogue}
+              lineIndex={s.dlgLine}
+              onTap={() => dispatch({ type: "NEXT_DLG" })}
+              nudge={null}
+              mode="listen"
+            />
+          </AnimatePresence>
+        </div>
+        <AnimatePresence>
+          {showButtons && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col gap-3 w-full"
+            >
+              <button
+                onClick={() => { localStorage.setItem("luminae_tutorial_seen", "1"); setLocation("/"); }}
+                className="w-full py-3 rounded-2xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-500 transition-all shadow-lg"
+              >Begin a Full Game</button>
+              <button
+                onClick={() => dispatch({ type: "RESET" })}
+                className="w-full py-2 rounded-2xl bg-white/8 text-white/60 text-sm hover:bg-white/15 transition-all"
+              >Replay Tutorial</button>
+              <button
+                onClick={() => setLocation("/")}
+                className="w-full py-2 rounded-xl text-white/40 text-sm hover:text-white/70 transition-all"
+              >Return Home</button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// ─── Gameplay Phase ───────────────────────────────────────────────────────────
+function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+  const beat = TUTORIAL_BEATS[s.beat];
+  const beatId = beat.id;
+  const subStep = s.subStep;
+
+  // Dim mode: listen/look dims the interactive areas
+  const isDimmed = beat.mode === "listen" || beat.mode === "look";
+  const isWellEnabled = (beat.mode === "act" || beat.mode === "semiOpen") &&
+    ["b8_first_harness", "b11_forge_reserved", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId) &&
+    !(beatId === "b11_forge_reserved" && subStep >= 1) &&
+    !(beatId === "b12_tier2" && subStep === 0) &&
+    !(beatId === "b16_final_forge" && subStep >= 1);
+
+  const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b14_win_condition";
+  const isEminenceHighlighted = beatId === "b14_win_condition";
+  const isHandHighlighted = beatId === "b10b_reserve_granted";
+
+  // Where the Lumii floats
+  const lumiiTarget = beat.lumiiZone;
+
+  const LUMII_ZONE_POS: Record<string, { x: string; y: string }> = {
+    "market-t1": { x: "20%", y: "72%" },
+    "market-t2": { x: "20%", y: "55%" },
+    "market-t3": { x: "20%", y: "38%" },
+    well: { x: "80%", y: "78%" },
+    hand: { x: "80%", y: "90%" },
+    storage: { x: "15%", y: "90%" },
+    eminence: { x: "88%", y: "12%" },
+    "discounted-tab": { x: "42%", y: "28%" },
+    "needed-tab": { x: "52%", y: "28%" },
+    "top-center": { x: "50%", y: "10%" },
+    center: { x: "50%", y: "50%" },
+    luminary: { x: "50%", y: "30%" },
+  };
+  const lumiiPos = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "88%" };
+
+  return (
+    <div className="fixed inset-0 overflow-y-auto" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
+      <div className="absolute inset-0 bg-black/75 pointer-events-none" />
+
+      {/* Dim overlay for listen/look mode */}
+      {isDimmed && (
+        <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />
+      )}
+
+      {/* Main board */}
+      <div className="relative z-10 flex flex-col min-h-full px-4 py-4 gap-3 pb-52">
+        {/* Header: Player stats */}
+        <PlayerStats s={s} highlighted={isEminenceHighlighted} />
+
+        {/* Market section */}
+        <div className="bg-black/40 border border-white/8 rounded-2xl p-3">
+          <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
+          <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} />
+        </div>
+
+        {/* Player hand */}
+        <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
+          <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} />
+        </div>
+
+        {/* Storage */}
+        <PlayerStorage s={s} highlighted={isStorageHighlighted} />
+
+        {/* Affinity well */}
+        <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled} />
+      </div>
+
+      {/* Floating Lumii */}
+      <motion.div
+        animate={{ left: lumiiPos.x, top: lumiiPos.y }}
+        transition={{ type: "spring", stiffness: 80, damping: 18 }}
+        className="fixed z-40 pointer-events-none"
+        style={{ transform: "translate(-50%, -50%)" }}
+      >
+        <motion.div
+          animate={{ y: [0, -6, 0] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <LumiiOrb size={48} excited={beat.mode === "act"} />
+        </motion.div>
+      </motion.div>
+
+      {/* Dialogue box */}
+      <div className="fixed bottom-4 left-0 right-0 z-50 px-4">
+        <AnimatePresence mode="wait">
+          <DialogueBox
+            key={`${beatId}-${s.dlgLine}-${s.nudge}`}
+            lines={beat.dialogue}
+            lineIndex={s.dlgLine}
+            onTap={() => {
+              if (s.nudge) {
+                dispatch({ type: "NUDGE", msg: null });
+              } else {
+                dispatch({ type: "NEXT_DLG" });
+              }
+            }}
+            nudge={s.nudge}
+            mode={beat.mode}
+          />
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Export ──────────────────────────────────────────────────────────────
+export function TutorialDirector() {
+  const [s, dispatch] = useReducer(reducer, INIT_STATE);
+
+  const beat = TUTORIAL_BEATS[s.beat];
+  if (!beat) return null;
+
+  // Cinematic beats: 0–5
+  if (s.beat <= 5) {
+    return <CinematicPhase s={s} dispatch={dispatch} />;
+  }
+
+  // Fast-forward cinematic
+  if (beat.id === "b15_fast_forward") {
+    return <FastForwardCinematic s={s} dispatch={dispatch} />;
+  }
+
+  // Luminary reveal
+  if (beat.id === "b17_luminary") {
+    return <LuminaryPhase s={s} dispatch={dispatch} />;
+  }
+
+  // Victory
+  if (beat.id === "b18_victory") {
+    return <VictoryPhase s={s} dispatch={dispatch} />;
+  }
+
+  // Gameplay beats: 6–16
+  return <GameplayPhase s={s} dispatch={dispatch} />;
+}
