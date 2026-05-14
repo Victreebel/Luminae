@@ -1423,12 +1423,12 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
     <div
       className="fixed inset-0 flex items-center justify-center select-none"
       style={{
-        background: s.beat >= 5
+        background: s.beat >= 7
           ? `url(${backgroundCosmos}) center/cover`
           : "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)",
       }}
     >
-      {s.beat >= 5 && <div className="absolute inset-0 bg-black/60" />}
+      {s.beat >= 7 && <div className="absolute inset-0 bg-black/60" />}
 
       {/* Fullscreen shatter animation — only starts after player taps "Welcome to Luminae." */}
       {isShatter && shatterReady && <FullscreenShatterOverlay onDone={() => dispatch({ type: "NEXT_BEAT" })} />}
