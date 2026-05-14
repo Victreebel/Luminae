@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -1835,8 +1836,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   };
   const lumiiPos = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "88%" };
 
+  const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
+  const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
+
   return (
-    <div className="fixed inset-0 overflow-y-auto">
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
       {/* Cosmos background with breathing animation — matches game */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -1867,7 +1871,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       )}
 
       {/* Tutorial header bar — mirrors the game's header */}
-      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 border-b border-white/10 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.82)" }}>
+      <header className="shrink-0 z-30 flex items-center justify-between px-4 py-2 border-b border-white/10 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.82)" }}>
         <div className="flex items-center gap-2">
           <div className="flex flex-col leading-none">
             <span className="text-sm font-serif font-bold text-indigo-300 tracking-wide">Luminae</span>
@@ -1875,16 +1879,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <LumiiOrb size={22} excited={beat.mode === "act" || beat.mode === "semiOpen"} />
+          <LumiiOrb size={22} excited={isActMode} />
           <span className="text-[10px] text-white/50 font-medium">Lumii</span>
         </div>
       </header>
 
-      {/* Main board */}
-      <div className="relative z-10 flex flex-col min-h-full px-4 py-4 gap-3 pb-52">
-        {/* Player stats */}
-        <PlayerStats s={s} highlighted={isEminenceHighlighted} />
-
+      {/* Scrollable board content */}
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 pb-4">
         {/* Market section */}
         <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
           <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
@@ -1903,9 +1904,97 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled} />
       </div>
 
+      {/* ── Pinned Player Panel — mirrors the real game's bottom panel ── */}
+      <div
+        className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
+          isActMode ? 'border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.20)]' : 'border-white/10'
+        }`}
+        style={{ background: 'rgba(3,3,12,0.92)' }}
+      >
+        {/* Identity + stats row */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <div className="w-[22px] h-[22px] rounded-full bg-indigo-700/70 border border-indigo-400/40 flex items-center justify-center shrink-0">
+              <span className="text-[9px] font-bold text-white">Y</span>
+            </div>
+            {isActMode && <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />}
+            <span className="text-xs font-semibold text-white truncate">You</span>
+            {isActMode && (
+              <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="flex items-baseline gap-1">
+              <span className="font-serif font-black text-lg text-white leading-none">{totalCrystals}</span>
+              <span className="text-[10px] text-white/40">Affinity</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {}}
+              className="inline-flex items-center gap-1 rounded-md px-1 py-0.5"
+            >
+              <motion.span
+                key={s.eminence}
+                initial={{ scale: 1.4, color: '#a5b4fc' }}
+                animate={{ scale: 1, color: '#818cf8' }}
+                transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+                className="font-serif font-black text-lg leading-none"
+              >{s.eminence}</motion.span>
+              <Sparkles className="h-3 w-3 text-indigo-400" />
+            </button>
+          </div>
+        </div>
+        {/* 6 affinity boxes */}
+        <div className="flex gap-1.5">
+          {ALL_GEMS.map(gem => {
+            const meta = GEM_META[gem];
+            const held = s.crystals[gem] ?? 0;
+            const bonus = gem !== 'flux' ? (s.bonuses[gem] ?? 0) : 0;
+            const reservedCount = gem === 'flux' ? s.reserved.length : 0;
+            const hasContent = gem === 'flux' ? (held > 0 || reservedCount > 0) : (held > 0 || bonus > 0);
+            return (
+              <div
+                key={gem}
+                className="flex-1 min-h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
+                style={{
+                  background: hasContent
+                    ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                    : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                  border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                  boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
+                }}
+              >
+                {hasContent && (
+                  <div className="absolute inset-x-0 top-0 h-[1px]"
+                    style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+                )}
+                <div className="flex items-center gap-0.5 w-full justify-center">
+                  <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                  <MiniGem gem={gem} size={7} />
+                </div>
+                <div className="flex items-center gap-0.5">
+                  <span
+                    className="text-2xl font-black leading-none tracking-tight"
+                    style={{
+                      color: hasContent ? '#fff' : meta.hex + '40',
+                      textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
+                    }}
+                  >{held}</span>
+                </div>
+                {gem !== 'flux' && bonus > 0 && (
+                  <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+                )}
+                {gem === 'flux' && reservedCount > 0 && (
+                  <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Floating Lumii + "over here" hint */}
       {(() => {
-        const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
         const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
         // Clickable when hint is showing AND there's still a dialogue line to dismiss
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
@@ -1959,9 +2048,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         );
       })()}
 
-      {/* Dialogue box — hidden once player response dismisses it */}
+      {/* Dialogue box — sits above the pinned player panel (~152px tall) */}
       {s.dlgLine < beat.dialogue.length && (
-        <div className="fixed bottom-4 left-0 right-0 z-50 px-4">
+        <div className="fixed bottom-[152px] left-0 right-0 z-50 px-4">
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${beatId}-${s.dlgLine}-${s.nudge}`}
