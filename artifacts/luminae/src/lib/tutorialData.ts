@@ -180,7 +180,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "There you are." },
       { text: "Hello, Architect." },
       { text: "I am Lumii." },
-      { text: "I am here to help you guide civilization on a cosmic scale." },
+      { text: "I am here to guide you, just as you will guide civilization." },
     ],
     completion: { type: "dialogue" },
     playerResponse: "Architect? Where am I?",
