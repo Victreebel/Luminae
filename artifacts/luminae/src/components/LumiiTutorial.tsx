@@ -18,115 +18,282 @@ function useViewportH(): number {
   return h;
 }
 
-// ─── Lumii Orb ────────────────────────────────────────────────────────────────
+// ─── Lumii Constellation Wisp ─────────────────────────────────────────────────
 
-function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boolean }) {
-  const blur = Math.round(size * 0.45);
-  const innerBlur = Math.max(2, Math.round(size * 0.06));
-  const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
-  const innerMask = "radial-gradient(circle, rgba(0,0,0,0.9) 18%, rgba(0,0,0,0.35) 50%, transparent 70%)";
+// Affinity node colors: Flare, Continuum, Verdance, Abyss, Radiance, Singularity
+const WISP_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"] as const;
+
+// Named constellation shapes — 6 [x,y] node offsets from center (0,0)
+// Coordinates fit within ±26 so all nodes stay within the 72×72 bounding box
+type WispShape = [number, number][];
+
+const WISP_SHAPES: Record<string, WispShape> = {
+  // Organic scatter — Lumii at rest
+  idle:    [[ 0,-20],[ 17, -8],[13, 14],[-6, 21],[-19,  6],[-15,-14]],
+  // Loose diamond — primary speaking pose
+  speakA:  [[ 0,-23],[ 18, -4],[12, 17],[ 0,  8],[-12, 17],[-18, -4]],
+  // Tilted arc — secondary speaking pose
+  speakB:  [[-14,-17],[  0,-23],[14,-17],[20,  3],[  0, 19],[-20,  3]],
+  // Wide star — excited/action state
+  excited: [[ 0,-25],[ 22, -8],[16, 20],[ 0, 10],[-16, 20],[-22, -8]],
+};
+
+// Connections: outer ring (0-1-2-3-4-5-0) + one diagonal (0-3) = 7 edges
+const WISP_EDGES: [number, number][] = [
+  [0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[0,3]
+];
+
+// Shape morph cycle when Lumii is active
+const MORPH_CYCLE = ["speakA", "idle", "speakB", "idle"] as const;
+
+// Returns the constellation node closest to the given tether direction
+function getNearestNode(shape: WispShape, direction: "down" | "up" | "left"): { x: number; y: number } {
+  const [x, y] =
+    direction === "down" ? shape.reduce((b, n) => (n[1] > b[1] ? n : b)) :
+    direction === "up"   ? shape.reduce((b, n) => (n[1] < b[1] ? n : b)) :
+    /* left */             shape.reduce((b, n) => (n[0] < b[0] ? n : b));
+  return { x, y };
+}
+
+let _wispInstanceCount = 0;
+
+function LumiiOrb({
+  size = 72,
+  excited = false,
+  speaking = false,
+  tetheredDirection,
+  onNearestNode,
+}: {
+  size?: number;
+  excited?: boolean;
+  speaking?: boolean;
+  tetheredDirection?: "down" | "up" | "left";
+  onNearestNode?: (offset: { x: number; y: number }) => void;
+}) {
+  // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
+  const instanceRef = useRef<number | null>(null);
+  if (instanceRef.current === null) instanceRef.current = ++_wispInstanceCount;
+  const filterId = `lumii-wisp-${instanceRef.current}`;
+
+  const onNearestNodeRef = useRef(onNearestNode);
+  onNearestNodeRef.current = onNearestNode;
+
+  const [morphIdx, setMorphIdx] = useState(0);
+
+  // Morph only when speaking or excited; rest in idle when silent
+  const shouldMorph = excited || speaking;
+  useEffect(() => {
+    if (!shouldMorph) {
+      setMorphIdx(0);
+      return;
+    }
+    const ms = excited ? 640 : 1900;
+    const id = setInterval(() => setMorphIdx((i) => (i + 1) % MORPH_CYCLE.length), ms);
+    return () => clearInterval(id);
+  }, [shouldMorph, excited]);
+
+  const shapeKey = !shouldMorph
+    ? "idle"
+    : excited
+    ? (morphIdx % 2 === 0 ? "excited" : "speakA")
+    : MORPH_CYCLE[morphIdx];
+
+  // Notify parent of the nearest-node offset whenever shape or tether direction changes
+  useEffect(() => {
+    if (!tetheredDirection || !onNearestNodeRef.current) return;
+    const currentShape = WISP_SHAPES[shapeKey] ?? WISP_SHAPES.idle;
+    onNearestNodeRef.current(getNearestNode(currentShape, tetheredDirection));
+  }, [shapeKey, tetheredDirection]);
+  const shape = WISP_SHAPES[shapeKey];
+  const morphDur = excited ? 0.42 : 1.05;
+  const nodeR = excited ? 4.2 : 3.4;
+  const lineWidth = excited ? 1.4 : 0.9;
+  const blurSd = excited ? 3.8 : 2.6;
+  const pulseStroke = excited ? "#fbbf24" : "rgba(168,85,247,0.7)";
+  const pulseStrokeW = excited ? 1.6 : 1.0;
+
+  // Per-node idle drift: small asymmetric X/Y offsets + periods to avoid uniformity
+  const IDLE_DRIFT_X = [ 1.8, -2.2,  1.4, -1.6,  2.0, -1.2];
+  const IDLE_DRIFT_Y = [-2.0,  1.6, -1.8,  2.2, -1.4,  1.8];
+  const IDLE_PERIODS = [3.2, 3.8, 4.1, 3.5, 4.4, 3.0];
+
   return (
-    <div style={{ width: size, height: size, position: "relative" }}>
-      {/* Outer prismatic halo */}
-      <motion.div
+    <svg width={size} height={size} viewBox="-36 -36 72 72" style={{ overflow: "visible" }}>
+      <defs>
+        {/* Glow filter — blurs then merges over original for a soft halo */}
+        <filter id={filterId} x="-150%" y="-150%" width="400%" height="400%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation={blurSd} result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Outer presence pulse ring */}
+      <motion.circle
+        cx={0} cy={0}
         animate={{
-          scale: excited ? [1, 1.38, 1.12, 1.38, 1] : [1, 1.18, 1],
-          opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52],
+          r: excited ? [14, 30, 14] : [11, 22, 11],
+          opacity: excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
         }}
-        transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          position: "absolute",
-          inset: "-62%",
-          borderRadius: "50%",
-          background:
-            "conic-gradient(from 0deg, #f97316aa, #3b82f6aa, #22c55eaa, #a855f7aa, #e2e8f066, #fbbf24aa, #f97316aa)",
-          filter: `blur(${blur}px)`,
-        }}
+        transition={{ duration: excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" }}
+        fill="none"
+        stroke={pulseStroke}
+        strokeWidth={pulseStrokeW}
       />
-      {/* Secondary tighter halo */}
-      <motion.div
-        animate={{ opacity: excited ? [0.5, 0.88, 0.5] : [0.28, 0.58, 0.28] }}
-        transition={{ duration: excited ? 1.2 : 3.0, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          position: "absolute",
-          inset: "-28%",
-          borderRadius: "50%",
-          background:
-            "conic-gradient(from 180deg, #fbbf24cc, #a855f7cc, #3b82f6cc, #22c55ecc, #f97316cc, #fbbf24cc)",
-          filter: `blur(${Math.round(size * 0.18)}px)`,
-        }}
-      />
-      {/* Primary affinity current — rotating */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: excited ? 4.5 : 11, repeat: Infinity, ease: "linear" }}
-        style={{
-          position: "absolute",
-          inset: 0,
-          borderRadius: "50%",
-          background:
-            "conic-gradient(from 0deg, #f97316cc, #fbbf2499, #22c55ecc, #3b82f6cc, #a855f7cc, #e2e8f055, #f97316cc)",
-          maskImage: mask,
-          WebkitMaskImage: mask,
-        }}
-      />
-      {/* Counter-rotating inner current */}
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
-        style={{
-          position: "absolute",
-          inset: "13%",
-          borderRadius: "50%",
-          background:
-            "conic-gradient(from 120deg, #3b82f6bb, #a855f7bb, #22c55ebb, #e2e8f040, #f97316bb, #3b82f6bb)",
-          maskImage: innerMask,
-          WebkitMaskImage: innerMask,
-        }}
-      />
-      {/* Singularity core shimmer */}
-      <motion.div
-        animate={{ opacity: [0, 0.85, 0.15, 0.72, 0], scale: [0.18, 0.55, 0.28, 0.5, 0.18] }}
-        transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut", repeatDelay: 2.2 }}
-        style={{
-          position: "absolute",
-          inset: "24%",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(255,255,255,0.95) 0%, #fbbf24cc 42%, transparent 80%)",
-          filter: `blur(${innerBlur}px)`,
-        }}
-      />
-      {/* Presence pulse ring */}
-      <motion.div
-        animate={{
-          scale: excited ? [0.82, 1.55, 0.82] : [0.88, 1.24, 0.88],
-          opacity: excited ? [0.75, 0, 0.75] : [0.35, 0, 0.35],
-        }}
-        transition={{ duration: excited ? 0.85 : 2.5, repeat: Infinity, ease: "easeOut" }}
-        style={{
-          position: "absolute",
-          inset: "-7%",
-          borderRadius: "50%",
-          border: excited ? "1.5px solid rgba(251,191,36,0.5)" : "1px solid rgba(255,255,255,0.22)",
-          pointerEvents: "none",
-        }}
-      />
-      {/* Second pulse ring (action only) */}
+
+      {/* Second pulse ring — excited only, offset phase */}
       {excited && (
-        <motion.div
-          animate={{ scale: [1, 1.85, 1], opacity: [0.55, 0, 0.55] }}
-          transition={{ duration: 1.3, repeat: Infinity, ease: "easeOut", delay: 0.42 }}
-          style={{
-            position: "absolute",
-            inset: "-7%",
-            borderRadius: "50%",
-            border: "1px solid rgba(251,191,36,0.3)",
-            pointerEvents: "none",
-          }}
+        <motion.circle
+          cx={0} cy={0}
+          animate={{ r: [18, 34, 18], opacity: [0.38, 0, 0.38] }}
+          transition={{ duration: 1.3, repeat: Infinity, ease: "easeOut", delay: 0.44 }}
+          fill="none"
+          stroke="#f97316"
+          strokeWidth={0.8}
         />
       )}
-    </div>
+
+      {/* Connection lines — animate endpoints + soft opacity pulse */}
+      {WISP_EDGES.map(([a, b], i) => {
+        const loOpacity = excited ? 0.45 : !shouldMorph ? 0.18 : 0.22;
+        const hiOpacity = excited ? 0.72 : !shouldMorph ? 0.42 : 0.52;
+        const pulsePeriod = excited ? 0.9 + i * 0.08 : 2.8 + i * 0.35;
+        return (
+          <motion.line
+            key={i}
+            animate={{
+              x1: shape[a][0], y1: shape[a][1],
+              x2: shape[b][0], y2: shape[b][1],
+              strokeOpacity: [loOpacity, hiOpacity, loOpacity],
+            }}
+            transition={{
+              x1: { duration: morphDur, ease: "easeInOut" },
+              y1: { duration: morphDur, ease: "easeInOut" },
+              x2: { duration: morphDur, ease: "easeInOut" },
+              y2: { duration: morphDur, ease: "easeInOut" },
+              strokeOpacity: {
+                duration: pulsePeriod,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * (excited ? 0.1 : 0.28),
+              },
+            }}
+            stroke={WISP_COLORS[a]}
+            strokeWidth={lineWidth}
+            filter={`url(#${filterId})`}
+            strokeLinecap="round"
+          />
+        );
+      })}
+
+      {/* Nodes — morph position (+ idle drift) + independent twinkle opacity */}
+      {WISP_COLORS.map((color, i) => {
+        const baseX = shape[i][0];
+        const baseY = shape[i][1];
+        const animX = !shouldMorph
+          ? [baseX, baseX + IDLE_DRIFT_X[i], baseX, baseX - IDLE_DRIFT_X[i] * 0.5, baseX]
+          : baseX;
+        const animY = !shouldMorph
+          ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
+          : baseY;
+        const xTrans = !shouldMorph
+          ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
+          : { duration: morphDur, ease: "easeInOut" as const };
+        const yTrans = !shouldMorph
+          ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
+          : { duration: morphDur, ease: "easeInOut" as const };
+        return (
+          <motion.circle
+            key={i}
+            cx={0} cy={0}
+            r={nodeR}
+            fill={color}
+            filter={`url(#${filterId})`}
+            animate={{
+              x: animX,
+              y: animY,
+              opacity: excited ? [0.82, 1, 0.82] : [0.6, 1, 0.6],
+            }}
+            transition={{
+              x: xTrans,
+              y: yTrans,
+              opacity: {
+                duration: excited ? 0.65 + i * 0.1 : 2.0 + i * 0.28,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: i * (excited ? 0.07 : 0.2),
+              },
+            }}
+          />
+        );
+      })}
+
+      {/* Star-point spikes on each node — small 4-point cross for that "star" look */}
+      {WISP_COLORS.map((color, i) => {
+        const baseX = shape[i][0];
+        const baseY = shape[i][1];
+        const animX = !shouldMorph
+          ? [baseX, baseX + IDLE_DRIFT_X[i], baseX, baseX - IDLE_DRIFT_X[i] * 0.5, baseX]
+          : baseX;
+        const animY = !shouldMorph
+          ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
+          : baseY;
+        const xTrans = !shouldMorph
+          ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
+          : { duration: morphDur, ease: "easeInOut" as const };
+        const yTrans = !shouldMorph
+          ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
+          : { duration: morphDur, ease: "easeInOut" as const };
+        return (
+        <motion.g
+          key={`spike-${i}`}
+          animate={{
+            x: animX,
+            y: animY,
+            opacity: excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
+            scale: excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
+          }}
+          transition={{
+            x: xTrans,
+            y: yTrans,
+            opacity: {
+              duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * (excited ? 0.06 : 0.18) + 0.3,
+            },
+            scale: {
+              duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * (excited ? 0.06 : 0.18) + 0.3,
+            },
+          }}
+        >
+          {/* Vertical spike */}
+          <line
+            x1={0} y1={-(nodeR + 3)}
+            x2={0} y2={nodeR + 3}
+            stroke={color}
+            strokeWidth={0.7}
+            strokeOpacity={0.9}
+            strokeLinecap="round"
+          />
+          {/* Horizontal spike */}
+          <line
+            x1={-(nodeR + 3)} y1={0}
+            x2={nodeR + 3} y2={0}
+            stroke={color}
+            strokeWidth={0.7}
+            strokeOpacity={0.9}
+            strokeLinecap="round"
+          />
+        </motion.g>
+        )
+      })}
+    </svg>
   );
 }
 
@@ -135,9 +302,11 @@ function LumiiOrb({ size = 72, excited = false }: { size?: number; excited?: boo
 function TetherBeam({
   direction,
   attention = "listening",
+  nodeOffset = { x: 0, y: 0 },
 }: {
   direction: "down" | "left" | "up";
   attention?: LumiiAttentionState;
+  nodeOffset?: { x: number; y: number };
 }) {
   const isVert = direction === "down" || direction === "up";
   const isDown = direction === "down";
@@ -155,6 +324,9 @@ function TetherBeam({
   const glowSize = isAction ? 10 : 7;
   const tipColor = isAction ? "#fbbf24" : "#a855f7";
 
+  // Shift the beam's cross-axis so it visually originates from the nearest node
+  const crossShift = isVert ? nodeOffset.x : nodeOffset.y;
+
   return (
     <div
       style={{
@@ -162,6 +334,9 @@ function TetherBeam({
         height: isVert ? LENGTH : CROSS,
         position: "relative",
         flexShrink: 0,
+        transform: isVert
+          ? `translateX(${crossShift}px)`
+          : `translateY(${crossShift}px)`,
       }}
     >
       {/* Gradient glow arm */}
@@ -739,6 +914,8 @@ export function LumiiTutorial({
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [nudgeText, setNudgeText] = useState<string | null>(null);
+  // Nearest constellation node for tether origin alignment
+  const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -869,7 +1046,7 @@ export function LumiiTutorial({
   const currentPhase: 1 | 2 = beat?.phase ?? 1;
   const posStyle = beat ? getPositionStyle(beat.position, vpH) : getPositionStyle("center", vpH);
   const tetherEl = posStyle.tether ? (
-    <TetherBeam direction={posStyle.tether} attention={currentAttention} />
+    <TetherBeam direction={posStyle.tether} attention={currentAttention} nodeOffset={tetherNodeOffset} />
   ) : undefined;
   const arrowEl = posStyle.tether ? (
     <AttentionArrow direction={posStyle.tether} attention={currentAttention} />
@@ -1067,10 +1244,13 @@ export function LumiiTutorial({
                       >
                         <LumiiOrb
                           size={72}
+                          speaking
                           excited={
                             currentAttention === "action" ||
                             (currentPhase === 2 && tutorialStep === BEATS.length - 1)
                           }
+                          tetheredDirection={posStyle.tether}
+                          onNearestNode={setTetherNodeOffset}
                         />
                       </motion.div>
                     }
