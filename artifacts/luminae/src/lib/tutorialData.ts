@@ -233,10 +233,18 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b5_affinities",
     mode: "cinematic",
-    lumiiZone: "top-center",
+    lumiiZone: "center",
     dialogue: [
-      { text: "There are five primary affinities that guide the cosmos." },
+      { text: "Every civilization in Luminae channels the cosmos through Affinities." },
+      { text: "They are the elemental forces of existence — the energy behind everything you will build." },
     ],
+    completion: { type: "dialogue" },
+  },
+  {
+    id: "b5b_affinity_tokens",
+    mode: "cinematic",
+    lumiiZone: "center",
+    dialogue: [],
     completion: { type: "animation" },
   },
   {

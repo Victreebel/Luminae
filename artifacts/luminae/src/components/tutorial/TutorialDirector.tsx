@@ -1391,7 +1391,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const isContact = beat.id === "b0_contact";
   const isLocate = beat.id === "b1_locate";
   const isShatter = beat.id === "b4_shatter";
-  const isAffinity = beat.id === "b5_affinities";
+  const isAffinityTokens = beat.id === "b5b_affinity_tokens";
 
   // Beat 1: pan then reveal lumii
   useEffect(() => {
@@ -1402,22 +1402,20 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [isLocate, dispatch]);
 
-  // Beat 5: affinity sequence
+  // Beat b5b: init affinity token sequence on entry
   useEffect(() => {
-    if (!isAffinity) return;
-    let idx = 0;
+    if (!isAffinityTokens) return;
     setAffIdx(0);
-    const interval = setInterval(() => {
-      idx++;
-      if (idx >= 5) {
-        clearInterval(interval);
-        setTimeout(() => dispatch({ type: "NEXT_BEAT" }), 1200);
-      } else {
-        setAffIdx(idx);
-      }
-    }, 900);
-    return () => clearInterval(interval);
-  }, [isAffinity, dispatch]);
+  }, [isAffinityTokens]);
+
+  // Tap handler — advances token or exits when all 5 seen
+  const handleAffTap = () => {
+    setAffIdx(i => {
+      if (i < 4) return i + 1;
+      dispatch({ type: "NEXT_BEAT" });
+      return i;
+    });
+  };
 
   const dlgText = beat.dialogue[s.dlgLine]?.text ?? "";
   const isLastDlg = s.dlgLine >= beat.dialogue.length - 1;
@@ -1436,35 +1434,55 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
       {/* Fullscreen shatter animation */}
       {isShatter && <FullscreenShatterOverlay onDone={() => dispatch({ type: "NEXT_BEAT" })} />}
 
-      {/* Affinity token sequence */}
-      {isAffinity && (
-        <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
+      {/* Affinity token sequence — click-gated, Lumii stays in front at z-30 */}
+      {isAffinityTokens && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center cursor-pointer"
+          onClick={handleAffTap}
+        >
           <AnimatePresence mode="wait">
             {affIdx >= 0 && affIdx < 5 && (
               <motion.div
                 key={affIdx}
-                initial={{ x: -120, opacity: 0, scale: 0.7 }}
-                animate={{ x: 0, opacity: 1, scale: 1.1 }}
-                exit={{ x: 120, opacity: 0, scale: 0.7 }}
-                transition={{ type: "spring", stiffness: 200, damping: 22 }}
-                className="flex flex-col items-center gap-3"
+                className="flex flex-col items-center gap-4 pointer-events-none"
+                style={{ transformPerspective: 900 }}
+                initial={{ x: -380, rotateY: -90, opacity: 0 }}
+                animate={{ x: 0, rotateY: 0, opacity: 1 }}
+                exit={{ x: 380, rotateY: 90, opacity: 0 }}
+                transition={{ duration: 0.52, ease: [0.22, 1.0, 0.36, 1.0] }}
               >
                 <img
                   src={GEM_META[affKeys[affIdx]].image}
                   alt=""
-                  className="w-16 h-16 object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+                  className="w-32 h-32 object-contain drop-shadow-[0_0_36px_rgba(255,255,255,0.55)]"
                   draggable={false}
                 />
-                <span className="text-white font-serif text-2xl tracking-widest">{affinityNames[affIdx]}</span>
+                <motion.span
+                  className="text-white font-serif text-3xl tracking-widest"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.32 }}
+                >
+                  {affinityNames[affIdx]}
+                </motion.span>
               </motion.div>
             )}
           </AnimatePresence>
+          {/* Tap hint */}
+          <motion.p
+            className="absolute bottom-20 text-white/35 text-xs tracking-widest font-serif"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            tap to continue
+          </motion.p>
         </div>
       )}
 
       {/* Lumii orb */}
       <AnimatePresence>
-        {(s.beat >= 2 || showLumii) && !isAffinity && (
+        {(s.beat >= 2 || showLumii) && (
           <motion.div
             initial={isLocate ? { x: 160, opacity: 0 } : { opacity: 0, scale: 0.8 }}
             animate={{ x: 0, opacity: 1, scale: 1 }}
@@ -1478,7 +1496,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
       </AnimatePresence>
 
       {/* Dialogue */}
-      {!isLocate && !isAffinity && !isShatter && (
+      {!isLocate && !isAffinityTokens && !isShatter && (
         <div className="absolute bottom-16 left-0 right-0 z-30 px-6">
           <AnimatePresence mode="wait">
             <DialogueBox
@@ -1511,17 +1529,6 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
         </motion.div>
       )}
 
-      {/* Affinity closing dialogue */}
-      {isAffinity && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 5.2 }}
-          className="absolute bottom-16 left-0 right-0 z-30 px-6 text-center"
-        >
-          <p className="text-white/70 font-serif text-base">Through them, a society chooses the kind of future it will build.</p>
-        </motion.div>
-      )}
 
       {/* Subtle star field for early beats */}
       {s.beat <= 4 && (
@@ -1901,8 +1908,8 @@ export function TutorialDirector() {
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return null;
 
-  // Cinematic beats: 0–7 (includes b3c_border at index 4, b3b_farewell at 5, b4_shatter at 6)
-  if (s.beat <= 7) {
+  // Cinematic beats: 0–8 (b3c_border=4, b3b_farewell=5, b4_shatter=6, b5_affinities=7, b5b_affinity_tokens=8)
+  if (s.beat <= 8) {
     return <CinematicPhase s={s} dispatch={dispatch} />;
   }
 
