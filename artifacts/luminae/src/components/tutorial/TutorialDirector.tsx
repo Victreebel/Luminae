@@ -1470,7 +1470,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
             animate={{ x: 0, opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
             className="absolute z-30"
-            style={{ top: "35%", left: "50%", transform: "translate(-50%, -50%)" }}
+            style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}
           >
             <LumiiOrb size={88} excited={s.beat === 2} />
           </motion.div>
