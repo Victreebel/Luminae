@@ -1553,7 +1553,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
               x: 0,
               opacity: 1,
               scale: 1,
-              top: isAffinityTokens ? "82%" : "50%",
+              top: isAffinityTokens ? "70%" : "50%",
             }}
             transition={{ type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
             className="absolute z-30"
