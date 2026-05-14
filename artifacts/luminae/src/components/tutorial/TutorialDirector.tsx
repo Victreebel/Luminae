@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -53,6 +53,7 @@ interface TutState {
   ffDone: boolean;
   lumDone: boolean;
   showLuminary: boolean;
+  navigateTo: string | null;
 }
 
 const INIT_CRYSTALS: Record<GemKey, number> = {
@@ -69,6 +70,7 @@ const INIT_STATE: TutState = {
   reserved: [], forged: [], eminence: 0,
   wellSel: {}, nudge: null, view: "all",
   t3choice: null, ffDone: false, lumDone: false, showLuminary: false,
+  navigateTo: null,
 };
 
 type TAction =
@@ -76,6 +78,7 @@ type TAction =
   | { type: "NEXT_BEAT" }
   | { type: "RESET" }
   | { type: "PLAYER_RESPONSE" }
+  | { type: "BRANCH_CHOICE"; choice: "go" | "home" }
   | { type: "SEL_AFF"; gem: GemKey; delta: 1 | -1 }
   | { type: "CLEAR_SEL" }
   | { type: "HARNESS" }
@@ -159,6 +162,9 @@ function reducer(s: TutState, a: TAction): TutState {
   switch (a.type) {
     case "NEXT_DLG": {
       if (!isLastDlg) return { ...s, dlgLine: s.dlgLine + 1, nudge: null };
+      if (beat.id === "b3b_farewell") {
+        return { ...s, navigateTo: "/" };
+      }
       if (beat.completion.type === "dialogue") {
         const nextBeat = s.beat + 1;
         return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null };
@@ -378,6 +384,15 @@ function reducer(s: TutState, a: TAction): TutState {
       return s;
     }
 
+    case "BRANCH_CHOICE": {
+      const farewellIdx = TUTORIAL_BEATS.findIndex(b => b.id === "b3b_farewell");
+      const shatterIdx  = TUTORIAL_BEATS.findIndex(b => b.id === "b4_shatter");
+      if (a.choice === "home") {
+        return { ...s, beat: farewellIdx, dlgLine: 0, subStep: 0, nudge: null };
+      }
+      return { ...s, beat: shatterIdx, dlgLine: 0, subStep: 0, nudge: null };
+    }
+
     case "RESET":
       return { ...INIT_STATE };
 
@@ -468,7 +483,7 @@ function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
 // ─── DialogueBox ──────────────────────────────────────────────────────────────
 function DialogueBox({
   lines, lineIndex, onTap, nudge, mode, showOrb = true,
-  playerResponse, onPlayerResponse,
+  playerResponse, onPlayerResponse, choices, onChoice,
 }: {
   lines: { text: string }[];
   lineIndex: number;
@@ -478,16 +493,18 @@ function DialogueBox({
   showOrb?: boolean;
   playerResponse?: string;
   onPlayerResponse?: () => void;
+  choices?: { label: string; value: string }[];
+  onChoice?: (value: string) => void;
 }) {
   const text = nudge ?? (lines[lineIndex]?.text ?? "");
   const isLast = lineIndex >= lines.length - 1;
   const isPassiveMode = mode === "listen" || mode === "look";
-  // Show tap-to-continue on non-last lines, or last line of listen/look without a response button
-  const showResponseBtn = !nudge && isLast && !!playerResponse && !!onPlayerResponse;
-  const canTap = !showResponseBtn && (isPassiveMode || !isLast);
+  const showChoices    = !nudge && isLast && !!choices?.length && !!onChoice;
+  const showResponseBtn = !showChoices && !nudge && isLast && !!playerResponse && !!onPlayerResponse;
+  const canTap = !showResponseBtn && !showChoices && (isPassiveMode || !isLast);
 
   const hintText = (() => {
-    if (nudge || showResponseBtn) return null;
+    if (nudge || showResponseBtn || showChoices) return null;
     if (!isLast) return "tap to continue";
     if (isPassiveMode) return "tap to continue";
     return null;
@@ -530,6 +547,32 @@ function DialogueBox({
           >
             {playerResponse}
           </motion.button>
+        )}
+        {showChoices && (
+          <div className="mt-3 flex flex-col gap-2">
+            {choices!.map((c, i) => (
+              <motion.button
+                key={c.value}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.12, duration: 0.4 }}
+                onClick={() => onChoice!(c.value)}
+                className="w-full py-2.5 rounded-xl text-sm font-medium tracking-wide select-none cursor-pointer transition-all active:scale-[0.98]"
+                style={i === 0 ? {
+                  background: "rgba(251,191,36,0.12)",
+                  border: "1px solid rgba(251,191,36,0.45)",
+                  boxShadow: "0 0 16px rgba(251,191,36,0.15)",
+                  color: "rgba(253,230,138,1)",
+                } : {
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.55)",
+                }}
+              >
+                {c.label}
+              </motion.button>
+            ))}
+          </div>
         )}
       </div>
     </motion.div>
@@ -1062,12 +1105,129 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
   );
 }
 
+// ─── Fullscreen Shatter Overlay ───────────────────────────────────────────────
+function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
+  const [phase, setPhase] = useState<'cracking' | 'shattering' | 'flashing' | 'gone'>('cracking');
+  const doneRef = useRef(onDone);
+  useEffect(() => { doneRef.current = onDone; }, [onDone]);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setPhase('shattering'), 1100),
+      setTimeout(() => setPhase('flashing'),   1500),
+      setTimeout(() => setPhase('gone'),        2100),
+      setTimeout(() => doneRef.current(),       2300),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  if (phase === 'gone') return null;
+
+  const isShattering = phase === 'shattering' || phase === 'flashing';
+  const isFlashing   = phase === 'flashing';
+  const BG = 'radial-gradient(ellipse at 50% 55%, #0c0c1f 0%, #040408 100%)';
+
+  const SHARDS = [
+    { key: 'tl', clip: 'polygon(0% 0%,  60% 0%,   43% 48%, 0%  36%)',      tx: '-22%', ty: '-22%', rot: -8 },
+    { key: 'tr', clip: 'polygon(60% 0%, 100% 0%,  100% 33%, 57% 47%)',      tx:  '22%', ty: '-22%', rot:  8 },
+    { key: 'ml', clip: 'polygon(0% 36%, 43% 48%,   38% 72%, 0%  64%)',      tx: '-30%', ty:   '0%', rot: -5 },
+    { key: 'mr', clip: 'polygon(57% 47%, 100% 33%, 100% 72%, 62% 72%)',     tx:  '30%', ty:   '0%', rot:  5 },
+    { key: 'bl', clip: 'polygon(0% 64%,  38% 72%,  47% 100%, 0%  100%)',    tx: '-22%', ty:  '22%', rot: -7 },
+    { key: 'br', clip: 'polygon(62% 72%, 100% 72%, 100% 100%, 47% 100%)',   tx:  '22%', ty:  '22%', rot:  7 },
+  ];
+
+  const CRACKS = [
+    { d: 'M50,48 L60,0',            delay: 0.25 },
+    { d: 'M50,48 L100,33',          delay: 0.30 },
+    { d: 'M50,48 L0,36',            delay: 0.28 },
+    { d: 'M50,48 L43,48 L38,72',    delay: 0.40 },
+    { d: 'M50,48 L57,47 L62,72',    delay: 0.42 },
+    { d: 'M50,48 L47,100',          delay: 0.52 },
+    { d: 'M50,48 L0,64',            delay: 0.45 },
+    { d: 'M50,48 L100,72',          delay: 0.48 },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+      {SHARDS.map(sh => (
+        <motion.div
+          key={sh.key}
+          className="absolute inset-0"
+          style={{ clipPath: sh.clip, background: BG }}
+          animate={isShattering
+            ? { x: sh.tx, y: sh.ty, rotate: sh.rot, opacity: 0 }
+            : { x: '0%',  y: '0%',  rotate: 0,       opacity: 1 }}
+          transition={isShattering
+            ? { duration: 0.55, ease: 'easeOut' }
+            : { duration: 0 }}
+        />
+      ))}
+
+      <AnimatePresence>
+        {!isShattering && (
+          <motion.svg
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <filter id="tut-crack-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="0.7" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            {CRACKS.map((c, i) => (
+              <motion.path
+                key={i} d={c.d}
+                stroke="rgba(251,191,36,0.95)" strokeWidth="0.28" fill="none"
+                filter="url(#tut-crack-glow)"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 0.38, delay: c.delay, ease: 'easeOut' }}
+              />
+            ))}
+            <motion.circle
+              cx="50" cy="48" r="0"
+              fill="rgba(251,191,36,0.45)"
+              animate={{ r: 6 }}
+              transition={{ duration: 0.55, delay: 0.2, ease: 'easeOut' }}
+            />
+          </motion.svg>
+        )}
+      </AnimatePresence>
+
+      {!isShattering && (
+        <motion.div
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.45 }}
+          transition={{ duration: 0.9, delay: 0.2 }}
+          style={{ background: 'radial-gradient(ellipse at 50% 48%, rgba(251,191,36,0.28) 0%, rgba(251,191,36,0.06) 45%, transparent 70%)' }}
+        />
+      )}
+
+      {isFlashing && (
+        <motion.div
+          className="absolute inset-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0] }}
+          transition={{ duration: 0.6, times: [0, 0.25, 1] }}
+          style={{ background: 'radial-gradient(ellipse at 50% 48%, rgba(255,230,60,0.98) 0%, rgba(251,191,36,0.9) 20%, rgba(251,191,36,0.4) 50%, transparent 75%)' }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Cinematic Phase ──────────────────────────────────────────────────────────
 function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
   const [showLumii, setShowLumii] = useState(false);
   const [panDone, setPanDone] = useState(false);
-  const [shatterDone, setShatterDone] = useState(false);
   const [affIdx, setAffIdx] = useState(-1);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
@@ -1085,14 +1245,6 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
     const t3 = setTimeout(() => { dispatch({ type: "NEXT_BEAT" }); }, 3000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [isLocate, dispatch]);
-
-  // Beat 4: shatter then advance
-  useEffect(() => {
-    if (!isShatter) return;
-    const t1 = setTimeout(() => setShatterDone(true), 1200);
-    const t2 = setTimeout(() => dispatch({ type: "NEXT_BEAT" }), 2600);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [isShatter, dispatch]);
 
   // Beat 5: affinity sequence
   useEffect(() => {
@@ -1118,40 +1270,15 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
     <div
       className="fixed inset-0 flex items-center justify-center select-none"
       style={{
-        background: s.beat >= 4
+        background: s.beat >= 5
           ? `url(${backgroundCosmos}) center/cover`
           : "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)",
       }}
     >
-      {s.beat >= 4 && <div className="absolute inset-0 bg-black/60" />}
+      {s.beat >= 5 && <div className="absolute inset-0 bg-black/60" />}
 
-      {/* Shatter overlay */}
-      {isShatter && (
-        <AnimatePresence>
-          {!shatterDone && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.6, 0.9, 0.6, 0] }}
-              transition={{ duration: 2.4, times: [0, 0.2, 0.5, 0.8, 1] }}
-              className="absolute inset-0 z-20 pointer-events-none"
-              style={{
-                background: "radial-gradient(ellipse at 50% 50%, rgba(251,191,36,0.4) 0%, rgba(251,191,36,0.1) 40%, transparent 70%)",
-              }}
-            />
-          )}
-        </AnimatePresence>
-      )}
-      {isShatter && (
-        <motion.div
-          initial={{ scaleX: 0, opacity: 0 }}
-          animate={{ scaleX: 1, opacity: [0, 1, 0.5, 0] }}
-          transition={{ duration: 2.2, times: [0, 0.2, 0.6, 1] }}
-          className="absolute inset-0 z-20 pointer-events-none"
-          style={{
-            background: "linear-gradient(105deg, transparent 40%, rgba(251,191,36,0.3) 50%, transparent 60%)",
-          }}
-        />
-      )}
+      {/* Fullscreen shatter animation */}
+      {isShatter && <FullscreenShatterOverlay onDone={() => dispatch({ type: "NEXT_BEAT" })} />}
 
       {/* Affinity token sequence */}
       {isAffinity && (
@@ -1208,6 +1335,8 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
               showOrb={false}
               playerResponse={beat.playerResponse}
               onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
+              choices={beat.choices}
+              onChoice={(c) => dispatch({ type: "BRANCH_CHOICE", choice: c as "go" | "home" })}
             />
           </AnimatePresence>
         </div>
@@ -1239,7 +1368,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
       )}
 
       {/* Subtle star field for early beats */}
-      {s.beat <= 3 && (
+      {s.beat <= 4 && (
         <div className="absolute inset-0 pointer-events-none">
           {[...Array(30)].map((_, i) => (
             <motion.div
@@ -1607,12 +1736,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 // ─── Main Export ──────────────────────────────────────────────────────────────
 export function TutorialDirector() {
   const [s, dispatch] = useReducer(reducer, INIT_STATE);
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (s.navigateTo) navigate(s.navigateTo);
+  }, [s.navigateTo, navigate]);
 
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return null;
 
-  // Cinematic beats: 0–5
-  if (s.beat <= 5) {
+  // Cinematic beats: 0–6 (includes b3b_farewell at index 4)
+  if (s.beat <= 6) {
     return <CinematicPhase s={s} dispatch={dispatch} />;
   }
 

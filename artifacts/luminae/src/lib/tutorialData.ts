@@ -54,6 +54,7 @@ export interface TutorialBeat {
   wrongClickNudge?: string;
   subSteps?: TutorialSubStep[];
   playerResponse?: string;
+  choices?: { label: string; value: string }[];
 }
 
 export interface TutorialSubStep {
@@ -177,23 +178,36 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "There you are." },
-      { text: "I am Lumii — an echo of the affinities." },
-      { text: "I will help you guide a society toward the cosmic scale." },
+      { text: "Hello, Architect." },
+      { text: "I am Lumii." },
+      { text: "I am here to help you guide civilization on a cosmic scale." },
     ],
     completion: { type: "dialogue" },
+    playerResponse: "Architect? Where am I?",
   },
   {
     id: "b3_architect",
     mode: "listen",
     lumiiZone: "center",
     dialogue: [
-      { text: "And you are its Architect." },
-      { text: "An Architect does not rule." },
-      { text: "An Architect shapes the direction of a people — what they reach for, and what they become." },
-      { text: "I have been waiting for you. Wherever you lead, I will carry the light forward with you." },
+      { text: "An Architect is one who shapes the direction of cosmic society — what its inhabitants reach for, and what they become." },
+      { text: "You stand at the border of a new Universe." },
+      { text: "Whatever you decide, I will carry the light forward with you." },
     ],
     completion: { type: "dialogue" },
-    playerResponse: "Guide me.",
+    choices: [
+      { label: "Take me there.", value: "go" },
+      { label: "Take me home.", value: "home" },
+    ],
+  },
+  {
+    id: "b3b_farewell",
+    mode: "listen",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "Very well. May we meet again." },
+    ],
+    completion: { type: "dialogue" },
   },
   {
     id: "b4_shatter",
