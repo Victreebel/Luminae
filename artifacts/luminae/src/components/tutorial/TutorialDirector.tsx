@@ -1998,10 +1998,18 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
         // Clickable when hint is showing AND there's still a dialogue line to dismiss
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
+        // Dart to top-right corner while burst animations are playing so Lumii
+        // doesn't compete with the centred token / forge animations.
+        const burstActive = !!(purchaseBurst || gemBurst);
+        const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
         return (
           <motion.div
-            animate={{ left: lumiiPos.x, top: lumiiPos.y }}
-            transition={{ type: "spring", stiffness: 80, damping: 18 }}
+            animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
+            transition={
+              burstActive
+                ? { type: "spring", stiffness: 260, damping: 22 }
+                : { type: "spring", stiffness: 80, damping: 18 }
+            }
             className="fixed z-[60] pointer-events-none"
             style={{ transform: "translate(-50%, -50%)" }}
           >
