@@ -192,7 +192,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "As an Architect, you shape the direction of cosmic society." },
       { text: "You determine what its people reach for, and what they become." },
-      { text: "You stand at the border of a new Universe." },
+      { text: "You stand at the border of a brand new Universe." },
       { text: "Whatever you decide, I will carry the light forward with you." },
     ],
     completion: { type: "dialogue" },
