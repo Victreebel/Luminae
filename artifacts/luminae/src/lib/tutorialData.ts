@@ -196,6 +196,17 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "You provide us with the tools to shine brilliantly throughout the cosmos." },
     ],
     completion: { type: "dialogue" },
+    playerResponse: "So I'm in your universe now?",
+  },
+  {
+    id: "b3c_border",
+    mode: "listen",
+    lumiiZone: "center",
+    dialogue: [
+      { text: "You stand at the border." },
+      { text: "Whatever you choose, I will light your way." },
+    ],
+    completion: { type: "dialogue" },
     choices: [
       { label: "Take me there.", value: "go" },
       { label: "Take me home.", value: "home" },
@@ -215,7 +226,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "cinematic",
     lumiiZone: "center",
     dialogue: [
-      { text: "Then let me show you what guides them." },
+      { text: "Welcome to Luminae." },
     ],
     completion: { type: "animation" },
   },

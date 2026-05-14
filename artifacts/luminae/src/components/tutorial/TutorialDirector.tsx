@@ -1901,8 +1901,8 @@ export function TutorialDirector() {
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return null;
 
-  // Cinematic beats: 0–6 (includes b3b_farewell at index 4)
-  if (s.beat <= 6) {
+  // Cinematic beats: 0–7 (includes b3c_border at index 4, b3b_farewell at 5, b4_shatter at 6)
+  if (s.beat <= 7) {
     return <CinematicPhase s={s} dispatch={dispatch} />;
   }
 
