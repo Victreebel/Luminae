@@ -19,6 +19,7 @@ import {
   type TutorialMarketView,
 } from "@/lib/tutorialData";
 import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
+import { gameAudio } from "@/lib/audio";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 
 // ─── Card art ─────────────────────────────────────────────────────────────────
@@ -1106,117 +1107,272 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
 }
 
 // ─── Fullscreen Shatter Overlay ───────────────────────────────────────────────
+// Matches the exact phase structure, 4-layer crack paint, 3-D shard scatter,
+// and audio timing of the Luminary summon cutscene.
+
+const FS_PHASE_ORDER = [
+  'pressure', 'firstcrack', 'leaking', 'secondcrack',
+  'cracking', 'shattering', 'flashing', 'gone',
+] as const;
+type FSPhase = typeof FS_PHASE_ORDER[number];
+
+// Phase durations (ms) — identical to PHASE_DURATIONS in luminaryAssets.tsx
+const FS_DURS: Partial<Record<FSPhase, number>> = {
+  pressure: 90, firstcrack: 320, leaking: 850, secondcrack: 360,
+  cracking: 1100, shattering: 1000, flashing: 950,
+};
+
+// Six-shard geometry — same polygon network as PANEL_PIECES in luminaryAssets,
+// already expressed in percentage coordinates so they tile the full viewport.
+const FS_SHARDS = [
+  { clip: 'polygon(0% 0%, 35.7% 0%, 28.6% 15%, 50% 42.5%, 39.3% 40%, 19.6% 37.5%, 0% 40%)',
+    dx: '-38%', dy: '-32%', rX: -12, rY:   9, rZ:  10 },
+  { clip: 'polygon(35.7% 0%, 100% 0%, 100% 35%, 60.7% 35%, 50% 42.5%, 28.6% 15%)',
+    dx:  '36%', dy: '-30%', rX: -10, rY: -10, rZ:  -9 },
+  { clip: 'polygon(0% 40%, 19.6% 37.5%, 39.3% 40%, 50% 42.5%, 41.1% 57.5%, 25% 72.5%, 16.1% 76.25%, 0% 80%)',
+    dx: '-42%', dy:   '3%', rX:   4, rY:  11, rZ:   7 },
+  { clip: 'polygon(100% 35%, 100% 72.5%, 71.4% 70%, 46.4% 70%, 25% 72.5%, 41.1% 57.5%, 50% 42.5%, 60.7% 35%)',
+    dx:  '44%', dy:   '2%', rX:  -3, rY: -12, rZ:  -6 },
+  { clip: 'polygon(25% 72.5%, 33.9% 85%, 39.3% 100%, 0% 100%, 0% 80%, 16.1% 76.25%)',
+    dx: '-32%', dy:  '36%', rX:  13, rY:   8, rZ:  12 },
+  { clip: 'polygon(25% 72.5%, 46.4% 70%, 71.4% 70%, 100% 72.5%, 100% 100%, 39.3% 100%, 33.9% 85%)',
+    dx:  '30%', dy:  '36%', rX:  11, rY:  -9, rZ: -10 },
+] as const;
+
+// Crack network — paths in viewBox 0-100 using the same percentage coords
+// as the shard polygon vertices (junction P=50,42.5  Q=25,72.5).
+type CrackDef = { d: string; d1: number; isDetail?: true };
+
+const FS_CRACKS_1: CrackDef[] = [
+  { d: 'M35.7,0 L28.6,15 L50,42.5',           d1: 0.00 }, // main  TA→K1→P
+  { d: 'M50,42.5 L60.7,35 L100,35',            d1: 0.06 }, // branch P→K2→RA
+  { d: 'M50,42.5 L39.3,40 L19.6,37.5 L0,40',  d1: 0.08 }, // branch P→K3a→K3b→LA2
+  { d: 'M28.6,15 L19.6,8.75 L10.7,3.1',        d1: 0.05, isDetail: true },
+];
+const FS_CRACKS_2: CrackDef[] = [
+  { d: 'M50,42.5 L41.1,57.5 L25,72.5 L33.9,85 L39.3,100', d1: 0.00 }, // main P→K4→Q→K8→BA
+  { d: 'M25,72.5 L46.4,70 L71.4,70 L100,72.5',            d1: 0.22 }, // branch Q→K5→K6→RB
+  { d: 'M25,72.5 L16.1,76.25 L0,80',                      d1: 0.25 }, // branch Q→K7→LA
+  { d: 'M41.1,57.5 L33.9,52.5 L25,51.25',                 d1: 0.20, isDetail: true },
+];
+
+const FSO_GOLD = '#fbbf24';
+
+// 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam
+// Stroke widths are scaled for a 100-unit viewBox rendered at ~1280 px wide.
+function FSOCrack({ d, d1, isDetail }: CrackDef) {
+  if (isDetail) {
+    return (
+      <motion.path d={d} stroke="white" strokeWidth="0.18" fill="none"
+        filter="url(#fso-cgb)"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: [0, 0.65, 0.55] }}
+        transition={{ duration: 0.08, delay: d1, ease: 'easeOut' }}
+      />
+    );
+  }
+  return (
+    <>
+      {/* L1 white snap */}
+      <motion.path d={d} stroke="white" strokeWidth="0.22" fill="none"
+        filter="url(#fso-cgb)"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
+        transition={{ duration: 0.10, delay: d1, ease: 'easeOut' }}
+      />
+      {/* L2 chasing glow */}
+      <motion.path d={d} stroke={FSO_GOLD} strokeWidth="3.5" fill="none"
+        filter="url(#fso-cgw)"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: [0, 0.80, 0.20, 0] }}
+        transition={{
+          pathLength: { duration: 0.28, delay: d1 + 0.04, ease: 'easeOut' },
+          opacity:    { duration: 0.56, delay: d1 + 0.04, times: [0, 0.14, 0.55, 1.0] },
+        }}
+      />
+      {/* L3 residual wound glow */}
+      <motion.path d={d} stroke={FSO_GOLD} strokeWidth="2.2" fill="none"
+        filter="url(#fso-cgw)"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
+        transition={{ duration: 0.62, delay: d1 + 0.14, ease: 'easeOut' }}
+      />
+      {/* L4 tinted seam */}
+      <motion.path d={d} stroke={FSO_GOLD} strokeWidth="0.45" fill="none"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: 1, opacity: [0, 0, 0.32, 0.52, 0.45] }}
+        transition={{ duration: 0.58, delay: d1 + 0.16, ease: 'easeOut' }}
+      />
+    </>
+  );
+}
+
 function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState<'cracking' | 'shattering' | 'flashing' | 'gone'>('cracking');
+  const [phase, setPhase] = useState<FSPhase>('pressure');
   const doneRef = useRef(onDone);
   useEffect(() => { doneRef.current = onDone; }, [onDone]);
 
+  // Advance through phases at the same durations as the summon cutscene,
+  // then call onDone 300 ms after the last phase resolves.
   useEffect(() => {
-    const timers = [
-      setTimeout(() => setPhase('shattering'), 1100),
-      setTimeout(() => setPhase('flashing'),   1500),
-      setTimeout(() => setPhase('gone'),        2100),
-      setTimeout(() => doneRef.current(),       2300),
-    ];
+    gameAudio.playTutorialShatter();
+    let t = 0;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    FS_PHASE_ORDER.slice(1).forEach((p, i) => {
+      t += FS_DURS[FS_PHASE_ORDER[i] as FSPhase] ?? 0;
+      timers.push(setTimeout(() => setPhase(p), t));
+    });
+    timers.push(setTimeout(() => doneRef.current(), t + 300));
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (phase === 'gone') return null;
 
-  const isShattering = phase === 'shattering' || phase === 'flashing';
+  const phaseIdx  = FS_PHASE_ORDER.indexOf(phase);
+  const past = (p: FSPhase) => phaseIdx >= FS_PHASE_ORDER.indexOf(p);
+
+  const isShattering = past('shattering');
   const isFlashing   = phase === 'flashing';
-  const BG = 'radial-gradient(ellipse at 50% 55%, #0c0c1f 0%, #040408 100%)';
-
-  const SHARDS = [
-    { key: 'tl', clip: 'polygon(0% 0%,  60% 0%,   43% 48%, 0%  36%)',      tx: '-22%', ty: '-22%', rot: -8 },
-    { key: 'tr', clip: 'polygon(60% 0%, 100% 0%,  100% 33%, 57% 47%)',      tx:  '22%', ty: '-22%', rot:  8 },
-    { key: 'ml', clip: 'polygon(0% 36%, 43% 48%,   38% 72%, 0%  64%)',      tx: '-30%', ty:   '0%', rot: -5 },
-    { key: 'mr', clip: 'polygon(57% 47%, 100% 33%, 100% 72%, 62% 72%)',     tx:  '30%', ty:   '0%', rot:  5 },
-    { key: 'bl', clip: 'polygon(0% 64%,  38% 72%,  47% 100%, 0%  100%)',    tx: '-22%', ty:  '22%', rot: -7 },
-    { key: 'br', clip: 'polygon(62% 72%, 100% 72%, 100% 100%, 47% 100%)',   tx:  '22%', ty:  '22%', rot:  7 },
-  ];
-
-  const CRACKS = [
-    { d: 'M50,48 L60,0',            delay: 0.25 },
-    { d: 'M50,48 L100,33',          delay: 0.30 },
-    { d: 'M50,48 L0,36',            delay: 0.28 },
-    { d: 'M50,48 L43,48 L38,72',    delay: 0.40 },
-    { d: 'M50,48 L57,47 L62,72',    delay: 0.42 },
-    { d: 'M50,48 L47,100',          delay: 0.52 },
-    { d: 'M50,48 L0,64',            delay: 0.45 },
-    { d: 'M50,48 L100,72',          delay: 0.48 },
-  ];
+  const BG = 'radial-gradient(ellipse at 50% 43%, #0c0c1f 0%, #040408 100%)';
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
-      {SHARDS.map(sh => (
-        <motion.div
-          key={sh.key}
-          className="absolute inset-0"
-          style={{ clipPath: sh.clip, background: BG }}
-          animate={isShattering
-            ? { x: sh.tx, y: sh.ty, rotate: sh.rot, opacity: 0 }
-            : { x: '0%',  y: '0%',  rotate: 0,       opacity: 1 }}
-          transition={isShattering
-            ? { duration: 0.55, ease: 'easeOut' }
-            : { duration: 0 }}
-        />
+
+      {/* ── Six crystal shard panels ────────────────────────────────────── */}
+      {FS_SHARDS.map((sh, i) => (
+        <motion.div key={i} className="absolute inset-0"
+          style={{
+            clipPath: sh.clip, background: BG,
+            transformPerspective: 1400,
+            transformStyle: 'preserve-3d',
+          }}
+          animate={isShattering ? {
+            x: [0, `${parseFloat(sh.dx) * 0.08}`, sh.dx],
+            y: [0, `${parseFloat(sh.dy) * 0.08}`, sh.dy],
+            rotateX: [0, sh.rX], rotateY: [0, sh.rY], rotateZ: [0, sh.rZ],
+            opacity: [1, 1, 0.96, 0.66, 0],
+            filter: [
+              'brightness(1.0)',
+              'brightness(1.4) drop-shadow(0 0 6px rgba(251,191,36,0.60))',
+              'brightness(2.2) drop-shadow(0 0 12px rgba(251,191,36,0.85))',
+              'brightness(4.0) drop-shadow(0 0 20px rgba(251,191,36,0.95))',
+              'brightness(7.0) drop-shadow(0 0 28px rgba(255,255,255,0.80))',
+            ],
+          } : { x: '0%', y: '0%', rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1, filter: 'brightness(1.0)' }}
+          transition={isShattering ? {
+            duration: 4.5, delay: i * 0.04,
+            x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+            y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+            rotateX: { ease: 'easeOut' }, rotateY: { ease: 'easeOut' }, rotateZ: { ease: 'easeOut' },
+            opacity: { times: [0, 0.08, 0.26, 0.56, 1.0], ease: 'easeInOut' },
+            filter:  { times: [0, 0.12, 0.34, 0.60, 0.82], ease: 'easeInOut' },
+          } : { duration: 0 }}
+        >
+          {/* Gold screen-blend transmutation overlay on each shard */}
+          {isShattering && (
+            <motion.div className="absolute inset-0 pointer-events-none"
+              style={{ background: FSO_GOLD, mixBlendMode: 'screen' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0, 0.18, 0.70, 1.00, 0.85] }}
+              transition={{ duration: 4.5, times: [0, 0.10, 0.34, 0.58, 0.78, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
+            />
+          )}
+        </motion.div>
       ))}
 
+      {/* ── Crack SVG — four-layer paint, hidden during shattering ──────── */}
       <AnimatePresence>
         {!isShattering && (
-          <motion.svg
-            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+          <motion.svg exit={{ opacity: 0, transition: { duration: 0.08 } }}
             className="absolute inset-0 w-full h-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
+            viewBox="0 0 100 100" preserveAspectRatio="none"
           >
             <defs>
-              <filter id="tut-crack-glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="0.7" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
+              {/* Tight bloom for crisp white fracture line */}
+              <filter id="fso-cgb" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="0.25" result="b" />
+                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+              {/* Wide glow for chasing + residual layers */}
+              <filter id="fso-cgw" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="3" />
               </filter>
             </defs>
-            {CRACKS.map((c, i) => (
-              <motion.path
-                key={i} d={c.d}
-                stroke="rgba(251,191,36,0.95)" strokeWidth="0.28" fill="none"
-                filter="url(#tut-crack-glow)"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 0.38, delay: c.delay, ease: 'easeOut' }}
-              />
-            ))}
-            <motion.circle
-              cx="50" cy="48" r="0"
-              fill="rgba(251,191,36,0.45)"
-              animate={{ r: 6 }}
-              transition={{ duration: 0.55, delay: 0.2, ease: 'easeOut' }}
-            />
+
+            {/* First crack network — mounts on firstcrack phase, stays visible */}
+            {past('firstcrack') && FS_CRACKS_1.map((c, i) => <FSOCrack key={`c1-${i}`} {...c} />)}
+
+            {/* Second crack network — mounts on secondcrack phase */}
+            {past('secondcrack') && FS_CRACKS_2.map((c, i) => <FSOCrack key={`c2-${i}`} {...c} />)}
+
+            {/* Ambient junction glow during leaking phase */}
+            {past('leaking') && !past('cracking') && (
+              <>
+                <motion.circle cx="50" cy="42.5" r="6" fill={FSO_GOLD} filter="url(#fso-cgw)"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.18, 0.09, 0.22, 0.10, 0.20] }}
+                  transition={{ duration: 3.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.4 }}
+                />
+                <motion.circle cx="50" cy="42.5" r="0.7" fill="white" filter="url(#fso-cgb)"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.56, 0.10, 0.76, 0.24, 0.48, 0] }}
+                  transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
+                />
+              </>
+            )}
+
+            {/* Energy burst at junctions during cracking phase */}
+            {past('cracking') && (
+              <>
+                <motion.circle cx="50" cy="42.5" r="0"
+                  fill={FSO_GOLD} filter="url(#fso-cgw)"
+                  animate={{ r: 8, opacity: [0, 0.55, 0.22] }}
+                  transition={{ duration: 0.70, ease: 'easeOut' }}
+                />
+                <motion.circle cx="25" cy="72.5" r="0"
+                  fill={FSO_GOLD} filter="url(#fso-cgw)"
+                  animate={{ r: 6, opacity: [0, 0.45, 0.18] }}
+                  transition={{ duration: 0.58, delay: 0.12, ease: 'easeOut' }}
+                />
+              </>
+            )}
           </motion.svg>
         )}
       </AnimatePresence>
 
+      {/* ── Pre-shatter ambient glow build-up ───────────────────────────── */}
       {!isShattering && (
-        <motion.div
-          className="absolute inset-0"
+        <motion.div className="absolute inset-0"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.45 }}
-          transition={{ duration: 0.9, delay: 0.2 }}
-          style={{ background: 'radial-gradient(ellipse at 50% 48%, rgba(251,191,36,0.28) 0%, rgba(251,191,36,0.06) 45%, transparent 70%)' }}
+          animate={{ opacity: past('firstcrack') ? 0.55 : 0.18 }}
+          transition={{ duration: past('firstcrack') ? 0.6 : 0.5, ease: 'easeOut' }}
+          style={{ background: 'radial-gradient(ellipse at 50% 42.5%, rgba(251,191,36,0.30) 0%, rgba(251,191,36,0.08) 40%, transparent 68%)' }}
         />
       )}
 
+      {/* ── Cosmic light bloom expanding from the crack centre (shattering) */}
+      <AnimatePresence>
+        {isShattering && !isFlashing && (
+          <motion.div key="cosmiclight" className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.84, 0.96, 0.82, 0.40, 0] }}
+            exit={{ opacity: 0, transition: { duration: 0.20 } }}
+            transition={{ opacity: { duration: 1.08, times: [0, 0.10, 0.28, 0.50, 0.76, 1.0], ease: 'easeInOut' } }}
+            style={{
+              background: `radial-gradient(ellipse 38% 42% at 50% 42.5%, #ffffff 0%, ${FSO_GOLD}ff 12%, ${FSO_GOLD}dd 28%, ${FSO_GOLD}88 55%, transparent 85%)`,
+              filter: 'blur(18px)',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Gold-white flash at the moment of release ───────────────────── */}
       {isFlashing && (
-        <motion.div
-          className="absolute inset-0"
+        <motion.div className="absolute inset-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 1, 0] }}
-          transition={{ duration: 0.6, times: [0, 0.25, 1] }}
-          style={{ background: 'radial-gradient(ellipse at 50% 48%, rgba(255,230,60,0.98) 0%, rgba(251,191,36,0.9) 20%, rgba(251,191,36,0.4) 50%, transparent 75%)' }}
+          transition={{ duration: 0.75, times: [0, 0.22, 1] }}
+          style={{ background: 'radial-gradient(ellipse at 50% 42.5%, rgba(255,235,80,0.98) 0%, rgba(251,191,36,0.92) 22%, rgba(251,191,36,0.45) 52%, transparent 76%)' }}
         />
       )}
     </div>

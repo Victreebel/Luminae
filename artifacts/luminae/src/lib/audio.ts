@@ -762,6 +762,110 @@ class GameAudio {
     }
   }
 
+  /**
+   * Tutorial fullscreen shatter — crack/shatter/flash sequence timed to the
+   * FullscreenShatterOverlay visual phases.  Same sound layers as
+   * playSummonCutscene but starting at the pressure phase (no camera intro).
+   *
+   * Visual phase ms offsets from overlay mount:
+   *   pressure=0  firstcrack=90  leaking=410  secondcrack=1260
+   *   cracking=1620  shattering=2720  flashing=3720
+   */
+  playTutorialShatter() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t   = ctx.currentTime;
+
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -14; comp.knee.value = 10;
+      comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.18;
+      comp.connect(ctx.destination);
+      const D = comp;
+
+      const s = (ms: number) => t + ms / 1000;
+
+      const CRACK1 =   40;   // ≈ firstcrack phase onset
+      const LEAK   =  660;   // ≈ leaking phase onset
+      const CRACK2 =  860;   // ≈ secondcrack phase onset
+      const CRACKS = 1280;   // ≈ cracking phase onset
+      const SHATT  = 2320;   // ≈ shattering phase onset
+      const FLASH  = 3160;   // ≈ flashing phase onset
+
+      // ── pressure (0–90 ms): crystalline rattle + hum + warble ───────
+      for (let i = 0; i < 5; i++) {
+        const at = s(i * 16 + Math.random() * 8);
+        this.noiseBlip(ctx, at, 0.034, 0.038 + Math.random() * 0.022, 500 + Math.random() * 900, 9, D);
+      }
+      this.osc(ctx, 82, 'sine', s(0), s(CRACK1), 0.08, 0.10, D);
+      this.wobble(ctx, s(0), 90, 220, 9, 0.05, D);
+
+      // ── firstcrack (40 ms): structural fracture snap + bass ─────────
+      this.noiseBlip(ctx, s(CRACK1),       0.090, 0.14,  420, 9, D);
+      this.noiseBlip(ctx, s(CRACK1 +  4),  0.038, 0.11, 1050, 11, D);
+      this.noiseBlip(ctx, s(CRACK1),       0.110, 0.10,  195, 6, D);
+      this.noiseSweep(ctx, s(CRACK1 + 28), 0.22, 0.052, 90, 480, D);
+      this.osc(ctx, 60,  'sine', s(CRACK1), s(CRACK1 + 310), 0.15, 0.005, D);
+      this.osc(ctx, 42,  'sine', s(CRACK1), s(CRACK1 + 470), 0.10, 0.008, D);
+      this.osc(ctx, 110, 'sine', s(CRACK1), s(CRACK1 + 200), 0.08, 0.004, D);
+
+      // ── leaking (660 ms): energy bleed + deep pressure stress ────────
+      this.noiseBlip(ctx, s(LEAK),        0.84, 0.048, 4300, 2.0, D);
+      this.noiseBlip(ctx, s(LEAK +  40),  0.50, 0.046,  480, 5, D);
+      this.noiseSweep(ctx, s(LEAK + 170), 0.65, 0.038,   75, 230, D);
+      this.risingTone(ctx, s(LEAK), 850, 185, 365, 0.055, D);
+
+      // ── secondcrack (860 ms): staggered brittle physical snaps ───────
+      [0, 110, 240, 370].forEach((off, i) => {
+        this.noiseBlip(ctx, s(CRACK2 + off),     0.050, 0.048 + i * 0.018, 270 + i * 105, 8, D);
+        this.noiseBlip(ctx, s(CRACK2 + off + 7), 0.026, 0.032 + i * 0.013, 720 + i * 175, 10, D);
+      });
+      this.noiseSweep(ctx, s(CRACK2), 0.42, 0.088, 360, 3400, D);
+
+      // ── cracking (1280 ms): escalating fracture burst ─────────────────
+      [0, 88, 188, 305, 455, 675, 900].forEach((off, i) => {
+        const vol = 0.038 + i * 0.016;
+        this.noiseBlip(ctx, s(CRACKS + off),     0.040, Math.min(vol, 0.12),        175 + i * 68, 7, D);
+        this.noiseBlip(ctx, s(CRACKS + off + 9), 0.022, Math.min(vol * 0.58, 0.08), 530 + i * 125, 9, D);
+      });
+      this.noiseSweep(ctx, s(CRACKS), 1.10, 0.10, 270, 5200, D);
+      this.osc(ctx, 52, 'sine', s(CRACKS), s(SHATT), 0.09, 0.20, D);
+
+      // ── shattering (2320 ms): rupture + shard spray + bass bloom ─────
+      this.noiseBlip(ctx, s(SHATT),       0.36, 0.13, 2900, 3.0, D);
+      this.noiseBlip(ctx, s(SHATT +  18), 0.27, 0.10, 1550, 2.0, D);
+      this.noiseBlip(ctx, s(SHATT +  42), 0.21, 0.07,  760, 1.5, D);
+      for (let i = 0; i < 10; i++) {
+        const at = s(SHATT + 32 + i * 68 + Math.random() * 32);
+        this.noiseBlip(ctx, at, 0.028, Math.max(0.008, 0.048 - i * 0.003), 700 + Math.random() * 1800, 4, D);
+      }
+      this.noiseSweep(ctx, s(SHATT +  12), 0.50, 0.062, 3800, 850, D);
+      this.noiseSweep(ctx, s(SHATT +  50), 0.40, 0.046, 2600, 600, D);
+      this.osc(ctx, 40, 'sine', s(SHATT),       s(SHATT + 760), 0.14, 0.010, D);
+      this.osc(ctx, 58, 'sine', s(SHATT),       s(SHATT + 560), 0.08, 0.015, D);
+      this.osc(ctx, 80, 'sine', s(SHATT +  18), s(SHATT + 400), 0.055, 0.020, D);
+
+      // ── flashing (3160 ms): bright swell + celestial chord + shimmer ──
+      this.osc(ctx, 880,  'sine', s(FLASH),      s(FLASH + 460), 0.11, 0.008, D);
+      this.osc(ctx, 1320, 'sine', s(FLASH),      s(FLASH + 310), 0.055, 0.008, D);
+      [523.25, 659.25, 783.99, 987.77].forEach((f, i) => {
+        this.osc(ctx, f, 'sine', s(FLASH + 22 + i * 16), s(FLASH + 910), 0.075, 0.012, D);
+      });
+      this.noiseBlip(ctx, s(FLASH +  38), 0.60, 0.085, 5400, 2.0, D);
+      this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
+
+      // ── MP3 assets — same SFX as summon cutscene ─────────────────────
+      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,          0.80);
+      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,          0.76);
+      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,          0.90);
+      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,    0.82);
+      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,          0.88);
+
+    } catch (e) {
+      console.warn('[Luminae] Tutorial shatter audio failed', e);
+    }
+  }
+
   playBonusSound(color: GemKey) {
     switch (color) {
       case 'onyx': return this.playBonusOnyx();
