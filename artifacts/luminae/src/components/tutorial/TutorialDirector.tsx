@@ -1207,20 +1207,29 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   );
 }
 
-function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
+function FullscreenShatterOverlay({ onDone, onRevealCosmos }: {
+  onDone: () => void;
+  onRevealCosmos?: () => void;
+}) {
   const [phase, setPhase] = useState<FSPhase>('pressure');
   const doneRef = useRef(onDone);
+  const revealRef = useRef(onRevealCosmos);
   useEffect(() => { doneRef.current = onDone; }, [onDone]);
+  useEffect(() => { revealRef.current = onRevealCosmos; }, [onRevealCosmos]);
 
   // Advance through phases at the same durations as the summon cutscene,
-  // then call onDone 300 ms after the last phase resolves.
+  // fire onRevealCosmos when the flashing phase begins so cosmos fades in
+  // through the flash, then call onDone 300 ms after the last phase resolves.
   useEffect(() => {
     gameAudio.playTutorialShatter();
     let t = 0;
     const timers: ReturnType<typeof setTimeout>[] = [];
     FS_PHASE_ORDER.slice(1).forEach((p, i) => {
       t += FS_DURS[FS_PHASE_ORDER[i] as FSPhase] ?? 0;
-      timers.push(setTimeout(() => setPhase(p), t));
+      timers.push(setTimeout(() => {
+        setPhase(p);
+        if (p === 'flashing') revealRef.current?.();
+      }, t));
     });
     timers.push(setTimeout(() => doneRef.current(), t + 300));
     return () => timers.forEach(clearTimeout);
@@ -1361,13 +1370,13 @@ function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
         />
       )}
 
-      {/* ── Full-panel gold-white flash at the moment of release ────────── */}
+      {/* ── Full-panel white-gold flash at the moment of release ────────── */}
       {isFlashing && (
         <motion.div className="absolute inset-0 pointer-events-none"
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0.85, 0] }}
-          transition={{ duration: 0.80, times: [0, 0.20, 0.45, 1.0] }}
-          style={{ background: 'rgba(255, 235, 80, 0.96)' }}
+          animate={{ opacity: [0, 1, 0.95, 0.50, 0] }}
+          transition={{ duration: 1.10, times: [0, 0.10, 0.28, 0.62, 1.0] }}
+          style={{ background: 'rgba(255, 255, 200, 1.0)' }}
         />
       )}
     </div>
@@ -1381,6 +1390,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const [panDone, setPanDone] = useState(false);
   const [affIdx, setAffIdx] = useState(-1);
   const [shatterReady, setShatterReady] = useState(false);
+  const [cosmosVisible, setCosmosVisible] = useState(false);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -1422,16 +1432,28 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   return (
     <div
       className="fixed inset-0 flex items-center justify-center select-none"
-      style={{
-        background: s.beat >= 7
-          ? `url(${backgroundCosmos}) center/cover`
-          : "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)",
-      }}
+      style={{ background: "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)" }}
     >
-      {s.beat >= 7 && <div className="absolute inset-0 bg-black/60" />}
+      {/* Cosmos fades in through the flash when flashing phase fires */}
+      {(cosmosVisible || s.beat >= 7) && (
+        <motion.div
+          className="absolute inset-0"
+          style={{ backgroundImage: `url(${backgroundCosmos})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 2.2, ease: [0.20, 0, 0.10, 1] }}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+        </motion.div>
+      )}
 
       {/* Fullscreen shatter animation — only starts after player taps "Welcome to Luminae." */}
-      {isShatter && shatterReady && <FullscreenShatterOverlay onDone={() => dispatch({ type: "NEXT_BEAT" })} />}
+      {isShatter && shatterReady && (
+        <FullscreenShatterOverlay
+          onDone={() => dispatch({ type: "NEXT_BEAT" })}
+          onRevealCosmos={() => setCosmosVisible(true)}
+        />
+      )}
 
       {/* Affinity token sequence — click-gated, Lumii stays in front at z-30 */}
       {isAffinityTokens && (
