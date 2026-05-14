@@ -456,7 +456,12 @@ function LumiiOrb({ size = 64, excited = false }: { size?: number; excited?: boo
 function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
   const meta = GEM_META[gem];
   return (
-    <img src={meta.image} alt={meta.name} style={{ width: size, height: size, objectFit: "contain" }} draggable={false} />
+    <img
+      src={meta.image}
+      alt={meta.name}
+      style={{ width: size, height: size, objectFit: "contain", filter: `drop-shadow(0 0 3px ${meta.glowHex}88)` }}
+      draggable={false}
+    />
   );
 }
 
@@ -497,9 +502,9 @@ function DialogueBox({
       className="relative"
     >
       <div
-        className={`bg-black/85 border border-white/15 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-sm select-none ${canTap ? "cursor-pointer" : ""}`}
+        className={`bg-slate-950/95 border border-white/10 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-md select-none ${canTap ? "cursor-pointer" : ""}`}
         onClick={canTap ? onTap : undefined}
-        style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.8)" }}
+        style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.9)" }}
       >
         <div className="flex items-start gap-3">
           {showOrb && <LumiiOrb size={32} excited={!!nudge} />}
@@ -663,7 +668,7 @@ function AffinityWell({
   const isGuidedBeat = Object.keys(guidedGems).length > 0;
 
   return (
-    <div className="bg-black/50 border border-white/10 rounded-2xl p-3">
+    <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
       <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
       <div className="flex gap-3 flex-wrap justify-center mb-3">
         {GEM_KEYS_NO_FLUX.map(gem => {
@@ -736,7 +741,7 @@ function PlayerHand({ s, dispatch, beatId, subStep }: { s: TutState; dispatch: R
   const forgeEnabled = isForgeReservedBeat && subStep >= 1;
 
   return (
-    <div className="bg-black/50 border border-white/10 rounded-2xl p-3">
+    <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
       <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Reserved</div>
       <div className="flex gap-3 flex-wrap">
         {s.reserved.map(id => {
@@ -770,7 +775,8 @@ function PlayerStorage({ s, highlighted }: { s: TutState; highlighted: boolean }
   }
 
   return (
-    <div className={`bg-black/50 border rounded-2xl p-3 transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}>
+    <div className={`border rounded-2xl p-3 backdrop-blur-md transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}
+      style={{ background: "rgba(3,3,12,0.78)" }}>
       <div className="flex justify-between items-center mb-2">
         <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">Forged Artifacts</div>
         {Object.keys(bonusTotals).length > 0 && (
@@ -806,15 +812,17 @@ function PlayerStorage({ s, highlighted }: { s: TutState; highlighted: boolean }
 // ─── Player Stats ─────────────────────────────────────────────────────────────
 function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) {
   return (
-    <div className={`bg-black/50 border rounded-2xl p-3 transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}>
-      <div className="flex items-center gap-3">
+    <div className={`border rounded-2xl p-3 backdrop-blur-md transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}
+      style={{ background: "rgba(3,3,12,0.82)" }}>
+      {/* Eminence row */}
+      <div className="flex items-center gap-3 mb-2.5">
         <div>
           <div className="text-[9px] text-white/40 uppercase tracking-wider">Eminence</div>
           <motion.div
             key={s.eminence}
             initial={{ scale: 1.3, color: "#fbbf24" }}
             animate={{ scale: 1, color: "#ffffff" }}
-            className="text-2xl font-serif font-bold text-white"
+            className="text-2xl font-serif font-bold text-white leading-none"
           >{s.eminence}</motion.div>
           <div className="text-[9px] text-white/30">of 15</div>
         </div>
@@ -825,27 +833,53 @@ function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) 
             transition={{ type: "spring", stiffness: 100 }}
           />
         </div>
-        {s.crystals.flux > 0 && (
-          <div className="flex items-center gap-1 bg-amber-900/40 rounded-lg px-2 py-1">
-            <span className="text-[9px] font-bold text-amber-300">{s.crystals.flux}</span>
-            <MiniGem gem="flux" size={12} />
-            <span className="text-[8px] text-white/50">Singularity</span>
-          </div>
-        )}
       </div>
-      {Object.values(s.crystals).some(v => v > 0) && (
-        <div className="flex gap-1 mt-2 flex-wrap">
-          {(Object.entries(s.crystals) as [GemKey, number][]).map(([k, v]) => {
-            if (!v || v === 0) return null;
-            return (
-              <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1.5 py-0.5">
-                <span className="text-[10px] font-bold text-white">{v}</span>
-                <MiniGem gem={k} size={10} />
+      {/* 6-column affinity boxes — matches the game's player panel */}
+      <div className="flex gap-1">
+        {ALL_GEMS.map(gem => {
+          const meta = GEM_META[gem];
+          const held = s.crystals[gem] ?? 0;
+          const bonus = gem !== "flux" ? (s.bonuses[gem] ?? 0) : 0;
+          const reserved = gem === "flux" ? s.reserved.length : 0;
+          const hasContent = gem === "flux" ? (held > 0 || reserved > 0) : (held > 0 || bonus > 0);
+          return (
+            <div
+              key={gem}
+              className="flex-1 min-h-[64px] flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
+              style={{
+                background: hasContent
+                  ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                  : "linear-gradient(180deg, #07070b 0%, #0e0e14 100%)",
+                border: `1px solid ${hasContent ? meta.hex + "AA" : meta.hex + "22"}`,
+                boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : "none",
+              }}
+            >
+              {hasContent && (
+                <div className="absolute inset-x-0 top-0 h-[1px]"
+                  style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+              )}
+              <div className="flex items-center gap-0.5 justify-center">
+                <span className="text-[7px] font-semibold tracking-wide leading-none truncate"
+                  style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                <MiniGem gem={gem} size={7} />
               </div>
-            );
-          })}
-        </div>
-      )}
+              <span
+                className="text-xl font-black leading-none tracking-tight"
+                style={{
+                  color: hasContent ? "#fff" : meta.hex + "40",
+                  textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none",
+                }}
+              >{held}</span>
+              {gem !== "flux" && bonus > 0 && (
+                <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
+              )}
+              {gem === "flux" && reserved > 0 && (
+                <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reserved}r</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1419,21 +1453,57 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const lumiiPos = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "88%" };
 
   return (
-    <div className="fixed inset-0 overflow-y-auto" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
-      <div className="absolute inset-0 bg-black/75 pointer-events-none" />
+    <div className="fixed inset-0 overflow-y-auto">
+      {/* Cosmos background with breathing animation — matches game */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `url(${backgroundCosmos})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          animation: "cosmic-breathe 12s ease-in-out infinite",
+        }}
+      />
+      {/* Darkening veil */}
+      <div className="absolute inset-0 bg-black/68 pointer-events-none" />
+      {/* Nebula corner glows — affinity-palette tints */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 55% 35% at 100% 0%,   #3D6BFF0F 0%, transparent 70%)," +
+            "radial-gradient(ellipse 45% 30% at 0%   100%, #FF5A3C0C 0%, transparent 70%)," +
+            "radial-gradient(ellipse 40% 28% at 0%   0%,   #7B1FA20C 0%, transparent 65%)," +
+            "radial-gradient(ellipse 42% 30% at 100% 100%, #2ECC710B 0%, transparent 65%)",
+        }}
+      />
 
       {/* Dim overlay for listen/look mode */}
       {isDimmed && (
         <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />
       )}
 
+      {/* Tutorial header bar — mirrors the game's header */}
+      <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 border-b border-white/10 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.82)" }}>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col leading-none">
+            <span className="text-sm font-serif font-bold text-indigo-300 tracking-wide">Luminae</span>
+            <span className="text-[9px] text-white/35 tracking-widest">Tutorial</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <LumiiOrb size={22} excited={beat.mode === "act" || beat.mode === "semiOpen"} />
+          <span className="text-[10px] text-white/50 font-medium">Lumii</span>
+        </div>
+      </header>
+
       {/* Main board */}
       <div className="relative z-10 flex flex-col min-h-full px-4 py-4 gap-3 pb-52">
-        {/* Header: Player stats */}
+        {/* Player stats */}
         <PlayerStats s={s} highlighted={isEminenceHighlighted} />
 
         {/* Market section */}
-        <div className="bg-black/40 border border-white/8 rounded-2xl p-3">
+        <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
           <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
           <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} />
         </div>
