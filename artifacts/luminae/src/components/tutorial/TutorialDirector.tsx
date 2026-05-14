@@ -450,27 +450,25 @@ function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
 
 // ─── DialogueBox ──────────────────────────────────────────────────────────────
 function DialogueBox({
-  lines, lineIndex, onTap, nudge, mode
+  lines, lineIndex, onTap, nudge, mode, showOrb = true,
 }: {
   lines: { text: string }[];
   lineIndex: number;
   onTap: () => void;
   nudge: string | null;
   mode: string;
+  showOrb?: boolean;
 }) {
   const text = nudge ?? (lines[lineIndex]?.text ?? "");
   const isLast = lineIndex >= lines.length - 1;
-  // In listen/look: tap advances and can complete the beat.
-  // In act/semiOpen: tap only advances through non-last dialogue lines;
-  // on the last line the player must perform the required action.
   const isPassiveMode = mode === "listen" || mode === "look";
-  const canTap = isPassiveMode || !isLast; // allow tap unless we're at last line of an action beat
+  const canTap = isPassiveMode || !isLast;
 
   const hintText = (() => {
     if (nudge) return null;
     if (!isLast) return "tap to continue";
     if (isPassiveMode) return "tap to continue";
-    return null; // last line of act beat — no tap hint, action required
+    return null;
   })();
 
   return (
@@ -487,7 +485,7 @@ function DialogueBox({
         style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.8)" }}
       >
         <div className="flex items-start gap-3">
-          <LumiiOrb size={32} excited={!!nudge} />
+          {showOrb && <LumiiOrb size={32} excited={!!nudge} />}
           <div className="flex-1">
             <p className="text-sm text-white/90 leading-relaxed">{text}</p>
             {hintText && (
@@ -634,7 +632,7 @@ function AffinityWell({
   return (
     <div className="bg-black/50 border border-white/10 rounded-2xl p-3">
       <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
-      <div className="flex gap-2 flex-wrap justify-center mb-3">
+      <div className="flex gap-3 flex-wrap justify-center mb-3">
         {GEM_KEYS_NO_FLUX.map(gem => {
           const meta = GEM_META[gem];
           const cur = s.wellSel[gem] ?? 0;
@@ -644,47 +642,53 @@ function AffinityWell({
           const canRemove = wellEnabled && cur > 0;
 
           return (
-            <div key={gem} className="flex flex-col items-center gap-1">
-              <motion.div
-                animate={isHighlighted && cur < guided ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-                transition={{ duration: 1.2, repeat: Infinity }}
-                className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${isHighlighted ? "border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]" : "border-white/15"} ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
-                style={{ borderColor: cur > 0 ? meta.hex : undefined }}
+            <div key={gem} className="flex flex-col items-center gap-1.5">
+              {/* Tap gem orb to add; shows selected count as badge */}
+              <motion.button
+                animate={isHighlighted && cur < guided ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+                transition={{ duration: 1.1, repeat: Infinity }}
+                onClick={() => canAdd ? dispatch({ type: "SEL_AFF", gem, delta: 1 }) : undefined}
+                disabled={!canAdd}
+                className={`relative w-14 h-14 rounded-full border-2 flex items-center justify-center transition-all
+                  ${isHighlighted ? "shadow-[0_0_12px_rgba(251,191,36,0.6)]" : ""}
+                  ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
+                  ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
+                style={{ borderColor: cur > 0 ? meta.hex : isHighlighted ? "#fbbf24" : "rgba(255,255,255,0.15)" }}
               >
-                <img src={meta.image} alt={meta.name} className="w-6 h-6 object-contain" draggable={false} />
-              </motion.div>
-              <div className="flex items-center gap-0.5">
-                <button
-                  onClick={() => canRemove && dispatch({ type: "SEL_AFF", gem, delta: -1 })}
-                  disabled={!canRemove}
-                  className="w-4 h-4 rounded text-white/50 hover:text-white text-xs flex items-center justify-center disabled:opacity-20"
-                >−</button>
-                <span className="text-[11px] font-bold text-white w-4 text-center">{cur}</span>
-                <button
-                  onClick={() => canAdd && dispatch({ type: "SEL_AFF", gem, delta: 1 })}
-                  disabled={!canAdd}
-                  className={`w-4 h-4 rounded text-xs flex items-center justify-center ${isHighlighted && canAdd ? "text-amber-300 hover:text-amber-200" : "text-white/50 hover:text-white"} disabled:opacity-20`}
-                >+</button>
-              </div>
+                <img src={meta.image} alt={meta.name} className="w-8 h-8 object-contain" draggable={false} />
+                {cur > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-white shadow"
+                    style={{ background: meta.hex }}
+                  >{cur}</span>
+                )}
+              </motion.button>
+              {/* Minus button — only visible when cur > 0 */}
+              <button
+                onClick={() => canRemove ? dispatch({ type: "SEL_AFF", gem, delta: -1 }) : undefined}
+                disabled={!canRemove}
+                className={`text-[10px] font-bold w-6 h-5 rounded transition-all
+                  ${canRemove ? "bg-white/10 text-white/70 hover:bg-white/20" : "opacity-0 pointer-events-none"}`}
+              >−</button>
             </div>
           );
         })}
       </div>
       <div className="flex gap-2 items-center justify-between">
         <div className="text-[10px] text-white/40">
-          {totalSel > 0 ? `Selected: ${totalSel}` : "Select affinities to gather"}
+          {totalSel > 0 ? `${totalSel} selected` : "Tap a gem to select it"}
         </div>
         <div className="flex gap-1">
           {totalSel > 0 && (
             <button
               onClick={() => dispatch({ type: "CLEAR_SEL" })}
-              className="text-[9px] px-2 py-1 rounded-lg bg-white/8 text-white/50 hover:bg-white/15"
+              className="text-[10px] px-2 py-1.5 rounded-lg bg-white/8 text-white/50 hover:bg-white/15"
             >Clear</button>
           )}
           <button
-            onClick={() => wellEnabled && totalSel > 0 && dispatch({ type: "HARNESS" })}
+            onClick={() => wellEnabled && totalSel > 0 ? dispatch({ type: "HARNESS" }) : undefined}
             disabled={!wellEnabled || totalSel === 0}
-            className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all ${wellEnabled && totalSel > 0 ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md" : "bg-white/8 text-white/20 cursor-not-allowed"}`}
+            className={`text-[11px] font-bold px-4 py-1.5 rounded-lg transition-all ${wellEnabled && totalSel > 0 ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md" : "bg-white/8 text-white/20 cursor-not-allowed"}`}
           >Harness</button>
         </div>
       </div>
@@ -1439,6 +1443,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             }}
             nudge={s.nudge}
             mode={beat.mode}
+            showOrb={false}
           />
         </AnimatePresence>
       </div>
