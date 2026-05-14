@@ -1530,14 +1530,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <motion.div
             animate={{ left: lumiiPos.x, top: lumiiPos.y }}
             transition={{ type: "spring", stiffness: 80, damping: 18 }}
-            className={`fixed z-40 ${lumiiClickable ? "" : "pointer-events-none"}`}
+            className="fixed z-[60] pointer-events-none"
             style={{ transform: "translate(-50%, -50%)" }}
           >
             <motion.div
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-              className={`flex flex-col items-center gap-1 ${lumiiClickable ? "cursor-pointer" : ""}`}
-              onClick={lumiiClickable ? () => dispatch({ type: "NEXT_DLG" }) : undefined}
+              className="flex flex-col items-center gap-1"
             >
               <LumiiOrb size={48} excited={isActMode} />
               <AnimatePresence>
@@ -1555,13 +1554,20 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                       transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
                       className="text-amber-300 text-lg leading-none"
                     >↓</motion.div>
-                    <motion.button
-                      animate={{ opacity: [0.7, 1, 0.7] }}
-                      transition={{ duration: 1.4, repeat: Infinity }}
-                      onClick={lumiiClickable ? () => dispatch({ type: "NEXT_DLG" }) : undefined}
-                      className={`text-[10px] font-semibold text-amber-300 whitespace-nowrap px-3 py-1 rounded-full transition-all active:scale-95 ${lumiiClickable ? "cursor-pointer hover:bg-amber-400/20" : "cursor-default"}`}
-                      style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(251,191,36,0.35)" }}
-                    >over here →</motion.button>
+                    {lumiiClickable ? (
+                      <motion.button
+                        animate={{ opacity: [0.7, 1, 0.7] }}
+                        transition={{ duration: 1.4, repeat: Infinity }}
+                        onClick={(e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); }}
+                        className="pointer-events-auto cursor-pointer text-[10px] font-semibold text-amber-300 whitespace-nowrap px-3 py-1.5 rounded-full transition-all active:scale-95 hover:bg-amber-400/20"
+                        style={{ background: "rgba(0,0,0,0.65)", border: "1px solid rgba(251,191,36,0.5)", boxShadow: "0 0 12px rgba(251,191,36,0.2)" }}
+                      >over here →</motion.button>
+                    ) : (
+                      <span
+                        className="text-[10px] font-semibold text-amber-300 whitespace-nowrap px-2 py-0.5 rounded-full"
+                        style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(251,191,36,0.35)" }}
+                      >over here</span>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
