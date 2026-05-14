@@ -1216,19 +1216,22 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   );
 }
 
-function FullscreenShatterOverlay({ onDone, onRevealCosmos }: {
+function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   onDone: () => void;
   onRevealCosmos?: () => void;
+  onShattering?: () => void;
 }) {
   const [phase, setPhase] = useState<FSPhase>('pressure');
   const doneRef = useRef(onDone);
   const revealRef = useRef(onRevealCosmos);
+  const shatteringRef = useRef(onShattering);
   useEffect(() => { doneRef.current = onDone; }, [onDone]);
   useEffect(() => { revealRef.current = onRevealCosmos; }, [onRevealCosmos]);
+  useEffect(() => { shatteringRef.current = onShattering; }, [onShattering]);
 
-  // Advance through phases at the same durations as the summon cutscene,
-  // fire onRevealCosmos when the flashing phase begins so cosmos fades in
-  // through the flash, then call onDone 300 ms after the last phase resolves.
+  // Advance through phases at the same durations as the summon cutscene.
+  // onShattering fires when shards begin flying (cosmos underlight starts).
+  // onRevealCosmos fires at the same moment so the cosmos fades in through the gaps.
   useEffect(() => {
     gameAudio.playTutorialShatter();
     let t = 0;
@@ -1237,7 +1240,10 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos }: {
       t += FS_DURS[FS_PHASE_ORDER[i] as FSPhase] ?? 0;
       timers.push(setTimeout(() => {
         setPhase(p);
-        if (p === 'flashing') revealRef.current?.();
+        if (p === 'shattering') {
+          shatteringRef.current?.();
+          revealRef.current?.();
+        }
       }, t));
     });
     timers.push(setTimeout(() => doneRef.current(), t + 300));
@@ -1400,6 +1406,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const [affIdx, setAffIdx] = useState(-1);
   const [shatterReady, setShatterReady] = useState(false);
   const [cosmosVisible, setCosmosVisible] = useState(false);
+  const [shatteringStarted, setShatteringStarted] = useState(false);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -1444,7 +1451,8 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
       className="fixed inset-0 flex items-center justify-center select-none"
       style={{ background: "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)" }}
     >
-      {/* Cosmos fades in through the flash when flashing phase fires */}
+      {/* Cosmos fades in when shattering starts — veil begins transparent so the
+          initial reveal is a bright star-field that gradually settles to dark */}
       {(cosmosVisible || s.beat >= 7) && (
         <motion.div
           className="absolute inset-0"
@@ -1453,8 +1461,29 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
           animate={{ opacity: 1 }}
           transition={{ duration: 2.2, ease: [0.20, 0, 0.10, 1] }}
         >
-          <div className="absolute inset-0 bg-black/60" />
+          <motion.div
+            className="absolute inset-0 bg-black"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.60 }}
+            transition={{ duration: 3.5, ease: 'easeIn' }}
+          />
         </motion.div>
+      )}
+
+      {/* White/gold underlighting — blazes from behind the shards as they scatter.
+          Lives at z-15, below the shatter overlay (z-20), so it shines through
+          the transparent gaps between the flying shard clip-path regions. */}
+      {shatteringStarted && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 15,
+            background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,230,1.0) 0%, rgba(255,220,140,0.85) 22%, rgba(251,191,36,0.50) 45%, rgba(251,191,36,0.10) 68%, transparent 85%)',
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.30, 0.80, 1.0, 0.85, 0.55] }}
+          transition={{ duration: 3.2, times: [0, 0.08, 0.22, 0.42, 0.68, 1.0], ease: 'easeInOut' }}
+        />
       )}
 
       {/* Fullscreen shatter animation — only starts after player taps "Welcome to Luminae." */}
@@ -1462,6 +1491,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
         <FullscreenShatterOverlay
           onDone={() => dispatch({ type: "NEXT_BEAT" })}
           onRevealCosmos={() => setCosmosVisible(true)}
+          onShattering={() => setShatteringStarted(true)}
         />
       )}
 
