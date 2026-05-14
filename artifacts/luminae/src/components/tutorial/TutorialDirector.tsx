@@ -1521,45 +1521,54 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </div>
 
       {/* Floating Lumii + "over here" hint */}
-      <motion.div
-        animate={{ left: lumiiPos.x, top: lumiiPos.y }}
-        transition={{ type: "spring", stiffness: 80, damping: 18 }}
-        className="fixed z-40 pointer-events-none"
-        style={{ transform: "translate(-50%, -50%)" }}
-      >
-        <motion.div
-          animate={{ y: [0, -6, 0] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-          className="flex flex-col items-center gap-1"
-        >
-          <LumiiOrb size={48} excited={beat.mode === "act" || beat.mode === "semiOpen"} />
-          <AnimatePresence>
-            {(beat.mode === "act" || beat.mode === "semiOpen") &&
-              s.dlgLine >= beat.dialogue.length - 1 && (
-              <motion.div
-                key="tap-hint"
-                initial={{ opacity: 0, y: -4, scale: 0.85 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ duration: 0.25 }}
-                className="flex flex-col items-center gap-0.5"
-              >
-                <motion.div
-                  animate={{ y: [0, 4, 0] }}
-                  transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-                  className="text-amber-300 text-lg leading-none"
-                >↓</motion.div>
-                <motion.span
-                  animate={{ opacity: [0.7, 1, 0.7] }}
-                  transition={{ duration: 1.4, repeat: Infinity }}
-                  className="text-[10px] font-semibold text-amber-300 whitespace-nowrap px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(251,191,36,0.35)" }}
-                >over here</motion.span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-      </motion.div>
+      {(() => {
+        const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
+        const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
+        // Clickable when hint is showing AND there's still a dialogue line to dismiss
+        const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
+        return (
+          <motion.div
+            animate={{ left: lumiiPos.x, top: lumiiPos.y }}
+            transition={{ type: "spring", stiffness: 80, damping: 18 }}
+            className={`fixed z-40 ${lumiiClickable ? "" : "pointer-events-none"}`}
+            style={{ transform: "translate(-50%, -50%)" }}
+          >
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+              className={`flex flex-col items-center gap-1 ${lumiiClickable ? "cursor-pointer" : ""}`}
+              onClick={lumiiClickable ? () => dispatch({ type: "NEXT_DLG" }) : undefined}
+            >
+              <LumiiOrb size={48} excited={isActMode} />
+              <AnimatePresence>
+                {hintVisible && (
+                  <motion.div
+                    key="tap-hint"
+                    initial={{ opacity: 0, y: -4, scale: 0.85 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col items-center gap-0.5"
+                  >
+                    <motion.div
+                      animate={{ y: [0, 4, 0] }}
+                      transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                      className="text-amber-300 text-lg leading-none"
+                    >↓</motion.div>
+                    <motion.button
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 1.4, repeat: Infinity }}
+                      onClick={lumiiClickable ? () => dispatch({ type: "NEXT_DLG" }) : undefined}
+                      className={`text-[10px] font-semibold text-amber-300 whitespace-nowrap px-3 py-1 rounded-full transition-all active:scale-95 ${lumiiClickable ? "cursor-pointer hover:bg-amber-400/20" : "cursor-default"}`}
+                      style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(251,191,36,0.35)" }}
+                    >over here →</motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        );
+      })()}
 
       {/* Dialogue box — hidden once player response dismisses it */}
       {s.dlgLine < beat.dialogue.length && (
