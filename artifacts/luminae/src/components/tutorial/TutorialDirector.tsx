@@ -1238,6 +1238,17 @@ function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
   return (
     <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
 
+      {/* ── Solid gold fill behind the shards — blazes through gaps as they scatter */}
+      {isShattering && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: FSO_GOLD }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0, 1, 0.92, 0.60, 0.10] }}
+          transition={{ duration: 4.5, times: [0, 0.04, 0.18, 0.42, 0.72, 1.0], ease: 'easeInOut' }}
+        />
+      )}
+
       {/* ── Six crystal shard panels ────────────────────────────────────── */}
       {FS_SHARDS.map((sh, i) => (
         <motion.div key={i} className="absolute inset-0"
@@ -1350,29 +1361,13 @@ function FullscreenShatterOverlay({ onDone }: { onDone: () => void }) {
         />
       )}
 
-      {/* ── Cosmic light bloom expanding from the crack centre (shattering) */}
-      <AnimatePresence>
-        {isShattering && !isFlashing && (
-          <motion.div key="cosmiclight" className="absolute inset-0 pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.84, 0.96, 0.82, 0.40, 0] }}
-            exit={{ opacity: 0, transition: { duration: 0.20 } }}
-            transition={{ opacity: { duration: 1.08, times: [0, 0.10, 0.28, 0.50, 0.76, 1.0], ease: 'easeInOut' } }}
-            style={{
-              background: `radial-gradient(ellipse 38% 42% at 50% 42.5%, #ffffff 0%, ${FSO_GOLD}ff 12%, ${FSO_GOLD}dd 28%, ${FSO_GOLD}88 55%, transparent 85%)`,
-              filter: 'blur(18px)',
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ── Gold-white flash at the moment of release ───────────────────── */}
+      {/* ── Full-panel gold-white flash at the moment of release ────────── */}
       {isFlashing && (
-        <motion.div className="absolute inset-0"
+        <motion.div className="absolute inset-0 pointer-events-none"
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0] }}
-          transition={{ duration: 0.75, times: [0, 0.22, 1] }}
-          style={{ background: 'radial-gradient(ellipse at 50% 42.5%, rgba(255,235,80,0.98) 0%, rgba(251,191,36,0.92) 22%, rgba(251,191,36,0.45) 52%, transparent 76%)' }}
+          animate={{ opacity: [0, 1, 0.85, 0] }}
+          transition={{ duration: 0.80, times: [0, 0.20, 0.45, 1.0] }}
+          style={{ background: 'rgba(255, 235, 80, 0.96)' }}
         />
       )}
     </div>
