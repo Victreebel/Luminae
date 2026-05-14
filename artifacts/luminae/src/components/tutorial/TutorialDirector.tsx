@@ -1243,7 +1243,9 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         setPhase(p);
         if (p === 'shattering') {
           shatteringRef.current?.();
-          revealRef.current?.();
+          // Delay cosmos reveal so the yellow flash blazes first,
+          // then the star-field fades in through the dying light.
+          setTimeout(() => revealRef.current?.(), 620);
         }
       }, t));
     });
@@ -1267,10 +1269,10 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
       {isShattering && (
         <motion.div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: FSO_GOLD }}
+          style={{ background: 'radial-gradient(ellipse at 50% 43%, #fff9e6 0%, #fde68a 18%, #fbbf24 45%, #f59e0b 75%, transparent 100%)' }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0, 1, 0.92, 0.60, 0.10] }}
-          transition={{ duration: 4.5, times: [0, 0.04, 0.18, 0.42, 0.72, 1.0], ease: 'easeInOut' }}
+          animate={{ opacity: [0, 1, 1, 0.80, 0.35, 0] }}
+          transition={{ duration: 4.0, times: [0, 0.03, 0.18, 0.48, 0.78, 1.0], ease: 'easeOut' }}
         />
       )}
 
@@ -1479,11 +1481,11 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
           className="absolute inset-0 pointer-events-none"
           style={{
             zIndex: 15,
-            background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,230,1.0) 0%, rgba(255,220,140,0.85) 22%, rgba(251,191,36,0.50) 45%, rgba(251,191,36,0.10) 68%, transparent 85%)',
+            background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,255,1.0) 0%, rgba(255,248,200,1.0) 10%, rgba(255,230,120,1.0) 25%, rgba(251,191,36,0.65) 48%, rgba(251,191,36,0.15) 70%, transparent 88%)',
           }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.35, 0.90, 1.0, 0.65, 0] }}
-          transition={{ duration: 2.2, times: [0, 0.07, 0.20, 0.40, 0.65, 1.0], ease: 'easeInOut' }}
+          animate={{ opacity: [0, 1.0, 1.0, 0.80, 0.35, 0] }}
+          transition={{ duration: 2.4, times: [0, 0.04, 0.22, 0.52, 0.78, 1.0], ease: 'easeOut' }}
         />
       )}
 
