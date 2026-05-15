@@ -346,6 +346,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "Reserved artifacts can still be forged." },
       { text: "This one is discounted by what your society has already shaped." },
+      { text: "Your collection is always one tap away — press your panel below to review it." },
       { text: "Gather the affinities it needs, then forge it from your hand." },
     ],
     completion: { type: "action", action: "forge_reserved" },
@@ -361,6 +362,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "Earlier artifacts now pull certain futures closer." },
       { text: "The Needed view helps reveal artifacts that advance the path you are already building." },
       { text: "This one is within reach — but not perfectly." },
+      { text: "Curious what your society holds? Tap your panel below to inspect your full collection." },
       { text: "Discounts have lowered the cost. Singularity can stand in for what you still lack." },
     ],
     completion: { type: "action", action: "forge_market" },
