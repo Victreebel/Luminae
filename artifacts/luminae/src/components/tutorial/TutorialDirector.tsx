@@ -1374,7 +1374,7 @@ function ArchitectAssembly({
 }
 
 // ─── Cinematic Phase ──────────────────────────────────────────────────────────
-function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
+function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.Dispatch<TAction>; onSkip?: () => void }) {
   const beat = TUTORIAL_BEATS[s.beat];
   const [showLumii, setShowLumii] = useState(false);
   const [panDone, setPanDone] = useState(false);
@@ -1400,11 +1400,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   }, [s.beat, isSkippableBeat, skipDelay]);
 
   const handleSkipCinematic = () => {
-    const targetIdx = BEAT_INDEX["b6_forge_appears"];
-    const steps = Math.max(0, targetIdx - s.beat);
-    for (let i = 0; i < steps; i++) {
-      dispatch({ type: "NEXT_BEAT" });
-    }
+    onSkip?.();
   };
 
   const isContact = beat.id === "b0_contact";
@@ -2639,6 +2635,11 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     : INIT_STATE;
   const [s, dispatch] = useReducer(reducer, initState);
   const [, navigate] = useLocation();
+  const [skipTransition, setSkipTransition] = useState(false);
+  const beatRef = useRef(s.beat);
+  useEffect(() => { beatRef.current = s.beat; }, [s.beat]);
+  const skipTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => { skipTimersRef.current.forEach(clearTimeout); }, []);
 
   useEffect(() => {
     if (s.beat >= TUTORIAL_BEATS.length - 1) {
@@ -2656,6 +2657,20 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     }
   }, [s.navigateTo, navigate]);
 
+  const handleSkip = () => {
+    if (skipTransition) return;
+    setSkipTransition(true);
+    const targetIdx = BEAT_INDEX["b6_forge_appears"];
+    const t1 = setTimeout(() => {
+      const steps = Math.max(0, targetIdx - beatRef.current);
+      for (let i = 0; i < steps; i++) {
+        dispatch({ type: "NEXT_BEAT" });
+      }
+    }, 150);
+    const t2 = setTimeout(() => setSkipTransition(false), 360);
+    skipTimersRef.current = [t1, t2];
+  };
+
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return null;
 
@@ -2663,26 +2678,51 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     ? <DevTutorialNav beatIndex={s.beat} dispatch={dispatch} />
     : null;
 
+  const skipOverlay = (
+    <AnimatePresence>
+      {skipTransition && (
+        <motion.div
+          key="skip-transition"
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center pointer-events-none"
+          style={{ background: "rgba(0,0,0,0.92)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.18, ease: "easeIn" } }}
+          transition={{ duration: 0.20, ease: "easeOut" }}
+        >
+          <motion.span
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: [0, 0.65, 0.65] }}
+            transition={{ duration: 0.55, times: [0, 0.25, 1], ease: "easeOut" }}
+            className="text-white/60 text-xs tracking-[0.22em] uppercase font-semibold font-serif"
+          >
+            Resuming tutorial…
+          </motion.span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   // Cinematic beats: 0–9 (b3c_border=4, b3b_farewell=5, b4_shatter=6, b5_affinities=7, b5b_affinity_tokens=8, b5c_architect_assembly=9)
   if (s.beat <= 9) {
-    return <><CinematicPhase s={s} dispatch={dispatch} />{devNav}</>;
+    return <><CinematicPhase s={s} dispatch={dispatch} onSkip={handleSkip} />{skipOverlay}{devNav}</>;
   }
 
   // Fast-forward cinematic
   if (beat.id === "b15_fast_forward") {
-    return <><FastForwardCinematic s={s} dispatch={dispatch} />{devNav}</>;
+    return <><FastForwardCinematic s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
   }
 
   // Luminary reveal
   if (beat.id === "b17_luminary") {
-    return <><LuminaryPhase s={s} dispatch={dispatch} />{devNav}</>;
+    return <><LuminaryPhase s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
   }
 
   // Victory
   if (beat.id === "b18_victory") {
-    return <><VictoryPhase s={s} dispatch={dispatch} />{devNav}</>;
+    return <><VictoryPhase s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
   }
 
   // Gameplay beats: 6–16
-  return <><GameplayPhase s={s} dispatch={dispatch} />{devNav}</>;
+  return <><GameplayPhase s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
 }
