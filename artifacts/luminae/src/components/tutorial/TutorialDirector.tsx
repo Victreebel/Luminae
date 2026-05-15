@@ -2116,8 +2116,16 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
-  // Highlight the bottom player panel during b9b to show players it's interactive
-  const isPanelHighlighted = beatId === "b9b_forge_complete";
+  // Highlight the bottom player panel during beats where artifact inspection is useful
+  const PANEL_TAPPABLE_BEATS = new Set([
+    "b9b_forge_complete",
+    "b11_forge_reserved",
+    "b12_tier2",
+    "b13_tier3",
+    "b14_win_condition",
+    "b16_final_forge",
+  ]);
+  const isPanelHighlighted = PANEL_TAPPABLE_BEATS.has(beatId);
 
   // Where the Lumii floats
   const lumiiTarget = beat.lumiiZone;
@@ -2325,6 +2333,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             </button>
           </div>
         </div>
+        {/* Tap-to-inspect affordance — shown during panel-tappable beats */}
+        {isPanelHighlighted && (
+          <div className="flex items-center justify-center gap-1 mb-1.5 pointer-events-none">
+            <ChevronUp className="h-3 w-3 text-amber-400/70" />
+            <span className="text-[9px] font-semibold text-amber-400/70 tracking-wide uppercase">tap to inspect artifacts</span>
+            <ChevronUp className="h-3 w-3 text-amber-400/70" />
+          </div>
+        )}
         {/* 6 affinity boxes */}
         <div className="flex gap-1.5">
           {ALL_GEMS.map(gem => {
