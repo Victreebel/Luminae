@@ -1592,6 +1592,213 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   );
 }
 
+// ─── Architect Assembly Cinematic ─────────────────────────────────────────────
+function ArchitectAssembly({
+  affKeys,
+  onComplete,
+}: {
+  affKeys: GemKey[];
+  onComplete: () => void;
+}) {
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    const t = setTimeout(onComplete, prefersReducedMotion ? 200 : 3800);
+    return () => clearTimeout(t);
+  }, [onComplete, prefersReducedMotion]);
+
+  const [phase, setPhase] = useState(prefersReducedMotion ? 4 : 0);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    const timers = [
+      setTimeout(() => setPhase(1), 280),
+      setTimeout(() => setPhase(2), 1050),
+      setTimeout(() => setPhase(3), 2200),
+      setTimeout(() => setPhase(4), 2600),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [prefersReducedMotion]);
+
+  const regions = [
+    { label: "The Forge",      top: "7%",  height: 96, color: "#fbbf24", ghostDy: -58, ghostDx: -18 },
+    { label: "Hand",           top: "30%", height: 52, color: "#818cf8", ghostDy: -22, ghostDx: 26 },
+    { label: "Storage",        top: "44%", height: 52, color: "#34d399", ghostDy: -10, ghostDx: -22 },
+    { label: "Affinity Well",  top: "57%", height: 78, color: "#f97316", ghostDy: 28,  ghostDx: 14 },
+    { label: "Status",         top: "79%", height: 48, color: "#c084fc", ghostDy: 52,  ghostDx: 0  },
+  ] as const;
+
+  const linePairs: [number, number][] = [[0,1],[1,2],[2,3],[3,4],[0,3]];
+  const centerYs = [14, 34, 50, 63, 83];
+  const lineColors = ["#fbbf2488","#818cf888","#34d39988","#f9731688","#c084fc88"];
+
+  return (
+    <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
+      {/* Blueprint label */}
+      <motion.div
+        className="absolute inset-x-0 flex justify-center"
+        style={{ top: "1.5%" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: phase >= 1 ? 0.7 : 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <span className="text-[9px] font-semibold text-indigo-300/70 uppercase tracking-[0.38em]">
+          Assembling interface
+        </span>
+      </motion.div>
+
+      {/* Ghost region outlines */}
+      {regions.map((region, i) => (
+        <motion.div
+          key={region.label}
+          className="absolute left-3 right-3 rounded-xl"
+          style={{
+            top: region.top,
+            height: region.height,
+            border: `1px solid ${region.color}50`,
+            background: `${region.color}07`,
+          }}
+          initial={{
+            opacity: 0,
+            y: region.ghostDy,
+            x: region.ghostDx,
+            scale: 0.93,
+          }}
+          animate={{
+            opacity: phase >= 1 ? 0.82 : 0,
+            y: phase >= 2 ? 0 : region.ghostDy,
+            x: phase >= 2 ? 0 : region.ghostDx,
+            scale: phase >= 2 ? 1 : 0.93,
+          }}
+          transition={
+            phase >= 2
+              ? {
+                  type: "spring" as const,
+                  stiffness: 150,
+                  damping: 22,
+                  delay: i * 0.11,
+                  opacity: { duration: 0.25 },
+                  scale: { type: "spring", stiffness: 150, damping: 22, delay: i * 0.11 },
+                }
+              : { duration: 0.4, delay: i * 0.09 }
+          }
+        >
+          <span
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[8px] font-semibold uppercase tracking-widest"
+            style={{ color: `${region.color}88` }}
+          >
+            {region.label}
+          </span>
+          {/* Corner accent dots */}
+          <span
+            className="absolute left-1.5 top-1.5 w-1 h-1 rounded-full"
+            style={{ background: region.color, opacity: 0.5 }}
+          />
+          <span
+            className="absolute right-1.5 top-1.5 w-1 h-1 rounded-full"
+            style={{ background: region.color, opacity: 0.5 }}
+          />
+        </motion.div>
+      ))}
+
+      {/* Constellation SVG lines between regions */}
+      <AnimatePresence>
+        {phase === 2 && (
+          <motion.svg
+            key="constellation"
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55 }}
+          >
+            {linePairs.map(([a, b], i) => (
+              <motion.line
+                key={i}
+                x1={50} y1={centerYs[a]}
+                x2={50} y2={centerYs[b]}
+                stroke={lineColors[i]}
+                strokeWidth="0.35"
+                strokeDasharray="1.5 1.0"
+                initial={{ strokeOpacity: 0 }}
+                animate={{ strokeOpacity: 0.55 }}
+                exit={{ strokeOpacity: 0 }}
+                transition={{ duration: 0.35, delay: i * 0.07 }}
+              />
+            ))}
+          </motion.svg>
+        )}
+      </AnimatePresence>
+
+      {/* Affinity tokens fly from center to Affinity Well */}
+      <AnimatePresence>
+        {phase >= 4 && (
+          <>
+            {affKeys.map((key, i) => {
+              const spreadX = (i - 2) * 40;
+              return (
+                <motion.div
+                  key={`fly-${key}`}
+                  className="absolute"
+                  style={{
+                    left: "50%",
+                    top: "45%",
+                    marginLeft: -16,
+                    marginTop: -16,
+                  }}
+                  initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    x: [0, spreadX, spreadX * 0.4, 0],
+                    y: [0, -24, 48, 100],
+                    scale: [0.7, 1.1, 0.9, 0.55],
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: 1.05,
+                    delay: i * 0.1,
+                    times: [0, 0.28, 0.65, 1],
+                    ease: "easeInOut",
+                  }}
+                >
+                  <img
+                    src={GEM_META[key].image}
+                    alt=""
+                    className="w-8 h-8 object-contain"
+                    draggable={false}
+                    style={{
+                      filter: `drop-shadow(0 0 8px ${GEM_META[key].glowHex})`,
+                    }}
+                  />
+                </motion.div>
+              );
+            })}
+            {/* Per-affinity well pulse on each token arrival */}
+            {affKeys.map((key, i) => (
+              <motion.div
+                key={`well-pulse-${key}`}
+                className="absolute left-3 right-3 rounded-xl pointer-events-none"
+                style={{ top: "57%", height: 78 }}
+                initial={{ boxShadow: `0 0 0px ${GEM_META[key].glowHex}00` }}
+                animate={{
+                  boxShadow: [
+                    `0 0 0px ${GEM_META[key].glowHex}00`,
+                    `0 0 20px ${GEM_META[key].glowHex}72`,
+                    `0 0 6px ${GEM_META[key].glowHex}18`,
+                  ],
+                }}
+                transition={{ duration: 0.85, delay: 0.5 + i * 0.2, times: [0, 0.32, 1] }}
+              />
+            ))}
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Cinematic Phase ──────────────────────────────────────────────────────────
 function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
@@ -1608,6 +1815,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const isLocate = beat.id === "b1_locate";
   const isShatter = beat.id === "b4_shatter";
   const isAffinityTokens = beat.id === "b5b_affinity_tokens";
+  const isArchitectAssembly = beat.id === "b5c_architect_assembly";
 
   // Beat 1: pan then reveal lumii
   useEffect(() => {
@@ -1665,8 +1873,8 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
           <motion.div
             className="absolute inset-0 bg-black"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.60 }}
-            transition={{ duration: 3.5, ease: 'easeIn' }}
+            animate={{ opacity: isArchitectAssembly ? 0.38 : 0.60 }}
+            transition={{ duration: isArchitectAssembly ? 0.6 : 3.5, ease: 'easeIn' }}
           />
         </motion.div>
       )}
@@ -1693,6 +1901,14 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
           onDone={() => dispatch({ type: "NEXT_BEAT" })}
           onRevealCosmos={() => setCosmosVisible(true)}
           onShattering={() => setShatteringStarted(true)}
+        />
+      )}
+
+      {/* Architect Assembly cinematic */}
+      {isArchitectAssembly && (
+        <ArchitectAssembly
+          affKeys={affKeys}
+          onComplete={() => dispatch({ type: "NEXT_BEAT" })}
         />
       )}
 
@@ -1751,11 +1967,18 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
               x: 0,
               opacity: 1,
               scale: 1,
-              top: isAffinityTokens ? "70%" : "50%",
+              top: isAffinityTokens ? "70%" : isArchitectAssembly ? "26%" : "50%",
+              left: isArchitectAssembly ? "87%" : "50%",
             }}
-            transition={{ type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
+            transition={isArchitectAssembly ? {
+              top:   { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
+              left:  { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
+              x:     { type: "spring" as const, stiffness: 120, damping: 20 },
+              opacity: { duration: 0.3 },
+              scale: { type: "spring" as const, stiffness: 120, damping: 20 },
+            } : { type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
             className="absolute z-30"
-            style={{ left: "50%", transform: "translate(-50%, -50%)" }}
+            style={{ transform: "translate(-50%, -50%)" }}
           >
             <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
           </motion.div>
@@ -1763,7 +1986,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
       </AnimatePresence>
 
       {/* Dialogue */}
-      {!isLocate && !isAffinityTokens && !(isShatter && shatterReady) && (
+      {!isLocate && !isAffinityTokens && !isArchitectAssembly && !(isShatter && shatterReady) && (
         <div className="absolute bottom-16 left-0 right-0 z-30 px-6">
           <AnimatePresence mode="wait">
             <DialogueBox
@@ -2256,8 +2479,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           animation: "cosmic-breathe 12s ease-in-out infinite",
         }}
       />
-      {/* Darkening veil */}
-      <div className="absolute inset-0 bg-black/68 pointer-events-none" />
+      {/* Darkening veil — capped at 0.55 so the cosmos background stays visible behind the tutorial board */}
+      <div className="absolute inset-0 bg-black/55 pointer-events-none" />
       {/* Nebula corner glows — affinity-palette tints */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -2292,7 +2515,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {/* Scrollable board content — scroll is locked; camera moves programmatically per beat */}
       <div ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 pb-4">
         {/* Market section */}
-        <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
+        <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
           <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
           <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} />
         </div>
@@ -2328,7 +2551,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               : { boxShadow: 'none' }
         }
         transition={isPanelHighlighted ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
-        style={{ background: 'rgba(3,3,12,0.92)' }}
+        style={{ background: 'rgba(3,3,12,0.80)' }}
       >
         {/* Tap-to-inspect hint — visible when panel is highlighted and sheet is closed */}
         <AnimatePresence>
@@ -2751,8 +2974,8 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return null;
 
-  // Cinematic beats: 0–8 (b3c_border=4, b3b_farewell=5, b4_shatter=6, b5_affinities=7, b5b_affinity_tokens=8)
-  if (s.beat <= 8) {
+  // Cinematic beats: 0–9 (b3c_border=4, b3b_farewell=5, b4_shatter=6, b5_affinities=7, b5b_affinity_tokens=8, b5c_architect_assembly=9)
+  if (s.beat <= 9) {
     return <CinematicPhase s={s} dispatch={dispatch} />;
   }
 
