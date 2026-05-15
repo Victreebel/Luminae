@@ -2075,6 +2075,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const gemBurstKeyRef = useRef(0);
   // Tracks whether a forge just fired so Lumii bounces excitedly at the artifact
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
+  // Artifact detail sheet — tappable panel during b9b_forge_complete
+  const [panelSheetOpen, setPanelSheetOpen] = useState(false);
+
+  // Close the artifact sheet whenever the beat advances
+  useEffect(() => {
+    setPanelSheetOpen(false);
+  }, [beatId]);
 
   useEffect(() => {
     const trigger = s.animTrigger;
@@ -2248,9 +2255,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Pinned Player Panel — mirrors the real game's bottom panel ── */}
       <div
+        role={isPanelHighlighted ? "button" : undefined}
+        tabIndex={isPanelHighlighted ? 0 : undefined}
+        onClick={isPanelHighlighted ? () => setPanelSheetOpen(o => !o) : undefined}
+        onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPanelSheetOpen(o => !o); } } : undefined}
         className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
           isPanelHighlighted
-            ? 'border-amber-400/60 shadow-[0_0_18px_rgba(251,191,36,0.28)]'
+            ? 'border-amber-400/60 shadow-[0_0_18px_rgba(251,191,36,0.28)] cursor-pointer active:brightness-110'
             : isActMode ? 'border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.20)]' : 'border-white/10'
         }`}
         style={{ background: 'rgba(3,3,12,0.92)' }}
@@ -2415,6 +2426,100 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         );
       })()}
 
+      {/* ── Artifact Detail Sheet — slides up when panel is tapped during b9b ── */}
+      <AnimatePresence>
+        {panelSheetOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="sheet-backdrop"
+              className="fixed inset-0 z-[44] bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setPanelSheetOpen(false)}
+            />
+            {/* Sheet */}
+            <motion.div
+              key="sheet-panel"
+              className="fixed left-0 right-0 z-[45] rounded-t-2xl border-t border-amber-400/40 shadow-[0_-8px_32px_rgba(251,191,36,0.15)] px-4 pt-4 pb-6"
+              style={{ background: 'rgba(6,6,17,0.97)', bottom: 0 }}
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 34 }}
+            >
+              {/* Drag handle */}
+              <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
+
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">Forged Artifacts</span>
+                <button
+                  type="button"
+                  onClick={() => setPanelSheetOpen(false)}
+                  className="text-[10px] text-white/40 hover:text-white/70 transition-colors px-2 py-1"
+                >
+                  close ✕
+                </button>
+              </div>
+
+              {/* Artifacts list */}
+              <div className="flex flex-col gap-2 mb-4">
+                {s.forged.length === 0 && (
+                  <span className="text-[11px] text-white/30 text-center py-2">No artifacts forged yet</span>
+                )}
+                {s.forged.map(id => {
+                  const card = TUTORIAL_CARDS[id];
+                  if (!card) return null;
+                  const bonusMeta = GEM_META[card.bonusColor];
+                  return (
+                    <div key={id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 border border-white/10"
+                      style={{ background: `linear-gradient(90deg, #07070b 0%, ${bonusMeta.hex}18 100%)` }}>
+                      <img src={bonusMeta.image} alt="" className="w-6 h-6 object-contain shrink-0" draggable={false} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-semibold text-white truncate">{card.name}</div>
+                        <div className="text-[9px] text-white/40 mt-0.5">
+                          Bonus: <span style={{ color: bonusMeta.glowHex }}>+1 {bonusMeta.shortName}</span> per turn
+                          {card.lumens > 0 && <span className="text-amber-300 ml-1.5">· +{card.lumens} Eminence</span>}
+                        </div>
+                      </div>
+                      {card.lumens > 0 && (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <Sparkles className="h-3 w-3 text-amber-400" />
+                          <span className="text-[11px] font-bold text-amber-300">+{card.lumens}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Bonus totals */}
+              {Object.values(s.bonuses).some(v => v > 0) && (
+                <div className="border-t border-white/10 pt-3">
+                  <div className="text-[9px] text-white/35 uppercase tracking-widest mb-2">Affinity Bonuses</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {(Object.entries(s.bonuses) as [GemKey, number][]).filter(([, v]) => v > 0).map(([gem, val]) => {
+                      const meta = GEM_META[gem];
+                      return (
+                        <div key={gem} className="flex items-center gap-1 rounded-lg px-2.5 py-1 border"
+                          style={{ background: `${meta.hex}18`, borderColor: `${meta.hex}55` }}>
+                          <MiniGem gem={gem} size={10} />
+                          <span className="text-[10px] font-bold" style={{ color: meta.glowHex }}>+{val}</span>
+                          <span className="text-[9px] text-white/50">{meta.shortName}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Dialogue box — repositions based on camera focus to avoid covering the active section */}
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
         <div className={`fixed ${cameraFocus === "well" ? "top-[54px]" : "bottom-[152px]"} left-0 right-0 z-50 px-4`}>
@@ -2427,6 +2532,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 if (s.nudge) {
                   dispatch({ type: "NUDGE", msg: null });
                 } else {
+                  setPanelSheetOpen(false);
                   dispatch({ type: "NEXT_DLG" });
                 }
               }}
