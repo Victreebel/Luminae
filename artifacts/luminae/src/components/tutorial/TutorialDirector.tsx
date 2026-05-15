@@ -256,6 +256,9 @@ function reducer(s: TutState, a: TAction): TutState {
       if (beatId === "b10_reserve" && nextView === "discounted" && s.subStep === 0) {
         return { ...s, view: nextView, subStep: 1, nudge: null };
       }
+      if (beatId === "b10c_needed_peek" && nextView === "needed") {
+        return { ...s, view: nextView, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null, wellSel: {} };
+      }
       if (beatId === "b12_tier2" && nextView === "needed" && s.subStep === 0) {
         return { ...s, view: nextView, subStep: 1, nudge: null };
       }
@@ -1130,7 +1133,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
   const t3Cards: string[] = [];
 
   const earlyBeats = ["b6_forge_appears", "b7_artifact_cost", "b8_first_harness", "b9_first_forge", "b9b_forge_complete"];
-  const midBeats = ["b10_reserve", "b10b_reserve_granted", "b11_forge_reserved", "b12_tier2"];
+  const midBeats = ["b10_reserve", "b10b_reserve_granted", "b10c_needed_peek", "b11_forge_reserved", "b12_tier2"];
   const lateBeats = ["b13_tier3", "b14_win_condition", "b15_fast_forward"];
   const finalBeat = ["b16_final_forge"];
 
@@ -1153,7 +1156,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
   const isForgeMarketBeat = ["b9_first_forge", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId);
   const isReserveBeat = beatId === "b10_reserve";
   const highlightDiscounted = beatId === "b10_reserve";
-  const highlightNeeded = beatId === "b12_tier2" && subStep === 0;
+  const highlightNeeded = (beatId === "b12_tier2" && subStep === 0) || beatId === "b10c_needed_peek";
 
   const getCardForgeEnabled = (cardId: string) => {
     if (!isForgeMarketBeat) return false;
