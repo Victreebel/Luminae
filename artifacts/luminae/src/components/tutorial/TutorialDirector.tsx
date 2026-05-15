@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
-import { saveTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
+import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen } from "@/lib/tutorialProgress";
 import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
 import { Sparkles, ChevronUp, RotateCcw, X } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -1390,13 +1390,14 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const SKIP_PRE_SHATTER_IDS = ["b0_contact", "b1_locate", "b2_lumii_intro", "b3_architect", "b3c_border"];
   const isSkippableBeat = SKIP_CINEMATIC_IDS.includes(beat.id) || SKIP_PRE_SHATTER_IDS.includes(beat.id);
   const [skipVisible, setSkipVisible] = useState(false);
+  const skipDelay = hasTutorialSeen() ? 300 : 1500;
 
   useEffect(() => {
     if (!isSkippableBeat) { setSkipVisible(false); return; }
     setSkipVisible(false);
-    const t = setTimeout(() => setSkipVisible(true), 1500);
+    const t = setTimeout(() => setSkipVisible(true), skipDelay);
     return () => clearTimeout(t);
-  }, [s.beat, isSkippableBeat]);
+  }, [s.beat, isSkippableBeat, skipDelay]);
 
   const handleSkipCinematic = () => {
     const targetIdx = BEAT_INDEX["b6_forge_appears"];
@@ -1762,6 +1763,10 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
   const [, setLocation] = useLocation();
   const showButtons = s.dlgLine >= beat.dialogue.length - 1;
 
+  useEffect(() => {
+    markTutorialSeen();
+  }, []);
+
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
       <div className="absolute inset-0 bg-black/60" />
@@ -1796,7 +1801,7 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
               className="flex flex-col gap-3 w-full"
             >
               <button
-                onClick={() => { clearTutorialProgress(); localStorage.setItem("luminae_tutorial_seen", "1"); setLocation("/"); }}
+                onClick={() => { clearTutorialProgress(); markTutorialSeen(); setLocation("/"); }}
                 className="w-full py-3 rounded-2xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-500 transition-all shadow-lg"
               >Begin a Full Game</button>
               <button
@@ -2642,7 +2647,10 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   }, [s.beat]);
 
   useEffect(() => {
-    if (s.navigateTo) navigate(s.navigateTo);
+    if (s.navigateTo) {
+      markTutorialSeen();
+      navigate(s.navigateTo);
+    }
   }, [s.navigateTo, navigate]);
 
   const beat = TUTORIAL_BEATS[s.beat];
