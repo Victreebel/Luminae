@@ -1069,6 +1069,7 @@ interface Props {
   setTutorialStep: (step: number) => void;
   executeAction: (payload: Record<string, unknown>) => Promise<void>;
   nudgeTick?: number;
+  burstIntensity?: number;
 }
 
 export function LumiiTutorial({
@@ -1078,6 +1079,7 @@ export function LumiiTutorial({
   setTutorialStep,
   executeAction,
   nudgeTick = 0,
+  burstIntensity = 1.15,
 }: Props) {
   const [, setLocation] = useLocation();
   const vpH = useViewportH();
@@ -1454,7 +1456,7 @@ export function LumiiTutorial({
                       <motion.div
                         animate={{
                           y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
-                          scale: burstActive ? [1, 1.15, 1] : 1,
+                          scale: burstActive ? [1, burstIntensity, 1] : 1,
                         }}
                         transition={{
                           y: {
