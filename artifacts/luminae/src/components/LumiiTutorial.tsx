@@ -1431,11 +1431,17 @@ export function LumiiTutorial({
                       <motion.div
                         animate={{
                           y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
+                          scale: burstActive ? [1, 1.15, 1] : 1,
                         }}
                         transition={{
-                          duration: currentAttention === "action" ? 1.8 : 2.8,
-                          repeat: Infinity,
-                          ease: "easeInOut",
+                          y: {
+                            duration: currentAttention === "action" ? 1.8 : 2.8,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          },
+                          scale: burstActive
+                            ? { duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }
+                            : { duration: 0.2 },
                         }}
                       >
                         <LumiiOrb
