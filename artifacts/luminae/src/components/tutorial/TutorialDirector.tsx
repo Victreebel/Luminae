@@ -2082,6 +2082,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
   // Artifact detail sheet — tappable panel during b9b_forge_complete
   const [panelSheetOpen, setPanelSheetOpen] = useState(false);
+  // Tracks whether the sheet has ever been opened this session — hides the tip after first use
+  const [panelSheetEverOpened, setPanelSheetEverOpened] = useState(false);
 
   // Close the artifact sheet whenever the beat advances
   useEffect(() => {
@@ -2270,9 +2272,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       <motion.div
         role={isPanelHighlighted ? "button" : undefined}
         tabIndex={isPanelHighlighted ? 0 : undefined}
-        onClick={isPanelHighlighted ? () => setPanelSheetOpen(o => !o) : undefined}
-        onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPanelSheetOpen(o => !o); } } : undefined}
-        className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-colors ${
+        onClick={isPanelHighlighted ? () => setPanelSheetOpen(o => { const next = !o; if (next) setPanelSheetEverOpened(true); return next; }) : undefined}
+        onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPanelSheetOpen(o => { const next = !o; if (next) setPanelSheetEverOpened(true); return next; }); } } : undefined}
+        className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
           isPanelHighlighted
             ? 'border-amber-400/60 cursor-pointer active:brightness-110'
             : isActMode ? 'border-indigo-500/40' : 'border-white/10'
@@ -2289,7 +2291,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       >
         {/* Tap-to-inspect hint — visible when panel is highlighted and sheet is closed */}
         <AnimatePresence>
-          {isPanelHighlighted && !panelSheetOpen && (
+          {isPanelHighlighted && !panelSheetEverOpened && (
             <motion.div
               key="tap-hint"
               initial={{ opacity: 0, y: 4 }}
@@ -2344,8 +2346,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             </button>
           </div>
         </div>
-        {/* Tap-to-inspect affordance — shown during panel-tappable beats */}
-        {isPanelHighlighted && (
+        {/* Tap-to-inspect affordance — shown during panel-tappable beats, only before first open */}
+        {isPanelHighlighted && !panelSheetEverOpened && (
           <div className="flex items-center justify-center gap-1 mb-1.5 pointer-events-none">
             <ChevronUp className="h-3 w-3 text-amber-400/70" />
             <span className="text-[9px] font-semibold text-amber-400/70 tracking-wide uppercase">tap to inspect artifacts</span>
