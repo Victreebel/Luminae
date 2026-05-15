@@ -1,0 +1,36 @@
+Fix the guided tutorial transition from the affinity introduction into the Forge/game interface.
+
+Current problems:
+- The tutorial layout still does not look like the regular game layout.
+- The Luminae universe background does not seem present enough.
+- The transition from Lumii introducing the five affinities into introducing the Forge is too abrupt.
+
+Replace the abrupt transition with an “Architect interface assembly” animation.
+
+After the five affinity tokens are introduced, keep the Luminae universe/cosmos background visible. Faint outlines of the normal game board should appear over the universe background, then the main interface regions should glide/assemble into their real regular-game positions:
+- Forge / artifact market
+- Affinity Well / resource area
+- player artifact storage / bottom panel
+- Eminence / Luminary progress
+- relevant action areas
+
+These panels must settle into the same layout used by a normal game, so the tutorial feels like it is teaching the real board, not a special tutorial-only screen.
+
+During assembly, add subtle light-line / constellation connections between the regions, then fade those lines back so readability stays high.
+
+The five affinity tokens should visually drift or fly toward the actual Affinity Well / resource area during this transition, connecting the cinematic affinity intro to the playable UI.
+
+Lumii should remain visible, guide the transition, and then glide to the Forge once the board has settled.
+
+Keep the background visible behind the interface throughout.
+
+Make the transition feel like an Architect control layer assembling over the Luminae universe, not like a website menu dropping down.
+
+Preserve normal gameplay layout and do not alter non-tutorial gameplay except where the shared layout/background needs to render correctly.
+
+Acceptance criteria:
+1. Tutorial board after assembly resembles the normal game board layout.
+2. Luminae universe background remains visible behind the tutorial interface.
+3. Affinity-to-Forge transition feels continuous rather than abrupt.
+4. Forge introduction happens only after the interface has assembled.
+5. Card/UI readability remains strong.
