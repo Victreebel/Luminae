@@ -1621,16 +1621,16 @@ function ArchitectAssembly({
   }, [prefersReducedMotion]);
 
   const regions = [
-    { label: "The Forge",      top: "7%",  height: 96, color: "#fbbf24", ghostDy: -58, ghostDx: -18 },
-    { label: "Hand",           top: "30%", height: 52, color: "#818cf8", ghostDy: -22, ghostDx: 26 },
-    { label: "Storage",        top: "44%", height: 52, color: "#34d399", ghostDy: -10, ghostDx: -22 },
-    { label: "Affinity Well",  top: "57%", height: 78, color: "#f97316", ghostDy: 28,  ghostDx: 14 },
-    { label: "Status",         top: "79%", height: 48, color: "#c084fc", ghostDy: 52,  ghostDx: 0  },
+    { label: "The Forge",     top: "7%",  height: 96, bg: "rgba(3,3,12,0.72)", ghostDy: -58, ghostDx: -18 },
+    { label: "Hand",          top: "30%", height: 52, bg: "rgba(3,3,12,0.78)", ghostDy: -22, ghostDx: 26 },
+    { label: "Storage",       top: "44%", height: 52, bg: "rgba(3,3,12,0.78)", ghostDy: -10, ghostDx: -22 },
+    { label: "Affinity Well", top: "57%", height: 78, bg: "rgba(3,3,12,0.78)", ghostDy: 28,  ghostDx: 14 },
+    { label: "Status",        top: "79%", height: 48, bg: "rgba(3,3,12,0.80)", ghostDy: 52,  ghostDx: 0  },
   ] as const;
 
   const linePairs: [number, number][] = [[0,1],[1,2],[2,3],[3,4],[0,3]];
   const centerYs = [14, 34, 50, 63, 83];
-  const lineColors = ["#fbbf2488","#818cf888","#34d39988","#f9731688","#c084fc88"];
+  const lineColors = ["rgba(255,255,255,0.18)","rgba(255,255,255,0.14)","rgba(255,255,255,0.16)","rgba(255,255,255,0.14)","rgba(255,255,255,0.12)"];
 
   return (
     <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
@@ -1647,16 +1647,16 @@ function ArchitectAssembly({
         </span>
       </motion.div>
 
-      {/* Ghost region outlines */}
+      {/* Ghost region outlines — styled to match real GameplayPhase sections */}
       {regions.map((region, i) => (
         <motion.div
           key={region.label}
-          className="absolute left-3 right-3 rounded-xl"
+          className="absolute left-3 right-3 rounded-2xl backdrop-blur-md"
           style={{
             top: region.top,
             height: region.height,
-            border: `1px solid ${region.color}50`,
-            background: `${region.color}07`,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: region.bg,
           }}
           initial={{
             opacity: 0,
@@ -1665,7 +1665,7 @@ function ArchitectAssembly({
             scale: 0.93,
           }}
           animate={{
-            opacity: phase >= 1 ? 0.82 : 0,
+            opacity: phase >= 1 ? (phase >= 2 ? 1 : 0.48) : 0,
             y: phase >= 2 ? 0 : region.ghostDy,
             x: phase >= 2 ? 0 : region.ghostDx,
             scale: phase >= 2 ? 1 : 0.93,
@@ -1683,21 +1683,16 @@ function ArchitectAssembly({
               : { duration: 0.4, delay: i * 0.09 }
           }
         >
-          <span
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[8px] font-semibold uppercase tracking-widest"
-            style={{ color: `${region.color}88` }}
-          >
+          {/* Section label — matches real board: text-[10px] text-white/40 font-semibold uppercase tracking-wider */}
+          <span className="absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
             {region.label}
           </span>
-          {/* Corner accent dots */}
-          <span
-            className="absolute left-1.5 top-1.5 w-1 h-1 rounded-full"
-            style={{ background: region.color, opacity: 0.5 }}
-          />
-          <span
-            className="absolute right-1.5 top-1.5 w-1 h-1 rounded-full"
-            style={{ background: region.color, opacity: 0.5 }}
-          />
+          {/* Content placeholder bars — hint at real section content */}
+          <div className="absolute left-3 right-3 bottom-2.5 flex gap-1.5 opacity-25">
+            <div className="h-1 flex-1 rounded-full bg-white/30" />
+            <div className="h-1 flex-[2] rounded-full bg-white/20" />
+            <div className="h-1 flex-1 rounded-full bg-white/15" />
+          </div>
         </motion.div>
       ))}
 
@@ -1779,7 +1774,7 @@ function ArchitectAssembly({
             {affKeys.map((key, i) => (
               <motion.div
                 key={`well-pulse-${key}`}
-                className="absolute left-3 right-3 rounded-xl pointer-events-none"
+                className="absolute left-3 right-3 rounded-2xl pointer-events-none"
                 style={{ top: "57%", height: 78 }}
                 initial={{ boxShadow: `0 0 0px ${GEM_META[key].glowHex}00` }}
                 animate={{
