@@ -3,10 +3,16 @@ import { X } from "lucide-react";
 
 interface Props {
   hasProgress: boolean;
+  savedBeat?: number;
+  totalBeats?: number;
   onChoice: (choice: "begin" | "resume" | "start-over" | "cancel") => void;
 }
 
-export function TutorialStartModal({ hasProgress, onChoice }: Props) {
+export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoice }: Props) {
+  const stepDisplay =
+    hasProgress && savedBeat != null && totalBeats != null
+      ? `Step ${savedBeat + 1} of ${totalBeats}`
+      : null;
   return (
     <AnimatePresence>
       <motion.div
@@ -51,11 +57,17 @@ export function TutorialStartModal({ hasProgress, onChoice }: Props) {
           <h2 className="text-center text-lg font-bold text-white mb-1.5">
             {hasProgress ? "Continue Your Journey" : "Enter the Threshold"}
           </h2>
-          <p className="text-center text-xs text-white/45 mb-7 leading-relaxed">
+          <p className="text-center text-xs text-white/45 mb-1 leading-relaxed">
             {hasProgress
               ? "Pick up where you left off, or start the journey anew."
               : "Lumii is waiting. Your civilization is ready to begin."}
           </p>
+          {stepDisplay && (
+            <p className="text-center text-xs font-semibold mb-6" style={{ color: "rgba(245,200,66,0.75)" }}>
+              {stepDisplay}
+            </p>
+          )}
+          {!stepDisplay && <div className="mb-6" />}
 
           <div className="flex flex-col gap-3">
             {hasProgress ? (

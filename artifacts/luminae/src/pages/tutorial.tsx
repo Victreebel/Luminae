@@ -48,7 +48,14 @@ export default function Tutorial() {
   }
 
   if (phase === "prompt") {
-    return <TutorialStartModal hasProgress={hasMidProgress} onChoice={handleChoice} />;
+    return (
+      <TutorialStartModal
+        hasProgress={hasMidProgress}
+        savedBeat={savedBeat ?? undefined}
+        totalBeats={TUTORIAL_BEATS.length}
+        onChoice={handleChoice}
+      />
+    );
   }
 
   return <TutorialDirector startBeat={startBeat} />;

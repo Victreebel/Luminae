@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { loadTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
+import { TUTORIAL_BEATS } from "@/lib/tutorialData";
 import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
 import { ThresholdCinematic } from "@/components/tutorial/ThresholdCinematic";
@@ -37,6 +38,7 @@ export default function Home() {
   const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [tutorialHasProgress, setTutorialHasProgress] = useState(false);
+  const [tutorialSavedBeat, setTutorialSavedBeat] = useState<number | null>(null);
   const [showCinematic, setShowCinematic] = useState(false);
   const handleLogout = async () => {
     await logout();
@@ -412,7 +414,12 @@ export default function Home() {
               {/* Tutorial */}
               <button
                 type="button"
-                onClick={() => { setTutorialHasProgress(loadTutorialProgress() !== null); setShowTutorialModal(true); }}
+                onClick={() => {
+                  const saved = loadTutorialProgress();
+                  setTutorialHasProgress(saved !== null);
+                  setTutorialSavedBeat(saved);
+                  setShowTutorialModal(true);
+                }}
                 className="w-full flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur px-5 py-3.5 text-left hover:border-border/70 hover:bg-card/60 transition-colors"
               >
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -685,6 +692,8 @@ export default function Home() {
       {showTutorialModal && (
         <TutorialStartModal
           hasProgress={tutorialHasProgress}
+          savedBeat={tutorialSavedBeat ?? undefined}
+          totalBeats={TUTORIAL_BEATS.length}
           onChoice={handleTutorialChoice}
         />
       )}
