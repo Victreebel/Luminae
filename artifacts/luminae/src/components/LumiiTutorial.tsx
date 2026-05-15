@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
@@ -77,6 +77,17 @@ function getNearestNode(shape: WispShape, direction: "down" | "up" | "left"): { 
   return { x, y };
 }
 
+// Generate randomised scatter positions for the coalesce entrance animation.
+// Each node flies in from a position at ~50-68px radius from center.
+function makeScatterPositions(): [number, number][] {
+  return WISP_COLORS.map((_, i) => {
+    const baseAngle = (i / WISP_COLORS.length) * Math.PI * 2;
+    const angle = baseAngle + (Math.random() * 0.9 - 0.45);
+    const radius = 50 + Math.random() * 18;
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+  });
+}
+
 let _wispInstanceCount = 0;
 
 function LumiiOrb({
@@ -86,6 +97,7 @@ function LumiiOrb({
   tetheredDirection,
   onNearestNode,
   highlightZone,
+  beatKey,
 }: {
   size?: number;
   excited?: boolean;
@@ -93,6 +105,7 @@ function LumiiOrb({
   tetheredDirection?: "down" | "up" | "left";
   onNearestNode?: (offset: { x: number; y: number }) => void;
   highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null;
+  beatKey?: string | number;
 }) {
   // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
   const instanceRef = useRef<number | null>(null);
@@ -101,6 +114,45 @@ function LumiiOrb({
 
   const onNearestNodeRef = useRef(onNearestNode);
   onNearestNodeRef.current = onNearestNode;
+
+  const prefersReducedMotion = useReducedMotion();
+
+  // Entrance animation state —————————————————————————————————————————————
+  // `entering` = true during the ~700ms coalesce window after mount/beat change.
+  // `entranceKey` increments each time we want to remount the node/line group so
+  // framer-motion re-runs `initial → animate` with the new scatter positions.
+  const [entering, setEntering] = useState(!prefersReducedMotion);
+  const [entranceKey, setEntranceKey] = useState(0);
+  const scatterRef = useRef<[number, number][]>(makeScatterPositions());
+  const prevBeatKeyRef = useRef<string | number | undefined>(beatKey);
+  const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // On first mount — play the entrance once then settle
+  useEffect(() => {
+    if (!prefersReducedMotion) {
+      enterTimerRef.current = setTimeout(() => setEntering(false), 750);
+    }
+    return () => {
+      if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // When the beat changes — regenerate scatter positions and replay entrance
+  useEffect(() => {
+    if (beatKey === prevBeatKeyRef.current) return;
+    prevBeatKeyRef.current = beatKey;
+    scatterRef.current = makeScatterPositions();
+    if (!prefersReducedMotion) {
+      setEntering(true);
+      setEntranceKey((k) => k + 1);
+    }
+    if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+    enterTimerRef.current = setTimeout(() => setEntering(false), 750);
+    return () => {
+      if (enterTimerRef.current) clearTimeout(enterTimerRef.current);
+    };
+  }, [beatKey, prefersReducedMotion]);
 
   const [morphIdx, setMorphIdx] = useState(0);
 
@@ -187,14 +239,22 @@ function LumiiOrb({
         />
       )}
 
-      {/* Connection lines — animate endpoints + soft opacity pulse + zone color tint */}
+      {/* Connection lines — animate endpoints + soft opacity pulse + zone color tint.
+          During entrance, lines start transparent and fade in after nodes settle (~0.68s delay).
+          Each line remounts (via key) whenever entranceKey changes so `initial` re-fires. */}
       {WISP_EDGES.map(([a, b], i) => {
         const loOpacity = excited ? 0.45 : !shouldMorph ? 0.18 : 0.22;
         const hiOpacity = excited ? 0.72 : !shouldMorph ? 0.42 : 0.52;
         const pulsePeriod = excited ? 0.9 + i * 0.08 : 2.8 + i * 0.35;
+        // Lines fade in after nodes coalesce — first line starts after most nodes
+        // have settled (~0.68s), last line after all nodes are in formation (~1.04s)
+        const opacityDelay = entering
+          ? 0.68 + i * 0.06
+          : i * (excited ? 0.1 : 0.28);
         return (
           <motion.line
-            key={i}
+            key={`l-${i}-${entranceKey}`}
+            initial={entering ? { strokeOpacity: 0 } : false}
             animate={{
               x1: shape[a][0], y1: shape[a][1],
               x2: shape[b][0], y2: shape[b][1],
@@ -210,7 +270,7 @@ function LumiiOrb({
                 duration: pulsePeriod,
                 repeat: Infinity,
                 ease: "easeInOut",
-                delay: i * (excited ? 0.1 : 0.28),
+                delay: opacityDelay,
               },
               stroke: { duration: 1.2, ease: "easeInOut" },
             }}
@@ -221,7 +281,10 @@ function LumiiOrb({
         );
       })}
 
-      {/* Nodes — morph position (+ idle drift) + independent twinkle opacity + zone color tint */}
+      {/* Nodes — morph position (+ idle drift) + independent twinkle opacity + zone color tint.
+          During entrance, each node flies in from its scatter position with a
+          staggered delay so they coalesce one by one into formation.
+          Each node remounts (via key) whenever entranceKey changes. */}
       {WISP_COLORS.map((_color, i) => {
         const baseX = shape[i][0];
         const baseY = shape[i][1];
@@ -231,18 +294,24 @@ function LumiiOrb({
         const animY = !shouldMorph
           ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
           : baseY;
-        const xTrans = !shouldMorph
+        const xTrans = entering
+          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : !shouldMorph
           ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
           : { duration: morphDur, ease: "easeInOut" as const };
-        const yTrans = !shouldMorph
+        const yTrans = entering
+          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : !shouldMorph
           ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
           : { duration: morphDur, ease: "easeInOut" as const };
+        const scatter = scatterRef.current[i];
         return (
           <motion.circle
-            key={i}
+            key={`n-${i}-${entranceKey}`}
             cx={0} cy={0}
             r={nodeR}
             filter={`url(#${filterId})`}
+            initial={entering ? { x: scatter[0], y: scatter[1], opacity: 0 } : false}
             animate={{
               x: animX,
               y: animY,
@@ -252,19 +321,22 @@ function LumiiOrb({
             transition={{
               x: xTrans,
               y: yTrans,
-              opacity: {
-                duration: excited ? 0.65 + i * 0.1 : 2.0 + i * 0.28,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: i * (excited ? 0.07 : 0.2),
-              },
+              opacity: entering
+                ? { duration: 0.3, delay: i * 0.065 }
+                : {
+                    duration: excited ? 0.65 + i * 0.1 : 2.0 + i * 0.28,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * (excited ? 0.07 : 0.2),
+                  },
               fill: { duration: 1.2, ease: "easeInOut" },
             }}
           />
         );
       })}
 
-      {/* Star-point spikes on each node — small 4-point cross for that "star" look */}
+      {/* Star-point spikes on each node — small 4-point cross for that "star" look.
+          Spikes share the same entrance key so they remount with their nodes. */}
       {WISP_COLORS.map((_color, i) => {
         const baseX = shape[i][0];
         const baseY = shape[i][1];
@@ -274,15 +346,21 @@ function LumiiOrb({
         const animY = !shouldMorph
           ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
           : baseY;
-        const xTrans = !shouldMorph
+        const xTrans = entering
+          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : !shouldMorph
           ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
           : { duration: morphDur, ease: "easeInOut" as const };
-        const yTrans = !shouldMorph
+        const yTrans = entering
+          ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : !shouldMorph
           ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
           : { duration: morphDur, ease: "easeInOut" as const };
+        const scatter = scatterRef.current[i];
         return (
         <motion.g
-          key={`spike-${i}`}
+          key={`spike-${i}-${entranceKey}`}
+          initial={entering ? { x: scatter[0], y: scatter[1], opacity: 0, scale: 0 } : false}
           animate={{
             x: animX,
             y: animY,
@@ -293,18 +371,22 @@ function LumiiOrb({
           transition={{
             x: xTrans,
             y: yTrans,
-            opacity: {
-              duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * (excited ? 0.06 : 0.18) + 0.3,
-            },
-            scale: {
-              duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: i * (excited ? 0.06 : 0.18) + 0.3,
-            },
+            opacity: entering
+              ? { duration: 0.3, delay: i * 0.065 + 0.1 }
+              : {
+                  duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * (excited ? 0.06 : 0.18) + 0.3,
+                },
+            scale: entering
+              ? { duration: 0.4, ease: "easeOut", delay: i * 0.065 + 0.1 }
+              : {
+                  duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * (excited ? 0.06 : 0.18) + 0.3,
+                },
             color: { duration: 1.2, ease: "easeInOut" },
           }}
         >
@@ -1288,6 +1370,7 @@ export function LumiiTutorial({
                           tetheredDirection={posStyle.tether}
                           onNearestNode={setTetherNodeOffset}
                           highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
+                          beatKey={beat?.position}
                         />
                       </motion.div>
                     }
