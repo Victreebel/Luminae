@@ -1529,6 +1529,37 @@ export function LumiiTutorial({
                             />
                           )}
                         </AnimatePresence>
+                        {/* ── Burst particle scatter ── */}
+                        <AnimatePresence>
+                          {burstActive && (
+                            <>
+                              {([0, 60, 120, 180, 240, 300] as const).map((deg, i) => {
+                                const rad = (deg * Math.PI) / 180;
+                                const tx = Math.round(Math.cos(rad) * 52);
+                                const ty = Math.round(Math.sin(rad) * 52);
+                                const palette = ["#818cf8", "#67e8f9", "#a78bfa", "#38bdf8", "#c4b5fd", "#22d3ee"];
+                                return (
+                                  <motion.div
+                                    key={`burst-particle-${deg}`}
+                                    initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                                    animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.5, ease: "easeOut" }}
+                                    style={{
+                                      position: "absolute",
+                                      width: 7,
+                                      height: 7,
+                                      borderRadius: "50%",
+                                      background: palette[i % palette.length],
+                                      pointerEvents: "none",
+                                      zIndex: 2,
+                                    }}
+                                  />
+                                );
+                              })}
+                            </>
+                          )}
+                        </AnimatePresence>
                         <motion.div
                           style={{ position: "relative", zIndex: 1 }}
                           animate={{
