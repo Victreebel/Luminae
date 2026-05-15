@@ -1556,10 +1556,10 @@ export function LumiiTutorial({
                                   <React.Fragment key={`burst-particle-${deg}`}>
                                     {burstIntensity >= 1.2 && (
                                       <motion.div
-                                        initial={{ opacity: 0.25, x: 0, y: 0, scale: 1 }}
-                                        animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
+                                        initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
+                                        animate={{ opacity: [0, 0.4, 0], scale: [1, 1.3, 0.35], x: [0, tx, tx], y: [0, ty, ty] }}
                                         exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.5, ease: "easeOut" }}
+                                        transition={{ duration: 0.5, ease: "easeOut", times: [0, 0.4, 1] }}
                                         style={{
                                           position: "absolute",
                                           width: 18,
@@ -1609,10 +1609,10 @@ export function LumiiTutorial({
                                   <React.Fragment key={`burst-particle-wide-${deg}`}>
                                     {burstIntensity >= 1.2 && (
                                       <motion.div
-                                        initial={{ opacity: 0.25, x: 0, y: 0, scale: 1 }}
-                                        animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
+                                        initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
+                                        animate={{ opacity: [0, 0.4, 0], scale: [1, 1.3, 0.25], x: [0, tx, tx], y: [0, ty, ty] }}
                                         exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.55, ease: "easeOut", delay }}
+                                        transition={{ duration: 0.55, ease: "easeOut", delay, times: [0, 0.4, 1] }}
                                         style={{
                                           position: "absolute",
                                           width: 16,
