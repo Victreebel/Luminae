@@ -1536,7 +1536,7 @@ export function LumiiTutorial({
                             />
                           )}
                         </AnimatePresence>
-                        {/* ── Burst particle scatter ── */}
+                        {/* ── Burst particle scatter — ring 1 ── */}
                         <AnimatePresence>
                           {burstActive && (
                             <>
@@ -1556,6 +1556,38 @@ export function LumiiTutorial({
                                       position: "absolute",
                                       width: 7,
                                       height: 7,
+                                      borderRadius: "50%",
+                                      background: palette[i % palette.length],
+                                      pointerEvents: "none",
+                                      zIndex: 2,
+                                    }}
+                                  />
+                                );
+                              })}
+                            </>
+                          )}
+                        </AnimatePresence>
+                        {/* ── Burst particle scatter — ring 2 (wide shockwave, high-intensity only) ── */}
+                        <AnimatePresence>
+                          {burstActive && burstIntensity >= 1.35 && (
+                            <>
+                              {([36, 108, 180, 252, 324] as const).map((deg, i) => {
+                                const rad = (deg * Math.PI) / 180;
+                                const radius = 88 + (i % 2) * 8;
+                                const tx = Math.round(Math.cos(rad) * radius);
+                                const ty = Math.round(Math.sin(rad) * radius);
+                                const palette = ["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"];
+                                return (
+                                  <motion.div
+                                    key={`burst-particle-wide-${deg}`}
+                                    initial={{ opacity: 0.9, x: 0, y: 0, scale: 1 }}
+                                    animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.55, ease: "easeOut", delay: 0.12 + i * 0.006 }}
+                                    style={{
+                                      position: "absolute",
+                                      width: 5,
+                                      height: 5,
                                       borderRadius: "50%",
                                       background: palette[i % palette.length],
                                       pointerEvents: "none",
