@@ -77,18 +77,18 @@ const MORPH_CYCLE = ["speakA", "idle", "speakB", "idle"] as const;
 const EMBER_PALETTE = ["#f87171","#60a5fa","#4ade80","#c084fc","#f8fafc","#fbbf24"] as const;
 interface EmberDef { angle: number; r0: number; r1: number; sz: number; col: string; delay: number; dur: number; }
 const EMBERS: EmberDef[] = [
-  { angle:  14, r0: 22, r1: 45, sz: 1.8, col: EMBER_PALETTE[0], delay: 0.0, dur: 2.1 },
-  { angle:  48, r0: 25, r1: 51, sz: 1.4, col: EMBER_PALETTE[1], delay: 0.6, dur: 1.9 },
-  { angle:  92, r0: 20, r1: 43, sz: 2.2, col: EMBER_PALETTE[2], delay: 1.3, dur: 2.4 },
-  { angle: 145, r0: 24, r1: 48, sz: 1.6, col: EMBER_PALETTE[3], delay: 0.3, dur: 2.0 },
-  { angle: 188, r0: 21, r1: 47, sz: 1.9, col: EMBER_PALETTE[5], delay: 2.1, dur: 1.8 },
-  { angle: 234, r0: 26, r1: 53, sz: 1.5, col: EMBER_PALETTE[4], delay: 0.9, dur: 2.6 },
-  { angle: 278, r0: 22, r1: 46, sz: 2.0, col: EMBER_PALETTE[1], delay: 1.7, dur: 2.2 },
-  { angle: 320, r0: 24, r1: 50, sz: 1.7, col: EMBER_PALETTE[0], delay: 0.5, dur: 1.9 },
-  { angle:  65, r0: 23, r1: 48, sz: 1.5, col: EMBER_PALETTE[5], delay: 2.8, dur: 2.3 },
-  { angle: 165, r0: 20, r1: 44, sz: 2.1, col: EMBER_PALETTE[2], delay: 1.4, dur: 2.0 },
-  { angle: 260, r0: 25, r1: 52, sz: 1.6, col: EMBER_PALETTE[3], delay: 3.2, dur: 2.5 },
-  { angle: 340, r0: 21, r1: 45, sz: 1.8, col: EMBER_PALETTE[4], delay: 0.8, dur: 1.7 },
+  { angle:  14, r0: 22, r1: 46, sz: 3.4, col: EMBER_PALETTE[0], delay: 0.0, dur: 2.1 },
+  { angle:  48, r0: 25, r1: 52, sz: 2.8, col: EMBER_PALETTE[1], delay: 0.6, dur: 1.9 },
+  { angle:  92, r0: 20, r1: 44, sz: 4.0, col: EMBER_PALETTE[2], delay: 1.3, dur: 2.4 },
+  { angle: 145, r0: 24, r1: 49, sz: 3.2, col: EMBER_PALETTE[3], delay: 0.3, dur: 2.0 },
+  { angle: 188, r0: 21, r1: 47, sz: 3.6, col: EMBER_PALETTE[5], delay: 2.1, dur: 1.8 },
+  { angle: 234, r0: 26, r1: 54, sz: 3.0, col: EMBER_PALETTE[4], delay: 0.9, dur: 2.6 },
+  { angle: 278, r0: 22, r1: 47, sz: 3.8, col: EMBER_PALETTE[1], delay: 1.7, dur: 2.2 },
+  { angle: 320, r0: 24, r1: 51, sz: 3.2, col: EMBER_PALETTE[0], delay: 0.5, dur: 1.9 },
+  { angle:  65, r0: 23, r1: 49, sz: 3.0, col: EMBER_PALETTE[5], delay: 2.8, dur: 2.3 },
+  { angle: 165, r0: 20, r1: 45, sz: 4.0, col: EMBER_PALETTE[2], delay: 1.4, dur: 2.0 },
+  { angle: 260, r0: 25, r1: 53, sz: 3.2, col: EMBER_PALETTE[3], delay: 3.2, dur: 2.5 },
+  { angle: 340, r0: 21, r1: 46, sz: 3.4, col: EMBER_PALETTE[4], delay: 0.8, dur: 1.7 },
 ];
 
 // Direction → SVG rotation angle for the pointer arrow
@@ -564,7 +564,7 @@ function LumiiOrb({
         return (
           <motion.g
             key={`ember-${i}`}
-            filter={`url(#${filterId})`}
+            style={{ filter: `drop-shadow(0 0 3px ${e.col})` }}
             initial={{ x: x0, y: y0, opacity: 0, scale: 0.6 }}
             animate={{
               x: [x0, x1, x1],

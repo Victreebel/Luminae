@@ -486,18 +486,18 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 const EMBER_PALETTE_ORB = ["#f87171","#60a5fa","#4ade80","#c084fc","#f8fafc","#fbbf24"] as const;
 interface OrbEmberDef { angle: number; r0f: number; r1f: number; szf: number; col: string; delay: number; dur: number; }
 const ORB_EMBERS: OrbEmberDef[] = [
-  { angle:  14, r0f: 0.30, r1f: 0.62, szf: 0.038, col: EMBER_PALETTE_ORB[0], delay: 0.0, dur: 2.1 },
-  { angle:  48, r0f: 0.34, r1f: 0.70, szf: 0.030, col: EMBER_PALETTE_ORB[1], delay: 0.6, dur: 1.9 },
-  { angle:  92, r0f: 0.28, r1f: 0.60, szf: 0.047, col: EMBER_PALETTE_ORB[2], delay: 1.3, dur: 2.4 },
-  { angle: 145, r0f: 0.33, r1f: 0.66, szf: 0.034, col: EMBER_PALETTE_ORB[3], delay: 0.3, dur: 2.0 },
-  { angle: 188, r0f: 0.29, r1f: 0.65, szf: 0.040, col: EMBER_PALETTE_ORB[5], delay: 2.1, dur: 1.8 },
-  { angle: 234, r0f: 0.36, r1f: 0.73, szf: 0.032, col: EMBER_PALETTE_ORB[4], delay: 0.9, dur: 2.6 },
-  { angle: 278, r0f: 0.30, r1f: 0.64, szf: 0.042, col: EMBER_PALETTE_ORB[1], delay: 1.7, dur: 2.2 },
-  { angle: 320, r0f: 0.33, r1f: 0.69, szf: 0.036, col: EMBER_PALETTE_ORB[0], delay: 0.5, dur: 1.9 },
-  { angle:  65, r0f: 0.32, r1f: 0.67, szf: 0.032, col: EMBER_PALETTE_ORB[5], delay: 2.8, dur: 2.3 },
-  { angle: 165, r0f: 0.28, r1f: 0.61, szf: 0.044, col: EMBER_PALETTE_ORB[2], delay: 1.4, dur: 2.0 },
-  { angle: 260, r0f: 0.34, r1f: 0.72, szf: 0.034, col: EMBER_PALETTE_ORB[3], delay: 3.2, dur: 2.5 },
-  { angle: 340, r0f: 0.29, r1f: 0.62, szf: 0.038, col: EMBER_PALETTE_ORB[4], delay: 0.8, dur: 1.7 },
+  { angle:  14, r0f: 0.30, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[0], delay: 0.0, dur: 2.1 },
+  { angle:  48, r0f: 0.34, r1f: 0.70, szf: 0.060, col: EMBER_PALETTE_ORB[1], delay: 0.6, dur: 1.9 },
+  { angle:  92, r0f: 0.28, r1f: 0.60, szf: 0.084, col: EMBER_PALETTE_ORB[2], delay: 1.3, dur: 2.4 },
+  { angle: 145, r0f: 0.33, r1f: 0.66, szf: 0.068, col: EMBER_PALETTE_ORB[3], delay: 0.3, dur: 2.0 },
+  { angle: 188, r0f: 0.29, r1f: 0.65, szf: 0.076, col: EMBER_PALETTE_ORB[5], delay: 2.1, dur: 1.8 },
+  { angle: 234, r0f: 0.36, r1f: 0.73, szf: 0.064, col: EMBER_PALETTE_ORB[4], delay: 0.9, dur: 2.6 },
+  { angle: 278, r0f: 0.30, r1f: 0.64, szf: 0.080, col: EMBER_PALETTE_ORB[1], delay: 1.7, dur: 2.2 },
+  { angle: 320, r0f: 0.33, r1f: 0.69, szf: 0.068, col: EMBER_PALETTE_ORB[0], delay: 0.5, dur: 1.9 },
+  { angle:  65, r0f: 0.32, r1f: 0.67, szf: 0.064, col: EMBER_PALETTE_ORB[5], delay: 2.8, dur: 2.3 },
+  { angle: 165, r0f: 0.28, r1f: 0.61, szf: 0.084, col: EMBER_PALETTE_ORB[2], delay: 1.4, dur: 2.0 },
+  { angle: 260, r0f: 0.34, r1f: 0.72, szf: 0.068, col: EMBER_PALETTE_ORB[3], delay: 3.2, dur: 2.5 },
+  { angle: 340, r0f: 0.29, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[4], delay: 0.8, dur: 1.7 },
 ];
 
 // Direction → SVG rotation angle for the pointer arrow
@@ -556,6 +556,7 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
           return (
             <motion.g
               key={`orb-ember-${i}`}
+              style={{ filter: `drop-shadow(0 0 3px ${e.col})` }}
               initial={{ x: x0, y: y0, opacity: 0, scale: 0.6 }}
               animate={{
                 x: [x0, x1, x1],
