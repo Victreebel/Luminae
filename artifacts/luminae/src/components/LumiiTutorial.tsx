@@ -25,6 +25,15 @@ const WISP_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fb
 
 // Zone-tinted palettes — each row is the 6 node colors subtly shifted toward the zone's affinity theme.
 // "none" restores the default full-spectrum WISP_COLORS palette.
+// Pulse ring accent colors per tutorial zone (idle and excited variants)
+const ZONE_PULSE_COLOR: Record<"harvest" | "market" | "filters" | "luminaries" | "none", { idle: string; excited: string }> = {
+  none:       { idle: "rgba(168,85,247,0.7)", excited: "#fbbf24" },
+  harvest:    { idle: "#f97316",              excited: "#fbbf24" },
+  luminaries: { idle: "#c084fc",              excited: "#d4b8f5" },
+  market:     { idle: "#fbbf24",              excited: "#fbbf24" },
+  filters:    { idle: "#fbbf24",              excited: "#fbbf24" },
+};
+
 const ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminaries" | "none", readonly string[]> = {
   none:       ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"],
   // harvest → Flare/Continuum warmth: orange stays, blue brightens, others warm toward amber
@@ -124,7 +133,8 @@ function LumiiOrb({
   const nodeR = excited ? 4.2 : 3.4;
   const lineWidth = excited ? 1.4 : 0.9;
   const blurSd = excited ? 3.8 : 2.6;
-  const pulseStroke = excited ? "#fbbf24" : "rgba(168,85,247,0.7)";
+  const zoneKey = highlightZone ?? "none";
+  const pulseStroke = excited ? ZONE_PULSE_COLOR[zoneKey].excited : ZONE_PULSE_COLOR[zoneKey].idle;
   const pulseStrokeW = excited ? 1.6 : 1.0;
 
   // Per-node idle drift: small asymmetric X/Y offsets + periods to avoid uniformity
@@ -154,10 +164,14 @@ function LumiiOrb({
         animate={{
           r: excited ? [14, 30, 14] : [11, 22, 11],
           opacity: excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
+          stroke: pulseStroke,
         }}
-        transition={{ duration: excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" }}
+        transition={{
+          r:       { duration: excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+          opacity: { duration: excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+          stroke:  { duration: 0.5, ease: "easeInOut" },
+        }}
         fill="none"
-        stroke={pulseStroke}
         strokeWidth={pulseStrokeW}
       />
 
