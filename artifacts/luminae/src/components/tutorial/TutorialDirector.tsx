@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
 import {
@@ -478,6 +478,7 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
 function LumiiOrb({ size = 64, excited = false, highlightZone = null }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null }) {
+  const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
   const p = LUMII_ORB_ZONE_PALETTE[highlightZone ?? "none"];
@@ -487,7 +488,12 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null }: { size?:
   const midBg   = `conic-gradient(from 0deg,${p[0]}cc,${p[5]}99,${p[2]}cc,${p[1]}cc,${p[3]}cc,${p[4]}55,${p[0]}cc)`;
   const innerBg = `conic-gradient(from 90deg,${p[1]}bb,${p[2]}99,${p[5]}bb,${p[3]}bb,${p[0]}99,${p[1]}bb)`;
   return (
-    <div style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}>
+    <motion.div
+      style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}
+      initial={prefersReducedMotion ? false : { scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={prefersReducedMotion ? undefined : { type: "spring", stiffness: 280, damping: 16, mass: 0.7 }}
+    >
       <motion.div
         animate={{ scale: excited ? [1, 1.4, 1.1, 1.4, 1] : [1, 1.18, 1], opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52] }}
         transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
@@ -504,7 +510,7 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null }: { size?:
         style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: innerBg, maskImage: mask, WebkitMaskImage: mask }}
       />
       <div style={{ position: "absolute", inset: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(220,240,255,0.65) 45%,transparent 70%)", boxShadow: "0 0 12px 4px rgba(180,220,255,0.5)" }} />
-    </div>
+    </motion.div>
   );
 }
 
