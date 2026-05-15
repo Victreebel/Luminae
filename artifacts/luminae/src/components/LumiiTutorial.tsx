@@ -6,6 +6,7 @@ import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
 import type { LumiiPointerDir } from "@/lib/tutorialData";
+import type { GemKey } from "@/lib/gemMeta";
 
 // ─── Viewport height hook ────────────────────────────────────────────────────
 
@@ -118,6 +119,47 @@ const BURST_INTENSITY: Record<string, number> = {
   card_forged:        1.15,
 };
 const BURST_INTENSITY_DEFAULT = 1.15;
+
+// Maps action type → the affinity key whose palette should drive the burst.
+// Harvest → Flare (energy collection), reserve → Verdance (growth/holding),
+// forge → Continuum (crystallizing permanence).
+const BURST_GEM_KEY_BY_ACTION: Partial<Record<string, GemKey>> = {
+  take_three_crystals: "ruby",
+  take_two_crystals:   "ruby",
+  reserve_card:        "emerald",
+  purchase_card:       "sapphire",
+  purchase_reserved:   "sapphire",
+};
+
+// Per-affinity particle color palettes.
+// ring1: 6 colors used for the close-scatter ring (replaces the single-color tint).
+// ring2: 5 colors used for the wide shockwave ring (replaces the hardcoded indigo/cyan).
+const AFFINITY_BURST_PALETTE: Record<GemKey, { ring1: readonly string[]; ring2: readonly string[] }> = {
+  pearl:    {
+    ring1: ["#F2F5FF", "#E8EEFF", "#A8B8E8", "#D8E4FF", "#FFFFFF", "#C8D4F4"],
+    ring2: ["#A8B8E8", "#D8E4FF", "#7090D8", "#F2F5FF", "#B0C4F0"],
+  },
+  ruby:     {
+    ring1: ["#FF5A3C", "#FF8A6A", "#FFB347", "#FF4500", "#FF7043", "#FFCC80"],
+    ring2: ["#FF5A3C", "#FF8A6A", "#FFB347", "#FF6B35", "#FF4500"],
+  },
+  sapphire: {
+    ring1: ["#3D6BFF", "#7090FF", "#4F8EFF", "#A0B8FF", "#2952CC", "#93A4FF"],
+    ring2: ["#3D6BFF", "#7090FF", "#A0B8FF", "#2952CC", "#C5D0FF"],
+  },
+  emerald:  {
+    ring1: ["#2ECC71", "#5BE197", "#27AE60", "#7CFC00", "#00C853", "#A8F0C0"],
+    ring2: ["#2ECC71", "#5BE197", "#27AE60", "#00C853", "#A8F0C0"],
+  },
+  onyx:     {
+    ring1: ["#7B1FA2", "#B14FD8", "#9C27B0", "#CE93D8", "#4A0072", "#E040FB"],
+    ring2: ["#7B1FA2", "#B14FD8", "#CE93D8", "#E040FB", "#9C27B0"],
+  },
+  flux:     {
+    ring1: ["#FFC43D", "#FFE08A", "#FFD700", "#FFAB40", "#FFF176", "#FFB300"],
+    ring2: ["#FFC43D", "#FFE08A", "#FFD700", "#FFAB40", "#FFF9C4"],
+  },
+};
 
 function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -1167,6 +1209,8 @@ export function LumiiTutorial({
   // Intensity for the current burst — sourced from BURST_INTENSITY map so callers
   // reference named event types instead of raw literals.
   const [currentBurstIntensity, setCurrentBurstIntensity] = useState<number>(burstIntensity);
+  // Affinity key for the current burst — drives per-affinity particle palettes when set.
+  const [burstGemKey, setBurstGemKey] = useState<GemKey | null>(null);
   // Nearest constellation node for tether origin alignment
   const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
@@ -1231,10 +1275,12 @@ export function LumiiTutorial({
   // opts.color: flash palette color (default gold #fbbf24; use Luminary summonColor for claims).
   // opts.intensity: scale peak from BURST_INTENSITY map (default BURST_INTENSITY_DEFAULT).
   //   Values >= 1.35 also fire the wide-ring shockwave (ring 2).
-  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string; intensity?: number }) => {
+  // opts.gemKey: affinity key that drives the per-affinity particle palettes (both rings).
+  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string; intensity?: number; gemKey?: GemKey }) => {
     if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
     setBurstColor(opts?.color ?? "#fbbf24");
     setCurrentBurstIntensity(opts?.intensity ?? BURST_INTENSITY_DEFAULT);
+    setBurstGemKey(opts?.gemKey ?? null);
     setBurstActive(true);
     burstTimerRef.current = setTimeout(() => {
       setBurstActive(false);
@@ -1273,7 +1319,8 @@ export function LumiiTutorial({
       const prevCount = prevClaimedLumCountRef.current;
       prevClaimedLumCountRef.current = currentClaimedCount;
       if (prevCount === 0 && currentClaimedCount === 1) {
-        // First Luminary claimed — use its summon color, a longer epic burst, and elevated intensity
+        // First Luminary claimed — use its summon color, a longer epic burst, and elevated
+        // intensity. No single gemKey applies; summonColor drives the palette for this moment.
         const newLumId = myPlayer?.claimedLuminaryIds?.[0];
         const lumData = (state.luminaries ?? []).find((l) => l.id === newLumId);
         const color = (lumData as { summonColor?: string } | undefined)?.summonColor ?? "#fbbf24";
@@ -1283,7 +1330,7 @@ export function LumiiTutorial({
           intensity: BURST_INTENSITY.luminary_claimed,
         });
       } else {
-        // Standard action beat — use per-action palette color and intensity.
+        // Standard action beat — use per-action palette color, affinity key, and intensity.
         // Forge actions that also grant Eminence (lumens increased) get the elevated
         // eminence_milestone preset (1.6, ring 2); plain forges get card_forged (1.15).
         const isForgingAction = lastAction.type === "purchase_card" || lastAction.type === "purchase_reserved";
@@ -1293,6 +1340,7 @@ export function LumiiTutorial({
         const earnedEminence = isForgingAction && currentLumens > prevLumens;
         triggerCelebrationBurst(advanceBeat, {
           color: BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24",
+          gemKey: BURST_GEM_KEY_BY_ACTION[lastAction.type],
           intensity: earnedEminence
             ? BURST_INTENSITY.eminence_milestone
             : isForgingAction
@@ -1581,14 +1629,18 @@ export function LumiiTutorial({
                                 const rad = (deg * Math.PI) / 180;
                                 const tx = Math.round(Math.cos(rad) * 52 * currentBurstIntensity);
                                 const ty = Math.round(Math.sin(rad) * 52 * currentBurstIntensity);
-                                const hex = burstColor.replace("#", "");
-                                const br = parseInt(hex.substring(0, 2), 16);
-                                const bg = parseInt(hex.substring(2, 4), 16);
-                                const bb = parseInt(hex.substring(4, 6), 16);
-                                const tint = (t: number) =>
-                                  `rgb(${Math.round(br + (255 - br) * t)},${Math.round(bg + (255 - bg) * t)},${Math.round(bb + (255 - bb) * t)})`;
-                                const palette = [tint(0), tint(0.3), tint(0.55), tint(0.15), tint(0.7), tint(0.45)];
-                                const color = palette[i % palette.length];
+                                const ring1Palette = burstGemKey
+                                  ? AFFINITY_BURST_PALETTE[burstGemKey].ring1
+                                  : (() => {
+                                      const hex = burstColor.replace("#", "");
+                                      const br = parseInt(hex.substring(0, 2), 16);
+                                      const bg = parseInt(hex.substring(2, 4), 16);
+                                      const bb = parseInt(hex.substring(4, 6), 16);
+                                      const tint = (t: number) =>
+                                        `rgb(${Math.round(br + (255 - br) * t)},${Math.round(bg + (255 - bg) * t)},${Math.round(bb + (255 - bb) * t)})`;
+                                      return [tint(0), tint(0.3), tint(0.55), tint(0.15), tint(0.7), tint(0.45)];
+                                    })();
+                                const color = ring1Palette[i % ring1Palette.length];
                                 return (
                                   <React.Fragment key={`burst-particle-${deg}`}>
                                     {currentBurstIntensity >= 1.2 && (
@@ -1639,8 +1691,10 @@ export function LumiiTutorial({
                                 const radius = (88 + (i % 2) * 8) * currentBurstIntensity;
                                 const tx = Math.round(Math.cos(rad) * radius);
                                 const ty = Math.round(Math.sin(rad) * radius);
-                                const palette = ["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"];
-                                const color = palette[i % palette.length];
+                                const ring2Palette = burstGemKey
+                                  ? AFFINITY_BURST_PALETTE[burstGemKey].ring2
+                                  : (["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"] as const);
+                                const color = ring2Palette[i % ring2Palette.length];
                                 const delay = 0.12 + i * 0.006;
                                 return (
                                   <React.Fragment key={`burst-particle-wide-${deg}`}>
