@@ -1544,7 +1544,13 @@ export function LumiiTutorial({
                                 const rad = (deg * Math.PI) / 180;
                                 const tx = Math.round(Math.cos(rad) * 52);
                                 const ty = Math.round(Math.sin(rad) * 52);
-                                const palette = ["#818cf8", "#67e8f9", "#a78bfa", "#38bdf8", "#c4b5fd", "#22d3ee"];
+                                const hex = burstColor.replace("#", "");
+                                const br = parseInt(hex.substring(0, 2), 16);
+                                const bg = parseInt(hex.substring(2, 4), 16);
+                                const bb = parseInt(hex.substring(4, 6), 16);
+                                const tint = (t: number) =>
+                                  `rgb(${Math.round(br + (255 - br) * t)},${Math.round(bg + (255 - bg) * t)},${Math.round(bb + (255 - bb) * t)})`;
+                                const palette = [tint(0), tint(0.3), tint(0.55), tint(0.15), tint(0.7), tint(0.45)];
                                 return (
                                   <motion.div
                                     key={`burst-particle-${deg}`}
