@@ -57,7 +57,7 @@ interface TutState {
   lumDone: boolean;
   showLuminary: boolean;
   navigateTo: string | null;
-  animTrigger?: { type: "forge"; lumens: number; name: string } | { type: "harvest"; gems: GemKey[] };
+  animTrigger?: { type: "forge"; lumens: number; name: string; cardId: string } | { type: "harvest"; gems: GemKey[] };
 }
 
 const INIT_CRYSTALS: Record<GemKey, number> = {
@@ -294,7 +294,7 @@ function reducer(s: TutState, a: TAction): TutState {
       }
 
       // Beat 9: must forge FIRST_FORGE_ID
-      const forgeTrigger = { type: "forge" as const, lumens: card.lumens, name: card.name };
+      const forgeTrigger = { type: "forge" as const, lumens: card.lumens, name: card.name, cardId };
 
       if (beatId === "b9_first_forge") {
         if (cardId !== FIRST_FORGE_ID) {
@@ -323,7 +323,7 @@ function reducer(s: TutState, a: TAction): TutState {
           return { ...s, nudge: beat.wrongClickNudge ?? "Choose a Verdance artifact." };
         }
         const forgeResult = applyForge(s, cardId);
-        const t13Trigger = { type: "forge" as const, lumens: card.lumens, name: card.name };
+        const t13Trigger = { type: "forge" as const, lumens: card.lumens, name: card.name, cardId };
         return {
           ...s,
           ...forgeResult,
@@ -403,7 +403,7 @@ function reducer(s: TutState, a: TAction): TutState {
           dlgLine: 0,
           subStep: 0,
           nudge: null,
-          animTrigger: { type: "forge" as const, lumens: card.lumens, name: card.name },
+          animTrigger: { type: "forge" as const, lumens: card.lumens, name: card.name, cardId },
         };
       }
       return s;
@@ -690,6 +690,8 @@ function TutorialCard({
   foreground,
   forged,
   impossible,
+  viewMode = "all",
+  wellSel = {},
 }: {
   card: TutorialCard;
   bonuses: Record<GemKey, number>;
@@ -702,6 +704,8 @@ function TutorialCard({
   foreground?: boolean;
   forged?: boolean;
   impossible?: boolean;
+  viewMode?: TutorialMarketView;
+  wellSel?: Partial<Record<GemKey, number>>;
 }) {
   const eff = effectiveCost(card, bonuses);
   const artUrl = CARD_ART[card.id];
@@ -711,6 +715,44 @@ function TutorialCard({
   const bgStyle: React.CSSProperties = artUrl
     ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
+
+  // Compute the displayed cost value and styling per affinity based on viewMode
+  const getCostDisplay = (k: GemKey, baseCost: number): { value: number | "✓"; showStrike: boolean; strikeValue: number; bgClass: string; textClass: string } => {
+    if (viewMode === "discounted") {
+      const effCost = eff[k] ?? 0;
+      const reduced = effCost < baseCost;
+      const free = effCost === 0;
+      return {
+        value: free ? "✓" : effCost,
+        showStrike: reduced && !free,
+        strikeValue: baseCost,
+        bgClass: free ? "bg-green-900/80" : reduced ? "bg-blue-900/80" : "bg-black/60",
+        textClass: free ? "text-green-300" : reduced ? "text-blue-200" : "text-white",
+      };
+    }
+    if (viewMode === "needed") {
+      const effCost = eff[k] ?? 0;
+      const held = crystals[k] ?? 0;
+      const inWell = wellSel[k] ?? 0;
+      const shortfall = Math.max(0, effCost - held - inWell);
+      const free = shortfall === 0;
+      return {
+        value: free ? "✓" : shortfall,
+        showStrike: false,
+        strikeValue: baseCost,
+        bgClass: free ? "bg-green-900/80" : "bg-black/60",
+        textClass: free ? "text-green-300" : "text-white",
+      };
+    }
+    // "all" mode — show base (printed) cost, no discounting
+    return {
+      value: baseCost,
+      showStrike: false,
+      strikeValue: baseCost,
+      bgClass: "bg-black/60",
+      textClass: "text-white",
+    };
+  };
 
   return (
     <motion.div
@@ -743,13 +785,11 @@ function TutorialCard({
             <div className="flex flex-wrap gap-0.5 justify-end">
               {(Object.entries(card.cost) as [GemKey, number][]).map(([k, v]) => {
                 if (!v || v <= 0) return null;
-                const ek = eff[k] ?? 0;
-                const reduced = ek < v;
-                const free = ek === 0;
+                const display = getCostDisplay(k, v);
                 return (
-                  <div key={k} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${free ? "bg-green-900/80" : reduced ? "bg-blue-900/80" : "bg-black/60"}`}>
-                    {reduced && !free && <span className="text-[6px] text-white/30 line-through mr-0.5">{v}</span>}
-                    <span className={`text-[9px] font-bold ${free ? "text-green-300" : reduced ? "text-blue-200" : "text-white"}`}>{free ? "✓" : ek}</span>
+                  <div key={k} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${display.bgClass}`}>
+                    {display.showStrike && <span className="text-[6px] text-white/30 line-through mr-0.5">{display.strikeValue}</span>}
+                    <span className={`text-[9px] font-bold ${display.textClass}`}>{display.value}</span>
                     <MiniGem gem={k} size={9} />
                   </div>
                 );
@@ -1135,25 +1175,12 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
     return false;
   };
 
-  const filterByView = (cardId: string): boolean => {
-    const card = TUTORIAL_CARDS[cardId];
-    if (!card) return false;
-    if (s.view === "all") return true;
-    if (s.view === "discounted") {
-      return Object.entries(card.cost).some(([k, v]) => (v as number) > 0 && (s.bonuses[k as GemKey] ?? 0) > 0);
-    }
-    if (s.view === "needed") {
-      return card.bonusColor === "emerald";
-    }
-    return true;
-  };
-
   const renderTierRow = (tier: number, cardIds: string[], label: string) => {
     if (cardIds.length === 0) return null;
-    const visible = cardIds.filter(id => {
-      if (id === T3_IMPOSSIBLE_ID) return s.view === "all"; // impossible only shows in "all"
-      return filterByView(id);
-    });
+    // All cards are shown regardless of view mode — only the displayed numbers change.
+    // T3_IMPOSSIBLE_ID is already beat-gated (only appears in lateBeats tier 3 list)
+    // so it shows in all view modes just like any other card in the list.
+    const visible = cardIds.filter(() => true);
     if (visible.length === 0) return null;
     return (
       <div key={tier} className="mb-4">
@@ -1180,6 +1207,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
                   foreground={getForeground(cardId)}
                   forged={isForged}
                   impossible={isImpossible}
+                  viewMode={s.view}
+                  wellSel={s.wellSel}
                 />
               </div>
             );
@@ -1880,6 +1909,149 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
   );
 }
 
+// ─── Tutorial Forge Burst ─────────────────────────────────────────────────────
+// Full card-lift animation that matches the real game's cardActionBurst feel:
+// dims the board, slides the card from its approximate market slot to center,
+// scales + Y-rotates, shows player info + "Forged!", then fades out.
+function TutorialForgeBurst({
+  animKey,
+  cardId,
+  lumens,
+  name,
+}: {
+  animKey: number;
+  cardId: string;
+  lumens: number;
+  name: string;
+}) {
+  const card = TUTORIAL_CARDS[cardId];
+  const artUrl = card ? CARD_ART[card.id] : undefined;
+  const bonusMeta = card ? GEM_META[card.bonusColor] : null;
+
+  // Card visual — a lightweight card face rendered at full size for the animation
+  const CardFace = () => {
+    if (!card) return null;
+    const bgStyle: React.CSSProperties = artUrl
+      ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+      : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
+    return (
+      <div className="relative rounded-xl overflow-hidden shadow-2xl ring-2 ring-amber-400/60" style={{ width: 112, height: 156, ...bgStyle }}>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/85" />
+        <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+          <div className="flex justify-between items-start">
+            <span className="text-base font-serif font-bold text-white drop-shadow">{card.lumens > 0 ? card.lumens : ""}</span>
+            {bonusMeta && (
+              <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
+                <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
+              </div>
+            )}
+          </div>
+          <div className="space-y-1">
+            <div className="text-[8px] font-semibold text-white drop-shadow line-clamp-2 leading-tight">{card.name}</div>
+          </div>
+        </div>
+        {/* Amber sheen on forge */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "linear-gradient(135deg, rgba(251,191,36,0.22) 0%, transparent 60%)", mixBlendMode: "screen" }}
+          animate={{ opacity: [0, 1, 0.5, 0] }}
+          transition={{ duration: 1.6, ease: "easeOut" }}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <motion.div
+      key={animKey}
+      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: [1, 1, 0] }}
+      transition={{ duration: 2.2, times: [0, 0.75, 1], ease: "easeIn" }}
+    >
+      {/* Board dim */}
+      <motion.div
+        className="absolute inset-0 bg-black/60"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 2.2, times: [0, 0.12, 0.75, 1] }}
+      />
+
+      {/* Radial gold glow at center */}
+      <motion.div
+        className="absolute pointer-events-none"
+        style={{
+          width: 320, height: 320,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(251,191,36,0.28) 0%, transparent 70%)",
+        }}
+        initial={{ scale: 0.3, opacity: 0 }}
+        animate={{ scale: [0.3, 1.4, 1.1], opacity: [0, 0.9, 0] }}
+        transition={{ duration: 1.6, ease: "easeOut" }}
+      />
+
+      {/* Card lift: starts from top-center (market zone) → center, scale + rotateY */}
+      <motion.div
+        className="relative flex flex-col items-center gap-3"
+        initial={{ y: -160, scale: 0.55, rotateY: -35, opacity: 0 }}
+        animate={{
+          y: [null, 0, 0, -40],
+          scale: [null, 1.12, 1.08, 0.85],
+          rotateY: [null, 0, 6, 0],
+          opacity: [null, 1, 1, 0],
+        }}
+        transition={{
+          duration: 2.0,
+          times: [0, 0.28, 0.65, 1],
+          ease: "easeOut",
+        }}
+        style={{ perspective: 800 }}
+      >
+        {/* Player label above card */}
+        <motion.div
+          className="flex items-center gap-1.5 bg-black/70 rounded-full px-3 py-1 border border-white/10"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [8, 0, 0, -8] }}
+          transition={{ duration: 2.0, times: [0, 0.20, 0.65, 1] }}
+        >
+          <div className="w-4 h-4 rounded-full bg-indigo-700/80 border border-indigo-400/40 flex items-center justify-center">
+            <span className="text-[7px] font-bold text-white">Y</span>
+          </div>
+          <span className="text-[11px] font-semibold text-white/80">You</span>
+        </motion.div>
+
+        <CardFace />
+
+        {/* "Forged!" text + eminence */}
+        <motion.div
+          className="flex flex-col items-center gap-1"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -10] }}
+          transition={{ duration: 2.0, times: [0, 0.22, 0.65, 1], delay: 0.1 }}
+        >
+          <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.85)]">
+            Forged!
+          </span>
+          {lumens > 0 && (
+            <span className="flex items-center gap-1.5 text-base font-bold text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.7)]">
+              +{lumens} Eminence
+            </span>
+          )}
+          <span className="text-[11px] text-white/50 font-medium mt-0.5">{name}</span>
+        </motion.div>
+      </motion.div>
+
+      {/* Expanding ring accent */}
+      <motion.div
+        className="absolute rounded-full border border-amber-400/60"
+        initial={{ width: 80, height: 80, opacity: 0.8 }}
+        animate={{ width: 380, height: 380, opacity: 0 }}
+        transition={{ duration: 1.1, ease: "easeOut", delay: 0.1 }}
+      />
+    </motion.div>
+  );
+}
+
 // ─── Gameplay Phase ───────────────────────────────────────────────────────────
 function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
@@ -1887,7 +2059,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const subStep = s.subStep;
 
   // ── Burst animation state ──────────────────────────────────────────────────
-  const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
+  const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string; cardId: string } | null>(null);
   const purchaseBurstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
   const gemBurstKeyRef = useRef(0);
@@ -1899,8 +2071,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (!trigger) return;
     if (trigger.type === "forge") {
       purchaseBurstKeyRef.current += 1;
-      setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name });
-      setTimeout(() => setPurchaseBurst(null), 1500);
+      setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name, cardId: trigger.cardId });
+      // TutorialForgeBurst auto-fades over ~2.2s; clear slightly after
+      setTimeout(() => setPurchaseBurst(null), 2400);
       setForgeJustHappened(true);
       setTimeout(() => setForgeJustHappened(false), 3600);
     } else if (trigger.type === "harvest") {
@@ -1924,6 +2097,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
+  // Highlight the bottom player panel during b9b to show players it's interactive
+  const isPanelHighlighted = beatId === "b9b_forge_complete";
 
   // Where the Lumii floats
   const lumiiTarget = beat.lumiiZone;
@@ -2064,7 +2239,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {/* ── Pinned Player Panel — mirrors the real game's bottom panel ── */}
       <div
         className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
-          isActMode ? 'border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.20)]' : 'border-white/10'
+          isPanelHighlighted
+            ? 'border-amber-400/60 shadow-[0_0_18px_rgba(251,191,36,0.28)]'
+            : isActMode ? 'border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.20)]' : 'border-white/10'
         }`}
         style={{ background: 'rgba(3,3,12,0.92)' }}
       >
@@ -2253,44 +2430,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         </div>
       )}
 
-      {/* ── Forge Burst Overlay ─────────────────────────────────────────── */}
+      {/* ── Forge Burst Overlay — full card-lift animation ─────────────── */}
       <AnimatePresence>
         {purchaseBurst && (
-          <motion.div
-            key={purchaseBurst.key}
-            className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 1.4, ease: "easeOut" }}
-          >
-            <motion.div
-              className="absolute rounded-full border-2 border-amber-400"
-              initial={{ width: 60, height: 60, opacity: 0.9 }}
-              animate={{ width: 360, height: 360, opacity: 0 }}
-              transition={{ duration: 0.85, ease: "easeOut" }}
-            />
-            <motion.div
-              className="absolute rounded-full border border-amber-300/50"
-              initial={{ width: 40, height: 40, opacity: 0.7 }}
-              animate={{ width: 250, height: 250, opacity: 0 }}
-              transition={{ duration: 0.70, ease: "easeOut", delay: 0.09 }}
-            />
-            <motion.div
-              className="flex flex-col items-center gap-1"
-              initial={{ y: 0, opacity: 1, scale: 0.8 }}
-              animate={{ y: -90, opacity: 0, scale: 1.12 }}
-              transition={{ duration: 1.15, ease: "easeOut" }}
-            >
-              <span className="text-3xl font-serif font-black text-amber-300 drop-shadow-[0_0_14px_rgba(251,191,36,0.85)]">
-                Forged!
-              </span>
-              {purchaseBurst.lumens > 0 && (
-                <span className="flex items-center gap-1.5 text-lg font-bold text-indigo-300 drop-shadow-[0_0_8px_rgba(129,140,248,0.7)]">
-                  +{purchaseBurst.lumens} Eminence
-                </span>
-              )}
-            </motion.div>
-          </motion.div>
+          <TutorialForgeBurst
+            animKey={purchaseBurst.key}
+            cardId={purchaseBurst.cardId}
+            lumens={purchaseBurst.lumens}
+            name={purchaseBurst.name}
+          />
         )}
       </AnimatePresence>
 

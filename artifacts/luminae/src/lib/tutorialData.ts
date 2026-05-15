@@ -309,6 +309,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "A forged artifact remains with your society." },
       { text: "Its bonus will make future artifacts easier to shape." },
+      { text: "Your artifacts are always reachable here — tap your panel to see what you have built." },
     ],
     completion: { type: "dialogue" },
   },
