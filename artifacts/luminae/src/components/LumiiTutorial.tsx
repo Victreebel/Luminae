@@ -110,6 +110,15 @@ const BURST_COLOR_BY_ACTION: Record<string, string> = {
   purchase_reserved:   "#818cf8",
 };
 
+// Burst intensity presets per named game event type.
+// Values >= 1.35 trigger the wide-ring shockwave (ring 2).
+const BURST_INTENSITY: Record<string, number> = {
+  luminary_claimed:   1.5,
+  eminence_milestone: 1.6,
+  card_forged:        1.15,
+};
+const BURST_INTENSITY_DEFAULT = 1.15;
+
 function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -1155,6 +1164,9 @@ export function LumiiTutorial({
   // Color used during the current burst — varies by action type for normal beats,
   // and uses the Luminary's summonColor for the first-Luminary claim milestone.
   const [burstColor, setBurstColor] = useState<string>("#fbbf24");
+  // Intensity for the current burst — sourced from BURST_INTENSITY map so callers
+  // reference named event types instead of raw literals.
+  const [currentBurstIntensity, setCurrentBurstIntensity] = useState<number>(burstIntensity);
   // Nearest constellation node for tether origin alignment
   const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
@@ -1162,6 +1174,10 @@ export function LumiiTutorial({
   // don't treat a pre-existing claim as a new one.
   const prevClaimedLumCountRef = useRef(
     state?.players?.find((p) => p.playerId === sessionPlayerId)?.claimedLuminaryIds?.length ?? 0
+  );
+  // Track lumens so a forge action that grants Eminence can fire the eminence_milestone preset.
+  const prevLumensRef = useRef(
+    state?.players?.find((p) => p.playerId === sessionPlayerId)?.lumens ?? 0
   );
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1213,9 +1229,12 @@ export function LumiiTutorial({
   // Trigger a brief celebration burst on Lumii then advance after it plays.
   // opts.duration: how long the burst lasts (default 500ms; use 700ms for Luminary claims).
   // opts.color: flash palette color (default gold #fbbf24; use Luminary summonColor for claims).
-  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string }) => {
+  // opts.intensity: scale peak from BURST_INTENSITY map (default BURST_INTENSITY_DEFAULT).
+  //   Values >= 1.35 also fire the wide-ring shockwave (ring 2).
+  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string; intensity?: number }) => {
     if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
     setBurstColor(opts?.color ?? "#fbbf24");
+    setCurrentBurstIntensity(opts?.intensity ?? BURST_INTENSITY_DEFAULT);
     setBurstActive(true);
     burstTimerRef.current = setTimeout(() => {
       setBurstActive(false);
@@ -1254,14 +1273,32 @@ export function LumiiTutorial({
       const prevCount = prevClaimedLumCountRef.current;
       prevClaimedLumCountRef.current = currentClaimedCount;
       if (prevCount === 0 && currentClaimedCount === 1) {
-        // First Luminary claimed — use its summon color and a longer epic burst
+        // First Luminary claimed — use its summon color, a longer epic burst, and elevated intensity
         const newLumId = myPlayer?.claimedLuminaryIds?.[0];
         const lumData = (state.luminaries ?? []).find((l) => l.id === newLumId);
         const color = (lumData as { summonColor?: string } | undefined)?.summonColor ?? "#fbbf24";
-        triggerCelebrationBurst(advanceBeat, { duration: 700, color });
+        triggerCelebrationBurst(advanceBeat, {
+          duration: 700,
+          color,
+          intensity: BURST_INTENSITY.luminary_claimed,
+        });
       } else {
-        // Standard action beat — use per-action palette color
-        triggerCelebrationBurst(advanceBeat, { color: BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24" });
+        // Standard action beat — use per-action palette color and intensity.
+        // Forge actions that also grant Eminence (lumens increased) get the elevated
+        // eminence_milestone preset (1.6, ring 2); plain forges get card_forged (1.15).
+        const isForgingAction = lastAction.type === "purchase_card" || lastAction.type === "purchase_reserved";
+        const currentLumens = myPlayer?.lumens ?? 0;
+        const prevLumens = prevLumensRef.current;
+        prevLumensRef.current = currentLumens;
+        const earnedEminence = isForgingAction && currentLumens > prevLumens;
+        triggerCelebrationBurst(advanceBeat, {
+          color: BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24",
+          intensity: earnedEminence
+            ? BURST_INTENSITY.eminence_milestone
+            : isForgingAction
+              ? BURST_INTENSITY.card_forged
+              : BURST_INTENSITY_DEFAULT,
+        });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1542,8 +1579,8 @@ export function LumiiTutorial({
                             <>
                               {([0, 60, 120, 180, 240, 300] as const).map((deg, i) => {
                                 const rad = (deg * Math.PI) / 180;
-                                const tx = Math.round(Math.cos(rad) * 52 * burstIntensity);
-                                const ty = Math.round(Math.sin(rad) * 52 * burstIntensity);
+                                const tx = Math.round(Math.cos(rad) * 52 * currentBurstIntensity);
+                                const ty = Math.round(Math.sin(rad) * 52 * currentBurstIntensity);
                                 const hex = burstColor.replace("#", "");
                                 const br = parseInt(hex.substring(0, 2), 16);
                                 const bg = parseInt(hex.substring(2, 4), 16);
@@ -1554,7 +1591,7 @@ export function LumiiTutorial({
                                 const color = palette[i % palette.length];
                                 return (
                                   <React.Fragment key={`burst-particle-${deg}`}>
-                                    {burstIntensity >= 1.2 && (
+                                    {currentBurstIntensity >= 1.2 && (
                                       <motion.div
                                         initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
                                         animate={{ opacity: [0, 0.4, 0], scale: [1, 1.3, 0.35], x: [0, tx, tx], y: [0, ty, ty] }}
@@ -1595,11 +1632,11 @@ export function LumiiTutorial({
                         </AnimatePresence>
                         {/* ── Burst particle scatter — ring 2 (wide shockwave, high-intensity only) ── */}
                         <AnimatePresence>
-                          {burstActive && burstIntensity >= 1.35 && (
+                          {burstActive && currentBurstIntensity >= 1.35 && (
                             <>
                               {([36, 108, 180, 252, 324] as const).map((deg, i) => {
                                 const rad = (deg * Math.PI) / 180;
-                                const radius = (88 + (i % 2) * 8) * burstIntensity;
+                                const radius = (88 + (i % 2) * 8) * currentBurstIntensity;
                                 const tx = Math.round(Math.cos(rad) * radius);
                                 const ty = Math.round(Math.sin(rad) * radius);
                                 const palette = ["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"];
@@ -1607,7 +1644,7 @@ export function LumiiTutorial({
                                 const delay = 0.12 + i * 0.006;
                                 return (
                                   <React.Fragment key={`burst-particle-wide-${deg}`}>
-                                    {burstIntensity >= 1.2 && (
+                                    {currentBurstIntensity >= 1.2 && (
                                       <motion.div
                                         initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
                                         animate={{ opacity: [0, 0.4, 0], scale: [1, 1.3, 0.25], x: [0, tx, tx], y: [0, ty, ty] }}
@@ -1650,7 +1687,7 @@ export function LumiiTutorial({
                           style={{ position: "relative", zIndex: 1 }}
                           animate={{
                             y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
-                            scale: burstActive ? [1, burstIntensity, 1] : 1,
+                            scale: burstActive ? [1, currentBurstIntensity, 1] : 1,
                           }}
                           transition={{
                             y: {
