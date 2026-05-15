@@ -1542,8 +1542,8 @@ export function LumiiTutorial({
                             <>
                               {([0, 60, 120, 180, 240, 300] as const).map((deg, i) => {
                                 const rad = (deg * Math.PI) / 180;
-                                const tx = Math.round(Math.cos(rad) * 52);
-                                const ty = Math.round(Math.sin(rad) * 52);
+                                const tx = Math.round(Math.cos(rad) * 52 * burstIntensity);
+                                const ty = Math.round(Math.sin(rad) * 52 * burstIntensity);
                                 const hex = burstColor.replace("#", "");
                                 const br = parseInt(hex.substring(0, 2), 16);
                                 const bg = parseInt(hex.substring(2, 4), 16);
@@ -1579,7 +1579,7 @@ export function LumiiTutorial({
                             <>
                               {([36, 108, 180, 252, 324] as const).map((deg, i) => {
                                 const rad = (deg * Math.PI) / 180;
-                                const radius = 88 + (i % 2) * 8;
+                                const radius = (88 + (i % 2) * 8) * burstIntensity;
                                 const tx = Math.round(Math.cos(rad) * radius);
                                 const ty = Math.round(Math.sin(rad) * radius);
                                 const palette = ["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"];
