@@ -2641,7 +2641,9 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (s.beat > 0) {
+    if (s.beat >= TUTORIAL_BEATS.length - 1) {
+      clearTutorialProgress();
+    } else if (s.beat > 0) {
       saveTutorialProgress(s.beat);
     }
   }, [s.beat]);
