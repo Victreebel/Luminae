@@ -1123,9 +1123,14 @@ interface PositionStyle {
   fixed: React.CSSProperties;
   layout: LayoutVariant;
   tether?: "down" | "left" | "up";
-  /** When true, content is wrapped in a plain div with translateX(-50%) so
-   *  the assembly centres on the 50vw point. vw units are always viewport-
-   *  relative; the plain wrapper is never managed by Framer Motion. */
+  /**
+   * When true the fixed container spans left:0 right:0 (full viewport width)
+   * and uses display:flex + justifyContent:center to anchor the orb.
+   * This is more reliable than left:50vw + translateX(-50%) across mobile
+   * webviews, PWAs and safe-area environments because it uses the browser's
+   * own layout engine rather than CSS vw units, which can disagree with the
+   * actual rendered viewport width on some mobile platforms.
+   */
   centered?: boolean;
 }
 
@@ -1141,12 +1146,10 @@ function getPositionStyle(pos: BeatPosition, vpH: number): PositionStyle {
         tether: "left",
       };
     case "luminaries":
-      // left:50vw places the element's left edge at the viewport horizontal centre.
-      // 50vw is always viewport-relative regardless of containing block or transforms.
-      // The centered:true flag adds a plain-div wrapper with translateX(-50%) to
-      // shift the assembly left by half its own width, centering it perfectly.
+      // left:0 right:0 spans the full rendered viewport; flex+justifyContent:center
+      // anchors the orb at true viewport centre on every platform.
       return {
-        fixed: { top: 90, left: "50vw" },
+        fixed: { top: 90, left: 0, right: 0 },
         layout: "below",
         tether: "down",
         centered: true,
@@ -1154,7 +1157,7 @@ function getPositionStyle(pos: BeatPosition, vpH: number): PositionStyle {
     case "center":
     default:
       return {
-        fixed: { top: Math.round(vpH * 0.5) - 88, left: "50vw" },
+        fixed: { top: Math.round(vpH * 0.5) - 88, left: 0, right: 0 },
         layout: "below",
         centered: true,
       };
@@ -1630,16 +1633,16 @@ export function LumiiTutorial({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="fixed z-[500] pointer-events-none"
-                style={{ ...posStyle.fixed, transition: "top 0.35s ease, bottom 0.35s ease, left 0.35s ease, right 0.35s ease" }}
+                style={{
+                  ...posStyle.fixed,
+                  // When centered, span the full rendered viewport width and use
+                  // the browser's flex layout to anchor the orb at true centre.
+                  // This is more reliable than left:50vw + translateX(-50%) across
+                  // mobile webviews, PWAs, and safe-area environments.
+                  ...(posStyle.centered ? { display: "flex", justifyContent: "center" } : {}),
+                  transition: "top 0.35s ease, bottom 0.35s ease, left 0.35s ease, right 0.35s ease",
+                }}
               >
-                {/*
-                  When centered=true the outer motion.div is positioned at left:50vw
-                  (always viewport-centre — vw units ignore containing block & transforms).
-                  This plain div shifts left by 50% of the content's own width, perfectly
-                  centring the assembly. Framer Motion never manages a plain div's
-                  transform, so it can never override this centering shift.
-                */}
-                <div style={posStyle.centered ? { transform: "translateX(-50%)" } : undefined}>
                 <motion.div
                   initial={{ scale: 0.82 }}
                   animate={{ scale: 1 }}
@@ -1868,7 +1871,6 @@ export function LumiiTutorial({
                     }
                   />
                 </motion.div>
-                </div>
               </motion.div>
             )}
           </AnimatePresence>
