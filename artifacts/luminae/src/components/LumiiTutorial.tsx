@@ -1556,7 +1556,7 @@ export function LumiiTutorial({
                                     key={`burst-particle-${deg}`}
                                     initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
                                     animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
-                                    exit={{ opacity: 0 }}
+                                    exit={{ opacity: 0, scale: 0 }}
                                     transition={{ duration: 0.5, ease: "easeOut" }}
                                     style={{
                                       position: "absolute",
@@ -1588,7 +1588,7 @@ export function LumiiTutorial({
                                     key={`burst-particle-wide-${deg}`}
                                     initial={{ opacity: 0.9, x: 0, y: 0, scale: 1 }}
                                     animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
-                                    exit={{ opacity: 0 }}
+                                    exit={{ opacity: 0, scale: 0 }}
                                     transition={{ duration: 0.55, ease: "easeOut", delay: 0.12 + i * 0.006 }}
                                     style={{
                                       position: "absolute",
