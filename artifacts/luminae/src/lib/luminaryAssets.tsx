@@ -2001,7 +2001,7 @@ export function LuminarySummonCutscene({
               transition={{ duration: 1.10, times: [0, 0.10, 0.52, 0.82, 1], ease: 'easeOut' }}
               exit={{ opacity: 0, transition: { duration: 0.50, ease: 'easeOut' } }}
               style={{
-                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #fffef8 0%, #fff6cc 28%, #FFE25588 54%, transparent 82%)`,
+                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #fffef8 0%, #fffacc 28%, #FFE84888 54%, transparent 82%)`,
               }}
             />
             {/* Warm golden haze — the lingering afterimage as eyes readjust */}
@@ -2018,7 +2018,7 @@ export function LuminarySummonCutscene({
               }}
               exit={{ opacity: 0, scale: 1.90, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
               style={{
-                background: `radial-gradient(ellipse 88% 88% at 50% 42%, #FFE066 0%, #FFD04A66 32%, #FFB94438 62%, #FFD04A10 82%, transparent 96%)`,
+                background: `radial-gradient(ellipse 88% 88% at 50% 42%, #FFED5A 0%, #FFE45066 32%, #FFD84838 62%, #FFE45010 82%, transparent 96%)`,
                 transformOrigin: '50% 42%',
               }}
             />
