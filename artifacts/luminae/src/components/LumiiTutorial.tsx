@@ -58,6 +58,8 @@ const WISP_SHAPES: Record<string, WispShape> = {
   speakB:  [[-14,-17],[  0,-23],[14,-17],[20,  3],[  0, 19],[-20,  3]],
   // Wide star — excited/action state
   excited: [[ 0,-25],[ 22, -8],[16, 20],[ 0, 10],[-16, 20],[-22, -8]],
+  // Celebration burst — nodes sprung far outward, snaps back after 0.5s
+  burst:   [[ 0,-38],[34,-13],[25, 31],[-10, 38],[-32, 10],[-26,-24]],
 };
 
 // Connections: outer ring (0-1-2-3-4-5-0) + one diagonal (0-3) = 7 edges
@@ -94,6 +96,7 @@ function LumiiOrb({
   size = 72,
   excited = false,
   speaking = false,
+  burst = false,
   tetheredDirection,
   onNearestNode,
   highlightZone,
@@ -102,6 +105,7 @@ function LumiiOrb({
   size?: number;
   excited?: boolean;
   speaking?: boolean;
+  burst?: boolean;
   tetheredDirection?: "down" | "up" | "left";
   onNearestNode?: (offset: { x: number; y: number }) => void;
   highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null;
@@ -168,7 +172,9 @@ function LumiiOrb({
     return () => clearInterval(id);
   }, [shouldMorph, excited]);
 
-  const shapeKey = !shouldMorph
+  const shapeKey = burst
+    ? "burst"
+    : !shouldMorph
     ? "idle"
     : excited
     ? (morphIdx % 2 === 0 ? "excited" : "speakA")
@@ -181,13 +187,14 @@ function LumiiOrb({
     onNearestNodeRef.current(getNearestNode(currentShape, tetheredDirection));
   }, [shapeKey, tetheredDirection]);
   const shape = WISP_SHAPES[shapeKey];
-  const morphDur = excited ? 0.42 : 1.05;
-  const nodeR = excited ? 4.2 : 3.4;
-  const lineWidth = excited ? 1.4 : 0.9;
-  const blurSd = excited ? 3.8 : 2.6;
+  // burst: snap out fast (0.16s), snap back naturally when burst turns false (~0.32s spring)
+  const morphDur = burst ? 0.16 : excited ? 0.42 : 1.05;
+  const nodeR = burst ? 5.0 : excited ? 4.2 : 3.4;
+  const lineWidth = burst ? 1.8 : excited ? 1.4 : 0.9;
+  const blurSd = burst ? 5.0 : excited ? 3.8 : 2.6;
   const zoneKey = highlightZone ?? "none";
-  const pulseStroke = excited ? ZONE_PULSE_COLOR[zoneKey].excited : ZONE_PULSE_COLOR[zoneKey].idle;
-  const pulseStrokeW = excited ? 1.6 : 1.0;
+  const pulseStroke = burst ? "#fbbf24" : excited ? ZONE_PULSE_COLOR[zoneKey].excited : ZONE_PULSE_COLOR[zoneKey].idle;
+  const pulseStrokeW = burst ? 2.2 : excited ? 1.6 : 1.0;
 
   // Per-node idle drift: small asymmetric X/Y offsets + periods to avoid uniformity
   const IDLE_DRIFT_X = [ 1.8, -2.2,  1.4, -1.6,  2.0, -1.2];
@@ -214,43 +221,65 @@ function LumiiOrb({
       <motion.circle
         cx={0} cy={0}
         animate={{
-          r: excited ? [14, 30, 14] : [11, 22, 11],
-          opacity: excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
+          r: burst ? [20, 50, 20] : excited ? [14, 30, 14] : [11, 22, 11],
+          opacity: burst ? [0.75, 0, 0.75] : excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
           stroke: pulseStroke,
         }}
         transition={{
-          r:       { duration: excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
-          opacity: { duration: excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
-          stroke:  { duration: 0.5, ease: "easeInOut" },
+          r:       { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+          opacity: { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+          stroke:  { duration: 0.3, ease: "easeInOut" },
         }}
         fill="none"
         strokeWidth={pulseStrokeW}
       />
 
-      {/* Second pulse ring — excited only, offset phase */}
-      {excited && (
+      {/* Second pulse ring — excited or burst, offset phase */}
+      {(excited || burst) && (
         <motion.circle
           cx={0} cy={0}
-          animate={{ r: [18, 34, 18], opacity: [0.38, 0, 0.38] }}
-          transition={{ duration: 1.3, repeat: Infinity, ease: "easeOut", delay: 0.44 }}
+          animate={{
+            r: burst ? [28, 58, 28] : [18, 34, 18],
+            opacity: burst ? [0.55, 0, 0.55] : [0.38, 0, 0.38],
+          }}
+          transition={{ duration: burst ? 0.5 : 1.3, repeat: Infinity, ease: "easeOut", delay: burst ? 0.08 : 0.44 }}
           fill="none"
-          stroke="#f97316"
-          strokeWidth={0.8}
+          stroke={burst ? "#fbbf24" : "#f97316"}
+          strokeWidth={burst ? 1.4 : 0.8}
         />
       )}
+
+      {/* Burst flash ring — one-shot radial flash on celebration */}
+      <AnimatePresence>
+        {burst && (
+          <motion.circle
+            key="burst-flash"
+            cx={0} cy={0}
+            initial={{ r: 8, opacity: 0.9, strokeWidth: 3 }}
+            animate={{ r: 52, opacity: 0, strokeWidth: 0.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            fill="none"
+            stroke="#fbbf24"
+          />
+        )}
+      </AnimatePresence>
 
       {/* Connection lines — animate endpoints + soft opacity pulse + zone color tint.
           During entrance, lines start transparent and fade in after nodes settle (~0.68s delay).
           Each line remounts (via key) whenever entranceKey changes so `initial` re-fires. */}
       {WISP_EDGES.map(([a, b], i) => {
-        const loOpacity = excited ? 0.45 : !shouldMorph ? 0.18 : 0.22;
-        const hiOpacity = excited ? 0.72 : !shouldMorph ? 0.42 : 0.52;
-        const pulsePeriod = excited ? 0.9 + i * 0.08 : 2.8 + i * 0.35;
+        const loOpacity = burst ? 0.6 : excited ? 0.45 : !shouldMorph ? 0.18 : 0.22;
+        const hiOpacity = burst ? 0.9 : excited ? 0.72 : !shouldMorph ? 0.42 : 0.52;
+        const pulsePeriod = burst ? 0.5 : excited ? 0.9 + i * 0.08 : 2.8 + i * 0.35;
         // Lines fade in after nodes coalesce — first line starts after most nodes
         // have settled (~0.68s), last line after all nodes are in formation (~1.04s)
         const opacityDelay = entering
           ? 0.68 + i * 0.06
-          : i * (excited ? 0.1 : 0.28);
+          : burst ? 0 : i * (excited ? 0.1 : 0.28);
+        const posTrans = burst
+          ? { duration: morphDur, ease: "easeOut" as const }
+          : { duration: morphDur, ease: "easeInOut" as const };
         return (
           <motion.line
             key={`l-${i}-${entranceKey}`}
@@ -259,20 +288,20 @@ function LumiiOrb({
               x1: shape[a][0], y1: shape[a][1],
               x2: shape[b][0], y2: shape[b][1],
               strokeOpacity: [loOpacity, hiOpacity, loOpacity],
-              stroke: nodeColors[a],
+              stroke: burst ? "#fbbf24" : nodeColors[a],
             }}
             transition={{
-              x1: { duration: morphDur, ease: "easeInOut" },
-              y1: { duration: morphDur, ease: "easeInOut" },
-              x2: { duration: morphDur, ease: "easeInOut" },
-              y2: { duration: morphDur, ease: "easeInOut" },
+              x1: posTrans,
+              y1: posTrans,
+              x2: posTrans,
+              y2: posTrans,
               strokeOpacity: {
                 duration: pulsePeriod,
                 repeat: Infinity,
                 ease: "easeInOut",
                 delay: opacityDelay,
               },
-              stroke: { duration: 1.2, ease: "easeInOut" },
+              stroke: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
             }}
             strokeWidth={lineWidth}
             filter={`url(#${filterId})`}
@@ -288,19 +317,23 @@ function LumiiOrb({
       {WISP_COLORS.map((_color, i) => {
         const baseX = shape[i][0];
         const baseY = shape[i][1];
-        const animX = !shouldMorph
+        const animX = !shouldMorph && !burst
           ? [baseX, baseX + IDLE_DRIFT_X[i], baseX, baseX - IDLE_DRIFT_X[i] * 0.5, baseX]
           : baseX;
-        const animY = !shouldMorph
+        const animY = !shouldMorph && !burst
           ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
           : baseY;
         const xTrans = entering
           ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : burst
+          ? { duration: morphDur, ease: "easeOut" as const }
           : !shouldMorph
           ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
           : { duration: morphDur, ease: "easeInOut" as const };
         const yTrans = entering
           ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : burst
+          ? { duration: morphDur, ease: "easeOut" as const }
           : !shouldMorph
           ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
           : { duration: morphDur, ease: "easeInOut" as const };
@@ -315,21 +348,23 @@ function LumiiOrb({
             animate={{
               x: animX,
               y: animY,
-              opacity: excited ? [0.82, 1, 0.82] : [0.6, 1, 0.6],
-              fill: nodeColors[i],
+              opacity: burst ? [0.95, 1, 0.95] : excited ? [0.82, 1, 0.82] : [0.6, 1, 0.6],
+              fill: burst ? "#fbbf24" : nodeColors[i],
             }}
             transition={{
               x: xTrans,
               y: yTrans,
               opacity: entering
                 ? { duration: 0.3, delay: i * 0.065 }
+                : burst
+                ? { duration: 0.25, repeat: Infinity, ease: "easeInOut" }
                 : {
                     duration: excited ? 0.65 + i * 0.1 : 2.0 + i * 0.28,
                     repeat: Infinity,
                     ease: "easeInOut",
                     delay: i * (excited ? 0.07 : 0.2),
                   },
-              fill: { duration: 1.2, ease: "easeInOut" },
+              fill: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
             }}
           />
         );
@@ -340,19 +375,23 @@ function LumiiOrb({
       {WISP_COLORS.map((_color, i) => {
         const baseX = shape[i][0];
         const baseY = shape[i][1];
-        const animX = !shouldMorph
+        const animX = !shouldMorph && !burst
           ? [baseX, baseX + IDLE_DRIFT_X[i], baseX, baseX - IDLE_DRIFT_X[i] * 0.5, baseX]
           : baseX;
-        const animY = !shouldMorph
+        const animY = !shouldMorph && !burst
           ? [baseY, baseY + IDLE_DRIFT_Y[i], baseY, baseY - IDLE_DRIFT_Y[i] * 0.6, baseY]
           : baseY;
         const xTrans = entering
           ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : burst
+          ? { duration: morphDur, ease: "easeOut" as const }
           : !shouldMorph
           ? { duration: IDLE_PERIODS[i], repeat: Infinity, ease: "easeInOut" as const }
           : { duration: morphDur, ease: "easeInOut" as const };
         const yTrans = entering
           ? { duration: 0.55, ease: "easeOut" as const, delay: i * 0.065 }
+          : burst
+          ? { duration: morphDur, ease: "easeOut" as const }
           : !shouldMorph
           ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
           : { duration: morphDur, ease: "easeInOut" as const };
@@ -364,15 +403,17 @@ function LumiiOrb({
           animate={{
             x: animX,
             y: animY,
-            opacity: excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
-            scale: excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
-            color: nodeColors[i],
+            opacity: burst ? [0.9, 1, 0.9] : excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
+            scale: burst ? [1.2, 1.6, 1.2] : excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
+            color: burst ? "#fbbf24" : nodeColors[i],
           }}
           transition={{
             x: xTrans,
             y: yTrans,
             opacity: entering
               ? { duration: 0.3, delay: i * 0.065 + 0.1 }
+              : burst
+              ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
               : {
                   duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
                   repeat: Infinity,
@@ -381,13 +422,15 @@ function LumiiOrb({
                 },
             scale: entering
               ? { duration: 0.4, ease: "easeOut", delay: i * 0.065 + 0.1 }
+              : burst
+              ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
               : {
                   duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
                   repeat: Infinity,
                   ease: "easeInOut",
                   delay: i * (excited ? 0.06 : 0.18) + 0.3,
                 },
-            color: { duration: 1.2, ease: "easeInOut" },
+            color: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
           }}
         >
           {/* Vertical spike */}
@@ -1032,14 +1075,24 @@ export function LumiiTutorial({
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [nudgeText, setNudgeText] = useState<string | null>(null);
+  // Celebration burst state — briefly true after each successful action beat
+  const [burstActive, setBurstActive] = useState(false);
   // Nearest constellation node for tether origin alignment
   const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const beat = BEATS[tutorialStep] ?? null;
   const currentAttention = LUMII_ATTENTION[tutorialStep] ?? "listening";
+
+  // Cleanup burst timer on unmount
+  useEffect(() => {
+    return () => {
+      if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    };
+  }, []);
 
   // Register the tutorial panel height CSS var so the board content pads itself
   useEffect(() => {
@@ -1074,6 +1127,16 @@ export function LumiiTutorial({
     }
   }, [tutorialStep, setTutorialStep]);
 
+  // Trigger a brief celebration burst on Lumii then advance after it plays (~500ms)
+  const triggerCelebrationBurst = useCallback((onComplete: () => void) => {
+    if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    setBurstActive(true);
+    burstTimerRef.current = setTimeout(() => {
+      setBurstActive(false);
+      onComplete();
+    }, 500);
+  }, []);
+
   const handleClick = useCallback(() => {
     if (!beat || showCompletion || isFastForwarding) return;
     if (lineIdx < beat.lines.length - 1) {
@@ -1088,7 +1151,7 @@ export function LumiiTutorial({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat, lineIdx, advanceBeat, showCompletion, isFastForwarding]);
 
-  // Detect when the required action completes
+  // Detect when the required action completes — trigger celebration burst then advance
   useEffect(() => {
     if (!beat || beat.advance.type !== "action") return;
     if (!state?.actionLog?.length) return;
@@ -1098,9 +1161,9 @@ export function LumiiTutorial({
     const lastAction = state.lastAction as { type?: string; playerId?: string } | null;
     if (!lastAction?.type || lastAction.playerId !== sessionPlayerId) return;
     if (beat.advance.actions.includes(lastAction.type)) {
-      advanceBeat();
+      triggerCelebrationBurst(advanceBeat);
     }
-  }, [state?.actionLog?.length, beat, sessionPlayerId, advanceBeat]);
+  }, [state?.actionLog?.length, beat, sessionPlayerId, advanceBeat, triggerCelebrationBurst]);
 
   const triggerFastForward = useCallback(async () => {
     if (ffTriggeredRef.current) return;
@@ -1364,9 +1427,11 @@ export function LumiiTutorial({
                           size={72}
                           speaking
                           excited={
+                            burstActive ||
                             currentAttention === "action" ||
                             (currentPhase === 2 && tutorialStep === BEATS.length - 1)
                           }
+                          burst={burstActive}
                           tetheredDirection={posStyle.tether}
                           onNearestNode={setTetherNodeOffset}
                           highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
