@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, type EasingDefinition } from "framer-motion";
 import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
@@ -1121,6 +1121,8 @@ interface Props {
   executeAction: (payload: Record<string, unknown>) => Promise<void>;
   nudgeTick?: number;
   burstIntensity?: number;
+  burstDuration?: number;
+  burstEase?: EasingDefinition;
 }
 
 export function LumiiTutorial({
@@ -1131,6 +1133,8 @@ export function LumiiTutorial({
   executeAction,
   nudgeTick = 0,
   burstIntensity = 1.15,
+  burstDuration = 0.35,
+  burstEase = [0.34, 1.56, 0.64, 1] as EasingDefinition,
 }: Props) {
   const [, setLocation] = useLocation();
   const vpH = useViewportH();
@@ -1516,7 +1520,7 @@ export function LumiiTutorial({
                             ease: "easeInOut",
                           },
                           scale: burstActive
-                            ? { duration: 0.35, ease: [0.34, 1.56, 0.64, 1] }
+                            ? { duration: burstDuration, ease: burstEase }
                             : { duration: 0.2 },
                         }}
                       >
