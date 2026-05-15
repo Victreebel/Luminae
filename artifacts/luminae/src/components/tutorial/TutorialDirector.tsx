@@ -2085,9 +2085,24 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Tracks whether the sheet has ever been opened this session — hides the tip after first use
   const [panelSheetEverOpened, setPanelSheetEverOpened] = useState(false);
 
-  // Close the artifact sheet whenever the beat advances
+  // Beats where tapping the bottom player panel is meaningful
+  const PANEL_TAPPABLE_BEATS = new Set([
+    "b9b_forge_complete",
+    "b11_forge_reserved",
+    "b12_tier2",
+    "b13_tier3",
+    "b14_win_condition",
+    "b16_final_forge",
+  ]);
+
+  // Close the artifact sheet whenever the beat advances; also reset the
+  // "ever opened" flag so the tip reappears on each distinct panel-tappable beat.
   useEffect(() => {
     setPanelSheetOpen(false);
+    if (PANEL_TAPPABLE_BEATS.has(beatId)) {
+      setPanelSheetEverOpened(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beatId]);
 
   useEffect(() => {
@@ -2122,14 +2137,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
   // Highlight the bottom player panel during beats where artifact inspection is useful
-  const PANEL_TAPPABLE_BEATS = new Set([
-    "b9b_forge_complete",
-    "b11_forge_reserved",
-    "b12_tier2",
-    "b13_tier3",
-    "b14_win_condition",
-    "b16_final_forge",
-  ]);
   const isPanelHighlighted = PANEL_TAPPABLE_BEATS.has(beatId);
 
   // Where the Lumii floats
