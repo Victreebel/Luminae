@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
-import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen } from "@/lib/tutorialProgress";
+import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete } from "@/lib/tutorialProgress";
 import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
 import { Sparkles, ChevronUp, RotateCcw, X } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -2643,6 +2643,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   useEffect(() => {
     if (s.beat >= TUTORIAL_BEATS.length - 1) {
       clearTutorialProgress();
+      markTutorialComplete();
     } else if (s.beat > 0) {
       saveTutorialProgress(s.beat);
     }

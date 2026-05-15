@@ -1,5 +1,6 @@
 const PROGRESS_KEY = "luminae_tutorial_progress";
 const SEEN_KEY = "luminae_tutorial_seen";
+const COMPLETED_KEY = "luminae_tutorial_completed";
 
 export function markTutorialSeen(): void {
   try {
@@ -38,5 +39,20 @@ export function clearTutorialProgress(): void {
   try {
     localStorage.removeItem(PROGRESS_KEY);
   } catch {
+  }
+}
+
+export function markTutorialComplete(): void {
+  try {
+    localStorage.setItem(COMPLETED_KEY, "1");
+  } catch {
+  }
+}
+
+export function hasTutorialBeenCompleted(): boolean {
+  try {
+    return localStorage.getItem(COMPLETED_KEY) === "1";
+  } catch {
+    return false;
   }
 }

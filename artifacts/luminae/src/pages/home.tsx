@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { loadTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
+import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted } from "@/lib/tutorialProgress";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
 import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
@@ -36,6 +36,7 @@ export default function Home() {
   const { account, token, isLoading: accountLoading, logout } = useAccount();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
+  const [tutorialCompleted] = useState(() => hasTutorialBeenCompleted());
   const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [tutorialHasProgress, setTutorialHasProgress] = useState(false);
   const [tutorialSavedBeat, setTutorialSavedBeat] = useState<number | null>(null);
@@ -427,12 +428,14 @@ export default function Home() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm">
-                    {tutorialSeen ? "Replay Tutorial" : "New? Try the Tutorial"}
+                    {tutorialCompleted ? "Replay Tutorial" : tutorialSeen ? "Continue Tutorial" : "New? Try the Tutorial"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {tutorialSeen
-                      ? "Guide your civilization to legend again with Lumii"
-                      : "Guide your civilization to legend — harvest, forge, summon, ascend"}
+                    {tutorialCompleted
+                      ? "You've already completed the tutorial — jump straight in?"
+                      : tutorialSeen
+                        ? "Pick up where you left off with Lumii"
+                        : "Guide your civilization to legend — harvest, forge, summon, ascend"}
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
