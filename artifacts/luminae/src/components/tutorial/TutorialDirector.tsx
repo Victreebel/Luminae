@@ -2264,16 +2264,24 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </div>
 
       {/* ── Pinned Player Panel — mirrors the real game's bottom panel ── */}
-      <div
+      <motion.div
         role={isPanelHighlighted ? "button" : undefined}
         tabIndex={isPanelHighlighted ? 0 : undefined}
         onClick={isPanelHighlighted ? () => setPanelSheetOpen(o => !o) : undefined}
         onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPanelSheetOpen(o => !o); } } : undefined}
-        className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
+        className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-colors ${
           isPanelHighlighted
-            ? 'border-amber-400/60 shadow-[0_0_18px_rgba(251,191,36,0.28)] cursor-pointer active:brightness-110'
-            : isActMode ? 'border-indigo-500/40 shadow-[0_0_12px_rgba(99,102,241,0.20)]' : 'border-white/10'
+            ? 'border-amber-400/60 cursor-pointer active:brightness-110'
+            : isActMode ? 'border-indigo-500/40' : 'border-white/10'
         }`}
+        animate={
+          isPanelHighlighted
+            ? { boxShadow: ['0 0 18px rgba(251,191,36,0.17)', '0 0 22px rgba(251,191,36,0.28)', '0 0 18px rgba(251,191,36,0.17)'] }
+            : isActMode
+              ? { boxShadow: '0 0 12px rgba(99,102,241,0.20)' }
+              : { boxShadow: 'none' }
+        }
+        transition={isPanelHighlighted ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
         style={{ background: 'rgba(3,3,12,0.92)' }}
       >
         {/* Tap-to-inspect hint — visible when panel is highlighted and sheet is closed */}
@@ -2388,7 +2396,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       {/* Floating Lumii — moves between zones, bounces to draw attention */}
       {(() => {
