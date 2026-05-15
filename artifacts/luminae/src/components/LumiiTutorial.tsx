@@ -92,11 +92,21 @@ function makeScatterPositions(): [number, number][] {
 
 let _wispInstanceCount = 0;
 
+// Burst palette per action type — harvest=amber, reserve=teal, forge=indigo
+const BURST_COLOR_BY_ACTION: Record<string, string> = {
+  take_three_crystals: "#f97316",
+  take_two_crystals:   "#f97316",
+  reserve_card:        "#34d399",
+  purchase_card:       "#818cf8",
+  purchase_reserved:   "#818cf8",
+};
+
 function LumiiOrb({
   size = 72,
   excited = false,
   speaking = false,
   burst = false,
+  burstColor = "#fbbf24",
   tetheredDirection,
   onNearestNode,
   highlightZone,
@@ -106,6 +116,7 @@ function LumiiOrb({
   excited?: boolean;
   speaking?: boolean;
   burst?: boolean;
+  burstColor?: string;
   tetheredDirection?: "down" | "up" | "left";
   onNearestNode?: (offset: { x: number; y: number }) => void;
   highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null;
@@ -193,7 +204,7 @@ function LumiiOrb({
   const lineWidth = burst ? 1.8 : excited ? 1.4 : 0.9;
   const blurSd = burst ? 5.0 : excited ? 3.8 : 2.6;
   const zoneKey = highlightZone ?? "none";
-  const pulseStroke = burst ? "#fbbf24" : excited ? ZONE_PULSE_COLOR[zoneKey].excited : ZONE_PULSE_COLOR[zoneKey].idle;
+  const pulseStroke = burst ? burstColor : excited ? ZONE_PULSE_COLOR[zoneKey].excited : ZONE_PULSE_COLOR[zoneKey].idle;
   const pulseStrokeW = burst ? 2.2 : excited ? 1.6 : 1.0;
 
   // Per-node idle drift: small asymmetric X/Y offsets + periods to avoid uniformity
@@ -244,7 +255,7 @@ function LumiiOrb({
           }}
           transition={{ duration: burst ? 0.5 : 1.3, repeat: Infinity, ease: "easeOut", delay: burst ? 0.08 : 0.44 }}
           fill="none"
-          stroke={burst ? "#fbbf24" : "#f97316"}
+          stroke={burst ? burstColor : "#f97316"}
           strokeWidth={burst ? 1.4 : 0.8}
         />
       )}
@@ -260,7 +271,7 @@ function LumiiOrb({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
             fill="none"
-            stroke="#fbbf24"
+            stroke={burstColor}
           />
         )}
       </AnimatePresence>
@@ -288,7 +299,7 @@ function LumiiOrb({
               x1: shape[a][0], y1: shape[a][1],
               x2: shape[b][0], y2: shape[b][1],
               strokeOpacity: [loOpacity, hiOpacity, loOpacity],
-              stroke: burst ? "#fbbf24" : nodeColors[a],
+              stroke: burst ? burstColor : nodeColors[a],
             }}
             transition={{
               x1: posTrans,
@@ -349,7 +360,7 @@ function LumiiOrb({
               x: animX,
               y: animY,
               opacity: burst ? [0.95, 1, 0.95] : excited ? [0.82, 1, 0.82] : [0.6, 1, 0.6],
-              fill: burst ? "#fbbf24" : nodeColors[i],
+              fill: burst ? burstColor : nodeColors[i],
             }}
             transition={{
               x: xTrans,
@@ -405,7 +416,7 @@ function LumiiOrb({
             y: animY,
             opacity: burst ? [0.9, 1, 0.9] : excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
             scale: burst ? [1.2, 1.6, 1.2] : excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
-            color: burst ? "#fbbf24" : nodeColors[i],
+            color: burst ? burstColor : nodeColors[i],
           }}
           transition={{
             x: xTrans,
@@ -1077,6 +1088,8 @@ export function LumiiTutorial({
   const [nudgeText, setNudgeText] = useState<string | null>(null);
   // Celebration burst state — briefly true after each successful action beat
   const [burstActive, setBurstActive] = useState(false);
+  // Color for the current celebration burst — varies by action type
+  const [burstColor, setBurstColor] = useState("#fbbf24");
   // Nearest constellation node for tether origin alignment
   const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
@@ -1161,8 +1174,10 @@ export function LumiiTutorial({
     const lastAction = state.lastAction as { type?: string; playerId?: string } | null;
     if (!lastAction?.type || lastAction.playerId !== sessionPlayerId) return;
     if (beat.advance.actions.includes(lastAction.type)) {
+      setBurstColor(BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24");
       triggerCelebrationBurst(advanceBeat);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.actionLog?.length, beat, sessionPlayerId, advanceBeat, triggerCelebrationBurst]);
 
   const triggerFastForward = useCallback(async () => {
@@ -1432,6 +1447,7 @@ export function LumiiTutorial({
                             (currentPhase === 2 && tutorialStep === BEATS.length - 1)
                           }
                           burst={burstActive}
+                          burstColor={burstColor}
                           tetheredDirection={posStyle.tether}
                           onNearestNode={setTetherNodeOffset}
                           highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
