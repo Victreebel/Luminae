@@ -465,26 +465,43 @@ function reducer(s: TutState, a: TAction): TutState {
   }
 }
 
+// ─── LumiiOrb zone palette (mirrors LumiiTutorial.tsx ZONE_PALETTE) ───────────
+// Each row is 6 node colours subtly shifted toward the zone's affinity theme.
+// "none" restores the default full-spectrum palette.
+const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminaries" | "none", readonly string[]> = {
+  none:       ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"],
+  harvest:    ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
+  luminaries: ["#d97b9a", "#818cf8", "#6fc4b0", "#a855f7", "#e2e8f0", "#d4b8f5"],
+  market:     ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+  filters:    ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+};
+
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
-function LumiiOrb({ size = 64, excited = false }: { size?: number; excited?: boolean }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null }) {
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
+  const p = LUMII_ORB_ZONE_PALETTE[highlightZone ?? "none"];
+  // Build conic gradients from zone palette so colour tinting stays consistent
+  // with LumiiTutorial.tsx when a zone is active (or renders neutral when null).
+  const outerBg = `conic-gradient(from 0deg,${p[0]}aa,${p[1]}aa,${p[2]}aa,${p[3]}aa,${p[4]}66,${p[5]}aa,${p[0]}aa)`;
+  const midBg   = `conic-gradient(from 0deg,${p[0]}cc,${p[5]}99,${p[2]}cc,${p[1]}cc,${p[3]}cc,${p[4]}55,${p[0]}cc)`;
+  const innerBg = `conic-gradient(from 90deg,${p[1]}bb,${p[2]}99,${p[5]}bb,${p[3]}bb,${p[0]}99,${p[1]}bb)`;
   return (
     <div style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}>
       <motion.div
         animate={{ scale: excited ? [1, 1.4, 1.1, 1.4, 1] : [1, 1.18, 1], opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52] }}
         transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
-        style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: "conic-gradient(from 0deg,#f97316aa,#3b82f6aa,#22c55eaa,#a855f7aa,#e2e8f066,#fbbf24aa,#f97316aa)", filter: `blur(${blur}px)` }}
+        style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)` }}
       />
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: excited ? 4.5 : 11, repeat: Infinity, ease: "linear" }}
-        style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "conic-gradient(from 0deg,#f97316cc,#fbbf2499,#22c55ecc,#3b82f6cc,#a855f7cc,#e2e8f055,#f97316cc)", maskImage: mask, WebkitMaskImage: mask }}
+        style={{ position: "absolute", inset: 0, borderRadius: "50%", background: midBg, maskImage: mask, WebkitMaskImage: mask }}
       />
       <motion.div
         animate={{ rotate: -360 }}
         transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
-        style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: "conic-gradient(from 90deg,#3b82f6bb,#22c55e99,#fbbf24bb,#a855f7bb,#f9731699,#3b82f6bb)", maskImage: mask, WebkitMaskImage: mask }}
+        style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: innerBg, maskImage: mask, WebkitMaskImage: mask }}
       />
       <div style={{ position: "absolute", inset: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(220,240,255,0.65) 45%,transparent 70%)", boxShadow: "0 0 12px 4px rgba(180,220,255,0.5)" }} />
     </div>
@@ -548,7 +565,7 @@ function DialogueBox({
         style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.9)" }}
       >
         <div className="flex items-start gap-3">
-          {showOrb && <LumiiOrb size={32} excited={!!nudge} />}
+          {showOrb && <LumiiOrb size={32} excited={!!nudge} highlightZone={null} />}
           <div className="flex-1">
             <p className="text-sm text-white/90 leading-relaxed">{text}</p>
             {hintText && (
@@ -1582,7 +1599,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
             className="absolute z-30"
             style={{ left: "50%", transform: "translate(-50%, -50%)" }}
           >
-            <LumiiOrb size={88} excited={s.beat === 2} />
+            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1681,7 +1698,7 @@ function FastForwardCinematic({ s, dispatch }: { s: TutState; dispatch: React.Di
           animate={{ opacity: 1, y: 0 }}
           className="text-white/80 font-serif text-xl text-center px-8"
         >Now I will let the centuries pass.</motion.div>
-        <LumiiOrb size={64} excited />
+        <LumiiOrb size={64} excited highlightZone={null} />
         <div className="flex gap-8 mt-4">
           {remaining.map((cardId, idx) => {
             const card = TUTORIAL_CARDS[cardId];
@@ -1757,7 +1774,7 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
     <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
       <div className="absolute inset-0 bg-black/60" />
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm px-6">
-        <LumiiOrb size={80} excited />
+        <LumiiOrb size={80} excited highlightZone={null} />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1962,7 +1979,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <LumiiOrb size={22} excited={isActMode} />
+          <LumiiOrb size={22} excited={isActMode} highlightZone={null} />
           <span className="text-[10px] text-white/50 font-medium">Lumii</span>
         </div>
       </header>
@@ -2147,7 +2164,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} />
+                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} highlightZone={null} />
               </div>
             </motion.div>
           </motion.div>

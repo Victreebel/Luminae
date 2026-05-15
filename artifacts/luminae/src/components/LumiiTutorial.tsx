@@ -1204,7 +1204,7 @@ export function LumiiTutorial({
               animate={{ rotate: 360 }}
               transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             >
-              <LumiiOrb size={80} excited />
+              <LumiiOrb size={80} excited highlightZone={null} />
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -1281,7 +1281,7 @@ export function LumiiTutorial({
                 animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <LumiiOrb size={68} excited />
+                <LumiiOrb size={68} excited highlightZone={null} />
               </motion.div>
               <h2 className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
               <p className="text-sm text-muted-foreground mb-4">
