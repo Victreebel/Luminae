@@ -2018,7 +2018,7 @@ export function LuminarySummonCutscene({
               }}
               exit={{ opacity: 0, scale: 1.90, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
               style={{
-                background: `radial-gradient(ellipse 88% 88% at 50% 42%, #FFED5A 0%, #FFE45066 32%, #FFD84838 62%, #FFE45010 82%, transparent 96%)`,
+                background: `radial-gradient(circle at 50% 42%, #FFED5A 0%, #FFE45066 32%, #FFD84838 62%, #FFE45010 82%, transparent 96%)`,
                 transformOrigin: '50% 42%',
               }}
             />
