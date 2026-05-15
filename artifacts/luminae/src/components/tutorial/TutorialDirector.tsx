@@ -786,12 +786,22 @@ function TutorialCard({
               {(Object.entries(card.cost) as [GemKey, number][]).map(([k, v]) => {
                 if (!v || v <= 0) return null;
                 const display = getCostDisplay(k, v);
+                const isFree = display.value === "✓";
                 return (
-                  <div key={k} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${display.bgClass}`}>
+                  <motion.div
+                    key={`${k}-${String(display.value)}`}
+                    initial={{ scale: isFree ? 1.85 : 1.35, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={isFree
+                      ? { type: "spring", stiffness: 480, damping: 13, mass: 0.55 }
+                      : { type: "spring", stiffness: 340, damping: 24, mass: 0.65 }
+                    }
+                    className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${display.bgClass}`}
+                  >
                     {display.showStrike && <span className="text-[6px] text-white/30 line-through mr-0.5">{display.strikeValue}</span>}
                     <span className={`text-[9px] font-bold ${display.textClass}`}>{display.value}</span>
                     <MiniGem gem={k} size={9} />
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

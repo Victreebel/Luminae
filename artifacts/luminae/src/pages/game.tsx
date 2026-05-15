@@ -284,9 +284,18 @@ function ArtifactCardView({
               const effCost = effectiveCosts !== undefined ? (effectiveCosts[c] ?? 0) : baseCost;
               const isReduced = effectiveCosts !== undefined && effCost < baseCost;
               const isFree = isReduced && effCost === 0;
+              const chipKey = `${c}-${isFree ? 'free' : effCost}`;
               return (
-                <div
-                  key={c}
+                <motion.div
+                  key={chipKey}
+                  initial={{ scale: isFree ? 1.85 : isReduced ? 1.35 : 1, opacity: isFree || isReduced ? 0 : 1 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={isFree
+                    ? { type: 'spring', stiffness: 480, damping: 13, mass: 0.55 }
+                    : isReduced
+                      ? { type: 'spring', stiffness: 340, damping: 24, mass: 0.65 }
+                      : { duration: 0 }
+                  }
                   className={`flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}
                 >
                   {isReduced && !isFree && (
@@ -296,7 +305,7 @@ function ArtifactCardView({
                     {isFree ? '✓' : effCost}
                   </span>
                   <MiniGem color={c} size={10} />
-                </div>
+                </motion.div>
               );
             })}
           </div>
