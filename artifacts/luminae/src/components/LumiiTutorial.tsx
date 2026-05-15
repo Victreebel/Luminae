@@ -1508,38 +1508,61 @@ export function LumiiTutorial({
                     tether={tetherEl}
                     arrow={arrowEl}
                     orb={
-                      <motion.div
-                        animate={{
-                          y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
-                          scale: burstActive ? [1, burstIntensity, 1] : 1,
-                        }}
-                        transition={{
-                          y: {
-                            duration: currentAttention === "action" ? 1.8 : 2.8,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          },
-                          scale: burstActive
-                            ? { duration: burstDuration, ease: burstEase }
-                            : { duration: 0.2 },
-                        }}
-                      >
-                        <LumiiOrb
-                          size={72}
-                          speaking
-                          excited={
-                            burstActive ||
-                            currentAttention === "action" ||
-                            (currentPhase === 2 && tutorialStep === BEATS.length - 1)
-                          }
-                          burst={burstActive}
-                          burstColor={burstColor}
-                          tetheredDirection={posStyle.tether}
-                          onNearestNode={setTetherNodeOffset}
-                          highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
-                          beatKey={beat?.position}
-                        />
-                      </motion.div>
+                      <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                        <AnimatePresence>
+                          {burstActive && (
+                            <motion.div
+                              key="lumii-burst-glow"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: [0, 0.6, 0], scale: 1.6 }}
+                              exit={{ opacity: 0, scale: 1.6 }}
+                              transition={{ duration: 0.5, ease: "easeOut" }}
+                              style={{
+                                position: "absolute",
+                                width: 140,
+                                height: 140,
+                                borderRadius: "50%",
+                                background: "radial-gradient(circle, rgba(99,102,241,0.7) 0%, rgba(34,211,238,0.4) 45%, rgba(99,102,241,0) 75%)",
+                                pointerEvents: "none",
+                                zIndex: 0,
+                              }}
+                            />
+                          )}
+                        </AnimatePresence>
+                        <motion.div
+                          style={{ position: "relative", zIndex: 1 }}
+                          animate={{
+                            y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
+                            scale: burstActive ? [1, burstIntensity, 1] : 1,
+                          }}
+                          transition={{
+                            y: {
+                              duration: currentAttention === "action" ? 1.8 : 2.8,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            },
+                            scale: burstActive
+                              ? { duration: burstDuration, ease: burstEase }
+                              : { duration: 0.2 },
+                          }}
+                        >
+                          <LumiiOrb
+                            size={72}
+                            speaking
+                            excited={
+                              burstActive ||
+                              currentAttention === "action" ||
+                              (currentPhase === 2 && tutorialStep === BEATS.length - 1)
+                            }
+                            burst={burstActive}
+                            burstColor={burstColor}
+                            tetheredDirection={posStyle.tether}
+                            onNearestNode={setTetherNodeOffset}
+                            highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
+                            beatKey={beat?.position}
+                          />
+                        </motion.div>
+                      </div>
                     }
                     bubble={
                       <div className="relative">
