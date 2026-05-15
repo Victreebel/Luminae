@@ -194,7 +194,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "In my Universe, that is what we call those who have the power to shape cosmic society." },
       { text: "They determine what my people reach for, and what we become." },
       { text: "Architects do not rule." },
-      { text: "You provide us with the tools to shine brilliantly throughout the cosmos." },
+      { text: "They provide us with the tools to shine brilliantly throughout the cosmos." },
     ],
     completion: { type: "dialogue" },
     playerResponse: "So I'm in your universe now?",
