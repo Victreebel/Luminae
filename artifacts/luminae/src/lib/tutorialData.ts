@@ -44,6 +44,8 @@ export type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
+export type LumiiPointerDir = 'left' | 'right' | 'up' | 'down';
+
 export interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
@@ -56,6 +58,8 @@ export interface TutorialBeat {
   subSteps?: TutorialSubStep[];
   playerResponse?: string;
   choices?: { label: string; value: string }[];
+  /** Direction of Lumii's short pointing arrow — Lumii should be near the target already. */
+  lumiiPointer?: LumiiPointerDir;
 }
 
 export interface TutorialSubStep {

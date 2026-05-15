@@ -18,6 +18,7 @@ import {
   AFFINITY_SEQ_NAMES,
   type TutorialCard,
   type TutorialMarketView,
+  type LumiiPointerDir,
 } from "@/lib/tutorialData";
 import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
 import { gameAudio } from "@/lib/audio";
@@ -477,7 +478,15 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 };
 
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
-function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number }) {
+// Direction → SVG rotation angle for the pointer arrow
+const POINTER_ROTATE: Record<LumiiPointerDir, number> = {
+  right:  0,
+  down:  90,
+  left:  180,
+  up:   270,
+};
+
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, pointing }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; pointing?: LumiiPointerDir }) {
   const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
@@ -511,6 +520,47 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey }:
         style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: innerBg, maskImage: mask, WebkitMaskImage: mask }}
       />
       <div style={{ position: "absolute", inset: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(220,240,255,0.65) 45%,transparent 70%)", boxShadow: "0 0 12px 4px rgba(180,220,255,0.5)" }} />
+      {/* Pointing arrow — scales with orb size, SVG width/height 0 so it doesn't affect layout */}
+      <AnimatePresence>
+        {pointing && (
+          <motion.svg
+            key={`ptr-${pointing}`}
+            style={{ position: "absolute", left: "50%", top: "50%", overflow: "visible", pointerEvents: "none", width: 0, height: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.30 }}
+          >
+            <g
+              transform={`rotate(${POINTER_ROTATE[pointing]})`}
+              filter="drop-shadow(0 0 3px rgba(255,255,255,0.55))"
+            >
+              <motion.path
+                d={`M ${(size * 0.56).toFixed(1)} 0 L ${(size * 0.98).toFixed(1)} 0`}
+                stroke="rgba(255,255,255,0.72)"
+                strokeWidth={1.2}
+                strokeLinecap="round"
+                fill="none"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1, strokeOpacity: [0.55, 0.88, 0.55] }}
+                transition={{
+                  pathLength: { duration: 0.38, ease: "easeOut" },
+                  strokeOpacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut", delay: 0.4 },
+                }}
+              />
+              <motion.g
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay: 0.55 }}
+              >
+                <polygon
+                  points={`${(size * 1.10).toFixed(1)},0 ${(size * 0.96).toFixed(1)},${-(size * 0.072).toFixed(1)} ${(size * 0.96).toFixed(1)},${(size * 0.072).toFixed(1)}`}
+                  fill="rgba(255,255,255,0.72)"
+                />
+              </motion.g>
+            </g>
+          </motion.svg>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -2171,7 +2221,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} highlightZone={null} beatKey={beatId} />
+                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
               </div>
             </motion.div>
           </motion.div>
