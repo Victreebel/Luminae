@@ -1987,17 +1987,42 @@ export function LuminarySummonCutscene({
       </AnimatePresence>
 
       {/* ── Full-viewport bloom flash — outside camera layer ────────────────── */}
+      {/* Two-layer structure simulates eyes recovering from a blinding flash:  */}
+      {/*   Layer 1 (white core): acute overexposure — clears fast (~1.1 s)    */}
+      {/*   Layer 2 (warm haze): lingering afterglow — expands & fades slowly  */}
+      {/*   over 5+ s, well into the cosmic reveal, like photoreceptors reset.  */}
       <AnimatePresence>
         {isFlashing && (
-          <motion.div key="flash" className="absolute inset-0 pointer-events-none"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: [1, 1, 0.90, 0.62, 0.28, 0] }}
-            transition={{ duration: 3.60, ease: 'easeOut', times: [0, 0.10, 0.32, 0.58, 0.80, 1] }}
-            exit={{ opacity: 0, transition: { duration: 3.80, ease: [0.06, 0, 0.10, 1] } }}
-            style={{
-              background: `radial-gradient(ellipse at 50% 42%, #ffffff 0%, #FFE255cc 22%, #FFD04A88 50%, #FFD04A28 72%, transparent 92%)`,
-            }}
-          />
+          <>
+            {/* White core — the blinding peak, retreats quickly */}
+            <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: [1, 0.92, 0.42, 0.10, 0] }}
+              transition={{ duration: 1.10, times: [0, 0.10, 0.52, 0.82, 1], ease: 'easeOut' }}
+              exit={{ opacity: 0, transition: { duration: 0.50, ease: 'easeOut' } }}
+              style={{
+                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #fffef8 0%, #fff6cc 28%, #FFE25588 54%, transparent 82%)`,
+              }}
+            />
+            {/* Warm golden haze — the lingering afterimage as eyes readjust */}
+            <motion.div key="flash-haze" className="absolute inset-0 pointer-events-none"
+              initial={{ opacity: 0.88, scale: 1.0 }}
+              animate={{
+                opacity: [0.88, 0.82, 0.58, 0.24, 0.07, 0],
+                scale:   [1.00, 1.06, 1.20, 1.38, 1.56, 1.72],
+              }}
+              transition={{
+                duration: 5.20,
+                times: [0, 0.10, 0.32, 0.60, 0.82, 1.0],
+                ease: 'easeOut',
+              }}
+              exit={{ opacity: 0, scale: 1.90, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
+              style={{
+                background: `radial-gradient(ellipse 88% 88% at 50% 42%, #FFE066 0%, #FFD04A66 32%, #FFB94438 62%, #FFD04A10 82%, transparent 96%)`,
+                transformOrigin: '50% 42%',
+              }}
+            />
+          </>
         )}
       </AnimatePresence>
 
