@@ -1446,6 +1446,13 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   // Reset shatterReady whenever the beat changes
   useEffect(() => { setShatterReady(false); }, [s.beat]);
 
+  // Auto-start shatter when b4_shatter has no dialogue to tap through
+  useEffect(() => {
+    if (!isShatter || beat.dialogue.length > 0) return;
+    const t = setTimeout(() => setShatterReady(true), 420);
+    return () => clearTimeout(t);
+  }, [isShatter, beat.dialogue.length]);
+
   // Beat b5b: init affinity token sequence on entry
   useEffect(() => {
     if (!isAffinityTokens) return;

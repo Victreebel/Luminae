@@ -226,9 +226,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b4_shatter",
     mode: "cinematic",
     lumiiZone: "center",
-    dialogue: [
-      { text: "Welcome to Luminae." },
-    ],
+    dialogue: [],
     completion: { type: "animation" },
   },
   {
@@ -236,6 +234,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "cinematic",
     lumiiZone: "center",
     dialogue: [
+      { text: "Welcome to Luminae." },
       { text: "Every civilization in Luminae channels the cosmos through Affinities." },
       { text: "They are the elemental forces of existence — the energy behind everything you will build." },
       { text: "The five Affinities are..." },
