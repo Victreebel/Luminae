@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useReducedMotion, type EasingDefinition } from "framer-motion";
 import { useLocation } from "wouter";
@@ -1551,23 +1551,43 @@ export function LumiiTutorial({
                                 const tint = (t: number) =>
                                   `rgb(${Math.round(br + (255 - br) * t)},${Math.round(bg + (255 - bg) * t)},${Math.round(bb + (255 - bb) * t)})`;
                                 const palette = [tint(0), tint(0.3), tint(0.55), tint(0.15), tint(0.7), tint(0.45)];
+                                const color = palette[i % palette.length];
                                 return (
-                                  <motion.div
-                                    key={`burst-particle-${deg}`}
-                                    initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-                                    animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
-                                    exit={{ opacity: 0, scale: 0 }}
-                                    transition={{ duration: 0.5, ease: "easeOut" }}
-                                    style={{
-                                      position: "absolute",
-                                      width: 7,
-                                      height: 7,
-                                      borderRadius: "50%",
-                                      background: palette[i % palette.length],
-                                      pointerEvents: "none",
-                                      zIndex: 2,
-                                    }}
-                                  />
+                                  <React.Fragment key={`burst-particle-${deg}`}>
+                                    {burstIntensity >= 1.2 && (
+                                      <motion.div
+                                        initial={{ opacity: 0.25, x: 0, y: 0, scale: 1 }}
+                                        animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.5, ease: "easeOut" }}
+                                        style={{
+                                          position: "absolute",
+                                          width: 18,
+                                          height: 18,
+                                          borderRadius: "50%",
+                                          background: color,
+                                          filter: "blur(4px)",
+                                          pointerEvents: "none",
+                                          zIndex: 1,
+                                        }}
+                                      />
+                                    )}
+                                    <motion.div
+                                      initial={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+                                      animate={{ opacity: 0, x: tx, y: ty, scale: 0.35 }}
+                                      exit={{ opacity: 0, scale: 0 }}
+                                      transition={{ duration: 0.5, ease: "easeOut" }}
+                                      style={{
+                                        position: "absolute",
+                                        width: 7,
+                                        height: 7,
+                                        borderRadius: "50%",
+                                        background: color,
+                                        pointerEvents: "none",
+                                        zIndex: 2,
+                                      }}
+                                    />
+                                  </React.Fragment>
                                 );
                               })}
                             </>
@@ -1583,23 +1603,44 @@ export function LumiiTutorial({
                                 const tx = Math.round(Math.cos(rad) * radius);
                                 const ty = Math.round(Math.sin(rad) * radius);
                                 const palette = ["#f0abfc", "#67e8f9", "#fde68a", "#a5f3fc", "#d8b4fe"];
+                                const color = palette[i % palette.length];
+                                const delay = 0.12 + i * 0.006;
                                 return (
-                                  <motion.div
-                                    key={`burst-particle-wide-${deg}`}
-                                    initial={{ opacity: 0.9, x: 0, y: 0, scale: 1 }}
-                                    animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
-                                    exit={{ opacity: 0, scale: 0 }}
-                                    transition={{ duration: 0.55, ease: "easeOut", delay: 0.12 + i * 0.006 }}
-                                    style={{
-                                      position: "absolute",
-                                      width: 5,
-                                      height: 5,
-                                      borderRadius: "50%",
-                                      background: palette[i % palette.length],
-                                      pointerEvents: "none",
-                                      zIndex: 2,
-                                    }}
-                                  />
+                                  <React.Fragment key={`burst-particle-wide-${deg}`}>
+                                    {burstIntensity >= 1.2 && (
+                                      <motion.div
+                                        initial={{ opacity: 0.25, x: 0, y: 0, scale: 1 }}
+                                        animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.55, ease: "easeOut", delay }}
+                                        style={{
+                                          position: "absolute",
+                                          width: 16,
+                                          height: 16,
+                                          borderRadius: "50%",
+                                          background: color,
+                                          filter: "blur(4px)",
+                                          pointerEvents: "none",
+                                          zIndex: 1,
+                                        }}
+                                      />
+                                    )}
+                                    <motion.div
+                                      initial={{ opacity: 0.9, x: 0, y: 0, scale: 1 }}
+                                      animate={{ opacity: 0, x: tx, y: ty, scale: 0.25 }}
+                                      exit={{ opacity: 0, scale: 0 }}
+                                      transition={{ duration: 0.55, ease: "easeOut", delay }}
+                                      style={{
+                                        position: "absolute",
+                                        width: 5,
+                                        height: 5,
+                                        borderRadius: "50%",
+                                        background: color,
+                                        pointerEvents: "none",
+                                        zIndex: 2,
+                                      }}
+                                    />
+                                  </React.Fragment>
                                 );
                               })}
                             </>
