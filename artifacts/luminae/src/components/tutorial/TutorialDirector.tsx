@@ -952,6 +952,8 @@ function PlayerHand({ s, dispatch, beatId, subStep }: { s: TutState; dispatch: R
                 forgeEnabled={forgeEnabled}
                 highlighted={isHighlighted}
                 foreground={isHighlighted}
+                viewMode={s.view}
+                wellSel={s.wellSel}
               />
             </div>
           );
