@@ -1088,11 +1088,17 @@ export function LumiiTutorial({
   const [nudgeText, setNudgeText] = useState<string | null>(null);
   // Celebration burst state — briefly true after each successful action beat
   const [burstActive, setBurstActive] = useState(false);
-  // Color for the current celebration burst — varies by action type
-  const [burstColor, setBurstColor] = useState("#fbbf24");
+  // Color used during the current burst — varies by action type for normal beats,
+  // and uses the Luminary's summonColor for the first-Luminary claim milestone.
+  const [burstColor, setBurstColor] = useState<string>("#fbbf24");
   // Nearest constellation node for tether origin alignment
   const [tetherNodeOffset, setTetherNodeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const prevLogLenRef = useRef(0);
+  // Initialized from the current player's claimed count so resumed tutorial sessions
+  // don't treat a pre-existing claim as a new one.
+  const prevClaimedLumCountRef = useRef(
+    state?.players?.find((p) => p.playerId === sessionPlayerId)?.claimedLuminaryIds?.length ?? 0
+  );
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1140,14 +1146,17 @@ export function LumiiTutorial({
     }
   }, [tutorialStep, setTutorialStep]);
 
-  // Trigger a brief celebration burst on Lumii then advance after it plays (~500ms)
-  const triggerCelebrationBurst = useCallback((onComplete: () => void) => {
+  // Trigger a brief celebration burst on Lumii then advance after it plays.
+  // opts.duration: how long the burst lasts (default 500ms; use 700ms for Luminary claims).
+  // opts.color: flash palette color (default gold #fbbf24; use Luminary summonColor for claims).
+  const triggerCelebrationBurst = useCallback((onComplete: () => void, opts?: { duration?: number; color?: string }) => {
     if (burstTimerRef.current) clearTimeout(burstTimerRef.current);
+    setBurstColor(opts?.color ?? "#fbbf24");
     setBurstActive(true);
     burstTimerRef.current = setTimeout(() => {
       setBurstActive(false);
       onComplete();
-    }, 500);
+    }, opts?.duration ?? 500);
   }, []);
 
   const handleClick = useCallback(() => {
@@ -1164,7 +1173,9 @@ export function LumiiTutorial({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat, lineIdx, advanceBeat, showCompletion, isFastForwarding]);
 
-  // Detect when the required action completes — trigger celebration burst then advance
+  // Detect when the required action completes — trigger celebration burst then advance.
+  // If the action resulted in a Luminary claim, use a longer burst (700ms) in the
+  // Luminary's own summon color so the moment feels appropriately epic.
   useEffect(() => {
     if (!beat || beat.advance.type !== "action") return;
     if (!state?.actionLog?.length) return;
@@ -1174,8 +1185,20 @@ export function LumiiTutorial({
     const lastAction = state.lastAction as { type?: string; playerId?: string } | null;
     if (!lastAction?.type || lastAction.playerId !== sessionPlayerId) return;
     if (beat.advance.actions.includes(lastAction.type)) {
-      setBurstColor(BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24");
-      triggerCelebrationBurst(advanceBeat);
+      const myPlayer = state.players?.find((p) => p.playerId === sessionPlayerId);
+      const currentClaimedCount = myPlayer?.claimedLuminaryIds?.length ?? 0;
+      const prevCount = prevClaimedLumCountRef.current;
+      prevClaimedLumCountRef.current = currentClaimedCount;
+      if (prevCount === 0 && currentClaimedCount === 1) {
+        // First Luminary claimed — use its summon color and a longer epic burst
+        const newLumId = myPlayer?.claimedLuminaryIds?.[0];
+        const lumData = (state.luminaries ?? []).find((l) => l.id === newLumId);
+        const color = (lumData as { summonColor?: string } | undefined)?.summonColor ?? "#fbbf24";
+        triggerCelebrationBurst(advanceBeat, { duration: 700, color });
+      } else {
+        // Standard action beat — use per-action palette color
+        triggerCelebrationBurst(advanceBeat, { color: BURST_COLOR_BY_ACTION[lastAction.type] ?? "#fbbf24" });
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.actionLog?.length, beat, sessionPlayerId, advanceBeat, triggerCelebrationBurst]);
