@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
 import { Sparkles, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
@@ -2080,30 +2081,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const gemBurstKeyRef = useRef(0);
   // Tracks whether a forge just fired so Lumii bounces excitedly at the artifact
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
-  // Artifact detail sheet — tappable panel during b9b_forge_complete
-  const [panelSheetOpen, setPanelSheetOpen] = useState(false);
-  // Tracks whether the sheet has ever been opened this session — hides the tip after first use
-  const [panelSheetEverOpened, setPanelSheetEverOpened] = useState(false);
-
-  // Beats where tapping the bottom player panel is meaningful
-  const PANEL_TAPPABLE_BEATS = new Set([
-    "b9b_forge_complete",
-    "b11_forge_reserved",
-    "b12_tier2",
-    "b13_tier3",
-    "b14_win_condition",
-    "b16_final_forge",
-  ]);
-
-  // Close the artifact sheet whenever the beat advances; also reset the
-  // "ever opened" flag so the tip reappears on each distinct panel-tappable beat.
-  useEffect(() => {
-    setPanelSheetOpen(false);
-    if (PANEL_TAPPABLE_BEATS.has(beatId)) {
-      setPanelSheetEverOpened(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beatId]);
+  // Artifact detail sheet + "tap to inspect" tip — see use-panel-sheet-tip.ts
+  // for the mount-time invariant documentation and PANEL_TAPPABLE_BEATS definition.
+  const { panelSheetOpen, panelSheetEverOpened, isPanelHighlighted, togglePanelSheet, closePanelSheet } = usePanelSheetTip(beatId);
 
   useEffect(() => {
     const trigger = s.animTrigger;
@@ -2136,8 +2116,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
-  // Highlight the bottom player panel during beats where artifact inspection is useful
-  const isPanelHighlighted = PANEL_TAPPABLE_BEATS.has(beatId);
 
   // Where the Lumii floats
   const lumiiTarget = beat.lumiiZone;
@@ -2279,8 +2257,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       <motion.div
         role={isPanelHighlighted ? "button" : undefined}
         tabIndex={isPanelHighlighted ? 0 : undefined}
-        onClick={isPanelHighlighted ? () => setPanelSheetOpen(o => { const next = !o; if (next) setPanelSheetEverOpened(true); return next; }) : undefined}
-        onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPanelSheetOpen(o => { const next = !o; if (next) setPanelSheetEverOpened(true); return next; }); } } : undefined}
+        onClick={isPanelHighlighted ? togglePanelSheet : undefined}
+        onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePanelSheet(); } } : undefined}
         className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
           isPanelHighlighted
             ? 'border-amber-400/60 cursor-pointer active:brightness-110'
@@ -2500,7 +2478,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              onClick={() => setPanelSheetOpen(false)}
+              onClick={closePanelSheet}
             />
             {/* Sheet */}
             <motion.div
@@ -2520,7 +2498,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 <span className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">Forged Artifacts</span>
                 <button
                   type="button"
-                  onClick={() => setPanelSheetOpen(false)}
+                  onClick={closePanelSheet}
                   className="text-[10px] text-white/40 hover:text-white/70 transition-colors px-2 py-1"
                 >
                   close ✕
@@ -2594,7 +2572,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 if (s.nudge) {
                   dispatch({ type: "NUDGE", msg: null });
                 } else {
-                  setPanelSheetOpen(false);
+                  closePanelSheet();
                   dispatch({ type: "NEXT_DLG" });
                 }
               }}
