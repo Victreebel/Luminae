@@ -110,6 +110,13 @@ const BURST_COLOR_BY_ACTION: Record<string, string> = {
   purchase_reserved:   "#818cf8",
 };
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function LumiiOrb({
   size = 72,
   excited = false,
@@ -1522,7 +1529,7 @@ export function LumiiTutorial({
                                 width: 140,
                                 height: 140,
                                 borderRadius: "50%",
-                                background: "radial-gradient(circle, rgba(99,102,241,0.7) 0%, rgba(34,211,238,0.4) 45%, rgba(99,102,241,0) 75%)",
+                                background: `radial-gradient(circle, ${hexToRgba(burstColor, 0.7)} 0%, ${hexToRgba(burstColor, 0.35)} 45%, ${hexToRgba(burstColor, 0)} 75%)`,
                                 pointerEvents: "none",
                                 zIndex: 0,
                               }}
