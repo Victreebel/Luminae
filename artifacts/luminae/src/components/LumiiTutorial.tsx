@@ -23,6 +23,19 @@ function useViewportH(): number {
 // Affinity node colors: Flare, Continuum, Verdance, Abyss, Radiance, Singularity
 const WISP_COLORS = ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"] as const;
 
+// Zone-tinted palettes — each row is the 6 node colors subtly shifted toward the zone's affinity theme.
+// "none" restores the default full-spectrum WISP_COLORS palette.
+const ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminaries" | "none", readonly string[]> = {
+  none:       ["#f97316", "#3b82f6", "#22c55e", "#a855f7", "#e2e8f0", "#fbbf24"],
+  // harvest → Flare/Continuum warmth: orange stays, blue brightens, others warm toward amber
+  harvest:    ["#f97316", "#60a5fa", "#86c874", "#cb7c40", "#fde8b0", "#f5a332"],
+  // luminaries → Abyss/Radiance: purple/silver stay, others shift toward deep rose/indigo/teal/lavender
+  luminaries: ["#d97b9a", "#818cf8", "#6fc4b0", "#a855f7", "#e2e8f0", "#d4b8f5"],
+  // market / filters → Singularity gold dominant: all nodes tinted toward warm amber-gold
+  market:     ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+  filters:    ["#f5a832", "#90b8e8", "#98c87a", "#c48cd4", "#f0e4c0", "#fbbf24"],
+};
+
 // Named constellation shapes — 6 [x,y] node offsets from center (0,0)
 // Coordinates fit within ±26 so all nodes stay within the 72×72 bounding box
 type WispShape = [number, number][];
@@ -63,12 +76,14 @@ function LumiiOrb({
   speaking = false,
   tetheredDirection,
   onNearestNode,
+  highlightZone,
 }: {
   size?: number;
   excited?: boolean;
   speaking?: boolean;
   tetheredDirection?: "down" | "up" | "left";
   onNearestNode?: (offset: { x: number; y: number }) => void;
+  highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null;
 }) {
   // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
   const instanceRef = useRef<number | null>(null);
@@ -117,6 +132,9 @@ function LumiiOrb({
   const IDLE_DRIFT_Y = [-2.0,  1.6, -1.8,  2.2, -1.4,  1.8];
   const IDLE_PERIODS = [3.2, 3.8, 4.1, 3.5, 4.4, 3.0];
 
+  // Derive per-node colors from the active zone palette (smooth color transition handled by framer-motion)
+  const nodeColors = ZONE_PALETTE[highlightZone ?? "none"];
+
   return (
     <svg width={size} height={size} viewBox="-36 -36 72 72" style={{ overflow: "visible" }}>
       <defs>
@@ -155,7 +173,7 @@ function LumiiOrb({
         />
       )}
 
-      {/* Connection lines — animate endpoints + soft opacity pulse */}
+      {/* Connection lines — animate endpoints + soft opacity pulse + zone color tint */}
       {WISP_EDGES.map(([a, b], i) => {
         const loOpacity = excited ? 0.45 : !shouldMorph ? 0.18 : 0.22;
         const hiOpacity = excited ? 0.72 : !shouldMorph ? 0.42 : 0.52;
@@ -167,6 +185,7 @@ function LumiiOrb({
               x1: shape[a][0], y1: shape[a][1],
               x2: shape[b][0], y2: shape[b][1],
               strokeOpacity: [loOpacity, hiOpacity, loOpacity],
+              stroke: nodeColors[a],
             }}
             transition={{
               x1: { duration: morphDur, ease: "easeInOut" },
@@ -179,8 +198,8 @@ function LumiiOrb({
                 ease: "easeInOut",
                 delay: i * (excited ? 0.1 : 0.28),
               },
+              stroke: { duration: 1.2, ease: "easeInOut" },
             }}
-            stroke={WISP_COLORS[a]}
             strokeWidth={lineWidth}
             filter={`url(#${filterId})`}
             strokeLinecap="round"
@@ -188,8 +207,8 @@ function LumiiOrb({
         );
       })}
 
-      {/* Nodes — morph position (+ idle drift) + independent twinkle opacity */}
-      {WISP_COLORS.map((color, i) => {
+      {/* Nodes — morph position (+ idle drift) + independent twinkle opacity + zone color tint */}
+      {WISP_COLORS.map((_color, i) => {
         const baseX = shape[i][0];
         const baseY = shape[i][1];
         const animX = !shouldMorph
@@ -209,12 +228,12 @@ function LumiiOrb({
             key={i}
             cx={0} cy={0}
             r={nodeR}
-            fill={color}
             filter={`url(#${filterId})`}
             animate={{
               x: animX,
               y: animY,
               opacity: excited ? [0.82, 1, 0.82] : [0.6, 1, 0.6],
+              fill: nodeColors[i],
             }}
             transition={{
               x: xTrans,
@@ -225,13 +244,14 @@ function LumiiOrb({
                 ease: "easeInOut",
                 delay: i * (excited ? 0.07 : 0.2),
               },
+              fill: { duration: 1.2, ease: "easeInOut" },
             }}
           />
         );
       })}
 
       {/* Star-point spikes on each node — small 4-point cross for that "star" look */}
-      {WISP_COLORS.map((color, i) => {
+      {WISP_COLORS.map((_color, i) => {
         const baseX = shape[i][0];
         const baseY = shape[i][1];
         const animX = !shouldMorph
@@ -254,6 +274,7 @@ function LumiiOrb({
             y: animY,
             opacity: excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
             scale: excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
+            color: nodeColors[i],
           }}
           transition={{
             x: xTrans,
@@ -270,13 +291,14 @@ function LumiiOrb({
               ease: "easeInOut",
               delay: i * (excited ? 0.06 : 0.18) + 0.3,
             },
+            color: { duration: 1.2, ease: "easeInOut" },
           }}
         >
           {/* Vertical spike */}
           <line
             x1={0} y1={-(nodeR + 3)}
             x2={0} y2={nodeR + 3}
-            stroke={color}
+            stroke="currentColor"
             strokeWidth={0.7}
             strokeOpacity={0.9}
             strokeLinecap="round"
@@ -285,7 +307,7 @@ function LumiiOrb({
           <line
             x1={-(nodeR + 3)} y1={0}
             x2={nodeR + 3} y2={0}
-            stroke={color}
+            stroke="currentColor"
             strokeWidth={0.7}
             strokeOpacity={0.9}
             strokeLinecap="round"
@@ -1251,6 +1273,7 @@ export function LumiiTutorial({
                           }
                           tetheredDirection={posStyle.tether}
                           onNearestNode={setTetherNodeOffset}
+                          highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
                         />
                       </motion.div>
                     }
