@@ -1997,9 +1997,9 @@ export function LuminarySummonCutscene({
             {/* White core — the blinding peak, retreats quickly */}
             <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 1 }}
-              animate={{ opacity: [1, 0.92, 0.42, 0.10, 0] }}
-              transition={{ duration: 1.10, times: [0, 0.10, 0.52, 0.82, 1], ease: 'easeOut' }}
-              exit={{ opacity: 0, transition: { duration: 0.50, ease: 'easeOut' } }}
+              animate={{ opacity: [1, 0.94, 0.58, 0.22, 0.06, 0] }}
+              transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
+              exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 65% 65% at 50% 42%, #fffef8 0%, #fffacc 28%, #FFE84888 54%, transparent 82%)`,
               }}
