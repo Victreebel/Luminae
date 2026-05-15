@@ -477,7 +477,7 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 };
 
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
-function LumiiOrb({ size = 64, excited = false, highlightZone = null }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number }) {
   const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
@@ -489,6 +489,7 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null }: { size?:
   const innerBg = `conic-gradient(from 90deg,${p[1]}bb,${p[2]}99,${p[5]}bb,${p[3]}bb,${p[0]}99,${p[1]}bb)`;
   return (
     <motion.div
+      key={prefersReducedMotion ? undefined : beatKey}
       style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}
       initial={prefersReducedMotion ? false : { scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -1605,7 +1606,7 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
             className="absolute z-30"
             style={{ left: "50%", transform: "translate(-50%, -50%)" }}
           >
-            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} />
+            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -2170,7 +2171,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} highlightZone={null} />
+                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} highlightZone={null} beatKey={beatId} />
               </div>
             </motion.div>
           </motion.div>
