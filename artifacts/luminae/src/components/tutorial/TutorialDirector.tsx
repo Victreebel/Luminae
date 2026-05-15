@@ -18,6 +18,7 @@ import {
   VERDANCE_LUMINARY_EMINENCE,
   AFFINITY_SEQ_KEYS,
   AFFINITY_SEQ_NAMES,
+  BEAT_INDEX,
   type TutorialCard,
   type TutorialMarketView,
   type LumiiPointerDir,
@@ -1806,6 +1807,25 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
+  const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5c_architect_assembly"];
+  const isSkippableBeat = SKIP_CINEMATIC_IDS.includes(beat.id);
+  const [skipVisible, setSkipVisible] = useState(false);
+
+  useEffect(() => {
+    if (!isSkippableBeat) { setSkipVisible(false); return; }
+    setSkipVisible(false);
+    const t = setTimeout(() => setSkipVisible(true), 1500);
+    return () => clearTimeout(t);
+  }, [s.beat, isSkippableBeat]);
+
+  const handleSkipCinematic = () => {
+    const targetIdx = BEAT_INDEX["b6_forge_appears"];
+    const steps = Math.max(0, targetIdx - s.beat);
+    for (let i = 0; i < steps; i++) {
+      dispatch({ type: "NEXT_BEAT" });
+    }
+  };
+
   const isContact = beat.id === "b0_contact";
   const isLocate = beat.id === "b1_locate";
   const isShatter = beat.id === "b4_shatter";
@@ -2042,6 +2062,22 @@ function CinematicPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch
           ))}
         </div>
       )}
+
+      {/* Skip intro button — fades in after 1.5s, only during skippable cinematic beats */}
+      <AnimatePresence>
+        {isSkippableBeat && skipVisible && (
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+            onClick={handleSkipCinematic}
+            className="absolute top-5 right-5 z-50 text-white/40 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/20 hover:bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+          >
+            Skip intro
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
