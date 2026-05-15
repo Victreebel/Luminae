@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted } from "@/lib/tutorialProgress";
+import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, getIntroSeenBeat, clearIntroSeen } from "@/lib/tutorialProgress";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
 import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
@@ -52,9 +52,14 @@ export default function Home() {
       return;
     }
     setShowTutorialModal(false);
-    if (choice === "begin" || choice === "start-over") {
+    if (choice === "start-over") {
       clearTutorialProgress();
+      clearIntroSeen();
       setPendingStartBeat(0);
+    } else if (choice === "begin") {
+      clearTutorialProgress();
+      const introSkipBeat = getIntroSeenBeat();
+      setPendingStartBeat(introSkipBeat ?? 0);
     } else {
       const saved = loadTutorialProgress();
       setPendingStartBeat(saved ?? 0);

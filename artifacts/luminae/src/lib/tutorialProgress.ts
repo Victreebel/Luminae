@@ -1,6 +1,7 @@
 const PROGRESS_KEY = "luminae_tutorial_progress";
 const SEEN_KEY = "luminae_tutorial_seen";
 const COMPLETED_KEY = "luminae_tutorial_completed";
+const INTRO_SEEN_KEY = "luminae_intro_seen_beat";
 
 export function markTutorialSeen(): void {
   try {
@@ -54,5 +55,30 @@ export function hasTutorialBeenCompleted(): boolean {
     return localStorage.getItem(COMPLETED_KEY) === "1";
   } catch {
     return false;
+  }
+}
+
+export function markIntroSeen(beatIndex: number): void {
+  try {
+    localStorage.setItem(INTRO_SEEN_KEY, String(beatIndex));
+  } catch {
+  }
+}
+
+export function getIntroSeenBeat(): number | null {
+  try {
+    const v = localStorage.getItem(INTRO_SEEN_KEY);
+    if (v === null) return null;
+    const n = parseInt(v, 10);
+    return isNaN(n) ? null : n;
+  } catch {
+    return null;
+  }
+}
+
+export function clearIntroSeen(): void {
+  try {
+    localStorage.removeItem(INTRO_SEEN_KEY);
+  } catch {
   }
 }
