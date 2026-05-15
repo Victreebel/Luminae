@@ -2633,7 +2633,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   const clampedBeat = startBeat != null
     ? Math.max(0, Math.min(startBeat, TUTORIAL_BEATS.length - 1))
-    : 0;
+    : hasTutorialSeen() ? BEAT_INDEX["b4_shatter"] : 0;
   const initState = clampedBeat > 0
     ? { ...INIT_STATE, beat: clampedBeat }
     : INIT_STATE;
