@@ -192,7 +192,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "In my Universe, that is what we call those who have the power to shape cosmic society." },
-      { text: "You can determine what my people reach for, and what we become." },
+      { text: "They determine what my people reach for, and what we become." },
       { text: "Architects do not rule." },
       { text: "You provide us with the tools to shine brilliantly throughout the cosmos." },
     ],
