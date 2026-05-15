@@ -67,7 +67,8 @@ export type TAction =
   | { type: "SET_VIEW"; view: TutorialMarketView }
   | { type: "NUDGE"; msg: string | null }
   | { type: "FF_DONE" }
-  | { type: "LUM_DONE" };
+  | { type: "LUM_DONE" }
+  | { type: "JUMP_BEAT"; toIndex: number };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export function effectiveCost(
@@ -420,6 +421,11 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
     case "LUM_DONE":
       return { ...s, lumDone: true, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+
+    case "JUMP_BEAT": {
+      const idx = Math.max(0, Math.min(a.toIndex, TUTORIAL_BEATS.length - 1));
+      return { ...s, beat: idx, dlgLine: 0, subStep: 0, wellSel: {}, nudge: null };
+    }
 
     default:
       return s;

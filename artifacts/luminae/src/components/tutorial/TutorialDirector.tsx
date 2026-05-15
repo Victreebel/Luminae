@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
 import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
 import { Sparkles, ChevronUp, RotateCcw, X } from "lucide-react";
@@ -2647,26 +2648,30 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   const beat = TUTORIAL_BEATS[s.beat];
   if (!beat) return null;
 
+  const devNav = import.meta.env.DEV
+    ? <DevTutorialNav beatIndex={s.beat} dispatch={dispatch} />
+    : null;
+
   // Cinematic beats: 0–9 (b3c_border=4, b3b_farewell=5, b4_shatter=6, b5_affinities=7, b5b_affinity_tokens=8, b5c_architect_assembly=9)
   if (s.beat <= 9) {
-    return <CinematicPhase s={s} dispatch={dispatch} />;
+    return <><CinematicPhase s={s} dispatch={dispatch} />{devNav}</>;
   }
 
   // Fast-forward cinematic
   if (beat.id === "b15_fast_forward") {
-    return <FastForwardCinematic s={s} dispatch={dispatch} />;
+    return <><FastForwardCinematic s={s} dispatch={dispatch} />{devNav}</>;
   }
 
   // Luminary reveal
   if (beat.id === "b17_luminary") {
-    return <LuminaryPhase s={s} dispatch={dispatch} />;
+    return <><LuminaryPhase s={s} dispatch={dispatch} />{devNav}</>;
   }
 
   // Victory
   if (beat.id === "b18_victory") {
-    return <VictoryPhase s={s} dispatch={dispatch} />;
+    return <><VictoryPhase s={s} dispatch={dispatch} />{devNav}</>;
   }
 
   // Gameplay beats: 6–16
-  return <GameplayPhase s={s} dispatch={dispatch} />;
+  return <><GameplayPhase s={s} dispatch={dispatch} />{devNav}</>;
 }
