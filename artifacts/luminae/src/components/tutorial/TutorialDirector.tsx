@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
+import { saveTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
 import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
 import { Sparkles, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -1961,15 +1962,15 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
               className="flex flex-col gap-3 w-full"
             >
               <button
-                onClick={() => { localStorage.setItem("luminae_tutorial_seen", "1"); setLocation("/"); }}
+                onClick={() => { clearTutorialProgress(); localStorage.setItem("luminae_tutorial_seen", "1"); setLocation("/"); }}
                 className="w-full py-3 rounded-2xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-500 transition-all shadow-lg"
               >Begin a Full Game</button>
               <button
-                onClick={() => dispatch({ type: "RESET" })}
+                onClick={() => { clearTutorialProgress(); dispatch({ type: "RESET" }); }}
                 className="w-full py-2 rounded-2xl bg-white/8 text-white/60 text-sm hover:bg-white/15 transition-all"
               >Replay Tutorial</button>
               <button
-                onClick={() => setLocation("/")}
+                onClick={() => { clearTutorialProgress(); setLocation("/"); }}
                 className="w-full py-2 rounded-xl text-white/40 text-sm hover:text-white/70 transition-all"
               >Return Home</button>
             </motion.div>
@@ -2727,9 +2728,21 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export function TutorialDirector() {
-  const [s, dispatch] = useReducer(reducer, INIT_STATE);
+export function TutorialDirector({ startBeat }: { startBeat?: number }) {
+  const clampedBeat = startBeat != null
+    ? Math.max(0, Math.min(startBeat, TUTORIAL_BEATS.length - 1))
+    : 0;
+  const initState = clampedBeat > 0
+    ? { ...INIT_STATE, beat: clampedBeat }
+    : INIT_STATE;
+  const [s, dispatch] = useReducer(reducer, initState);
   const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (s.beat > 0) {
+      saveTutorialProgress(s.beat);
+    }
+  }, [s.beat]);
 
   useEffect(() => {
     if (s.navigateTo) navigate(s.navigateTo);

@@ -1,5 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
+import { loadTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
+import { setPendingStartBeat } from "@/lib/tutorialStartBeat";
+import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
+import { ThresholdCinematic } from "@/components/tutorial/ThresholdCinematic";
 import {
   useCreateRoom,
   useGetRoomByInviteCode,
@@ -31,11 +35,35 @@ export default function Home() {
   const { account, token, isLoading: accountLoading, logout } = useAccount();
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [tutorialSeen] = useState(() => !!localStorage.getItem("luminae_tutorial_seen"));
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
+  const [tutorialHasProgress, setTutorialHasProgress] = useState(false);
+  const [showCinematic, setShowCinematic] = useState(false);
   const handleLogout = async () => {
     await logout();
     setConfirmLogout(false);
     setMode("home");
   };
+  const handleTutorialChoice = useCallback((choice: "begin" | "resume" | "start-over" | "cancel") => {
+    if (choice === "cancel") {
+      setShowTutorialModal(false);
+      return;
+    }
+    setShowTutorialModal(false);
+    if (choice === "begin" || choice === "start-over") {
+      clearTutorialProgress();
+      setPendingStartBeat(0);
+    } else {
+      const saved = loadTutorialProgress();
+      setPendingStartBeat(saved ?? 0);
+    }
+    setShowCinematic(true);
+  }, []);
+
+  const handleCinematicComplete = useCallback(() => {
+    setShowCinematic(false);
+    setLocation("/tutorial");
+  }, [setLocation]);
+
   const [activeSession, setActiveSession] = useState(() => getSession());
   const [mode, setMode] = useState<Mode>("home");
   const [avatarId, setAvatarId] = useState(() => getSavedAvatarId());
@@ -384,7 +412,7 @@ export default function Home() {
               {/* Tutorial */}
               <button
                 type="button"
-                onClick={() => setLocation("/tutorial")}
+                onClick={() => { setTutorialHasProgress(loadTutorialProgress() !== null); setShowTutorialModal(true); }}
                 className="w-full flex items-center gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur px-5 py-3.5 text-left hover:border-border/70 hover:bg-card/60 transition-colors"
               >
                 <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
@@ -653,6 +681,17 @@ export default function Home() {
           )}
         </AnimatePresence>
       </div>
+
+      {showTutorialModal && (
+        <TutorialStartModal
+          hasProgress={tutorialHasProgress}
+          onChoice={handleTutorialChoice}
+        />
+      )}
+
+      {showCinematic && (
+        <ThresholdCinematic onComplete={handleCinematicComplete} />
+      )}
     </div>
   );
 }
