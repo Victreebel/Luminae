@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -2268,6 +2268,30 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         }`}
         style={{ background: 'rgba(3,3,12,0.92)' }}
       >
+        {/* Tap-to-inspect hint — visible when panel is highlighted and sheet is closed */}
+        <AnimatePresence>
+          {isPanelHighlighted && !panelSheetOpen && (
+            <motion.div
+              key="tap-hint"
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.25 }}
+              className="flex items-center justify-center gap-1 mb-1.5 pointer-events-none select-none"
+            >
+              <motion.div
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                className="flex items-center gap-1"
+              >
+                <ChevronUp className="h-3 w-3 text-amber-400" strokeWidth={2.5} />
+                <span className="text-[10px] font-semibold tracking-wide text-amber-400/90">tap to inspect</span>
+                <ChevronUp className="h-3 w-3 text-amber-400" strokeWidth={2.5} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Identity + stats row */}
         <div className="flex items-center gap-3 mb-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
