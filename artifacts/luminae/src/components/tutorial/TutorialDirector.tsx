@@ -1932,6 +1932,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [shatteringStarted, setShatteringStarted] = useState(false);
   const [assemblyDone, setAssemblyDone] = useState(false);
   const [lumiSweepDone, setLumiSweepDone] = useState(false);
+  const [devMarker, setDevMarker] = useState<{ left: string; top: string } | null>(null);
 
   // Compute where the Tier-1 right corner of the forge lands in viewport %,
   // using the same scale formula as ArchitectAssembly (INNER_W=375, INNER_H=660).
@@ -2041,6 +2042,11 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     <div
       className="fixed inset-0 flex items-center justify-center select-none"
       style={{ background: "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)" }}
+      onClick={import.meta.env.DEV && isArchitectAssembly && assemblyDone ? (e: React.MouseEvent) => {
+        const left = `${((e.clientX / window.innerWidth) * 100).toFixed(1)}%`;
+        const top  = `${((e.clientY / window.innerHeight) * 100).toFixed(1)}%`;
+        setDevMarker({ left, top });
+      } : undefined}
     >
       {/* Cosmos fades in when shattering starts — veil begins transparent so the
           initial reveal is a bright star-field that gradually settles to dark */}
@@ -2179,6 +2185,25 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* DEV: position picker — click anywhere after assembly to mark a target for Lumi */}
+      {import.meta.env.DEV && isArchitectAssembly && assemblyDone && devMarker && (
+        <div
+          className="absolute pointer-events-none z-[200]"
+          style={{ left: devMarker.left, top: devMarker.top, transform: "translate(-50%,-50%)" }}
+        >
+          <div className="relative flex items-center justify-center">
+            <div className="w-5 h-5 rounded-full border-2 border-yellow-400 bg-yellow-400/20" />
+            <div className="absolute h-px w-8 bg-yellow-400" />
+            <div className="absolute w-px h-8 bg-yellow-400" />
+          </div>
+          <div
+            className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-mono font-bold text-yellow-300 bg-black/80 border border-yellow-400/40"
+          >
+            left: "{devMarker.left}"  top: "{devMarker.top}"
+          </div>
+        </div>
+      )}
 
       {/* Architect Assembly dialogue — appears once Lumi finishes sweeping past Tier 1 */}
       {isArchitectAssembly && lumiSweepDone && beat.dialogue.length > 0 && (
