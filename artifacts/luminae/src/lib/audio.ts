@@ -782,19 +782,22 @@ class GameAudio {
       comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.18;
       // Master gain: scales the entire procedural synthesis chain down for subtlety
       const master = ctx.createGain();
-      master.gain.value = 0.42;
+      master.gain.value = 0.24;
       comp.connect(master);
       master.connect(ctx.destination);
       const D = comp;
 
       const s = (ms: number) => t + ms / 1000;
 
-      const CRACK1 =   40;   // ≈ firstcrack phase onset
-      const LEAK   =  660;   // ≈ leaking phase onset
-      const CRACK2 =  860;   // ≈ secondcrack phase onset
-      const CRACKS = 1280;   // ≈ cracking phase onset
-      const SHATT  = 2320;   // ≈ shattering phase onset
-      const FLASH  = 3160;   // ≈ flashing phase onset
+      // Phase onsets (ms) — must match FS_DURS in TutorialDirector.tsx:
+      //   pressure=620  firstcrack=520  leaking=850  secondcrack=420
+      //   cracking=1100  shattering=1000  flashing=950
+      const CRACK1 =  600;   // ≈ firstcrack phase onset  (620ms cumulative)
+      const LEAK   = 1120;   // ≈ leaking phase onset     (1140ms cumulative)
+      const CRACK2 = 1970;   // ≈ secondcrack phase onset (1990ms cumulative)
+      const CRACKS = 2390;   // ≈ cracking phase onset    (2410ms cumulative)
+      const SHATT  = 3490;   // ≈ shattering phase onset  (3510ms cumulative)
+      const FLASH  = 4490;   // ≈ flashing phase onset    (4510ms cumulative)
 
       // ── pressure (0–90 ms): crystalline rattle + hum + warble ───────
       for (let i = 0; i < 5; i++) {
@@ -859,11 +862,11 @@ class GameAudio {
       this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
 
       // ── MP3 assets — same SFX as summon cutscene ─────────────────────
-      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,          0.36);
-      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,          0.34);
-      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,          0.40);
-      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,    0.37);
-      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,          0.40);
+      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,          0.20);
+      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,          0.18);
+      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,          0.22);
+      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,    0.20);
+      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,          0.22);
 
     } catch (e) {
       console.warn('[Luminae] Tutorial shatter audio failed', e);
