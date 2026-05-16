@@ -971,17 +971,17 @@ function DeckPile({ tier, count }: { tier: number; count: number }) {
   const badgeColor = BADGE_COLORS[tier] ?? "#555";
   return (
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
-      <div className="relative shrink-0" style={{ width: 58, height: 78 }}>
-        <div className="absolute rounded-md overflow-hidden border border-white/5"
-          style={{ left: 4, top: 4, width: 52, height: 72, opacity: 0.28 }}>
+      <div className="relative shrink-0" style={{ width: 120, height: 168 }}>
+        <div className="absolute rounded-xl overflow-hidden border border-white/5"
+          style={{ left: 8, top: 8, width: 112, height: 160, opacity: 0.28 }}>
           <BackComponent />
         </div>
-        <div className="absolute rounded-md overflow-hidden border border-white/8"
-          style={{ left: 2, top: 2, width: 52, height: 72, opacity: 0.55 }}>
+        <div className="absolute rounded-xl overflow-hidden border border-white/8"
+          style={{ left: 4, top: 4, width: 112, height: 160, opacity: 0.55 }}>
           <BackComponent />
         </div>
-        <div className="absolute rounded-lg overflow-hidden border border-white/12 shadow-lg"
-          style={{ left: 0, top: 0, width: 52, height: 72 }}>
+        <div className="absolute rounded-xl overflow-hidden border border-white/12 shadow-lg"
+          style={{ left: 0, top: 0, width: 112, height: 160 }}>
           <BackComponent />
         </div>
       </div>
