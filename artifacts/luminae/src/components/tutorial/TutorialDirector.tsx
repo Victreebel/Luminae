@@ -984,12 +984,6 @@ function DeckPile({ tier, count }: { tier: number; count: number }) {
           style={{ left: 0, top: 0, width: 52, height: 72 }}>
           <BackComponent />
         </div>
-        {count > 0 && (
-          <div className="absolute rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-lg z-10"
-            style={{ width: 20, height: 20, top: -6, left: 36, background: badgeColor }}>
-            {count}
-          </div>
-        )}
       </div>
       <span className="text-[6px] text-white/20 font-semibold tracking-wide">Blind</span>
     </div>
