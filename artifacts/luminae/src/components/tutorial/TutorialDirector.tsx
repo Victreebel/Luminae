@@ -2971,6 +2971,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
+  const isForgeHighlighted = ["b6_forge_appears", "b7_artifact_cost", "b9_first_forge", "b9b_forge_complete", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
 
   // Flux column locked until Singularity is introduced at b12_tier2
   const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
@@ -3184,13 +3185,25 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       >
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
           <TutorialLuminarySection beatIndex={s.beat} />
-          <div ref={forgeRef} className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
-            <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">
+          <motion.div
+            ref={forgeRef}
+            className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${isForgeHighlighted ? "border-amber-400/50" : "border-white/10"}`}
+            style={{ background: "rgba(3,3,12,0.72)" }}
+            animate={isForgeHighlighted
+              ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.28)", "0 0 8px rgba(251,191,36,0.12)", "0 0 22px rgba(251,191,36,0.32)", "0 0 0px rgba(251,191,36,0)"] }
+              : { boxShadow: "0 0 0px rgba(251,191,36,0)" }
+            }
+            transition={isForgeHighlighted
+              ? { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
+              : { duration: 0.4 }
+            }
+          >
+            <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isForgeHighlighted ? "text-amber-400/70" : "text-white/40"}`}>
               The Forge
-              <Hammer className="h-3 w-3 text-amber-500/70 shrink-0" />
+              <Hammer className={`h-3 w-3 shrink-0 ${isForgeHighlighted ? "text-amber-400" : "text-amber-500/70"}`} />
             </div>
             <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} />
-          </div>
+          </motion.div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
             fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
           {(s.reserved.length > 0 || s.forged.length > 0) && (
