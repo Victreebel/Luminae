@@ -181,25 +181,26 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
               filter="drop-shadow(0 0 3px rgba(255,255,255,0.55))"
             >
               <motion.path
-                d={`M ${(size * 0.56).toFixed(1)} 0 L ${(size * 0.98).toFixed(1)} 0`}
-                stroke="rgba(255,255,255,0.72)"
-                strokeWidth={1.2}
+                d={`M ${(size * 0.58).toFixed(1)} 0 L ${(size * 0.78).toFixed(1)} 0`}
+                stroke="rgba(255,255,255,0.85)"
+                strokeWidth={2.2}
                 strokeLinecap="round"
                 fill="none"
                 initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1, strokeOpacity: [0.55, 0.88, 0.55] }}
+                animate={{ pathLength: 1, strokeOpacity: [0.70, 1, 0.70] }}
                 transition={{
-                  pathLength: { duration: 0.38, ease: "easeOut" },
-                  strokeOpacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut", delay: 0.4 },
+                  pathLength: { duration: 0.24, ease: "easeOut" },
+                  strokeOpacity: { duration: 1.4, repeat: Infinity, ease: "easeInOut", delay: 0.3 },
                 }}
               />
               <motion.g
-                animate={{ x: [0, 4, 0] }}
-                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay: 0.55 }}
+                animate={{ x: [0, 3, 0] }}
+                transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
               >
                 <polygon
-                  points={`${(size * 1.10).toFixed(1)},0 ${(size * 0.96).toFixed(1)},${-(size * 0.072).toFixed(1)} ${(size * 0.96).toFixed(1)},${(size * 0.072).toFixed(1)}`}
-                  fill="rgba(255,255,255,0.72)"
+                  points={`${(size * 0.98).toFixed(1)},0 ${(size * 0.78).toFixed(1)},${-(size * 0.13).toFixed(1)} ${(size * 0.78).toFixed(1)},${(size * 0.13).toFixed(1)}`}
+                  fill="rgba(255,255,255,0.85)"
+                  filter="drop-shadow(0 0 4px rgba(255,255,255,0.5))"
                 />
               </motion.g>
             </g>
