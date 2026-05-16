@@ -1336,23 +1336,18 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
 
   // Pulse layer — independent MotionValue so the one-shot draw-in and the
   // repeating loop never interfere with each other.
-  const pulseOp   = useMotionValue(0);
-  const pulseOp4  = useMotionValue(0);
+  const pulseOp = useMotionValue(0);
   useEffect(() => {
     if (isDetail) return;
-    // Wait for L3/L4 draw-in to settle, then begin breathing loop.
+    // Wait for L3 draw-in to settle, then begin breathing loop.
     const settle = (d1 + 0.14 + 0.95) * 1000;
     const id = setTimeout(() => {
-      // Wide glow pulse — L3-equivalent, offset timing so each crack segment
-      // breathes slightly out of phase with its neighbours.
-      fmAnimate(pulseOp,  [0.20, 0.50, 0.16, 0.46, 0.20], { duration: 2.8, repeat: Infinity, ease: 'easeInOut' });
-      // Narrow seam pulse — subtler, slightly slower
-      fmAnimate(pulseOp4, [0.14, 0.38, 0.10, 0.34, 0.14], { duration: 3.2, delay: 0.4, repeat: Infinity, ease: 'easeInOut' });
+      // Wide glow pulse — breathes slightly out of phase across crack segments
+      fmAnimate(pulseOp, [0.20, 0.50, 0.16, 0.46, 0.20], { duration: 2.8, repeat: Infinity, ease: 'easeInOut' });
     }, settle);
     return () => {
       clearTimeout(id);
       pulseOp.set(0);
-      pulseOp4.set(0);
     };
   // d1 and isDetail come from constants — intentionally stable
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1370,12 +1365,12 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   }
   return (
     <>
-      {/* L1 white snap — fracture line drawing across the panel */}
+      {/* L1 white snap — fracture draws in with a crisp line, then fully dissolves */}
       <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.22" fill="none"
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
-        transition={{ duration: 0.42, delay: d1, ease: 'easeOut' }}
+        animate={{ pathLength: 1, opacity: [0, 1.0, 0.88, 0] }}
+        transition={{ duration: 0.72, delay: d1, times: [0, 0.20, 0.50, 1.0], ease: 'easeOut' }}
       />
       {/* L2 chasing glow — wide light bleed chasing the fracture tip */}
       <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="4.0" fill="none"
@@ -1387,7 +1382,7 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
           opacity:    { duration: 0.78, delay: d1 + 0.04, times: [0, 0.12, 0.55, 1.0] },
         }}
       />
-      {/* L3 residual wound — sustained light bleeding through the gap */}
+      {/* L3 residual wound — sustained soft glow bleeding through the gap */}
       <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="2.8" fill="none"
         filter="url(#fso-cgw)"
         initial={{ pathLength: 0, opacity: 0 }}
@@ -1398,17 +1393,6 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
       <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="3.2" fill="none"
         filter="url(#fso-cgw)"
         style={{ opacity: pulseOp }}
-      />
-      {/* L4 tinted seam — narrow cool-white line showing the crack edge */}
-      <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="0.45" fill="none"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.60, 0.52] }}
-        transition={{ duration: 0.80, delay: d1 + 0.16, ease: 'easeOut' }}
-      />
-      {/* L4-pulse — seam breathes with a slower, softer oscillation */}
-      <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.28" fill="none"
-        filter="url(#fso-cgb)"
-        style={{ opacity: pulseOp4 }}
       />
     </>
   );
