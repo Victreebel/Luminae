@@ -1315,9 +1315,12 @@ const FS_CRYSTAL_SEAM_PATHS = [
 // All glow layers use FSO_LIGHT so the crack reads as back-lit (light from behind),
 // not as a surface marking on the glass.
 function FSOCrack({ d, d1, isDetail }: CrackDef) {
+  // pathLength={1} tells framer-motion the total length is 1 so it drives
+  // stroke-dasharray/offset directly without a DOM measurement — this ensures
+  // the path reliably starts hidden (pathLength:0) every time it mounts.
   if (isDetail) {
     return (
-      <motion.path d={d} stroke="white" strokeWidth="0.18" fill="none"
+      <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.18" fill="none"
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0.70, 0.60] }}
@@ -1328,14 +1331,14 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   return (
     <>
       {/* L1 white snap — fracture line drawing across the panel */}
-      <motion.path d={d} stroke="white" strokeWidth="0.22" fill="none"
+      <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.22" fill="none"
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
         transition={{ duration: 0.42, delay: d1, ease: 'easeOut' }}
       />
       {/* L2 chasing glow — wide light bleed chasing the fracture tip */}
-      <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="4.0" fill="none"
+      <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="4.0" fill="none"
         filter="url(#fso-cgw)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0.90, 0.25, 0] }}
@@ -1345,14 +1348,14 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
         }}
       />
       {/* L3 residual wound — sustained light bleeding through the gap */}
-      <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="2.8" fill="none"
+      <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="2.8" fill="none"
         filter="url(#fso-cgw)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0, 0.55, 0.75, 0.65] }}
         transition={{ duration: 0.85, delay: d1 + 0.14, ease: 'easeOut' }}
       />
       {/* L4 tinted seam — narrow cool-white line showing the crack edge */}
-      <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="0.45" fill="none"
+      <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="0.45" fill="none"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.60, 0.52] }}
         transition={{ duration: 0.80, delay: d1 + 0.16, ease: 'easeOut' }}
@@ -1562,37 +1565,10 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
               </filter>
             </defs>
 
-            {/* ── Pre-existing crystal facet seams — the natural cleavage planes of the
-                crystal. Faint ice-blue lines that pulse slowly, suggesting internal
-                luminescence trapped in the crystal volume before any cracking begins. */}
-            <motion.g
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.38, 0.28, 0.42, 0.32] }}
-              transition={{ duration: 2.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
-            >
-              {FS_CRYSTAL_SEAM_PATHS.map((d, i) => (
-                <path key={`seam-glow-${i}`} d={d}
-                  stroke="rgba(140,210,255,0.55)" strokeWidth="1.8" fill="none"
-                  filter="url(#fso-csm)"
-                />
-              ))}
-            </motion.g>
-            <motion.g
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.55, 0.40, 0.60, 0.45] }}
-              transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, repeatType: 'mirror', delay: 0.3 }}
-            >
-              {FS_CRYSTAL_SEAM_PATHS.map((d, i) => (
-                <path key={`seam-line-${i}`} d={d}
-                  stroke="rgba(200,235,255,0.50)" strokeWidth="0.18" fill="none"
-                />
-              ))}
-            </motion.g>
-
-            {/* First crack network — mounts on firstcrack phase, stays visible */}
+            {/* First crack network — mounts on firstcrack phase, draws in progressively */}
             {past('firstcrack') && FS_CRACKS_1.map((c, i) => <FSOCrack key={`c1-${i}`} {...c} />)}
 
-            {/* Second crack network — mounts on secondcrack phase */}
+            {/* Second crack network — mounts on secondcrack phase, after first light finishes */}
             {past('secondcrack') && FS_CRACKS_2.map((c, i) => <FSOCrack key={`c2-${i}`} {...c} />)}
 
             {/* Ambient junction glow — cool blue-white light pooling at the fracture junction,
