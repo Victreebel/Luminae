@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 const TOTAL = 3.1;       // seconds — animation timeline duration
 const COMPLETE_DELAY = 3.16; // tiny buffer so final white frame is visible before routing
@@ -70,6 +70,8 @@ interface Props {
 }
 
 export function ThresholdCinematic({ onComplete }: Props) {
+  const prefersReducedMotion = useReducedMotion();
+
   useEffect(() => {
     const t = setTimeout(onComplete, COMPLETE_DELAY * 1000);
     return () => clearTimeout(t);
@@ -165,16 +167,20 @@ export function ThresholdCinematic({ onComplete }: Props) {
 
       {/* Center singularity — grows from a point into a blinding glow */}
       <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{
-          scale: [0, 0.25, 1, 24],
-          opacity: [0, 0.45, 0.88, 1],
-        }}
-        transition={{
-          duration: TOTAL,
-          ease: "easeIn",
-          times: [0, 0.38, 0.72, 1],
-        }}
+        initial={{ scale: prefersReducedMotion ? 1 : 0, opacity: 0 }}
+        animate={
+          prefersReducedMotion
+            ? { opacity: [0, 0, 1] }
+            : {
+                scale: [0, 0.25, 1, 8],
+                opacity: [0, 0.45, 0.88, 1],
+              }
+        }
+        transition={
+          prefersReducedMotion
+            ? { duration: TOTAL, ease: "linear", times: [0, 0.72, 1] }
+            : { duration: TOTAL, ease: "easeIn", times: [0, 0.38, 0.72, 1] }
+        }
         style={{
           position: "absolute",
           width: "80vmin",
