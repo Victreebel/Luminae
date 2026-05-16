@@ -864,12 +864,7 @@ class GameAudio {
       this.osc(ctx, 58, 'sine', s(SHATT),       s(SHATT + 560), 0.08, 0.015, D);
       this.osc(ctx, 80, 'sine', s(SHATT +  18), s(SHATT + 400), 0.055, 0.020, D);
 
-      // ── flashing (3160 ms): bright swell + celestial chord + shimmer ──
-      this.osc(ctx, 880,  'sine', s(FLASH),      s(FLASH + 460), 0.11, 0.008, D);
-      this.osc(ctx, 1320, 'sine', s(FLASH),      s(FLASH + 310), 0.055, 0.008, D);
-      [523.25, 659.25, 783.99, 987.77].forEach((f, i) => {
-        this.osc(ctx, f, 'sine', s(FLASH + 22 + i * 16), s(FLASH + 910), 0.075, 0.012, D);
-      });
+      // ── flashing (3160 ms): bright swell ──
       this.noiseBlip(ctx, s(FLASH +  38), 0.60, 0.085, 5400, 2.0, D);
       this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
 
