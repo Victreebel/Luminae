@@ -422,8 +422,11 @@ function TutorialCard({
       className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
       style={{ width: 112, height: 160 }}
     >
+      {foreground && (
+        <div className="absolute inset-0 rounded-xl border-2 border-white/55 pointer-events-none z-10" />
+      )}
       <div
-        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : foreground ? "ring-2 ring-inset ring-white/50" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
