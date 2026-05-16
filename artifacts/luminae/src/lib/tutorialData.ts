@@ -209,12 +209,11 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "Almost. You've been wandering along the border." },
-      { text: "Whatever you choose, I will light your way." },
+      { text: "I can light your way." },
     ],
     completion: { type: "dialogue" },
     choices: [
       { label: "Take me there.", value: "go" },
-      { label: "Take me home.", value: "home" },
     ],
   },
   {
