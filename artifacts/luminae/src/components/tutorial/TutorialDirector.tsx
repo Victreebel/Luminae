@@ -1442,10 +1442,15 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
-      {/* ── Single seamless dark panel (pre-shatter) — no clip paths so no seam lines visible */}
+      {/* ── Single seamless dark panel (pre-shatter) — fades in over the pressure phase
+          so beat 6 → beat 7 looks like the screen is slowly darkening/crystallising
+          rather than glass suddenly slamming down. No clip paths = no seam lines. */}
       {!isShattering && (
-        <div className="absolute inset-0 pointer-events-none"
+        <motion.div className="absolute inset-0 pointer-events-none"
           style={{ background: 'linear-gradient(160deg, rgba(4,4,12,0.97) 0%, rgba(6,8,18,0.95) 55%, rgba(2,3,9,0.98) 100%)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.55, ease: 'easeIn' }}
         />
       )}
 
