@@ -267,7 +267,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     dialogue: [
       { text: "Affinities alone are only potential." },
-      { text: "The Forge gives them form." },
+      { text: "The Forge gives them form.", excited: true },
       { text: "Here, a society shapes artifacts — technologies that change what it can become." },
     ],
     completion: { type: "dialogue" },
@@ -302,9 +302,10 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "market-t1",
     foregroundCardId: "t1e01",
     highlightZone: "forge-btn",
+    lumiiPointer: "down",
     dialogue: [
       { text: "Good. The Forge has what it needs." },
-      { text: "Now shape it." },
+      { text: "Now shape it.", excited: true },
     ],
     completion: { type: "action", action: "forge_market" },
     wrongClickNudge: "Find the Forge action on the artifact.",
@@ -349,6 +350,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "market-t1",
     highlightZone: "hand",
+    lumiiPointer: "left",
     dialogue: [
       { text: "Reserving protects a future artifact." },
       { text: "It also grants Singularity." },
@@ -373,11 +375,12 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "act",
     lumiiZone: "market-t1",
     highlightZone: "hand",
+    lumiiPointer: "left",
     dialogue: [
       { text: "Reserved artifacts can still be forged." },
       { text: "Notice the shortfall chips — they update live as you select affinities from the well." },
       { text: "Your collection is always one tap away — press your panel below to review it." },
-      { text: "Gather what's needed, then forge it from your hand." },
+      { text: "Gather what's needed, then forge it from your hand.", excited: true },
     ],
     completion: { type: "action", action: "forge_reserved" },
     wrongClickNudge: "Hold that Singularity for now. A harder path is coming.",

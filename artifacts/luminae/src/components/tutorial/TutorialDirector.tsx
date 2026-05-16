@@ -3039,6 +3039,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Flux column locked until Singularity is introduced at b12_tier2
   const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
 
+  // Approximate screen positions for highlight zone targets (fixed-overlay coordinates).
+  // Values reflect where elements appear on-screen given the active cameraFocus scroll state.
+  const HIGHLIGHT_ZONE_SCREEN_POS: Record<string, { x: string; y: string }> = {
+    "well":           { x: "50%", y: "82%" },
+    "forge-btn":      { x: "84%", y: "46%" },
+    "hand":           { x: "20%", y: "42%" },
+    "storage":        { x: "38%", y: "62%" },
+    "market-t1":      { x: "50%", y: "40%" },
+    "market-t2":      { x: "50%", y: "26%" },
+    "market-t3":      { x: "50%", y: "16%" },
+    "card-cost":      { x: "76%", y: "38%" },
+    "eminence":       { x: "86%", y: "94%" },
+    "discounted-tab": { x: "36%", y: "22%" },
+    "needed-tab":     { x: "55%", y: "22%" },
+  };
+
   const lumiiTarget = beat.lumiiZone;
   const LUMII_ZONE_POS: Record<string, { x: string; y: string }> = {
     "market-t1":      { x: "87%", y: "26%" },
@@ -3063,6 +3079,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const lumiiPos = isShortLandscape
     ? { x: lumiiPosRaw.x, y: `${Math.min(parseFloat(lumiiPosRaw.y), 60)}%` }
     : lumiiPosRaw;
+
+  // Hoisted for use in spotlight/tether overlays (same logic as inside Lumii IIFE)
+  const lumiiIsBurstActive = !!(purchaseBurst || gemBurst);
+  const lumiiEffectivePos = lumiiIsBurstActive ? { x: "90%", y: "7%" } : lumiiPos;
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
@@ -3119,6 +3139,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           container.getBoundingClientRect().top +
           container.scrollTop;
         container.scrollTo({ top: tier1Top, behavior: "smooth" });
+      } else {
+        // Fallback: ref not yet populated — scroll to bottom where Tier 1 sits
+        container.scrollTo({ top: maxScroll, behavior: "smooth" });
       }
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
@@ -3165,6 +3188,20 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           "radial-gradient(ellipse 42% 30% at 100% 100%, #2ECC710B 0%, transparent 65%)",
       }} />
       {isDimmed && <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />}
+
+      {/* Spotlight vignette — dims edges around the highlighted target zone */}
+      {isActMode && beat.highlightZone && HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone] && (
+        <motion.div
+          key={`spotlight-${beatId}`}
+          className="fixed inset-0 pointer-events-none z-[22]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.9, delay: cameraFocus !== "market" ? 0.82 : 0.25 }}
+          style={{
+            background: `radial-gradient(ellipse 52% 38% at ${HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone]!.x} ${HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone]!.y}, transparent 0%, rgba(0,0,0,0.28) 100%)`,
+          }}
+        />
+      )}
 
       {/* Header */}
       <header className="shrink-0 z-30 flex items-center justify-between px-4 py-2 border-b border-white/10 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.82)" }}>
@@ -3381,25 +3418,29 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
-        // Excited bounce: action hint pending OR Lumii just celebrated a forge
-        const shouldExcitedBounce = hintVisible || forgeJustHappened || isForgeHighlighted;
         // Dialogue-line excited state: true when the current line has excited:true
         const currentLineExcited = beat.dialogue[s.dlgLine]?.excited ?? false;
+        // Excited bounce: scoped to action hint pending, post-forge, or an explicitly excited line
+        const shouldExcitedBounce = hintVisible || forgeJustHappened || currentLineExcited;
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
             transition={
               burstActive
                 ? { type: "spring", stiffness: 260, damping: 22 }
-                : { type: "spring", stiffness: 80, damping: 18 }
+                : { type: "spring", stiffness: 55, damping: 20 }
             }
             className="fixed z-[60] pointer-events-none"
           >
             <div style={{ transform: "translate(-50%, -50%)" }}>
             {/* Speech bubble anchored to Lumii for card-explanation beats */}
             {showFloatingDlg && (
-              <div
+              <motion.div
+                key={`float-settle-${beatId}`}
                 className="absolute pointer-events-auto"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" ? 1.4 : 0 }}
                 style={lumiiIsLeft
                   ? { left: 36, top: -64, width: 216 }
                   : { right: 36, top: -64, width: 216 }
@@ -3419,7 +3460,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                     showOrb={false}
                   />
                 </AnimatePresence>
-              </div>
+              </motion.div>
             )}
             {/* Orb: excited bounce when action pending or forge just fired; gentle float otherwise */}
             <motion.div
@@ -3442,11 +3483,63 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={isActMode || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
+                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
               </div>
             </motion.div>
             </div>
           </motion.div>
+        );
+      })()}
+
+      {/* ── Tether line + target ring — shows during act beats when Lumii and target differ */}
+      {isActMode && beat.highlightZone && (() => {
+        const hp = HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone];
+        if (!hp) return null;
+        const lx = parseFloat(lumiiEffectivePos.x);
+        const ly = parseFloat(lumiiEffectivePos.y);
+        const tx = parseFloat(hp.x);
+        const ty = parseFloat(hp.y);
+        const dist = Math.abs(lx - tx) + Math.abs(ly - ty);
+        if (dist < 12) return null;
+        const gid = `tg-${beatId}`;
+        return (
+          <svg
+            key={`tether-${beatId}`}
+            className="fixed inset-0 pointer-events-none z-[27]"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            style={{ width: "100vw", height: "100vh" }}
+          >
+            <defs>
+              <linearGradient id={gid} x1={lx} y1={ly} x2={tx} y2={ty} gradientUnits="userSpaceOnUse">
+                <stop offset="0%"   stopColor="rgba(255,255,255,0)" />
+                <stop offset="30%"  stopColor="rgba(255,255,255,0.38)" />
+                <stop offset="100%" stopColor="rgba(255,255,255,0.10)" />
+              </linearGradient>
+            </defs>
+            <motion.path
+              d={`M ${lx} ${ly} L ${tx} ${ty}`}
+              stroke={`url(#${gid})`}
+              strokeWidth="0.35"
+              strokeDasharray="1.6 2.2"
+              fill="none"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.65, 0.42, 0.65, 0.42] }}
+              transition={{
+                pathLength: { duration: 0.6, ease: "easeOut" },
+                opacity: { duration: 2.8, repeat: Infinity, times: [0, 0.18, 0.5, 0.7, 1] },
+              }}
+            />
+            <motion.circle
+              cx={tx} cy={ty} r={2.0}
+              fill="none"
+              stroke="rgba(255,255,255,0.42)"
+              strokeWidth="0.28"
+              initial={{ opacity: 0 }}
+              animate={{ r: [2.0, 3.6, 2.0], opacity: [0.52, 0.10, 0.52] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+            />
+          </svg>
         );
       })()}
 
@@ -3479,10 +3572,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         )}
       </AnimatePresence>
 
-      {/* Dialogue box */}
+      {/* Dialogue box — fade in after camera has settled on camera-scroll beats */}
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
-        <div
+        <motion.div
+          key={`dlg-settle-${beatId}-${subStep}`}
           className="fixed left-0 right-0 z-50 px-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: cameraFocus !== "market" ? 0.68 : 0 }}
           style={cameraFocus === "well"
             ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
             : {
@@ -3508,7 +3605,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
             />
           </AnimatePresence>
-        </div>
+        </motion.div>
       )}
 
       {/* ── Forge Burst Overlay — full card-lift animation ─────────────── */}
