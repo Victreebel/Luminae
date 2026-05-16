@@ -2125,7 +2125,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
                   : (isArchitectAssembly && assemblyDone)  ? "52%"
                   : isArchitectAssembly                    ? "26%"
                   : "50%",
-              left: (isArchitectAssembly && assemblyDone)  ? "8%"
+              left: (isArchitectAssembly && assemblyDone)  ? "86%"
                   : isArchitectAssembly                    ? "87%"
                   : "50%",
             }}
