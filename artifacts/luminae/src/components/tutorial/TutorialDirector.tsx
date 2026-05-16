@@ -1239,12 +1239,21 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   onShattering?: () => void;
 }) {
   const [phase, setPhase] = useState<FSPhase>('pressure');
+  const [impactFlash, setImpactFlash] = useState(false);
   const doneRef = useRef(onDone);
   const revealRef = useRef(onRevealCosmos);
   const shatteringRef = useRef(onShattering);
   useEffect(() => { doneRef.current = onDone; }, [onDone]);
   useEffect(() => { revealRef.current = onRevealCosmos; }, [onRevealCosmos]);
   useEffect(() => { shatteringRef.current = onShattering; }, [onShattering]);
+
+  // Fire the impact flash the instant shattering begins, then auto-clear.
+  useEffect(() => {
+    if (phase !== 'shattering') return;
+    setImpactFlash(true);
+    const t = setTimeout(() => setImpactFlash(false), 160);
+    return () => clearTimeout(t);
+  }, [phase]);
 
   // Advance through phases at the same durations as the summon cutscene.
   // onShattering fires when shards begin flying (cosmos underlight starts).
@@ -1275,7 +1284,6 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   const past = (p: FSPhase) => phaseIdx >= FS_PHASE_ORDER.indexOf(p);
 
   const isShattering = past('shattering');
-  const isFlashing   = phase === 'flashing';
   return (
     <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
 
@@ -1415,8 +1423,20 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
-      {/* Full-panel flash removed — replaced with no-op to keep phase timing intact */}
-      {isFlashing && null}
+      {/* ── Impact flash at the instant shattering fires ─────────────────── */}
+      <AnimatePresence>
+        {impactFlash && (
+          <motion.div
+            key="shatter-flash"
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse at 50% 45%, #ffffff 0%, #d8e4f0 35%, #b0c8e0 65%, transparent 100%)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.85, 0.85, 0] }}
+            transition={{ duration: 0.16, times: [0, 0.38, 0.5, 1.0], ease: 'easeOut' }}
+            exit={{ opacity: 0 }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
