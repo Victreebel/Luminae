@@ -264,11 +264,20 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b6_forge_appears",
     mode: "look",
     lumiiZone: "market-t1",
+    lumiiPointer: "down",
+    dialogue: [
+      { text: "Affinities alone are just potential energy." },
+      { text: "Use the Forge to turn Affinities into Artifacts — technologies that permanently alter the course of civilization." },
+    ],
+    completion: { type: "dialogue" },
+  },
+  {
+    id: "b6b_root_lattice",
+    mode: "look",
+    lumiiZone: "market-t1",
     foregroundCardId: "t1e01",
     dialogue: [
-      { text: "Affinities alone are only potential." },
       { text: "This is Root Lattice — your first artifact.", excited: true },
-      { text: "The Forge turns affinities into something your society keeps permanently." },
     ],
     completion: { type: "dialogue" },
   },
