@@ -181,7 +181,8 @@ export function ThresholdCinematic({ onComplete }: Props) {
           height: "80vmin",
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,238,170,0.95) 16%, rgba(245,200,66,0.65) 38%, transparent 66%)",
+            "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,238,170,0.95) 16%, rgba(245,200,66,0.65) 38%, transparent 52%)",
+          filter: "blur(40px)",
           willChange: "transform, opacity",
           pointerEvents: "none",
         }}
