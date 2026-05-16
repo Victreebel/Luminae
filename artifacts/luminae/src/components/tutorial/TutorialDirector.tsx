@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
-import { Sparkles, ChevronUp, RotateCcw, X, Lock } from "lucide-react";
+import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -3294,6 +3294,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   const [s, dispatch] = useReducer(reducer, initState);
   const [, navigate] = useLocation();
   const [skipTransition, setSkipTransition] = useState(false);
+  const [muted, setMuted] = useState(() => gameAudio.isMuted());
   const beatRef = useRef(s.beat);
   useEffect(() => { beatRef.current = s.beat; }, [s.beat]);
   const skipTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -3436,6 +3437,16 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
       >
         <X className="h-3 w-3" />
         Leave
+      </button>
+      {/* Sound toggle — top-left next to Leave */}
+      <button
+        onClick={() => { const next = gameAudio.toggleMute(); setMuted(next); }}
+        className="fixed left-24 z-[60] flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+        style={{ top: "calc(16px + env(safe-area-inset-top, 0px))" }}
+        aria-label={muted ? "Unmute sound" : "Mute sound"}
+      >
+        {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+        {muted ? "Sound off" : "Sound on"}
       </button>
     </>
   );
