@@ -1063,7 +1063,7 @@ function CardFlipReveal({
           style={{ width: W, height: H }}
           animate={phase === "out" ? { rotateY: 90 } : { rotateY: 0 }}
           transition={{ duration: 0.18, ease: "easeIn" }}
-          onAnimationComplete={() => { if (phase === "out") setPhase("in"); }}
+          onAnimationComplete={() => { if (phase === "out") { gameAudio.playCardFlip(); setPhase("in"); } }}
         >
           <BackFace />
         </motion.div>

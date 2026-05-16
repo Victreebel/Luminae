@@ -21,6 +21,9 @@ const FANFARE_COLOR_MAP: Record<string, GemKey> = {
   '#fbbf24': 'flux',
 };
 
+// Card flip — pre-built WAV asset.
+const CARD_FLIP_WAV = new URL('../assets/audio/Effects/Card_Flip_Over.wav', import.meta.url).href;
+
 // Luminary summon cutscene — pre-built MP3 assets, played at their phase beat times.
 // Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
 const LUMINARY_SFX = {
@@ -412,6 +415,13 @@ class GameAudio {
       // Faint high shimmer to keep it cosmic
       this.osc(ctx, 1480, 'sine', t + 0.16, t + 0.38, 0.025, 0.008);
     } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  /** Physical card flip — plays the Card_Flip_Over.wav asset. */
+  playCardFlip() {
+    if (this.muted) return;
+    const ctx = this.initCtx();
+    this.scheduleMp3(CARD_FLIP_WAV, ctx.currentTime, 0.85);
   }
 
   playBonusOnyx() {
