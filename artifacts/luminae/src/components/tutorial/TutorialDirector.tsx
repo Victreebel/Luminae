@@ -1777,7 +1777,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
               }}
               nudge={null}
               mode="listen"
-              showOrb={false}
+              showOrb
               muted
               playerResponse={beat.playerResponse}
               onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
