@@ -2157,16 +2157,13 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
         )}
       </AnimatePresence>
 
-      {/* Architect Assembly dialogue — floats beside Lumii once the assembly animation finishes */}
+      {/* Architect Assembly dialogue — appears above the interface preview once assembly finishes */}
       {isArchitectAssembly && assemblyDone && beat.dialogue.length > 0 && (
         <div
-          className="absolute z-30 pointer-events-none"
-          style={{ left: "87%", top: "26%", transform: "translate(-50%, -50%)" }}
+          className="absolute z-30 left-0 right-0 flex justify-center pointer-events-none"
+          style={{ top: "6%" }}
         >
-          <div
-            className="absolute pointer-events-auto"
-            style={{ right: 56, top: -56, width: 240 }}
-          >
+          <div className="pointer-events-auto" style={{ width: 280 }}>
             <AnimatePresence mode="wait">
               <DialogueBox
                 key={`assembly-${s.dlgLine}`}
