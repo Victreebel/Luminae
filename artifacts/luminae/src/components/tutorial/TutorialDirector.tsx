@@ -2046,6 +2046,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
         const left = `${((e.clientX / window.innerWidth) * 100).toFixed(1)}%`;
         const top  = `${((e.clientY / window.innerHeight) * 100).toFixed(1)}%`;
         setDevMarker({ left, top });
+        // Immediately move Lumi to the clicked spot so you can see if it looks right
+        setLumiAssemblyPos({ left, top });
       } : undefined}
     >
       {/* Cosmos fades in when shattering starts — veil begins transparent so the
