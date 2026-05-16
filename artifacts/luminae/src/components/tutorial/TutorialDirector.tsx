@@ -1221,7 +1221,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">
           Tier {tier} — {label}
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 items-start" style={{ minHeight: 170 }}>
+        <div className="flex gap-3 overflow-x-auto pt-1 pb-2 items-start" style={{ minHeight: 170 }}>
           <DeckPile tier={tier} count={deckCount} />
           {slots.map((slot, idx) => {
             if (slot.kind === 'real') {
