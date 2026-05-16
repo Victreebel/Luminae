@@ -340,7 +340,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "storage",
     highlightZone: "storage",
     dialogue: [
-      { text: "Let me show you how to use them." },
+      { text: "Now let me prepare your interface." },
     ],
     completion: { type: "dialogue" },
   },
