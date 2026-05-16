@@ -1,8 +1,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
-import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
-import { Sparkles, ChevronUp, RotateCcw, X, LayoutGrid, Hand as HandIcon, List, Lock } from "lucide-react";
+import { Sparkles, ChevronUp, RotateCcw, X, Lock } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -2188,7 +2187,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const beatId = beat.id;
   const subStep = s.subStep;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"board" | "hand" | "log">("board");
 
   // Card action sheet
   const [selectedCardData, setSelectedCardData] = useState<{
@@ -2215,7 +2213,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
   const gemBurstKeyRef = useRef(0);
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
-  const { isPanelHighlighted } = usePanelSheetTip(beatId);
 
   useEffect(() => {
     const trigger = s.animTrigger;
@@ -2282,16 +2279,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     return "market";
   })();
 
-  // Auto-switch tab and close card sheet on beat/subStep change
+  // Close card sheet on beat/subStep change
   useEffect(() => {
-    setActiveTab(cameraFocus === "storage" ? "hand" : "board");
     setSelectedCardData(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beatId, subStep]);
 
-  // Auto-scroll within Board tab
+  // Auto-scroll (camera is programmatic)
   useEffect(() => {
-    if (activeTab !== "board") return;
     const container = scrollRef.current;
     if (!container) return;
     const maxScroll = container.scrollHeight - container.clientHeight;
@@ -2300,11 +2295,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [beatId, subStep, cameraFocus, activeTab]);
+  }, [beatId, subStep, cameraFocus]);
 
-  // Lock scroll in Board tab (camera is programmatic)
+  // Lock scroll (camera is programmatic)
   useEffect(() => {
-    if (activeTab !== "board") return;
     const container = scrollRef.current;
     if (!container) return;
     const prevent = (e: Event) => e.preventDefault();
@@ -2314,7 +2308,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       container.removeEventListener("wheel", prevent);
       container.removeEventListener("touchmove", prevent);
     };
-  }, [activeTab]);
+  }, []);
 
   // Card tap → open action sheet
   const handleCardTap = (
@@ -2420,48 +2414,27 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         )}
       </AnimatePresence>
 
-      {/* ── Tab content area ─────────────────────────────────────────── */}
+      {/* ── Board content area ───────────────────────────────────────── */}
       <div className="relative z-10 flex-1 overflow-hidden">
-        {activeTab === "board" && (
-          <div ref={scrollRef} className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3 pb-4">
-            <TutorialLuminarySection beatId={beatId} />
-            <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
-              <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
-              <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
-            </div>
-            <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
-              fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
+        <div ref={scrollRef} className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3 pb-4">
+          <TutorialLuminarySection beatId={beatId} />
+          <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
+            <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
+            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
           </div>
-        )}
-        {activeTab === "hand" && (
-          <div className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3 pb-4">
-            {s.reserved.length === 0 && s.forged.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-3 pb-16">
-                <div className="text-3xl opacity-20">✦</div>
-                <div className="text-center text-white/25 text-sm font-serif italic px-8">
-                  Reserve or forge cards from The Forge and they appear here.
+          <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
+            fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
+          {(s.reserved.length > 0 || s.forged.length > 0) && (
+            <>
+              {s.reserved.length > 0 && (
+                <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
+                  <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
                 </div>
-              </div>
-            ) : (
-              <>
-                {s.reserved.length > 0 && (
-                  <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
-                    <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
-                  </div>
-                )}
-                <PlayerStorage s={s} highlighted={isStorageHighlighted} />
-              </>
-            )}
-          </div>
-        )}
-        {activeTab === "log" && (
-          <div className="h-full overflow-y-auto px-4 py-4 flex flex-col gap-2">
-            <div className="text-[10px] text-white/30 font-semibold uppercase tracking-wider mb-3">Action Log</div>
-            <div className="text-[11px] text-white/20 font-serif italic text-center py-10">
-              The full action log is available in a real game.
-            </div>
-          </div>
-        )}
+              )}
+              <PlayerStorage s={s} highlighted={isStorageHighlighted} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Pinned Player Panel ────────────────────────────────────────── */}
@@ -2530,36 +2503,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         </div>
       </motion.div>
 
-      {/* ── Bottom Tab Bar ────────────────────────────────────────────── */}
-      <div className="shrink-0 z-30 border-t border-white/10 flex items-stretch" style={{ background: "rgba(3,3,12,0.92)" }}>
-        {([
-          { tab: "board" as const, label: "Board", Icon: LayoutGrid, badge: undefined as number | undefined, highlighted: false },
-          { tab: "hand"  as const, label: "Hand",  Icon: HandIcon,   badge: s.reserved.length > 0 ? s.reserved.length : undefined, highlighted: isPanelHighlighted },
-          { tab: "log"   as const, label: "Log",   Icon: List,       badge: undefined as number | undefined, highlighted: false },
-        ]).map(({ tab, label, Icon, badge, highlighted }) => {
-          const isActive = activeTab === tab;
-          return (
-            <button key={tab} type="button" onClick={() => setActiveTab(tab)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all relative ${
-                isActive ? "text-white" : highlighted ? "text-amber-400" : "text-white/35 hover:text-white/60"
-              }`}
-            >
-              {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-white/60" />}
-              <div className="relative">
-                <Icon className="h-[18px] w-[18px]" />
-                {badge != null && (
-                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-indigo-500 text-[8px] font-bold text-white flex items-center justify-center leading-none">{badge}</span>
-                )}
-                {highlighted && !isActive && (
-                  <motion.span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-400"
-                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.6, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
-                )}
-              </div>
-              <span className="text-[9px] font-semibold">{label}</span>
-            </button>
-          );
-        })}
-      </div>
 
       {/* Floating Lumii — moves between zones, bounces to draw attention */}
       {(() => {
@@ -2661,7 +2604,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* Dialogue box */}
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
-        <div className={`fixed ${cameraFocus === "well" && activeTab === "board" ? "top-[54px]" : "bottom-[160px]"} left-0 right-0 z-50 px-4`}>
+        <div className={`fixed ${cameraFocus === "well" ? "top-[54px]" : "bottom-[160px]"} left-0 right-0 z-50 px-4`}>
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${beatId}-${s.dlgLine}-${s.nudge}`}
