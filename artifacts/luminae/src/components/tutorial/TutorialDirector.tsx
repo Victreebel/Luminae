@@ -2879,10 +2879,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <LumiiOrb size={22} excited={isActMode} highlightZone={null} />
-            <span className="text-[10px] text-white/50 font-medium">Lumii</span>
-          </div>
           <button
             type="button"
             onClick={() => setMenuOpen(v => !v)}
@@ -3056,8 +3052,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </motion.div>
 
 
-      {/* Floating Lumii — moves between zones, bounces to draw attention */}
+      {/* Floating Lumii — hidden during tutorial; guide presence is conveyed via the dialogue card */}
       {(() => {
+        return null;
         const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
         // Dart to top-right corner while burst animations are playing
