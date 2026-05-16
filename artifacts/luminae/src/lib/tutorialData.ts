@@ -185,7 +185,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "There you are." },
       { text: "Hello, Architect." },
-      { text: "I am Lumii — an echo of the Affinities." },
+      { text: "My name is Lumii." },
       { text: "You can think of me as your guide." },
     ],
     completion: { type: "dialogue" },
