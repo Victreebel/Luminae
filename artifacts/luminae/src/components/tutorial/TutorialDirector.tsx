@@ -1060,8 +1060,9 @@ function CardFlipReveal({
   if (phase === "done") return <>{children}</>;
 
   const W = 112, H = 160;
-  // Deck pile outer div is 120 px wide; gap-3 = 12 px → card starts 132 px to the left
-  const DEAL_X = -(120 + 12);
+  // Start card within the flex container's clipping bounds (~80 px to the left puts
+  // it visually inside the deck pile area) and fade in so clip edge is invisible.
+  const DEAL_X = -80;
 
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
@@ -1076,13 +1077,13 @@ function CardFlipReveal({
         <motion.div
           className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
           style={{ width: W, height: H }}
-          initial={phase === "deal" ? { x: DEAL_X, y: -6, scale: 1.04, rotateY: 0 } : false}
+          initial={phase === "deal" ? { x: DEAL_X, opacity: 0, scale: 0.92, rotateY: 0 } : false}
           animate={phase === "deal"
-            ? { x: 0, y: 0, scale: 1, rotateY: 0 }
+            ? { x: 0, opacity: 1, scale: 1, rotateY: 0 }
             : { rotateY: 90 }
           }
           transition={phase === "deal"
-            ? { type: "spring", stiffness: 190, damping: 26, mass: 0.85 }
+            ? { type: "spring", stiffness: 200, damping: 26, mass: 0.85, opacity: { duration: 0.18 } }
             : { duration: 0.18, ease: "easeIn" }
           }
           onAnimationComplete={() => {
