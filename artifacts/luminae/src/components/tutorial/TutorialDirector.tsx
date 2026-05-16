@@ -342,6 +342,61 @@ function DialogueBox({
   );
 }
 
+// ─── CostCallout ──────────────────────────────────────────────────────────────
+// Animated SVG rounded-rect that draws itself around the cost pip row, then
+// pulses with an amber glow. Used on b7_artifact_cost / b7b_cost_bridge beats.
+function CostCallout() {
+  const [drawn, setDrawn] = useState(false);
+  const perimeter = 284; // approximate for rx=7, w=104, h=38
+  return (
+    <svg
+      className="absolute inset-0 pointer-events-none z-20"
+      width={112}
+      height={160}
+      style={{ overflow: "visible" }}
+    >
+      {/* Glow fill behind the cost row */}
+      <motion.rect
+        x={4} y={117} width={104} height={39} rx={7}
+        fill="rgba(251,191,36,0.08)"
+        stroke="none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: drawn ? [0.4, 1, 0.4] : 1 }}
+        transition={drawn
+          ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
+          : { duration: 0.25, delay: 0.35 }
+        }
+      />
+      {/* Draw-in stroke */}
+      <motion.rect
+        x={4} y={117} width={104} height={39} rx={7}
+        fill="none"
+        stroke="#fbbf24"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeDasharray={perimeter}
+        initial={{ strokeDashoffset: perimeter, opacity: 0 }}
+        animate={drawn
+          ? { strokeDashoffset: 0, opacity: [1, 0.45, 1] }
+          : { strokeDashoffset: 0, opacity: 1 }
+        }
+        transition={drawn
+          ? {
+              opacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
+              strokeDashoffset: { duration: 0 },
+            }
+          : {
+              strokeDashoffset: { duration: 0.7, ease: "easeInOut" },
+              opacity: { duration: 0.05 },
+            }
+        }
+        onAnimationComplete={() => { if (!drawn) setDrawn(true); }}
+        style={{ filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }}
+      />
+    </svg>
+  );
+}
+
 // ─── TutorialCard ─────────────────────────────────────────────────────────────
 function TutorialCard({
   card,
@@ -349,6 +404,7 @@ function TutorialCard({
   crystals,
   highlighted,
   foreground,
+  costHighlight,
   forged,
   impossible,
   viewMode = "all",
@@ -360,6 +416,7 @@ function TutorialCard({
   crystals: Record<GemKey, number>;
   highlighted?: boolean;
   foreground?: boolean;
+  costHighlight?: boolean;
   forged?: boolean;
   impossible?: boolean;
   viewMode?: TutorialMarketView;
@@ -425,6 +482,7 @@ function TutorialCard({
       {foreground && (
         <div className="absolute inset-0 rounded-xl border-2 border-white/55 pointer-events-none z-10" />
       )}
+      {costHighlight && <CostCallout />}
       <div
         className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
@@ -1237,6 +1295,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   crystals={s.crystals}
                   highlighted={getHighlighted(cardId)}
                   foreground={getForeground(cardId)}
+                  costHighlight={(beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") && cardId === FIRST_FORGE_ID}
                   forged={false}
                   impossible={isImpossible}
                   viewMode={s.view}
