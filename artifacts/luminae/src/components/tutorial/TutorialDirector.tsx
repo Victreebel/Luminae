@@ -2328,7 +2328,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             transition={{ duration: 0.6 }}
             onClick={handleSkipCinematic}
             className="absolute right-5 z-50 text-white/40 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/20 hover:bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
-            style={{ top: "calc(20px + env(safe-area-inset-top, 0px))" }}
+            style={{ top: "calc(56px + env(safe-area-inset-top, 0px))" }}
           >
             Skip intro
           </motion.button>
