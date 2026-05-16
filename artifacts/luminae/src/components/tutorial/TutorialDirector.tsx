@@ -1932,6 +1932,29 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [shatteringStarted, setShatteringStarted] = useState(false);
   const [assemblyDone, setAssemblyDone] = useState(false);
   const [lumiSweepDone, setLumiSweepDone] = useState(false);
+
+  // Compute where the Tier-1 right corner of the forge lands in viewport %,
+  // using the same scale formula as ArchitectAssembly (INNER_W=375, INNER_H=660).
+  const computeLumiAssemblyPos = () => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const scale = Math.min(vw * 0.84 / 375, vh * 0.76 / 660, 0.70);
+    // Forge content right edge in inner canvas: 375 - mx-3(12) - padding-right(10) = 353
+    const forgeRightVX = vw / 2 + scale * (353 - 375 / 2) - 18; // 18px inset
+    // Tier I row card-center y in inner canvas ≈ 375 (forge top 148 + pad 10 + label 18 + 2 tiers 142 + label 11 + CH/2 30)
+    const tier1VY = vh / 2 + scale * (375 - 660 / 2);
+    return {
+      left: `${((forgeRightVX / vw) * 100).toFixed(1)}%`,
+      top:  `${((tier1VY  / vh) * 100).toFixed(1)}%`,
+    };
+  };
+  const [lumiAssemblyPos, setLumiAssemblyPos] = useState(computeLumiAssemblyPos);
+  useEffect(() => {
+    const update = () => setLumiAssemblyPos(computeLumiAssemblyPos());
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -2122,10 +2145,10 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
               opacity: 1,
               scale: (isArchitectAssembly && assemblyDone) ? 0.44 : 1,
               top:  isAffinityTokens                       ? "70%"
-                  : (isArchitectAssembly && assemblyDone)  ? "52%"
+                  : (isArchitectAssembly && assemblyDone)  ? lumiAssemblyPos.top
                   : isArchitectAssembly                    ? "26%"
                   : "50%",
-              left: (isArchitectAssembly && assemblyDone)  ? "86%"
+              left: (isArchitectAssembly && assemblyDone)  ? lumiAssemblyPos.left
                   : isArchitectAssembly                    ? "87%"
                   : "50%",
             }}
