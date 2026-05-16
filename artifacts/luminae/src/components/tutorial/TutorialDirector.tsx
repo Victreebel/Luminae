@@ -244,6 +244,9 @@ function DialogueBox({
   // fast double-tap during the AnimatePresence exit animation can't fire a
   // second action (e.g. "Take me home" after the user already picked "Go").
   const interactedRef = useRef(false);
+  // Debounce ref for body taps — prevents two NEXT_DLG dispatches from a fast
+  // double-tap before React has time to re-render and update canTap.
+  const tappingRef = useRef(false);
 
   const text = nudge ?? (lines[lineIndex]?.text ?? "");
   const isLast = lineIndex >= lines.length - 1;
@@ -269,7 +272,13 @@ function DialogueBox({
     >
       <div
         className={`bg-slate-950/95 border border-white/10 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-md select-none ${canTap ? "cursor-pointer active:scale-[0.985]" : ""}`}
-        onClick={canTap ? () => { gameAudio.playButtonSelect(); onTap(); } : undefined}
+        onClick={canTap ? () => {
+          if (tappingRef.current) return;
+          tappingRef.current = true;
+          setTimeout(() => { tappingRef.current = false; }, 380);
+          gameAudio.playButtonSelect();
+          onTap();
+        } : undefined}
         style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.9)", transition: "transform 0.08s ease" }}
       >
         <div className="flex items-start gap-3">
