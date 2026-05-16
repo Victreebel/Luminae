@@ -2356,6 +2356,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
         // Excited bounce: action hint pending OR Lumii just celebrated a forge
         const shouldExcitedBounce = hintVisible || forgeJustHappened;
+        // Dialogue-line excited state: true when the current line has excited:true
+        const currentLineExcited = beat.dialogue[s.dlgLine]?.excited ?? false;
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
@@ -2413,7 +2415,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={isActMode || forgeJustHappened} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
+                <LumiiOrb size={48} excited={isActMode || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
               </div>
             </motion.div>
           </motion.div>

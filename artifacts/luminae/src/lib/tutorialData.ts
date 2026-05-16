@@ -26,6 +26,7 @@ export type LumiiZone =
 
 export interface TutorialDialogueLine {
   text: string;
+  excited?: boolean;
 }
 
 export type CompletionTrigger =
@@ -197,7 +198,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "In my Universe, that is what we call those who have the power to shape cosmic society." },
       { text: "They determine what my people reach for, and what we become." },
-      { text: "They provide us with the tools to shine brilliantly throughout the cosmos." },
+      { text: "They provide us with the tools to shine brilliantly throughout the cosmos.", excited: true },
     ],
     completion: { type: "dialogue" },
     playerResponse: "So I'm in your universe now?",
