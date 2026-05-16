@@ -1040,11 +1040,13 @@ function CardFlipReveal({
   shouldAnimate,
   BackFace,
   delay = 720,
+  onReveal,
 }: {
   children: React.ReactNode;
   shouldAnimate: boolean;
   BackFace: React.ComponentType;
   delay?: number;
+  onReveal?: () => void;
 }) {
   // Each phase is a separate keyed mount so onAnimationComplete closures are always fresh.
   const [phase, setPhase] = useState<"idle" | "deal" | "flip_out" | "flip_in" | "done">(
@@ -1060,9 +1062,9 @@ function CardFlipReveal({
   if (phase === "done") return <>{children}</>;
 
   const W = 112, H = 160;
-  // -80 px keeps the start point inside the scroll container's clip boundary
-  // while still appearing to come from the deck pile area; opacity 0→1 hides the edge.
-  const DEAL_X = -80;
+  // Full deck offset: DeckPile outer div is 120 px, gap-3 = 12 px.
+  // The tier row uses overflow:visible during this beat so the transform is not clipped.
+  const DEAL_X = -(120 + 12);
 
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
@@ -1110,7 +1112,7 @@ function CardFlipReveal({
           initial={{ rotateY: -90 }}
           animate={{ rotateY: 0 }}
           transition={{ duration: 0.22, ease: "easeOut" }}
-          onAnimationComplete={() => setPhase("done")}
+          onAnimationComplete={() => { setPhase("done"); onReveal?.(); }}
         >
           {children}
         </motion.div>
@@ -1120,13 +1122,14 @@ function CardFlipReveal({
 }
 
 // ─── Scripted Market ──────────────────────────────────────────────────────────
-function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
+function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, onReveal }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
   subStep: number;
   onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
   tier1Ref?: React.RefObject<HTMLDivElement>;
+  onReveal?: () => void;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -1252,7 +1255,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">
           Tier {tier} — {label}
         </div>
-        <div className="flex gap-3 overflow-x-auto pt-1 pb-2 items-start" style={{ minHeight: 170 }}>
+        <div className={`flex gap-3 ${beatId === "b6b_root_lattice" ? "overflow-visible" : "overflow-x-auto"} pt-1 pb-2 items-start`} style={{ minHeight: 170 }}>
           <DeckPile tier={tier} count={deckCount} />
           {slots.map((slot, idx) => {
             if (slot.kind === 'real') {
@@ -1291,7 +1294,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                     key={beatId === "b6b_root_lattice" ? `${cardId}-flip` : cardId}
                     shouldAnimate={beatId === "b6b_root_lattice"}
                     BackFace={CardBackTier1}
-                    delay={1500}
+                    delay={300}
+                    onReveal={onReveal}
                   >
                     {tutCard}
                   </CardFlipReveal>
@@ -2992,6 +2996,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const [menuOpen, setMenuOpen] = useState(false);
   const isShortLandscape = useIsShortLandscape();
 
+  // Beat 11 (b6b_root_lattice): gate dialogue until Root Lattice flip animation completes
+  const [cardRevealed, setCardRevealed] = useState(false);
+  useEffect(() => { setCardRevealed(false); }, [beatId]);
+
   // Card action sheet
   const [selectedCardData, setSelectedCardData] = useState<{
     card: TutorialCardData;
@@ -3338,7 +3346,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               The Forge
               <Hammer className={`h-3 w-3 shrink-0 ${isForgeHighlighted ? "text-amber-400" : "text-amber-500/70"}`} />
             </div>
-            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} />
+            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} onReveal={() => setCardRevealed(true)} />
           </motion.div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
             fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
@@ -3451,7 +3459,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
         const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
-        const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
+        const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length
+          && (beatId !== "b6b_root_lattice" || cardRevealed);
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
         // Dialogue-line excited state: true when the current line has excited:true
