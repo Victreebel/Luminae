@@ -3319,7 +3319,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
         // Excited bounce: action hint pending OR Lumii just celebrated a forge
-        const shouldExcitedBounce = hintVisible || forgeJustHappened;
+        const shouldExcitedBounce = hintVisible || forgeJustHappened || isForgeHighlighted;
         // Dialogue-line excited state: true when the current line has excited:true
         const currentLineExcited = beat.dialogue[s.dlgLine]?.excited ?? false;
         return (
