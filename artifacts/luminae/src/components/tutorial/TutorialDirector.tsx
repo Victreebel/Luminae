@@ -3566,8 +3566,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         );
       })()}
 
-      {/* ── Tether line + target ring — shows during act beats when Lumii and target differ */}
-      {isActMode && beat.highlightZone && (() => {
+      {/* ── Tether line + target ring — suppressed from beat 15 (index 14) onward */}
+      {isActMode && beat.highlightZone && s.beat < 14 && (() => {
         const hp = HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone];
         if (!hp) return null;
         const lx = parseFloat(lumiiEffectivePos.x);
