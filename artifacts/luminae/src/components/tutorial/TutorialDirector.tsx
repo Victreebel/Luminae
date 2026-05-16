@@ -1649,8 +1649,15 @@ function ArchitectAssembly({
 }) {
   const prefersReducedMotion = useReducedMotion();
 
+  // For reduced motion: auto-advance immediately. Otherwise: wait for player tap.
+  const [tapReady, setTapReady] = useState(false);
   useEffect(() => {
-    const t = setTimeout(onComplete, prefersReducedMotion ? 200 : 4000);
+    if (prefersReducedMotion) {
+      onComplete();
+      return;
+    }
+    // Show tap prompt ~400 ms after the last section settles (phase 3 at 2300 ms)
+    const t = setTimeout(() => setTapReady(true), 2700);
     return () => clearTimeout(t);
   }, [onComplete, prefersReducedMotion]);
 
@@ -1915,6 +1922,37 @@ function ArchitectAssembly({
               );
             })}
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Tap-to-continue — appears after assembly settles, pointer-events-auto so it's clickable */}
+      <AnimatePresence>
+        {tapReady && (
+          <motion.div
+            key="tap-prompt"
+            className="absolute inset-0 z-30 flex items-end justify-center pointer-events-auto"
+            style={{ paddingBottom: "8%" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            onClick={() => { gameAudio.playButtonConfirm(); onComplete(); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="bg-slate-950/92 border border-white/12 rounded-2xl px-6 py-3.5 shadow-2xl backdrop-blur-md select-none"
+              style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 12px 40px rgba(0,0,0,0.85)" }}
+            >
+              <p className="text-sm text-white/85 text-center leading-snug">Your arena awaits.</p>
+              <motion.p
+                animate={{ opacity: [0.28, 0.62, 0.28] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                className="text-[10px] text-white/35 text-center mt-1.5"
+              >tap to continue</motion.p>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
