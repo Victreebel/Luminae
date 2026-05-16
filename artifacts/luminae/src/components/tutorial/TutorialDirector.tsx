@@ -2757,13 +2757,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const cameraFocus: "market" | "well" | "storage" = (() => {
+  const forgeRef = useRef<HTMLDivElement>(null);
+  const cameraFocus: "market" | "well" | "storage" | "forge" = (() => {
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
     if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition") return "storage";
-    if (beatId === "b10b_reserve_granted") return "storage";
+    if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
     return "market";
   })();
 
@@ -2780,6 +2781,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     const maxScroll = container.scrollHeight - container.clientHeight;
     if (cameraFocus === "well") {
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
+    } else if (cameraFocus === "forge") {
+      // Scroll to the forge section's top so luminaries scroll out of view
+      const forgeTop = forgeRef.current?.offsetTop ?? 0;
+      container.scrollTo({ top: forgeTop, behavior: "smooth" });
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -2906,7 +2911,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       <div className="relative z-10 flex-1 overflow-hidden">
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
           <TutorialLuminarySection beatId={beatId} />
-          <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
+          <div ref={forgeRef} className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
             <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
             <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
           </div>

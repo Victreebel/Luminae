@@ -333,7 +333,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b10_reserve",
     mode: "act",
-    lumiiZone: "discounted-tab",
+    lumiiZone: "market-t1",
     highlightZone: "discounted-tab",
     dialogue: [
       { text: "Your first artifact has already changed the path." },
@@ -346,7 +346,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b10b_reserve_granted",
     mode: "listen",
-    lumiiZone: "hand",
+    lumiiZone: "market-t1",
     highlightZone: "hand",
     dialogue: [
       { text: "Reserving protects a future artifact." },
