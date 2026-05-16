@@ -1778,12 +1778,6 @@ function ArchitectAssembly({
             <span className="text-[11px] font-serif font-bold text-indigo-300 tracking-wide">Luminae</span>
             <span className="text-[7px] text-white/35 tracking-widest">Tutorial</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-[18px] h-[18px] rounded-full bg-indigo-700/60 border border-indigo-400/40 flex items-center justify-center">
-              <span className="text-[7px] font-bold text-indigo-200">L</span>
-            </div>
-            <span className="text-[8px] text-white/35">Lumii</span>
-          </div>
         </motion.div>
 
         {/* Scrollable board area background */}
