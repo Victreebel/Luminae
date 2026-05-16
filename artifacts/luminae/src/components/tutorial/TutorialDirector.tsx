@@ -1931,7 +1931,6 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [cosmosVisible, setCosmosVisible] = useState(false);
   const [shatteringStarted, setShatteringStarted] = useState(false);
   const [assemblyDone, setAssemblyDone] = useState(false);
-  const [lumiDropped, setLumiDropped] = useState(false);
   const [lumiSweepDone, setLumiSweepDone] = useState(false);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
@@ -1973,16 +1972,14 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   useEffect(() => {
     setShatterReady(false);
     setAssemblyDone(false);
-    setLumiDropped(false);
     setLumiSweepDone(false);
   }, [s.beat]);
 
-  // After assembly completes: drop Lumi to Tier 1 row height, then sweep left, then show dialogue
+  // After assembly completes: Lumi slides to Tier 1 row and shrinks; dialogue appears once he's settled
   useEffect(() => {
     if (!assemblyDone) return;
-    const t1 = setTimeout(() => setLumiDropped(true),  420);
-    const t2 = setTimeout(() => setLumiSweepDone(true), 1500);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    const t = setTimeout(() => setLumiSweepDone(true), 1300);
+    return () => clearTimeout(t);
   }, [assemblyDone]);
 
   // Auto-start shatter when b4_shatter has no dialogue to tap through
@@ -2123,27 +2120,27 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             animate={{
               x: 0,
               opacity: 1,
-              scale: 1,
-              top:  isAffinityTokens              ? "70%"
-                  : (isArchitectAssembly && assemblyDone) ? "52%"
-                  : isArchitectAssembly            ? "26%"
+              scale: (isArchitectAssembly && assemblyDone) ? 0.44 : 1,
+              top:  isAffinityTokens                       ? "70%"
+                  : (isArchitectAssembly && assemblyDone)  ? "52%"
+                  : isArchitectAssembly                    ? "26%"
                   : "50%",
-              left: (isArchitectAssembly && lumiDropped) ? "13%"
-                  : isArchitectAssembly             ? "87%"
+              left: (isArchitectAssembly && assemblyDone)  ? "23%"
+                  : isArchitectAssembly                    ? "87%"
                   : "50%",
             }}
             transition={isArchitectAssembly ? {
               top: assemblyDone
-                ? { duration: 0.5, ease: [0.4, 0, 0.2, 1] as const }
+                ? { duration: 0.85, ease: [0.4, 0, 0.2, 1] as const }
                 : { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
-              left: lumiDropped
-                ? { duration: 0.9, ease: [0.4, 0, 0.2, 1] as const }
-                : assemblyDone
-                  ? { duration: 0.01 }
-                  : { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
+              left: assemblyDone
+                ? { duration: 0.85, ease: [0.4, 0, 0.2, 1] as const }
+                : { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
+              scale: assemblyDone
+                ? { duration: 0.85, ease: [0.4, 0, 0.2, 1] as const }
+                : { type: "spring" as const, stiffness: 120, damping: 20 },
               x:     { type: "spring" as const, stiffness: 120, damping: 20 },
               opacity: { duration: 0.3 },
-              scale: { type: "spring" as const, stiffness: 120, damping: 20 },
             } : { type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
             className="absolute z-30"
           >
