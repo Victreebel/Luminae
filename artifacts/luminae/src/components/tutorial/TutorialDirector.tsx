@@ -2007,7 +2007,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     if (!isLocate) return;
     const t1 = setTimeout(() => setShowLumii(true), 600);
     const t2 = setTimeout(() => { setPanDone(true); }, 1800);
-    const t3 = setTimeout(() => { dispatch({ type: "NEXT_BEAT" }); }, 2300);
+    const t3 = setTimeout(() => { dispatch({ type: "NEXT_BEAT" }); }, 2100);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [isLocate, dispatch]);
 
