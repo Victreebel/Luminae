@@ -1034,6 +1034,62 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
   );
 }
 
+// ─── Card Flip Reveal ─────────────────────────────────────────────────────────
+// Shows a card face-down, then flips it over to reveal the card face.
+// `shouldAnimate=false` renders children immediately (for resumed / skipped beats).
+function CardFlipReveal({
+  children,
+  shouldAnimate,
+  BackFace,
+  delay = 720,
+}: {
+  children: React.ReactNode;
+  shouldAnimate: boolean;
+  BackFace: React.ComponentType;
+  delay?: number;
+}) {
+  const [phase, setPhase] = useState<"back" | "out" | "in" | "done">(
+    shouldAnimate ? "back" : "done"
+  );
+
+  useEffect(() => {
+    if (!shouldAnimate) return;
+    const t = setTimeout(() => setPhase("out"), delay);
+    return () => clearTimeout(t);
+  }, []); // run once on mount
+
+  if (phase === "done") return <>{children}</>;
+
+  const W = 112, H = 160;
+  return (
+    <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
+      {(phase === "back" || phase === "out") && (
+        <motion.div
+          className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
+          style={{ width: W, height: H }}
+          animate={phase === "out" ? { rotateY: 90 } : { rotateY: 0 }}
+          transition={{ duration: 0.18, ease: "easeIn" }}
+          onAnimationComplete={() => { if (phase === "out") setPhase("in"); }}
+        >
+          <BackFace />
+        </motion.div>
+      )}
+      {phase === "in" && (
+        <motion.div
+          className="rounded-xl overflow-hidden"
+          style={{ width: W, height: H }}
+          initial={{ rotateY: -90 }}
+          animate={{ rotateY: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          onAnimationComplete={() => setPhase("done")}
+        >
+          {children}
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 // ─── Scripted Market ──────────────────────────────────────────────────────────
 function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   s: TutState;
@@ -1176,9 +1232,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
               if (!card) return <GhostCardSlot key={`ghost-${cardId}`} tier={tier} />;
               const isImpossible = cardId === T3_IMPOSSIBLE_ID;
               const affordable = canAfford(card, s.crystals, s.bonuses);
-              return (
+              const tutCard = (
                 <TutorialCard
-                  key={cardId}
                   card={card}
                   bonuses={s.bonuses}
                   crystals={s.crystals}
@@ -1200,6 +1255,20 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   }
                 />
               );
+              // Root Lattice flips over from a face-down deck card when first revealed
+              if (cardId === FIRST_FORGE_ID) {
+                return (
+                  <CardFlipReveal
+                    key={cardId}
+                    shouldAnimate={beatId === "b6_forge_appears"}
+                    BackFace={CardBackTier1}
+                    delay={720}
+                  >
+                    {tutCard}
+                  </CardFlipReveal>
+                );
+              }
+              return <React.Fragment key={cardId}>{tutCard}</React.Fragment>;
             }
             if (slot.kind === 'draw') {
               return <DeckDrawAnimation key={`draw-${slot.cardId}`} tier={tier} />;
