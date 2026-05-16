@@ -1724,7 +1724,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
           </AnimatePresence>
           {/* Tap hint */}
           <motion.p
-            className="absolute bottom-20 text-white/35 text-xs tracking-widest font-serif"
+            className="absolute text-white/35 text-xs tracking-widest font-serif"
+            style={{ bottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
@@ -1764,7 +1765,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
 
       {/* Dialogue */}
       {!isLocate && !isAffinityTokens && !isArchitectAssembly && !(isShatter && shatterReady) && (
-        <div className="absolute bottom-16 left-0 right-0 z-30 px-6">
+        <div className="absolute left-0 right-0 z-30 px-6" style={{ bottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }}>
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${s.beat}-${s.dlgLine}`}
@@ -1834,7 +1835,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
             onClick={handleSkipCinematic}
-            className="absolute top-5 right-5 z-50 text-white/40 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/20 hover:bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+            className="absolute right-5 z-50 text-white/40 hover:text-white/80 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/20 hover:bg-black/40 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+            style={{ top: "calc(20px + env(safe-area-inset-top, 0px))" }}
           >
             Skip intro
           </motion.button>
@@ -2252,13 +2254,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "market-t2":      { x: "87%", y: "20%" },
     "market-t3":      { x: "87%", y: "14%" },
     "card-cost":      { x: "78%", y: "40%" },
-    well:             { x: "87%", y: "12%" },
+    // "well" was at 12% which caused Lumii to overlap the top-[54px] dialogue box
+    // when cameraFocus === "well" — moved down to 24% to clear it on all screen sizes
+    well:             { x: "87%", y: "24%" },
     hand:             { x: "13%", y: "20%" },
     storage:          { x: "13%", y: "20%" },
-    eminence:         { x: "88%", y: "12%" },
+    eminence:         { x: "88%", y: "20%" },
     "discounted-tab": { x: "13%", y: "20%" },
     "needed-tab":     { x: "13%", y: "20%" },
-    "top-center":     { x: "50%", y: "10%" },
+    "top-center":     { x: "50%", y: "18%" },
     center:           { x: "50%", y: "38%" },
     luminary:         { x: "50%", y: "28%" },
   };
@@ -2438,7 +2442,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Pinned Player Panel ────────────────────────────────────────── */}
       <motion.div
-        className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
+        className={`shrink-0 z-20 border-t px-3 pt-2 backdrop-blur-md transition-all ${
           isEminenceHighlighted ? "border-amber-400/60" : isActMode ? "border-indigo-500/40" : "border-white/10"
         }`}
         animate={isEminenceHighlighted
@@ -2446,7 +2450,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           : isActMode ? { boxShadow: "0 0 12px rgba(99,102,241,0.20)" } : { boxShadow: "none" }
         }
         transition={isEminenceHighlighted ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
-        style={{ background: "rgba(3,3,12,0.80)" }}
+        style={{ background: "rgba(3,3,12,0.80)", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}
       >
         <div className="flex items-center gap-3 mb-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -2604,7 +2608,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* Dialogue box */}
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
-        <div className={`fixed ${cameraFocus === "well" ? "top-[54px]" : "bottom-[160px]"} left-0 right-0 z-50 px-4`}>
+        <div
+          className="fixed left-0 right-0 z-50 px-4"
+          style={cameraFocus === "well"
+            ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
+            : { bottom: "calc(160px + env(safe-area-inset-bottom, 0px))" }
+          }
+        >
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${beatId}-${s.dlgLine}-${s.nudge}`}
