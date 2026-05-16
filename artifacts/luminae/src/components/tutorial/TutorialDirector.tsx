@@ -1726,6 +1726,17 @@ function ArchitectAssembly({
     },
   });
 
+  // Tracks which affinity slots have been "filled" by the flying tokens
+  const [filledKeys, setFilledKeys] = useState<Set<GemKey>>(new Set());
+  useEffect(() => {
+    if (phase < 4) return;
+    // Each token flies for 1.05s with delay i*0.1; it "lands" at ~68% of its travel
+    const timers = affKeys.map((key, i) =>
+      setTimeout(() => setFilledKeys(prev => new Set([...prev, key])), i * 100 + 680)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Small card dimensions (inside the 375px inner canvas)
   // Keeping cards compact so all 3 tiers + well + panel fit without overlap.
   const CW = 42;  // card width
@@ -1844,18 +1855,23 @@ function ArchitectAssembly({
           <div className="flex gap-1">
             {ALL_GEMS.map(gem => {
               const meta = GEM_META[gem];
-              const active = affKeys.includes(gem);
+              const active = filledKeys.has(gem);
               return (
-                <div key={gem} className="flex-1 rounded-lg flex flex-col items-center gap-0.5 py-1.5"
+                <motion.div
+                  key={gem}
+                  className="flex-1 rounded-lg flex flex-col items-center gap-0.5 py-1.5"
+                  animate={{ scale: active ? [1, 1.15, 1] : 1 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
                   style={{
                     background: active ? `linear-gradient(180deg, #060611 0%, ${meta.hex}2A 100%)` : "rgba(255,255,255,0.02)",
                     border: `1px solid ${active ? meta.hex + "77" : "rgba(255,255,255,0.06)"}`,
+                    transition: "background 0.3s ease, border-color 0.3s ease",
                   }}>
                   <img src={meta.image} alt="" className="w-3.5 h-3.5 object-contain" draggable={false}
-                    style={{ filter: active ? `drop-shadow(0 0 4px ${meta.glowHex})` : "none", opacity: active ? 1 : 0.28 }} />
-                  <span className="text-[8px] font-black leading-none" style={{ color: active ? "#fff" : "rgba(255,255,255,0.16)" }}>0</span>
-                  <span className="text-[5px] leading-none uppercase tracking-wide" style={{ color: meta.glowHex, opacity: active ? 0.75 : 0.25 }}>{meta.shortName}</span>
-                </div>
+                    style={{ filter: active ? `drop-shadow(0 0 4px ${meta.glowHex})` : "none", opacity: active ? 1 : 0.28, transition: "filter 0.3s, opacity 0.3s" }} />
+                  <span className="text-[8px] font-black leading-none" style={{ color: active ? "#fff" : "rgba(255,255,255,0.16)", transition: "color 0.3s" }}>0</span>
+                  <span className="text-[5px] leading-none uppercase tracking-wide" style={{ color: meta.glowHex, opacity: active ? 0.75 : 0.25, transition: "opacity 0.3s" }}>{meta.shortName}</span>
+                </motion.div>
               );
             })}
           </div>
