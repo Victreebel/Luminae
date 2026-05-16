@@ -16,6 +16,17 @@ export default function Tutorial() {
   // This runs once per mount; if set it skips the resume prompt entirely.
   const pendingBeat = consumePendingStartBeat();
 
+  // Dev-only: ?beat=N URL param for instant beat verification via screenshots.
+  // Stripped entirely in production by the import.meta.env.DEV guard.
+  const urlBeat = import.meta.env.DEV
+    ? (() => {
+        const raw = new URLSearchParams(window.location.search).get("beat");
+        if (raw === null) return null;
+        const n = Number(raw);
+        return Number.isFinite(n) && n >= 0 ? n : null;
+      })()
+    : null;
+
   const savedBeat = loadTutorialProgress();
   const hasMidProgress =
     savedBeat !== null &&
@@ -25,11 +36,12 @@ export default function Tutorial() {
   // If a beat was programmatically queued, go straight to playing.
   // If there's mid-tutorial progress, show the resume prompt first.
   // Otherwise, start playing from beat 0 immediately.
+  const effectivePending = urlBeat ?? (pendingBeat != null ? pendingBeat : null);
   const [phase, setPhase] = useState<Phase>(
-    pendingBeat != null || !hasMidProgress ? "playing" : "prompt"
+    effectivePending != null || !hasMidProgress ? "playing" : "prompt"
   );
   const [startBeat, setStartBeat] = useState<number | undefined>(
-    pendingBeat ?? undefined
+    effectivePending ?? undefined
   );
 
   function handleChoice(choice: "begin" | "resume" | "start-over" | "cancel") {

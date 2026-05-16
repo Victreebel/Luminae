@@ -1796,7 +1796,7 @@ function ArchitectAssembly({
                 <div className="flex items-center gap-1.5">
                   {/* Deck pile */}
                   <div className="shrink-0" style={{ width: 36, height: CH }}>
-                    <BackComp width={36} height={CH} />
+                    <BackComp />
                   </div>
                   {/* 4 card slots */}
                   {[0, 1, 2, 3].map(si => {
