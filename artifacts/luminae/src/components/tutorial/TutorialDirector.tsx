@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
 import {
@@ -1436,6 +1436,40 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
     })),
   []);
 
+  // ── Tremor / screen-shake ─────────────────────────────────────────────────
+  const prefersReducedMotion = useReducedMotion();
+  const shakeX = useMotionValue(0);
+  const shakeY = useMotionValue(0);
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    let loopX: ReturnType<typeof fmAnimate> | null = null;
+    let loopY: ReturnType<typeof fmAnimate> | null = null;
+
+    if (phase === 'firstcrack') {
+      // Sharp impact burst — decays over 0.5 s
+      fmAnimate(shakeX, [0, -5, 6, -4, 4, -2, 2, -1, 0], { duration: 0.50, ease: 'linear' });
+      fmAnimate(shakeY, [0,  3, -4,  2, -2,  1, -1,  0],  { duration: 0.50, ease: 'linear' });
+    } else if (phase === 'secondcrack') {
+      // Heavier burst
+      fmAnimate(shakeX, [0, -7, 8, -6, 6, -4, 4, -2, 1, 0], { duration: 0.65, ease: 'linear' });
+      fmAnimate(shakeY, [0,  4, -5, 3, -3, 2, -2, 1,  0],    { duration: 0.65, ease: 'linear' });
+    } else if (phase === 'shattering') {
+      // Continuous rumble through the scatter — loops until phase changes
+      loopX = fmAnimate(shakeX, [0, -3, 3, -2, 3, -1, 2, -3, 1, 0], { duration: 0.60, repeat: Infinity, ease: 'linear' });
+      loopY = fmAnimate(shakeY, [0,  2, -2,  1, -1, 2, -1, 1,  0],  { duration: 0.60, repeat: Infinity, ease: 'linear' });
+    } else if (phase === 'flashing') {
+      // Wind-down rumble — lighter, fades to nothing
+      loopX = fmAnimate(shakeX, [0, -2, 2, -1, 2, -1, 1, 0], { duration: 0.75, repeat: Infinity, ease: 'linear' });
+      loopY = fmAnimate(shakeY, [0,  1, -1, 1, -1,  0],       { duration: 0.75, repeat: Infinity, ease: 'linear' });
+    } else {
+      fmAnimate(shakeX, 0, { duration: 0.25 });
+      fmAnimate(shakeY, 0, { duration: 0.25 });
+    }
+
+    return () => { loopX?.stop(); loopY?.stop(); };
+  }, [phase, prefersReducedMotion]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (phase === 'gone') return null;
 
   const phaseIdx  = FS_PHASE_ORDER.indexOf(phase);
@@ -1444,6 +1478,8 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   const isShattering = past('shattering');
   return (
     <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
+      {/* Tremor wrapper — translates the glass contents without clipping */}
+      <motion.div className="absolute inset-0" style={{ x: shakeX, y: shakeY }}>
 
       {/* ── Cosmic light reveal behind the shards — floods in as panels scatter */}
       {isShattering && (
@@ -1672,6 +1708,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
+      </motion.div>{/* end tremor wrapper */}
     </div>
   );
 }
