@@ -1806,8 +1806,8 @@ function ArchitectAssembly({
           style={{ top: 148, padding: "10px 10px 12px 10px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
         >
           <div className="flex items-center gap-1.5 text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2.5">
-            <Hammer className="h-2.5 w-2.5 text-amber-500/70 shrink-0" />
             The Forge
+            <Hammer className="h-2.5 w-2.5 text-amber-500/70 shrink-0" />
           </div>
           {([3, 2, 1] as const).map((tier, ti) => {
             const BackComp = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
@@ -3030,8 +3030,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <TutorialLuminarySection beatId={beatId} />
           <div ref={forgeRef} className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
             <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">
-              <Hammer className="h-3 w-3 text-amber-500/70 shrink-0" />
               The Forge
+              <Hammer className="h-3 w-3 text-amber-500/70 shrink-0" />
             </div>
             <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
           </div>
