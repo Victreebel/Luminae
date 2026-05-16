@@ -1649,17 +1649,23 @@ function ArchitectAssembly({
 }) {
   const prefersReducedMotion = useReducedMotion();
 
-  // For reduced motion: auto-advance immediately. Otherwise: wait for player tap.
+  // Stable ref so the timeout callback always calls the latest onComplete without
+  // ending up in the effect dependency array (which would reset the timer on every render).
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  // For reduced motion: auto-advance after 200 ms. Otherwise: wait for player tap.
   const [tapReady, setTapReady] = useState(false);
   useEffect(() => {
     if (prefersReducedMotion) {
-      onComplete();
-      return;
+      const t = setTimeout(() => onCompleteRef.current(), 200);
+      return () => clearTimeout(t);
     }
     // Show tap prompt ~400 ms after the last section settles (phase 3 at 2300 ms)
     const t = setTimeout(() => setTapReady(true), 2700);
     return () => clearTimeout(t);
-  }, [onComplete, prefersReducedMotion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefersReducedMotion]);
 
   const [phase, setPhase] = useState(prefersReducedMotion ? 4 : 0);
 
