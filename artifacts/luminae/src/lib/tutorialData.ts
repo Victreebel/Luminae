@@ -256,7 +256,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "cinematic",
     lumiiZone: "market-t1",
     dialogue: [
-      { text: "Use this to harness them." },
+      { text: "Let me show you how to use it." },
     ],
     completion: { type: "dialogue" },
   },
