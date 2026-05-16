@@ -3443,25 +3443,27 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
         )}
       </AnimatePresence>
       {skipOverlay}{devNav}
-      {/* Persistent leave-tutorial button — always visible at top-left */}
-      <button
-        onClick={() => navigate("/")}
-        className="fixed left-4 z-[60] flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+      {/* Top-right controls: Leave + Sound toggle */}
+      <div
+        className="fixed right-4 z-[60] flex items-center gap-3"
         style={{ top: "calc(16px + env(safe-area-inset-top, 0px))" }}
       >
-        <X className="h-3 w-3" />
-        Leave
-      </button>
-      {/* Sound toggle — top-left next to Leave */}
-      <button
-        onClick={() => { const next = gameAudio.toggleMute(); setMuted(next); }}
-        className="fixed left-24 z-[60] flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
-        style={{ top: "calc(16px + env(safe-area-inset-top, 0px))" }}
-        aria-label={muted ? "Unmute sound" : "Mute sound"}
-      >
-        {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-        {muted ? "Sound off" : "Sound on"}
-      </button>
+        <button
+          onClick={() => { const next = gameAudio.toggleMute(); setMuted(next); }}
+          className="flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+          aria-label={muted ? "Unmute sound" : "Mute sound"}
+        >
+          {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+          {muted ? "Sound off" : "Sound on"}
+        </button>
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-1.5 text-white/35 hover:text-white/75 text-xs font-semibold tracking-widest uppercase transition-colors bg-black/15 hover:bg-black/35 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10"
+        >
+          <X className="h-3 w-3" />
+          Leave
+        </button>
+      </div>
     </>
   );
 }
