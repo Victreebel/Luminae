@@ -1183,6 +1183,20 @@ const FS_CRACKS_2: CrackDef[] = [
 // Cool blue-white — the colour of light leaking from behind the dark glass panel.
 const FSO_LIGHT = '#a8ccf8';
 
+// Pre-existing crystal facet boundary seams — the natural cleavage planes of the
+// crystal, rendered as faint ice-blue lines from the very first frame.
+// These are the same geometric edges the crack network follows, but appear as
+// the crystal's internal structure rather than damage.
+const FS_CRYSTAL_SEAM_PATHS = [
+  'M35.7,0 L28.6,15 L50,42.5',
+  'M50,42.5 L60.7,35 L100,35',
+  'M50,42.5 L39.3,40 L19.6,37.5 L0,40',
+  'M50,42.5 L41.1,57.5 L25,72.5',
+  'M25,72.5 L46.4,70 L71.4,70 L100,72.5',
+  'M25,72.5 L16.1,76.25 L0,80',
+  'M25,72.5 L33.9,85 L39.3,100',
+] as const;
+
 // 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam.
 // All glow layers use FSO_LIGHT so the crack reads as back-lit (light from behind),
 // not as a surface marking on the glass.
@@ -1334,6 +1348,31 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             style={{ background: FS_SHARD_GLASS[i].spec, opacity: 1 }}
           />
 
+          {/* Prismatic iridescence wash — ice-blue/gold/pearl, screen blend, subtle pulse */}
+          {isShattering ? (
+            <motion.div className="absolute inset-0 pointer-events-none"
+              style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen' }}
+              initial={{ opacity: 0.32 }}
+              animate={{ opacity: [0.32, 0.26, 0.13, 0.22, 0] }}
+              transition={{ duration: 4.5, times: [0, 0.18, 0.40, 0.62, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
+            />
+          ) : (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen', opacity: 0.32 }}
+            />
+          )}
+
+          {/* Crystal clarity layer — ice-blue translucent wash that makes the pre-shatter
+              surface read as crystalline glass rather than flat dark. Fades at shatter. */}
+          {!isShattering && (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'radial-gradient(ellipse at 38% 44%, rgba(140,210,255,0.12) 0%, rgba(100,180,255,0.07) 45%, transparent 75%)',
+                mixBlendMode: 'screen',
+              }}
+            />
+          )}
+
           {/* Edge inset glow — light bleeding through the cut perimeter of each shard */}
           <div className="absolute inset-0 pointer-events-none"
             style={{
@@ -1370,7 +1409,42 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
               <filter id="fso-cgw" x="-120%" y="-120%" width="340%" height="340%">
                 <feGaussianBlur stdDeviation="5.5" />
               </filter>
+              {/* Medium glow for crystal seam ambient light */}
+              <filter id="fso-csm" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="1.2" />
+              </filter>
+              {/* Soft bloom for ice-blue junction glow */}
+              <filter id="fso-cib" x="-120%" y="-120%" width="340%" height="340%">
+                <feGaussianBlur stdDeviation="5" />
+              </filter>
             </defs>
+
+            {/* ── Pre-existing crystal facet seams — the natural cleavage planes of the
+                crystal. Faint ice-blue lines that pulse slowly, suggesting internal
+                luminescence trapped in the crystal volume before any cracking begins. */}
+            <motion.g
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.38, 0.28, 0.42, 0.32] }}
+              transition={{ duration: 2.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
+            >
+              {FS_CRYSTAL_SEAM_PATHS.map((d, i) => (
+                <path key={`seam-glow-${i}`} d={d}
+                  stroke="rgba(140,210,255,0.55)" strokeWidth="1.8" fill="none"
+                  filter="url(#fso-csm)"
+                />
+              ))}
+            </motion.g>
+            <motion.g
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.55, 0.40, 0.60, 0.45] }}
+              transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, repeatType: 'mirror', delay: 0.3 }}
+            >
+              {FS_CRYSTAL_SEAM_PATHS.map((d, i) => (
+                <path key={`seam-line-${i}`} d={d}
+                  stroke="rgba(200,235,255,0.50)" strokeWidth="0.18" fill="none"
+                />
+              ))}
+            </motion.g>
 
             {/* First crack network — mounts on firstcrack phase, stays visible */}
             {past('firstcrack') && FS_CRACKS_1.map((c, i) => <FSOCrack key={`c1-${i}`} {...c} />)}
@@ -1378,7 +1452,8 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             {/* Second crack network — mounts on secondcrack phase */}
             {past('secondcrack') && FS_CRACKS_2.map((c, i) => <FSOCrack key={`c2-${i}`} {...c} />)}
 
-            {/* Ambient junction glow — cool blue-white light pooling at the fracture junction */}
+            {/* Ambient junction glow — cool blue-white light pooling at the fracture junction,
+                with additional ice-blue bloom building as pressure accumulates inside the crystal */}
             {past('leaking') && !past('cracking') && (
               <>
                 <motion.circle cx="50" cy="42.5" r="7" fill={FSO_LIGHT} filter="url(#fso-cgw)"
@@ -1390,6 +1465,18 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [0, 0.65, 0.12, 0.85, 0.28, 0.55, 0] }}
                   transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
+                />
+                {/* Ice-blue bloom at P — accumulating pressure visualized as cold light */}
+                <motion.circle cx="50" cy="42.5" r="10" fill="rgba(80,180,255,1)" filter="url(#fso-cib)"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0.28, 0.14, 0.36, 0.18, 0.32] }}
+                  transition={{ duration: 2.6, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.15 }}
+                />
+                {/* Secondary teal bloom — Q junction pre-announces the second crack */}
+                <motion.circle cx="25" cy="72.5" r="7" fill="rgba(50,200,220,1)" filter="url(#fso-cib)"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 0, 0.12, 0.06, 0.18, 0.08] }}
+                  transition={{ duration: 3.4, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.8 }}
                 />
               </>
             )}
