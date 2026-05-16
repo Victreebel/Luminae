@@ -1284,9 +1284,9 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         highlightDiscounted={highlightDiscounted}
         highlightNeeded={highlightNeeded}
       />
-      {renderTierRow(3, t3Cards, "Frontier")}
-      {renderTierRow(2, t2Cards, "Ascendant")}
-      {renderTierRow(1, t1Cards, "Foundation")}
+      {renderTierRow(3, t3Cards, "Galactic")}
+      {renderTierRow(2, t2Cards, "Stellar")}
+      {renderTierRow(1, t1Cards, "Planetary")}
     </div>
   );
 }
