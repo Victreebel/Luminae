@@ -1454,15 +1454,15 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
-      {/* ── Six dark-glass shard panels — only clipped/visible during shattering ── */}
-      {FS_SHARDS.map((sh, i) => (
+      {/* ── Six dark-glass shard panels — only mounted during shattering so their
+          inset box-shadows and backgrounds don't bleed through before the crack ── */}
+      {isShattering && FS_SHARDS.map((sh, i) => (
         <motion.div key={i} className="absolute inset-0"
           style={{
-            clipPath: isShattering ? sh.clip : undefined,
+            clipPath: sh.clip,
             background: FS_SHARD_GLASS[i].base,
             transformPerspective: 900,
             transformStyle: 'preserve-3d',
-            opacity: isShattering ? undefined : 0,
           }}
           animate={isShattering ? {
             x: [0, `${parseFloat(sh.dx) * 0.08}`, sh.dx],
@@ -1476,15 +1476,15 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
               'brightness(2.8) drop-shadow(0 0 24px rgba(200,225,255,0.90))',
               'brightness(5.0) drop-shadow(0 0 32px rgba(255,255,255,0.75))',
             ],
-          } : { x: '0%', y: '0%', rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1, filter: 'brightness(1.0)' }}
-          transition={isShattering ? {
+          }}
+          transition={{
             duration: 4.5, delay: i * 0.04,
             x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
             y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
             rotateX: { ease: 'easeOut' }, rotateY: { ease: 'easeOut' }, rotateZ: { ease: 'easeOut' },
             opacity: { times: [0, 0.08, 0.26, 0.56, 1.0], ease: 'easeInOut' },
             filter:  { times: [0, 0.12, 0.34, 0.60, 0.82], ease: 'easeInOut' },
-          } : { duration: 0 }}
+          }}
         >
           {/* Ghost-thin surface glint — barely visible, preserves the glass-face feel */}
           <div className="absolute inset-0 pointer-events-none"
