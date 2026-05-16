@@ -1442,14 +1442,22 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
-      {/* ── Six dark-glass shard panels ─────────────────────────────────── */}
+      {/* ── Single seamless dark panel (pre-shatter) — no clip paths so no seam lines visible */}
+      {!isShattering && (
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(160deg, rgba(4,4,12,0.97) 0%, rgba(6,8,18,0.95) 55%, rgba(2,3,9,0.98) 100%)' }}
+        />
+      )}
+
+      {/* ── Six dark-glass shard panels — only clipped/visible during shattering ── */}
       {FS_SHARDS.map((sh, i) => (
         <motion.div key={i} className="absolute inset-0"
           style={{
-            clipPath: sh.clip,
+            clipPath: isShattering ? sh.clip : undefined,
             background: FS_SHARD_GLASS[i].base,
             transformPerspective: 900,
             transformStyle: 'preserve-3d',
+            opacity: isShattering ? undefined : 0,
           }}
           animate={isShattering ? {
             x: [0, `${parseFloat(sh.dx) * 0.08}`, sh.dx],
