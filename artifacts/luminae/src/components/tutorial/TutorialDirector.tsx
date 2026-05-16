@@ -1032,7 +1032,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap }: {
   const t2Cards: string[] = [];
   const t3Cards: string[] = [];
 
-  const earlyBeats = ["b6_forge_appears", "b7_artifact_cost", "b8_first_harness", "b9_first_forge", "b9b_forge_complete"];
+  const earlyBeats = ["b6_forge_appears", "b7_artifact_cost", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
   const midBeats = ["b10_reserve", "b10b_reserve_granted", "b10c_needed_peek", "b11_forge_reserved", "b12_tier2"];
   const lateBeats = ["b13_tier3", "b14_win_condition", "b15_fast_forward"];
   const finalBeat = ["b16_final_forge"];
@@ -2659,7 +2659,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Collection sheet — slides up to show all forged artifacts (teaches panel-tap mechanic)
   const [collectionOpen, setCollectionOpen] = useState(false);
   // Beats that explicitly invite the player to tap their panel
-  const PANEL_TAP_BEATS = new Set(["b9b_forge_complete", "b11_forge_reserved", "b12_tier2"]);
+  const PANEL_TAP_BEATS = new Set(["b9b_forge_complete", "b9c_transition", "b11_forge_reserved", "b12_tier2"]);
   const showPanelTapHint = PANEL_TAP_BEATS.has(beatId) && s.forged.length > 0;
 
   // Harness flash — green border pulse on AffinityWell after Harness
@@ -2762,7 +2762,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
-    if (beatId === "b9b_forge_complete" || beatId === "b14_win_condition") return "storage";
+    if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition") return "storage";
     if (beatId === "b10b_reserve_granted") return "storage";
     return "market";
   })();

@@ -321,6 +321,16 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     completion: { type: "dialogue" },
   },
   {
+    id: "b9c_transition",
+    mode: "listen",
+    lumiiZone: "storage",
+    highlightZone: "storage",
+    dialogue: [
+      { text: "Now, let me show you how to use them." },
+    ],
+    completion: { type: "dialogue" },
+  },
+  {
     id: "b10_reserve",
     mode: "act",
     lumiiZone: "discounted-tab",
