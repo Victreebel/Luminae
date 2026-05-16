@@ -2721,7 +2721,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     !(beatId === "b12_tier2" && subStep === 0) &&
     !(beatId === "b16_final_forge" && subStep >= 1);
 
-  const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b14_win_condition";
+  const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
 
@@ -2782,9 +2782,19 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (cameraFocus === "well") {
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
     } else if (cameraFocus === "forge") {
-      // Scroll to the forge section's top so luminaries scroll out of view
-      const forgeTop = forgeRef.current?.offsetTop ?? 0;
-      container.scrollTo({ top: forgeTop, behavior: "smooth" });
+      // Scroll so the forge section lands flush with the top of the visible area,
+      // pushing the luminary section fully out of view.
+      // getBoundingClientRect is used instead of offsetTop because offsetTop is
+      // relative to the offsetParent (the outer relative wrapper), not the scroll
+      // container, which can produce an incorrect value.
+      const forgeEl = forgeRef.current;
+      if (forgeEl) {
+        const forgeTop =
+          forgeEl.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop;
+        container.scrollTo({ top: forgeTop, behavior: "smooth" });
+      }
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
