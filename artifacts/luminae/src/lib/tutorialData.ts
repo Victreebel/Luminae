@@ -267,8 +267,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     dialogue: [
       { text: "Affinities alone are only potential." },
-      { text: "The Forge gives them form.", excited: true },
-      { text: "Here, a society shapes artifacts — technologies that change what it can become." },
+      { text: "This is Root Lattice — your first artifact.", excited: true },
+      { text: "The Forge turns affinities into something your society keeps permanently." },
     ],
     completion: { type: "dialogue" },
   },
@@ -279,8 +279,20 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "Every artifact has a cost." },
-      { text: "To forge this, your society needs these affinities." },
+      { text: "An artifact's cost is shown here." },
+      { text: "Root Lattice costs 1 Flare, 1 Continuum, and 1 Radiance." },
+    ],
+    completion: { type: "dialogue" },
+  },
+  {
+    id: "b7b_cost_bridge",
+    mode: "look",
+    lumiiZone: "card-cost",
+    foregroundCardId: "t1e01",
+    highlightZone: "card-cost",
+    dialogue: [
+      { text: "Those affinities come from the Affinity Well." },
+      { text: "Let me show you how to gather them." },
     ],
     completion: { type: "dialogue" },
   },
@@ -290,11 +302,11 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "well",
     highlightZone: "well",
     dialogue: [
-      { text: "Come. I'll show you how to gather what the Forge needs." },
-      { text: "Select the affinities shown in the cost." },
+      { text: "Gather 1 Flare, 1 Continuum, and 1 Radiance from the Well." },
+      { text: "These match Root Lattice's cost exactly." },
     ],
     completion: { type: "action", action: "harness" },
-    wrongClickNudge: "Not yet. Follow the cost first.",
+    wrongClickNudge: "Tap the affinity crystals matching Root Lattice's cost.",
   },
   {
     id: "b9_first_forge",
@@ -304,11 +316,11 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     highlightZone: "forge-btn",
     lumiiPointer: "down",
     dialogue: [
-      { text: "Good. The Forge has what it needs." },
-      { text: "Now shape it.", excited: true },
+      { text: "Your affinities are ready." },
+      { text: "Select Root Lattice and press Forge.", excited: true },
     ],
     completion: { type: "action", action: "forge_market" },
-    wrongClickNudge: "Find the Forge action on the artifact.",
+    wrongClickNudge: "Tap Root Lattice, then press Forge.",
   },
   {
     id: "b9b_forge_complete",

@@ -1100,7 +1100,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   const t2Cards: string[] = [];
   const t3Cards: string[] = [];
 
-  const earlyBeats = ["b6_forge_appears", "b7_artifact_cost", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
+  const earlyBeats = ["b6_forge_appears", "b7_artifact_cost", "b7b_cost_bridge", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
   const midBeats = ["b10_reserve", "b10b_reserve_granted", "b10c_needed_peek", "b11_forge_reserved", "b12_tier2"];
   const lateBeats = ["b13_tier3", "b14_win_condition", "b15_fast_forward"];
   const finalBeat = ["b16_final_forge"];
@@ -1138,7 +1138,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   };
 
   const getHighlighted = (cardId: string) => {
-    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID && (s.subStep >= 1 || subStep >= 1);
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
@@ -1148,7 +1148,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   };
 
   const getForeground = (cardId: string) => {
-    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
     if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID;
@@ -3190,7 +3190,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {isDimmed && <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />}
 
       {/* Spotlight vignette — dims edges around the highlighted target zone */}
-      {isActMode && beat.highlightZone && HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone] && (
+      {(isActMode || beat.mode === "look") && beat.highlightZone && HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone] && (
         <motion.div
           key={`spotlight-${beatId}`}
           className="fixed inset-0 pointer-events-none z-[22]"
@@ -3414,7 +3414,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const burstActive = !!(purchaseBurst || gemBurst);
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
-        const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b7_artifact_cost"]);
+        const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b7_artifact_cost", "b7b_cost_bridge"]);
         const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
@@ -3573,7 +3573,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </AnimatePresence>
 
       {/* Dialogue box — fade in after camera has settled on camera-scroll beats */}
-      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
+      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost", "b7b_cost_bridge"].includes(beatId) && (
         <motion.div
           key={`dlg-settle-${beatId}-${subStep}`}
           className="fixed left-0 right-0 z-50 px-4"
