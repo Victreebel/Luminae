@@ -564,7 +564,12 @@ class GameAudio {
    * Fire-and-forget: await not required at the call site.
    * Returns silently if the scheduled window has already passed or audio is muted.
    */
-  private async scheduleMp3(url: string, scheduledTime: number, volume: number): Promise<void> {
+  private async scheduleMp3(
+    url: string,
+    scheduledTime: number,
+    volume: number,
+    fadeOut?: { afterSeconds: number; durationSeconds: number },
+  ): Promise<void> {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
@@ -574,13 +579,19 @@ class GameAudio {
       if (this.muted) return; // re-check after async gap
       const now = ctx.currentTime;
       if (now > scheduledTime + 0.6) return; // missed the window; skip silently
+      const startAt = Math.max(now, scheduledTime);
       const src  = ctx.createBufferSource();
       const gain = ctx.createGain();
       src.buffer = audioBuf;
-      gain.gain.value = volume;
+      gain.gain.setValueAtTime(volume, startAt);
+      if (fadeOut) {
+        const fadeStart = startAt + fadeOut.afterSeconds;
+        gain.gain.setValueAtTime(volume, fadeStart);
+        gain.gain.linearRampToValueAtTime(0, fadeStart + fadeOut.durationSeconds);
+      }
       src.connect(gain);
       gain.connect(ctx.destination);
-      src.start(Math.max(now, scheduledTime));
+      src.start(startAt);
     } catch (e) {
       console.warn('[Luminae] MP3 schedule failed', e);
     }
@@ -865,7 +876,8 @@ class GameAudio {
       // ── MP3 assets — same SFX as summon cutscene ─────────────────────
       void this.scheduleMp3(LUMINARY_SFX.firstCrack,        t + CRACK1 / 1000,          0.20);
       void this.scheduleMp3(LUMINARY_SFX.secondCrack,       t + CRACK2 / 1000,          0.18);
-      void this.scheduleMp3(LUMINARY_SFX.universeExpanding, t + SHATT  / 1000,          0.22);
+      void this.scheduleMp3(LUMINARY_SFX.universeExpanding, t + SHATT  / 1000,          0.22,
+        { afterSeconds: 1.0, durationSeconds: 1.6 });  // begin fading at the flash phase, gone by ~2.6s in
       void this.scheduleMp3(LUMINARY_SFX.glassShatter,      t + (SHATT + 80) / 1000,    0.20);
 
     } catch (e) {
