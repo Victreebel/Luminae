@@ -1046,7 +1046,7 @@ function CardFlipReveal({
   BackFace: React.ComponentType;
   delay?: number;
 }) {
-  // phases: idle → deal (slide from deck) → flip_out → flip_in → done
+  // Each phase is a separate keyed mount so onAnimationComplete closures are always fresh.
   const [phase, setPhase] = useState<"idle" | "deal" | "flip_out" | "flip_in" | "done">(
     shouldAnimate ? "idle" : "done"
   );
@@ -1060,44 +1060,51 @@ function CardFlipReveal({
   if (phase === "done") return <>{children}</>;
 
   const W = 112, H = 160;
-  // Start card within the flex container's clipping bounds (~80 px to the left puts
-  // it visually inside the deck pile area) and fade in so clip edge is invisible.
+  // -80 px keeps the start point inside the scroll container's clip boundary
+  // while still appearing to come from the deck pile area; opacity 0→1 hides the edge.
   const DEAL_X = -80;
 
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
-      {/* Ghost slot while waiting */}
       {phase === "idle" && (
-        <div style={{ width: W, height: H }}
+        <div key="ghost" style={{ width: W, height: H }}
           className="rounded-xl border border-white/8 bg-white/[0.018]" />
       )}
 
-      {/* Face-down card: deal slide then flip-out rotation */}
-      {(phase === "deal" || phase === "flip_out") && (
+      {/* Deal slide — keyed so it always mounts fresh with a clean closure */}
+      {phase === "deal" && (
         <motion.div
+          key="deal"
           className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
           style={{ width: W, height: H }}
-          initial={phase === "deal" ? { x: DEAL_X, opacity: 0, scale: 0.92, rotateY: 0 } : false}
-          animate={phase === "deal"
-            ? { x: 0, opacity: 1, scale: 1, rotateY: 0 }
-            : { rotateY: 90 }
-          }
-          transition={phase === "deal"
-            ? { type: "spring", stiffness: 200, damping: 26, mass: 0.85, opacity: { duration: 0.18 } }
-            : { duration: 0.18, ease: "easeIn" }
-          }
-          onAnimationComplete={() => {
-            if (phase === "deal") setPhase("flip_out");
-            else if (phase === "flip_out") { gameAudio.playCardFlip(); setPhase("flip_in"); }
-          }}
+          initial={{ x: DEAL_X, opacity: 0, scale: 0.92 }}
+          animate={{ x: 0, opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 26, mass: 0.85 }}
+          onAnimationComplete={() => setPhase("flip_out")}
         >
           <BackFace />
         </motion.div>
       )}
 
-      {/* Face-up card: flip-in rotation */}
+      {/* Flip out — fresh mount, rotates face-down card to edge */}
+      {phase === "flip_out" && (
+        <motion.div
+          key="flip_out"
+          className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
+          style={{ width: W, height: H }}
+          initial={{ rotateY: 0 }}
+          animate={{ rotateY: 90 }}
+          transition={{ duration: 0.18, ease: "easeIn" }}
+          onAnimationComplete={() => { gameAudio.playCardFlip(); setPhase("flip_in"); }}
+        >
+          <BackFace />
+        </motion.div>
+      )}
+
+      {/* Flip in — fresh mount, rotates face-up card from edge to flat */}
       {phase === "flip_in" && (
         <motion.div
+          key="flip_in"
           className="rounded-xl overflow-hidden"
           style={{ width: W, height: H }}
           initial={{ rotateY: -90 }}
@@ -1281,7 +1288,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
               if (cardId === FIRST_FORGE_ID) {
                 return (
                   <CardFlipReveal
-                    key={cardId}
+                    key={beatId === "b6b_root_lattice" ? `${cardId}-flip` : cardId}
                     shouldAnimate={beatId === "b6b_root_lattice"}
                     BackFace={CardBackTier1}
                     delay={1500}
