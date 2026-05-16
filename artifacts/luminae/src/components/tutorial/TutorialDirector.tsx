@@ -1939,13 +1939,19 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const scale = Math.min(vw * 0.84 / 375, vh * 0.76 / 660, 0.70);
-    // Forge content right edge in inner canvas: 375 - mx-3(12) - padding-right(10) = 353
-    const forgeRightVX = vw / 2 + scale * (353 - 375 / 2) - 18; // 18px inset
-    // Tier I row card-center y in inner canvas ≈ 375 (forge top 148 + pad 10 + label 18 + 2 tiers 142 + label 11 + CH/2 30)
+    // Tier 1 row card-slot layout (inner canvas coords, origin = canvas left):
+    //   forge margin(mx-3)=12, pad-left=10 → content starts at x=22
+    //   deck=36, gap=6, then 4 cards (CW=42) with gap-1.5(6) between each
+    //   card4 center = 22 + 36 + 6 + 42*3 + 6*3 + 21 = 229
+    const card4CenterX = 229; // x of rightmost card slot center in inner canvas
+    const lumiVX = vw / 2 + scale * (card4CenterX - 375 / 2);
+    // Tier I row card-center y in inner canvas:
+    //   forge top=148, pad=10, forge-label=18, 2 upper tiers each (label≈11 + CH=60 + gap=8) = 158
+    //   tier-I label=11, card center=CH/2=30 → total ≈ 148+10+18+158+11+30 = 375
     const tier1VY = vh / 2 + scale * (375 - 660 / 2);
     return {
-      left: `${((forgeRightVX / vw) * 100).toFixed(1)}%`,
-      top:  `${((tier1VY  / vh) * 100).toFixed(1)}%`,
+      left: `${((lumiVX / vw) * 100).toFixed(1)}%`,
+      top:  `${((tier1VY / vh) * 100).toFixed(1)}%`,
     };
   };
   const [lumiAssemblyPos, setLumiAssemblyPos] = useState(computeLumiAssemblyPos);
