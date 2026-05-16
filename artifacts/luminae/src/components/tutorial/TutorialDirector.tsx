@@ -472,7 +472,7 @@ function TutorialCard({
 
   return (
     <motion.div
-      animate={{ scale: foreground ? 1.1 : 1, y: 0 }}
+      animate={{ scale: 1, y: 0 }}
       whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
