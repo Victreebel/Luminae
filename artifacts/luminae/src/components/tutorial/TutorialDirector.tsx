@@ -1859,18 +1859,28 @@ function ArchitectAssembly({
               return (
                 <motion.div
                   key={gem}
-                  className="flex-1 rounded-lg flex flex-col items-center gap-0.5 py-1.5"
-                  animate={{ scale: active ? [1, 1.15, 1] : 1 }}
-                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  className="flex-1 rounded-lg flex flex-col items-center justify-center py-1.5"
+                  animate={{ scale: active ? [1, 1.18, 1] : 1 }}
+                  transition={{ duration: 0.38, ease: "easeOut" }}
                   style={{
-                    background: active ? `linear-gradient(180deg, #060611 0%, ${meta.hex}2A 100%)` : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${active ? meta.hex + "77" : "rgba(255,255,255,0.06)"}`,
-                    transition: "background 0.3s ease, border-color 0.3s ease",
+                    minHeight: 36,
+                    background: active ? `linear-gradient(180deg, #060611 0%, ${meta.hex}2A 100%)` : "rgba(255,255,255,0.025)",
+                    border: `1px solid ${active ? meta.hex + "77" : "rgba(255,255,255,0.07)"}`,
+                    transition: "background 0.32s ease, border-color 0.32s ease",
                   }}>
-                  <img src={meta.image} alt="" className="w-3.5 h-3.5 object-contain" draggable={false}
-                    style={{ filter: active ? `drop-shadow(0 0 4px ${meta.glowHex})` : "none", opacity: active ? 1 : 0.28, transition: "filter 0.3s, opacity 0.3s" }} />
-                  <span className="text-[8px] font-black leading-none" style={{ color: active ? "#fff" : "rgba(255,255,255,0.16)", transition: "color 0.3s" }}>0</span>
-                  <span className="text-[5px] leading-none uppercase tracking-wide" style={{ color: meta.glowHex, opacity: active ? 0.75 : 0.25, transition: "opacity 0.3s" }}>{meta.shortName}</span>
+                  {active ? (
+                    <motion.img
+                      src={meta.image} alt={meta.shortName}
+                      className="w-4 h-4 object-contain"
+                      draggable={false}
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.28, ease: "easeOut" }}
+                      style={{ filter: `drop-shadow(0 0 5px ${meta.glowHex})` }}
+                    />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }} />
+                  )}
                 </motion.div>
               );
             })}
