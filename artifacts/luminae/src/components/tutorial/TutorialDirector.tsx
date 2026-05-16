@@ -263,16 +263,20 @@ function DialogueBox({
       className="relative"
     >
       <div
-        className={`bg-slate-950/95 border border-white/10 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-md select-none ${canTap ? "cursor-pointer" : ""}`}
-        onClick={canTap ? onTap : undefined}
-        style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.9)" }}
+        className={`bg-slate-950/95 border border-white/10 rounded-2xl px-5 py-4 max-w-sm mx-auto shadow-2xl backdrop-blur-md select-none ${canTap ? "cursor-pointer active:scale-[0.985]" : ""}`}
+        onClick={canTap ? () => { gameAudio.playButtonSelect(); onTap(); } : undefined}
+        style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.9)", transition: "transform 0.08s ease" }}
       >
         <div className="flex items-start gap-3">
           {showOrb && <LumiiOrb size={32} excited={!!nudge} highlightZone={null} muted={muted} />}
           <div className="flex-1">
             <p className="text-sm text-white/90 leading-relaxed">{text}</p>
             {hintText && (
-              <p className="text-[10px] text-white/35 mt-2">{hintText}</p>
+              <motion.p
+                animate={{ opacity: [0.28, 0.60, 0.28] }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                className="text-[10px] text-white/35 mt-2"
+              >{hintText}</motion.p>
             )}
           </div>
         </div>
@@ -281,7 +285,7 @@ function DialogueBox({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            onClick={onPlayerResponse}
+            onClick={() => { gameAudio.playButtonConfirm(); onPlayerResponse!(); }}
             className="mt-3 w-full py-2.5 rounded-xl text-sm font-medium tracking-wide text-amber-200 select-none cursor-pointer"
             style={{
               background: "rgba(251,191,36,0.08)",
@@ -300,7 +304,7 @@ function DialogueBox({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.12, duration: 0.4 }}
-                onClick={() => onChoice!(c.value)}
+                onClick={() => { gameAudio.playButtonConfirm(); onChoice!(c.value); }}
                 className="w-full py-2.5 rounded-xl text-sm font-medium tracking-wide select-none cursor-pointer transition-all active:scale-[0.98]"
                 style={i === 0 ? {
                   background: "rgba(251,191,36,0.12)",
@@ -2195,6 +2199,8 @@ function VictoryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<T
 
   useEffect(() => {
     markTutorialSeen();
+    // Fanfare on first landing — give the mount a tick so audio ctx is ready
+    setTimeout(() => gameAudio.playWin(), 180);
   }, []);
 
   return (
@@ -2564,6 +2570,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     const trigger = s.animTrigger;
     if (!trigger) return;
     if (trigger.type === "forge") {
+      gameAudio.playCardPurchased();
       purchaseBurstKeyRef.current += 1;
       setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name, cardId: trigger.cardId });
       setTimeout(() => setPurchaseBurst(null), 2400);
@@ -2571,6 +2578,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       setTimeout(() => setForgeJustHappened(false), 3600);
     } else if (trigger.type === "harvest") {
       const { gems } = trigger;
+      // Stagger a crystal-pick sound per gem so multi-gem harvests have a satisfying cascade
+      gems.forEach((gem, i) => {
+        setTimeout(() => gameAudio.playCrystalPicked(gem), i * 95);
+      });
       gemBurstKeyRef.current += 1;
       const key = gemBurstKeyRef.current;
       setGemBurst({ key, gems });
@@ -2578,6 +2589,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       setTimeout(() => setGemBurst(null), (burstDuration + 0.35) * 1000);
     }
   }, [s.animTrigger]);
+
+  // Play the cosmic bell the first time each "act" beat becomes active.
+  // Guard with a ref so rapid re-renders don't replay the sound.
+  const lastActBeatRef = useRef<string | null>(null);
+  useEffect(() => {
+    if ((beat.mode === "act" || beat.mode === "semiOpen") && lastActBeatRef.current !== beatId) {
+      lastActBeatRef.current = beatId;
+      // Small delay so the beat transition animation has time to settle before the sound hits
+      setTimeout(() => gameAudio.playTurnStart(), 220);
+    }
+  }, [beatId, beat.mode]);
 
   const isDimmed = beat.mode === "listen" || beat.mode === "look";
   const isWellEnabled = (beat.mode === "act" || beat.mode === "semiOpen") &&
@@ -2670,7 +2692,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     reserveEnabled: boolean,
     onForge?: () => void,
     onReserve?: () => void,
-  ) => { setSelectedCardData({ card, forgeEnabled, reserveEnabled, onForge, onReserve }); };
+  ) => { gameAudio.playButtonSelect(); setSelectedCardData({ card, forgeEnabled, reserveEnabled, onForge, onReserve }); };
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden">
@@ -2807,7 +2829,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         <button
           type="button"
           disabled={s.forged.length === 0}
-          onClick={() => s.forged.length > 0 && setCollectionOpen(true)}
+          onClick={() => { if (s.forged.length > 0) { gameAudio.playCardDraw(); setCollectionOpen(true); } }}
           className={`w-full text-left ${s.forged.length > 0 ? "cursor-pointer active:opacity-80" : "cursor-default"} ${isShortLandscape ? "mb-1" : "mb-2"}`}
         >
           <div className="flex items-center gap-3">
@@ -2970,7 +2992,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             forgeEnabled={selectedCardData.forgeEnabled}
             reserveEnabled={selectedCardData.reserveEnabled}
             onForge={selectedCardData.onForge ? () => { setSelectedCardData(null); selectedCardData.onForge!(); } : undefined}
-            onReserve={selectedCardData.onReserve ? () => { setSelectedCardData(null); selectedCardData.onReserve!(); } : undefined}
+            onReserve={selectedCardData.onReserve ? () => { gameAudio.playCardReserved(); setSelectedCardData(null); selectedCardData.onReserve!(); } : undefined}
             onClose={() => setSelectedCardData(null)}
           />
         )}
