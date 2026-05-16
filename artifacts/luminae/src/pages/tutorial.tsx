@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 import { consumePendingStartBeat } from "@/lib/tutorialStartBeat";
 import { loadTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
 import { TutorialDirector } from "@/components/tutorial/TutorialDirector";
@@ -58,5 +59,14 @@ export default function Tutorial() {
     );
   }
 
-  return <TutorialDirector startBeat={startBeat} />;
+  return (
+    <motion.div
+      initial={{ opacity: 0, filter: "blur(14px)" }}
+      animate={{ opacity: 1, filter: "blur(0px)" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      style={{ height: "100%", display: "contents" }}
+    >
+      <TutorialDirector startBeat={startBeat} />
+    </motion.div>
+  );
 }
