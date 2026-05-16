@@ -2960,7 +2960,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </AnimatePresence>
 
       {/* ── Board content area ───────────────────────────────────────── */}
-      <div className="relative z-10 flex-1 overflow-hidden">
+      <motion.div
+        className="relative z-10 flex-1 overflow-hidden"
+        initial={beatId === "b6_forge_appears" ? { scale: 1.38, y: "-12%" } : false}
+        animate={{ scale: 1, y: 0 }}
+        transition={{ duration: 1.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        style={{ transformOrigin: "50% 36%" }}
+      >
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
           <TutorialLuminarySection beatId={beatId} />
           <div ref={forgeRef} className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
@@ -2980,7 +2986,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             </>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Pinned Player Panel ────────────────────────────────────────── */}
       <motion.div
