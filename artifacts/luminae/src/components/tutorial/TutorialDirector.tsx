@@ -1650,7 +1650,7 @@ function ArchitectAssembly({
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const t = setTimeout(onComplete, prefersReducedMotion ? 200 : 3800);
+    const t = setTimeout(onComplete, prefersReducedMotion ? 200 : 4000);
     return () => clearTimeout(t);
   }, [onComplete, prefersReducedMotion]);
 
@@ -1661,29 +1661,62 @@ function ArchitectAssembly({
     const timers = [
       setTimeout(() => setPhase(1), 280),
       setTimeout(() => setPhase(2), 1050),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => setPhase(4), 2600),
+      setTimeout(() => setPhase(3), 2300),
+      setTimeout(() => setPhase(4), 2700),
     ];
     return () => timers.forEach(clearTimeout);
   }, [prefersReducedMotion]);
 
-  const regions = [
-    { label: "The Forge",     top: "7%",  height: 96, bg: "rgba(3,3,12,0.72)", ghostDy: -58, ghostDx: -18 },
-    { label: "Hand",          top: "30%", height: 52, bg: "rgba(3,3,12,0.78)", ghostDy: -22, ghostDx: 26 },
-    { label: "Storage",       top: "44%", height: 52, bg: "rgba(3,3,12,0.78)", ghostDy: -10, ghostDx: -22 },
-    { label: "Affinity Well", top: "57%", height: 78, bg: "rgba(3,3,12,0.78)", ghostDy: 28,  ghostDx: 14 },
-    { label: "Status",        top: "79%", height: 48, bg: "rgba(3,3,12,0.80)", ghostDy: 52,  ghostDx: 0  },
-  ] as const;
+  // Scale the inner 375×660 canvas to fit the available screen with comfortable margins
+  const INNER_W = 375;
+  const INNER_H = 660;
+  const [scale, setScale] = useState(0.65);
+  useEffect(() => {
+    const measure = () => {
+      const aw = window.innerWidth  * 0.84;
+      const ah = window.innerHeight * 0.76;
+      setScale(Math.min(aw / INNER_W, ah / INNER_H, 0.70));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
+  // Real card data for the first tier-1 slot
+  const t1Card = TUTORIAL_CARDS[FIRST_FORGE_ID];
+  const t1Art  = CARD_ART[FIRST_FORGE_ID];
+
+  // Section slide-in helper — each section flies in from its natural direction
+  const sectionAnim = (dy: number, delay = 0) => ({
+    initial: { opacity: 0, y: dy, scale: 0.94 },
+    animate: {
+      opacity: phase >= 1 ? 1 : 0,
+      y:       phase >= 2 ? 0 : dy,
+      scale:   phase >= 2 ? 1 : 0.94,
+    },
+    transition: {
+      type: "spring" as const,
+      stiffness: 145, damping: 22,
+      delay: phase >= 2 ? delay : 0,
+      opacity: { duration: 0.3 },
+    },
+  });
+
+  // Small card dimensions (inside the 375px inner canvas)
+  const CW = 62;  // card width
+  const CH = 88;  // card height
+
+  // Luminary portal colours (representative of the 5 in a typical game)
+  const lumColors = ["#3d6bff","#ff5a3c","#2ecc71","#4c1d95","#fef9c3"];
 
   return (
-    <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-      {/* Blueprint label */}
+    <div className="absolute inset-0 z-10 pointer-events-none flex flex-col items-center justify-center overflow-hidden">
+      {/* "Assembling interface" label above the phone */}
       <motion.div
         className="absolute inset-x-0 flex justify-center"
-        style={{ top: "1.5%" }}
+        style={{ top: "3%" }}
         initial={{ opacity: 0 }}
-        animate={{ opacity: phase >= 1 ? 0.7 : 0 }}
+        animate={{ opacity: phase >= 1 ? 0.65 : 0 }}
         transition={{ duration: 0.5 }}
       >
         <span className="text-[9px] font-semibold text-indigo-300/70 uppercase tracking-[0.38em]">
@@ -1691,57 +1724,175 @@ function ArchitectAssembly({
         </span>
       </motion.div>
 
-      {/* Ghost region outlines — styled to match real GameplayPhase sections */}
-      {regions.map((region, i) => (
-        <motion.div
-          key={region.label}
-          className="absolute left-3 right-3 rounded-2xl backdrop-blur-md"
-          style={{
-            top: region.top,
-            height: region.height,
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: region.bg,
-          }}
-          initial={{
-            opacity: 0,
-            y: region.ghostDy,
-            x: region.ghostDx,
-            scale: 0.93,
-          }}
-          animate={{
-            opacity: phase >= 1 ? (phase >= 2 ? 1 : 0.48) : 0,
-            y: phase >= 2 ? 0 : region.ghostDy,
-            x: phase >= 2 ? 0 : region.ghostDx,
-            scale: phase >= 2 ? 1 : 0.93,
-          }}
-          transition={
-            phase >= 2
-              ? {
-                  type: "spring" as const,
-                  stiffness: 150,
-                  damping: 22,
-                  delay: i * 0.11,
-                  opacity: { duration: 0.25 },
-                  scale: { type: "spring", stiffness: 150, damping: 22, delay: i * 0.11 },
-                }
-              : { duration: 0.4, delay: i * 0.09 }
-          }
+      {/* Scaled inner canvas — exact same visual language as GameplayPhase */}
+      <div style={{
+        width: INNER_W, height: INNER_H,
+        transform: `scale(${scale})`,
+        transformOrigin: "center center",
+        position: "relative",
+        flexShrink: 0,
+      }}>
+        {/* Phone outline */}
+        <motion.div className="absolute inset-0 rounded-[24px]"
+          style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.13), 0 0 50px rgba(99,102,241,0.16)" }}
+          initial={{ opacity: 0 }} animate={{ opacity: phase >= 2 ? 1 : 0 }}
+          transition={{ duration: 0.5 }}
+        />
+
+        {/* ── Header bar ── */}
+        <motion.div {...sectionAnim(-36, 0)}
+          className="absolute left-0 right-0 flex items-center justify-between px-4"
+          style={{ top: 0, height: 40, background: "rgba(3,3,12,0.96)", borderBottom: "1px solid rgba(255,255,255,0.10)", borderRadius: "24px 24px 0 0" }}
         >
-          {/* Section label — matches real board: text-[10px] text-white/40 font-semibold uppercase tracking-wider */}
-          <span className="absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-            {region.label}
-          </span>
-          {/* Content placeholder bars — hint at real section content */}
-          <div className="absolute left-3 right-3 bottom-2.5 flex gap-1.5 opacity-25">
-            <div className="h-1 flex-1 rounded-full bg-white/30" />
-            <div className="h-1 flex-[2] rounded-full bg-white/20" />
-            <div className="h-1 flex-1 rounded-full bg-white/15" />
+          <div className="flex flex-col leading-none">
+            <span className="text-[11px] font-serif font-bold text-indigo-300 tracking-wide">Luminae</span>
+            <span className="text-[7px] text-white/35 tracking-widest">Tutorial</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-[18px] h-[18px] rounded-full bg-indigo-700/60 border border-indigo-400/40 flex items-center justify-center">
+              <span className="text-[7px] font-bold text-indigo-200">L</span>
+            </div>
+            <span className="text-[8px] text-white/35">Lumii</span>
           </div>
         </motion.div>
-      ))}
 
+        {/* Scrollable board area background */}
+        <motion.div
+          className="absolute left-0 right-0"
+          style={{ top: 40, bottom: 112, background: "rgba(6,6,18,0.70)" }}
+          initial={{ opacity: 0 }} animate={{ opacity: phase >= 1 ? 1 : 0 }}
+          transition={{ duration: 0.6 }}
+        />
 
-      {/* Affinity tokens fly from center to Affinity Well */}
+        {/* ── Luminaries row ── */}
+        <motion.div {...sectionAnim(-28, 0.05)}
+          className="absolute left-0 right-0 px-3 pt-2.5 pb-2"
+          style={{ top: 40, background: "rgba(6,6,18,0.92)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="text-[7px] text-white/30 font-semibold uppercase tracking-wider mb-1.5">Luminaries</div>
+          <div className="flex gap-1.5">
+            {lumColors.map((c, i) => (
+              <div key={i} className="shrink-0 rounded-xl flex items-center justify-center"
+                style={{ width: 56, height: 48, background: `linear-gradient(170deg, ${c}18 0%, #030309 100%)`, border: `1px solid ${c}44` }}>
+                <div className="w-5 h-5 rounded-full" style={{ background: c + "44", boxShadow: `0 0 10px ${c}55` }} />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── The Forge (3 tier rows) ── */}
+        <motion.div {...sectionAnim(-16, 0.11)}
+          className="absolute left-0 right-0 mx-3 rounded-2xl"
+          style={{ top: 148, padding: "10px 10px 12px 10px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
+        >
+          <div className="text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2.5">The Forge</div>
+          {([3, 2, 1] as const).map((tier, ti) => {
+            const BackComp = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
+            const labels = ["III", "II", "I"] as const;
+            return (
+              <div key={tier} className={ti > 0 ? "mt-2" : ""}>
+                <div className="text-[6px] text-white/22 mb-1 ml-0.5">Tier {labels[ti]}</div>
+                <div className="flex items-center gap-1.5">
+                  {/* Deck pile */}
+                  <div className="shrink-0" style={{ width: 36, height: CH }}>
+                    <BackComp width={36} height={CH} />
+                  </div>
+                  {/* 4 card slots */}
+                  {[0, 1, 2, 3].map(si => {
+                    // Show the real first card in tier-1 slot 0
+                    if (tier === 1 && si === 0 && t1Card && t1Art) {
+                      const bonusMeta = GEM_META[t1Card.bonusColor];
+                      return (
+                        <div key={si} className="shrink-0 rounded-xl overflow-hidden relative"
+                          style={{ width: CW, height: CH, backgroundImage: `url(${t1Art})`, backgroundSize: "cover", backgroundPosition: "center", boxShadow: "0 0 0 1px rgba(255,255,255,0.12)" }}>
+                          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/0 to-black/80" />
+                          <div className="absolute bottom-0 left-0 right-0 p-1 flex items-end justify-between">
+                            <span className="text-[6px] font-semibold text-white drop-shadow leading-tight" style={{ maxWidth: 44 }}>{t1Card.name}</span>
+                            <div className="w-2.5 h-2.5 rounded-full ring-1 ring-black/40 overflow-hidden shrink-0">
+                              <img src={bonusMeta.image} alt="" className="w-full h-full object-contain" draggable={false} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    // Ghost slot
+                    return (
+                      <div key={si} className="shrink-0 rounded-xl flex items-center justify-center"
+                        style={{ width: CW, height: CH, background: "rgba(255,255,255,0.022)", border: "1px dashed rgba(255,255,255,0.09)" }}>
+                        <span className="text-white/12 text-base">?</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </motion.div>
+
+        {/* ── Affinity Well ── */}
+        <motion.div {...sectionAnim(20, 0.17)}
+          className="absolute left-0 right-0 mx-3 rounded-2xl"
+          style={{ top: 418, padding: "8px 8px 10px 8px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
+        >
+          <div className="text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
+          <div className="flex gap-1">
+            {ALL_GEMS.map(gem => {
+              const meta = GEM_META[gem];
+              const active = affKeys.includes(gem);
+              return (
+                <div key={gem} className="flex-1 rounded-lg flex flex-col items-center gap-0.5 py-1.5"
+                  style={{
+                    background: active ? `linear-gradient(180deg, #060611 0%, ${meta.hex}2A 100%)` : "rgba(255,255,255,0.02)",
+                    border: `1px solid ${active ? meta.hex + "77" : "rgba(255,255,255,0.06)"}`,
+                  }}>
+                  <img src={meta.image} alt="" className="w-3.5 h-3.5 object-contain" draggable={false}
+                    style={{ filter: active ? `drop-shadow(0 0 4px ${meta.glowHex})` : "none", opacity: active ? 1 : 0.28 }} />
+                  <span className="text-[8px] font-black leading-none" style={{ color: active ? "#fff" : "rgba(255,255,255,0.16)" }}>0</span>
+                  <span className="text-[5px] leading-none uppercase tracking-wide" style={{ color: meta.glowHex, opacity: active ? 0.75 : 0.25 }}>{meta.shortName}</span>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* ── Player Panel (pinned bottom) ── */}
+        <motion.div {...sectionAnim(36, 0.24)}
+          className="absolute left-0 right-0"
+          style={{ bottom: 0, height: 112, background: "rgba(3,3,12,0.92)", borderTop: "1px solid rgba(255,255,255,0.10)", borderRadius: "0 0 24px 24px", padding: "8px 12px 10px" }}
+        >
+          {/* Identity + stats row */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-[18px] h-[18px] rounded-full bg-indigo-700/70 border border-indigo-400/40 flex items-center justify-center">
+                <span className="text-[7px] font-bold text-white">Y</span>
+              </div>
+              <span className="text-[10px] font-semibold text-white">You</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[8px] text-white/35">0 Affinity</span>
+              <div className="flex items-center gap-0.5">
+                <span className="font-serif font-black text-sm text-indigo-400 leading-none">0</span>
+                <Sparkles className="h-2.5 w-2.5 text-indigo-400" />
+              </div>
+            </div>
+          </div>
+          {/* Crystal columns */}
+          <div className="flex gap-1">
+            {ALL_GEMS.map(gem => {
+              const meta = GEM_META[gem];
+              return (
+                <div key={gem} className="flex-1 rounded-md flex flex-col items-center gap-0.5 py-1"
+                  style={{ background: "linear-gradient(180deg,#07070b 0%,#0e0e14 100%)", border: `1px solid ${meta.hex}22` }}>
+                  <MiniGem gem={gem} size={8} />
+                  <span className="text-[9px] font-black leading-none" style={{ color: meta.hex + "38" }}>0</span>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Affinity tokens fly from center into the well — phase 4 */}
       <AnimatePresence>
         {phase >= 4 && (
           <>
@@ -1751,56 +1902,17 @@ function ArchitectAssembly({
                 <motion.div
                   key={`fly-${key}`}
                   className="absolute"
-                  style={{
-                    left: "50%",
-                    top: "45%",
-                    marginLeft: -16,
-                    marginTop: -16,
-                  }}
+                  style={{ left: "50%", top: "45%", marginLeft: -16, marginTop: -16 }}
                   initial={{ opacity: 0, x: 0, y: 0, scale: 0.7 }}
-                  animate={{
-                    opacity: [0, 1, 1, 0],
-                    x: [0, spreadX, spreadX * 0.4, 0],
-                    y: [0, -24, 48, 100],
-                    scale: [0.7, 1.1, 0.9, 0.55],
-                  }}
+                  animate={{ opacity: [0, 1, 1, 0], x: [0, spreadX, spreadX * 0.4, 0], y: [0, -24, 48, 100], scale: [0.7, 1.1, 0.9, 0.55] }}
                   exit={{ opacity: 0 }}
-                  transition={{
-                    duration: 1.05,
-                    delay: i * 0.1,
-                    times: [0, 0.28, 0.65, 1],
-                    ease: "easeInOut",
-                  }}
+                  transition={{ duration: 1.05, delay: i * 0.1, times: [0, 0.28, 0.65, 1], ease: "easeInOut" }}
                 >
-                  <img
-                    src={GEM_META[key].image}
-                    alt=""
-                    className="w-8 h-8 object-contain"
-                    draggable={false}
-                    style={{
-                      filter: `drop-shadow(0 0 8px ${GEM_META[key].glowHex})`,
-                    }}
-                  />
+                  <img src={GEM_META[key].image} alt="" className="w-8 h-8 object-contain" draggable={false}
+                    style={{ filter: `drop-shadow(0 0 8px ${GEM_META[key].glowHex})` }} />
                 </motion.div>
               );
             })}
-            {/* Per-affinity well pulse on each token arrival */}
-            {affKeys.map((key, i) => (
-              <motion.div
-                key={`well-pulse-${key}`}
-                className="absolute left-3 right-3 rounded-2xl pointer-events-none"
-                style={{ top: "57%", height: 78 }}
-                initial={{ boxShadow: `0 0 0px ${GEM_META[key].glowHex}00` }}
-                animate={{
-                  boxShadow: [
-                    `0 0 0px ${GEM_META[key].glowHex}00`,
-                    `0 0 20px ${GEM_META[key].glowHex}72`,
-                    `0 0 6px ${GEM_META[key].glowHex}18`,
-                  ],
-                }}
-                transition={{ duration: 0.85, delay: 0.5 + i * 0.2, times: [0, 0.32, 1] }}
-              />
-            ))}
           </>
         )}
       </AnimatePresence>
