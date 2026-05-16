@@ -3366,7 +3366,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     </AnimatePresence>
   );
 
-  const isCinematicPhase = s.beat <= 9;
+  const isCinematicPhase = s.beat <= 10;
 
   // Determine which gameplay sub-component to render (beats 10+)
   // Sub-phase key: b15 and b17 get their own keys so a nested AnimatePresence
