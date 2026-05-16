@@ -472,7 +472,7 @@ function TutorialCard({
 
   return (
     <motion.div
-      animate={{ scale: 1, y: 0 }}
+      animate={{ scale: foreground ? 1.1 : 1, y: 0 }}
       whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
@@ -487,6 +487,15 @@ function TutorialCard({
         className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
+        {foreground && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: "radial-gradient(ellipse 90% 80% at 50% 40%, rgba(255,240,180,0.18) 0%, transparent 70%)",
+              zIndex: 5,
+            }}
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
         {highlighted && (
           <motion.div
