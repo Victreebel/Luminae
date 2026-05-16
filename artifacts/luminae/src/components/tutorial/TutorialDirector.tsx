@@ -3091,7 +3091,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
-    if (beatId === "b6b_root_lattice") return "forge";
+    if (beatId === "b6b_root_lattice") return "tier1";
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
