@@ -20,7 +20,7 @@ export function DevTutorialNav({ beatIndex, dispatch }: Props) {
       style={{
         position: "fixed",
         top: 8,
-        right: 8,
+        left: 8,
         zIndex: 9999,
         background: "rgba(0,0,0,0.82)",
         border: "1px solid rgba(255,200,80,0.35)",
