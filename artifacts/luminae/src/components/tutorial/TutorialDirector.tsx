@@ -3362,17 +3362,23 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <TutorialLuminarySection beatIndex={s.beat} />
           <motion.div
             ref={forgeRef}
-            className={`border rounded-2xl p-3 backdrop-blur-md`}
-            style={{ background: "rgba(3,3,12,0.72)" }}
+            className={`border ${isForgeHighlighted ? "border-transparent" : "border-white/10"} rounded-2xl p-3 backdrop-blur-md`}
+            style={{
+              background: "rgba(3,3,12,0.72)",
+              boxShadow: isForgeHighlighted
+                ? "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)"
+                : undefined,
+            }}
             animate={isForgeHighlighted
-              ? {
-                  boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 20px rgba(251,191,36,0.35)", "0 0 8px rgba(251,191,36,0.12)", "0 0 24px rgba(251,191,36,0.4)", "0 0 0px rgba(251,191,36,0)"],
-                  borderColor: ["rgba(251,191,36,0.2)", "rgba(251,191,36,0.95)", "rgba(251,191,36,0.3)", "rgba(251,191,36,1)", "rgba(251,191,36,0.2)"],
-                }
-              : { boxShadow: "0 0 0px rgba(251,191,36,0)", borderColor: "rgba(255,255,255,0.1)" }
+              ? { boxShadow: [
+                  "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)",
+                  "inset 0 0 0 2px rgba(251,191,36,0.45), inset 0 0 6px rgba(251,191,36,0.12)",
+                  "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)",
+                ]}
+              : { boxShadow: "inset 0 0 0 0px rgba(251,191,36,0), inset 0 0 0px rgba(251,191,36,0)" }
             }
             transition={isForgeHighlighted
-              ? { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
+              ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
               : { duration: 0.4 }
             }
           >
