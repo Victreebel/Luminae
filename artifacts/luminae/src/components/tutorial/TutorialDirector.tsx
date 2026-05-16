@@ -1391,9 +1391,6 @@ function ArchitectAssembly({
     { label: "Status",        top: "79%", height: 48, bg: "rgba(3,3,12,0.80)", ghostDy: 52,  ghostDx: 0  },
   ] as const;
 
-  const linePairs: [number, number][] = [[0,1],[1,2],[2,3],[3,4],[0,3]];
-  const centerYs = [14, 34, 50, 63, 83];
-  const lineColors = ["rgba(255,255,255,0.18)","rgba(255,255,255,0.14)","rgba(255,255,255,0.16)","rgba(255,255,255,0.14)","rgba(255,255,255,0.12)"];
 
   return (
     <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
@@ -1459,36 +1456,6 @@ function ArchitectAssembly({
         </motion.div>
       ))}
 
-      {/* Constellation SVG lines between regions */}
-      <AnimatePresence>
-        {phase === 2 && (
-          <motion.svg
-            key="constellation"
-            className="absolute inset-0 w-full h-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.55 }}
-          >
-            {linePairs.map(([a, b], i) => (
-              <motion.line
-                key={i}
-                x1={50} y1={centerYs[a]}
-                x2={50} y2={centerYs[b]}
-                stroke={lineColors[i]}
-                strokeWidth="0.35"
-                strokeDasharray="1.5 1.0"
-                initial={{ strokeOpacity: 0 }}
-                animate={{ strokeOpacity: 0.55 }}
-                exit={{ strokeOpacity: 0 }}
-                transition={{ duration: 0.35, delay: i * 0.07 }}
-              />
-            ))}
-          </motion.svg>
-        )}
-      </AnimatePresence>
 
       {/* Affinity tokens fly from center to Affinity Well */}
       <AnimatePresence>
