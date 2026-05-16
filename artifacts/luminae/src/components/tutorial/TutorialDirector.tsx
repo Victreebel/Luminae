@@ -422,7 +422,7 @@ function TutorialCard({
       style={{ width: 112, height: 160 }}
     >
       <div
-        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : foreground ? "ring-2 ring-white/60 shadow-white/20" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : foreground ? "ring-2 ring-inset ring-white/50" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
