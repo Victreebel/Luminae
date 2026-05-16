@@ -1649,21 +1649,10 @@ function ArchitectAssembly({
 }) {
   const prefersReducedMotion = useReducedMotion();
 
-  // Stable ref — keeps the tap handler pointing at the latest onComplete without
-  // putting onComplete in any effect dependency array (which would reset timers on every render).
-  const onCompleteRef = useRef(onComplete);
-  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-
-  // When reduced-motion is confirmed true, show the prompt quickly (sections appear instantly
-  // via phase=4 initial state); otherwise wait for the assembly to finish at ~2.7 s.
-  // Using === true so the null initial value of useReducedMotion() keeps the full delay.
-  const tapDelay = prefersReducedMotion === true ? 150 : 2800;
-
-  const [tapReady, setTapReady] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setTapReady(true), tapDelay);
+    const t = setTimeout(onComplete, prefersReducedMotion ? 200 : 4000);
     return () => clearTimeout(t);
-  }, [tapDelay]);
+  }, [onComplete, prefersReducedMotion]);
 
   const [phase, setPhase] = useState(prefersReducedMotion ? 4 : 0);
 
@@ -1928,37 +1917,6 @@ function ArchitectAssembly({
           </>
         )}
       </AnimatePresence>
-
-      {/* Tap-to-continue — appears after assembly settles, pointer-events-auto so it's clickable */}
-      <AnimatePresence>
-        {tapReady && (
-          <motion.div
-            key="tap-prompt"
-            className="absolute inset-0 z-30 flex items-end justify-center pointer-events-auto"
-            style={{ paddingBottom: "8%" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            onClick={() => { gameAudio.playButtonConfirm(); onComplete(); }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.4 }}
-              className="bg-slate-950/92 border border-white/12 rounded-2xl px-6 py-3.5 shadow-2xl backdrop-blur-md select-none"
-              style={{ boxShadow: "0 0 0 1px rgba(255,255,255,0.07), 0 12px 40px rgba(0,0,0,0.85)" }}
-            >
-              <p className="text-sm text-white/85 text-center leading-snug">Your arena awaits.</p>
-              <motion.p
-                animate={{ opacity: [0.28, 0.62, 0.28] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                className="text-[10px] text-white/35 text-center mt-1.5"
-              >tap to continue</motion.p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
@@ -1975,7 +1933,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
-  const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5b2_how_to_use", "b5c_architect_assembly"];
+  const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5c_architect_assembly"];
   // Pre-shatter dialogue beats that can also be skipped — excludes b3b_farewell ("take me home" branch)
   const SKIP_PRE_SHATTER_IDS = ["b0_contact", "b1_locate", "b2_lumii_intro", "b3_architect", "b3c_border"];
   const isSkippableBeat = SKIP_CINEMATIC_IDS.includes(beat.id) || SKIP_PRE_SHATTER_IDS.includes(beat.id);
