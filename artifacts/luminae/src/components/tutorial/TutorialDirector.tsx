@@ -1447,6 +1447,22 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
+      {/* ── Impact flash — rendered here (behind shards) so the shards fly
+          in front of the fading white burst rather than being buried under it */}
+      <AnimatePresence>
+        {impactFlash && (
+          <motion.div
+            key="shatter-flash"
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse at 50% 45%, #ffffff 0%, #d8e4f0 35%, #b0c8e0 65%, transparent 100%)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1.0, 0.90, 0.70] }}
+            transition={{ duration: 0.7, times: [0, 0.12, 0.35, 1.0], ease: 'easeOut' }}
+            exit={{ opacity: 0, transition: { duration: 2.5, ease: 'easeOut' } }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* ── Single seamless dark panel (pre-shatter) — fades in over the pressure phase
           so beat 6 → beat 7 looks like the screen is slowly darkening/crystallising
           rather than glass suddenly slamming down. No clip paths = no seam lines. */}
@@ -1647,20 +1663,6 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
-      {/* ── Impact flash at the instant shattering fires ─────────────────── */}
-      <AnimatePresence>
-        {impactFlash && (
-          <motion.div
-            key="shatter-flash"
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse at 50% 45%, #ffffff 0%, #d8e4f0 35%, #b0c8e0 65%, transparent 100%)' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1.0, 0.90, 0.70] }}
-            transition={{ duration: 0.7, times: [0, 0.12, 0.35, 1.0], ease: 'easeOut' }}
-            exit={{ opacity: 0, transition: { duration: 2.5, ease: 'easeOut' } }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
