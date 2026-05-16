@@ -240,6 +240,11 @@ function DialogueBox({
   choices?: { label: string; value: string }[];
   onChoice?: (value: string) => void;
 }) {
+  // Once any interactive button is pressed, lock out all further clicks so a
+  // fast double-tap during the AnimatePresence exit animation can't fire a
+  // second action (e.g. "Take me home" after the user already picked "Go").
+  const interactedRef = useRef(false);
+
   const text = nudge ?? (lines[lineIndex]?.text ?? "");
   const isLast = lineIndex >= lines.length - 1;
   const isPassiveMode = mode === "listen" || mode === "look";
@@ -285,7 +290,7 @@ function DialogueBox({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            onClick={() => { gameAudio.playButtonConfirm(); onPlayerResponse!(); }}
+            onClick={() => { if (interactedRef.current) return; interactedRef.current = true; gameAudio.playButtonConfirm(); onPlayerResponse!(); }}
             className="mt-3 w-full py-2.5 rounded-xl text-sm font-medium tracking-wide text-amber-200 select-none cursor-pointer"
             style={{
               background: "rgba(251,191,36,0.08)",
@@ -304,7 +309,7 @@ function DialogueBox({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.12, duration: 0.4 }}
-                onClick={() => { gameAudio.playButtonConfirm(); onChoice!(c.value); }}
+                onClick={() => { if (interactedRef.current) return; interactedRef.current = true; gameAudio.playButtonConfirm(); onChoice!(c.value); }}
                 className="w-full py-2.5 rounded-xl text-sm font-medium tracking-wide select-none cursor-pointer transition-all active:scale-[0.98]"
                 style={i === 0 ? {
                   background: "rgba(251,191,36,0.12)",
