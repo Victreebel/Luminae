@@ -1866,7 +1866,7 @@ function ArchitectAssembly({
           style={{ top: 0, height: 40, background: "rgba(3,3,12,0.96)", borderBottom: "1px solid rgba(255,255,255,0.10)", borderRadius: "24px 24px 0 0" }}
         >
           <div className="flex flex-col leading-none">
-            <span className="text-[11px] font-serif font-bold text-indigo-300 tracking-wide">Luminae</span>
+            <span className="text-[11px] font-serif font-bold text-indigo-300 tracking-wide">LUMINAe</span>
             <span className="text-[7px] text-white/35 tracking-widest">Tutorial</span>
           </div>
         </motion.div>
@@ -3100,7 +3100,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       <header className="shrink-0 z-30 flex items-center justify-between px-4 py-2 border-b border-white/10 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.82)" }}>
         <div className="flex items-center gap-2">
           <div className="flex flex-col leading-none">
-            <span className="text-sm font-serif font-bold text-indigo-300 tracking-wide">Luminae</span>
+            <span className="text-sm font-serif font-bold text-indigo-300 tracking-wide">LUMINAe</span>
             <span className="text-[9px] text-white/35 tracking-widest">Tutorial</span>
           </div>
         </div>
