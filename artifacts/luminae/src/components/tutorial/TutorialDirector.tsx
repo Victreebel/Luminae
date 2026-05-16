@@ -1931,6 +1931,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [cosmosVisible, setCosmosVisible] = useState(false);
   const [shatteringStarted, setShatteringStarted] = useState(false);
   const [assemblyDone, setAssemblyDone] = useState(false);
+  const [lumiDropped, setLumiDropped] = useState(false);
+  const [lumiSweepDone, setLumiSweepDone] = useState(false);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -1968,7 +1970,20 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   }, [isLocate, dispatch]);
 
   // Reset shatterReady and assemblyDone whenever the beat changes
-  useEffect(() => { setShatterReady(false); setAssemblyDone(false); }, [s.beat]);
+  useEffect(() => {
+    setShatterReady(false);
+    setAssemblyDone(false);
+    setLumiDropped(false);
+    setLumiSweepDone(false);
+  }, [s.beat]);
+
+  // After assembly completes: drop Lumi to Tier 1 row height, then sweep left, then show dialogue
+  useEffect(() => {
+    if (!assemblyDone) return;
+    const t1 = setTimeout(() => setLumiDropped(true),  420);
+    const t2 = setTimeout(() => setLumiSweepDone(true), 1500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [assemblyDone]);
 
   // Auto-start shatter when b4_shatter has no dialogue to tap through
   useEffect(() => {
@@ -2109,12 +2124,23 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
               x: 0,
               opacity: 1,
               scale: 1,
-              top: isAffinityTokens ? "70%" : isArchitectAssembly ? "26%" : "50%",
-              left: isArchitectAssembly ? "87%" : "50%",
+              top:  isAffinityTokens              ? "70%"
+                  : (isArchitectAssembly && assemblyDone) ? "52%"
+                  : isArchitectAssembly            ? "26%"
+                  : "50%",
+              left: (isArchitectAssembly && lumiDropped) ? "13%"
+                  : isArchitectAssembly             ? "87%"
+                  : "50%",
             }}
             transition={isArchitectAssembly ? {
-              top:   { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
-              left:  { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
+              top: assemblyDone
+                ? { duration: 0.5, ease: [0.4, 0, 0.2, 1] as const }
+                : { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
+              left: lumiDropped
+                ? { duration: 0.9, ease: [0.4, 0, 0.2, 1] as const }
+                : assemblyDone
+                  ? { duration: 0.01 }
+                  : { type: "spring" as const, stiffness: 100, damping: 22, delay: 2.8 },
               x:     { type: "spring" as const, stiffness: 120, damping: 20 },
               opacity: { duration: 0.3 },
               scale: { type: "spring" as const, stiffness: 120, damping: 20 },
@@ -2128,8 +2154,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
         )}
       </AnimatePresence>
 
-      {/* Architect Assembly dialogue — appears above the interface preview once assembly finishes */}
-      {isArchitectAssembly && assemblyDone && beat.dialogue.length > 0 && (
+      {/* Architect Assembly dialogue — appears once Lumi finishes sweeping past Tier 1 */}
+      {isArchitectAssembly && lumiSweepDone && beat.dialogue.length > 0 && (
         <div
           className="absolute z-30 left-0 right-0 flex justify-center pointer-events-none"
           style={{ bottom: "6%" }}
