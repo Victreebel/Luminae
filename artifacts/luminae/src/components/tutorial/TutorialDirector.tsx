@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
-import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
+import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { useLocation } from "wouter";
@@ -3716,6 +3716,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
       markTutorialComplete();
     } else if (s.beat > 0 && TUTORIAL_BEATS[s.beat]?.id !== "b3b_farewell") {
       saveTutorialProgress(s.beat);
+      saveTutorialProgressId(TUTORIAL_BEATS[s.beat]?.id ?? "");
     }
     if (s.beat >= BEAT_INDEX["b6_forge_appears"]) {
       markIntroSeen(BEAT_INDEX["b6_forge_appears"]);

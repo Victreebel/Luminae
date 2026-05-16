@@ -1,4 +1,5 @@
 const PROGRESS_KEY = "luminae_tutorial_progress";
+const PROGRESS_ID_KEY = "luminae_tutorial_progress_id";
 const SEEN_KEY = "luminae_tutorial_seen";
 const COMPLETED_KEY = "luminae_tutorial_completed";
 const INTRO_SEEN_KEY = "luminae_intro_seen_beat";
@@ -36,9 +37,25 @@ export function loadTutorialProgress(): number | null {
   }
 }
 
+export function saveTutorialProgressId(id: string): void {
+  try {
+    localStorage.setItem(PROGRESS_ID_KEY, id);
+  } catch {
+  }
+}
+
+export function loadTutorialProgressId(): string | null {
+  try {
+    return localStorage.getItem(PROGRESS_ID_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function clearTutorialProgress(): void {
   try {
     localStorage.removeItem(PROGRESS_KEY);
+    localStorage.removeItem(PROGRESS_ID_KEY);
   } catch {
   }
 }

@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { consumePendingStartBeat } from "@/lib/tutorialStartBeat";
-import { loadTutorialProgress, clearTutorialProgress } from "@/lib/tutorialProgress";
+import { loadTutorialProgress, loadTutorialProgressId, clearTutorialProgress } from "@/lib/tutorialProgress";
 import { TutorialDirector } from "@/components/tutorial/TutorialDirector";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
-import { TUTORIAL_BEATS } from "@/lib/tutorialData";
+import { TUTORIAL_BEATS, BEAT_INDEX } from "@/lib/tutorialData";
 
 type Phase = "prompt" | "playing";
 
@@ -27,7 +27,16 @@ export default function Tutorial() {
       })()
     : null;
 
-  const savedBeat = loadTutorialProgress();
+  const savedBeat = (() => {
+    const rawIdx = loadTutorialProgress();
+    if (rawIdx === null) return null;
+    const savedId = loadTutorialProgressId();
+    if (savedId) {
+      const currentIdx = BEAT_INDEX[savedId];
+      if (currentIdx != null) return currentIdx;
+    }
+    return rawIdx;
+  })();
   const hasMidProgress =
     savedBeat !== null &&
     savedBeat > 0 &&
