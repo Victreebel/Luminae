@@ -1333,6 +1333,31 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   // pathLength={1} tells framer-motion the total length is 1 so it drives
   // stroke-dasharray/offset directly without a DOM measurement — this ensures
   // the path reliably starts hidden (pathLength:0) every time it mounts.
+
+  // Pulse layer — independent MotionValue so the one-shot draw-in and the
+  // repeating loop never interfere with each other.
+  const pulseOp   = useMotionValue(0);
+  const pulseOp4  = useMotionValue(0);
+  useEffect(() => {
+    if (isDetail) return;
+    // Wait for L3/L4 draw-in to settle, then begin breathing loop.
+    const settle = (d1 + 0.14 + 0.95) * 1000;
+    const id = setTimeout(() => {
+      // Wide glow pulse — L3-equivalent, offset timing so each crack segment
+      // breathes slightly out of phase with its neighbours.
+      fmAnimate(pulseOp,  [0.20, 0.50, 0.16, 0.46, 0.20], { duration: 2.8, repeat: Infinity, ease: 'easeInOut' });
+      // Narrow seam pulse — subtler, slightly slower
+      fmAnimate(pulseOp4, [0.14, 0.38, 0.10, 0.34, 0.14], { duration: 3.2, delay: 0.4, repeat: Infinity, ease: 'easeInOut' });
+    }, settle);
+    return () => {
+      clearTimeout(id);
+      pulseOp.set(0);
+      pulseOp4.set(0);
+    };
+  // d1 and isDetail come from constants — intentionally stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (isDetail) {
     return (
       <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.18" fill="none"
@@ -1369,11 +1394,21 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
         animate={{ pathLength: 1, opacity: [0, 0, 0.55, 0.75, 0.65] }}
         transition={{ duration: 0.85, delay: d1 + 0.14, ease: 'easeOut' }}
       />
+      {/* L3-pulse — same wide glow, breathes after L3 settles */}
+      <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="3.2" fill="none"
+        filter="url(#fso-cgw)"
+        style={{ opacity: pulseOp }}
+      />
       {/* L4 tinted seam — narrow cool-white line showing the crack edge */}
       <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="0.45" fill="none"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.60, 0.52] }}
         transition={{ duration: 0.80, delay: d1 + 0.16, ease: 'easeOut' }}
+      />
+      {/* L4-pulse — seam breathes with a slower, softer oscillation */}
+      <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.28" fill="none"
+        filter="url(#fso-cgb)"
+        style={{ opacity: pulseOp4 }}
       />
     </>
   );
