@@ -1063,14 +1063,21 @@ function CardFlipReveal({
 
   const W = 112, H = 160;
   // Full deck offset: DeckPile outer div is 120 px, gap-3 = 12 px.
-  // The tier row uses overflow:visible during this beat so the transform is not clipped.
+  // Slot 1 sits at container-x=132; transform x=-132 puts painted position at x=0 (deck edge),
+  // which is within the overflow-x-auto scroll container's visible range.
   const DEAL_X = -(120 + 12);
 
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
+      {/* Idle — card back already sitting at deck position so there's no blank-slot flash
+           when entering the beat. The deal animation then slides it into slot 1. */}
       {phase === "idle" && (
-        <div key="ghost" style={{ width: W, height: H }}
-          className="rounded-xl border border-white/8 bg-white/[0.018]" />
+        <div key="idle"
+          className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
+          style={{ width: W, height: H, transform: `translateX(${DEAL_X}px)` }}
+        >
+          <BackFace />
+        </div>
       )}
 
       {/* Deal slide — keyed so it always mounts fresh with a clean closure */}
@@ -1255,7 +1262,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, onR
         <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">
           Tier {tier} — {label}
         </div>
-        <div className={`flex gap-3 ${beatId === "b6b_root_lattice" ? "overflow-visible" : "overflow-x-auto"} pt-1 pb-2 items-start`} style={{ minHeight: 170 }}>
+        <div className="flex gap-3 overflow-x-auto pt-1 pb-2 items-start" style={{ minHeight: 170 }}>
           <DeckPile tier={tier} count={deckCount} />
           {slots.map((slot, idx) => {
             if (slot.kind === 'real') {
