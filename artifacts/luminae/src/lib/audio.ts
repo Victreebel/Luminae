@@ -780,7 +780,11 @@ class GameAudio {
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -14; comp.knee.value = 10;
       comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.18;
-      comp.connect(ctx.destination);
+      // Master gain: scales the entire procedural synthesis chain down for subtlety
+      const master = ctx.createGain();
+      master.gain.value = 0.42;
+      comp.connect(master);
+      master.connect(ctx.destination);
       const D = comp;
 
       const s = (ms: number) => t + ms / 1000;
@@ -855,11 +859,11 @@ class GameAudio {
       this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
 
       // ── MP3 assets — same SFX as summon cutscene ─────────────────────
-      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,          0.80);
-      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,          0.76);
-      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,          0.90);
-      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,    0.82);
-      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,          0.88);
+      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,          0.36);
+      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,          0.34);
+      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,          0.40);
+      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,    0.37);
+      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,          0.40);
 
     } catch (e) {
       console.warn('[Luminae] Tutorial shatter audio failed', e);
