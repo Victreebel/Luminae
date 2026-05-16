@@ -2161,7 +2161,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       {isArchitectAssembly && assemblyDone && beat.dialogue.length > 0 && (
         <div
           className="absolute z-30 left-0 right-0 flex justify-center pointer-events-none"
-          style={{ top: "6%" }}
+          style={{ bottom: "6%" }}
         >
           <div className="pointer-events-auto" style={{ width: 280 }}>
             <AnimatePresence mode="wait">
