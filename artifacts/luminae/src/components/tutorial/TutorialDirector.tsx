@@ -487,17 +487,6 @@ function TutorialCard({
         className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
-        {foreground && (
-          <motion.div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: "radial-gradient(ellipse 100% 90% at 50% 50%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 55%, transparent 100%)",
-              zIndex: 5,
-            }}
-            animate={{ opacity: [0.9, 0, 0.9] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-          />
-        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
         {highlighted && (
           <motion.div
