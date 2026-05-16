@@ -458,6 +458,34 @@ function TutorialCard({
   );
 }
 
+// ─── Landscape detection ──────────────────────────────────────────────────────
+// Fires when the device is in landscape orientation with a short viewport
+// (typical phone landscape: e.g. 844×390). Used to compact the player panel
+// and reposition the dialogue box so nothing clips off-screen.
+function useIsShortLandscape() {
+  const [is, setIs] = useState(
+    () => typeof window !== "undefined" &&
+      window.matchMedia("(orientation: landscape) and (max-height: 520px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape) and (max-height: 520px)");
+    const handler = (e: MediaQueryListEvent) => setIs(e.matches);
+    // `addEventListener` is available in all modern browsers (Safari 14+,
+    // Chrome 39+, Firefox 55+). Older Safari used the now-deprecated
+    // `addListener` — fall back to it so the hook works without crashing.
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      mq.addListener(handler);
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      return () => mq.removeListener(handler);
+    }
+  }, []);
+  return is;
+}
+
 // ─── Tutorial Card Sheet ──────────────────────────────────────────────────────
 // Bottom sheet that slides up when a card is tapped — matches real game's action
 // sheet pattern. Forge/Reserve actions happen here rather than below the card.
@@ -2220,6 +2248,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const beatId = beat.id;
   const subStep = s.subStep;
   const [menuOpen, setMenuOpen] = useState(false);
+  const isShortLandscape = useIsShortLandscape();
 
   // Card action sheet
   const [selectedCardData, setSelectedCardData] = useState<{
@@ -2298,7 +2327,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     center:           { x: "50%", y: "38%" },
     luminary:         { x: "50%", y: "28%" },
   };
-  const lumiiPos = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "88%" };
+  const lumiiPosRaw = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "62%" };
+  // In landscape, the player panel occupies the bottom ~25% of a short viewport.
+  // Clamp Lumii's y so it always stays in the visible content area (above panel).
+  const lumiiPos = isShortLandscape
+    ? { x: lumiiPosRaw.x, y: `${Math.min(parseFloat(lumiiPosRaw.y), 60)}%` }
+    : lumiiPosRaw;
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
@@ -2451,7 +2485,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Board content area ───────────────────────────────────────── */}
       <div className="relative z-10 flex-1 overflow-hidden">
-        <div ref={scrollRef} className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3 pb-4">
+        <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
           <TutorialLuminarySection beatId={beatId} />
           <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
             <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
@@ -2474,7 +2508,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
       {/* ── Pinned Player Panel ────────────────────────────────────────── */}
       <motion.div
-        className={`shrink-0 z-20 border-t px-3 pt-2 backdrop-blur-md transition-all ${
+        className={`shrink-0 z-20 border-t px-3 backdrop-blur-md transition-all ${
+          isShortLandscape ? "pt-1" : "pt-2"
+        } ${
           isEminenceHighlighted ? "border-amber-400/60" : isActMode ? "border-indigo-500/40" : "border-white/10"
         }`}
         animate={isEminenceHighlighted
@@ -2484,7 +2520,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         transition={isEminenceHighlighted ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
         style={{ background: "rgba(3,3,12,0.80)", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}
       >
-        <div className="flex items-center gap-3 mb-2">
+        <div className={`flex items-center gap-3 ${isShortLandscape ? "mb-1" : "mb-2"}`}>
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <div className="w-[22px] h-[22px] rounded-full bg-indigo-700/70 border border-indigo-400/40 flex items-center justify-center shrink-0">
               <span className="text-[9px] font-bold text-white">Y</span>
@@ -2516,7 +2552,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             const reservedCount = gem === "flux" ? s.reserved.length : 0;
             const hasContent = gem === "flux" ? (held > 0 || reservedCount > 0) : (held > 0 || bonus > 0);
             return (
-              <div key={gem} className="flex-1 min-h-[72px] flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
+              <div key={gem}
+                className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden ${isShortLandscape ? "min-h-[44px] pt-1 pb-1" : "min-h-[72px] pt-1.5 pb-1.5"}`}
                 style={{
                   background: hasContent ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)` : "linear-gradient(180deg, #07070b 0%, #0e0e14 100%)",
                   border: `1px solid ${hasContent ? meta.hex + "AA" : meta.hex + "22"}`,
@@ -2527,7 +2564,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                   <span className="text-[7px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
                   <MiniGem gem={gem} size={7} />
                 </div>
-                <span className="text-2xl font-black leading-none tracking-tight"
+                <span className={`${isShortLandscape ? "text-lg" : "text-2xl"} font-black leading-none tracking-tight`}
                   style={{ color: hasContent ? "#fff" : meta.hex + "40", textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none" }}
                 >{held}</span>
                 {gem !== "flux" && bonus > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>}
@@ -2644,7 +2681,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           className="fixed left-0 right-0 z-50 px-4"
           style={cameraFocus === "well"
             ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
-            : { bottom: "calc(160px + env(safe-area-inset-bottom, 0px))" }
+            : {
+                // In landscape the player panel is ~90px tall; in portrait ~160px.
+                // Keep the dialogue floating just above the panel in both orientations.
+                bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,
+              }
           }
         >
           <AnimatePresence mode="wait">
