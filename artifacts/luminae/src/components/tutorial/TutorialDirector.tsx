@@ -1711,10 +1711,6 @@ function ArchitectAssembly({
     return () => window.removeEventListener("resize", measure);
   }, []);
 
-  // Real card data for the first tier-1 slot
-  const t1Card = TUTORIAL_CARDS[FIRST_FORGE_ID];
-  const t1Art  = CARD_ART[FIRST_FORGE_ID];
-
   // Section slide-in helper — each section flies in from its natural direction
   const sectionAnim = (dy: number, delay = 0) => ({
     initial: { opacity: 0, y: dy, scale: 0.94 },
@@ -1795,11 +1791,9 @@ function ArchitectAssembly({
         >
           <div className="text-[7px] text-white/30 font-semibold uppercase tracking-wider mb-1.5">Luminaries</div>
           <div className="flex gap-1.5">
-            {lumColors.map((c, i) => (
+            {lumColors.map((_, i) => (
               <div key={i} className="shrink-0 rounded-xl flex items-center justify-center"
-                style={{ width: 56, height: 48, background: `linear-gradient(170deg, ${c}18 0%, #030309 100%)`, border: `1px solid ${c}44` }}>
-                <div className="w-5 h-5 rounded-full" style={{ background: c + "44", boxShadow: `0 0 10px ${c}55` }} />
-              </div>
+                style={{ width: 56, height: 48, background: "rgba(255,255,255,0.022)", border: "1px dashed rgba(255,255,255,0.09)" }} />
             ))}
           </div>
         </motion.div>
@@ -1821,32 +1815,13 @@ function ArchitectAssembly({
                   <div className="shrink-0" style={{ width: 36, height: CH }}>
                     <BackComp />
                   </div>
-                  {/* 4 card slots */}
-                  {[0, 1, 2, 3].map(si => {
-                    // Show the real first card in tier-1 slot 0
-                    if (tier === 1 && si === 0 && t1Card && t1Art) {
-                      const bonusMeta = GEM_META[t1Card.bonusColor];
-                      return (
-                        <div key={si} className="shrink-0 rounded-xl overflow-hidden relative"
-                          style={{ width: CW, height: CH, backgroundImage: `url(${t1Art})`, backgroundSize: "cover", backgroundPosition: "center", boxShadow: "0 0 0 1px rgba(255,255,255,0.12)" }}>
-                          <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/0 to-black/80" />
-                          <div className="absolute bottom-0 left-0 right-0 p-1 flex items-end justify-between">
-                            <span className="text-[6px] font-semibold text-white drop-shadow leading-tight" style={{ maxWidth: 44 }}>{t1Card.name}</span>
-                            <div className="w-2.5 h-2.5 rounded-full ring-1 ring-black/40 overflow-hidden shrink-0">
-                              <img src={bonusMeta.image} alt="" className="w-full h-full object-contain" draggable={false} />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    // Ghost slot
-                    return (
-                      <div key={si} className="shrink-0 rounded-xl flex items-center justify-center"
-                        style={{ width: CW, height: CH, background: "rgba(255,255,255,0.022)", border: "1px dashed rgba(255,255,255,0.09)" }}>
-                        <span className="text-white/12 text-base">?</span>
-                      </div>
-                    );
-                  })}
+                  {/* 4 ghost card slots */}
+                  {[0, 1, 2, 3].map(si => (
+                    <div key={si} className="shrink-0 rounded-xl flex items-center justify-center"
+                      style={{ width: CW, height: CH, background: "rgba(255,255,255,0.022)", border: "1px dashed rgba(255,255,255,0.09)" }}>
+                      <span className="text-white/12 text-base">?</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
