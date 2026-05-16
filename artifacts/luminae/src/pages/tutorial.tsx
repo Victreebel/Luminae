@@ -38,10 +38,10 @@ export default function Tutorial() {
       setPhase("playing");
     } else if (choice === "start-over") {
       clearTutorialProgress();
-      setStartBeat(undefined);
+      setStartBeat(0);   // explicit 0 bypasses the hasTutorialSeen() → shatter fallback
       setPhase("playing");
     } else if (choice === "begin") {
-      setStartBeat(undefined);
+      setStartBeat(0);   // same: always start from beat 0 for a fresh run
       setPhase("playing");
     } else {
       navigate("/");
