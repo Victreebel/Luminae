@@ -101,7 +101,6 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
   const innerBg = `conic-gradient(from 90deg,${p[1]}bb,${p[2]}99,${p[5]}bb,${p[3]}bb,${p[0]}99,${p[1]}bb)`;
   return (
     <motion.div
-      key={prefersReducedMotion ? undefined : beatKey}
       style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}
       initial={prefersReducedMotion ? false : { scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
