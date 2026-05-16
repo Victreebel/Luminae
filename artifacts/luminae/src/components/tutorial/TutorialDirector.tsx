@@ -65,7 +65,7 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
 // ─── Ember / spark particles ──────────────────────────────────────────────────
 const EMBER_PALETTE_ORB = ["#f87171","#60a5fa","#4ade80","#c084fc","#f8fafc","#fbbf24"] as const;
-const MUTED_ORB_PALETTE  = ["#b0b8c8","#8090a4","#c8cdd6","#6e7a8c","#d8dce4","#9aaabb"] as const;
+const MUTED_ORB_PALETTE  = ["#4a5870","#3a4860","#5a6a88","#2c3850","#607280","#485a74"] as const;
 interface OrbEmberDef { angle: number; r0f: number; r1f: number; szf: number; col: string; delay: number; dur: number; }
 const ORB_EMBERS: OrbEmberDef[] = [
   { angle:  14, r0f: 0.30, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[0], delay: 0.0, dur: 2.1 },
@@ -123,7 +123,11 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
         transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
         style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: innerBg, maskImage: mask, WebkitMaskImage: mask }}
       />
-      <div style={{ position: "absolute", inset: "30%", borderRadius: "50%", background: "radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(220,240,255,0.65) 45%,transparent 70%)", boxShadow: "0 0 12px 4px rgba(180,220,255,0.5)" }} />
+      <div style={{ position: "absolute", inset: "30%", borderRadius: "50%",
+        background: muted
+          ? "radial-gradient(circle,rgba(160,185,210,0.55) 0%,rgba(100,130,160,0.32) 45%,transparent 70%)"
+          : "radial-gradient(circle,rgba(255,255,255,0.92) 0%,rgba(220,240,255,0.65) 45%,transparent 70%)",
+        boxShadow: muted ? "0 0 8px 2px rgba(80,110,140,0.35)" : "0 0 12px 4px rgba(180,220,255,0.5)" }} />
       {/* Multicolored ember / spark particles — drift outward from the orb and fade */}
       <svg style={{ position: "absolute", left: "50%", top: "50%", overflow: "visible", pointerEvents: "none", width: 0, height: 0 }}>
         {ORB_EMBERS.map((e, i) => {
