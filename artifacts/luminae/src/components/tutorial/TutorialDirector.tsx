@@ -1249,17 +1249,17 @@ const FS_DURS: Partial<Record<FSPhase, number>> = {
 // Rotation magnitudes increased ~50% over the original values for more dramatic tumble.
 const FS_SHARDS = [
   { clip: 'polygon(0% 0%, 35.7% 0%, 28.6% 15%, 50% 42.5%, 39.3% 40%, 19.6% 37.5%, 0% 40%)',
-    dx: '-38%', dy: '-32%', rX: -18, rY:  14, rZ:  16 },
+    dx: '-38%', dy: '-32%', rX: -18, rY:  14, rZ:  16, zPeak:  85 },
   { clip: 'polygon(35.7% 0%, 100% 0%, 100% 35%, 60.7% 35%, 50% 42.5%, 28.6% 15%)',
-    dx:  '36%', dy: '-30%', rX: -15, rY: -16, rZ: -14 },
+    dx:  '36%', dy: '-30%', rX: -15, rY: -16, rZ: -14, zPeak:  78 },
   { clip: 'polygon(0% 40%, 19.6% 37.5%, 39.3% 40%, 50% 42.5%, 41.1% 57.5%, 25% 72.5%, 16.1% 76.25%, 0% 80%)',
-    dx: '-42%', dy:   '3%', rX:   6, rY:  17, rZ:  11 },
+    dx: '-42%', dy:   '3%', rX:   6, rY:  17, rZ:  11, zPeak: 120 },
   { clip: 'polygon(100% 35%, 100% 72.5%, 71.4% 70%, 46.4% 70%, 25% 72.5%, 41.1% 57.5%, 50% 42.5%, 60.7% 35%)',
-    dx:  '44%', dy:   '2%', rX:  -5, rY: -18, rZ:  -9 },
+    dx:  '44%', dy:   '2%', rX:  -5, rY: -18, rZ:  -9, zPeak: 110 },
   { clip: 'polygon(25% 72.5%, 33.9% 85%, 39.3% 100%, 0% 100%, 0% 80%, 16.1% 76.25%)',
-    dx: '-32%', dy:  '36%', rX:  20, rY:  12, rZ:  18 },
+    dx: '-32%', dy:  '36%', rX:  20, rY:  12, rZ:  18, zPeak:  90 },
   { clip: 'polygon(25% 72.5%, 46.4% 70%, 71.4% 70%, 100% 72.5%, 100% 100%, 39.3% 100%, 33.9% 85%)',
-    dx:  '30%', dy:  '36%', rX:  17, rY: -14, rZ: -15 },
+    dx:  '30%', dy:  '36%', rX:  17, rY: -14, rZ: -15, zPeak:  95 },
 ] as const;
 
 // Per-shard dark-glass material layers — each shard is near-opaque black/obsidian
@@ -1534,13 +1534,15 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
           animate={{
             x: [0, `${parseFloat(sh.dx) * 0.08}`, sh.dx],
             y: [0, `${parseFloat(sh.dy) * 0.08}`, sh.dy],
+            // Protrude toward viewer on burst, then recede as shard tumbles away
+            z: [0, sh.zPeak, sh.zPeak * 0.55, sh.zPeak * 0.15, 0],
             rotateX: [0, sh.rX], rotateY: [0, sh.rY], rotateZ: [0, sh.rZ],
             opacity: [1, 1, 0.96, 0.66, 0],
             filter: [
               'brightness(1.0)',
-              'brightness(1.2) drop-shadow(0 0 8px rgba(168,204,248,0.55))',
-              'brightness(1.6) drop-shadow(0 0 16px rgba(168,204,248,0.80))',
-              'brightness(2.8) drop-shadow(0 0 24px rgba(200,225,255,0.90))',
+              'brightness(1.4) drop-shadow(0 0 12px rgba(168,204,248,0.70))',
+              'brightness(2.0) drop-shadow(0 0 20px rgba(168,204,248,0.85))',
+              'brightness(3.2) drop-shadow(0 0 28px rgba(200,225,255,0.92))',
               'brightness(5.0) drop-shadow(0 0 32px rgba(255,255,255,0.75))',
             ],
           }}
@@ -1548,9 +1550,10 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             duration: 4.5, delay: i * 0.04,
             x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
             y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+            z:       { times: [0, 0.06, 0.22, 0.55, 1.0], ease: 'easeOut' },
             rotateX: { ease: 'easeOut' }, rotateY: { ease: 'easeOut' }, rotateZ: { ease: 'easeOut' },
             opacity: { times: [0, 0.08, 0.26, 0.56, 1.0], ease: 'easeInOut' },
-            filter:  { times: [0, 0.12, 0.34, 0.60, 0.82], ease: 'easeInOut' },
+            filter:  { times: [0, 0.06, 0.22, 0.60, 0.82], ease: 'easeInOut' },
           }}
         >
           {/* Ghost-thin surface glint — barely visible, preserves the glass-face feel */}
