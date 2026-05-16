@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock } from "lucide-react";
@@ -1308,36 +1308,6 @@ const FS_CRYSTAL_SEAM_PATHS = [
   'M25,72.5 L33.9,85 L39.3,100',
 ] as const;
 
-// Scattered crystal-dust dots — small white specks that twinkle across the glass
-// surface, giving the cracking crystal a living, particulate quality.
-const FS_CRYSTAL_DUST: { cx: number; cy: number; r: number; peak: number; dur: number; delay: number }[] = [
-  { cx:  8.2, cy: 11.5, r: 0.30, peak: 0.70, dur: 2.8, delay: 0.0  },
-  { cx: 19.6, cy:  4.8, r: 0.22, peak: 0.55, dur: 3.4, delay: 0.7  },
-  { cx: 33.1, cy: 18.3, r: 0.28, peak: 0.65, dur: 2.1, delay: 1.3  },
-  { cx: 47.8, cy:  7.2, r: 0.18, peak: 0.50, dur: 3.9, delay: 0.4  },
-  { cx: 62.4, cy: 14.1, r: 0.26, peak: 0.60, dur: 2.6, delay: 1.9  },
-  { cx: 78.0, cy:  5.9, r: 0.20, peak: 0.45, dur: 3.1, delay: 0.2  },
-  { cx: 91.5, cy: 22.6, r: 0.32, peak: 0.72, dur: 2.4, delay: 1.1  },
-  { cx:  5.3, cy: 38.7, r: 0.24, peak: 0.58, dur: 3.7, delay: 0.9  },
-  { cx: 14.7, cy: 55.2, r: 0.29, peak: 0.63, dur: 2.3, delay: 0.6  },
-  { cx: 29.4, cy: 49.8, r: 0.17, peak: 0.48, dur: 3.5, delay: 1.7  },
-  { cx: 44.2, cy: 63.1, r: 0.31, peak: 0.68, dur: 2.9, delay: 0.3  },
-  { cx: 58.9, cy: 47.4, r: 0.23, peak: 0.56, dur: 3.2, delay: 1.5  },
-  { cx: 73.6, cy: 58.7, r: 0.27, peak: 0.62, dur: 2.7, delay: 0.8  },
-  { cx: 85.1, cy: 43.9, r: 0.19, peak: 0.52, dur: 3.8, delay: 2.1  },
-  { cx: 95.7, cy: 67.3, r: 0.33, peak: 0.74, dur: 2.2, delay: 0.5  },
-  { cx: 11.8, cy: 74.6, r: 0.21, peak: 0.54, dur: 3.6, delay: 1.4  },
-  { cx: 36.5, cy: 82.3, r: 0.28, peak: 0.64, dur: 2.5, delay: 0.1  },
-  { cx: 52.3, cy: 88.7, r: 0.16, peak: 0.46, dur: 4.0, delay: 1.8  },
-  { cx: 67.9, cy: 76.5, r: 0.30, peak: 0.69, dur: 2.0, delay: 1.0  },
-  { cx: 83.4, cy: 89.2, r: 0.25, peak: 0.57, dur: 3.3, delay: 0.6  },
-  { cx: 97.1, cy: 81.4, r: 0.22, peak: 0.51, dur: 2.8, delay: 2.4  },
-  { cx: 24.7, cy: 93.8, r: 0.34, peak: 0.76, dur: 2.1, delay: 0.3  },
-  { cx: 41.6, cy: 29.5, r: 0.20, peak: 0.49, dur: 3.4, delay: 1.6  },
-  { cx: 70.3, cy: 31.8, r: 0.26, peak: 0.61, dur: 2.6, delay: 0.7  },
-  { cx: 88.8, cy: 11.7, r: 0.18, peak: 0.47, dur: 3.9, delay: 1.2  },
-];
-
 // 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam.
 // All glow layers use FSO_LIGHT so the crack reads as back-lit (light from behind),
 // not as a surface marking on the glass.
@@ -1432,6 +1402,19 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
     timers.push(setTimeout(() => doneRef.current(), t + 300));
     return () => timers.forEach(clearTimeout);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stable star positions — seeded once on mount, same look as the pre-shatter black/starry backdrop.
+  const stars = useMemo(() =>
+    Array.from({ length: 30 }, () => ({
+      width:    Math.random() * 2 + 1,
+      height:   Math.random() * 2 + 1,
+      left:     `${Math.random() * 100}%`,
+      top:      `${Math.random() * 100}%`,
+      opacity:  Math.random() * 0.5 + 0.1,
+      duration: Math.random() * 4 + 2,
+      delay:    Math.random() * 3,
+    })),
+  []);
 
   if (phase === 'gone') return null;
 
@@ -1533,6 +1516,22 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         </motion.div>
       ))}
 
+      {/* ── Star field — same twinkling dots as the pre-shatter black/starry backdrop,
+          rendered above the glass so they're always visible */}
+      {!isShattering && (
+        <div className="absolute inset-0 pointer-events-none">
+          {stars.map((st, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full bg-white"
+              style={{ width: st.width, height: st.height, left: st.left, top: st.top, opacity: st.opacity }}
+              animate={{ opacity: [0.1, 0.6, 0.1] }}
+              transition={{ duration: st.duration, repeat: Infinity, delay: st.delay }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* ── Crack SVG — four-layer back-lit paint, hidden during shattering ── */}
       <AnimatePresence>
         {!isShattering && (
@@ -1559,18 +1558,6 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
                 <feGaussianBlur stdDeviation="5" />
               </filter>
             </defs>
-
-            {/* ── Crystal-dust dots — scattered white specks twinkling across the glass */}
-            {FS_CRYSTAL_DUST.map((d, i) => (
-              <motion.circle
-                key={`dust-${i}`}
-                cx={d.cx} cy={d.cy} r={d.r}
-                fill="white"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, d.peak, d.peak * 0.3, d.peak, 0] }}
-                transition={{ duration: d.dur, delay: d.delay, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            ))}
 
             {/* ── Pre-existing crystal facet seams — the natural cleavage planes of the
                 crystal. Faint ice-blue lines that pulse slowly, suggesting internal
