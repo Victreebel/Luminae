@@ -65,6 +65,7 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
 // ─── Ember / spark particles ──────────────────────────────────────────────────
 const EMBER_PALETTE_ORB = ["#f87171","#60a5fa","#4ade80","#c084fc","#f8fafc","#fbbf24"] as const;
+const MUTED_ORB_PALETTE  = ["#b0b8c8","#8090a4","#c8cdd6","#6e7a8c","#d8dce4","#9aaabb"] as const;
 interface OrbEmberDef { angle: number; r0f: number; r1f: number; szf: number; col: string; delay: number; dur: number; }
 const ORB_EMBERS: OrbEmberDef[] = [
   { angle:  14, r0f: 0.30, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[0], delay: 0.0, dur: 2.1 },
@@ -89,11 +90,11 @@ const POINTER_ROTATE: Record<LumiiPointerDir, number> = {
   up:   270,
 };
 
-function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, pointing }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; pointing?: LumiiPointerDir }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, pointing, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; pointing?: LumiiPointerDir; muted?: boolean }) {
   const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
-  const p = LUMII_ORB_ZONE_PALETTE[highlightZone ?? "none"];
+  const p = muted ? MUTED_ORB_PALETTE : LUMII_ORB_ZONE_PALETTE[highlightZone ?? "none"];
   // Build conic gradients from zone palette so colour tinting stays consistent
   // with LumiiTutorial.tsx when a zone is active (or renders neutral when null).
   const outerBg = `conic-gradient(from 0deg,${p[0]}aa,${p[1]}aa,${p[2]}aa,${p[3]}aa,${p[4]}66,${p[5]}aa,${p[0]}aa)`;
@@ -134,10 +135,11 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
           const y0 = r0 * Math.sin(rad);
           const x1 = r1 * Math.cos(rad);
           const y1 = r1 * Math.sin(rad);
+          const col = muted ? MUTED_ORB_PALETTE[i % MUTED_ORB_PALETTE.length] : e.col;
           return (
             <motion.g
               key={`orb-ember-${i}`}
-              style={{ filter: `drop-shadow(0 0 3px ${e.col})` }}
+              style={{ filter: `drop-shadow(0 0 3px ${col})` }}
               initial={{ x: x0, y: y0, opacity: 0, scale: 0.6 }}
               animate={{
                 x: [x0, x1, x1],
@@ -154,7 +156,7 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
                 ease: "easeOut",
               }}
             >
-              <circle r={sz} fill={e.col} />
+              <circle r={sz} fill={col} />
             </motion.g>
           );
         })}
@@ -220,7 +222,7 @@ function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
 
 // ─── DialogueBox ──────────────────────────────────────────────────────────────
 function DialogueBox({
-  lines, lineIndex, onTap, nudge, mode, showOrb = true,
+  lines, lineIndex, onTap, nudge, mode, showOrb = true, muted = false,
   playerResponse, onPlayerResponse, choices, onChoice,
 }: {
   lines: { text: string }[];
@@ -229,6 +231,7 @@ function DialogueBox({
   nudge: string | null;
   mode: string;
   showOrb?: boolean;
+  muted?: boolean;
   playerResponse?: string;
   onPlayerResponse?: () => void;
   choices?: { label: string; value: string }[];
@@ -262,7 +265,7 @@ function DialogueBox({
         style={{ boxShadow: nudge ? "0 0 0 2px rgba(251,191,36,0.5), 0 8px 32px rgba(0,0,0,0.8)" : "0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.9)" }}
       >
         <div className="flex items-start gap-3">
-          {showOrb && <LumiiOrb size={32} excited={!!nudge} highlightZone={null} />}
+          {showOrb && <LumiiOrb size={32} excited={!!nudge} highlightZone={null} muted={muted} />}
           <div className="flex-1">
             <p className="text-sm text-white/90 leading-relaxed">{text}</p>
             {hintText && (
@@ -1221,13 +1224,13 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   return (
     <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
 
-      {/* ── Solid gold fill behind the shards — blazes through gaps as they scatter */}
+      {/* ── Pale silver fill behind the shards — dim glow through gaps as they scatter */}
       {isShattering && (
         <motion.div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 50% 43%, #fff9e6 0%, #fde68a 18%, #fbbf24 45%, #f59e0b 75%, transparent 100%)' }}
+          style={{ background: 'radial-gradient(ellipse at 50% 43%, #e8eaf0 0%, #c8cdd6 18%, #9aaabb 45%, #6e7a8c 75%, transparent 100%)' }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 1, 0.80, 0.35, 0] }}
+          animate={{ opacity: [0, 0.22, 0.22, 0.16, 0.07, 0] }}
           transition={{ duration: 4.0, times: [0, 0.03, 0.18, 0.48, 0.78, 1.0], ease: 'easeOut' }}
         />
       )}
@@ -1344,15 +1347,8 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         />
       )}
 
-      {/* ── Full-panel white-gold flash at the moment of release ────────── */}
-      {isFlashing && (
-        <motion.div className="absolute inset-0 pointer-events-none"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1, 0.95, 0.50, 0] }}
-          transition={{ duration: 1.10, times: [0, 0.10, 0.28, 0.62, 1.0] }}
-          style={{ background: 'rgba(255, 255, 200, 1.0)' }}
-        />
-      )}
+      {/* Full-panel flash removed — replaced with no-op to keep phase timing intact */}
+      {isFlashing && null}
     </div>
   );
 }
@@ -1657,7 +1653,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
         </motion.div>
       )}
 
-      {/* White/gold underlighting — blazes from behind the shards as they scatter.
+      {/* Soft underlighting — dim cool-white glow from behind the shards.
           Lives at z-15, below the shatter overlay (z-20), so it shines through
           the transparent gaps between the flying shard clip-path regions. */}
       {shatteringStarted && (
@@ -1665,10 +1661,10 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
           className="absolute inset-0 pointer-events-none"
           style={{
             zIndex: 15,
-            background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,255,1.0) 0%, rgba(255,248,200,1.0) 10%, rgba(255,230,120,1.0) 25%, rgba(251,191,36,0.65) 48%, rgba(251,191,36,0.15) 70%, transparent 88%)',
+            background: 'radial-gradient(ellipse at 50% 43%, rgba(220,224,232,0.9) 0%, rgba(180,190,210,0.7) 18%, rgba(140,158,185,0.5) 38%, rgba(100,120,150,0.25) 62%, transparent 85%)',
           }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 1.0, 1.0, 0.80, 0.35, 0] }}
+          animate={{ opacity: [0, 0.25, 0.25, 0.18, 0.08, 0] }}
           transition={{ duration: 2.4, times: [0, 0.04, 0.22, 0.52, 0.78, 1.0], ease: 'easeOut' }}
         />
       )}
@@ -1758,7 +1754,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             className="absolute z-30"
             style={{ transform: "translate(-50%, -50%)" }}
           >
-            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
+            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} muted />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1782,6 +1778,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
               nudge={null}
               mode="listen"
               showOrb={false}
+              muted
               playerResponse={beat.playerResponse}
               onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
               choices={beat.choices}
@@ -2847,26 +2844,45 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     </AnimatePresence>
   );
 
-  // Cinematic beats: 0–9 (b3c_border=4, b3b_farewell=5, b4_shatter=6, b5_affinities=7, b5b_affinity_tokens=8, b5c_architect_assembly=9)
-  if (s.beat <= 9) {
-    return <><CinematicPhase s={s} dispatch={dispatch} onSkip={handleSkip} />{skipOverlay}{devNav}</>;
-  }
+  const isCinematicPhase = s.beat <= 9;
 
-  // Fast-forward cinematic
-  if (beat.id === "b15_fast_forward") {
-    return <><FastForwardCinematic s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
-  }
+  // Determine which gameplay sub-component to render (beats 10+)
+  const gameplayContent = beat.id === "b15_fast_forward"
+    ? <FastForwardCinematic s={s} dispatch={dispatch} />
+    : beat.id === "b17_luminary"
+      ? <LuminaryPhase s={s} dispatch={dispatch} />
+      : beat.id === "b18_victory"
+        ? <VictoryPhase s={s} dispatch={dispatch} />
+        : <GameplayPhase s={s} dispatch={dispatch} />;
 
-  // Luminary reveal
-  if (beat.id === "b17_luminary") {
-    return <><LuminaryPhase s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
-  }
-
-  // Victory
-  if (beat.id === "b18_victory") {
-    return <><VictoryPhase s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
-  }
-
-  // Gameplay beats: 6–16
-  return <><GameplayPhase s={s} dispatch={dispatch} />{skipOverlay}{devNav}</>;
+  // Single AnimatePresence so Framer Motion can coordinate the cinematic exit
+  // before the gameplay enter — mode="wait" guarantees the old key exits fully
+  // before the new key mounts.
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {isCinematicPhase ? (
+          <motion.div
+            key="cinematic"
+            className="fixed inset-0"
+            initial={false}
+            exit={{ opacity: 0, filter: "blur(14px)", transition: { duration: 0.42, ease: "easeIn" as const } }}
+          >
+            <CinematicPhase s={s} dispatch={dispatch} onSkip={handleSkip} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="gameplay"
+            className="fixed inset-0"
+            initial={{ opacity: 0, filter: "blur(14px)" }}
+            animate={{ opacity: 1, filter: "blur(0px)" }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+          >
+            {gameplayContent}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {skipOverlay}{devNav}
+    </>
+  );
 }
