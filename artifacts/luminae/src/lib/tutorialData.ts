@@ -252,6 +252,13 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     completion: { type: "animation" },
   },
   {
+    id: "b5c_architect_assembly",
+    mode: "cinematic",
+    lumiiZone: "market-t1",
+    dialogue: [],
+    completion: { type: "animation" },
+  },
+  {
     id: "b5b_bridge",
     mode: "cinematic",
     lumiiZone: "center",
@@ -259,13 +266,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "Now, I will show you how to use them." },
     ],
     completion: { type: "dialogue" },
-  },
-  {
-    id: "b5c_architect_assembly",
-    mode: "cinematic",
-    lumiiZone: "market-t1",
-    dialogue: [],
-    completion: { type: "animation" },
   },
   {
     id: "b6_forge_appears",
