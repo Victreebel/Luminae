@@ -1180,7 +1180,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   // Each row has a deck pile + 4 card slots. Slots are filled with real cards,
   // deck-draw animations (briefly after forge), or ghost placeholders.
   const MARKET_SLOTS = 4;
-  const DECK_COUNTS: Record<number, number> = { 1: 20, 2: 15, 3: 10 };
+  const DECK_COUNTS: Record<number, number> = { 1: 40, 2: 30, 3: 20 };
 
   const renderTierRow = (tier: number, cardIds: string[], label: string) => {
     const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - MARKET_SLOTS);
