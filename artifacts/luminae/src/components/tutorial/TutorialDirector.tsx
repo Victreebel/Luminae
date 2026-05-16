@@ -1353,25 +1353,11 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (isDetail) {
-    return (
-      <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.18" fill="none"
-        filter="url(#fso-cgb)"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 0.70, 0.60] }}
-        transition={{ duration: 0.32, delay: d1, ease: 'easeOut' }}
-      />
-    );
-  }
+  // Detail sub-cracks: no bars wanted — skip rendering entirely
+  if (isDetail) return null;
+
   return (
     <>
-      {/* L1 white snap — fracture draws in with a crisp line, then fully dissolves */}
-      <motion.path d={d} pathLength={1} stroke="white" strokeWidth="0.22" fill="none"
-        filter="url(#fso-cgb)"
-        initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 1.0, 0.88, 0] }}
-        transition={{ duration: 0.72, delay: d1, times: [0, 0.20, 0.50, 1.0], ease: 'easeOut' }}
-      />
       {/* L2 chasing glow — wide light bleed chasing the fracture tip */}
       <motion.path d={d} pathLength={1} stroke={FSO_LIGHT} strokeWidth="4.0" fill="none"
         filter="url(#fso-cgw)"
