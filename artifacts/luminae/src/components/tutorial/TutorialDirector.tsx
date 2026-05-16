@@ -65,7 +65,7 @@ const LUMII_ORB_ZONE_PALETTE: Record<"harvest" | "market" | "filters" | "luminar
 // ─── LumiiOrb ─────────────────────────────────────────────────────────────────
 // ─── Ember / spark particles ──────────────────────────────────────────────────
 const EMBER_PALETTE_ORB = ["#f87171","#60a5fa","#4ade80","#c084fc","#f8fafc","#fbbf24"] as const;
-const MUTED_ORB_PALETTE  = ["#4a5870","#3a4860","#5a6a88","#2c3850","#607280","#485a74"] as const;
+const MUTED_ORB_PALETTE  = ["#7888a8","#6070a0","#8898c0","#5868a8","#9aaac0","#6878b0"] as const;
 interface OrbEmberDef { angle: number; r0f: number; r1f: number; szf: number; col: string; delay: number; dur: number; }
 const ORB_EMBERS: OrbEmberDef[] = [
   { angle:  14, r0f: 0.30, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[0], delay: 0.0, dur: 2.1 },
