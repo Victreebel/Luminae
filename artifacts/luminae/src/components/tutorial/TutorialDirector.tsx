@@ -1035,12 +1035,13 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
 }
 
 // ─── Scripted Market ──────────────────────────────────────────────────────────
-function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap }: {
+function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
   subStep: number;
   onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
+  tier1Ref?: React.RefObject<HTMLDivElement>;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -1162,7 +1163,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap }: {
     }
 
     return (
-      <div key={tier} className="mb-4">
+      <div key={tier} ref={tier === 1 ? tier1Ref : undefined} className="mb-4">
         <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">
           Tier {tier} — {label}
         </div>
@@ -2960,9 +2961,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
-  const cameraFocus: "market" | "well" | "storage" | "forge" = (() => {
+  const tier1Ref = useRef<HTMLDivElement>(null);
+  const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
     if (beatId === "b8_first_harness") return "well";
-    if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
+    if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
     if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition") return "storage";
@@ -2996,6 +2998,19 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           container.getBoundingClientRect().top +
           container.scrollTop;
         container.scrollTo({ top: forgeTop, behavior: "smooth" });
+      }
+    } else if (cameraFocus === "tier1") {
+      // Scroll so the Tier 1 row (Foundation) is visible at the bottom of the
+      // viewport, with the Luminary section fully scrolled past.
+      // We aim for the top of the Tier 1 row to sit near the top of the
+      // scroll container, which naturally hides the Luminary section above.
+      const tier1El = tier1Ref.current;
+      if (tier1El) {
+        const tier1Top =
+          tier1El.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop;
+        container.scrollTo({ top: tier1Top, behavior: "smooth" });
       }
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
@@ -3130,7 +3145,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               The Forge
               <Hammer className="h-3 w-3 text-amber-500/70 shrink-0" />
             </div>
-            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
+            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} />
           </div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
             fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
