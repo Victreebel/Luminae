@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
@@ -1334,7 +1334,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   </CardFlipReveal>
                 );
               }
-              return <React.Fragment key={cardId}>{tutCard}</React.Fragment>;
+              return <Fragment key={cardId}>{tutCard}</Fragment>;
             }
             if (slot.kind === 'draw') {
               return <DeckDrawAnimation key={`draw-${slot.cardId}`} tier={tier} />;
