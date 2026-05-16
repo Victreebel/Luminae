@@ -1125,7 +1125,7 @@ const FS_CRACKS_2: CrackDef[] = [
   { d: 'M41.1,57.5 L33.9,52.5 L25,51.25',                 d1: 0.20, isDetail: true },
 ];
 
-const FSO_GOLD = '#fbbf24';
+const FSO_GOLD = '#c8cdd6';
 
 // 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam
 // Stroke widths are scaled for a 100-unit viewBox rendered at ~1280 px wide.
