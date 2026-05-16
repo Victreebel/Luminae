@@ -2754,7 +2754,20 @@ function TutorialForgeBurst({
 }
 
 // ─── Tutorial Luminary Section ────────────────────────────────────────────────
-function TutorialLuminarySection({ beatId: _beatId }: { beatId: string }) {
+function TutorialLuminarySection({ beatIndex }: { beatIndex: number }) {
+  const verdantRevealed = beatIndex >= (BEAT_INDEX["b17_luminary"] ?? 999);
+  const unknownSlot = (
+    <div className="shrink-0 rounded-xl border border-white/8 flex items-center justify-center"
+      style={{ width: 112, height: 160, background: "rgba(255,255,255,0.02)" }}>
+      <div className="text-center px-3">
+        <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 mx-auto mb-2 flex items-center justify-center">
+          <span className="text-white/20 text-lg">?</span>
+        </div>
+        <div className="text-[7px] text-white/15 uppercase tracking-wider font-semibold">Unknown</div>
+        <div className="text-[6px] text-white/10 mt-0.5">Each game differs</div>
+      </div>
+    </div>
+  );
   return (
     <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
       <div className="flex items-center justify-between mb-2">
@@ -2762,28 +2775,21 @@ function TutorialLuminarySection({ beatId: _beatId }: { beatId: string }) {
         <div className="text-[9px] text-white/20 italic">Patron cosmic entities</div>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1 items-start">
-        <div className="relative shrink-0">
-          <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12 }}>
-            <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} size={160} />
-          </div>
-          <div className="absolute inset-0 rounded-xl pointer-events-none"
-            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72) 40%, transparent 100%)" }}>
-            <div className="absolute bottom-2 left-0 right-0 text-center">
-              <div className="text-[7px] font-bold text-white/60 uppercase tracking-widest">Verdant Oracle</div>
-              <div className="text-[6px] text-white/30 mt-0.5">Verdance affinity</div>
+        {verdantRevealed ? (
+          <div className="relative shrink-0">
+            <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12 }}>
+              <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} size={160} />
+            </div>
+            <div className="absolute inset-0 rounded-xl pointer-events-none"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72) 40%, transparent 100%)" }}>
+              <div className="absolute bottom-2 left-0 right-0 text-center">
+                <div className="text-[7px] font-bold text-white/60 uppercase tracking-widest">Verdant Oracle</div>
+                <div className="text-[6px] text-white/30 mt-0.5">Verdance affinity</div>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="shrink-0 rounded-xl border border-white/8 flex items-center justify-center"
-          style={{ width: 112, height: 160, background: "rgba(255,255,255,0.02)" }}>
-          <div className="text-center px-3">
-            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 mx-auto mb-2 flex items-center justify-center">
-              <span className="text-white/20 text-lg">?</span>
-            </div>
-            <div className="text-[7px] text-white/15 uppercase tracking-wider font-semibold">Unknown</div>
-            <div className="text-[6px] text-white/10 mt-0.5">Each game differs</div>
-          </div>
-        </div>
+        ) : unknownSlot}
+        {unknownSlot}
       </div>
     </div>
   );
@@ -3177,7 +3183,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         style={{ transformOrigin: "50% 36%" }}
       >
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
-          <TutorialLuminarySection beatId={beatId} />
+          <TutorialLuminarySection beatIndex={s.beat} />
           <div ref={forgeRef} className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
             <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">
               The Forge
