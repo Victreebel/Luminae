@@ -7,6 +7,7 @@ import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
 import type { LumiiPointerDir } from "@/lib/tutorialData";
 import type { GemKey } from "@/lib/gemMeta";
+import { renderKeywords } from "@/lib/tutorialKeywords";
 
 // ─── Viewport height hook ────────────────────────────────────────────────────
 
@@ -834,7 +835,7 @@ function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objectiv
       </div>
 
       {/* Dialogue text */}
-      <p className="text-[13px] text-white/92 leading-relaxed mb-2.5">{text}</p>
+      <p className="text-[13px] text-white/92 leading-relaxed mb-2.5">{renderKeywords(text)}</p>
 
       {/* Objective label — shown on last line of beats that carry an objective */}
       {objective && isLastLine && (
