@@ -3362,11 +3362,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <TutorialLuminarySection beatIndex={s.beat} />
           <motion.div
             ref={forgeRef}
-            className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${isForgeHighlighted ? "border-amber-400/50" : "border-white/10"}`}
+            className={`border rounded-2xl p-3 backdrop-blur-md`}
             style={{ background: "rgba(3,3,12,0.72)" }}
             animate={isForgeHighlighted
-              ? { boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 18px rgba(251,191,36,0.28)", "0 0 8px rgba(251,191,36,0.12)", "0 0 22px rgba(251,191,36,0.32)", "0 0 0px rgba(251,191,36,0)"] }
-              : { boxShadow: "0 0 0px rgba(251,191,36,0)" }
+              ? {
+                  boxShadow: ["0 0 0px rgba(251,191,36,0)", "0 0 20px rgba(251,191,36,0.35)", "0 0 8px rgba(251,191,36,0.12)", "0 0 24px rgba(251,191,36,0.4)", "0 0 0px rgba(251,191,36,0)"],
+                  borderColor: ["rgba(251,191,36,0.2)", "rgba(251,191,36,0.95)", "rgba(251,191,36,0.3)", "rgba(251,191,36,1)", "rgba(251,191,36,0.2)"],
+                }
+              : { boxShadow: "0 0 0px rgba(251,191,36,0)", borderColor: "rgba(255,255,255,0.1)" }
             }
             transition={isForgeHighlighted
               ? { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
