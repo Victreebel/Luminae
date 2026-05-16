@@ -2429,6 +2429,97 @@ function TutorialLuminarySection({ beatId: _beatId }: { beatId: string }) {
   );
 }
 
+// ─── Collection Sheet ─────────────────────────────────────────────────────────
+// Slides up from the bottom to show all forged artifacts — mirrors the real
+// game's player-panel tap mechanic.
+function CollectionSheet({ forged, bonuses, onClose }: {
+  forged: string[];
+  bonuses: Record<GemKey, number>;
+  onClose: () => void;
+}) {
+  const bonusTotals = (Object.entries(bonuses) as [GemKey, number][]).filter(([, v]) => v > 0);
+  return (
+    <>
+      <motion.div
+        key="coll-backdrop"
+        className="fixed inset-0 z-[80] bg-black/55"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        onClick={onClose}
+      />
+      <motion.div
+        key="coll-panel"
+        className="fixed left-0 right-0 bottom-0 z-[81] rounded-t-2xl border-t border-white/15 shadow-2xl"
+        style={{ background: "rgba(6,6,17,0.97)" }}
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 320, damping: 34 }}
+      >
+        <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mt-3 mb-3" />
+        <div className="px-4 pb-8">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <div className="text-base font-bold text-white">Your Collection</div>
+              <div className="text-[10px] text-white/35 mt-0.5">Forged artifacts — permanent bonuses</div>
+            </div>
+            {bonusTotals.length > 0 && (
+              <div className="flex gap-1 flex-wrap justify-end">
+                {bonusTotals.map(([k, v]) => (
+                  <div key={k} className="flex items-center gap-0.5 bg-emerald-900/40 rounded px-1.5 py-0.5 border border-emerald-500/20">
+                    <span className="text-[9px] text-emerald-300 font-bold">+{v}</span>
+                    <MiniGem gem={k} size={9} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {forged.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-white/20 text-sm">No artifacts forged yet</div>
+            </div>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {forged.map(id => {
+                const card = TUTORIAL_CARDS[id];
+                if (!card) return null;
+                const artUrl = CARD_ART[id];
+                const bonusMeta = GEM_META[card.bonusColor];
+                const bgStyle: React.CSSProperties = artUrl
+                  ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                  : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
+                return (
+                  <div key={id} className="shrink-0 rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 relative"
+                    style={{ width: 112, height: 160, ...bgStyle }}>
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
+                    <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="text-base font-serif font-bold text-white drop-shadow">{card.lumens > 0 ? card.lumens : ""}</span>
+                        <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
+                          <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[8px] font-semibold text-white drop-shadow line-clamp-2 leading-tight mb-1.5">{card.name}</div>
+                        <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 bg-emerald-900/60 rounded px-1 py-0.5">
+                            <span className="text-[8px] text-emerald-300 font-bold">+1</span>
+                            <MiniGem gem={card.bonusColor} size={8} />
+                          </div>
+                          <span className="text-[7px] text-white/30">per turn</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-4 text-[9px] text-white/22 text-center">Tap anywhere outside to close</div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 // ─── Gameplay Phase ───────────────────────────────────────────────────────────
 function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
@@ -2445,6 +2536,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     onForge?: () => void;
     onReserve?: () => void;
   } | null>(null);
+
+  // Collection sheet — slides up to show all forged artifacts (teaches panel-tap mechanic)
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  // Beats that explicitly invite the player to tap their panel
+  const PANEL_TAP_BEATS = new Set(["b9b_forge_complete", "b11_forge_reserved", "b12_tier2"]);
+  const showPanelTapHint = PANEL_TAP_BEATS.has(beatId) && s.forged.length > 0;
 
   // Harness flash — green border pulse on AffinityWell after Harness
   const [harnessFlash, setHarnessFlash] = useState(false);
@@ -2707,30 +2804,47 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         transition={isEminenceHighlighted ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
         style={{ background: "rgba(3,3,12,0.80)", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}
       >
-        <div className={`flex items-center gap-3 ${isShortLandscape ? "mb-1" : "mb-2"}`}>
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <div className="w-[22px] h-[22px] rounded-full bg-indigo-700/70 border border-indigo-400/40 flex items-center justify-center shrink-0">
-              <span className="text-[9px] font-bold text-white">Y</span>
+        <button
+          type="button"
+          disabled={s.forged.length === 0}
+          onClick={() => s.forged.length > 0 && setCollectionOpen(true)}
+          className={`w-full text-left ${s.forged.length > 0 ? "cursor-pointer active:opacity-80" : "cursor-default"} ${isShortLandscape ? "mb-1" : "mb-2"}`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <div className="w-[22px] h-[22px] rounded-full bg-indigo-700/70 border border-indigo-400/40 flex items-center justify-center shrink-0">
+                <span className="text-[9px] font-bold text-white">Y</span>
+              </div>
+              {isActMode && <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />}
+              <span className="text-xs font-semibold text-white truncate">You</span>
+              {isActMode && (
+                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
+              )}
+              {/* Tap-hint badge — shown on beats that explicitly invite panel inspection */}
+              {showPanelTapHint && (
+                <motion.span
+                  animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.06, 1] }}
+                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  className="text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full shrink-0"
+                >
+                  Tap · see collection
+                </motion.span>
+              )}
             </div>
-            {isActMode && <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse shrink-0" />}
-            <span className="text-xs font-semibold text-white truncate">You</span>
-            {isActMode && (
-              <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <span className="flex items-baseline gap-1">
-              <span className="font-serif font-black text-lg text-white leading-none">{totalCrystals}</span>
-              <span className="text-[10px] text-white/40">Affinity</span>
-            </span>
-            <div className="inline-flex items-center gap-1 rounded-md px-1 py-0.5">
-              <motion.span key={s.eminence} initial={{ scale: 1.4, color: "#a5b4fc" }} animate={{ scale: 1, color: "#818cf8" }}
-                transition={{ type: "spring", stiffness: 260, damping: 18 }}
-                className="font-serif font-black text-lg leading-none">{s.eminence}</motion.span>
-              <Sparkles className="h-3 w-3 text-indigo-400" />
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="flex items-baseline gap-1">
+                <span className="font-serif font-black text-lg text-white leading-none">{totalCrystals}</span>
+                <span className="text-[10px] text-white/40">Affinity</span>
+              </span>
+              <div className="inline-flex items-center gap-1 rounded-md px-1 py-0.5">
+                <motion.span key={s.eminence} initial={{ scale: 1.4, color: "#a5b4fc" }} animate={{ scale: 1, color: "#818cf8" }}
+                  transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                  className="font-serif font-black text-lg leading-none">{s.eminence}</motion.span>
+                <Sparkles className="h-3 w-3 text-indigo-400" />
+              </div>
             </div>
           </div>
-        </div>
+        </button>
         <div className="flex gap-1.5">
           {ALL_GEMS.map(gem => {
             const meta = GEM_META[gem];
@@ -2858,6 +2972,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             onForge={selectedCardData.onForge ? () => { setSelectedCardData(null); selectedCardData.onForge!(); } : undefined}
             onReserve={selectedCardData.onReserve ? () => { setSelectedCardData(null); selectedCardData.onReserve!(); } : undefined}
             onClose={() => setSelectedCardData(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Collection Sheet ──────────────────────────────────────────── */}
+      <AnimatePresence>
+        {collectionOpen && (
+          <CollectionSheet
+            forged={s.forged}
+            bonuses={s.bonuses}
+            onClose={() => setCollectionOpen(false)}
           />
         )}
       </AnimatePresence>
