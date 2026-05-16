@@ -2,7 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { usePanelSheetTip } from "@/hooks/use-panel-sheet-tip";
-import { Sparkles, ChevronUp, RotateCcw, X } from "lucide-react";
+import { Sparkles, ChevronUp, RotateCcw, X, LayoutGrid, Hand as HandIcon, List, Lock } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -19,6 +19,7 @@ import {
   AFFINITY_SEQ_KEYS,
   AFFINITY_SEQ_NAMES,
   BEAT_INDEX,
+  VERDANCE_LUMINARY_ID,
   type TutorialCard as TutorialCardData,
   type TutorialMarketView,
   type LumiiPointerDir,
@@ -321,30 +322,24 @@ function TutorialCard({
   card,
   bonuses,
   crystals,
-  onForge,
-  onReserve,
-  forgeEnabled,
-  reserveEnabled,
   highlighted,
   foreground,
   forged,
   impossible,
   viewMode = "all",
   wellSel = {},
+  onTap,
 }: {
   card: TutorialCardData;
   bonuses: Record<GemKey, number>;
   crystals: Record<GemKey, number>;
-  onForge?: () => void;
-  onReserve?: () => void;
-  forgeEnabled?: boolean;
-  reserveEnabled?: boolean;
   highlighted?: boolean;
   foreground?: boolean;
   forged?: boolean;
   impossible?: boolean;
   viewMode?: TutorialMarketView;
   wellSel?: Partial<Record<GemKey, number>>;
+  onTap?: () => void;
 }) {
   const eff = effectiveCost(card, bonuses);
   const artUrl = CARD_ART[card.id];
@@ -395,10 +390,12 @@ function TutorialCard({
 
   return (
     <motion.div
-      animate={foreground ? { scale: 1.08, y: -8 } : { scale: 1, y: 0 }}
+      animate={foreground ? { scale: 1.06, y: -6 } : { scale: 1, y: 0 }}
+      whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
+      onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="relative shrink-0"
-      style={{ width: foreground ? 112 : 88, height: foreground ? 156 : 124 }}
+      className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
+      style={{ width: 112, height: 160 }}
     >
       <div
         className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
@@ -452,41 +449,174 @@ function TutorialCard({
           </div>
         )}
       </div>
-      {!forged && (
-        <div className="absolute -bottom-9 left-0 right-0 flex gap-1 justify-center">
-          {onForge && (
-            <button
-              onClick={forgeEnabled ? onForge : undefined}
-              disabled={!forgeEnabled || !affordable}
-              className={`text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${forgeEnabled && affordable ? "bg-amber-500 text-black hover:bg-amber-400 shadow-lg" : "bg-white/8 text-white/30 cursor-not-allowed"}`}
-            >Forge</button>
-          )}
-          {onReserve && (
-            <button
-              onClick={reserveEnabled ? onReserve : undefined}
-              disabled={!reserveEnabled}
-              className={`text-[9px] font-bold px-2 py-1 rounded-lg transition-all ${reserveEnabled ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg" : "bg-white/8 text-white/30 cursor-not-allowed"}`}
-            >Reserve</button>
-          )}
-        </div>
-      )}
     </motion.div>
+  );
+}
+
+// ─── Tutorial Card Sheet ──────────────────────────────────────────────────────
+// Bottom sheet that slides up when a card is tapped — matches real game's action
+// sheet pattern. Forge/Reserve actions happen here rather than below the card.
+function TutorialCardSheet({
+  card, bonuses, crystals, viewMode, wellSel,
+  forgeEnabled, reserveEnabled, onForge, onReserve, onClose,
+}: {
+  card: TutorialCardData;
+  bonuses: Record<GemKey, number>;
+  crystals: Record<GemKey, number>;
+  viewMode: TutorialMarketView;
+  wellSel: Partial<Record<GemKey, number>>;
+  forgeEnabled: boolean;
+  reserveEnabled: boolean;
+  onForge?: () => void;
+  onReserve?: () => void;
+  onClose: () => void;
+}) {
+  const artUrl = CARD_ART[card.id];
+  const bonusMeta = GEM_META[card.bonusColor];
+  const eff = effectiveCost(card, bonuses);
+  const affordable = canAfford(card, crystals, bonuses);
+
+  const bgStyle: React.CSSProperties = artUrl
+    ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+    : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
+
+  const getCostDisplay = (k: GemKey, baseCost: number): { value: number | "✓"; showStrike: boolean; strikeValue: number; bgClass: string; textClass: string } => {
+    if (viewMode === "discounted") {
+      const effCost = eff[k] ?? 0;
+      const reduced = effCost < baseCost;
+      const free = effCost === 0;
+      return { value: free ? "✓" : effCost, showStrike: reduced && !free, strikeValue: baseCost, bgClass: free ? "bg-green-900/80" : reduced ? "bg-blue-900/80" : "bg-black/60", textClass: free ? "text-green-300" : reduced ? "text-blue-200" : "text-white" };
+    }
+    if (viewMode === "needed") {
+      const effCost = eff[k] ?? 0;
+      const held = crystals[k] ?? 0;
+      const inWell = wellSel[k] ?? 0;
+      const shortfall = Math.max(0, effCost - held - inWell);
+      const free = shortfall === 0;
+      return { value: free ? "✓" : shortfall, showStrike: false, strikeValue: baseCost, bgClass: free ? "bg-green-900/80" : "bg-black/60", textClass: free ? "text-green-300" : "text-white" };
+    }
+    return { value: baseCost, showStrike: false, strikeValue: baseCost, bgClass: "bg-black/60", textClass: "text-white" };
+  };
+
+  const hasCost = Object.values(card.cost).some(v => v > 0);
+
+  return (
+    <>
+      <motion.div
+        key="card-sheet-backdrop"
+        className="fixed inset-0 z-[80] bg-black/50"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        onClick={onClose}
+      />
+      <motion.div
+        key="card-sheet-panel"
+        className="fixed left-0 right-0 bottom-0 z-[81] rounded-t-2xl border-t border-white/15 shadow-2xl"
+        style={{ background: "rgba(6,6,17,0.97)" }}
+        initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 320, damping: 34 }}
+      >
+        <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mt-3 mb-2" />
+        <div className="px-4 pb-8">
+          <div className="flex gap-4 mb-5">
+            {/* Card art */}
+            <div className="relative rounded-xl overflow-hidden shadow-xl ring-1 ring-white/15 shrink-0"
+              style={{ width: 80, height: 116, ...bgStyle }}>
+              <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/5 to-black/80" />
+              <div className="relative z-10 h-full p-1.5 flex flex-col justify-between">
+                <span className="text-sm font-serif font-bold text-white drop-shadow">{card.lumens > 0 ? card.lumens : ""}</span>
+                <div className="w-3.5 h-3.5 rounded-full ring-1 ring-black/40 overflow-hidden ml-auto">
+                  <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
+                </div>
+              </div>
+            </div>
+            {/* Card details */}
+            <div className="flex-1 flex flex-col gap-1.5 pt-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-full ring-1 ring-black/40 overflow-hidden shrink-0">
+                  <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
+                </div>
+                <span className="text-[10px] text-white/45 truncate">{bonusMeta.name} affinity</span>
+              </div>
+              <span className="text-sm font-semibold text-white leading-tight">{card.name}</span>
+              {card.lumens > 0 && (
+                <div className="flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-amber-400 shrink-0" />
+                  <span className="text-[11px] text-amber-300 font-bold">+{card.lumens} Eminence</span>
+                </div>
+              )}
+              <div className="text-[9px] text-white/30 mt-0.5">
+                Forging grants <span style={{ color: bonusMeta.glowHex }}>+1 {bonusMeta.shortName}</span> bonus permanently
+              </div>
+              {hasCost ? (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(Object.entries(card.cost) as [GemKey, number][]).map(([k, v]) => {
+                    if (!v || v <= 0) return null;
+                    const display = getCostDisplay(k, v);
+                    return (
+                      <div key={k} className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 ${display.bgClass}`}>
+                        {display.showStrike && <span className="text-[7px] text-white/30 line-through mr-0.5">{display.strikeValue}</span>}
+                        <span className={`text-[10px] font-bold ${display.textClass}`}>{display.value}</span>
+                        <MiniGem gem={k} size={10} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-[9px] text-green-400 font-bold mt-1">Free to forge</div>
+              )}
+            </div>
+          </div>
+          {/* Action buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={forgeEnabled && affordable ? onForge : undefined}
+              disabled={!forgeEnabled || !affordable}
+              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${
+                forgeEnabled && affordable
+                  ? "bg-amber-500 text-black hover:bg-amber-400 shadow-lg shadow-amber-500/20"
+                  : "bg-white/8 text-white/25 cursor-not-allowed"
+              }`}
+            >
+              {forgeEnabled ? (affordable ? "Forge" : "Need more affinities") : "Not yet"}
+            </button>
+            {onReserve !== undefined && (
+              <button
+                type="button"
+                onClick={reserveEnabled ? onReserve : undefined}
+                disabled={!reserveEnabled}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${
+                  reserveEnabled
+                    ? "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/20"
+                    : "bg-white/8 text-white/25 cursor-not-allowed"
+                }`}
+              >
+                {reserveEnabled ? "Reserve" : "Not yet"}
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </>
   );
 }
 
 // ─── Affinity Well ─────────────────────────────────────────────────────────────
 function AffinityWell({
-  s, dispatch, beatId, subStep, wellEnabled,
+  s, dispatch, beatId, subStep, wellEnabled, fluxLocked = true, harnessFlash = false, onHarnessFlash,
 }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
   subStep: number;
   wellEnabled: boolean;
+  fluxLocked?: boolean;
+  harnessFlash?: boolean;
+  onHarnessFlash?: () => void;
 }) {
   const totalSel = Object.values(s.wellSel).reduce((a, b) => a + b, 0);
 
-  // Compute which gems should be highlighted per beat/subStep
   const guidedGems: Partial<Record<GemKey, number>> = (() => {
     if (beatId === "b8_first_harness") return { ruby: 1, sapphire: 1, pearl: 1 };
     if (beatId === "b11_forge_reserved" && subStep === 0) return { onyx: 2, pearl: 1 };
@@ -498,48 +628,58 @@ function AffinityWell({
   const isGuidedBeat = Object.keys(guidedGems).length > 0;
 
   return (
-    <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
+    <motion.div
+      className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${harnessFlash ? "border-emerald-400/70" : "border-white/10"}`}
+      animate={harnessFlash
+        ? { boxShadow: ["0 0 6px rgba(52,211,153,0.15)", "0 0 28px rgba(52,211,153,0.50)", "0 0 14px rgba(52,211,153,0.22)"] }
+        : { boxShadow: "none" }
+      }
+      transition={{ duration: 0.85, ease: "easeOut" }}
+      style={{ background: "rgba(3,3,12,0.78)" }}
+    >
       <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
-      <div className="flex gap-3 flex-wrap justify-center mb-3">
-        {GEM_KEYS_NO_FLUX.map(gem => {
+      <div className="flex gap-2 flex-wrap justify-center mb-3">
+        {ALL_GEMS.map(gem => {
+          const isFlux = gem === "flux";
+          const isLocked = isFlux && fluxLocked;
           const meta = GEM_META[gem];
           const cur = s.wellSel[gem] ?? 0;
           const guided = guidedGems[gem] ?? 0;
-          const isHighlighted = isGuidedBeat && guided > 0;
-          // Disable if adding 1 more of this gem would exceed the 2-same-color limit
-          const projCount = cur + 1;
-          const wouldExceedSameLimit = projCount > 2;
-          const canAdd = wellEnabled && !wouldExceedSameLimit && (!isGuidedBeat || guided > cur);
-          const canRemove = wellEnabled && cur > 0;
+          const isHighlighted = isGuidedBeat && guided > 0 && !isFlux;
+          const wouldExceedSameLimit = (cur + 1) > 2;
+          const canAdd = !isLocked && wellEnabled && !wouldExceedSameLimit && (!isGuidedBeat || guided > cur);
+          const canRemove = !isLocked && wellEnabled && cur > 0;
 
           return (
-            <div key={gem} className="flex flex-col items-center gap-1.5">
-              {/* Tap gem orb to add; shows selected count as badge */}
-              <motion.button
-                animate={isHighlighted && cur < guided ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-                transition={{ duration: 1.1, repeat: Infinity }}
-                onClick={() => canAdd ? dispatch({ type: "SEL_AFF", gem, delta: 1 }) : undefined}
-                disabled={!canAdd}
-                className={`relative w-14 h-14 rounded-full border-2 flex items-center justify-center transition-all
-                  ${isHighlighted ? "shadow-[0_0_12px_rgba(251,191,36,0.6)]" : ""}
-                  ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
-                  ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
-                style={{ borderColor: cur > 0 ? meta.hex : isHighlighted ? "#fbbf24" : "rgba(255,255,255,0.15)" }}
-              >
-                <img src={meta.image} alt={meta.name} className="w-8 h-8 object-contain" draggable={false} />
-                {cur > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-white shadow"
-                    style={{ background: meta.hex }}
-                  >{cur}</span>
+            <div key={gem} className={`flex flex-col items-center gap-1.5 ${isLocked ? "opacity-35" : ""}`}>
+              <div className="relative">
+                <motion.button
+                  animate={isHighlighted && cur < guided ? { scale: [1, 1.12, 1] } : { scale: 1 }}
+                  transition={{ duration: 1.1, repeat: Infinity }}
+                  onClick={() => canAdd ? dispatch({ type: "SEL_AFF", gem, delta: 1 }) : undefined}
+                  disabled={!canAdd}
+                  className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all
+                    ${isHighlighted ? "shadow-[0_0_12px_rgba(251,191,36,0.6)]" : ""}
+                    ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
+                    ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
+                  style={{ borderColor: cur > 0 ? meta.hex : isHighlighted ? "#fbbf24" : "rgba(255,255,255,0.15)" }}
+                >
+                  <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} />
+                  {cur > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-white shadow"
+                      style={{ background: meta.hex }}>{cur}</span>
+                  )}
+                </motion.button>
+                {isLocked && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full pointer-events-none">
+                    <Lock className="h-3.5 w-3.5 text-white/40" />
+                  </div>
                 )}
-              </motion.button>
-              {/* Minus button — only visible when cur > 0 */}
+              </div>
               <button
                 onClick={() => canRemove ? dispatch({ type: "SEL_AFF", gem, delta: -1 }) : undefined}
                 disabled={!canRemove}
-                className={`text-[10px] font-bold w-6 h-5 rounded transition-all
-                  ${canRemove ? "bg-white/10 text-white/70 hover:bg-white/20" : "opacity-0 pointer-events-none"}`}
+                className={`text-[10px] font-bold w-6 h-5 rounded transition-all ${canRemove ? "bg-white/10 text-white/70 hover:bg-white/20" : "opacity-0 pointer-events-none"}`}
               >−</button>
             </div>
           );
@@ -551,24 +691,35 @@ function AffinityWell({
         </div>
         <div className="flex gap-1">
           {totalSel > 0 && (
-            <button
-              onClick={() => dispatch({ type: "CLEAR_SEL" })}
-              className="text-[10px] px-2 py-1.5 rounded-lg bg-white/8 text-white/50 hover:bg-white/15"
-            >Clear</button>
+            <button onClick={() => dispatch({ type: "CLEAR_SEL" })}
+              className="text-[10px] px-2 py-1.5 rounded-lg bg-white/8 text-white/50 hover:bg-white/15">Clear</button>
           )}
           <button
-            onClick={() => wellEnabled && totalSel > 0 ? dispatch({ type: "HARNESS" }) : undefined}
+            onClick={() => {
+              if (wellEnabled && totalSel > 0) {
+                dispatch({ type: "HARNESS" });
+                onHarnessFlash?.();
+              }
+            }}
             disabled={!wellEnabled || totalSel === 0}
             className={`text-[11px] font-bold px-4 py-1.5 rounded-lg transition-all ${wellEnabled && totalSel > 0 ? "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md" : "bg-white/8 text-white/20 cursor-not-allowed"}`}
           >Harness</button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ─── Player Hand (reserved) ───────────────────────────────────────────────────
-function PlayerHand({ s, dispatch, beatId, subStep }: { s: TutState; dispatch: React.Dispatch<TAction>; beatId: string; subStep: number }) {
+function PlayerHand({
+  s, dispatch, beatId, subStep, onCardTap,
+}: {
+  s: TutState;
+  dispatch: React.Dispatch<TAction>;
+  beatId: string;
+  subStep: number;
+  onCardTap?: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
+}) {
   if (s.reserved.length === 0) return null;
   const isForgeReservedBeat = beatId === "b11_forge_reserved";
   const forgeEnabled = isForgeReservedBeat && subStep >= 1;
@@ -582,19 +733,23 @@ function PlayerHand({ s, dispatch, beatId, subStep }: { s: TutState; dispatch: R
           if (!card) return null;
           const isHighlighted = isForgeReservedBeat;
           return (
-            <div key={id} className="mb-10">
-              <TutorialCard
-                card={card}
-                bonuses={s.bonuses}
-                crystals={s.crystals}
-                onForge={() => dispatch({ type: "FORGE_RESERVED", cardId: id })}
-                forgeEnabled={forgeEnabled}
-                highlighted={isHighlighted}
-                foreground={isHighlighted}
-                viewMode={s.view}
-                wellSel={s.wellSel}
-              />
-            </div>
+            <TutorialCard
+              key={id}
+              card={card}
+              bonuses={s.bonuses}
+              crystals={s.crystals}
+              highlighted={isHighlighted}
+              foreground={isHighlighted}
+              viewMode={s.view}
+              wellSel={s.wellSel}
+              onTap={onCardTap ? () => onCardTap(
+                card,
+                forgeEnabled,
+                false,
+                () => dispatch({ type: "FORGE_RESERVED", cardId: id }),
+                undefined,
+              ) : undefined}
+            />
           );
         })}
       </div>
@@ -754,12 +909,37 @@ function MarketTabs({
   );
 }
 
+// ─── Deck Pile Visual ─────────────────────────────────────────────────────────
+function DeckPile({ tier, count }: { tier: number; count: number }) {
+  const colors: Record<number, string> = { 1: "#1a2435", 2: "#121c28", 3: "#1a1225" };
+  const accents: Record<number, string> = { 1: "#3a6a5a", 2: "#2a4a6a", 3: "#5a3a6a" };
+  const bg = colors[tier] ?? "#1a2435";
+  const ac = accents[tier] ?? "#555";
+  return (
+    <div className="flex flex-col items-center gap-1 shrink-0">
+      <div className="relative rounded-lg shadow-lg border border-white/8" style={{ width: 52, height: 72, background: bg }}>
+        <div className="absolute rounded-lg border border-white/5" style={{ inset: "3px -3px -3px 3px", background: bg, opacity: 0.65 }} />
+        <div className="relative h-full flex flex-col items-center justify-center gap-1 p-1">
+          <div className="w-6 h-6 rounded-full border-2 opacity-50" style={{ borderColor: ac }} />
+          <div className="text-[6px] font-bold text-white/25 uppercase tracking-wider">Deck</div>
+        </div>
+        {count > 0 && (
+          <div className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-md"
+            style={{ background: ac }}>{count}</div>
+        )}
+      </div>
+      <span className="text-[6px] text-white/20 font-semibold tracking-wide">Blind</span>
+    </div>
+  );
+}
+
 // ─── Scripted Market ──────────────────────────────────────────────────────────
-function ScriptedMarket({ s, dispatch, beatId, subStep }: {
+function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
   subStep: number;
+  onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -828,15 +1008,15 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
 
   const renderTierRow = (tier: number, cardIds: string[], label: string) => {
     if (cardIds.length === 0) return null;
-    // All cards are shown regardless of view mode — only the displayed numbers change.
-    // T3_IMPOSSIBLE_ID is already beat-gated (only appears in lateBeats tier 3 list)
-    // so it shows in all view modes just like any other card in the list.
     const visible = cardIds.filter(() => true);
     if (visible.length === 0) return null;
+    const deckCounts: Record<number, number> = { 1: 20, 2: 15, 3: 10 };
+    const deckCount = Math.max(0, (deckCounts[tier] ?? 10) - visible.length);
     return (
       <div key={tier} className="mb-4">
         <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">Tier {tier} — {label}</div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
+        <div className="flex gap-3 overflow-x-auto pb-2 items-start">
+          <DeckPile tier={tier} count={deckCount} />
           {visible.map(cardId => {
             const card = TUTORIAL_CARDS[cardId];
             if (!card) return null;
@@ -844,24 +1024,30 @@ function ScriptedMarket({ s, dispatch, beatId, subStep }: {
             const isReserved = s.reserved.includes(cardId);
             if (isReserved) return null;
             const isImpossible = cardId === T3_IMPOSSIBLE_ID;
+            const affordable = canAfford(card, s.crystals, s.bonuses);
             return (
-              <div key={cardId} className="mb-10">
-                <TutorialCard
-                  card={card}
-                  bonuses={s.bonuses}
-                  crystals={s.crystals}
-                  onForge={isImpossible ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." }) : () => dispatch({ type: "FORGE_MARKET", cardId })}
-                  onReserve={!isImpossible ? () => dispatch({ type: "RESERVE", cardId }) : undefined}
-                  forgeEnabled={getCardForgeEnabled(cardId)}
-                  reserveEnabled={getCardReserveEnabled(cardId)}
-                  highlighted={getHighlighted(cardId)}
-                  foreground={getForeground(cardId)}
-                  forged={isForged}
-                  impossible={isImpossible}
-                  viewMode={s.view}
-                  wellSel={s.wellSel}
-                />
-              </div>
+              <TutorialCard
+                key={cardId}
+                card={card}
+                bonuses={s.bonuses}
+                crystals={s.crystals}
+                highlighted={getHighlighted(cardId)}
+                foreground={getForeground(cardId)}
+                forged={isForged}
+                impossible={isImpossible}
+                viewMode={s.view}
+                wellSel={s.wellSel}
+                onTap={isImpossible
+                  ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." })
+                  : () => onCardTap(
+                      card,
+                      getCardForgeEnabled(cardId) && affordable,
+                      getCardReserveEnabled(cardId),
+                      () => dispatch({ type: "FORGE_MARKET", cardId }),
+                      () => dispatch({ type: "RESERVE", cardId }),
+                    )
+                }
+              />
             );
           })}
         </div>
@@ -1959,23 +2145,76 @@ function TutorialForgeBurst({
   );
 }
 
+// ─── Tutorial Luminary Section ────────────────────────────────────────────────
+function TutorialLuminarySection({ beatId: _beatId }: { beatId: string }) {
+  return (
+    <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">Luminaries</div>
+        <div className="text-[9px] text-white/20 italic">Patron cosmic entities</div>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-1 items-start">
+        <div className="relative shrink-0">
+          <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12 }}>
+            <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} size={160} />
+          </div>
+          <div className="absolute inset-0 rounded-xl pointer-events-none"
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72) 40%, transparent 100%)" }}>
+            <div className="absolute bottom-2 left-0 right-0 text-center">
+              <div className="text-[7px] font-bold text-white/60 uppercase tracking-widest">Verdant Oracle</div>
+              <div className="text-[6px] text-white/30 mt-0.5">Verdance affinity</div>
+            </div>
+          </div>
+        </div>
+        <div className="shrink-0 rounded-xl border border-white/8 flex items-center justify-center"
+          style={{ width: 112, height: 160, background: "rgba(255,255,255,0.02)" }}>
+          <div className="text-center px-3">
+            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 mx-auto mb-2 flex items-center justify-center">
+              <span className="text-white/20 text-lg">?</span>
+            </div>
+            <div className="text-[7px] text-white/15 uppercase tracking-wider font-semibold">Unknown</div>
+            <div className="text-[6px] text-white/10 mt-0.5">Each game differs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Gameplay Phase ───────────────────────────────────────────────────────────
 function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
   const beatId = beat.id;
   const subStep = s.subStep;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"board" | "hand" | "log">("board");
+
+  // Card action sheet
+  const [selectedCardData, setSelectedCardData] = useState<{
+    card: TutorialCardData;
+    forgeEnabled: boolean;
+    reserveEnabled: boolean;
+    onForge?: () => void;
+    onReserve?: () => void;
+  } | null>(null);
+
+  // Harness flash — green border pulse on AffinityWell after Harness
+  const [harnessFlash, setHarnessFlash] = useState(false);
+  const harnessFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const triggerHarnessFlash = () => {
+    if (harnessFlashTimerRef.current) clearTimeout(harnessFlashTimerRef.current);
+    setHarnessFlash(true);
+    harnessFlashTimerRef.current = setTimeout(() => setHarnessFlash(false), 800);
+  };
+  useEffect(() => () => { if (harnessFlashTimerRef.current) clearTimeout(harnessFlashTimerRef.current); }, []);
 
   // ── Burst animation state ──────────────────────────────────────────────────
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string; cardId: string } | null>(null);
   const purchaseBurstKeyRef = useRef(0);
   const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
   const gemBurstKeyRef = useRef(0);
-  // Tracks whether a forge just fired so Lumii bounces excitedly at the artifact
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
-  // Artifact detail sheet + "tap to inspect" tip — see use-panel-sheet-tip.ts
-  // for the mount-time invariant documentation and PANEL_TAPPABLE_BEATS definition.
-  const { panelSheetOpen, panelSheetEverOpened, isPanelHighlighted, togglePanelSheet, closePanelSheet } = usePanelSheetTip(beatId);
+  const { isPanelHighlighted } = usePanelSheetTip(beatId);
 
   useEffect(() => {
     const trigger = s.animTrigger;
@@ -1983,7 +2222,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (trigger.type === "forge") {
       purchaseBurstKeyRef.current += 1;
       setPurchaseBurst({ key: purchaseBurstKeyRef.current, lumens: trigger.lumens, name: trigger.name, cardId: trigger.cardId });
-      // TutorialForgeBurst auto-fades over ~2.2s; clear slightly after
       setTimeout(() => setPurchaseBurst(null), 2400);
       setForgeJustHappened(true);
       setTimeout(() => setForgeJustHappened(false), 3600);
@@ -1997,7 +2235,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     }
   }, [s.animTrigger]);
 
-  // Dim mode: listen/look dims the interactive areas
   const isDimmed = beat.mode === "listen" || beat.mode === "look";
   const isWellEnabled = (beat.mode === "act" || beat.mode === "semiOpen") &&
     ["b8_first_harness", "b11_forge_reserved", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId) &&
@@ -2009,27 +2246,21 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
 
-  // Where the Lumii floats
-  const lumiiTarget = beat.lumiiZone;
+  // Flux column locked until Singularity is introduced at b12_tier2
+  const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
 
+  const lumiiTarget = beat.lumiiZone;
   const LUMII_ZONE_POS: Record<string, { x: string; y: string }> = {
-    // Market-focused beats — camera at top; Lumii sits right-side, clear of cards & dialogue
     "market-t1":      { x: "87%", y: "26%" },
     "market-t2":      { x: "87%", y: "20%" },
     "market-t3":      { x: "87%", y: "14%" },
-    // Card-explanation beats — camera at top; Lumii right-side at mid height (dialogue floats beside her)
     "card-cost":      { x: "78%", y: "40%" },
-    // Well-focused beats — camera scrolled to bottom; Lumii parks at top-right, well clear of the well
     well:             { x: "87%", y: "12%" },
-    // Storage / hand beats — camera mid; Lumii left-side out of the way
     hand:             { x: "13%", y: "20%" },
     storage:          { x: "13%", y: "20%" },
-    // Eminence is in the pinned panel (top-right corner of the panel) — Lumii just above it
     eminence:         { x: "88%", y: "12%" },
-    // Tab-switch beats — camera at top; Lumii left, tabs are center
     "discounted-tab": { x: "13%", y: "20%" },
     "needed-tab":     { x: "13%", y: "20%" },
-    // Generic positions
     "top-center":     { x: "50%", y: "10%" },
     center:           { x: "50%", y: "38%" },
     luminary:         { x: "50%", y: "28%" },
@@ -2039,10 +2270,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
 
-  // ── Camera / scroll control ──────────────────────────────────────────────
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Which section should be in view for this beat + subStep
   const cameraFocus: "market" | "well" | "storage" = (() => {
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
@@ -2053,22 +2281,29 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     return "market";
   })();
 
-  // Auto-scroll to the right section whenever beat or subStep changes
+  // Auto-switch tab and close card sheet on beat/subStep change
   useEffect(() => {
+    setActiveTab(cameraFocus === "storage" ? "hand" : "board");
+    setSelectedCardData(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [beatId, subStep]);
+
+  // Auto-scroll within Board tab
+  useEffect(() => {
+    if (activeTab !== "board") return;
     const container = scrollRef.current;
     if (!container) return;
     const maxScroll = container.scrollHeight - container.clientHeight;
     if (cameraFocus === "well") {
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
-    } else if (cameraFocus === "storage") {
-      container.scrollTo({ top: Math.round(maxScroll * 0.5), behavior: "smooth" });
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [beatId, subStep, cameraFocus]);
+  }, [beatId, subStep, cameraFocus, activeTab]);
 
-  // Disable user-initiated scroll so the camera position is always controlled
+  // Lock scroll in Board tab (camera is programmatic)
   useEffect(() => {
+    if (activeTab !== "board") return;
     const container = scrollRef.current;
     if (!container) return;
     const prevent = (e: Event) => e.preventDefault();
@@ -2078,40 +2313,37 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       container.removeEventListener("wheel", prevent);
       container.removeEventListener("touchmove", prevent);
     };
-  }, []);
+  }, [activeTab]);
+
+  // Card tap → open action sheet
+  const handleCardTap = (
+    card: TutorialCardData,
+    forgeEnabled: boolean,
+    reserveEnabled: boolean,
+    onForge?: () => void,
+    onReserve?: () => void,
+  ) => { setSelectedCardData({ card, forgeEnabled, reserveEnabled, onForge, onReserve }); };
 
   return (
     <div className="fixed inset-0 flex flex-col overflow-hidden">
-      {/* Cosmos background with breathing animation — matches game */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `url(${backgroundCosmos})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          animation: "cosmic-breathe 12s ease-in-out infinite",
-        }}
-      />
-      {/* Darkening veil — capped at 0.55 so the cosmos background stays visible behind the tutorial board */}
+      {/* Cosmos background */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        backgroundImage: `url(${backgroundCosmos})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        animation: "cosmic-breathe 12s ease-in-out infinite",
+      }} />
       <div className="absolute inset-0 bg-black/55 pointer-events-none" />
-      {/* Nebula corner glows — affinity-palette tints */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 55% 35% at 100% 0%,   #3D6BFF0F 0%, transparent 70%)," +
-            "radial-gradient(ellipse 45% 30% at 0%   100%, #FF5A3C0C 0%, transparent 70%)," +
-            "radial-gradient(ellipse 40% 28% at 0%   0%,   #7B1FA20C 0%, transparent 65%)," +
-            "radial-gradient(ellipse 42% 30% at 100% 100%, #2ECC710B 0%, transparent 65%)",
-        }}
-      />
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background:
+          "radial-gradient(ellipse 55% 35% at 100% 0%,   #3D6BFF0F 0%, transparent 70%)," +
+          "radial-gradient(ellipse 45% 30% at 0%   100%, #FF5A3C0C 0%, transparent 70%)," +
+          "radial-gradient(ellipse 40% 28% at 0%   0%,   #7B1FA20C 0%, transparent 65%)," +
+          "radial-gradient(ellipse 42% 30% at 100% 100%, #2ECC710B 0%, transparent 65%)",
+      }} />
+      {isDimmed && <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />}
 
-      {/* Dim overlay for listen/look mode */}
-      {isDimmed && (
-        <div className="absolute inset-0 bg-black/30 z-20 pointer-events-none" />
-      )}
-
-      {/* Tutorial header bar — mirrors the game's header */}
+      {/* Header */}
       <header className="shrink-0 z-30 flex items-center justify-between px-4 py-2 border-b border-white/10 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.82)" }}>
         <div className="flex items-center gap-2">
           <div className="flex flex-col leading-none">
@@ -2187,72 +2419,62 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         )}
       </AnimatePresence>
 
-      {/* Scrollable board content — scroll is locked; camera moves programmatically per beat */}
-      <div ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 pb-4">
-        {/* Market section */}
-        <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
-          <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
-          <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} />
-        </div>
-
-        {/* Player hand */}
-        <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
-          <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} />
-        </div>
-
-        {/* Storage */}
-        <PlayerStorage s={s} highlighted={isStorageHighlighted} />
-
-        {/* Affinity well */}
-        <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled} />
+      {/* ── Tab content area ─────────────────────────────────────────── */}
+      <div className="relative z-10 flex-1 overflow-hidden">
+        {activeTab === "board" && (
+          <div ref={scrollRef} className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3 pb-4">
+            <TutorialLuminarySection beatId={beatId} />
+            <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
+              <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
+              <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
+            </div>
+            <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
+              fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
+          </div>
+        )}
+        {activeTab === "hand" && (
+          <div className="h-full overflow-y-auto px-4 py-3 flex flex-col gap-3 pb-4">
+            {s.reserved.length === 0 && s.forged.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3 pb-16">
+                <div className="text-3xl opacity-20">✦</div>
+                <div className="text-center text-white/25 text-sm font-serif italic px-8">
+                  Reserve or forge cards from The Forge and they appear here.
+                </div>
+              </div>
+            ) : (
+              <>
+                {s.reserved.length > 0 && (
+                  <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
+                    <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
+                  </div>
+                )}
+                <PlayerStorage s={s} highlighted={isStorageHighlighted} />
+              </>
+            )}
+          </div>
+        )}
+        {activeTab === "log" && (
+          <div className="h-full overflow-y-auto px-4 py-4 flex flex-col gap-2">
+            <div className="text-[10px] text-white/30 font-semibold uppercase tracking-wider mb-3">Action Log</div>
+            <div className="text-[11px] text-white/20 font-serif italic text-center py-10">
+              The full action log is available in a real game.
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Pinned Player Panel — mirrors the real game's bottom panel ── */}
+      {/* ── Pinned Player Panel ────────────────────────────────────────── */}
       <motion.div
-        role={isPanelHighlighted ? "button" : undefined}
-        tabIndex={isPanelHighlighted ? 0 : undefined}
-        onClick={isPanelHighlighted ? togglePanelSheet : undefined}
-        onKeyDown={isPanelHighlighted ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePanelSheet(); } } : undefined}
         className={`shrink-0 z-20 border-t px-3 py-2 backdrop-blur-md transition-all ${
-          isPanelHighlighted
-            ? 'border-amber-400/60 cursor-pointer active:brightness-110'
-            : isActMode ? 'border-indigo-500/40' : 'border-white/10'
+          isEminenceHighlighted ? "border-amber-400/60" : isActMode ? "border-indigo-500/40" : "border-white/10"
         }`}
-        animate={
-          isPanelHighlighted
-            ? { boxShadow: ['0 0 18px rgba(251,191,36,0.17)', '0 0 22px rgba(251,191,36,0.28)', '0 0 18px rgba(251,191,36,0.17)'] }
-            : isActMode
-              ? { boxShadow: '0 0 12px rgba(99,102,241,0.20)' }
-              : { boxShadow: 'none' }
+        animate={isEminenceHighlighted
+          ? { boxShadow: ["0 0 18px rgba(251,191,36,0.17)", "0 0 22px rgba(251,191,36,0.28)", "0 0 18px rgba(251,191,36,0.17)"] }
+          : isActMode ? { boxShadow: "0 0 12px rgba(99,102,241,0.20)" } : { boxShadow: "none" }
         }
-        transition={isPanelHighlighted ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
-        style={{ background: 'rgba(3,3,12,0.80)' }}
+        transition={isEminenceHighlighted ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+        style={{ background: "rgba(3,3,12,0.80)" }}
       >
-        {/* Tap-to-inspect hint — visible when panel is highlighted and sheet is closed */}
-        <AnimatePresence>
-          {isPanelHighlighted && !panelSheetEverOpened && (
-            <motion.div
-              key="tap-hint"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              transition={{ duration: 0.25 }}
-              className="flex items-center justify-center gap-1 mb-1.5 pointer-events-none select-none"
-            >
-              <motion.div
-                animate={{ y: [0, -3, 0] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                className="flex items-center gap-1"
-              >
-                <ChevronUp className="h-3 w-3 text-amber-400" strokeWidth={2.5} />
-                <span className="text-[10px] font-semibold tracking-wide text-amber-400/90">tap to inspect</span>
-                <ChevronUp className="h-3 w-3 text-amber-400" strokeWidth={2.5} />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Identity + stats row */}
         <div className="flex items-center gap-3 mb-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <div className="w-[22px] h-[22px] rounded-full bg-indigo-700/70 border border-indigo-400/40 flex items-center justify-center shrink-0">
@@ -2269,78 +2491,74 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               <span className="font-serif font-black text-lg text-white leading-none">{totalCrystals}</span>
               <span className="text-[10px] text-white/40">Affinity</span>
             </span>
-            <button
-              type="button"
-              onClick={() => {}}
-              className="inline-flex items-center gap-1 rounded-md px-1 py-0.5"
-            >
-              <motion.span
-                key={s.eminence}
-                initial={{ scale: 1.4, color: '#a5b4fc' }}
-                animate={{ scale: 1, color: '#818cf8' }}
-                transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-                className="font-serif font-black text-lg leading-none"
-              >{s.eminence}</motion.span>
+            <div className="inline-flex items-center gap-1 rounded-md px-1 py-0.5">
+              <motion.span key={s.eminence} initial={{ scale: 1.4, color: "#a5b4fc" }} animate={{ scale: 1, color: "#818cf8" }}
+                transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                className="font-serif font-black text-lg leading-none">{s.eminence}</motion.span>
               <Sparkles className="h-3 w-3 text-indigo-400" />
-            </button>
+            </div>
           </div>
         </div>
-        {/* Tap-to-inspect affordance — shown during panel-tappable beats, only before first open */}
-        {isPanelHighlighted && !panelSheetEverOpened && (
-          <div className="flex items-center justify-center gap-1 mb-1.5 pointer-events-none">
-            <ChevronUp className="h-3 w-3 text-amber-400/70" />
-            <span className="text-[9px] font-semibold text-amber-400/70 tracking-wide uppercase">tap to inspect artifacts</span>
-            <ChevronUp className="h-3 w-3 text-amber-400/70" />
-          </div>
-        )}
-        {/* 6 affinity boxes */}
         <div className="flex gap-1.5">
           {ALL_GEMS.map(gem => {
             const meta = GEM_META[gem];
             const held = s.crystals[gem] ?? 0;
-            const bonus = gem !== 'flux' ? (s.bonuses[gem] ?? 0) : 0;
-            const reservedCount = gem === 'flux' ? s.reserved.length : 0;
-            const hasContent = gem === 'flux' ? (held > 0 || reservedCount > 0) : (held > 0 || bonus > 0);
+            const bonus = gem !== "flux" ? (s.bonuses[gem] ?? 0) : 0;
+            const reservedCount = gem === "flux" ? s.reserved.length : 0;
+            const hasContent = gem === "flux" ? (held > 0 || reservedCount > 0) : (held > 0 || bonus > 0);
             return (
-              <div
-                key={gem}
-                className="flex-1 min-h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
+              <div key={gem} className="flex-1 min-h-[72px] flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
                 style={{
-                  background: hasContent
-                    ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
-                    : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                  border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
-                  boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
-                }}
-              >
-                {hasContent && (
-                  <div className="absolute inset-x-0 top-0 h-[1px]"
-                    style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
-                )}
-                <div className="flex items-center gap-0.5 w-full justify-center">
-                  <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                  background: hasContent ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)` : "linear-gradient(180deg, #07070b 0%, #0e0e14 100%)",
+                  border: `1px solid ${hasContent ? meta.hex + "AA" : meta.hex + "22"}`,
+                  boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : "none",
+                }}>
+                {hasContent && <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />}
+                <div className="flex items-center gap-0.5 justify-center">
+                  <span className="text-[7px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
                   <MiniGem gem={gem} size={7} />
                 </div>
-                <div className="flex items-center gap-0.5">
-                  <span
-                    className="text-2xl font-black leading-none tracking-tight"
-                    style={{
-                      color: hasContent ? '#fff' : meta.hex + '40',
-                      textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
-                    }}
-                  >{held}</span>
-                </div>
-                {gem !== 'flux' && bonus > 0 && (
-                  <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
-                )}
-                {gem === 'flux' && reservedCount > 0 && (
-                  <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
-                )}
+                <span className="text-2xl font-black leading-none tracking-tight"
+                  style={{ color: hasContent ? "#fff" : meta.hex + "40", textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none" }}
+                >{held}</span>
+                {gem !== "flux" && bonus > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>}
+                {gem === "flux" && reservedCount > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>}
               </div>
             );
           })}
         </div>
       </motion.div>
+
+      {/* ── Bottom Tab Bar ────────────────────────────────────────────── */}
+      <div className="shrink-0 z-30 border-t border-white/10 flex items-stretch" style={{ background: "rgba(3,3,12,0.92)" }}>
+        {([
+          { tab: "board" as const, label: "Board", Icon: LayoutGrid, badge: undefined as number | undefined, highlighted: false },
+          { tab: "hand"  as const, label: "Hand",  Icon: HandIcon,   badge: s.reserved.length > 0 ? s.reserved.length : undefined, highlighted: isPanelHighlighted },
+          { tab: "log"   as const, label: "Log",   Icon: List,       badge: undefined as number | undefined, highlighted: false },
+        ]).map(({ tab, label, Icon, badge, highlighted }) => {
+          const isActive = activeTab === tab;
+          return (
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all relative ${
+                isActive ? "text-white" : highlighted ? "text-amber-400" : "text-white/35 hover:text-white/60"
+              }`}
+            >
+              {isActive && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-white/60" />}
+              <div className="relative">
+                <Icon className="h-[18px] w-[18px]" />
+                {badge != null && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-indigo-500 text-[8px] font-bold text-white flex items-center justify-center leading-none">{badge}</span>
+                )}
+                {highlighted && !isActive && (
+                  <motion.span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-amber-400"
+                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.6, 1] }} transition={{ duration: 1.2, repeat: Infinity }} />
+                )}
+              </div>
+              <span className="text-[9px] font-semibold">{label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* Floating Lumii — moves between zones, bounces to draw attention */}
       {(() => {
@@ -2422,115 +2640,35 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         );
       })()}
 
-      {/* ── Artifact Detail Sheet — slides up when panel is tapped during b9b ── */}
+      {/* ── Card Action Sheet ─────────────────────────────────────────── */}
       <AnimatePresence>
-        {panelSheetOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              key="sheet-backdrop"
-              className="fixed inset-0 z-[44] bg-black/40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={closePanelSheet}
-            />
-            {/* Sheet */}
-            <motion.div
-              key="sheet-panel"
-              className="fixed left-0 right-0 z-[45] rounded-t-2xl border-t border-amber-400/40 shadow-[0_-8px_32px_rgba(251,191,36,0.15)] px-4 pt-4 pb-6"
-              style={{ background: 'rgba(6,6,17,0.97)', bottom: 0 }}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            >
-              {/* Drag handle */}
-              <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4" />
-
-              {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">Forged Artifacts</span>
-                <button
-                  type="button"
-                  onClick={closePanelSheet}
-                  className="text-[10px] text-white/40 hover:text-white/70 transition-colors px-2 py-1"
-                >
-                  close ✕
-                </button>
-              </div>
-
-              {/* Artifacts list */}
-              <div className="flex flex-col gap-2 mb-4">
-                {s.forged.length === 0 && (
-                  <span className="text-[11px] text-white/30 text-center py-2">No artifacts forged yet</span>
-                )}
-                {s.forged.map(id => {
-                  const card = TUTORIAL_CARDS[id];
-                  if (!card) return null;
-                  const bonusMeta = GEM_META[card.bonusColor];
-                  return (
-                    <div key={id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 border border-white/10"
-                      style={{ background: `linear-gradient(90deg, #07070b 0%, ${bonusMeta.hex}18 100%)` }}>
-                      <img src={bonusMeta.image} alt="" className="w-6 h-6 object-contain shrink-0" draggable={false} />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-semibold text-white truncate">{card.name}</div>
-                        <div className="text-[9px] text-white/40 mt-0.5">
-                          Bonus: <span style={{ color: bonusMeta.glowHex }}>+1 {bonusMeta.shortName}</span> per turn
-                          {card.lumens > 0 && <span className="text-amber-300 ml-1.5">· +{card.lumens} Eminence</span>}
-                        </div>
-                      </div>
-                      {card.lumens > 0 && (
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <Sparkles className="h-3 w-3 text-amber-400" />
-                          <span className="text-[11px] font-bold text-amber-300">+{card.lumens}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Bonus totals */}
-              {Object.values(s.bonuses).some(v => v > 0) && (
-                <div className="border-t border-white/10 pt-3">
-                  <div className="text-[9px] text-white/35 uppercase tracking-widest mb-2">Affinity Bonuses</div>
-                  <div className="flex gap-2 flex-wrap">
-                    {(Object.entries(s.bonuses) as [GemKey, number][]).filter(([, v]) => v > 0).map(([gem, val]) => {
-                      const meta = GEM_META[gem];
-                      return (
-                        <div key={gem} className="flex items-center gap-1 rounded-lg px-2.5 py-1 border"
-                          style={{ background: `${meta.hex}18`, borderColor: `${meta.hex}55` }}>
-                          <MiniGem gem={gem} size={10} />
-                          <span className="text-[10px] font-bold" style={{ color: meta.glowHex }}>+{val}</span>
-                          <span className="text-[9px] text-white/50">{meta.shortName}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </>
+        {selectedCardData && (
+          <TutorialCardSheet
+            card={selectedCardData.card}
+            bonuses={s.bonuses}
+            crystals={s.crystals}
+            viewMode={s.view}
+            wellSel={s.wellSel}
+            forgeEnabled={selectedCardData.forgeEnabled}
+            reserveEnabled={selectedCardData.reserveEnabled}
+            onForge={selectedCardData.onForge ? () => { setSelectedCardData(null); selectedCardData.onForge!(); } : undefined}
+            onReserve={selectedCardData.onReserve ? () => { setSelectedCardData(null); selectedCardData.onReserve!(); } : undefined}
+            onClose={() => setSelectedCardData(null)}
+          />
         )}
       </AnimatePresence>
 
-      {/* Dialogue box — repositions based on camera focus to avoid covering the active section */}
+      {/* Dialogue box */}
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
-        <div className={`fixed ${cameraFocus === "well" ? "top-[54px]" : "bottom-[152px]"} left-0 right-0 z-50 px-4`}>
+        <div className={`fixed ${cameraFocus === "well" && activeTab === "board" ? "top-[54px]" : "bottom-[160px]"} left-0 right-0 z-50 px-4`}>
           <AnimatePresence mode="wait">
             <DialogueBox
               key={`${beatId}-${s.dlgLine}-${s.nudge}`}
               lines={beat.dialogue}
               lineIndex={s.dlgLine}
               onTap={() => {
-                if (s.nudge) {
-                  dispatch({ type: "NUDGE", msg: null });
-                } else {
-                  closePanelSheet();
-                  dispatch({ type: "NEXT_DLG" });
-                }
+                if (s.nudge) dispatch({ type: "NUDGE", msg: null });
+                else dispatch({ type: "NEXT_DLG" });
               }}
               nudge={s.nudge}
               mode={beat.mode}
