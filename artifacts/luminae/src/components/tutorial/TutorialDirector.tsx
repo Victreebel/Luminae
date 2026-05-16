@@ -1225,7 +1225,7 @@ type FSPhase = typeof FS_PHASE_ORDER[number];
 
 // Phase durations (ms) — identical to PHASE_DURATIONS in luminaryAssets.tsx
 const FS_DURS: Partial<Record<FSPhase, number>> = {
-  pressure: 90, firstcrack: 320, leaking: 850, secondcrack: 360,
+  pressure: 620, firstcrack: 520, leaking: 850, secondcrack: 420,
   cracking: 1100, shattering: 1000, flashing: 950,
 };
 
@@ -1321,18 +1321,18 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0.70, 0.60] }}
-        transition={{ duration: 0.08, delay: d1, ease: 'easeOut' }}
+        transition={{ duration: 0.32, delay: d1, ease: 'easeOut' }}
       />
     );
   }
   return (
     <>
-      {/* L1 white snap — the instant fracture line */}
+      {/* L1 white snap — fracture line drawing across the panel */}
       <motion.path d={d} stroke="white" strokeWidth="0.22" fill="none"
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
-        transition={{ duration: 0.10, delay: d1, ease: 'easeOut' }}
+        transition={{ duration: 0.42, delay: d1, ease: 'easeOut' }}
       />
       {/* L2 chasing glow — wide light bleed chasing the fracture tip */}
       <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="4.0" fill="none"
@@ -1340,8 +1340,8 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0.90, 0.25, 0] }}
         transition={{
-          pathLength: { duration: 0.28, delay: d1 + 0.04, ease: 'easeOut' },
-          opacity:    { duration: 0.58, delay: d1 + 0.04, times: [0, 0.12, 0.55, 1.0] },
+          pathLength: { duration: 0.52, delay: d1 + 0.04, ease: 'easeOut' },
+          opacity:    { duration: 0.78, delay: d1 + 0.04, times: [0, 0.12, 0.55, 1.0] },
         }}
       />
       {/* L3 residual wound — sustained light bleeding through the gap */}
@@ -1349,13 +1349,13 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
         filter="url(#fso-cgw)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0, 0.55, 0.75, 0.65] }}
-        transition={{ duration: 0.65, delay: d1 + 0.14, ease: 'easeOut' }}
+        transition={{ duration: 0.85, delay: d1 + 0.14, ease: 'easeOut' }}
       />
       {/* L4 tinted seam — narrow cool-white line showing the crack edge */}
       <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="0.45" fill="none"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.60, 0.52] }}
-        transition={{ duration: 0.60, delay: d1 + 0.16, ease: 'easeOut' }}
+        transition={{ duration: 0.80, delay: d1 + 0.16, ease: 'easeOut' }}
       />
     </>
   );
