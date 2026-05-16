@@ -2659,7 +2659,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Collection sheet — slides up to show all forged artifacts (teaches panel-tap mechanic)
   const [collectionOpen, setCollectionOpen] = useState(false);
   // Beats that explicitly invite the player to tap their panel
-  const PANEL_TAP_BEATS = new Set(["b9b_forge_complete", "b9c_transition", "b11_forge_reserved", "b12_tier2"]);
+  const PANEL_TAP_BEATS = new Set(["b9b_forge_complete", "b11_forge_reserved", "b12_tier2"]);
   const showPanelTapHint = PANEL_TAP_BEATS.has(beatId) && s.forged.length > 0;
 
   // Harness flash — green border pulse on AffinityWell after Harness

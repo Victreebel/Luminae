@@ -370,7 +370,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b11_forge_reserved",
     mode: "act",
-    lumiiZone: "hand",
+    lumiiZone: "market-t1",
     highlightZone: "hand",
     dialogue: [
       { text: "Reserved artifacts can still be forged." },
