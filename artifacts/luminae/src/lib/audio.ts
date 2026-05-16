@@ -867,7 +867,6 @@ class GameAudio {
       void this.scheduleMp3(LUMINARY_SFX.secondCrack,       t + CRACK2 / 1000,          0.18);
       void this.scheduleMp3(LUMINARY_SFX.universeExpanding, t + SHATT  / 1000,          0.22);
       void this.scheduleMp3(LUMINARY_SFX.glassShatter,      t + (SHATT + 80) / 1000,    0.20);
-      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom,  t + FLASH  / 1000,          0.22);
 
     } catch (e) {
       console.warn('[Luminae] Tutorial shatter audio failed', e);
