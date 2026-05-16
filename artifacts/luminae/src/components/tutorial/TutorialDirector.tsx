@@ -1793,7 +1793,9 @@ function ArchitectAssembly({
           <div className="flex gap-1.5">
             {lumColors.map((_, i) => (
               <div key={i} className="shrink-0 rounded-xl flex items-center justify-center"
-                style={{ width: CW, height: CH, background: "rgba(255,255,255,0.022)", border: "1px dashed rgba(255,255,255,0.09)" }} />
+                style={{ width: CW, height: CH, background: "rgba(255,255,255,0.022)", border: "1px dashed rgba(255,255,255,0.09)" }}>
+                <span className="text-white/12 text-base">?</span>
+              </div>
             ))}
           </div>
         </motion.div>
