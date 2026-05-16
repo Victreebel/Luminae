@@ -24,11 +24,12 @@ const FANFARE_COLOR_MAP: Record<string, GemKey> = {
 // Luminary summon cutscene — pre-built MP3 assets, played at their phase beat times.
 // Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
 const LUMINARY_SFX = {
-  firstCrack:       new URL('../assets/audio/luminary/First Crackmp3.mp3',     import.meta.url).href,
-  secondCrack:      new URL('../assets/audio/luminary/Second Crack.mp3',       import.meta.url).href,
-  deepImpact:       new URL('../assets/audio/luminary/Deep Impact.mp3',        import.meta.url).href,
-  glassShatter:     new URL('../assets/audio/luminary/Glass Shatter.mp3',      import.meta.url).href,
-  cosmicPortalBoom: new URL('../assets/audio/luminary/Cosmic Portal Boom.mp3', import.meta.url).href,
+  firstCrack:         new URL('../assets/audio/luminary/First Crackmp3.mp3',                import.meta.url).href,
+  secondCrack:        new URL('../assets/audio/luminary/Second Crack.mp3',                  import.meta.url).href,
+  deepImpact:         new URL('../assets/audio/luminary/Deep Impact.mp3',                   import.meta.url).href,
+  glassShatter:       new URL('../assets/audio/luminary/Glass Shatter.mp3',                 import.meta.url).href,
+  cosmicPortalBoom:   new URL('../assets/audio/luminary/Cosmic Portal Boom.mp3',            import.meta.url).href,
+  universeExpanding:  new URL('../assets/audio/luminary/Universe_Expanding_Pad_Low_01.wav', import.meta.url).href,
 };
 
 // Pentatonic-adjacent frequencies per gem — each has its own "voice"
@@ -862,11 +863,11 @@ class GameAudio {
       this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
 
       // ── MP3 assets — same SFX as summon cutscene ─────────────────────
-      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,          0.20);
-      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,          0.18);
-      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,          0.22);
-      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,    0.20);
-      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,          0.22);
+      void this.scheduleMp3(LUMINARY_SFX.firstCrack,        t + CRACK1 / 1000,          0.20);
+      void this.scheduleMp3(LUMINARY_SFX.secondCrack,       t + CRACK2 / 1000,          0.18);
+      void this.scheduleMp3(LUMINARY_SFX.universeExpanding, t + SHATT  / 1000,          0.22);
+      void this.scheduleMp3(LUMINARY_SFX.glassShatter,      t + (SHATT + 80) / 1000,    0.20);
+      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom,  t + FLASH  / 1000,          0.22);
 
     } catch (e) {
       console.warn('[Luminae] Tutorial shatter audio failed', e);
