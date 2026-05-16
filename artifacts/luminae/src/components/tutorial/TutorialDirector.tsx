@@ -1941,36 +1941,51 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [shatteringStarted, setShatteringStarted] = useState(false);
   const [assemblyDone, setAssemblyDone] = useState(false);
   const [lumiSweepDone, setLumiSweepDone] = useState(false);
-  const [devMarker, setDevMarker] = useState<{ left: string; top: string } | null>(null);
+  const [devMarker, setDevMarker] = useState<{ canvasX: number; canvasY: number } | null>(null);
 
   // Compute where the Tier-1 right corner of the forge lands in viewport %,
   // using the same scale formula as ArchitectAssembly (INNER_W=375, INNER_H=660).
-  const computeLumiAssemblyPos = () => {
+  // Convert inner-canvas coords (375×660 space) → viewport-% position for LumiiOrb.
+  // Canvas is centered on the viewport, so this is viewport-size-independent when
+  // the canvas coords come from a reverse-transform of a real click.
+  const canvasToViewportPos = (canvasX: number, canvasY: number) => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const scale = Math.min(vw * 0.84 / 375, vh * 0.76 / 660, 0.70);
+    const vpX = vw / 2 + scale * (canvasX - 375 / 2);
+    const vpY = vh / 2 + scale * (canvasY - 660 / 2);
+    return {
+      left: `${((vpX / vw) * 100).toFixed(1)}%`,
+      top:  `${((vpY / vh) * 100).toFixed(1)}%`,
+    };
+  };
+
+  const computeLumiAssemblyPos = () => {
     // Tier 1 row card-slot layout (inner canvas coords, origin = canvas left):
     //   forge margin(mx-3)=12, pad-left=10 → content starts at x=22
     //   deck=36, gap=6, then 4 cards (CW=42) with gap-1.5(6) between each
     //   card4 center = 22 + 36 + 6 + 42*3 + 6*3 + 21 = 229
     const card4CenterX = 229; // x of rightmost card slot center in inner canvas
-    const lumiVX = vw / 2 + scale * (card4CenterX - 375 / 2);
     // Tier I row card-center y in inner canvas:
     //   forge top=148, pad=10, forge-label=18, 2 upper tiers each (label≈11 + CH=60 + gap=8) = 158
     //   tier-I label=11, card center=CH/2=30 → total ≈ 148+10+18+158+11+30 = 375
-    const tier1VY = vh / 2 + scale * (375 - 660 / 2);
-    return {
-      left: `${((lumiVX / vw) * 100).toFixed(1)}%`,
-      top:  `${((tier1VY / vh) * 100).toFixed(1)}%`,
-    };
+    const tier1CanvasY = 375;
+    return canvasToViewportPos(card4CenterX, tier1CanvasY);
   };
   const [lumiAssemblyPos, setLumiAssemblyPos] = useState(computeLumiAssemblyPos);
   useEffect(() => {
-    const update = () => setLumiAssemblyPos(computeLumiAssemblyPos());
+    const update = () => {
+      // If a dev target is active, re-snap Lumi using canvas coords (viewport-independent)
+      if (devMarker) {
+        setLumiAssemblyPos(canvasToViewportPos(devMarker.canvasX, devMarker.canvasY));
+      } else {
+        setLumiAssemblyPos(computeLumiAssemblyPos());
+      }
+    };
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [devMarker]);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -2052,11 +2067,17 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       className="fixed inset-0 flex items-center justify-center select-none"
       style={{ background: "radial-gradient(ellipse at 50% 60%, #0a0a1a 0%, #000000 100%)" }}
       onClick={import.meta.env.DEV && isArchitectAssembly && assemblyDone ? (e: React.MouseEvent) => {
-        const left = `${((e.clientX / window.innerWidth) * 100).toFixed(1)}%`;
-        const top  = `${((e.clientY / window.innerHeight) * 100).toFixed(1)}%`;
-        setDevMarker({ left, top });
-        // Immediately move Lumi to the clicked spot so you can see if it looks right
-        setLumiAssemblyPos({ left, top });
+        // Reverse-transform viewport click → inner canvas coords (375×660 space).
+        // Canvas is centered on the viewport with the same scale formula used in computeLumiAssemblyPos.
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const scale = Math.min(vw * 0.84 / 375, vh * 0.76 / 660, 0.70);
+        const canvasX = Math.round((e.clientX - (vw / 2 - scale * 375 / 2)) / scale);
+        const canvasY = Math.round((e.clientY - (vh / 2 - scale * 660 / 2)) / scale);
+        const marker = { canvasX, canvasY };
+        setDevMarker(marker);
+        // Snap Lumi immediately using the same canvas→viewport conversion
+        setLumiAssemblyPos(canvasToViewportPos(canvasX, canvasY));
       } : undefined}
     >
       {/* Cosmos fades in when shattering starts — veil begins transparent so the
@@ -2198,23 +2219,25 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       </AnimatePresence>
 
       {/* DEV: position picker — click anywhere after assembly to mark a target for Lumi */}
-      {import.meta.env.DEV && isArchitectAssembly && assemblyDone && devMarker && (
-        <div
-          className="absolute pointer-events-none z-[200]"
-          style={{ left: devMarker.left, top: devMarker.top, transform: "translate(-50%,-50%)" }}
-        >
-          <div className="relative flex items-center justify-center">
-            <div className="w-5 h-5 rounded-full border-2 border-yellow-400 bg-yellow-400/20" />
-            <div className="absolute h-px w-8 bg-yellow-400" />
-            <div className="absolute w-px h-8 bg-yellow-400" />
-          </div>
+      {import.meta.env.DEV && isArchitectAssembly && assemblyDone && devMarker && (() => {
+        // Re-derive the viewport position from canvas coords so the crosshair tracks Lumi exactly
+        const pos = canvasToViewportPos(devMarker.canvasX, devMarker.canvasY);
+        return (
           <div
-            className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-mono font-bold text-yellow-300 bg-black/80 border border-yellow-400/40"
+            className="absolute pointer-events-none z-[200]"
+            style={{ left: pos.left, top: pos.top, transform: "translate(-50%,-50%)" }}
           >
-            left: "{devMarker.left}"  top: "{devMarker.top}"
+            <div className="relative flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full border-2 border-yellow-400 bg-yellow-400/20" />
+              <div className="absolute h-px w-8 bg-yellow-400" />
+              <div className="absolute w-px h-8 bg-yellow-400" />
+            </div>
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-mono font-bold text-yellow-300 bg-black/80 border border-yellow-400/40">
+              canvasX: {devMarker.canvasX}  canvasY: {devMarker.canvasY}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Architect Assembly dialogue — appears once Lumi finishes sweeping past Tier 1 */}
       {isArchitectAssembly && lumiSweepDone && beat.dialogue.length > 0 && (
