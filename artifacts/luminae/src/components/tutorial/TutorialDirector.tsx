@@ -1703,8 +1703,9 @@ function ArchitectAssembly({
   });
 
   // Small card dimensions (inside the 375px inner canvas)
-  const CW = 62;  // card width
-  const CH = 88;  // card height
+  // Keeping cards compact so all 3 tiers + well + panel fit without overlap.
+  const CW = 42;  // card width
+  const CH = 60;  // card height
 
   // Luminary portal colours (representative of the 5 in a typical game)
   const lumColors = ["#3d6bff","#ff5a3c","#2ecc71","#4c1d95","#fef9c3"];
@@ -1832,7 +1833,7 @@ function ArchitectAssembly({
         {/* ── Affinity Well ── */}
         <motion.div {...sectionAnim(20, 0.17)}
           className="absolute left-0 right-0 mx-3 rounded-2xl"
-          style={{ top: 418, padding: "8px 8px 10px 8px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
+          style={{ top: 432, padding: "8px 8px 10px 8px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
         >
           <div className="text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
           <div className="flex gap-1">
