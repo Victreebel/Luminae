@@ -238,7 +238,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "center",
     dialogue: [
       { text: "Welcome to LUMINAe." },
-      { text: "Here, the technological advancement of every form of life is determined by certain Affinities." },
+      { text: "Here, both the nature and technology of all life is determined by its Affinities." },
       { text: "They are the elemental forces of existence — the energy behind everything you will build." },
       { text: "The five Affinities are..." },
     ],
