@@ -1754,9 +1754,10 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
               scale: { type: "spring" as const, stiffness: 120, damping: 20 },
             } : { type: "spring", stiffness: 120, damping: 20, delay: isLocate ? 0.3 : 0 }}
             className="absolute z-30"
-            style={{ transform: "translate(-50%, -50%)" }}
           >
-            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
+            <div style={{ transform: "translate(-50%, -50%)" }}>
+              <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -2527,8 +2528,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 : { type: "spring", stiffness: 80, damping: 18 }
             }
             className="fixed z-[60] pointer-events-none"
-            style={{ transform: "translate(-50%, -50%)" }}
           >
+            <div style={{ transform: "translate(-50%, -50%)" }}>
             {/* Speech bubble anchored to Lumii for card-explanation beats */}
             {showFloatingDlg && (
               <div
@@ -2578,6 +2579,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 <LumiiOrb size={48} excited={isActMode || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
               </div>
             </motion.div>
+            </div>
           </motion.div>
         );
       })()}
