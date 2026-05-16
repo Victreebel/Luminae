@@ -1226,7 +1226,7 @@ type FSPhase = typeof FS_PHASE_ORDER[number];
 // Phase durations (ms) — identical to PHASE_DURATIONS in luminaryAssets.tsx
 const FS_DURS: Partial<Record<FSPhase, number>> = {
   pressure: 620, firstcrack: 520, leaking: 850, secondcrack: 420,
-  cracking: 1100, shattering: 1000, flashing: 950,
+  cracking: 1100, shattering: 1000, flashing: 2800,
 };
 
 // Six-shard geometry — same polygon network as PANEL_PIECES in luminaryAssets,
@@ -1382,7 +1382,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   useEffect(() => {
     if (phase !== 'shattering') return;
     setImpactFlash(true);
-    const t = setTimeout(() => setImpactFlash(false), 160);
+    const t = setTimeout(() => setImpactFlash(false), 700);
     return () => clearTimeout(t);
   }, [phase]);
 
@@ -1437,8 +1437,8 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
           className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,255,0.95) 0%, rgba(190,220,255,0.82) 12%, rgba(110,165,255,0.52) 38%, rgba(30,70,180,0.22) 68%, transparent 90%)' }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.28, 0.28, 0.18, 0.07, 0] }}
-          transition={{ duration: 4.0, times: [0, 0.03, 0.18, 0.48, 0.78, 1.0], ease: 'easeOut' }}
+          animate={{ opacity: [0, 0.45, 0.40, 0.28, 0.10, 0] }}
+          transition={{ duration: 7.5, times: [0, 0.02, 0.14, 0.42, 0.70, 1.0], ease: 'easeOut' }}
         />
       )}
 
@@ -1650,9 +1650,9 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse at 50% 45%, #ffffff 0%, #d8e4f0 35%, #b0c8e0 65%, transparent 100%)' }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.85, 0.85, 0] }}
-            transition={{ duration: 0.16, times: [0, 0.38, 0.5, 1.0], ease: 'easeOut' }}
-            exit={{ opacity: 0 }}
+            animate={{ opacity: [0, 1.0, 0.90, 0.70] }}
+            transition={{ duration: 0.7, times: [0, 0.12, 0.35, 1.0], ease: 'easeOut' }}
+            exit={{ opacity: 0, transition: { duration: 2.5, ease: 'easeOut' } }}
           />
         )}
       </AnimatePresence>
