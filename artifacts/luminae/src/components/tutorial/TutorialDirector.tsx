@@ -1046,33 +1046,56 @@ function CardFlipReveal({
   BackFace: React.ComponentType;
   delay?: number;
 }) {
-  const [phase, setPhase] = useState<"back" | "out" | "in" | "done">(
-    shouldAnimate ? "back" : "done"
+  // phases: idle → deal (slide from deck) → flip_out → flip_in → done
+  const [phase, setPhase] = useState<"idle" | "deal" | "flip_out" | "flip_in" | "done">(
+    shouldAnimate ? "idle" : "done"
   );
 
   useEffect(() => {
     if (!shouldAnimate) return;
-    const t = setTimeout(() => setPhase("out"), delay);
+    const t = setTimeout(() => setPhase("deal"), delay);
     return () => clearTimeout(t);
   }, []); // run once on mount
 
   if (phase === "done") return <>{children}</>;
 
   const W = 112, H = 160;
+  // Deck pile outer div is 120 px wide; gap-3 = 12 px → card starts 132 px to the left
+  const DEAL_X = -(120 + 12);
+
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
-      {(phase === "back" || phase === "out") && (
+      {/* Ghost slot while waiting */}
+      {phase === "idle" && (
+        <div style={{ width: W, height: H }}
+          className="rounded-xl border border-white/8 bg-white/[0.018]" />
+      )}
+
+      {/* Face-down card: deal slide then flip-out rotation */}
+      {(phase === "deal" || phase === "flip_out") && (
         <motion.div
           className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
           style={{ width: W, height: H }}
-          animate={phase === "out" ? { rotateY: 90 } : { rotateY: 0 }}
-          transition={{ duration: 0.18, ease: "easeIn" }}
-          onAnimationComplete={() => { if (phase === "out") { gameAudio.playCardFlip(); setPhase("in"); } }}
+          initial={phase === "deal" ? { x: DEAL_X, y: -6, scale: 1.04, rotateY: 0 } : false}
+          animate={phase === "deal"
+            ? { x: 0, y: 0, scale: 1, rotateY: 0 }
+            : { rotateY: 90 }
+          }
+          transition={phase === "deal"
+            ? { type: "spring", stiffness: 190, damping: 26, mass: 0.85 }
+            : { duration: 0.18, ease: "easeIn" }
+          }
+          onAnimationComplete={() => {
+            if (phase === "deal") setPhase("flip_out");
+            else if (phase === "flip_out") { gameAudio.playCardFlip(); setPhase("flip_in"); }
+          }}
         >
           <BackFace />
         </motion.div>
       )}
-      {phase === "in" && (
+
+      {/* Face-up card: flip-in rotation */}
+      {phase === "flip_in" && (
         <motion.div
           className="rounded-xl overflow-hidden"
           style={{ width: W, height: H }}
@@ -1260,7 +1283,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                     key={cardId}
                     shouldAnimate={beatId === "b6b_root_lattice"}
                     BackFace={CardBackTier1}
-                    delay={720}
+                    delay={1500}
                   >
                     {tutCard}
                   </CardFlipReveal>
