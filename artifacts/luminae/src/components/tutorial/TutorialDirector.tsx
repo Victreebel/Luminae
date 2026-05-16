@@ -32,6 +32,7 @@ import {
   type TAction,
 } from "@/lib/tutorialReducer";
 import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
+import { CardBackTier1, CardBackTier2, CardBackTier3 } from "@/components/ArtifactCardBack";
 import { gameAudio } from "@/lib/audio";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 
@@ -944,25 +945,71 @@ function MarketTabs({
 
 // ─── Deck Pile Visual ─────────────────────────────────────────────────────────
 function DeckPile({ tier, count }: { tier: number; count: number }) {
-  const colors: Record<number, string> = { 1: "#1a2435", 2: "#121c28", 3: "#1a1225" };
-  const accents: Record<number, string> = { 1: "#3a6a5a", 2: "#2a4a6a", 3: "#5a3a6a" };
-  const bg = colors[tier] ?? "#1a2435";
-  const ac = accents[tier] ?? "#555";
+  const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
+  const BADGE_COLORS: Record<number, string> = { 1: "#3a6a5a", 2: "#2a4a6a", 3: "#5a3a6a" };
+  const badgeColor = BADGE_COLORS[tier] ?? "#555";
   return (
-    <div className="flex flex-col items-center gap-1 shrink-0">
-      <div className="relative rounded-lg shadow-lg border border-white/8" style={{ width: 52, height: 72, background: bg }}>
-        <div className="absolute rounded-lg border border-white/5" style={{ inset: "3px -3px -3px 3px", background: bg, opacity: 0.65 }} />
-        <div className="relative h-full flex flex-col items-center justify-center gap-1 p-1">
-          <div className="w-6 h-6 rounded-full border-2 opacity-50" style={{ borderColor: ac }} />
-          <div className="text-[6px] font-bold text-white/25 uppercase tracking-wider">Deck</div>
+    <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
+      <div className="relative shrink-0" style={{ width: 58, height: 78 }}>
+        <div className="absolute rounded-md overflow-hidden border border-white/5"
+          style={{ left: 4, top: 4, width: 52, height: 72, opacity: 0.28 }}>
+          <BackComponent />
+        </div>
+        <div className="absolute rounded-md overflow-hidden border border-white/8"
+          style={{ left: 2, top: 2, width: 52, height: 72, opacity: 0.55 }}>
+          <BackComponent />
+        </div>
+        <div className="absolute rounded-lg overflow-hidden border border-white/12 shadow-lg"
+          style={{ left: 0, top: 0, width: 52, height: 72 }}>
+          <BackComponent />
         </div>
         {count > 0 && (
-          <div className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-md"
-            style={{ background: ac }}>{count}</div>
+          <div className="absolute rounded-full flex items-center justify-center text-[8px] font-black text-white shadow-lg z-10"
+            style={{ width: 20, height: 20, top: -6, left: 36, background: badgeColor }}>
+            {count}
+          </div>
         )}
       </div>
       <span className="text-[6px] text-white/20 font-semibold tracking-wide">Blind</span>
     </div>
+  );
+}
+
+function GhostCardSlot({ tier }: { tier: number }) {
+  const BORDER_COLORS: Record<number, string> = {
+    1: "rgba(58,106,90,0.16)",
+    2: "rgba(42,74,106,0.16)",
+    3: "rgba(90,58,106,0.16)",
+  };
+  return (
+    <div className="shrink-0 rounded-xl border flex items-center justify-center"
+      style={{
+        width: 112, height: 160,
+        borderColor: BORDER_COLORS[tier] ?? "rgba(255,255,255,0.09)",
+        background: "rgba(255,255,255,0.018)",
+      }}>
+      <div className="text-center opacity-50">
+        <div className="w-7 h-7 rounded-full border border-white/12 mx-auto mb-2 flex items-center justify-center">
+          <span className="text-white/25 text-sm">?</span>
+        </div>
+        <div className="text-[6px] text-white/15 uppercase tracking-widest font-medium">Hidden</div>
+      </div>
+    </div>
+  );
+}
+
+function DeckDrawAnimation({ tier }: { tier: number }) {
+  const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
+  return (
+    <motion.div
+      className="shrink-0 rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10"
+      style={{ width: 112, height: 160 }}
+      initial={{ x: -60, scale: 0.68, opacity: 0 }}
+      animate={{ x: 0, scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 24, mass: 0.9 }}
+    >
+      <BackComponent />
+    </motion.div>
   );
 }
 
@@ -989,12 +1036,9 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap }: {
   if (earlyBeats.includes(beatId)) {
     t1Cards.push(FIRST_FORGE_ID);
   } else if (midBeats.includes(beatId)) {
-    if (!s.forged.includes(FIRST_FORGE_ID)) t1Cards.push(FIRST_FORGE_ID);
-    else t1Cards.push(FIRST_FORGE_ID); // show as forged
+    t1Cards.push(FIRST_FORGE_ID);
     t1Cards.push(RESERVE_CARD_ID);
-    if (!s.forged.includes(TIER2_SINGULARITY_ID) && !s.reserved.includes(TIER2_SINGULARITY_ID)) {
-      t2Cards.push(TIER2_SINGULARITY_ID);
-    }
+    t2Cards.push(TIER2_SINGULARITY_ID);
   } else if (lateBeats.includes(beatId)) {
     t3Cards.push(...T3_PURCHASABLE_IDS, T3_IMPOSSIBLE_ID);
   } else if (finalBeat.includes(beatId)) {
@@ -1039,49 +1083,106 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap }: {
     return false;
   };
 
+  // Track deck-draw animations: when a card is forged it briefly shows a card-back
+  // sliding in from the deck before settling as a ghost slot.
+  const prevForgedRef = useRef<string[]>([]);
+  const [drawingSlots, setDrawingSlots] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const prevForged = prevForgedRef.current;
+    const newlyForged = s.forged.filter(id => !prevForged.includes(id));
+    prevForgedRef.current = s.forged;
+    if (newlyForged.length === 0) return;
+    setDrawingSlots(prev => new Set([...prev, ...newlyForged]));
+    const tid = setTimeout(() => {
+      setDrawingSlots(prev => {
+        const next = new Set(prev);
+        newlyForged.forEach(id => next.delete(id));
+        return next;
+      });
+    }, 1100);
+    return () => clearTimeout(tid);
+  }, [s.forged]);
+
+  // Always render all 3 tier rows so the full market structure is visible.
+  // Each row has a deck pile + 4 card slots. Slots are filled with real cards,
+  // deck-draw animations (briefly after forge), or ghost placeholders.
+  const MARKET_SLOTS = 4;
+  const DECK_COUNTS: Record<number, number> = { 1: 20, 2: 15, 3: 10 };
+
   const renderTierRow = (tier: number, cardIds: string[], label: string) => {
-    if (cardIds.length === 0) return null;
-    const visible = cardIds.filter(() => true);
-    if (visible.length === 0) return null;
-    const deckCounts: Record<number, number> = { 1: 20, 2: 15, 3: 10 };
-    const deckCount = Math.max(0, (deckCounts[tier] ?? 10) - visible.length);
+    const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - MARKET_SLOTS);
+
+    type Slot =
+      | { kind: 'real'; cardId: string }
+      | { kind: 'draw'; cardId: string }
+      | { kind: 'ghost' };
+
+    const slots: Slot[] = [];
+
+    for (const cardId of cardIds) {
+      if (s.reserved.includes(cardId)) {
+        // Card was reserved — slot is vacated (ghost)
+        slots.push({ kind: 'ghost' });
+      } else if (drawingSlots.has(cardId)) {
+        // Card just forged — play deck-draw animation
+        slots.push({ kind: 'draw', cardId });
+      } else if (s.forged.includes(cardId)) {
+        // Card already forged, animation done — ghost slot
+        slots.push({ kind: 'ghost' });
+      } else {
+        slots.push({ kind: 'real', cardId });
+      }
+    }
+
+    // Pad to MARKET_SLOTS with ghost placeholders
+    while (slots.length < MARKET_SLOTS) {
+      slots.push({ kind: 'ghost' });
+    }
+
     return (
       <div key={tier} className="mb-4">
-        <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">Tier {tier} — {label}</div>
-        <div className="flex gap-3 overflow-x-auto pb-2 items-start">
+        <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">
+          Tier {tier} — {label}
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2 items-start" style={{ minHeight: 170 }}>
           <DeckPile tier={tier} count={deckCount} />
-          {visible.map(cardId => {
-            const card = TUTORIAL_CARDS[cardId];
-            if (!card) return null;
-            const isForged = s.forged.includes(cardId);
-            const isReserved = s.reserved.includes(cardId);
-            if (isReserved) return null;
-            const isImpossible = cardId === T3_IMPOSSIBLE_ID;
-            const affordable = canAfford(card, s.crystals, s.bonuses);
-            return (
-              <TutorialCard
-                key={cardId}
-                card={card}
-                bonuses={s.bonuses}
-                crystals={s.crystals}
-                highlighted={getHighlighted(cardId)}
-                foreground={getForeground(cardId)}
-                forged={isForged}
-                impossible={isImpossible}
-                viewMode={s.view}
-                wellSel={s.wellSel}
-                onTap={isImpossible
-                  ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." })
-                  : () => onCardTap(
-                      card,
-                      getCardForgeEnabled(cardId) && affordable,
-                      getCardReserveEnabled(cardId),
-                      () => dispatch({ type: "FORGE_MARKET", cardId }),
-                      () => dispatch({ type: "RESERVE", cardId }),
-                    )
-                }
-              />
-            );
+          {slots.map((slot, idx) => {
+            if (slot.kind === 'real') {
+              const { cardId } = slot;
+              const card = TUTORIAL_CARDS[cardId];
+              if (!card) return <GhostCardSlot key={`ghost-${cardId}`} tier={tier} />;
+              const isImpossible = cardId === T3_IMPOSSIBLE_ID;
+              const affordable = canAfford(card, s.crystals, s.bonuses);
+              return (
+                <TutorialCard
+                  key={cardId}
+                  card={card}
+                  bonuses={s.bonuses}
+                  crystals={s.crystals}
+                  highlighted={getHighlighted(cardId)}
+                  foreground={getForeground(cardId)}
+                  forged={false}
+                  impossible={isImpossible}
+                  viewMode={s.view}
+                  wellSel={s.wellSel}
+                  onTap={isImpossible
+                    ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." })
+                    : () => onCardTap(
+                        card,
+                        getCardForgeEnabled(cardId) && affordable,
+                        getCardReserveEnabled(cardId),
+                        () => dispatch({ type: "FORGE_MARKET", cardId }),
+                        () => dispatch({ type: "RESERVE", cardId }),
+                      )
+                  }
+                />
+              );
+            }
+            if (slot.kind === 'draw') {
+              return <DeckDrawAnimation key={`draw-${slot.cardId}`} tier={tier} />;
+            }
+            return <GhostCardSlot key={`ghost-${idx}`} tier={tier} />;
           })}
         </div>
       </div>
@@ -1145,23 +1246,29 @@ const FS_SHARDS = [
 const FS_SHARD_GLASS = [
   // shard 0 — top-left
   { base: 'linear-gradient(135deg, rgba(3,4,10,0.97) 0%, rgba(7,9,18,0.94) 55%, rgba(2,3,8,0.98) 100%)',
-    spec: 'linear-gradient(120deg, transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.08) 48%, rgba(210,228,255,0.04) 55%, transparent 66%)' },
+    spec: 'linear-gradient(120deg, transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.08) 48%, rgba(210,228,255,0.04) 55%, transparent 66%)',
+    iri:  'linear-gradient(118deg, transparent 20%, rgba(140,200,255,0.06) 38%, rgba(220,235,255,0.10) 50%, rgba(200,190,255,0.06) 62%, transparent 78%)' },
   // shard 1 — top-right
   { base: 'linear-gradient(220deg, rgba(4,4,12,0.97) 0%, rgba(6,8,17,0.93) 55%, rgba(2,3,9,0.98) 100%)',
-    spec: 'linear-gradient(62deg,  transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.08) 48%, rgba(210,228,255,0.04) 55%, transparent 66%)' },
+    spec: 'linear-gradient(62deg,  transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.08) 48%, rgba(210,228,255,0.04) 55%, transparent 66%)',
+    iri:  'linear-gradient(58deg,  transparent 22%, rgba(160,210,255,0.05) 36%, rgba(230,240,255,0.10) 49%, rgba(190,220,255,0.05) 63%, transparent 76%)' },
   // shard 2 — middle-left
   { base: 'linear-gradient(168deg, rgba(3,4,11,0.97) 0%, rgba(6,8,18,0.94) 50%, rgba(2,3,9,0.98) 100%)',
-    spec: 'linear-gradient(153deg, transparent 30%, rgba(210,228,255,0.04) 42%, rgba(255,255,255,0.07) 46%, rgba(210,228,255,0.04) 53%, transparent 64%)' },
+    spec: 'linear-gradient(153deg, transparent 30%, rgba(210,228,255,0.04) 42%, rgba(255,255,255,0.07) 46%, rgba(210,228,255,0.04) 53%, transparent 64%)',
+    iri:  'linear-gradient(150deg, transparent 18%, rgba(130,195,255,0.06) 34%, rgba(215,235,255,0.09) 48%, rgba(185,215,255,0.05) 60%, transparent 75%)' },
   // shard 3 — middle-right
   { base: 'linear-gradient(330deg, rgba(4,4,12,0.97) 0%, rgba(7,9,19,0.94) 55%, rgba(2,3,9,0.98) 100%)',
-    spec: 'linear-gradient(338deg, transparent 30%, rgba(210,228,255,0.05) 42%, rgba(255,255,255,0.08) 47%, rgba(210,228,255,0.04) 54%, transparent 63%)' },
+    spec: 'linear-gradient(338deg, transparent 30%, rgba(210,228,255,0.05) 42%, rgba(255,255,255,0.08) 47%, rgba(210,228,255,0.04) 54%, transparent 63%)',
+    iri:  'linear-gradient(334deg, transparent 20%, rgba(150,205,255,0.06) 35%, rgba(225,238,255,0.10) 49%, rgba(195,215,255,0.06) 62%, transparent 78%)' },
   // shard 4 — bottom-left
   { base: 'linear-gradient(48deg,  rgba(3,4,10,0.97) 0%, rgba(6,8,17,0.93) 52%, rgba(2,3,8,0.97) 100%)',
-    spec: 'linear-gradient(52deg,  transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.07) 48%, rgba(210,228,255,0.04) 55%, transparent 64%)' },
+    spec: 'linear-gradient(52deg,  transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.07) 48%, rgba(210,228,255,0.04) 55%, transparent 64%)',
+    iri:  'linear-gradient(46deg,  transparent 24%, rgba(145,200,255,0.05) 37%, rgba(218,235,255,0.09) 50%, rgba(188,210,255,0.05) 62%, transparent 76%)' },
   // shard 5 — bottom-right
   { base: 'linear-gradient(278deg, rgba(4,4,12,0.97) 0%, rgba(6,8,17,0.93) 52%, rgba(2,3,9,0.97) 100%)',
-    spec: 'linear-gradient(273deg, transparent 32%, rgba(210,228,255,0.04) 43%, rgba(255,255,255,0.07) 47%, rgba(210,228,255,0.04) 53%, transparent 64%)' },
-] as const;
+    spec: 'linear-gradient(273deg, transparent 32%, rgba(210,228,255,0.04) 43%, rgba(255,255,255,0.07) 47%, rgba(210,228,255,0.04) 53%, transparent 64%)',
+    iri:  'linear-gradient(270deg, transparent 22%, rgba(135,198,255,0.06) 36%, rgba(222,236,255,0.09) 50%, rgba(192,212,255,0.05) 64%, transparent 78%)' },
+];
 
 // Crack network — paths in viewBox 0-100 using the same percentage coords
 // as the shard polygon vertices (junction P=50,42.5  Q=25,72.5).
