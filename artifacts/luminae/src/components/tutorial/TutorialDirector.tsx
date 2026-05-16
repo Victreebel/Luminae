@@ -1139,33 +1139,28 @@ const FS_SHARDS = [
     dx:  '30%', dy:  '36%', rX:  17, rY: -14, rZ: -15 },
 ] as const;
 
-// Per-shard glassy material layers — each shard has a unique facet orientation
-// expressed through gradient angles, giving the illusion of independent crystal planes.
+// Per-shard dark-glass material layers — each shard is near-opaque black/obsidian
+// with only the faintest surface glint to suggest a glass face. Light comes from
+// *behind* the panel through the crack network, not from the shard surfaces.
 const FS_SHARD_GLASS = [
   // shard 0 — top-left
-  { base: 'linear-gradient(135deg, rgba(14,16,32,0.82) 0%, rgba(30,35,60,0.58) 55%, rgba(8,10,22,0.78) 100%)',
-    spec: 'linear-gradient(120deg, transparent 22%, rgba(190,215,255,0.48) 38%, rgba(255,255,255,0.68) 44%, rgba(190,215,255,0.38) 51%, transparent 63%)',
-    iri:  'linear-gradient(115deg, rgba(150,205,255,0.15) 0%, rgba(255,210,90,0.10) 50%, rgba(225,215,255,0.15) 100%)' },
+  { base: 'linear-gradient(135deg, rgba(3,4,10,0.97) 0%, rgba(7,9,18,0.94) 55%, rgba(2,3,8,0.98) 100%)',
+    spec: 'linear-gradient(120deg, transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.08) 48%, rgba(210,228,255,0.04) 55%, transparent 66%)' },
   // shard 1 — top-right
-  { base: 'linear-gradient(220deg, rgba(10,12,28,0.78) 0%, rgba(25,30,55,0.56) 55%, rgba(12,15,30,0.82) 100%)',
-    spec: 'linear-gradient(62deg, transparent 24%, rgba(195,215,255,0.46) 40%, rgba(255,255,255,0.65) 46%, rgba(195,215,255,0.36) 53%, transparent 65%)',
-    iri:  'linear-gradient(65deg, rgba(255,210,90,0.13) 0%, rgba(150,205,255,0.15) 50%, rgba(225,215,255,0.12) 100%)' },
+  { base: 'linear-gradient(220deg, rgba(4,4,12,0.97) 0%, rgba(6,8,17,0.93) 55%, rgba(2,3,9,0.98) 100%)',
+    spec: 'linear-gradient(62deg,  transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.08) 48%, rgba(210,228,255,0.04) 55%, transparent 66%)' },
   // shard 2 — middle-left
-  { base: 'linear-gradient(168deg, rgba(12,14,30,0.80) 0%, rgba(22,28,52,0.60) 50%, rgba(8,12,24,0.76) 100%)',
-    spec: 'linear-gradient(153deg, transparent 16%, rgba(190,218,255,0.44) 33%, rgba(255,255,255,0.60) 39%, rgba(190,218,255,0.34) 46%, transparent 59%)',
-    iri:  'linear-gradient(168deg, rgba(150,205,255,0.16) 0%, rgba(225,215,255,0.11) 50%, rgba(255,210,90,0.13) 100%)' },
+  { base: 'linear-gradient(168deg, rgba(3,4,11,0.97) 0%, rgba(6,8,18,0.94) 50%, rgba(2,3,9,0.98) 100%)',
+    spec: 'linear-gradient(153deg, transparent 30%, rgba(210,228,255,0.04) 42%, rgba(255,255,255,0.07) 46%, rgba(210,228,255,0.04) 53%, transparent 64%)' },
   // shard 3 — middle-right
-  { base: 'linear-gradient(330deg, rgba(14,16,32,0.80) 0%, rgba(28,32,58,0.58) 55%, rgba(10,12,26,0.84) 100%)',
-    spec: 'linear-gradient(338deg, transparent 20%, rgba(195,212,255,0.50) 38%, rgba(255,255,255,0.66) 44%, rgba(195,212,255,0.40) 51%, transparent 62%)',
-    iri:  'linear-gradient(330deg, rgba(225,215,255,0.14) 0%, rgba(255,210,90,0.12) 45%, rgba(150,205,255,0.15) 100%)' },
+  { base: 'linear-gradient(330deg, rgba(4,4,12,0.97) 0%, rgba(7,9,19,0.94) 55%, rgba(2,3,9,0.98) 100%)',
+    spec: 'linear-gradient(338deg, transparent 30%, rgba(210,228,255,0.05) 42%, rgba(255,255,255,0.08) 47%, rgba(210,228,255,0.04) 54%, transparent 63%)' },
   // shard 4 — bottom-left
-  { base: 'linear-gradient(48deg, rgba(10,12,26,0.84) 0%, rgba(22,26,50,0.62) 52%, rgba(6,8,20,0.80) 100%)',
-    spec: 'linear-gradient(52deg, transparent 18%, rgba(192,216,255,0.50) 35%, rgba(255,255,255,0.64) 41%, rgba(192,216,255,0.40) 48%, transparent 60%)',
-    iri:  'linear-gradient(55deg, rgba(150,205,255,0.13) 0%, rgba(225,215,255,0.16) 50%, rgba(255,210,90,0.12) 100%)' },
+  { base: 'linear-gradient(48deg,  rgba(3,4,10,0.97) 0%, rgba(6,8,17,0.93) 52%, rgba(2,3,8,0.97) 100%)',
+    spec: 'linear-gradient(52deg,  transparent 32%, rgba(210,228,255,0.05) 44%, rgba(255,255,255,0.07) 48%, rgba(210,228,255,0.04) 55%, transparent 64%)' },
   // shard 5 — bottom-right
-  { base: 'linear-gradient(278deg, rgba(12,14,30,0.82) 0%, rgba(26,30,55,0.58) 52%, rgba(8,10,22,0.78) 100%)',
-    spec: 'linear-gradient(273deg, transparent 22%, rgba(195,212,255,0.46) 39%, rgba(255,255,255,0.62) 45%, rgba(195,212,255,0.36) 52%, transparent 63%)',
-    iri:  'linear-gradient(278deg, rgba(255,210,90,0.13) 0%, rgba(150,205,255,0.15) 50%, rgba(225,215,255,0.14) 100%)' },
+  { base: 'linear-gradient(278deg, rgba(4,4,12,0.97) 0%, rgba(6,8,17,0.93) 52%, rgba(2,3,9,0.97) 100%)',
+    spec: 'linear-gradient(273deg, transparent 32%, rgba(210,228,255,0.04) 43%, rgba(255,255,255,0.07) 47%, rgba(210,228,255,0.04) 53%, transparent 64%)' },
 ] as const;
 
 // Crack network — paths in viewBox 0-100 using the same percentage coords
@@ -1185,52 +1180,54 @@ const FS_CRACKS_2: CrackDef[] = [
   { d: 'M41.1,57.5 L33.9,52.5 L25,51.25',                 d1: 0.20, isDetail: true },
 ];
 
-const FSO_GOLD = '#c8cdd6';
+// Cool blue-white — the colour of light leaking from behind the dark glass panel.
+const FSO_LIGHT = '#a8ccf8';
 
-// 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam
-// Stroke widths are scaled for a 100-unit viewBox rendered at ~1280 px wide.
+// 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam.
+// All glow layers use FSO_LIGHT so the crack reads as back-lit (light from behind),
+// not as a surface marking on the glass.
 function FSOCrack({ d, d1, isDetail }: CrackDef) {
   if (isDetail) {
     return (
       <motion.path d={d} stroke="white" strokeWidth="0.18" fill="none"
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 0.65, 0.55] }}
+        animate={{ pathLength: 1, opacity: [0, 0.70, 0.60] }}
         transition={{ duration: 0.08, delay: d1, ease: 'easeOut' }}
       />
     );
   }
   return (
     <>
-      {/* L1 white snap */}
+      {/* L1 white snap — the instant fracture line */}
       <motion.path d={d} stroke="white" strokeWidth="0.22" fill="none"
         filter="url(#fso-cgb)"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
         transition={{ duration: 0.10, delay: d1, ease: 'easeOut' }}
       />
-      {/* L2 chasing glow */}
-      <motion.path d={d} stroke={FSO_GOLD} strokeWidth="3.5" fill="none"
+      {/* L2 chasing glow — wide light bleed chasing the fracture tip */}
+      <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="4.0" fill="none"
         filter="url(#fso-cgw)"
         initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 0.80, 0.20, 0] }}
+        animate={{ pathLength: 1, opacity: [0, 0.90, 0.25, 0] }}
         transition={{
           pathLength: { duration: 0.28, delay: d1 + 0.04, ease: 'easeOut' },
-          opacity:    { duration: 0.56, delay: d1 + 0.04, times: [0, 0.14, 0.55, 1.0] },
+          opacity:    { duration: 0.58, delay: d1 + 0.04, times: [0, 0.12, 0.55, 1.0] },
         }}
       />
-      {/* L3 residual wound glow */}
-      <motion.path d={d} stroke={FSO_GOLD} strokeWidth="2.2" fill="none"
+      {/* L3 residual wound — sustained light bleeding through the gap */}
+      <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="2.8" fill="none"
         filter="url(#fso-cgw)"
         initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
-        transition={{ duration: 0.62, delay: d1 + 0.14, ease: 'easeOut' }}
+        animate={{ pathLength: 1, opacity: [0, 0, 0.55, 0.75, 0.65] }}
+        transition={{ duration: 0.65, delay: d1 + 0.14, ease: 'easeOut' }}
       />
-      {/* L4 tinted seam */}
-      <motion.path d={d} stroke={FSO_GOLD} strokeWidth="0.45" fill="none"
+      {/* L4 tinted seam — narrow cool-white line showing the crack edge */}
+      <motion.path d={d} stroke={FSO_LIGHT} strokeWidth="0.45" fill="none"
         initial={{ pathLength: 0, opacity: 0 }}
-        animate={{ pathLength: 1, opacity: [0, 0, 0.32, 0.52, 0.45] }}
-        transition={{ duration: 0.58, delay: d1 + 0.16, ease: 'easeOut' }}
+        animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.60, 0.52] }}
+        transition={{ duration: 0.60, delay: d1 + 0.16, ease: 'easeOut' }}
       />
     </>
   );
@@ -1282,18 +1279,18 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   return (
     <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
 
-      {/* ── Pale silver fill behind the shards — dim glow through gaps as they scatter */}
+      {/* ── Cosmic light reveal behind the shards — floods in as panels scatter */}
       {isShattering && (
         <motion.div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 50% 43%, #e8eaf0 0%, #c8cdd6 18%, #9aaabb 45%, #6e7a8c 75%, transparent 100%)' }}
+          style={{ background: 'radial-gradient(ellipse at 50% 43%, rgba(255,255,255,0.95) 0%, rgba(190,220,255,0.82) 12%, rgba(110,165,255,0.52) 38%, rgba(30,70,180,0.22) 68%, transparent 90%)' }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.22, 0.22, 0.16, 0.07, 0] }}
+          animate={{ opacity: [0, 0.28, 0.28, 0.18, 0.07, 0] }}
           transition={{ duration: 4.0, times: [0, 0.03, 0.18, 0.48, 0.78, 1.0], ease: 'easeOut' }}
         />
       )}
 
-      {/* ── Six crystal shard panels ────────────────────────────────────── */}
+      {/* ── Six dark-glass shard panels ─────────────────────────────────── */}
       {FS_SHARDS.map((sh, i) => (
         <motion.div key={i} className="absolute inset-0"
           style={{
@@ -1309,10 +1306,10 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             opacity: [1, 1, 0.96, 0.66, 0],
             filter: [
               'brightness(1.0)',
-              'brightness(1.4) drop-shadow(0 0 6px rgba(251,191,36,0.60))',
-              'brightness(2.2) drop-shadow(0 0 12px rgba(251,191,36,0.85))',
-              'brightness(4.0) drop-shadow(0 0 20px rgba(251,191,36,0.95))',
-              'brightness(7.0) drop-shadow(0 0 28px rgba(255,255,255,0.80))',
+              'brightness(1.2) drop-shadow(0 0 8px rgba(168,204,248,0.55))',
+              'brightness(1.6) drop-shadow(0 0 16px rgba(168,204,248,0.80))',
+              'brightness(2.8) drop-shadow(0 0 24px rgba(200,225,255,0.90))',
+              'brightness(5.0) drop-shadow(0 0 32px rgba(255,255,255,0.75))',
             ],
           } : { x: '0%', y: '0%', rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1, filter: 'brightness(1.0)' }}
           transition={isShattering ? {
@@ -1324,55 +1321,31 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             filter:  { times: [0, 0.12, 0.34, 0.60, 0.82], ease: 'easeInOut' },
           } : { duration: 0 }}
         >
-          {/* Specular highlight stripe — bright bevel edge catching light, unique per shard.
-              Pre-shatter: steady low glow. During scatter: flares briefly then fades with shard. */}
-          {isShattering ? (
-            <motion.div className="absolute inset-0 pointer-events-none"
-              style={{ background: FS_SHARD_GLASS[i].spec }}
-              initial={{ opacity: 0.70 }}
-              animate={{ opacity: [0.70, 1.00, 0.82, 0.40, 0] }}
-              transition={{ duration: 4.5, times: [0, 0.10, 0.28, 0.55, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
-            />
-          ) : (
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background: FS_SHARD_GLASS[i].spec, opacity: 0.70 }}
-            />
-          )}
+          {/* Ghost-thin surface glint — barely visible, preserves the glass-face feel */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{ background: FS_SHARD_GLASS[i].spec, opacity: 1 }}
+          />
 
-          {/* Prismatic iridescence wash — ice-blue/gold/pearl, screen blend, subtle pulse */}
-          {isShattering ? (
-            <motion.div className="absolute inset-0 pointer-events-none"
-              style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen' }}
-              initial={{ opacity: 0.16 }}
-              animate={{ opacity: [0.16, 0.26, 0.13, 0.22, 0] }}
-              transition={{ duration: 4.5, times: [0, 0.18, 0.40, 0.62, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
-            />
-          ) : (
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen', opacity: 0.16 }}
-            />
-          )}
-
-          {/* Rim/edge inset glow — suggests the bright cut edge of a crystal slab */}
+          {/* Edge inset glow — light bleeding through the cut perimeter of each shard */}
           <div className="absolute inset-0 pointer-events-none"
             style={{
-              boxShadow: 'inset 0 0 18px 2px rgba(160,210,255,0.18), inset 0 0 4px 1px rgba(255,255,255,0.22)',
+              boxShadow: 'inset 0 0 24px 5px rgba(140,195,255,0.28), inset 0 0 6px 2px rgba(255,255,255,0.18)',
             }}
           />
 
-          {/* Gold screen-blend transmutation overlay — brightens as shard flies apart */}
+          {/* Cool light flood — shard catches and transmits back-light as it flies away */}
           {isShattering && (
             <motion.div className="absolute inset-0 pointer-events-none"
-              style={{ background: FSO_GOLD, mixBlendMode: 'screen' }}
+              style={{ background: 'rgba(190,220,255,1)', mixBlendMode: 'screen' }}
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0, 0.18, 0.70, 1.00, 0.85] }}
+              animate={{ opacity: [0, 0, 0.12, 0.55, 0.90, 0.75] }}
               transition={{ duration: 4.5, times: [0, 0.10, 0.34, 0.58, 0.78, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
             />
           )}
         </motion.div>
       ))}
 
-      {/* ── Crack SVG — four-layer paint, hidden during shattering ──────── */}
+      {/* ── Crack SVG — four-layer back-lit paint, hidden during shattering ── */}
       <AnimatePresence>
         {!isShattering && (
           <motion.svg exit={{ opacity: 0, transition: { duration: 0.08 } }}
@@ -1385,9 +1358,9 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
                 <feGaussianBlur stdDeviation="0.25" result="b" />
                 <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
-              {/* Wide glow for chasing + residual layers */}
-              <filter id="fso-cgw" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="3" />
+              {/* Wide glow — wider blur so light bleeds broadly from each crack */}
+              <filter id="fso-cgw" x="-120%" y="-120%" width="340%" height="340%">
+                <feGaussianBlur stdDeviation="5.5" />
               </filter>
             </defs>
 
@@ -1397,33 +1370,33 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             {/* Second crack network — mounts on secondcrack phase */}
             {past('secondcrack') && FS_CRACKS_2.map((c, i) => <FSOCrack key={`c2-${i}`} {...c} />)}
 
-            {/* Ambient junction glow during leaking phase */}
+            {/* Ambient junction glow — cool blue-white light pooling at the fracture junction */}
             {past('leaking') && !past('cracking') && (
               <>
-                <motion.circle cx="50" cy="42.5" r="6" fill={FSO_GOLD} filter="url(#fso-cgw)"
+                <motion.circle cx="50" cy="42.5" r="7" fill={FSO_LIGHT} filter="url(#fso-cgw)"
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.18, 0.09, 0.22, 0.10, 0.20] }}
+                  animate={{ opacity: [0, 0.22, 0.10, 0.28, 0.12, 0.24] }}
                   transition={{ duration: 3.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.4 }}
                 />
                 <motion.circle cx="50" cy="42.5" r="0.7" fill="white" filter="url(#fso-cgb)"
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.56, 0.10, 0.76, 0.24, 0.48, 0] }}
+                  animate={{ opacity: [0, 0.65, 0.12, 0.85, 0.28, 0.55, 0] }}
                   transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
                 />
               </>
             )}
 
-            {/* Energy burst at junctions during cracking phase */}
+            {/* Energy burst at junctions during cracking — cool light eruption */}
             {past('cracking') && (
               <>
                 <motion.circle cx="50" cy="42.5" r="0"
-                  fill={FSO_GOLD} filter="url(#fso-cgw)"
-                  animate={{ r: 8, opacity: [0, 0.55, 0.22] }}
+                  fill={FSO_LIGHT} filter="url(#fso-cgw)"
+                  animate={{ r: 10, opacity: [0, 0.65, 0.25] }}
                   transition={{ duration: 0.70, ease: 'easeOut' }}
                 />
                 <motion.circle cx="25" cy="72.5" r="0"
-                  fill={FSO_GOLD} filter="url(#fso-cgw)"
-                  animate={{ r: 6, opacity: [0, 0.45, 0.18] }}
+                  fill={FSO_LIGHT} filter="url(#fso-cgw)"
+                  animate={{ r: 7, opacity: [0, 0.55, 0.20] }}
                   transition={{ duration: 0.58, delay: 0.12, ease: 'easeOut' }}
                 />
               </>
@@ -1432,13 +1405,13 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
         )}
       </AnimatePresence>
 
-      {/* ── Pre-shatter ambient glow build-up ───────────────────────────── */}
+      {/* ── Pre-shatter ambient back-light — cool blue-white seeping through the panel */}
       {!isShattering && (
         <motion.div className="absolute inset-0"
           initial={{ opacity: 0 }}
-          animate={{ opacity: past('firstcrack') ? 0.55 : 0.18 }}
+          animate={{ opacity: past('firstcrack') ? 0.50 : 0.14 }}
           transition={{ duration: past('firstcrack') ? 0.6 : 0.5, ease: 'easeOut' }}
-          style={{ background: 'radial-gradient(ellipse at 50% 42.5%, rgba(251,191,36,0.30) 0%, rgba(251,191,36,0.08) 40%, transparent 68%)' }}
+          style={{ background: 'radial-gradient(ellipse at 50% 42.5%, rgba(140,195,255,0.32) 0%, rgba(100,160,255,0.10) 42%, transparent 68%)' }}
         />
       )}
 
