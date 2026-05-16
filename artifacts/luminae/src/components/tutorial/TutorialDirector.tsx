@@ -2785,7 +2785,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     if (s.beat >= TUTORIAL_BEATS.length - 1) {
       clearTutorialProgress();
       markTutorialComplete();
-    } else if (s.beat > 0) {
+    } else if (s.beat > 0 && TUTORIAL_BEATS[s.beat]?.id !== "b3b_farewell") {
       saveTutorialProgress(s.beat);
     }
     if (s.beat >= BEAT_INDEX["b6_forge_appears"]) {
@@ -2795,6 +2795,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
 
   useEffect(() => {
     if (s.navigateTo) {
+      clearTutorialProgress();
       markTutorialSeen();
       navigate(s.navigateTo);
     }
