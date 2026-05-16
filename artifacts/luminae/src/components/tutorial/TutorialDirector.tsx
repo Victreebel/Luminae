@@ -2201,8 +2201,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       {isLocate && (
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.8, 0.8, 0] }}
-          transition={{ delay: 1.4, duration: 4, times: [0, 0.2, 0.7, 1], ease: "easeInOut" }}
+          animate={{ opacity: [0, 0.85, 0.85, 0] }}
+          transition={{ delay: 1.4, duration: 4.5, times: [0, 0.08, 0.55, 1], ease: "easeOut" }}
           className="absolute z-30 text-white/80 font-serif text-xl pointer-events-none"
           style={{ right: "10%", top: "50%" }}
         >
