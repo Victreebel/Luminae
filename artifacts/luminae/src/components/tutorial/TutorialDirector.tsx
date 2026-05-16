@@ -480,7 +480,18 @@ function TutorialCard({
       style={{ width: 112, height: 160 }}
     >
       {foreground && (
-        <div className="absolute inset-0 rounded-xl border-2 border-white/55 pointer-events-none z-10" />
+        <motion.div
+          className="absolute inset-0 rounded-xl border-2 border-white/50 pointer-events-none z-10"
+          animate={{
+            boxShadow: [
+              "0 0 0px rgba(255,255,255,0.1), inset 0 0 0px rgba(255,255,255,0.1)",
+              "0 0 16px rgba(255,255,255,0.55), inset 0 0 10px rgba(255,255,255,0.22)",
+              "0 0 0px rgba(255,255,255,0.1), inset 0 0 0px rgba(255,255,255,0.1)",
+            ],
+            opacity: [0.65, 1, 0.65],
+          }}
+          transition={{ duration: 1.9, repeat: Infinity, ease: "easeInOut" }}
+        />
       )}
       {costHighlight && <CostCallout />}
       <div
@@ -1210,7 +1221,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   };
 
   const getForeground = (cardId: string) => {
-    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b6b_root_lattice") return cardId === FIRST_FORGE_ID;
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
     if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID;
