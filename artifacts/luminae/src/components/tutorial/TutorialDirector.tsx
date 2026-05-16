@@ -1464,7 +1464,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             transformPerspective: 900,
             transformStyle: 'preserve-3d',
           }}
-          animate={isShattering ? {
+          animate={{
             x: [0, `${parseFloat(sh.dx) * 0.08}`, sh.dx],
             y: [0, `${parseFloat(sh.dy) * 0.08}`, sh.dy],
             rotateX: [0, sh.rX], rotateY: [0, sh.rY], rotateZ: [0, sh.rZ],
