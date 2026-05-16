@@ -2944,6 +2944,21 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     }
   }, [s.animTrigger]);
 
+  // Camera-settle gate — for beats that programmatically scroll the viewport,
+  // hold the dialogue box until the smooth scroll has had time to finish.
+  const SCROLL_SETTLE_BEATS = new Set(["b11_forge_reserved"]);
+  const [cameraSettled, setCameraSettled] = useState(!SCROLL_SETTLE_BEATS.has(beatId));
+  useEffect(() => {
+    if (SCROLL_SETTLE_BEATS.has(beatId) && subStep === 0) {
+      setCameraSettled(false);
+      const t = setTimeout(() => setCameraSettled(true), 680);
+      return () => clearTimeout(t);
+    } else {
+      setCameraSettled(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [beatId, subStep]);
+
   // Play the cosmic bell the first time each "act" beat becomes active.
   // Guard with a ref so rapid re-renders don't replay the sound.
   const lastActBeatRef = useRef<string | null>(null);
@@ -3399,7 +3414,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </AnimatePresence>
 
       {/* Dialogue box */}
-      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && (
+      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b7_artifact_cost"].includes(beatId) && cameraSettled && (
         <div
           className="fixed left-0 right-0 z-50 px-4"
           style={cameraFocus === "well"
