@@ -1959,6 +1959,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [shatterReady, setShatterReady] = useState(false);
   const [cosmosVisible, setCosmosVisible] = useState(false);
   const [shatteringStarted, setShatteringStarted] = useState(false);
+  const [assemblyDone, setAssemblyDone] = useState(false);
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
@@ -1995,8 +1996,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [isLocate, dispatch]);
 
-  // Reset shatterReady whenever the beat changes
-  useEffect(() => { setShatterReady(false); }, [s.beat]);
+  // Reset shatterReady and assemblyDone whenever the beat changes
+  useEffect(() => { setShatterReady(false); setAssemblyDone(false); }, [s.beat]);
 
   // Auto-start shatter when b4_shatter has no dialogue to tap through
   useEffect(() => {
@@ -2077,7 +2078,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       {isArchitectAssembly && (
         <ArchitectAssembly
           affKeys={affKeys}
-          onComplete={() => dispatch({ type: "NEXT_BEAT" })}
+          onComplete={() => setAssemblyDone(true)}
         />
       )}
 
@@ -2155,6 +2156,31 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Architect Assembly dialogue — floats beside Lumii once the assembly animation finishes */}
+      {isArchitectAssembly && assemblyDone && beat.dialogue.length > 0 && (
+        <div
+          className="absolute z-30 pointer-events-none"
+          style={{ left: "87%", top: "26%", transform: "translate(-50%, -50%)" }}
+        >
+          <div
+            className="absolute pointer-events-auto"
+            style={{ right: 56, top: -56, width: 240 }}
+          >
+            <AnimatePresence mode="wait">
+              <DialogueBox
+                key={`assembly-${s.dlgLine}`}
+                lines={beat.dialogue}
+                lineIndex={s.dlgLine}
+                onTap={() => dispatch({ type: "NEXT_DLG" })}
+                nudge={null}
+                mode="listen"
+                showOrb={false}
+              />
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
 
       {/* Dialogue */}
       {!isLocate && !isAffinityTokens && !isArchitectAssembly && !(isShatter && shatterReady) && (
@@ -3363,7 +3389,7 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
     </AnimatePresence>
   );
 
-  const isCinematicPhase = s.beat <= 10;
+  const isCinematicPhase = s.beat <= 9;
 
   // Determine which gameplay sub-component to render (beats 10+)
   // Sub-phase key: b15 and b17 get their own keys so a nested AnimatePresence

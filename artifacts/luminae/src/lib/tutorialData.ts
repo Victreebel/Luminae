@@ -255,13 +255,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b5c_architect_assembly",
     mode: "cinematic",
     lumiiZone: "market-t1",
-    dialogue: [],
-    completion: { type: "animation" },
-  },
-  {
-    id: "b5b_bridge",
-    mode: "cinematic",
-    lumiiZone: "center",
     dialogue: [
       { text: "Now, I will show you how to use them." },
     ],
