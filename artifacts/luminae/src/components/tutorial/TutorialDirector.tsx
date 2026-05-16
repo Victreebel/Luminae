@@ -414,7 +414,7 @@ function TutorialCard({
 
   return (
     <motion.div
-      animate={foreground ? { scale: 1.06, y: -6 } : { scale: 1, y: 0 }}
+      animate={{ scale: 1, y: 0 }}
       whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
@@ -422,7 +422,7 @@ function TutorialCard({
       style={{ width: 112, height: 160 }}
     >
       <div
-        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : foreground ? "ring-2 ring-white/60 shadow-white/20" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
@@ -3091,7 +3091,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
-    if (beatId === "b6b_root_lattice") return "tier1";
+    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
