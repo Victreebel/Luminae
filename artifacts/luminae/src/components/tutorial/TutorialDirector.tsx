@@ -1933,7 +1933,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
   const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
 
-  const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5c_architect_assembly"];
+  const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5b2_how_to_use", "b5c_architect_assembly"];
   // Pre-shatter dialogue beats that can also be skipped — excludes b3b_farewell ("take me home" branch)
   const SKIP_PRE_SHATTER_IDS = ["b0_contact", "b1_locate", "b2_lumii_intro", "b3_architect", "b3c_border"];
   const isSkippableBeat = SKIP_CINEMATIC_IDS.includes(beat.id) || SKIP_PRE_SHATTER_IDS.includes(beat.id);
