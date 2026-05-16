@@ -1756,7 +1756,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             className="absolute z-30"
             style={{ transform: "translate(-50%, -50%)" }}
           >
-            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} muted />
+            <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -1779,8 +1779,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
               }}
               nudge={null}
               mode="listen"
-              showOrb
-              muted
+              showOrb={false}
               playerResponse={beat.playerResponse}
               onPlayerResponse={() => dispatch({ type: "PLAYER_RESPONSE" })}
               choices={beat.choices}
