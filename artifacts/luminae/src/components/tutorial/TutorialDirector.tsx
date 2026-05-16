@@ -1095,19 +1095,49 @@ const FS_DURS: Partial<Record<FSPhase, number>> = {
 
 // Six-shard geometry — same polygon network as PANEL_PIECES in luminaryAssets,
 // already expressed in percentage coordinates so they tile the full viewport.
+// Rotation magnitudes increased ~50% over the original values for more dramatic tumble.
 const FS_SHARDS = [
   { clip: 'polygon(0% 0%, 35.7% 0%, 28.6% 15%, 50% 42.5%, 39.3% 40%, 19.6% 37.5%, 0% 40%)',
-    dx: '-38%', dy: '-32%', rX: -12, rY:   9, rZ:  10 },
+    dx: '-38%', dy: '-32%', rX: -18, rY:  14, rZ:  16 },
   { clip: 'polygon(35.7% 0%, 100% 0%, 100% 35%, 60.7% 35%, 50% 42.5%, 28.6% 15%)',
-    dx:  '36%', dy: '-30%', rX: -10, rY: -10, rZ:  -9 },
+    dx:  '36%', dy: '-30%', rX: -15, rY: -16, rZ: -14 },
   { clip: 'polygon(0% 40%, 19.6% 37.5%, 39.3% 40%, 50% 42.5%, 41.1% 57.5%, 25% 72.5%, 16.1% 76.25%, 0% 80%)',
-    dx: '-42%', dy:   '3%', rX:   4, rY:  11, rZ:   7 },
+    dx: '-42%', dy:   '3%', rX:   6, rY:  17, rZ:  11 },
   { clip: 'polygon(100% 35%, 100% 72.5%, 71.4% 70%, 46.4% 70%, 25% 72.5%, 41.1% 57.5%, 50% 42.5%, 60.7% 35%)',
-    dx:  '44%', dy:   '2%', rX:  -3, rY: -12, rZ:  -6 },
+    dx:  '44%', dy:   '2%', rX:  -5, rY: -18, rZ:  -9 },
   { clip: 'polygon(25% 72.5%, 33.9% 85%, 39.3% 100%, 0% 100%, 0% 80%, 16.1% 76.25%)',
-    dx: '-32%', dy:  '36%', rX:  13, rY:   8, rZ:  12 },
+    dx: '-32%', dy:  '36%', rX:  20, rY:  12, rZ:  18 },
   { clip: 'polygon(25% 72.5%, 46.4% 70%, 71.4% 70%, 100% 72.5%, 100% 100%, 39.3% 100%, 33.9% 85%)',
-    dx:  '30%', dy:  '36%', rX:  11, rY:  -9, rZ: -10 },
+    dx:  '30%', dy:  '36%', rX:  17, rY: -14, rZ: -15 },
+] as const;
+
+// Per-shard glassy material layers — each shard has a unique facet orientation
+// expressed through gradient angles, giving the illusion of independent crystal planes.
+const FS_SHARD_GLASS = [
+  // shard 0 — top-left
+  { base: 'linear-gradient(135deg, rgba(14,16,32,0.82) 0%, rgba(30,35,60,0.58) 55%, rgba(8,10,22,0.78) 100%)',
+    spec: 'linear-gradient(120deg, transparent 22%, rgba(190,215,255,0.48) 38%, rgba(255,255,255,0.68) 44%, rgba(190,215,255,0.38) 51%, transparent 63%)',
+    iri:  'linear-gradient(115deg, rgba(150,205,255,0.15) 0%, rgba(255,210,90,0.10) 50%, rgba(225,215,255,0.15) 100%)' },
+  // shard 1 — top-right
+  { base: 'linear-gradient(220deg, rgba(10,12,28,0.78) 0%, rgba(25,30,55,0.56) 55%, rgba(12,15,30,0.82) 100%)',
+    spec: 'linear-gradient(62deg, transparent 24%, rgba(195,215,255,0.46) 40%, rgba(255,255,255,0.65) 46%, rgba(195,215,255,0.36) 53%, transparent 65%)',
+    iri:  'linear-gradient(65deg, rgba(255,210,90,0.13) 0%, rgba(150,205,255,0.15) 50%, rgba(225,215,255,0.12) 100%)' },
+  // shard 2 — middle-left
+  { base: 'linear-gradient(168deg, rgba(12,14,30,0.80) 0%, rgba(22,28,52,0.60) 50%, rgba(8,12,24,0.76) 100%)',
+    spec: 'linear-gradient(153deg, transparent 16%, rgba(190,218,255,0.44) 33%, rgba(255,255,255,0.60) 39%, rgba(190,218,255,0.34) 46%, transparent 59%)',
+    iri:  'linear-gradient(168deg, rgba(150,205,255,0.16) 0%, rgba(225,215,255,0.11) 50%, rgba(255,210,90,0.13) 100%)' },
+  // shard 3 — middle-right
+  { base: 'linear-gradient(330deg, rgba(14,16,32,0.80) 0%, rgba(28,32,58,0.58) 55%, rgba(10,12,26,0.84) 100%)',
+    spec: 'linear-gradient(338deg, transparent 20%, rgba(195,212,255,0.50) 38%, rgba(255,255,255,0.66) 44%, rgba(195,212,255,0.40) 51%, transparent 62%)',
+    iri:  'linear-gradient(330deg, rgba(225,215,255,0.14) 0%, rgba(255,210,90,0.12) 45%, rgba(150,205,255,0.15) 100%)' },
+  // shard 4 — bottom-left
+  { base: 'linear-gradient(48deg, rgba(10,12,26,0.84) 0%, rgba(22,26,50,0.62) 52%, rgba(6,8,20,0.80) 100%)',
+    spec: 'linear-gradient(52deg, transparent 18%, rgba(192,216,255,0.50) 35%, rgba(255,255,255,0.64) 41%, rgba(192,216,255,0.40) 48%, transparent 60%)',
+    iri:  'linear-gradient(55deg, rgba(150,205,255,0.13) 0%, rgba(225,215,255,0.16) 50%, rgba(255,210,90,0.12) 100%)' },
+  // shard 5 — bottom-right
+  { base: 'linear-gradient(278deg, rgba(12,14,30,0.82) 0%, rgba(26,30,55,0.58) 52%, rgba(8,10,22,0.78) 100%)',
+    spec: 'linear-gradient(273deg, transparent 22%, rgba(195,212,255,0.46) 39%, rgba(255,255,255,0.62) 45%, rgba(195,212,255,0.36) 52%, transparent 63%)',
+    iri:  'linear-gradient(278deg, rgba(255,210,90,0.13) 0%, rgba(150,205,255,0.15) 50%, rgba(225,215,255,0.14) 100%)' },
 ] as const;
 
 // Crack network — paths in viewBox 0-100 using the same percentage coords
@@ -1221,8 +1251,6 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
 
   const isShattering = past('shattering');
   const isFlashing   = phase === 'flashing';
-  const BG = 'radial-gradient(ellipse at 50% 43%, #0c0c1f 0%, #040408 100%)';
-
   return (
     <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden">
 
@@ -1241,8 +1269,9 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
       {FS_SHARDS.map((sh, i) => (
         <motion.div key={i} className="absolute inset-0"
           style={{
-            clipPath: sh.clip, background: BG,
-            transformPerspective: 1400,
+            clipPath: sh.clip,
+            background: FS_SHARD_GLASS[i].base,
+            transformPerspective: 900,
             transformStyle: 'preserve-3d',
           }}
           animate={isShattering ? {
@@ -1267,7 +1296,43 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
             filter:  { times: [0, 0.12, 0.34, 0.60, 0.82], ease: 'easeInOut' },
           } : { duration: 0 }}
         >
-          {/* Gold screen-blend transmutation overlay on each shard */}
+          {/* Specular highlight stripe — bright bevel edge catching light, unique per shard.
+              Pre-shatter: steady low glow. During scatter: flares briefly then fades with shard. */}
+          {isShattering ? (
+            <motion.div className="absolute inset-0 pointer-events-none"
+              style={{ background: FS_SHARD_GLASS[i].spec }}
+              initial={{ opacity: 0.70 }}
+              animate={{ opacity: [0.70, 1.00, 0.82, 0.40, 0] }}
+              transition={{ duration: 4.5, times: [0, 0.10, 0.28, 0.55, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
+            />
+          ) : (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: FS_SHARD_GLASS[i].spec, opacity: 0.70 }}
+            />
+          )}
+
+          {/* Prismatic iridescence wash — ice-blue/gold/pearl, screen blend, subtle pulse */}
+          {isShattering ? (
+            <motion.div className="absolute inset-0 pointer-events-none"
+              style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen' }}
+              initial={{ opacity: 0.16 }}
+              animate={{ opacity: [0.16, 0.26, 0.13, 0.22, 0] }}
+              transition={{ duration: 4.5, times: [0, 0.18, 0.40, 0.62, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
+            />
+          ) : (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen', opacity: 0.16 }}
+            />
+          )}
+
+          {/* Rim/edge inset glow — suggests the bright cut edge of a crystal slab */}
+          <div className="absolute inset-0 pointer-events-none"
+            style={{
+              boxShadow: 'inset 0 0 18px 2px rgba(160,210,255,0.18), inset 0 0 4px 1px rgba(255,255,255,0.22)',
+            }}
+          />
+
+          {/* Gold screen-blend transmutation overlay — brightens as shard flies apart */}
           {isShattering && (
             <motion.div className="absolute inset-0 pointer-events-none"
               style={{ background: FSO_GOLD, mixBlendMode: 'screen' }}
