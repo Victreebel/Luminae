@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
-import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX } from "lucide-react";
+import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -1805,7 +1805,10 @@ function ArchitectAssembly({
           className="absolute left-0 right-0 mx-3 rounded-2xl"
           style={{ top: 148, padding: "10px 10px 12px 10px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
         >
-          <div className="text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2.5">The Forge</div>
+          <div className="flex items-center gap-1.5 text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2.5">
+            <Hammer className="h-2.5 w-2.5 text-amber-500/70 shrink-0" />
+            The Forge
+          </div>
           {([3, 2, 1] as const).map((tier, ti) => {
             const BackComp = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
             const labels = ["III", "II", "I"] as const;
@@ -3026,7 +3029,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
           <TutorialLuminarySection beatId={beatId} />
           <div ref={forgeRef} className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.72)" }}>
-            <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">The Forge</div>
+            <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">
+              <Hammer className="h-3 w-3 text-amber-500/70 shrink-0" />
+              The Forge
+            </div>
             <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
           </div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
