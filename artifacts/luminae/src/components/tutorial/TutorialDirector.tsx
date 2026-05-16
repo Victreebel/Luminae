@@ -2847,7 +2847,17 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   const isCinematicPhase = s.beat <= 9;
 
   // Determine which gameplay sub-component to render (beats 10+)
-  const gameplayContent = beat.id === "b15_fast_forward"
+  // Sub-phase key: b15 and b17 get their own keys so a nested AnimatePresence
+  // can blur-out on exit before the next phase blurs in.
+  const subPhaseKey = beat.id === "b15_fast_forward"
+    ? "ff"
+    : beat.id === "b17_luminary"
+      ? "luminary"
+      : beat.id === "b18_victory"
+        ? "victory"
+        : "gameplay-main";
+
+  const subPhaseContent = beat.id === "b15_fast_forward"
     ? <FastForwardCinematic s={s} dispatch={dispatch} />
     : beat.id === "b17_luminary"
       ? <LuminaryPhase s={s} dispatch={dispatch} />
@@ -2878,7 +2888,21 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
             animate={{ opacity: 1, filter: "blur(0px)" }}
             transition={{ duration: 0.55, ease: "easeOut" }}
           >
-            {gameplayContent}
+            {/* Nested AnimatePresence so b15→b16 and b17→b18 also blur-out/blur-in.
+                initial={false} suppresses the inner enter blur on the first mount so it
+                doesn't stack on top of the outer cinematic→gameplay blur. */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={subPhaseKey}
+                className="fixed inset-0"
+                initial={{ opacity: 0, filter: "blur(14px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, filter: "blur(14px)", transition: { duration: 0.42, ease: "easeIn" as const } }}
+                transition={{ duration: 0.55, ease: "easeOut" }}
+              >
+                {subPhaseContent}
+              </motion.div>
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
