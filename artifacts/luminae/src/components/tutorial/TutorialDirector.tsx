@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { saveTutorialProgress, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
-import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer } from "lucide-react";
+import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
@@ -675,7 +675,10 @@ function AffinityWell({
       transition={{ duration: 0.85, ease: "easeOut" }}
       style={{ background: "rgba(3,3,12,0.78)" }}
     >
-      <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
+      <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">
+        Affinity Well
+        <Droplets className="h-3 w-3 text-cyan-400/70 shrink-0" />
+      </div>
       <div className="flex gap-2 flex-wrap justify-center mb-3">
         {ALL_GEMS.map(gem => {
           const isFlux = gem === "flux";
@@ -1838,7 +1841,10 @@ function ArchitectAssembly({
           className="absolute left-0 right-0 mx-3 rounded-2xl"
           style={{ top: 432, padding: "8px 8px 10px 8px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
         >
-          <div className="text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2">Affinity Well</div>
+          <div className="flex items-center gap-1.5 text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2">
+            Affinity Well
+            <Droplets className="h-2.5 w-2.5 text-cyan-400/70 shrink-0" />
+          </div>
           <div className="flex gap-1">
             {ALL_GEMS.map(gem => {
               const meta = GEM_META[gem];
