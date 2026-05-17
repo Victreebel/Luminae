@@ -962,12 +962,14 @@ function MarketTabs({
   highlightNeeded: boolean;
 }) {
   const tabs: { key: TutorialMarketView; label: string }[] = [
-    { key: "all", label: "All" },
+    { key: "all", label: "Full" },
     { key: "discounted", label: "Discounted" },
     { key: "needed", label: "Needed" },
   ];
   return (
-    <div className="flex gap-1 mb-3">
+    <div className="mb-3">
+    <div className="text-[9px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">View costs:</div>
+    <div className="flex gap-1">
       {tabs.map(tab => {
         const isActive = view === tab.key;
         const isHl = (tab.key === "discounted" && highlightDiscounted) || (tab.key === "needed" && highlightNeeded);
@@ -981,6 +983,7 @@ function MarketTabs({
           >{tab.label}</motion.button>
         );
       })}
+    </div>
     </div>
   );
 }
