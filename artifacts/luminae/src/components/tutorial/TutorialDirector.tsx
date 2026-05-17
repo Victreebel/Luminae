@@ -3452,14 +3452,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         // Dart to top-right corner while burst animations are playing
         const burstActive = !!(purchaseBurst || gemBurst);
 
-        // b6_forge_appears: on dlgLine 1, Lumii slides to beside "The Forge" header
-        const isForgeAppearsLine1 = beatId === "b6_forge_appears" && s.dlgLine === 1;
-        const forgeHeaderPos = LUMII_ZONE_POS["forge-header"]!;
-        const forgeHeaderPosClamped = isShortLandscape
-          ? { x: forgeHeaderPos.x, y: `${Math.min(parseFloat(forgeHeaderPos.y), 60)}%` }
-          : forgeHeaderPos;
-
-        const basePos = isForgeAppearsLine1 ? forgeHeaderPosClamped : lumiiPos;
+        const basePos = lumiiPos;
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : basePos;
 
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
