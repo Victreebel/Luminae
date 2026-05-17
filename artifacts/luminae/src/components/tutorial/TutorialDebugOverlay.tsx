@@ -66,8 +66,8 @@ function deriveCameraFocus(
 
 // ─── Known bug annotations keyed by beat id ──────────────────────────────────
 const BEAT_BUGS: Record<string, string[]> = {
-  "b6_forge_appears":      ["FIXED BUG-02: CardFlipReveal key now changes at b6b → remounts correctly"],
-  "b6b_root_lattice":      ["FIXED BUG-02: key='flip-active' forces remount; dialogue delayed 1.3s until flip done"],
+  "b6_forge_appears":      ["FIXED BUG-02: DeckDealReveal key now changes at b6b → remounts and replays deal animation correctly"],
+  "b6b_root_lattice":      ["FIXED BUG-02: key='deal-active' forces DeckDealReveal remount; dialogue delayed 1.3s until deal+flip done"],
   "b9b_forge_complete":    ["FIXED BUG-01: storage camera now scrolls to maxScroll", "FIXED BUG-11: removed from isForgeHighlighted"],
   "b9c_transition":        ["FIXED BUG-01: storage camera now scrolls to maxScroll"],
   "b10_reserve":           ["FIXED BUG-08: RESERVE_CARD_ID highlighted from subStep=0 (not gated on subStep≥1)"],

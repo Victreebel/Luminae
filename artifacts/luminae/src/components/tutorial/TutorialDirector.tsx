@@ -3259,6 +3259,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
 
+  // Beats where Lumii's dialogue floats beside the sprite (card-explanation beats).
+  // Also used to suppress the fixed-bottom dialogue box on the same beats.
+  const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
@@ -3269,8 +3273,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
     // b6_forge_appears + b7 beats: camera on tier1 so the empty/dealt slot is front and centre
     if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
-    // b6b: Root Lattice just dealt — scroll to forge so both the Forge section
-    // and the T1 row (where the card landed) are visible together
+    // b6b: Root Lattice just dealt — scroll to forge header; T3/T2 render as
+    // headerOnly (collapsed labels) so T1 fits in the same viewport
     if (beatId === "b6b_root_lattice") return "forge";
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
@@ -3306,7 +3310,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     // Without the rAF, getBoundingClientRect reads stale scaled coordinates
     // from the b6_forge_appears zoom-out animation mid-flight, causing the
     // camera to overshoot and land at the T1 row rather than the Forge header.
-    const scrollToEl = (el: HTMLElement, cont: HTMLElement, label: string) => {
+    const scrollToEl = (el: HTMLElement, cont: HTMLElement) => {
       // Cancel any in-progress smooth scroll right now (synchronous).
       cont.scrollTo({ top: cont.scrollTop, behavior: "instant" });
       requestAnimationFrame(() => {
@@ -3345,17 +3349,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     } else if (cameraFocus === "forge") {
       const forgeEl = forgeRef.current;
       if (forgeEl) {
-        scrollToEl(forgeEl, container, "forge");
+        scrollToEl(forgeEl, container);
       }
     } else if (cameraFocus === "tier1") {
       const tier1El = tier1Ref.current;
       if (tier1El) {
-        scrollToEl(tier1El, container, "tier1");
+        scrollToEl(tier1El, container);
       } else {
         // Fallback: tier1Ref not yet attached — use forgeRef as the next best anchor
         const fallbackEl = forgeRef.current;
         if (fallbackEl) {
-          scrollToEl(fallbackEl, container, "tier1-fallback");
+          scrollToEl(fallbackEl, container);
         } else {
           container.scrollTo({ top: maxScroll, behavior: "smooth" });
         }
@@ -3651,7 +3655,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const burstActive = !!(purchaseBurst || gemBurst);
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
-        const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
         const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
@@ -3812,7 +3815,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </AnimatePresence>
 
       {/* Dialogue box — fade in after camera has settled on camera-scroll beats */}
-      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"].includes(beatId) && (
+      {s.dlgLine < beat.dialogue.length && !CARD_DLG_BEATS.has(beatId) && (
         <motion.div
           key={`dlg-settle-${beatId}-${subStep}`}
           className="fixed left-0 right-0 z-50 px-4"
