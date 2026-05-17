@@ -237,6 +237,69 @@
   }
 }
 
+/* ── Sidebar section header typography ──────────────────────────────────── */
+@layer components {
+  .section-luminaries {
+    font-family: 'Almendra', 'Cinzel', serif;
+    color: #c9a84c;
+    text-shadow: 0 0 12px rgba(201, 168, 76, 0.35);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .section-luminaries-sub {
+    font-family: 'Almendra', 'Cinzel', serif;
+    font-style: italic;
+    color: rgba(201, 168, 76, 0.55);
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .section-forge {
+    font-family: 'IM Fell English', 'Cinzel', serif;
+    color: #d4820a;
+    text-shadow: 0 0 10px rgba(212, 130, 10, 0.3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1;
+  }
+  .section-forge-sub {
+    font-family: 'IM Fell English', 'Cinzel', serif;
+    font-style: italic;
+    color: rgba(212, 130, 10, 0.55);
+    letter-spacing: 0.05em;
+    font-size: 10px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .section-well {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    color: #a8c8e8;
+    text-shadow: 0 0 10px rgba(168, 200, 232, 0.3);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 300;
+    line-height: 1;
+  }
+  .section-well-sub {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    color: rgba(168, 200, 232, 0.5);
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 300;
+    line-height: 1;
+  }
+}
+
 @layer utilities {
   .gem-glow {
     box-shadow: 0 0 15px currentColor;
