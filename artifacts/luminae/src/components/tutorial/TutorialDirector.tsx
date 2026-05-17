@@ -967,8 +967,8 @@ function MarketTabs({
     { key: "needed", label: "Needed" },
   ];
   return (
-    <div className="flex items-center gap-2 mb-3">
-    <div className="text-[9px] font-semibold uppercase tracking-wider text-white/30 shrink-0">View costs:</div>
+    <div className="mb-3">
+    <div className="text-[9px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">View costs:</div>
     <div className="flex gap-1">
       {tabs.map(tab => {
         const isActive = view === tab.key;
