@@ -3824,8 +3824,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               }
             : beatId === "b8_first_harness"
             ? {
-                // Lumii is at card-cost (78%, 40%) — pin dialogue just below the sprite
-                top: "calc(40% + 58px)",
+                // Lumii is at card-cost (78%, 40%) — pin dialogue just above the sprite
+                top: "calc(40% - 110px)",
               }
             : cameraFocus === "well"
             ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
