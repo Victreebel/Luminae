@@ -3671,7 +3671,7 @@ export default function GameBoard() {
                                   {/* Crystal count */}
                                   <span
                                     className="text-2xl font-black leading-none tracking-tight"
-                                    style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
+                                    style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : 'none' }}
                                   >
                                     {n}
                                   </span>
@@ -3915,7 +3915,7 @@ export default function GameBoard() {
                         )}
                         <span
                           className="text-2xl font-black leading-none tracking-tight"
-                          style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
+                          style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : 'none' }}
                         >
                           {n}
                         </span>
@@ -4214,7 +4214,7 @@ export default function GameBoard() {
                       className="text-2xl font-black leading-none tracking-tight"
                       style={{
                         color: hasContent ? '#fff' : meta.hex + '40',
-                        textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
+                        textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : 'none',
                       }}
                     >
                       {gems}
@@ -5255,7 +5255,7 @@ export default function GameBoard() {
                 className="text-2xl font-serif font-bold tracking-wide"
                 style={{
                   color: turnAnnouncement.isYou ? turnAnnouncement.accentColor : 'rgba(255,255,255,0.85)',
-                  textShadow: `0 0 16px ${hexRgba(turnAnnouncement.accentColor, 0.7)}`,
+                  textShadow: `0 0 2px rgba(255,255,255,0.9), 0 0 10px ${hexRgba(turnAnnouncement.accentColor, 1.0)}, 0 0 28px ${hexRgba(turnAnnouncement.accentColor, 0.7)}, 0 0 60px ${hexRgba(turnAnnouncement.accentColor, 0.35)}`,
                 }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -5821,7 +5821,7 @@ export default function GameBoard() {
                       animate={{ opacity: 1 }}
                       transition={{ delay: 1.0 }}
                       className="text-xs font-semibold uppercase tracking-widest"
-                      style={{ color: accentColor, textShadow: `0 0 10px ${glowColor}` }}
+                      style={{ color: accentColor, textShadow: `0 0 2px rgba(255,255,255,0.9), 0 0 8px ${glowColor}, 0 0 22px ${glowColor}aa, 0 0 45px ${glowColor}55` }}
                     >
                       {label} {lum?.name ?? lumId}
                     </motion.p>

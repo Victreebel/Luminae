@@ -946,7 +946,7 @@ function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) 
                 className="text-xl font-black leading-none tracking-tight"
                 style={{
                   color: hasContent ? "#fff" : meta.hex + "40",
-                  textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none",
+                  textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : "none",
                 }}
               >{held}</span>
               {gem !== "flux" && bonus > 0 && (
@@ -3631,7 +3631,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                   <MiniGem gem={gem} size={7} />
                 </div>
                 <span className={`${isShortLandscape ? "text-lg" : "text-2xl"} font-black leading-none tracking-tight`}
-                  style={{ color: hasContent ? "#fff" : meta.hex + "40", textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none" }}
+                  style={{ color: hasContent ? "#fff" : meta.hex + "40", textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : "none" }}
                 >{held}</span>
                 {gem !== "flux" && bonus > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>}
                 {gem === "flux" && reservedCount > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>}
