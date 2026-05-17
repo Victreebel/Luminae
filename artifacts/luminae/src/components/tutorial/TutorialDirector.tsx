@@ -3298,18 +3298,41 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     // Without the rAF, getBoundingClientRect reads stale scaled coordinates
     // from the b6_forge_appears zoom-out animation mid-flight, causing the
     // camera to overshoot and land at the T1 row rather than the Forge header.
-    const scrollToEl = (el: HTMLElement, cont: HTMLElement) => {
+    const scrollToEl = (el: HTMLElement, cont: HTMLElement, label: string) => {
       // Cancel any in-progress smooth scroll right now (synchronous).
-      cont.scrollTo({ top: cont.scrollTop, behavior: "instant" });
+      const scrollTopAtCancel = cont.scrollTop;
+      cont.scrollTo({ top: scrollTopAtCancel, behavior: "instant" });
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log(`[cam sync] beat=${beatId} focus=${label} scrollTopAtCancel=${scrollTopAtCancel}`);
+      }
       requestAnimationFrame(() => {
         if (!scrollRef.current || !el.isConnected) return;
         const c = scrollRef.current;
         // Re-cancel in case something else scrolled during this frame.
         c.scrollTo({ top: c.scrollTop, behavior: "instant" });
-        const target =
-          el.getBoundingClientRect().top -
-          c.getBoundingClientRect().top +
-          c.scrollTop;
+        const elTop = el.getBoundingClientRect().top;
+        const contTop = c.getBoundingClientRect().top;
+        const target = elTop - contTop + c.scrollTop;
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log(`[cam rAF]  beat=${beatId} focus=${label} elBCR=${elTop.toFixed(1)} contBCR=${contTop.toFixed(1)} scrollTop=${c.scrollTop} → target=${target.toFixed(1)}`);
+          // Spy: log every scrollTop change for 2000ms to detect overrides.
+          let lastSpy = c.scrollTop;
+          const spyFn = () => {
+            if (Math.abs(c.scrollTop - lastSpy) > 1) {
+              // eslint-disable-next-line no-console
+              console.log(`[cam spy]  beat=${beatId} focus=${label} scrollTop changed ${lastSpy}→${c.scrollTop}`);
+              lastSpy = c.scrollTop;
+            }
+          };
+          c.addEventListener("scroll", spyFn, { passive: true });
+          setTimeout(() => {
+            c.removeEventListener("scroll", spyFn);
+            // eslint-disable-next-line no-console
+            console.log(`[cam +2s]  beat=${beatId} focus=${label} finalScrollTop=${c.scrollTop} target=${target.toFixed(1)}`);
+          }, 2000);
+        }
         c.scrollTo({ top: target, behavior: "smooth" });
       });
     };
@@ -3322,17 +3345,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     } else if (cameraFocus === "forge") {
       const forgeEl = forgeRef.current;
       if (forgeEl) {
-        scrollToEl(forgeEl, container);
+        scrollToEl(forgeEl, container, "forge");
       }
     } else if (cameraFocus === "tier1") {
       const tier1El = tier1Ref.current;
       if (tier1El) {
-        scrollToEl(tier1El, container);
+        scrollToEl(tier1El, container, "tier1");
       } else {
         // Fallback: tier1Ref not yet attached — use forgeRef as the next best anchor
         const fallbackEl = forgeRef.current;
         if (fallbackEl) {
-          scrollToEl(fallbackEl, container);
+          scrollToEl(fallbackEl, container, "tier1-fallback");
         } else {
           container.scrollTo({ top: maxScroll, behavior: "smooth" });
         }
