@@ -1070,36 +1070,61 @@ function CardFlipReveal({
   shouldAnimate,
   BackFace,
   delay = 720,
+  slotIndex = 0,
 }: {
   children: React.ReactNode;
   shouldAnimate: boolean;
   BackFace: React.ComponentType;
   delay?: number;
+  slotIndex?: number;
 }) {
-  const [phase, setPhase] = useState<"back" | "out" | "in" | "done">(
-    shouldAnimate ? "back" : "done"
-  );
+  // Slot 0 is 132 px right of the deck pile (120 px deck + 12 px gap).
+  // Each subsequent slot adds another 124 px (112 px card + 12 px gap).
+  const slideFrom = -(132 + slotIndex * 124);
+
+  type Phase = "hidden" | "slide" | "out" | "in" | "done";
+  const [phase, setPhase] = useState<Phase>(shouldAnimate ? "hidden" : "done");
 
   useEffect(() => {
     if (!shouldAnimate) return;
-    const soundLead = 80; // ms before flip starts
-    const ts = setTimeout(() => gameAudio.playCardFlip(), Math.max(0, delay - soundLead));
-    const tf = setTimeout(() => setPhase("out"), delay);
-    return () => { clearTimeout(ts); clearTimeout(tf); };
-  }, []); // run once on mount
+    const th = setTimeout(() => setPhase("slide"), delay);
+    return () => clearTimeout(th);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const W = 112, H = 160;
 
   if (phase === "done") return <>{children}</>;
 
-  const W = 112, H = 160;
+  // Reserve the slot space while waiting for the slide to start.
+  if (phase === "hidden") {
+    return <div style={{ width: W, height: H, flexShrink: 0 }} />;
+  }
+
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
-      {(phase === "back" || phase === "out") && (
+      {(phase === "slide" || phase === "out") && (
         <motion.div
           className="rounded-xl overflow-hidden border border-white/12 shadow-lg"
           style={{ width: W, height: H }}
-          animate={phase === "out" ? { rotateY: 90 } : { rotateY: 0 }}
-          transition={{ duration: 0.18, ease: "easeIn" }}
-          onAnimationComplete={() => { if (phase === "out") setPhase("in"); }}
+          initial={phase === "slide" ? { x: slideFrom } : undefined}
+          animate={
+            phase === "slide"
+              ? { x: 0 }
+              : { x: 0, rotateY: 90 }
+          }
+          transition={
+            phase === "slide"
+              ? { duration: 0.30, ease: "easeOut" }
+              : { duration: 0.18, ease: "easeIn" }
+          }
+          onAnimationComplete={() => {
+            if (phase === "slide") {
+              gameAudio.playCardFlip();
+              setPhase("out");
+            } else {
+              setPhase("in");
+            }
+          }}
         >
           <BackFace />
         </motion.div>
@@ -1110,7 +1135,7 @@ function CardFlipReveal({
           style={{ width: W, height: H }}
           initial={{ rotateY: -90 }}
           animate={{ rotateY: 0 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
           onAnimationComplete={() => setPhase("done")}
         >
           {children}
@@ -1341,7 +1366,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
               const dealCard = TUTORIAL_CARDS[slot.cardId];
               if (!dealCard) return <GhostCardSlot key={`ghost-deal-${slot.cardId}`} tier={tier} />;
               return (
-                <CardFlipReveal key={`deal-${slot.cardId}`} shouldAnimate BackFace={BackComp} delay={dealDelay}>
+                <CardFlipReveal key={`deal-${slot.cardId}`} shouldAnimate BackFace={BackComp} delay={dealDelay} slotIndex={idx}>
                   <TutorialCard
                     card={dealCard}
                     bonuses={s.bonuses}
