@@ -46,9 +46,11 @@ function deriveCameraFocus(
   beatId: string,
   subStep: number,
 ): "market" | "well" | "storage" | "forge" | "tier1" | "cinematic" {
-  // b6_forge_appears + b7 beats: tier1 so the empty/dealt slot is front and centre
-  if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
-  // b6b: Root Lattice just dealt — forge camera shows both Forge section and T1 row
+  // b6_forge_appears + b7 beats + b9_first_forge: tier1 so the card slot is front and centre
+  // b9_first_forge: Root Lattice (T1) is at ~777px scroll-space — below the fold at scrollTop=0 (BUG-12 fix)
+  if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge" || beatId === "b9_first_forge") return "tier1";
+  // b6b: Root Lattice just dealt — scroll to forge header; T3/T2 render as
+  // headerOnly (collapsed labels) so T1 fits in the same viewport
   if (beatId === "b6b_root_lattice") return "forge";
   if (beatId === "b8_first_harness") return "well";
   // FIXED BUG-06: was "tier1" (ghost slots visible), now "well" (hand+well visible)
@@ -68,6 +70,7 @@ function deriveCameraFocus(
 const BEAT_BUGS: Record<string, string[]> = {
   "b6_forge_appears":      ["FIXED BUG-02: DeckDealReveal key now changes at b6b → remounts and replays deal animation correctly"],
   "b6b_root_lattice":      ["FIXED BUG-02: key='deal-active' forces DeckDealReveal remount; dialogue delayed 1.3s until deal+flip done"],
+  "b9_first_forge":        ["FIXED BUG-12: camera now 'tier1' — Root Lattice (T1) was at ~777px scroll-space, below fold at scrollTop=0"],
   "b9b_forge_complete":    ["FIXED BUG-01: storage camera now scrolls to maxScroll", "FIXED BUG-11: removed from isForgeHighlighted"],
   "b9c_transition":        ["FIXED BUG-01: storage camera now scrolls to maxScroll"],
   "b10_reserve":           ["FIXED BUG-08: RESERVE_CARD_ID highlighted from subStep=0 (not gated on subStep≥1)"],

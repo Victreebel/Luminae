@@ -3111,6 +3111,11 @@ function CollectionSheet({ forged, bonuses, onClose }: {
   );
 }
 
+// Beats where Lumii's dialogue floats beside the card cost area rather than
+// appearing in the fixed bottom bar. Declared at module scope so it is not
+// recreated on every render of GameplayPhase.
+const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
+
 // ─── Gameplay Phase ───────────────────────────────────────────────────────────
 function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
@@ -3259,10 +3264,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
 
-  // Beats where Lumii's dialogue floats beside the sprite (card-explanation beats).
-  // Also used to suppress the fixed-bottom dialogue box on the same beats.
-  const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
@@ -3271,8 +3272,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // fires the same animation on every navigation arrival).
   const boardControls = useAnimation();
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
-    // b6_forge_appears + b7 beats: camera on tier1 so the empty/dealt slot is front and centre
-    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
+    // b6_forge_appears + b7 beats + b9_first_forge: camera on tier1 so the card slot is front and centre
+    // b9_first_forge included because Root Lattice (T1) is at ~777px in scroll-space — below the fold at scrollTop=0
+    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge" || beatId === "b9_first_forge") return "tier1";
     // b6b: Root Lattice just dealt — scroll to forge header; T3/T2 render as
     // headerOnly (collapsed labels) so T1 fits in the same viewport
     if (beatId === "b6b_root_lattice") return "forge";
