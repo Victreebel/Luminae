@@ -29,7 +29,8 @@ function deriveCameraFocus(
   beatId: string,
   subStep: number,
 ): "market" | "well" | "storage" | "forge" | "tier1" | "cinematic" {
-  if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge")
+  // b6_forge_appears: camera now "tier1" so the empty slot is visible while Lumii points at it
+  if (beatId === "b6_forge_appears" || beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge")
     return "tier1";
   if (beatId === "b8_first_harness") return "well";
   // FIXED BUG-06: was "tier1" (ghost slots visible), now "well" (hand+well visible)
