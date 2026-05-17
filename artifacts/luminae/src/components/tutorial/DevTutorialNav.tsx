@@ -1,6 +1,9 @@
 import type { Dispatch } from "react";
+import { useState } from "react";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
 import type { TAction } from "@/lib/tutorialReducer";
+
+const LS_KEY = "devTutorialNav_collapsed";
 
 interface Props {
   beatIndex: number;
@@ -10,6 +13,26 @@ interface Props {
 export function DevTutorialNav({ beatIndex, dispatch }: Props) {
   const total = TUTORIAL_BEATS.length;
   const beat = TUTORIAL_BEATS[beatIndex];
+
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(LS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  function toggleCollapsed() {
+    setCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem(LS_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   function jump(toIndex: number) {
     dispatch({ type: "JUMP_BEAT", toIndex });
@@ -36,71 +59,103 @@ export function DevTutorialNav({ beatIndex, dispatch }: Props) {
         pointerEvents: "all",
       }}
     >
-      <div style={{ fontSize: 10, color: "#a0a0a0", letterSpacing: "0.04em", marginBottom: 2 }}>
-        DEV · BEAT NAVIGATOR
-      </div>
-      <div style={{ color: "#fff", lineHeight: 1.4 }}>
-        <span style={{ color: "#a0a0a0" }}>Beat </span>
-        <strong>{beatIndex + 1}</strong>
-        <span style={{ color: "#a0a0a0" }}> / {total} — </span>
-        <span style={{ color: "#e2c96a" }}>{beat?.id ?? "?"}</span>
-      </div>
-      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+      <div
+        style={{
+          fontSize: 10,
+          color: "#a0a0a0",
+          letterSpacing: "0.04em",
+          marginBottom: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 6,
+        }}
+      >
+        <span>DEV · BEAT NAVIGATOR</span>
         <button
-          onClick={() => jump(beatIndex - 1)}
-          disabled={beatIndex <= 0}
+          onClick={toggleCollapsed}
+          title={collapsed ? "Expand" : "Collapse"}
           style={{
-            background: beatIndex <= 0 ? "#333" : "#555",
-            color: beatIndex <= 0 ? "#666" : "#fff",
-            border: "1px solid #444",
-            borderRadius: 4,
-            padding: "2px 8px",
-            cursor: beatIndex <= 0 ? "not-allowed" : "pointer",
-            fontSize: 13,
-            lineHeight: 1,
-          }}
-          title="Previous beat"
-        >
-          ‹
-        </button>
-        <button
-          onClick={() => jump(beatIndex + 1)}
-          disabled={beatIndex >= total - 1}
-          style={{
-            background: beatIndex >= total - 1 ? "#333" : "#555",
-            color: beatIndex >= total - 1 ? "#666" : "#fff",
-            border: "1px solid #444",
-            borderRadius: 4,
-            padding: "2px 8px",
-            cursor: beatIndex >= total - 1 ? "not-allowed" : "pointer",
-            fontSize: 13,
-            lineHeight: 1,
-          }}
-          title="Next beat"
-        >
-          ›
-        </button>
-        <select
-          value={beatIndex}
-          onChange={e => jump(Number(e.target.value))}
-          style={{
-            flex: 1,
-            background: "#222",
-            color: "#e2c96a",
-            border: "1px solid #444",
-            borderRadius: 4,
-            padding: "2px 4px",
-            fontSize: 10,
+            background: "none",
+            border: "none",
+            color: "#a0a0a0",
             cursor: "pointer",
+            fontSize: 11,
+            lineHeight: 1,
+            padding: "0 2px",
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          {TUTORIAL_BEATS.map((b, i) => (
-            <option key={b.id} value={i}>
-              {i + 1}. {b.id}
-            </option>
-          ))}
-        </select>
+          {collapsed ? "▼" : "▲"}
+        </button>
       </div>
+      {!collapsed && (
+        <>
+          <div style={{ color: "#fff", lineHeight: 1.4 }}>
+            <span style={{ color: "#a0a0a0" }}>Beat </span>
+            <strong>{beatIndex + 1}</strong>
+            <span style={{ color: "#a0a0a0" }}> / {total} — </span>
+            <span style={{ color: "#e2c96a" }}>{beat?.id ?? "?"}</span>
+          </div>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <button
+              onClick={() => jump(beatIndex - 1)}
+              disabled={beatIndex <= 0}
+              style={{
+                background: beatIndex <= 0 ? "#333" : "#555",
+                color: beatIndex <= 0 ? "#666" : "#fff",
+                border: "1px solid #444",
+                borderRadius: 4,
+                padding: "2px 8px",
+                cursor: beatIndex <= 0 ? "not-allowed" : "pointer",
+                fontSize: 13,
+                lineHeight: 1,
+              }}
+              title="Previous beat"
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => jump(beatIndex + 1)}
+              disabled={beatIndex >= total - 1}
+              style={{
+                background: beatIndex >= total - 1 ? "#333" : "#555",
+                color: beatIndex >= total - 1 ? "#666" : "#fff",
+                border: "1px solid #444",
+                borderRadius: 4,
+                padding: "2px 8px",
+                cursor: beatIndex >= total - 1 ? "not-allowed" : "pointer",
+                fontSize: 13,
+                lineHeight: 1,
+              }}
+              title="Next beat"
+            >
+              ›
+            </button>
+            <select
+              value={beatIndex}
+              onChange={e => jump(Number(e.target.value))}
+              style={{
+                flex: 1,
+                background: "#222",
+                color: "#e2c96a",
+                border: "1px solid #444",
+                borderRadius: 4,
+                padding: "2px 4px",
+                fontSize: 10,
+                cursor: "pointer",
+              }}
+            >
+              {TUTORIAL_BEATS.map((b, i) => (
+                <option key={b.id} value={i}>
+                  {i + 1}. {b.id}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
     </div>
   );
 }
