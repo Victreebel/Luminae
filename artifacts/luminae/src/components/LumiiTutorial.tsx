@@ -5,7 +5,6 @@ import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
-import type { LumiiPointerDir } from "@/lib/tutorialData";
 import type { GemKey } from "@/lib/gemMeta";
 import { renderKeywords } from "@/lib/tutorialKeywords";
 
@@ -91,14 +90,6 @@ const EMBERS: EmberDef[] = [
   { angle: 260, r0: 25, r1: 53, sz: 3.2, col: EMBER_PALETTE[3], delay: 3.2, dur: 2.5 },
   { angle: 340, r0: 21, r1: 46, sz: 3.4, col: EMBER_PALETTE[4], delay: 0.8, dur: 1.7 },
 ];
-
-// Direction → SVG rotation angle for the pointer arrow
-const POINTER_ROTATE: Record<LumiiPointerDir, number> = {
-  right:  0,
-  down:  90,
-  left:  180,
-  up:   270,
-};
 
 // Returns the constellation node closest to the given tether direction
 function getNearestNode(shape: WispShape, direction: "down" | "up" | "left"): { x: number; y: number } {
@@ -198,7 +189,6 @@ function LumiiOrb({
   onNearestNode,
   highlightZone,
   beatKey,
-  pointing,
 }: {
   size?: number;
   excited?: boolean;
@@ -209,7 +199,6 @@ function LumiiOrb({
   onNearestNode?: (offset: { x: number; y: number }) => void;
   highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null;
   beatKey?: string | number;
-  pointing?: LumiiPointerDir;
 }) {
   // Stable unique ID for SVG filter defs — safe across StrictMode double-invoke
   const instanceRef = useRef<number | null>(null);
@@ -587,45 +576,6 @@ function LumiiOrb({
         );
       })}
 
-      {/* Pointing arrow — short glowing shaft + beckoning arrowhead extending from the constellation */}
-      <AnimatePresence>
-        {pointing && (
-          <motion.g
-            key={`ptr-${pointing}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.30 }}
-            transform={`rotate(${POINTER_ROTATE[pointing]})`}
-            filter={`url(#${filterId})`}
-          >
-            {/* Shaft — draws in from constellation edge outward */}
-            <motion.path
-              d="M 27 0 L 51 0"
-              stroke="rgba(255,255,255,0.70)"
-              strokeWidth={1.0}
-              strokeLinecap="round"
-              fill="none"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1, strokeOpacity: [0.52, 0.82, 0.52] }}
-              transition={{
-                pathLength: { duration: 0.38, ease: "easeOut" },
-                strokeOpacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut", delay: 0.42 },
-              }}
-            />
-            {/* Arrowhead — nudges forward/back in a slow beckon */}
-            <motion.g
-              animate={{ x: [0, 3, 0] }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay: 0.55 }}
-            >
-              <polygon
-                points="57,0 50,-3.5 50,3.5"
-                fill="rgba(255,255,255,0.72)"
-              />
-            </motion.g>
-          </motion.g>
-        )}
-      </AnimatePresence>
     </svg>
   );
 }

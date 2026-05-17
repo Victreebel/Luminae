@@ -354,7 +354,6 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
               </div>
             )}
             <Row label="lumiiZone"       value={beat.lumiiZone} />
-            {beat.lumiiPointer && <Row label="lumiiPointer" value={beat.lumiiPointer} />}
             <Row label="highlightZone"   value={beat.highlightZone ?? "none"} dim={!beat.highlightZone} />
             <Row label="foregroundCard"  value={beat.foregroundCardId ?? "none"} dim={!beat.foregroundCardId} />
             <Row label="primaryHighlight" value={primaryHighlight} dim={primaryHighlight === "none"} />

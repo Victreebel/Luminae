@@ -22,7 +22,6 @@ import {
   VERDANCE_LUMINARY_ID,
   type TutorialCard as TutorialCardData,
   type TutorialMarketView,
-  type LumiiPointerDir,
 } from "@/lib/tutorialData";
 import {
   INIT_STATE,
@@ -83,15 +82,7 @@ const ORB_EMBERS: OrbEmberDef[] = [
   { angle: 340, r0f: 0.29, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[4], delay: 0.8, dur: 1.7 },
 ];
 
-// Direction → SVG rotation angle for the pointer arrow
-const POINTER_ROTATE: Record<LumiiPointerDir, number> = {
-  right:  0,
-  down:  90,
-  left:  180,
-  up:   270,
-};
-
-function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, pointing, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; pointing?: LumiiPointerDir; muted?: boolean }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
   const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
@@ -166,48 +157,6 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, p
         })}
       </svg>
 
-      {/* Pointing arrow — scales with orb size, SVG width/height 0 so it doesn't affect layout */}
-      <AnimatePresence>
-        {pointing && (
-          <motion.svg
-            key={`ptr-${pointing}`}
-            style={{ position: "absolute", left: "50%", top: "50%", overflow: "visible", pointerEvents: "none", width: 0, height: 0 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.30 }}
-          >
-            <g
-              transform={`rotate(${POINTER_ROTATE[pointing]})`}
-              filter="drop-shadow(0 0 3px rgba(255,255,255,0.55))"
-            >
-              <motion.path
-                d={`M ${(size * 0.58).toFixed(1)} 0 L ${(size * 0.78).toFixed(1)} 0`}
-                stroke="rgba(255,255,255,0.85)"
-                strokeWidth={2.2}
-                strokeLinecap="round"
-                fill="none"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1, strokeOpacity: [0.70, 1, 0.70] }}
-                transition={{
-                  pathLength: { duration: 0.24, ease: "easeOut" },
-                  strokeOpacity: { duration: 1.4, repeat: Infinity, ease: "easeInOut", delay: 0.3 },
-                }}
-              />
-              <motion.g
-                animate={{ x: [0, 3, 0] }}
-                transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-              >
-                <polygon
-                  points={`${(size * 0.98).toFixed(1)},0 ${(size * 0.78).toFixed(1)},${-(size * 0.13).toFixed(1)} ${(size * 0.78).toFixed(1)},${(size * 0.13).toFixed(1)}`}
-                  fill="rgba(255,255,255,0.85)"
-                  filter="drop-shadow(0 0 4px rgba(255,255,255,0.5))"
-                />
-              </motion.g>
-            </g>
-          </motion.svg>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
@@ -1163,7 +1112,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   beatId: string;
   subStep: number;
   onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
-  tier1Ref?: React.RefObject<HTMLDivElement>;
+  tier1Ref?: React.RefObject<HTMLDivElement | null>;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -3510,7 +3459,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         // Dart to top-right corner while burst animations are playing
         const burstActive = !!(purchaseBurst || gemBurst);
 
-        // b6_forge_appears: on dlgLine 1, Lumii slides to beside "The Forge" header and points left
+        // b6_forge_appears: on dlgLine 1, Lumii slides to beside "The Forge" header
         const isForgeAppearsLine1 = beatId === "b6_forge_appears" && s.dlgLine === 1;
         const forgeHeaderPos = LUMII_ZONE_POS["forge-header"]!;
         const forgeHeaderPosClamped = isShortLandscape
@@ -3519,11 +3468,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
         const basePos = isForgeAppearsLine1 ? forgeHeaderPosClamped : lumiiPos;
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : basePos;
-
-        // Dynamic pointer: b6_forge_appears line 1 gets a "left" arrow toward The Forge header;
-        // all other beats use the pointer declared in the beat data.
-        const effectivePointer: LumiiPointerDir | undefined =
-          isForgeAppearsLine1 ? "left" : beat.lumiiPointer;
 
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
         const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
@@ -3595,7 +3539,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb key={`lumii-orb-ptr-${effectivePointer ?? ""}`} size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} pointing={effectivePointer} />
+                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={`${beatId}-${s.dlgLine}`} />
               </div>
             </motion.div>
             </div>

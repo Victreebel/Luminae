@@ -45,8 +45,6 @@ export type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
-export type LumiiPointerDir = 'left' | 'right' | 'up' | 'down';
-
 export interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
@@ -59,8 +57,6 @@ export interface TutorialBeat {
   subSteps?: TutorialSubStep[];
   playerResponse?: string;
   choices?: { label: string; value: string }[];
-  /** Direction of Lumii's short pointing arrow — Lumii should be near the target already. */
-  lumiiPointer?: LumiiPointerDir;
 }
 
 export interface TutorialSubStep {
@@ -264,8 +260,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b6_forge_appears",
     mode: "look",
     lumiiZone: "market-t1",
-    // lumiiPointer is driven dynamically by dlgLine in TutorialDirector:
-    // dlgLine 0 → no pointer (intro line); dlgLine 1 → Lumii slides beside "The Forge" header, pointer "left"
     dialogue: [
       { text: "Affinities alone are just potential energy." },
       { text: "Use the Forge to turn Affinities into Artifacts — technologies that permanently alter the course of civilization." },
@@ -324,7 +318,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "market-t1",
     foregroundCardId: "t1e01",
     highlightZone: "forge-btn",
-    lumiiPointer: "down",
     dialogue: [
       { text: "Your affinities are ready." },
       { text: "Select Root Lattice and press Forge.", excited: true },
@@ -372,7 +365,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "listen",
     lumiiZone: "market-t1",
     highlightZone: "hand",
-    lumiiPointer: "left",
     dialogue: [
       { text: "Reserving protects a future artifact." },
       { text: "It also grants Singularity." },
@@ -397,7 +389,6 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "act",
     lumiiZone: "market-t1",
     highlightZone: "hand",
-    lumiiPointer: "left",
     dialogue: [
       { text: "Reserved artifacts can still be forged." },
       { text: "Notice the shortfall chips — they update live as you select affinities from the well." },
