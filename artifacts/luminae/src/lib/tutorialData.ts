@@ -261,8 +261,9 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     mode: "look",
     lumiiZone: "market-t1",
     dialogue: [
-      { text: "Affinities alone are just potential energy." },
-      { text: "Use the Forge to turn Affinities into Artifacts — technologies that permanently alter the course of civilization." },
+      { text: "Use The Forge to turn Affinities into Artifacts." },
+      { text: "Artifacts are technologies that permanently alter the course of civilization." },
+      { text: "Forging lower-tier artifacts will make higher-tier artifacts easier to obtain." },
     ],
     completion: { type: "dialogue" },
   },
