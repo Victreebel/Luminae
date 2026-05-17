@@ -1170,13 +1170,14 @@ function CardFlipReveal({
 }
 
 // ─── Scripted Market ──────────────────────────────────────────────────────────
-function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
+function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tier2Ref }: {
   s: TutState;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
   subStep: number;
   onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
   tier1Ref?: React.RefObject<HTMLDivElement | null>;
+  tier2Ref?: React.RefObject<HTMLDivElement | null>;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -1332,7 +1333,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
     }
 
     return (
-      <div key={tier} ref={tier === 1 ? tier1Ref : undefined} className="mb-4">
+      <div key={tier} ref={tier === 1 ? tier1Ref : tier === 2 ? tier2Ref : undefined} className="mb-4">
         <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider mb-3">
           Tier {tier} — {label}
         </div>
@@ -3294,9 +3295,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
-  const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
+  const tier2Ref = useRef<HTMLDivElement>(null);
+  const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" | "tier2" = (() => {
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
     if (beatId === "b8_first_harness" || beatId === "b9_first_forge" || beatId === "b9b_forge_complete" || beatId === "b9c_transition" || (beatId === "b10_reserve" && s.dlgLine === 0)) return "well";
+    if (beatId === "b10_reserve" && s.dlgLine >= 1) return "tier2";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
@@ -3331,6 +3334,20 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           container.getBoundingClientRect().top +
           container.scrollTop;
         container.scrollTo({ top: forgeTop, behavior: "smooth" });
+      }
+    } else if (cameraFocus === "tier2") {
+      // Scroll so the Tier 2 row is near the top, keeping the view tabs visible
+      // above it. Mirrors the tier1 pattern using getBoundingClientRect.
+      const tier2El = tier2Ref.current;
+      if (tier2El) {
+        const tier2Top =
+          tier2El.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop -
+          48; // leave ~48px above so the view-tabs row stays on screen
+        container.scrollTo({ top: Math.max(0, tier2Top), behavior: "smooth" });
+      } else {
+        container.scrollTo({ top: 0, behavior: "smooth" });
       }
     } else if (cameraFocus === "tier1") {
       // Scroll so the Tier 1 row (Foundation) is visible at the bottom of the
@@ -3515,7 +3532,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               The Forge
               <Hammer className={`h-3 w-3 shrink-0 ${isForgeHighlighted ? "text-amber-400" : "text-amber-500/70"}`} />
             </div>
-            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} />
+            <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} tier2Ref={tier2Ref} />
           </div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
             fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
