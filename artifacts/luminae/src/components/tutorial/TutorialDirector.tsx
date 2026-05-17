@@ -754,7 +754,7 @@ function AffinityWell({
     >
       <div
         className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isWellPulse ? "text-amber-400/70" : "text-white/40"}`}
-        style={isWellPulse ? { animation: "forge-header-pulse 1.6s ease-in-out infinite" } : undefined}
+        style={isWellPulse ? { animation: "well-header-pulse 1.6s ease-in-out infinite" } : undefined}
       >
         Affinity Well
         <Droplets className={`h-3 w-3 shrink-0 ${isWellPulse ? "text-amber-400" : "text-cyan-400/70"}`} />

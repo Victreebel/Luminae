@@ -280,6 +280,17 @@
   50%       { opacity: 0.35; }
 }
 
+@keyframes well-header-pulse {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px rgba(251,191,36,0.95)) drop-shadow(0 0 14px rgba(251,191,36,0.6));
+  }
+  50% {
+    opacity: 0.3;
+    filter: drop-shadow(0 0 0px rgba(251,191,36,0));
+  }
+}
+
 @keyframes forge-pulse {
   0%, 100% {
     box-shadow:
