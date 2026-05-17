@@ -3281,6 +3281,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
+    // BUG-15: subStep≥2 means harness done, forge enabled — scroll to forge section so
+    // Singularity card (T2) is visible. "market" (scrollTop=0) left TutorialLuminarySection
+    // (~216px) + T3 ghost row (~200px) pushing the card to ~440px in a ~580px viewport.
+    if (beatId === "b12_tier2" && subStep >= 2) return "forge";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
     // BUG-13: subStep≥1 means harness done, well disabled — scroll to forge section so
     // Verdance Bloom (T2) is visible. "market" (scrollTop=0) left TutorialLuminarySection
