@@ -988,8 +988,8 @@ function MarketTabs({
           <motion.button
             key={tab.key}
             onClick={() => dispatch({ type: "SET_VIEW", view: tab.key })}
-            animate={isHl ? { boxShadow: ["0 0 0px transparent", "0 0 10px rgba(251,191,36,0.6)", "0 0 0px transparent"] } : {}}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            animate={isHl ? { boxShadow: ["0 0 0 1px rgba(251,191,36,0.3)", "0 0 0 2px rgba(251,191,36,1), 0 0 18px rgba(251,191,36,0.9), 0 0 36px rgba(251,191,36,0.5)", "0 0 0 1px rgba(251,191,36,0.3)"] } : {}}
+            transition={{ duration: 1.4, repeat: Infinity }}
             className={`text-[10px] font-semibold px-3 py-1.5 rounded-lg transition-all ${isActive ? "bg-white/15 text-white" : "bg-black/30 text-white/40 hover:bg-white/8"} ${isHl ? "ring-1 ring-amber-400" : ""}`}
           >{tab.label}</motion.button>
         );
