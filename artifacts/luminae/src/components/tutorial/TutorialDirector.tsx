@@ -1436,10 +1436,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         highlightDiscounted={highlightDiscounted}
         highlightNeeded={highlightNeeded}
       />
-      {/* At b6b the only relevant card is Root Lattice in T1 — hide T2/T3 ghost rows
-          so the Forge header and T1 card both fit in one viewport together. */}
-      {beatId !== "b6b_root_lattice" && renderTierRow(3, t3Cards, "Galactic")}
-      {beatId !== "b6b_root_lattice" && renderTierRow(2, t2Cards, "Stellar")}
+      {renderTierRow(3, t3Cards, "Galactic")}
+      {renderTierRow(2, t2Cards, "Stellar")}
       {renderTierRow(1, t1Cards, "Planetary")}
     </div>
   );
