@@ -1100,6 +1100,82 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
   );
 }
 
+// ─── Deck Deal Reveal ─────────────────────────────────────────────────────────
+// Slides a face-down card from the DeckPile into the slot, then flips it face-up.
+// Used for Root Lattice's dramatic first appearance at b6b_root_lattice.
+// `shouldAnimate=false` renders children immediately (resumed / skipped beats).
+function DeckDealReveal({
+  children,
+  shouldAnimate,
+  delay = 400,
+}: {
+  children: React.ReactNode;
+  shouldAnimate: boolean;
+  delay?: number;
+}) {
+  type DealPhase = "waiting" | "slide" | "flip-out" | "flip-in" | "done";
+  const [phase, setPhase] = useState<DealPhase>(shouldAnimate ? "waiting" : "done");
+
+  useEffect(() => {
+    if (!shouldAnimate) return;
+    const t = setTimeout(() => setPhase("slide"), delay);
+    return () => clearTimeout(t);
+  }, []); // run once on mount
+
+  const W = 112, H = 160;
+  // DeckPile outer container: 120 px wide. Flex gap between deck and slot 1: gap-3 = 12 px.
+  // Slot 1 starts 132 px from the flex-row's left edge, so translateX(-132) aligns the
+  // sliding card with the deck pile's front face — and never goes outside the scroll container.
+  const DECK_X = -132;
+
+  if (phase === "done") return <>{children}</>;
+  if (phase === "waiting") return <GhostCardSlot tier={1} />;
+
+  return (
+    <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px", position: "relative", overflow: "visible" }}>
+      {phase === "slide" && (
+        <>
+          {/* Spacer keeps the flex-slot width while the card renders absolutely */}
+          <div style={{ width: W, height: H }} />
+          <motion.div
+            className="absolute top-0 left-0 rounded-xl overflow-hidden border border-white/12 shadow-xl"
+            style={{ width: W, height: H }}
+            initial={{ x: DECK_X }}
+            animate={{ x: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 28, mass: 0.85 }}
+            onAnimationComplete={() => setPhase("flip-out")}
+          >
+            <CardBackTier1 />
+          </motion.div>
+        </>
+      )}
+      {phase === "flip-out" && (
+        <motion.div
+          className="rounded-xl overflow-hidden border border-white/12 shadow-xl"
+          style={{ width: W, height: H }}
+          animate={{ rotateY: 90 }}
+          transition={{ duration: 0.18, ease: "easeIn" }}
+          onAnimationComplete={() => { gameAudio.playCardFlip(); setPhase("flip-in"); }}
+        >
+          <CardBackTier1 />
+        </motion.div>
+      )}
+      {phase === "flip-in" && (
+        <motion.div
+          className="rounded-xl overflow-hidden"
+          style={{ width: W, height: H }}
+          initial={{ rotateY: -90 }}
+          animate={{ rotateY: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          onAnimationComplete={() => setPhase("done")}
+        >
+          {children}
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 // ─── Card Flip Reveal ─────────────────────────────────────────────────────────
 // Shows a card face-down, then flips it over to reveal the card face.
 // `shouldAnimate=false` renders children immediately (for resumed / skipped beats).
@@ -1172,7 +1248,9 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   const t2Cards: string[] = [];
   const t3Cards: string[] = [];
 
-  const earlyBeats = ["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
+  // b6_forge_appears intentionally excluded: slot 1 is empty while Lumii introduces the Forge.
+  // Root Lattice deals in from the deck at b6b_root_lattice via DeckDealReveal.
+  const earlyBeats = ["b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
   const midBeats = ["b10_reserve", "b10b_reserve_granted", "b10c_needed_peek", "b11_forge_reserved", "b12_tier2"];
   const lateBeats = ["b13_tier3", "b14_win_condition", "b15_fast_forward"];
   const finalBeat = ["b16_final_forge"];
@@ -1322,17 +1400,15 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   }
                 />
               );
-              // Root Lattice flips over from a face-down deck card when first revealed
+              // Root Lattice deals from the deck into the slot at b6b, then flips face-up
               if (cardId === FIRST_FORGE_ID) {
                 return (
-                  <CardFlipReveal
-                    key={beatId === "b6b_root_lattice" ? "flip-active" : "flip-static"}
+                  <DeckDealReveal
+                    key={beatId === "b6b_root_lattice" ? "deal-active" : "deal-static"}
                     shouldAnimate={beatId === "b6b_root_lattice"}
-                    BackFace={CardBackTier1}
-                    delay={720}
                   >
                     {tutCard}
-                  </CardFlipReveal>
+                  </DeckDealReveal>
                 );
               }
               return <Fragment key={cardId}>{tutCard}</Fragment>;
