@@ -344,19 +344,26 @@
 
 @keyframes card-ring-pulse {
   0%, 100% {
+    border: 2px solid rgba(255,220,50,1);
     box-shadow:
-      0 0 0 3px rgba(251,191,36,1),
-      0 0 12px rgba(251,191,36,1),
-      0 0 28px rgba(251,191,36,0.85),
-      0 0 55px rgba(251,191,36,0.55),
-      0 0 90px rgba(251,191,36,0.25);
+      inset 0 0 8px  rgba(255,220,50,0.6),
+      0 0 0   4px rgba(255,220,50,1),
+      0 0 16px    rgba(255,220,50,1),
+      0 0 32px    rgba(255,200,30,0.95),
+      0 0 60px    rgba(255,200,30,0.8),
+      0 0 100px   rgba(255,180,0,0.5),
+      0 0 140px   rgba(255,160,0,0.25);
   }
   50% {
+    border: 2px solid rgba(255,220,50,0.35);
     box-shadow:
-      0 0 0 2px rgba(251,191,36,0.25),
-      0 0 4px  rgba(251,191,36,0.15),
-      0 0 8px  rgba(251,191,36,0.05),
-      0 0 0px  transparent;
+      inset 0 0 2px  rgba(255,220,50,0.1),
+      0 0 0  2px rgba(255,220,50,0.3),
+      0 0 6px    rgba(255,220,50,0.2),
+      0 0 12px   rgba(255,200,30,0.1),
+      0 0 0px    transparent,
+      0 0 0px    transparent,
+      0 0 0px    transparent;
   }
 }
 
