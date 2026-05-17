@@ -3595,7 +3595,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={`${beatId}-${s.dlgLine}`} pointing={effectivePointer} />
+                <LumiiOrb key={`lumii-orb-ptr-${effectivePointer ?? ""}`} size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} pointing={effectivePointer} />
               </div>
             </motion.div>
             </div>
