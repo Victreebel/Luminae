@@ -1436,8 +1436,10 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         highlightDiscounted={highlightDiscounted}
         highlightNeeded={highlightNeeded}
       />
-      {renderTierRow(3, t3Cards, "Galactic")}
-      {renderTierRow(2, t2Cards, "Stellar")}
+      {/* At b6b the only relevant card is Root Lattice in T1 — hide T2/T3 ghost rows
+          so the Forge header and T1 card both fit in one viewport together. */}
+      {beatId !== "b6b_root_lattice" && renderTierRow(3, t3Cards, "Galactic")}
+      {beatId !== "b6b_root_lattice" && renderTierRow(2, t2Cards, "Stellar")}
       {renderTierRow(1, t1Cards, "Planetary")}
     </div>
   );
@@ -3257,8 +3259,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // fires the same animation on every navigation arrival).
   const boardControls = useAnimation();
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
-    // b6_forge_appears included so the empty T1 slot is visible while Lumii points down at it
-    if (beatId === "b6_forge_appears" || beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
+    // b6_forge_appears + b7 beats: camera on tier1 so the empty/dealt slot is front and centre
+    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
+    // b6b: Root Lattice just dealt — scroll to forge so both the Forge section
+    // and the T1 row (where the card landed) are visible together
+    if (beatId === "b6b_root_lattice") return "forge";
     if (beatId === "b8_first_harness") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
