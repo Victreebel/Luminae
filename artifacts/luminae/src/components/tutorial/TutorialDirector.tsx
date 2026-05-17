@@ -1144,8 +1144,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   if (earlyBeats.includes(beatId)) {
     t1Cards.push(FIRST_FORGE_ID);
   } else if (midBeats.includes(beatId)) {
-    t1Cards.push(FIRST_FORGE_ID);
     t1Cards.push(RESERVE_CARD_ID);
+    t1Cards.push(FIRST_FORGE_ID);
     t2Cards.push(TIER2_SINGULARITY_ID);
   } else if (lateBeats.includes(beatId)) {
     t3Cards.push(...T3_PURCHASABLE_IDS, T3_IMPOSSIBLE_ID);
