@@ -3300,39 +3300,31 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     // camera to overshoot and land at the T1 row rather than the Forge header.
     const scrollToEl = (el: HTMLElement, cont: HTMLElement, label: string) => {
       // Cancel any in-progress smooth scroll right now (synchronous).
-      const scrollTopAtCancel = cont.scrollTop;
-      cont.scrollTo({ top: scrollTopAtCancel, behavior: "instant" });
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.log(`[cam sync] beat=${beatId} focus=${label} scrollTopAtCancel=${scrollTopAtCancel}`);
-      }
+      cont.scrollTo({ top: cont.scrollTop, behavior: "instant" });
       requestAnimationFrame(() => {
         if (!scrollRef.current || !el.isConnected) return;
         const c = scrollRef.current;
         // Re-cancel in case something else scrolled during this frame.
         c.scrollTo({ top: c.scrollTop, behavior: "instant" });
-        const elTop = el.getBoundingClientRect().top;
-        const contTop = c.getBoundingClientRect().top;
-        const target = elTop - contTop + c.scrollTop;
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.log(`[cam rAF]  beat=${beatId} focus=${label} elBCR=${elTop.toFixed(1)} contBCR=${contTop.toFixed(1)} scrollTop=${c.scrollTop} → target=${target.toFixed(1)}`);
-          // Spy: log every scrollTop change for 2000ms to detect overrides.
-          let lastSpy = c.scrollTop;
-          const spyFn = () => {
-            if (Math.abs(c.scrollTop - lastSpy) > 1) {
-              // eslint-disable-next-line no-console
-              console.log(`[cam spy]  beat=${beatId} focus=${label} scrollTop changed ${lastSpy}→${c.scrollTop}`);
-              lastSpy = c.scrollTop;
-            }
-          };
-          c.addEventListener("scroll", spyFn, { passive: true });
-          setTimeout(() => {
-            c.removeEventListener("scroll", spyFn);
-            // eslint-disable-next-line no-console
-            console.log(`[cam +2s]  beat=${beatId} focus=${label} finalScrollTop=${c.scrollTop} target=${target.toFixed(1)}`);
-          }, 2000);
+
+        // Use the offsetTop chain to compute scroll-space position.
+        // getBoundingClientRect returns VISUAL (transformed) coordinates, which
+        // are wrong when boardControls has scale=1.38 + y=-12% applied (e.g., at
+        // b6_forge_appears). offsetTop is a layout measurement and is NOT
+        // affected by CSS transforms on parent elements.
+        //
+        // Walk from el up the offsetParent chain to c's offsetParent, summing
+        // offsetTop values, then subtract c.offsetTop to get el's offset relative
+        // to the scroll container's content top.
+        const scrollerOffsetParent = c.offsetParent;
+        let layoutOffset = 0;
+        let cur: HTMLElement | null = el;
+        while (cur && cur !== scrollerOffsetParent) {
+          layoutOffset += cur.offsetTop;
+          cur = cur.offsetParent as HTMLElement | null;
         }
+        const target = layoutOffset - c.offsetTop;
+
         c.scrollTo({ top: target, behavior: "smooth" });
       });
     };
