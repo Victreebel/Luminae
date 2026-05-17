@@ -791,9 +791,10 @@ function AffinityWell({
                     ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
                     ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
                   style={{
-                    borderColor: cur > 0 ? meta.hex : isHighlighted ? "#67e8f9" : "rgba(255,255,255,0.15)",
+                    borderColor: cur > 0 ? meta.hex : isHighlighted ? meta.glowHex : "rgba(255,255,255,0.15)",
                     animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
-                  }}
+                    "--btn-pulse-rgb": (() => { const h = meta.glowHex.slice(1); return `${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}`; })(),
+                  } as React.CSSProperties}
                 >
                   <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} />
                   {cur > 0 && (
