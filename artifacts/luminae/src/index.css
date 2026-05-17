@@ -279,49 +279,73 @@
 
 @keyframes gem-panel-pulse {
   0%, 100% {
+    border: 2px solid rgba(220,255,235,1);
     box-shadow:
-      0 0 0 2px rgba(74,222,128,0.95),
-      0 0 10px rgba(74,222,128,0.75),
-      0 0 24px rgba(74,222,128,0.4),
-      0 0 44px rgba(74,222,128,0.15);
+      inset 0 0 8px  rgba(220,255,235,0.8),
+      0 0 0   3px rgba(200,255,220,1),
+      0 0 10px    rgba(130,255,160,1),
+      0 0 22px    rgba(74,222,128,1),
+      0 0 45px    rgba(40,180,90,0.8),
+      0 0 80px    rgba(20,140,60,0.45),
+      0 0 130px   rgba(10,100,40,0.2);
   }
   50% {
+    border: 2px solid rgba(74,222,128,0.25);
     box-shadow:
-      0 0 0 2px rgba(74,222,128,0.2),
-      0 0 4px  rgba(74,222,128,0.1),
-      0 0 0px  transparent,
-      0 0 0px  transparent;
+      inset 0 0 2px rgba(74,222,128,0.1),
+      0 0 0  2px rgba(74,222,128,0.2),
+      0 0 6px    rgba(74,222,128,0.12),
+      0 0 0px    transparent,
+      0 0 0px    transparent,
+      0 0 0px    transparent,
+      0 0 0px    transparent;
   }
 }
 
 @keyframes gem-button-pulse {
   0%, 100% {
+    border: 2px solid rgba(220,255,255,1);
     box-shadow:
-      0 0 0 2px rgba(103,232,249,0.9),
-      0 0 10px rgba(103,232,249,0.7),
-      0 0 22px rgba(103,232,249,0.35);
+      inset 0 0 8px  rgba(220,255,255,0.8),
+      0 0 0   3px rgba(200,250,255,1),
+      0 0 10px    rgba(160,245,255,1),
+      0 0 22px    rgba(103,232,249,1),
+      0 0 45px    rgba(30,190,230,0.8),
+      0 0 80px    rgba(0,140,200,0.45),
+      0 0 130px   rgba(0,90,160,0.2);
   }
   50% {
+    border: 2px solid rgba(103,232,249,0.25);
     box-shadow:
-      0 0 0 2px rgba(103,232,249,0.2),
-      0 0 4px  rgba(103,232,249,0.1),
-      0 0 0px  transparent;
+      inset 0 0 2px rgba(103,232,249,0.1),
+      0 0 0  2px rgba(103,232,249,0.2),
+      0 0 6px    rgba(103,232,249,0.12),
+      0 0 0px    transparent,
+      0 0 0px    transparent,
+      0 0 0px    transparent,
+      0 0 0px    transparent;
   }
 }
 
 @keyframes well-pulse {
   0%, 100% {
     box-shadow:
-      inset 0 0 0 2px rgba(103, 232, 249, 1),
-      inset 0 0 28px rgba(103, 232, 249, 0.6),
-      0 0 20px rgba(103, 232, 249, 0.5),
-      0 0 40px rgba(103, 232, 249, 0.2);
+      inset 0 0 0 2px rgba(220,255,255,1),
+      inset 0 0 12px rgba(200,250,255,0.9),
+      inset 0 0 30px rgba(103,232,249,0.65),
+      0 0 20px rgba(160,245,255,0.9),
+      0 0 40px rgba(103,232,249,0.7),
+      0 0 70px rgba(30,190,230,0.4),
+      0 0 110px rgba(0,140,200,0.2);
   }
   50% {
     box-shadow:
-      inset 0 0 0 2px rgba(103, 232, 249, 0.35),
-      inset 0 0 6px rgba(103, 232, 249, 0.08),
-      0 0 3px rgba(103, 232, 249, 0.04),
+      inset 0 0 0 2px rgba(103,232,249,0.3),
+      inset 0 0 4px rgba(103,232,249,0.08),
+      inset 0 0 0px transparent,
+      0 0 4px rgba(103,232,249,0.06),
+      0 0 0px transparent,
+      0 0 0px transparent,
       0 0 0px transparent;
   }
 }
@@ -334,7 +358,11 @@
 @keyframes well-header-pulse {
   0%, 100% {
     opacity: 1;
-    filter: drop-shadow(0 0 6px rgba(103,232,249,0.95)) drop-shadow(0 0 14px rgba(103,232,249,0.6));
+    filter:
+      drop-shadow(0 0 3px rgba(220,255,255,1))
+      drop-shadow(0 0 8px rgba(160,245,255,1))
+      drop-shadow(0 0 18px rgba(103,232,249,0.9))
+      drop-shadow(0 0 35px rgba(30,190,230,0.55));
   }
   50% {
     opacity: 0.3;
@@ -378,16 +406,24 @@
 @keyframes forge-pulse {
   0%, 100% {
     box-shadow:
-      inset 0 0 0 2px rgba(251, 191, 36, 1),
-      inset 0 0 32px rgba(251, 191, 36, 0.75),
-      0 0 24px rgba(251, 191, 36, 0.55),
-      0 0 48px rgba(251, 191, 36, 0.25);
+      inset 0 0 0 2px rgba(255,255,220,1),
+      inset 0 0 14px rgba(255,255,180,0.9),
+      inset 0 0 32px rgba(255,220,50,0.7),
+      0 0 12px rgba(255,255,180,1),
+      0 0 26px rgba(255,220,50,1),
+      0 0 50px rgba(255,180,0,0.8),
+      0 0 90px rgba(220,120,0,0.45),
+      0 0 140px rgba(180,70,0,0.2);
   }
   50% {
     box-shadow:
-      inset 0 0 0 2px rgba(251, 191, 36, 0.4),
-      inset 0 0 8px rgba(251, 191, 36, 0.1),
-      0 0 4px rgba(251, 191, 36, 0.05),
+      inset 0 0 0 2px rgba(251,191,36,0.35),
+      inset 0 0 4px rgba(251,191,36,0.1),
+      inset 0 0 0px transparent,
+      0 0 4px rgba(251,191,36,0.08),
+      0 0 0px transparent,
+      0 0 0px transparent,
+      0 0 0px transparent,
       0 0 0px transparent;
   }
 }
