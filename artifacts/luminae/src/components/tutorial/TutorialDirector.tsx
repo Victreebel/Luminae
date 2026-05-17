@@ -3822,6 +3822,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 // Lumii is at the bottom — float dialogue just above the player panel
                 bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,
               }
+            : beatId === "b8_first_harness"
+            ? {
+                // Lumii is at card-cost (78%, 40%) — pin dialogue just below the sprite
+                top: "calc(40% + 58px)",
+              }
             : cameraFocus === "well"
             ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
             : {
