@@ -272,12 +272,12 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
     const b6Idx = BEAT_INDEX["b6_forge_appears"] ?? 10;
     const b6bIdx = BEAT_INDEX["b6b_root_lattice"] ?? 11;
     if (s.beat < b6Idx) return "pre-mount";
-    if (s.beat === b6Idx) return "⚠ mounted with shouldAnimate=false → phase='done' (flip dead)";
-    if (s.beat === b6bIdx) return "⚠ shouldAnimate=true but effect won't re-run (BUG-02) → still dead";
-    if (s.beat > b6bIdx) return "post-flip range (irrelevant)";
+    if (s.beat === b6Idx) return "phase=back, shouldAnimate=false → card face-down (correct)";
+    if (s.beat === b6bIdx) return "shouldAnimate=true → flip triggered via useEffect prop change";
+    if (s.beat > b6bIdx) return "phase=done → card face-up (post-flip)";
     return "—";
   })();
-  const cardFlipWarn = s.beat >= (BEAT_INDEX["b6_forge_appears"] ?? 10) && s.beat <= (BEAT_INDEX["b6b_root_lattice"] ?? 11);
+  const cardFlipWarn = false; // BUG-02 resolved: stable key + prop-change trigger
 
   const crystalEntries = Object.entries(s.crystals).filter(([, v]) => v > 0);
   const bonusEntries = Object.entries(s.bonuses).filter(([, v]) => v > 0);

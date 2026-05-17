@@ -1101,8 +1101,9 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
 }
 
 // ─── Card Flip Reveal ─────────────────────────────────────────────────────────
-// Shows a card face-down, then flips it over to reveal the card face.
-// `shouldAnimate=false` renders children immediately (for resumed / skipped beats).
+// Shows a card face-down, then flips it over to reveal the card face when
+// `shouldAnimate` becomes true. Always starts face-down so the card is shown
+// as a deck card before the reveal beat — no key remount required.
 function CardFlipReveal({
   children,
   shouldAnimate,
@@ -1114,15 +1115,15 @@ function CardFlipReveal({
   BackFace: React.ComponentType;
   delay?: number;
 }) {
-  const [phase, setPhase] = useState<"back" | "out" | "in" | "done">(
-    shouldAnimate ? "back" : "done"
-  );
+  const [phase, setPhase] = useState<"back" | "out" | "in" | "done">("back");
+  const didAnimateRef = useRef(false);
 
   useEffect(() => {
-    if (!shouldAnimate) return;
+    if (!shouldAnimate || didAnimateRef.current) return;
+    didAnimateRef.current = true;
     const t = setTimeout(() => setPhase("out"), delay);
     return () => clearTimeout(t);
-  }, []); // run once on mount
+  }, [shouldAnimate, delay]); // triggers when shouldAnimate flips true
 
   if (phase === "done") return <>{children}</>;
 
@@ -1322,11 +1323,13 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   }
                 />
               );
-              // Root Lattice flips over from a face-down deck card when first revealed
+              // Root Lattice sits face-down at b6_forge_appears, then flips at b6b.
+              // Stable key keeps the component alive across both beats so the
+              // transition is seamless — no unmount flash between face-down and flip.
               if (cardId === FIRST_FORGE_ID) {
                 return (
                   <CardFlipReveal
-                    key={beatId === "b6b_root_lattice" ? "flip-active" : "flip-static"}
+                    key="flip-root-lattice"
                     shouldAnimate={beatId === "b6b_root_lattice"}
                     BackFace={CardBackTier1}
                     delay={720}
