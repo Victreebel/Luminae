@@ -305,7 +305,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b8_first_harness",
     mode: "act",
-    lumiiZone: "well",
+    lumiiZone: "card-cost",
     highlightZone: "well",
     dialogue: [
       { text: "Gather 1 Flare, 1 Continuum, and 1 Radiance from the Well." },
