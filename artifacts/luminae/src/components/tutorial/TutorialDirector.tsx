@@ -3293,38 +3293,25 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       // Both well and storage sections live near the bottom of the layout.
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
     } else if (cameraFocus === "forge") {
-      // Scroll so the forge section lands flush with the top of the visible area,
-      // pushing the luminary section fully out of view.
-      // getBoundingClientRect is used instead of offsetTop because offsetTop is
-      // relative to the offsetParent (the outer relative wrapper), not the scroll
-      // container, which can produce an incorrect value.
+      // scrollIntoView is used instead of manual getBoundingClientRect math.
+      // The manual approach is fragile when a prior smooth scroll is still in
+      // flight: mobile browsers may return the *target* of the animation from
+      // scrollTop rather than the current animated position, causing the formula
+      // to overshoot. scrollIntoView uses the browser's own layout engine and
+      // always resolves to the correct position regardless of pending scrolls.
       const forgeEl = forgeRef.current;
       if (forgeEl) {
-        const forgeTop =
-          forgeEl.getBoundingClientRect().top -
-          container.getBoundingClientRect().top +
-          container.scrollTop;
-        container.scrollTo({ top: forgeTop, behavior: "smooth" });
+        forgeEl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     } else if (cameraFocus === "tier1") {
-      // Scroll so the Tier 1 row (Foundation) is visible at the bottom of the
-      // viewport, with the Luminary section fully scrolled past.
       const tier1El = tier1Ref.current;
       if (tier1El) {
-        const tier1Top =
-          tier1El.getBoundingClientRect().top -
-          container.getBoundingClientRect().top +
-          container.scrollTop;
-        container.scrollTo({ top: tier1Top, behavior: "smooth" });
+        tier1El.scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
         // Fallback: tier1Ref not yet attached — use forgeRef as the next best anchor
         const fallbackEl = forgeRef.current;
         if (fallbackEl) {
-          const fallbackTop =
-            fallbackEl.getBoundingClientRect().top -
-            container.getBoundingClientRect().top +
-            container.scrollTop;
-          container.scrollTo({ top: fallbackTop, behavior: "smooth" });
+          fallbackEl.scrollIntoView({ behavior: "smooth", block: "start" });
         } else {
           container.scrollTo({ top: maxScroll, behavior: "smooth" });
         }
