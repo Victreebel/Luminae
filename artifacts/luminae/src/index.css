@@ -344,23 +344,31 @@
 
 @keyframes card-ring-pulse {
   0%, 100% {
-    border: 2px solid rgba(255,220,50,1);
+    /* white-hot core border — eye reads near-white as blown-out */
+    border: 2px solid rgba(255,255,220,1);
     box-shadow:
-      inset 0 0 8px  rgba(255,220,50,0.6),
-      0 0 0   4px rgba(255,220,50,1),
-      0 0 16px    rgba(255,220,50,1),
-      0 0 32px    rgba(255,200,30,0.95),
-      0 0 60px    rgba(255,200,30,0.8),
-      0 0 100px   rgba(255,180,0,0.5),
-      0 0 140px   rgba(255,160,0,0.25);
+      /* inset white core — makes the ring feel incandescent */
+      inset 0 0 10px rgba(255,255,200,0.9),
+      /* tight hard ring */
+      0 0 0   3px rgba(255,255,180,1),
+      /* first bloom — still near-white */
+      0 0 10px    rgba(255,250,150,1),
+      /* second bloom — transitions to amber */
+      0 0 22px    rgba(255,220,50,1),
+      /* wide ambient halos — desaturate outward for perceived depth */
+      0 0 45px    rgba(255,180,0,0.85),
+      0 0 80px    rgba(255,140,0,0.55),
+      0 0 130px   rgba(220,100,0,0.3),
+      0 0 180px   rgba(180,60,0,0.15);
   }
   50% {
-    border: 2px solid rgba(255,220,50,0.35);
+    border: 2px solid rgba(255,200,50,0.3);
     box-shadow:
       inset 0 0 2px  rgba(255,220,50,0.1),
-      0 0 0  2px rgba(255,220,50,0.3),
-      0 0 6px    rgba(255,220,50,0.2),
-      0 0 12px   rgba(255,200,30,0.1),
+      0 0 0  2px rgba(255,200,50,0.25),
+      0 0 8px    rgba(255,180,30,0.15),
+      0 0 0px    transparent,
+      0 0 0px    transparent,
       0 0 0px    transparent,
       0 0 0px    transparent,
       0 0 0px    transparent;
