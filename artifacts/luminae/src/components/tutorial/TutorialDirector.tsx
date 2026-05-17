@@ -1322,8 +1322,20 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   }
                 />
               );
-              // Root Lattice flips over from a face-down deck card when first revealed
+              // Root Lattice starts face-down at b6_forge_appears and flips at b6b_root_lattice.
+              // Using a plain <div> wrapper at b6 (vs CardFlipReveal at b6b+) causes React to
+              // unmount+remount when the beat advances, giving CardFlipReveal a fresh mount with
+              // shouldAnimate=true — which is what actually fires the flip animation.
+              // Without this, CardFlipReveal mounts at b6 with shouldAnimate=false → phase="done",
+              // and the empty-dep useEffect never re-runs at b6b (BUG-02).
               if (cardId === FIRST_FORGE_ID) {
+                if (beatId === "b6_forge_appears") {
+                  return (
+                    <div key={cardId} style={{ width: 112, height: 160, flexShrink: 0 }}>
+                      <CardBackTier1 />
+                    </div>
+                  );
+                }
                 return (
                   <CardFlipReveal
                     key={cardId}

@@ -32,8 +32,6 @@ function deriveCameraFocus(
 
 // ─── Known bug annotations keyed by beat id ──────────────────────────────────
 const BEAT_BUGS: Record<string, string[]> = {
-  "b6_forge_appears":     ["BUG-02: CardFlipReveal mounts with shouldAnimate=false → phase=done (flip dead from this moment)"],
-  "b6b_root_lattice":     ["BUG-02: shouldAnimate=true but useEffect([],…) already fired on b6 — flip still dead"],
   "b9b_forge_complete":   ["BUG-01: camera='storage' has no scroll handler → scrolls to market top", "BUG-11: isForgeHighlighted persists after forge"],
   "b9c_transition":       ["BUG-01: camera='storage' has no scroll handler → scrolls to market top"],
   "b10_reserve":          ["BUG-08: no card highlighted at subStep=0 — 'reserve this one' has no visual referent"],
@@ -223,13 +221,12 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
   const cardFlipStr = (() => {
     const b6Idx  = BEAT_INDEX["b6_forge_appears"]  ?? 10;
     const b6bIdx = BEAT_INDEX["b6b_root_lattice"]  ?? 11;
-    if (s.beat < b6Idx)  return "pre-mount";
-    if (s.beat === b6Idx)  return "⚠ mounted shouldAnimate=false → phase='done' (flip dead)";
-    if (s.beat === b6bIdx) return "⚠ shouldAnimate=true but effect won't re-run (BUG-02)";
+    if (s.beat < b6Idx)  return "pre-mount (market not yet shown)";
+    if (s.beat === b6Idx)  return "back face shown — awaiting flip at next beat";
+    if (s.beat === b6bIdx) return "flipping now (CardFlipReveal fresh-mount, shouldAnimate=true)";
     return "post-flip (irrelevant)";
   })();
-  const cardFlipWarn = s.beat >= (BEAT_INDEX["b6_forge_appears"] ?? 10) &&
-                       s.beat <= (BEAT_INDEX["b6b_root_lattice"] ?? 11);
+  const cardFlipWarn = false;
 
   const crystalStr = Object.entries(s.crystals).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
   const bonusStr   = Object.entries(s.bonuses).filter(([, v]) => v > 0).map(([k, v]) => `${k}:${v}`).join(" ") || "none";
