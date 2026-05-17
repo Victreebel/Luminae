@@ -23,33 +23,39 @@ function deriveCameraFocus(
   if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge")
     return "tier1";
   if (beatId === "b8_first_harness") return "well";
-  if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
+  // FIXED BUG-06: was "tier1" (ghost slots visible), now "well" (hand+well visible)
+  if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
   if (beatId === "b12_tier2" && subStep === 1) return "well";
   if (beatId === "b16_final_forge" && subStep === 0) return "well";
+  // FIXED BUG-01: "storage" now scrolls to maxScroll (well + storage visible)
   if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition")
     return "storage";
-  if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
+  if (beatId === "b10_reserve") return "forge";
+  // FIXED BUG-05: was "forge" (hand off-screen), now "well" (scrolls to bottom showing hand)
+  if (beatId === "b10b_reserve_granted") return "well";
   return "market";
 }
 
 // ─── Known bug annotations keyed by beat id ──────────────────────────────────
+// Bugs marked FIXED are resolved in this session. Remaining open issues noted below.
 const BEAT_BUGS: Record<string, string[]> = {
-  "b6_forge_appears":      ["BUG-02: CardFlipReveal mounts with shouldAnimate=false → phase=done (flip dead from this moment)"],
-  "b6b_root_lattice":      ["BUG-02: shouldAnimate=true but useEffect([],…) already fired on b6 — flip still dead"],
-  "b9b_forge_complete":    ["BUG-01: camera='storage' has no scroll handler → scrolls to market top", "BUG-11: isForgeHighlighted persists after forge"],
-  "b9c_transition":        ["BUG-01: camera='storage' has no scroll handler → scrolls to market top"],
-  "b10_reserve":           ["BUG-08: no card highlighted at subStep=0 — 'reserve this one' has no visual referent"],
-  "b10b_reserve_granted":  ["BUG-05: PlayerHand highlighted but off-screen (camera=forge shows market top)"],
-  "b11_forge_reserved":    ["BUG-06: camera=tier1 shows two ghost slots at subStep=0; PlayerHand off-screen"],
-  "b12_tier2":             ["BUG-03 P1 SOFT-LOCK: view='needed' arrives from b11; subStep=0 requires re-clicking already-active Needed tab"],
-  "b14_win_condition":     ["BUG-01: camera='storage' scrolls to top (Eminence ok — pinned panel — but storage section missed)"],
+  "b6_forge_appears":      ["FIXED BUG-02: CardFlipReveal key now changes at b6b → remounts correctly"],
+  "b6b_root_lattice":      ["FIXED BUG-02: key='flip-active' forces remount; dialogue delayed 1.3s until flip done"],
+  "b9b_forge_complete":    ["FIXED BUG-01: storage camera now scrolls to maxScroll", "FIXED BUG-11: removed from isForgeHighlighted"],
+  "b9c_transition":        ["FIXED BUG-01: storage camera now scrolls to maxScroll"],
+  "b10_reserve":           ["FIXED BUG-08: RESERVE_CARD_ID highlighted from subStep=0 (not gated on subStep≥1)"],
+  "b10b_reserve_granted":  ["FIXED BUG-05: camera now 'well' (maxScroll) — PlayerHand visible"],
+  "b11_forge_reserved":    ["FIXED BUG-06: camera now 'well' at subStep=0 — PlayerHand+AffinityWell visible"],
+  "b12_tier2":             ["FIXED BUG-03: auto-dispatch SET_VIEW 'needed' when view already 'needed' at subStep=0"],
+  "b14_win_condition":     ["FIXED BUG-01: storage camera now scrolls to maxScroll"],
 };
 
-// ─── Soft-lock runtime detection ──────────────────────────────────────────────
+// ─── Runtime warnings ─────────────────────────────────────────────────────────
 function detectRuntimeWarnings(s: TutState, beatId: string): string[] {
   const warns: string[] = [];
+  // BUG-03 is now auto-fixed via useEffect; this warning should never fire
   if (beatId === "b12_tier2" && s.subStep === 0 && s.view === "needed") {
-    warns.push("LIVE SOFT-LOCK: view is already 'needed' — player cannot advance without re-clicking active tab");
+    warns.push("b12_tier2: view='needed' at subStep=0 — auto-dispatch should have fired (check if useEffect ran)");
   }
   if ((beatId === "b9b_forge_complete" || beatId === "b9c_transition") && s.forged.length === 0) {
     warns.push("No forged cards: PlayerStorage not rendered (hidden by conditional)");

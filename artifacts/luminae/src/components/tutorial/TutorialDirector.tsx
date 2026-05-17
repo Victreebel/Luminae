@@ -477,7 +477,7 @@ function TutorialCard({
       whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
+      className={`relative shrink-0 rounded-xl ${onTap && !forged ? "cursor-pointer" : ""} ${highlighted ? "ring-2 ring-amber-400" : ""}`}
       style={{ width: 112, height: 160 }}
     >
       {foreground && (
@@ -485,7 +485,7 @@ function TutorialCard({
       )}
       {costHighlight && <CostCallout />}
       <div
-        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
         {foreground && (
@@ -1163,7 +1163,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   beatId: string;
   subStep: number;
   onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
-  tier1Ref?: React.RefObject<HTMLDivElement>;
+  tier1Ref?: React.RefObject<HTMLDivElement | null>;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -1212,7 +1212,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   const getHighlighted = (cardId: string) => {
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
-    if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID && (s.subStep >= 1 || subStep >= 1);
+    if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID;
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
     if (beatId === "b13_tier3") return T3_PURCHASABLE_IDS.includes(cardId) && !s.forged.includes(cardId);
     if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID;
@@ -1326,7 +1326,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
               if (cardId === FIRST_FORGE_ID) {
                 return (
                   <CardFlipReveal
-                    key={cardId}
+                    key={beatId === "b6b_root_lattice" ? "flip-active" : "flip-static"}
                     shouldAnimate={beatId === "b6b_root_lattice"}
                     BackFace={CardBackTier1}
                     delay={720}
@@ -3097,6 +3097,16 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     }
   }, [beatId, beat.mode]);
 
+  // BUG-03: b12_tier2 soft-lock — when the player arrives at this beat with
+  // view already set to "needed" (carried from b10c_needed_peek), subStep stays
+  // at 0 and no tab click fires the SET_VIEW advance. Auto-dispatch SET_VIEW to
+  // immediately advance subStep → 1 so the well and forge become enabled.
+  useEffect(() => {
+    if (beatId === "b12_tier2" && subStep === 0 && s.view === "needed") {
+      dispatch({ type: "SET_VIEW", view: "needed" });
+    }
+  }, [beatId, subStep, s.view, dispatch]);
+
   const isDimmed = beat.mode === "listen" || beat.mode === "look";
   const isWellEnabled = (beat.mode === "act" || beat.mode === "semiOpen") &&
     ["b8_first_harness", "b11_forge_reserved", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId) &&
@@ -3107,7 +3117,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
-  const isForgeHighlighted = ["b6_forge_appears", "b7_artifact_cost", "b9_first_forge", "b9b_forge_complete", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
+  const isForgeHighlighted = ["b6_forge_appears", "b7_artifact_cost", "b9_first_forge", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
 
   // Flux column locked until Singularity is introduced at b12_tier2
   const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
@@ -3166,11 +3176,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
     if (beatId === "b8_first_harness") return "well";
-    if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
+    if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
     if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition") return "storage";
-    if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
+    if (beatId === "b10_reserve") return "forge";
+    if (beatId === "b10b_reserve_granted") return "well";
     return "market";
   })();
 
@@ -3182,10 +3193,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
   // Auto-scroll (camera is programmatic)
   useEffect(() => {
+    // BUG-09: don't re-scroll while the gem burst animation covers the screen —
+    // the burst clears itself and this effect re-fires when gemBurst → null.
+    if (gemBurst) return;
     const container = scrollRef.current;
     if (!container) return;
     const maxScroll = container.scrollHeight - container.clientHeight;
-    if (cameraFocus === "well") {
+    if (cameraFocus === "well" || cameraFocus === "storage") {
+      // BUG-01: "storage" was silently falling through to scrollTop:0.
+      // Both well and storage sections live near the bottom of the layout.
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
     } else if (cameraFocus === "forge") {
       // Scroll so the forge section lands flush with the top of the visible area,
@@ -3204,8 +3220,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     } else if (cameraFocus === "tier1") {
       // Scroll so the Tier 1 row (Foundation) is visible at the bottom of the
       // viewport, with the Luminary section fully scrolled past.
-      // We aim for the top of the Tier 1 row to sit near the top of the
-      // scroll container, which naturally hides the Luminary section above.
       const tier1El = tier1Ref.current;
       if (tier1El) {
         const tier1Top =
@@ -3214,13 +3228,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           container.scrollTop;
         container.scrollTo({ top: tier1Top, behavior: "smooth" });
       } else {
-        // Fallback: ref not yet populated — scroll to bottom where Tier 1 sits
-        container.scrollTo({ top: maxScroll, behavior: "smooth" });
+        // Fallback: tier1Ref not yet attached — use forgeRef as the next best anchor
+        const fallbackEl = forgeRef.current;
+        if (fallbackEl) {
+          const fallbackTop =
+            fallbackEl.getBoundingClientRect().top -
+            container.getBoundingClientRect().top +
+            container.scrollTop;
+          container.scrollTo({ top: fallbackTop, behavior: "smooth" });
+        } else {
+          container.scrollTo({ top: maxScroll, behavior: "smooth" });
+        }
       }
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [beatId, subStep, cameraFocus]);
+  }, [beatId, subStep, cameraFocus, gemBurst]);
 
   // Lock scroll (camera is programmatic)
   useEffect(() => {
@@ -3504,7 +3527,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         // Dialogue-line excited state: true when the current line has excited:true
         const currentLineExcited = beat.dialogue[s.dlgLine]?.excited ?? false;
         // Excited bounce: scoped to action hint pending, post-forge, or an explicitly excited line
-        const shouldExcitedBounce = hintVisible || forgeJustHappened || currentLineExcited;
+        // forgeJustHappened is scoped to act-mode beats so Lumii stays calm
+        // on the listen beats that immediately follow a forge (e.g. b9b).
+        const shouldExcitedBounce = hintVisible || (forgeJustHappened && isActMode) || currentLineExcited;
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
@@ -3523,7 +3548,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className="absolute pointer-events-auto"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" ? 1.4 : 0 }}
+                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" ? 1.4 : beatId === "b6b_root_lattice" ? 1.3 : 0 }}
                 style={lumiiIsLeft
                   ? { left: 36, top: -64, width: 216 }
                   : { right: 36, top: -64, width: 216 }
@@ -3798,8 +3823,13 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
       clearTutorialProgress();
       markTutorialComplete();
     } else if (s.beat > 0 && TUTORIAL_BEATS[s.beat]?.id !== "b3b_farewell") {
-      saveTutorialProgress(s.beat);
-      saveTutorialProgressId(TUTORIAL_BEATS[s.beat]?.id ?? "");
+      // BUG-04: don't save at action beats — resuming into an action beat gives
+      // blank INIT_STATE (no crystals/bonuses). Only save at safe passive beats.
+      const savedBeat = TUTORIAL_BEATS[s.beat];
+      if (savedBeat?.mode !== "act" && savedBeat?.mode !== "semiOpen") {
+        saveTutorialProgress(s.beat);
+        saveTutorialProgressId(savedBeat?.id ?? "");
+      }
     }
     if (s.beat >= BEAT_INDEX["b6_forge_appears"]) {
       markIntroSeen(BEAT_INDEX["b6_forge_appears"]);
