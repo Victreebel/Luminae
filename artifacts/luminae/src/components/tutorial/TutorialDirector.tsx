@@ -1118,14 +1118,17 @@ function DeckDealReveal({
 
   useEffect(() => {
     if (!shouldAnimate) return;
-    const t = setTimeout(() => setPhase("slide"), delay);
+    const t = setTimeout(() => {
+      gameAudio.playCardDraw(); // papery thwip + arc whoosh + landing thud
+      setPhase("slide");
+    }, delay);
     return () => clearTimeout(t);
   }, []); // run once on mount
 
   const W = 112, H = 160;
   // DeckPile outer container: 120 px wide. Flex gap between deck and slot 1: gap-3 = 12 px.
   // Slot 1 starts 132 px from the flex-row's left edge, so translateX(-132) aligns the
-  // sliding card with the deck pile's front face — and never goes outside the scroll container.
+  // sliding card exactly with the deck pile's front face.
   const DECK_X = -132;
 
   if (phase === "done") return <>{children}</>;
@@ -1139,9 +1142,9 @@ function DeckDealReveal({
           <div style={{ width: W, height: H }} />
           <motion.div
             className="absolute top-0 left-0 rounded-xl overflow-hidden border border-white/12 shadow-xl"
-            style={{ width: W, height: H }}
-            initial={{ x: DECK_X }}
-            animate={{ x: 0 }}
+            style={{ width: W, height: H, zIndex: 20 }}
+            initial={{ x: DECK_X, y: -8 }}
+            animate={{ x: 0, y: 0 }}
             transition={{ type: "spring", stiffness: 220, damping: 28, mass: 0.85 }}
             onAnimationComplete={() => setPhase("flip-out")}
           >
