@@ -785,10 +785,12 @@ function AffinityWell({
                   onClick={() => canAdd ? dispatch({ type: "SEL_AFF", gem, delta: 1 }) : undefined}
                   disabled={!canAdd}
                   className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all
-                    ${isHighlighted ? "shadow-[0_0_12px_rgba(251,191,36,0.6)]" : ""}
                     ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
                     ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
-                  style={{ borderColor: cur > 0 ? meta.hex : isHighlighted ? "#fbbf24" : "rgba(255,255,255,0.15)" }}
+                  style={{
+                    borderColor: cur > 0 ? meta.hex : isHighlighted ? "#67e8f9" : "rgba(255,255,255,0.15)",
+                    animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
+                  }}
                 >
                   <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} />
                   {cur > 0 && (
