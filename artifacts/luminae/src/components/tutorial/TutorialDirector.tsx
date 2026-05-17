@@ -1335,7 +1335,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   const MARKET_SLOTS = 4;
   const DECK_COUNTS: Record<number, number> = { 1: 40, 2: 30, 3: 20 };
 
-  const renderTierRow = (tier: number, cardIds: string[], label: string) => {
+  const renderTierRow = (tier: number, cardIds: string[], label: string, headerOnly = false) => {
     const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - MARKET_SLOTS);
 
     type Slot =
@@ -1363,6 +1363,16 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
     // Pad to MARKET_SLOTS with ghost placeholders
     while (slots.length < MARKET_SLOTS) {
       slots.push({ kind: 'ghost' });
+    }
+
+    if (headerOnly) {
+      return (
+        <div key={tier} className="mb-3 opacity-40">
+          <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider">
+            Tier {tier} — {label}
+          </div>
+        </div>
+      );
     }
 
     return (
@@ -1436,8 +1446,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         highlightDiscounted={highlightDiscounted}
         highlightNeeded={highlightNeeded}
       />
-      {renderTierRow(3, t3Cards, "Galactic")}
-      {renderTierRow(2, t2Cards, "Stellar")}
+      {renderTierRow(3, t3Cards, "Galactic", beatId === "b6b_root_lattice")}
+      {renderTierRow(2, t2Cards, "Stellar", beatId === "b6b_root_lattice")}
       {renderTierRow(1, t1Cards, "Planetary")}
     </div>
   );
