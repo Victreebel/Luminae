@@ -322,6 +322,13 @@ function DialogueBox({
 // pulses with an amber glow. Used on b7_artifact_cost / b7b_cost_bridge beats.
 function CostCallout() {
   const [drawn, setDrawn] = useState(false);
+  // Drive drawn via timeout — onAnimationComplete is unreliable inside
+  // AnimatePresence initial={false} because the initial draw-in animation
+  // is suppressed on first mount, so the callback never fires.
+  useEffect(() => {
+    const t = setTimeout(() => setDrawn(true), 820); // draw-in ~750ms + buffer
+    return () => clearTimeout(t);
+  }, []);
   const perimeter = 246; // approximate for rx=6, w=104, h=24
   return (
     <svg
