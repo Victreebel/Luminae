@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
+import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
@@ -3831,7 +3832,12 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
   if (!beat) return null;
 
   const devNav = import.meta.env.DEV
-    ? <DevTutorialNav beatIndex={s.beat} dispatch={dispatch} />
+    ? (
+      <>
+        <DevTutorialNav beatIndex={s.beat} dispatch={dispatch} />
+        <TutorialDebugOverlay s={s} dispatch={dispatch} />
+      </>
+    )
     : null;
 
   const skipOverlay = (
