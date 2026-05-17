@@ -258,6 +258,12 @@
   }
 }
 
+@keyframes screen-flash {
+  0%   { opacity: 0; }
+  12%  { opacity: 0.88; }
+  100% { opacity: 0; }
+}
+
 @keyframes forge-face-out {
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }

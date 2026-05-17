@@ -3141,6 +3141,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const [menuOpen, setMenuOpen] = useState(false);
   const isShortLandscape = useIsShortLandscape();
 
+  // Flash of light on b9c_transition → b10_reserve beat boundary
+  const prevBeatIdFlashRef = useRef<string>(beatId);
+  const [beatFlashKey, setBeatFlashKey] = useState(0);
+  const [beatFlashActive, setBeatFlashActive] = useState(false);
+  useEffect(() => {
+    const prev = prevBeatIdFlashRef.current;
+    prevBeatIdFlashRef.current = beatId;
+    if (prev === "b9c_transition" && beatId === "b10_reserve") {
+      setBeatFlashKey(k => k + 1);
+      setBeatFlashActive(true);
+      const tid = setTimeout(() => setBeatFlashActive(false), 650);
+      return () => clearTimeout(tid);
+    }
+    return undefined;
+  }, [beatId]);
+
   // Card action sheet
   const [selectedCardData, setSelectedCardData] = useState<{
     card: TutorialCardData;
@@ -3389,6 +3405,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           style={{
             background: `radial-gradient(ellipse 52% 38% at ${HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone]!.x} ${HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone]!.y}, transparent 0%, rgba(0,0,0,0.28) 100%)`,
           }}
+        />
+      )}
+
+      {/* Beat-boundary flash — b9c_transition → b10_reserve */}
+      {beatFlashActive && (
+        <div
+          key={beatFlashKey}
+          className="fixed inset-0 pointer-events-none z-[35] bg-white"
+          style={{ animation: "screen-flash 650ms ease-out forwards" }}
         />
       )}
 
