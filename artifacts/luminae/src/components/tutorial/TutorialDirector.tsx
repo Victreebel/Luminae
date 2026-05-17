@@ -3277,6 +3277,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "forge-header":   { x: "87%", y: "44%" },
     // Bottom-right, floating just above the pinned player panel
     "player-panel":   { x: "87%", y: "88%" },
+    // Over the Verdance (emerald) gem box — 3rd of 6 boxes, bottom panel
+    "verdance-panel": { x: "40%", y: "88%" },
   };
   const lumiiPosRaw = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "62%" };
   // In landscape, the player panel occupies the bottom ~25% of a short viewport.
@@ -3815,7 +3817,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: cameraFocus !== "market" ? 0.68 : 0 }}
-          style={lumiiTarget === "player-panel"
+          style={lumiiTarget === "player-panel" || lumiiTarget === "verdance-panel"
             ? {
                 // Lumii is at the bottom — float dialogue just above the player panel
                 bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,

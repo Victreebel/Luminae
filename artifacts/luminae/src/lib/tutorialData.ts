@@ -10,6 +10,7 @@ export type TutorialBeatMode =
 export type LumiiZone =
   | "hidden"
   | "center"
+  | "verdance-panel"
   | "off-right"
   | "top-center"
   | "market-t1"
@@ -329,7 +330,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b9b_forge_complete",
     mode: "listen",
-    lumiiZone: "player-panel",
+    lumiiZone: "verdance-panel",
     highlightZone: "storage",
     dialogue: [
       { text: "A forged artifact remains with your society." },
