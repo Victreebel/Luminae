@@ -3322,30 +3322,21 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       >
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
           <TutorialLuminarySection beatIndex={s.beat} />
-          <motion.div
+          <div
             ref={forgeRef}
             className={`border ${isForgeHighlighted ? "border-transparent" : "border-white/10"} rounded-2xl p-3 backdrop-blur-md`}
-            style={{ background: "rgba(3,3,12,0.72)" }}
-            initial={{ boxShadow: "inset 0 0 0 0px rgba(251,191,36,0), inset 0 0 0px rgba(251,191,36,0)" }}
-            animate={isForgeHighlighted
-              ? { boxShadow: [
-                  "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)",
-                  "inset 0 0 0 2px rgba(251,191,36,0.45), inset 0 0 6px rgba(251,191,36,0.12)",
-                  "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)",
-                ]}
-              : { boxShadow: "inset 0 0 0 0px rgba(251,191,36,0), inset 0 0 0px rgba(251,191,36,0)" }
-            }
-            transition={isForgeHighlighted
-              ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
-              : { duration: 0.4 }
-            }
+            style={{
+              background: "rgba(3,3,12,0.72)",
+              animation: isForgeHighlighted ? "forge-pulse 1.6s ease-in-out infinite" : "none",
+              boxShadow: isForgeHighlighted ? undefined : "none",
+            }}
           >
             <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isForgeHighlighted ? "text-amber-400/70" : "text-white/40"}`}>
               The Forge
               <Hammer className={`h-3 w-3 shrink-0 ${isForgeHighlighted ? "text-amber-400" : "text-amber-500/70"}`} />
             </div>
             <ScriptedMarket s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} tier1Ref={tier1Ref} />
-          </motion.div>
+          </div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
             fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
           {(s.reserved.length > 0 || s.forged.length > 0) && (
