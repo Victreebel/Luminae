@@ -1212,6 +1212,23 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
     return () => clearTimeout(tid);
   }, [s.forged]);
 
+  // Track deal-in animations: when new cards appear in the market for the first
+  // time (b10_reserve introduces t1e07 + t2e03), flip them from their deck backs.
+  const prevBeatIdRef = useRef<string>(beatId);
+  const [dealAnimating, setDealAnimating] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const prev = prevBeatIdRef.current;
+    prevBeatIdRef.current = beatId;
+    if (beatId === "b10_reserve" && earlyBeats.includes(prev)) {
+      const newCards = [TIER2_SINGULARITY_ID, RESERVE_CARD_ID];
+      setDealAnimating(new Set(newCards));
+      const tid = setTimeout(() => setDealAnimating(new Set()), 2200);
+      return () => clearTimeout(tid);
+    }
+    return undefined;
+  }, [beatId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Always render all 3 tier rows so the full market structure is visible.
   // Each row has a deck pile + 4 card slots. Slots are filled with real cards,
   // deck-draw animations (briefly after forge), or ghost placeholders.
@@ -1224,12 +1241,16 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
     type Slot =
       | { kind: 'real'; cardId: string }
       | { kind: 'draw'; cardId: string }
+      | { kind: 'deal'; cardId: string }
       | { kind: 'ghost' };
 
     const slots: Slot[] = [];
 
     for (const cardId of cardIds) {
-      if (s.reserved.includes(cardId)) {
+      if (dealAnimating.has(cardId)) {
+        // Card newly dealt from the deck — flip-in animation
+        slots.push({ kind: 'deal', cardId });
+      } else if (s.reserved.includes(cardId)) {
         // Card was reserved — slot is vacated (ghost)
         slots.push({ kind: 'ghost' });
       } else if (drawingSlots.has(cardId)) {
@@ -1313,6 +1334,28 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                 );
               }
               return <Fragment key={cardId}>{tutCard}</Fragment>;
+            }
+            if (slot.kind === 'deal') {
+              const BackComp = tier === 2 ? CardBackTier2 : CardBackTier1;
+              const dealDelay = slot.cardId === TIER2_SINGULARITY_ID ? 200 : 600;
+              const dealCard = TUTORIAL_CARDS[slot.cardId];
+              if (!dealCard) return <GhostCardSlot key={`ghost-deal-${slot.cardId}`} tier={tier} />;
+              return (
+                <CardFlipReveal key={`deal-${slot.cardId}`} shouldAnimate BackFace={BackComp} delay={dealDelay}>
+                  <TutorialCard
+                    card={dealCard}
+                    bonuses={s.bonuses}
+                    crystals={s.crystals}
+                    highlighted={false}
+                    foreground={false}
+                    costHighlight={false}
+                    forged={false}
+                    impossible={false}
+                    viewMode={s.view}
+                    wellSel={s.wellSel}
+                  />
+                </CardFlipReveal>
+              );
             }
             if (slot.kind === 'draw') {
               return <DeckDrawAnimation key={`draw-${slot.cardId}`} tier={tier} />;
