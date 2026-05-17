@@ -3287,52 +3287,52 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (gemBurst) return;
     const container = scrollRef.current;
     if (!container) return;
+
+    // Helper: compute an element's scroll-space offset from the container top.
+    // Called inside a requestAnimationFrame so that:
+    //   (a) Framer Motion's boardControls.set({scale:1}) — which runs in the
+    //       NEXT useEffect (boardControls, line ~3347) — has been flushed to
+    //       the DOM before getBoundingClientRect is called.
+    //   (b) Any scrollHeight change from T2/T3 unmounting has been reflowed by
+    //       the browser, so the clamped scrollTop is readable.
+    // Without the rAF, getBoundingClientRect reads stale scaled coordinates
+    // from the b6_forge_appears zoom-out animation mid-flight, causing the
+    // camera to overshoot and land at the T1 row rather than the Forge header.
+    const scrollToEl = (el: HTMLElement, cont: HTMLElement) => {
+      // Cancel any in-progress smooth scroll right now (synchronous).
+      cont.scrollTo({ top: cont.scrollTop, behavior: "instant" });
+      requestAnimationFrame(() => {
+        if (!scrollRef.current || !el.isConnected) return;
+        const c = scrollRef.current;
+        // Re-cancel in case something else scrolled during this frame.
+        c.scrollTo({ top: c.scrollTop, behavior: "instant" });
+        const target =
+          el.getBoundingClientRect().top -
+          c.getBoundingClientRect().top +
+          c.scrollTop;
+        c.scrollTo({ top: target, behavior: "smooth" });
+      });
+    };
+
     const maxScroll = container.scrollHeight - container.clientHeight;
     if (cameraFocus === "well" || cameraFocus === "storage") {
       // BUG-01: "storage" was silently falling through to scrollTop:0.
       // Both well and storage sections live near the bottom of the layout.
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
     } else if (cameraFocus === "forge") {
-      // scrollIntoView alone does not reliably interrupt a prior smooth scroll
-      // on the same container in Chromium — the parent motion.div with
-      // overflow:hidden participates in the scroll ancestor chain and can
-      // cause the previous smooth scroll to persist. The robust fix:
-      //   1. Instant-snap to cancel any in-progress smooth scroll (synchronous,
-      //      no visual jump because we snap to the current position).
-      //   2. Re-read forgeEl's position with a now-stable scrollTop.
-      //   3. Smooth-scroll to the computed target.
       const forgeEl = forgeRef.current;
       if (forgeEl) {
-        // Step 1 — cancel any in-progress smooth scroll
-        container.scrollTo({ top: container.scrollTop, behavior: "instant" });
-        // Step 2 — stable position; compute forge's scroll-space offset
-        const forgeTop =
-          forgeEl.getBoundingClientRect().top -
-          container.getBoundingClientRect().top +
-          container.scrollTop;
-        // Step 3 — smooth-scroll to forge
-        container.scrollTo({ top: forgeTop, behavior: "smooth" });
+        scrollToEl(forgeEl, container);
       }
     } else if (cameraFocus === "tier1") {
       const tier1El = tier1Ref.current;
       if (tier1El) {
-        // Same cancel-then-scroll pattern for consistency
-        container.scrollTo({ top: container.scrollTop, behavior: "instant" });
-        const tier1Top =
-          tier1El.getBoundingClientRect().top -
-          container.getBoundingClientRect().top +
-          container.scrollTop;
-        container.scrollTo({ top: tier1Top, behavior: "smooth" });
+        scrollToEl(tier1El, container);
       } else {
         // Fallback: tier1Ref not yet attached — use forgeRef as the next best anchor
         const fallbackEl = forgeRef.current;
         if (fallbackEl) {
-          container.scrollTo({ top: container.scrollTop, behavior: "instant" });
-          const fallbackTop =
-            fallbackEl.getBoundingClientRect().top -
-            container.getBoundingClientRect().top +
-            container.scrollTop;
-          container.scrollTo({ top: fallbackTop, behavior: "smooth" });
+          scrollToEl(fallbackEl, container);
         } else {
           container.scrollTo({ top: maxScroll, behavior: "smooth" });
         }
