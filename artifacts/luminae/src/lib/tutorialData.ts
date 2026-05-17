@@ -308,8 +308,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "card-cost",
     highlightZone: "well",
     dialogue: [
-      { text: "Gather 1 Flare, 1 Continuum, and 1 Radiance from the Well." },
-      { text: "These match Root Lattice's cost exactly." },
+      { text: "Gather 1 Flare, 1 Continuum, and 1 Radiance from the Well, then tap Harness." },
     ],
     completion: { type: "action", action: "harness" },
     wrongClickNudge: "Tap the affinity crystals matching Root Lattice's cost.",
