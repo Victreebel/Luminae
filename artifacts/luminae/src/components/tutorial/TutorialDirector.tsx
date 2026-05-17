@@ -787,7 +787,7 @@ function AffinityWell({
                 >
                   <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} />
                   {cur > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-white shadow"
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-black shadow"
                       style={{ background: meta.hex }}>{cur}</span>
                   )}
                 </motion.button>
