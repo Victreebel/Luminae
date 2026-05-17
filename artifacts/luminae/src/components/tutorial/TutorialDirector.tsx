@@ -3325,12 +3325,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <motion.div
             ref={forgeRef}
             className={`border ${isForgeHighlighted ? "border-transparent" : "border-white/10"} rounded-2xl p-3 backdrop-blur-md`}
-            style={{
-              background: "rgba(3,3,12,0.72)",
-              boxShadow: isForgeHighlighted
-                ? "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)"
-                : undefined,
-            }}
+            style={{ background: "rgba(3,3,12,0.72)" }}
+            initial={{ boxShadow: "inset 0 0 0 0px rgba(251,191,36,0), inset 0 0 0px rgba(251,191,36,0)" }}
             animate={isForgeHighlighted
               ? { boxShadow: [
                   "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 20px rgba(251,191,36,0.5)",
