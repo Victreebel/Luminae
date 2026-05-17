@@ -3287,10 +3287,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     ? { x: lumiiPosRaw.x, y: `${Math.min(parseFloat(lumiiPosRaw.y), 60)}%` }
     : lumiiPosRaw;
 
-  // Hoisted for use in spotlight/tether overlays (same logic as inside Lumii IIFE)
-  // gemBurst is an affinity-harvest effect — Lumii should NOT dart for that, only for card-forge.
-  const lumiiIsBurstActive = !!purchaseBurst;
-  const lumiiEffectivePos = lumiiIsBurstActive ? { x: "90%", y: "7%" } : lumiiPos;
+  // Lumii stays at her beat position regardless of burst animations.
+  const lumiiIsBurstActive = false;
+  const lumiiEffectivePos = lumiiPos;
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
   const totalCrystals = Object.values(s.crystals).reduce((a, b) => a + b, 0);
@@ -3644,11 +3643,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {(() => {
         const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
-        // Dart to top-right corner only during card-forge burst — not affinity harvest.
-        const burstActive = !!purchaseBurst;
-
-        const basePos = lumiiPos;
-        const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : basePos;
+        const effectiveLumiiPos = lumiiPos;
 
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
         const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
@@ -3662,11 +3657,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
-            transition={
-              burstActive
-                ? { type: "spring", stiffness: 260, damping: 22 }
-                : { type: "spring", stiffness: 55, damping: 20 }
-            }
+            transition={{ type: "spring", stiffness: 55, damping: 20 }}
             className="fixed z-[60] pointer-events-none"
           >
             <div style={{ transform: "translate(-50%, -50%)" }}>
