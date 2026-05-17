@@ -360,7 +360,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     highlightZone: "discounted-tab",
     dialogue: [
       { text: "Your first artifact has already changed the path." },
-      { text: "The Discounted view reveals artifacts your society has already made closer." },
+      { text: "Switch to the Discounted view — it reveals your effective costs after bonuses are applied." },
       { text: "Reserve this one. It will wait for you until you are ready." },
     ],
     completion: { type: "action", action: "reserve" },

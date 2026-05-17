@@ -155,7 +155,7 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
     case "NEXT_BEAT": {
       const nextBeat = s.beat + 1;
       if (nextBeat >= TUTORIAL_BEATS.length) return s;
-      return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null, wellSel: {} };
+      return { ...s, beat: nextBeat, dlgLine: 0, subStep: 0, nudge: null, wellSel: {}, animTrigger: undefined };
     }
 
     case "SEL_AFF": {
@@ -424,7 +424,7 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
     case "JUMP_BEAT": {
       const idx = Math.max(0, Math.min(a.toIndex, TUTORIAL_BEATS.length - 1));
-      return { ...s, beat: idx, dlgLine: 0, subStep: 0, wellSel: {}, nudge: null };
+      return { ...s, beat: idx, dlgLine: 0, subStep: 0, wellSel: {}, nudge: null, animTrigger: undefined };
     }
 
     default:

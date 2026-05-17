@@ -3282,6 +3282,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
+    // BUG-13: subStep≥1 means harness done, well disabled — scroll to forge section so
+    // Verdance Bloom (T2) is visible. "market" (scrollTop=0) left TutorialLuminarySection
+    // (~216px) + T3 ghost row (~200px) pushing the card below the ~580px viewport fold.
+    if (beatId === "b16_final_forge" && subStep >= 1) return "forge";
     if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition") return "storage";
     if (beatId === "b10_reserve") return "forge";
     if (beatId === "b10b_reserve_granted") return "well";

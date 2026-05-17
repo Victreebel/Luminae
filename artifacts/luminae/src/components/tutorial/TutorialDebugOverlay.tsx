@@ -57,6 +57,8 @@ function deriveCameraFocus(
   if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
   if (beatId === "b12_tier2" && subStep === 1) return "well";
   if (beatId === "b16_final_forge" && subStep === 0) return "well";
+  // FIXED BUG-13: subStep≥1 → Verdance Bloom (T2) below fold at scrollTop=0; now "forge"
+  if (beatId === "b16_final_forge" && subStep >= 1) return "forge";
   // FIXED BUG-01: "storage" now scrolls to maxScroll (well + storage visible)
   if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition")
     return "storage";
@@ -78,6 +80,7 @@ const BEAT_BUGS: Record<string, string[]> = {
   "b11_forge_reserved":    ["FIXED BUG-06: camera now 'well' at subStep=0 — PlayerHand+AffinityWell visible"],
   "b12_tier2":             ["FIXED BUG-03: auto-dispatch SET_VIEW 'needed' when view already 'needed' at subStep=0"],
   "b14_win_condition":     ["FIXED BUG-01: storage camera now scrolls to maxScroll"],
+  "b16_final_forge":       ["FIXED BUG-13: camera at subStep≥1 now 'forge' — TutorialLuminarySection (~216px) + T3 ghost row (~200px) pushed Verdance Bloom below fold at scrollTop=0"],
 };
 
 // ─── Runtime warnings ─────────────────────────────────────────────────────────
