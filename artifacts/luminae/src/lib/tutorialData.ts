@@ -264,7 +264,8 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: "b6_forge_appears",
     mode: "look",
     lumiiZone: "market-t1",
-    lumiiPointer: "down",
+    // lumiiPointer is driven dynamically by dlgLine in TutorialDirector:
+    // dlgLine 0 → no pointer (intro line); dlgLine 1 → Lumii slides beside "The Forge" header, pointer "left"
     dialogue: [
       { text: "Affinities alone are just potential energy." },
       { text: "Use the Forge to turn Affinities into Artifacts — technologies that permanently alter the course of civilization." },

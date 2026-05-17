@@ -3157,6 +3157,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "top-center":     { x: "50%", y: "18%" },
     center:           { x: "50%", y: "38%" },
     luminary:         { x: "50%", y: "28%" },
+    // Used by b6_forge_appears dlgLine 1 — Lumii slides right of "The Forge" section header
+    "forge-header":   { x: "87%", y: "44%" },
   };
   const lumiiPosRaw = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "62%" };
   // In landscape, the player panel occupies the bottom ~25% of a short viewport.
@@ -3507,7 +3509,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
         // Dart to top-right corner while burst animations are playing
         const burstActive = !!(purchaseBurst || gemBurst);
-        const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
+
+        // b6_forge_appears: on dlgLine 1, Lumii slides to beside "The Forge" header and points left
+        const isForgeAppearsLine1 = beatId === "b6_forge_appears" && s.dlgLine === 1;
+        const forgeHeaderPos = LUMII_ZONE_POS["forge-header"]!;
+        const forgeHeaderPosClamped = isShortLandscape
+          ? { x: forgeHeaderPos.x, y: `${Math.min(parseFloat(forgeHeaderPos.y), 60)}%` }
+          : forgeHeaderPos;
+
+        const basePos = isForgeAppearsLine1 ? forgeHeaderPosClamped : lumiiPos;
+        const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : basePos;
+
+        // Dynamic pointer: b6_forge_appears line 1 gets a "left" arrow toward The Forge header;
+        // all other beats use the pointer declared in the beat data.
+        const effectivePointer: LumiiPointerDir | undefined =
+          isForgeAppearsLine1 ? "left" : beat.lumiiPointer;
+
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
         const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
         const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
@@ -3531,11 +3548,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             {/* Speech bubble anchored to Lumii for card-explanation beats */}
             {showFloatingDlg && (
               <motion.div
-                key={`float-settle-${beatId}`}
+                key={`float-settle-${beatId}-${s.dlgLine}`}
                 className="absolute pointer-events-auto"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" ? 1.4 : 0 }}
+                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" && s.dlgLine === 0 ? 1.4 : 0 }}
                 style={lumiiIsLeft
                   ? { left: 36, top: -64, width: 216 }
                   : { right: 36, top: -64, width: 216 }
@@ -3578,7 +3595,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={beatId} pointing={beat.lumiiPointer} />
+                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={`${beatId}-${s.dlgLine}`} pointing={effectivePointer} />
               </div>
             </motion.div>
             </div>
