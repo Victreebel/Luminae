@@ -3164,6 +3164,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     luminary:         { x: "50%", y: "28%" },
     // Used by b6_forge_appears dlgLine 1 — Lumii slides right of "The Forge" section header
     "forge-header":   { x: "87%", y: "44%" },
+    // Bottom-right, floating just above the pinned player panel
+    "player-panel":   { x: "87%", y: "88%" },
   };
   const lumiiPosRaw = LUMII_ZONE_POS[lumiiTarget] ?? { x: "88%", y: "62%" };
   // In landscape, the player panel occupies the bottom ~25% of a short viewport.

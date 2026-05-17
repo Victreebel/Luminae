@@ -22,7 +22,8 @@ export type LumiiZone =
   | "discounted-tab"
   | "needed-tab"
   | "luminary"
-  | "card-cost";
+  | "card-cost"
+  | "player-panel";
 
 export interface TutorialDialogueLine {
   text: string;
@@ -329,7 +330,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b9b_forge_complete",
     mode: "listen",
-    lumiiZone: "storage",
+    lumiiZone: "player-panel",
     highlightZone: "storage",
     dialogue: [
       { text: "A forged artifact remains with your society." },
