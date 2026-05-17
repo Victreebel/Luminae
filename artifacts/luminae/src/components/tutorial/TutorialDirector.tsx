@@ -2911,12 +2911,17 @@ function TutorialLuminarySection({ beatIndex }: { beatIndex: number }) {
 // ─── Collection Sheet ─────────────────────────────────────────────────────────
 // Slides up from the bottom to show all forged artifacts — mirrors the real
 // game's player-panel tap mechanic.
-function CollectionSheet({ forged, bonuses, onClose }: {
+function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
   forged: string[];
   bonuses: Record<GemKey, number>;
+  filterGem?: GemKey | null;
   onClose: () => void;
 }) {
   const bonusTotals = (Object.entries(bonuses) as [GemKey, number][]).filter(([, v]) => v > 0);
+  const visibleCards = filterGem
+    ? forged.filter(id => TUTORIAL_CARDS[id]?.bonusColor === filterGem)
+    : forged;
+  const filterMeta = filterGem ? GEM_META[filterGem] : null;
   return (
     <>
       <motion.div
@@ -2935,7 +2940,7 @@ function CollectionSheet({ forged, bonuses, onClose }: {
       >
         <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mt-3 mb-3" />
         <div className="px-4 pb-8">
-          <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start justify-between mb-3">
             <div>
               <div className="text-base font-bold text-white">Your Collection</div>
               <div className="text-[10px] text-white/35 mt-0.5">Forged artifacts — permanent bonuses</div>
@@ -2951,13 +2956,22 @@ function CollectionSheet({ forged, bonuses, onClose }: {
               </div>
             )}
           </div>
-          {forged.length === 0 ? (
+          {filterMeta && (
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold border"
+                style={{ background: filterMeta.hex + "22", borderColor: filterMeta.hex + "66", color: filterMeta.glowHex }}>
+                <MiniGem gem={filterGem!} size={10} />
+                {filterMeta.name} artifacts
+              </div>
+            </div>
+          )}
+          {visibleCards.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-white/20 text-sm">No artifacts forged yet</div>
             </div>
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {forged.map(id => {
+              {visibleCards.map(id => {
                 const card = TUTORIAL_CARDS[id];
                 if (!card) return null;
                 const artUrl = CARD_ART[id];
@@ -3018,6 +3032,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
   // Collection sheet — slides up to show all forged artifacts (teaches panel-tap mechanic)
   const [collectionOpen, setCollectionOpen] = useState(false);
+  const [collectionInitialGem, setCollectionInitialGem] = useState<GemKey | null>(null);
   // Beats that explicitly invite the player to tap their panel
   const PANEL_TAP_BEATS = new Set(["b9b_forge_complete", "b11_forge_reserved", "b12_tier2"]);
   const showPanelTapHint = PANEL_TAP_BEATS.has(beatId) && s.forged.length > 0;
@@ -3429,9 +3444,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             const bonus = gem !== "flux" ? (s.bonuses[gem] ?? 0) : 0;
             const reservedCount = gem === "flux" ? s.reserved.length : 0;
             const hasContent = gem === "flux" ? (held > 0 || reservedCount > 0) : (held > 0 || bonus > 0);
+            const hasFargedOfColor = bonus > 0 && s.forged.some(id => TUTORIAL_CARDS[id]?.bonusColor === gem);
+            const tappable = hasFargedOfColor;
             return (
-              <div key={gem}
-                className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden ${isShortLandscape ? "min-h-[44px] pt-1 pb-1" : "min-h-[72px] pt-1.5 pb-1.5"}`}
+              <div
+                key={gem}
+                role={tappable ? "button" : undefined}
+                onClick={tappable ? () => { gameAudio.playCardDraw(); setCollectionInitialGem(gem); setCollectionOpen(true); } : undefined}
+                className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden ${isShortLandscape ? "min-h-[44px] pt-1 pb-1" : "min-h-[72px] pt-1.5 pb-1.5"} ${tappable ? "cursor-pointer active:scale-95 transition-transform" : ""}`}
                 style={{
                   background: hasContent ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)` : "linear-gradient(180deg, #07070b 0%, #0e0e14 100%)",
                   border: `1px solid ${hasContent ? meta.hex + "AA" : meta.hex + "22"}`,
@@ -3618,7 +3638,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           <CollectionSheet
             forged={s.forged}
             bonuses={s.bonuses}
-            onClose={() => setCollectionOpen(false)}
+            filterGem={collectionInitialGem}
+            onClose={() => { setCollectionOpen(false); setCollectionInitialGem(null); }}
           />
         )}
       </AnimatePresence>
