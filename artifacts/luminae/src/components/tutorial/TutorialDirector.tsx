@@ -1366,10 +1366,22 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
     }
 
     if (headerOnly) {
+      // Show a compact thumbnail strip instead of an invisible text stub, so the tier
+      // reads as "upcoming/locked" rather than collapsed. 5 × 40×57 px card-back
+      // silhouettes (~57 px total row height) keep T1 fully in the viewport.
+      const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
       return (
-        <div key={tier} className="mb-3 opacity-40">
-          <div className="text-[9px] text-white/30 font-semibold uppercase tracking-wider">
+        <div key={tier} className="mb-4">
+          <div className="text-[9px] text-white/40 font-semibold uppercase tracking-wider mb-2">
             Tier {tier} — {label}
+          </div>
+          <div className="flex gap-2 opacity-20 pointer-events-none">
+            {[...Array(MARKET_SLOTS + 1)].map((_, i) => (
+              <div key={i} className="rounded-lg overflow-hidden border border-white/10 shrink-0"
+                style={{ width: 40, height: 57 }}>
+                <BackComponent />
+              </div>
+            ))}
           </div>
         </div>
       );
