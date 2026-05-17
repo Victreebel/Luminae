@@ -325,23 +325,32 @@ function CostCallout() {
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeDasharray={perimeter}
-        initial={{ strokeDashoffset: perimeter, opacity: 0 }}
+        initial={{ strokeDashoffset: perimeter, opacity: 0, filter: "drop-shadow(0 0 3px rgba(251,191,36,0.5))" }}
         animate={drawn
-          ? { strokeDashoffset: 0, opacity: [1, 0.45, 1] }
-          : { strokeDashoffset: 0, opacity: 1 }
+          ? {
+              strokeDashoffset: 0,
+              opacity: [1, 0.5, 1],
+              filter: [
+                "drop-shadow(0 0 8px rgba(251,191,36,1)) drop-shadow(0 0 16px rgba(251,191,36,0.6))",
+                "drop-shadow(0 0 2px rgba(251,191,36,0.3))",
+                "drop-shadow(0 0 8px rgba(251,191,36,1)) drop-shadow(0 0 16px rgba(251,191,36,0.6))",
+              ],
+            }
+          : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }
         }
         transition={drawn
           ? {
               opacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
+              filter: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
               strokeDashoffset: { duration: 0 },
             }
           : {
               strokeDashoffset: { duration: 0.7, ease: "easeInOut" },
               opacity: { duration: 0.05 },
+              filter: { duration: 0.05 },
             }
         }
         onAnimationComplete={() => { if (!drawn) setDrawn(true); }}
-        style={{ filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }}
       />
     </svg>
   );
