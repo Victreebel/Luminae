@@ -363,9 +363,9 @@ function CostCallout() {
               strokeDashoffset: 0,
               opacity: [1, 0.5, 1],
               filter: [
-                "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 4px rgba(255,255,180,1)) drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 30px rgba(255,180,0,0.85)) drop-shadow(0 0 55px rgba(220,120,0,0.45))",
-                "drop-shadow(0 0 1px rgba(255,200,50,0.3)) drop-shadow(0 0 3px rgba(251,191,36,0.2))",
-                "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 4px rgba(255,255,180,1)) drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 30px rgba(255,180,0,0.85)) drop-shadow(0 0 55px rgba(220,120,0,0.45))",
+                "drop-shadow(0 0 1px rgba(255,255,230,1)) drop-shadow(0 0 3px rgba(255,240,120,1)) drop-shadow(0 0 7px rgba(251,191,36,0.9)) drop-shadow(0 0 14px rgba(255,160,0,0.5))",
+                "drop-shadow(0 0 1px rgba(255,200,50,0.3)) drop-shadow(0 0 2px rgba(251,191,36,0.15))",
+                "drop-shadow(0 0 1px rgba(255,255,230,1)) drop-shadow(0 0 3px rgba(255,240,120,1)) drop-shadow(0 0 7px rgba(251,191,36,0.9)) drop-shadow(0 0 14px rgba(255,160,0,0.5))",
               ],
             }
           : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 5px rgba(255,220,50,0.9))" }
