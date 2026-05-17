@@ -331,9 +331,9 @@ function CostCallout() {
               strokeDashoffset: 0,
               opacity: [1, 0.5, 1],
               filter: [
-                "drop-shadow(0 0 8px rgba(251,191,36,1)) drop-shadow(0 0 16px rgba(251,191,36,0.6))",
-                "drop-shadow(0 0 2px rgba(251,191,36,0.3))",
-                "drop-shadow(0 0 8px rgba(251,191,36,1)) drop-shadow(0 0 16px rgba(251,191,36,0.6))",
+                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
+                "drop-shadow(0 0 2px rgba(251,191,36,0.25))",
+                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
               ],
             }
           : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }
