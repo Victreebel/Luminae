@@ -1069,8 +1069,10 @@ function CardFlipReveal({
 
   useEffect(() => {
     if (!shouldAnimate) return;
-    const t = setTimeout(() => setPhase("out"), delay);
-    return () => clearTimeout(t);
+    const soundLead = 80; // ms before flip starts
+    const ts = setTimeout(() => gameAudio.playCardFlip(), Math.max(0, delay - soundLead));
+    const tf = setTimeout(() => setPhase("out"), delay);
+    return () => { clearTimeout(ts); clearTimeout(tf); };
   }, []); // run once on mount
 
   if (phase === "done") return <>{children}</>;
@@ -1084,7 +1086,7 @@ function CardFlipReveal({
           style={{ width: W, height: H }}
           animate={phase === "out" ? { rotateY: 90 } : { rotateY: 0 }}
           transition={{ duration: 0.18, ease: "easeIn" }}
-          onAnimationComplete={() => { if (phase === "out") { gameAudio.playCardFlip(); setPhase("in"); } }}
+          onAnimationComplete={() => { if (phase === "out") setPhase("in"); }}
         >
           <BackFace />
         </motion.div>
