@@ -291,6 +291,23 @@
   }
 }
 
+@keyframes card-ring-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px rgba(251,191,36,1),
+      0 0 8px  rgba(251,191,36,0.9),
+      0 0 20px rgba(251,191,36,0.55),
+      0 0 40px rgba(251,191,36,0.25);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(251,191,36,0.25),
+      0 0 4px  rgba(251,191,36,0.15),
+      0 0 8px  rgba(251,191,36,0.05),
+      0 0 0px  transparent;
+  }
+}
+
 @keyframes forge-pulse {
   0%, 100% {
     box-shadow:

@@ -396,6 +396,7 @@ function TutorialCard({
   highlighted,
   foreground,
   costHighlight,
+  ringPulse,
   forged,
   impossible,
   viewMode = "all",
@@ -408,6 +409,7 @@ function TutorialCard({
   highlighted?: boolean;
   foreground?: boolean;
   costHighlight?: boolean;
+  ringPulse?: boolean;
   forged?: boolean;
   impossible?: boolean;
   viewMode?: TutorialMarketView;
@@ -472,8 +474,11 @@ function TutorialCard({
     >
       {costHighlight && <CostCallout />}
       <div
-        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
-        style={bgStyle}
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        style={{
+          ...bgStyle,
+          animation: ringPulse ? "card-ring-pulse 1.6s ease-in-out infinite" : undefined,
+        }}
       >
         {foreground && (
           <div
@@ -1303,6 +1308,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   bonuses={s.bonuses}
                   crystals={s.crystals}
                   highlighted={getHighlighted(cardId)}
+                  ringPulse={beatId === "b9_first_forge" && cardId === FIRST_FORGE_ID}
                   foreground={getForeground(cardId)}
                   costHighlight={(beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") && cardId === FIRST_FORGE_ID}
                   forged={false}
