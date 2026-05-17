@@ -3,7 +3,7 @@ import { DevTutorialNav } from "./DevTutorialNav";
 import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
-import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate, useAnimation } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
 import {
@@ -3252,6 +3252,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
+  // Controls for the board cinematic zoom-out that plays each time the player
+  // arrives at b6_forge_appears (initial={} only fires on mount; useAnimation
+  // fires the same animation on every navigation arrival).
+  const boardControls = useAnimation();
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
     // b6_forge_appears included so the empty T1 slot is visible while Lumii points down at it
     if (beatId === "b6_forge_appears" || beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
@@ -3324,6 +3328,18 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
   }, [beatId, subStep, cameraFocus, gemBurst]);
+
+  // Board cinematic zoom-out: fires on every arrival at b6_forge_appears,
+  // whether via natural navigation or URL-param jump.
+  useEffect(() => {
+    if (beatId === "b6_forge_appears") {
+      boardControls.set({ scale: 1.38, y: "-12%" });
+      void boardControls.start({ scale: 1, y: 0,
+        transition: { duration: 1.6, ease: [0.25, 0.46, 0.45, 0.94] } });
+    } else {
+      boardControls.set({ scale: 1, y: 0 });
+    }
+  }, [beatId, boardControls]);
 
   // Lock scroll (camera is programmatic)
   useEffect(() => {
@@ -3455,9 +3471,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {/* ── Board content area ───────────────────────────────────────── */}
       <motion.div
         className="relative z-10 flex-1 overflow-hidden"
-        initial={beatId === "b6_forge_appears" ? { scale: 1.38, y: "-12%" } : false}
-        animate={{ scale: 1, y: 0 }}
-        transition={{ duration: 1.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        initial={beatId === "b6_forge_appears" ? { scale: 1.38, y: "-12%" } : { scale: 1, y: 0 }}
+        animate={boardControls}
         style={{ transformOrigin: "50% 36%" }}
       >
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
