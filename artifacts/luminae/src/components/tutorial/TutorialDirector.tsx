@@ -3160,12 +3160,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const tier1Ref = useRef<HTMLDivElement>(null);
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
-    if (beatId === "b8_first_harness" || beatId === "b9_first_forge" || beatId === "b9b_forge_complete" || beatId === "b9c_transition") return "well";
+    if (beatId === "b8_first_harness" || beatId === "b9_first_forge" || beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b10_reserve") return "well";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
     if (beatId === "b14_win_condition") return "storage";
-    if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
+    if (beatId === "b10b_reserve_granted") return "forge";
     return "market";
   })();
 
