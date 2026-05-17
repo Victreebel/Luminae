@@ -316,7 +316,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: "b9_first_forge",
     mode: "act",
-    lumiiZone: "market-t1",
+    lumiiZone: "well",
     foregroundCardId: "t1e01",
     highlightZone: "forge-btn",
     dialogue: [
