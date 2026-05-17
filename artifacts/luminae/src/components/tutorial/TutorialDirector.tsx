@@ -883,48 +883,6 @@ function PlayerHand({
   );
 }
 
-// ─── Player Storage (forged) ──────────────────────────────────────────────────
-function PlayerStorage({ s, highlighted }: { s: TutState; highlighted: boolean }) {
-  const bonusTotals: Partial<Record<GemKey, number>> = {};
-  for (const [k, v] of Object.entries(s.bonuses) as [GemKey, number][]) {
-    if (v > 0) bonusTotals[k] = v;
-  }
-
-  return (
-    <div className={`border rounded-2xl p-3 backdrop-blur-md transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}
-      style={{ background: "rgba(3,3,12,0.78)" }}>
-      <div className="flex justify-between items-center mb-2">
-        <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider">Forged Artifacts</div>
-        {Object.keys(bonusTotals).length > 0 && (
-          <div className="flex gap-1">
-            {(Object.entries(bonusTotals) as [GemKey, number][]).map(([k, v]) => (
-              <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1.5 py-0.5">
-                <span className="text-[9px] text-emerald-300 font-bold">+{v}</span>
-                <MiniGem gem={k} size={9} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="flex gap-1 flex-wrap min-h-[36px] items-center">
-        {s.forged.length === 0 && <span className="text-[10px] text-white/20">No artifacts yet</span>}
-        {s.forged.map(id => {
-          const card = TUTORIAL_CARDS[id];
-          if (!card) return null;
-          const bonusMeta = GEM_META[card.bonusColor];
-          return (
-            <div key={id} className="flex items-center gap-1 bg-black/40 rounded-lg px-2 py-1 border border-white/10">
-              <img src={bonusMeta.image} alt="" className="w-3 h-3 object-contain" draggable={false} />
-              <span className="text-[8px] text-white/70">{card.name}</span>
-              {card.lumens > 0 && <span className="text-[8px] font-bold text-amber-300">+{card.lumens}</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Player Stats ─────────────────────────────────────────────────────────────
 function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) {
   return (
@@ -3121,7 +3079,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     !(beatId === "b12_tier2" && subStep === 0) &&
     !(beatId === "b16_final_forge" && subStep >= 1);
 
-  const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
   const isForgeHighlighted = ["b6_forge_appears", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
@@ -3400,15 +3357,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           </div>
           <AffinityWell s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} wellEnabled={isWellEnabled}
             fluxLocked={fluxLocked} harnessFlash={harnessFlash} onHarnessFlash={triggerHarnessFlash} />
-          {(s.reserved.length > 0 || s.forged.length > 0) && (
-            <>
-              {s.reserved.length > 0 && (
-                <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
-                  <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
-                </div>
-              )}
-              <PlayerStorage s={s} highlighted={isStorageHighlighted} />
-            </>
+          {s.reserved.length > 0 && (
+            <div className={isHandHighlighted ? "ring-1 ring-amber-400/50 rounded-2xl" : ""}>
+              <PlayerHand s={s} dispatch={dispatch} beatId={beatId} subStep={subStep} onCardTap={handleCardTap} />
+            </div>
           )}
         </div>
       </motion.div>
