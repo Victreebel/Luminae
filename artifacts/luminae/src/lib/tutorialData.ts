@@ -298,7 +298,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "Those affinities come from the Affinity Well." },
+      { text: "The currency for those costs come from your Affinity Well." },
       { text: "Let me show you how to gather them." },
     ],
     completion: { type: "dialogue" },
