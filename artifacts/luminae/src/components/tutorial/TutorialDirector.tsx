@@ -971,13 +971,14 @@ function MarketTabs({
   highlightDiscounted: boolean;
   highlightNeeded: boolean;
 }) {
+  const locked = beatId === "b6_forge_appears";
   const tabs: { key: TutorialMarketView; label: string }[] = [
     { key: "all", label: "Full" },
     { key: "discounted", label: "Discounted" },
     { key: "needed", label: "Needed" },
   ];
   return (
-    <div className="mb-3">
+    <div className="mb-3" style={{ opacity: locked ? 0.35 : 1, pointerEvents: locked ? "none" : undefined, transition: "opacity 0.3s" }}>
     <div className="text-[9px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">View costs:</div>
     <div className="flex gap-1">
       {tabs.map(tab => {
