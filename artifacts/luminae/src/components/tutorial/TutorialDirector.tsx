@@ -758,11 +758,11 @@ function AffinityWell({
       }}
     >
       <div
-        className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isWellPulse ? "text-amber-400/70" : "text-white/40"}`}
+        className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isWellPulse ? "text-cyan-300/80" : "text-white/40"}`}
         style={isWellPulse ? { animation: "well-header-pulse 1.6s ease-in-out infinite" } : undefined}
       >
         Affinity Well
-        <Droplets className={`h-3 w-3 shrink-0 ${isWellPulse ? "text-amber-400" : "text-cyan-400/70"}`} />
+        <Droplets className={`h-3 w-3 shrink-0 ${isWellPulse ? "text-cyan-300" : "text-cyan-400/70"}`} />
       </div>
       <div className="flex gap-2 flex-wrap justify-center mb-3">
         {ALL_GEMS.map(gem => {
