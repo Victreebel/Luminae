@@ -357,18 +357,18 @@ function CostCallout() {
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeDasharray={perimeter}
-        initial={{ strokeDashoffset: perimeter, opacity: 0, filter: "drop-shadow(0 0 3px rgba(251,191,36,0.5))" }}
+        initial={{ strokeDashoffset: perimeter, opacity: 0, filter: "drop-shadow(0 0 1px rgba(255,255,220,0.9)) drop-shadow(0 0 4px rgba(255,220,50,0.7))" }}
         animate={drawn
           ? {
               strokeDashoffset: 0,
               opacity: [1, 0.5, 1],
               filter: [
-                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
-                "drop-shadow(0 0 2px rgba(251,191,36,0.25))",
-                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
+                "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 4px rgba(255,255,180,1)) drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 30px rgba(255,180,0,0.85)) drop-shadow(0 0 55px rgba(220,120,0,0.45))",
+                "drop-shadow(0 0 1px rgba(255,200,50,0.3)) drop-shadow(0 0 3px rgba(251,191,36,0.2))",
+                "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 4px rgba(255,255,180,1)) drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 30px rgba(255,180,0,0.85)) drop-shadow(0 0 55px rgba(220,120,0,0.45))",
               ],
             }
-          : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }
+          : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 5px rgba(255,220,50,0.9))" }
         }
         transition={drawn
           ? {
