@@ -1291,7 +1291,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   };
 
   const getHighlighted = (cardId: string) => {
-    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost") return cardId === FIRST_FORGE_ID;
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID;
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
