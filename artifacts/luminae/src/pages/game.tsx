@@ -2784,7 +2784,7 @@ export default function GameBoard() {
         } : undefined}
       >
         <div className="flex items-center justify-between mb-2 px-1">
-          <p className="section-luminaries">Luminaries</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Luminaries</p>
           {/* Reserved-height slot — always occupies space so header row never shifts */}
           <span className="text-[9px] italic" style={{ visibility: (() => {
             const tc: number = (state as any)?.turnCount ?? 0;
@@ -2886,7 +2886,7 @@ export default function GameBoard() {
       >
         {/* Cost toggle */}
         <div className="flex items-center justify-between px-1">
-          <p className="section-forge"><span>Artifacts</span><span className="section-forge-sub"> · Forge using Affinities</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Artifacts · Forge using Affinities</p>
           <div
             data-tutorial-zone="filters"
             className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5"
@@ -3033,7 +3033,7 @@ export default function GameBoard() {
         }}
       >
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="section-well"><span>Affinity Well</span><span className="section-well-sub"> · Harness cosmic essence</span></p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinity Well · Harness cosmic essence</p>
           <div className="flex items-center gap-3">
             {me && (() => {
               const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
