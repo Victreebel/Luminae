@@ -3070,7 +3070,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
-  const isForgeHighlighted = ["b6_forge_appears", "b7_artifact_cost", "b9_first_forge", "b9b_forge_complete", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
+  const isForgeHighlighted = ["b6_forge_appears", "b9_first_forge", "b9b_forge_complete", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
 
   // Flux column locked until Singularity is introduced at b12_tier2
   const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
