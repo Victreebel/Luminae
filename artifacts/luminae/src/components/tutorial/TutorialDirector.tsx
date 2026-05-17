@@ -3,7 +3,7 @@ import { DevTutorialNav } from "./DevTutorialNav";
 import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
-import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, type GemKey } from "@/lib/gemMeta";
 import {
@@ -477,7 +477,7 @@ function TutorialCard({
       whileTap={onTap && !forged ? { scale: 0.94 } : undefined}
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className={`relative shrink-0 rounded-xl ${onTap && !forged ? "cursor-pointer" : ""} ${highlighted ? "ring-2 ring-amber-400" : ""}`}
+      className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
       style={{ width: 112, height: 160 }}
     >
       {foreground && (
@@ -485,7 +485,7 @@ function TutorialCard({
       )}
       {costHighlight && <CostCallout />}
       <div
-        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
+        className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400 shadow-amber-400/30" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
         style={bgStyle}
       >
         {foreground && (
@@ -1100,85 +1100,6 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
   );
 }
 
-// ─── Deck Deal Reveal ─────────────────────────────────────────────────────────
-// Slides a face-down card from the DeckPile into the slot, then flips it face-up.
-// Used for Root Lattice's dramatic first appearance at b6b_root_lattice.
-// `shouldAnimate=false` renders children immediately (resumed / skipped beats).
-function DeckDealReveal({
-  children,
-  shouldAnimate,
-  delay = 400,
-}: {
-  children: React.ReactNode;
-  shouldAnimate: boolean;
-  delay?: number;
-}) {
-  type DealPhase = "waiting" | "slide" | "flip-out" | "flip-in" | "done";
-  const [phase, setPhase] = useState<DealPhase>(shouldAnimate ? "waiting" : "done");
-
-  useEffect(() => {
-    if (!shouldAnimate) return;
-    const t = setTimeout(() => {
-      gameAudio.playCardDraw(); // papery thwip + arc whoosh + landing thud
-      setPhase("slide");
-    }, delay);
-    return () => clearTimeout(t);
-  }, []); // run once on mount
-
-  const W = 112, H = 160;
-  // DeckPile outer container: 120 px wide. Flex gap between deck and slot 1: gap-3 = 12 px.
-  // Slot 1 starts 132 px from the flex-row's left edge, so translateX(-132) aligns the
-  // sliding card exactly with the deck pile's front face.
-  const DECK_X = -132;
-
-  if (phase === "done") return <>{children}</>;
-  if (phase === "waiting") return <GhostCardSlot tier={1} />;
-
-  return (
-    <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px", position: "relative", overflow: "visible" }}>
-      {phase === "slide" && (
-        <>
-          {/* Spacer keeps the flex-slot width while the card renders absolutely */}
-          <div style={{ width: W, height: H }} />
-          <motion.div
-            className="absolute top-0 left-0 rounded-xl overflow-hidden border border-white/12 shadow-xl"
-            style={{ width: W, height: H, zIndex: 20 }}
-            initial={{ x: DECK_X, y: -8 }}
-            animate={{ x: 0, y: 0 }}
-            transition={{ type: "spring", stiffness: 220, damping: 28, mass: 0.85 }}
-            onAnimationComplete={() => setPhase("flip-out")}
-          >
-            <CardBackTier1 />
-          </motion.div>
-        </>
-      )}
-      {phase === "flip-out" && (
-        <motion.div
-          className="rounded-xl overflow-hidden border border-white/12 shadow-xl"
-          style={{ width: W, height: H }}
-          animate={{ rotateY: 90 }}
-          transition={{ duration: 0.18, ease: "easeIn" }}
-          onAnimationComplete={() => { gameAudio.playCardFlip(); setPhase("flip-in"); }}
-        >
-          <CardBackTier1 />
-        </motion.div>
-      )}
-      {phase === "flip-in" && (
-        <motion.div
-          className="rounded-xl overflow-hidden"
-          style={{ width: W, height: H }}
-          initial={{ rotateY: -90 }}
-          animate={{ rotateY: 0 }}
-          transition={{ duration: 0.22, ease: "easeOut" }}
-          onAnimationComplete={() => setPhase("done")}
-        >
-          {children}
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
 // ─── Card Flip Reveal ─────────────────────────────────────────────────────────
 // Shows a card face-down, then flips it over to reveal the card face.
 // `shouldAnimate=false` renders children immediately (for resumed / skipped beats).
@@ -1242,7 +1163,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   beatId: string;
   subStep: number;
   onCardTap: (card: TutorialCardData, forgeEnabled: boolean, reserveEnabled: boolean, onForge?: () => void, onReserve?: () => void) => void;
-  tier1Ref?: React.RefObject<HTMLDivElement | null>;
+  tier1Ref?: React.RefObject<HTMLDivElement>;
 }) {
   const inFF = beatId === "b15_fast_forward" || s.ffDone;
 
@@ -1251,9 +1172,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   const t2Cards: string[] = [];
   const t3Cards: string[] = [];
 
-  // b6_forge_appears intentionally excluded: slot 1 is empty while Lumii introduces the Forge.
-  // Root Lattice deals in from the deck at b6b_root_lattice via DeckDealReveal.
-  const earlyBeats = ["b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
+  const earlyBeats = ["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge", "b8_first_harness", "b9_first_forge", "b9b_forge_complete", "b9c_transition"];
   const midBeats = ["b10_reserve", "b10b_reserve_granted", "b10c_needed_peek", "b11_forge_reserved", "b12_tier2"];
   const lateBeats = ["b13_tier3", "b14_win_condition", "b15_fast_forward"];
   const finalBeat = ["b16_final_forge"];
@@ -1291,9 +1210,9 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   };
 
   const getHighlighted = (cardId: string) => {
-    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost") return cardId === FIRST_FORGE_ID;
+    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return cardId === FIRST_FORGE_ID;
     if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
-    if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID;
+    if (beatId === "b10_reserve") return cardId === RESERVE_CARD_ID && (s.subStep >= 1 || subStep >= 1);
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID;
     if (beatId === "b13_tier3") return T3_PURCHASABLE_IDS.includes(cardId) && !s.forged.includes(cardId);
     if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID;
@@ -1335,7 +1254,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
   const MARKET_SLOTS = 4;
   const DECK_COUNTS: Record<number, number> = { 1: 40, 2: 30, 3: 20 };
 
-  const renderTierRow = (tier: number, cardIds: string[], label: string, headerOnly = false) => {
+  const renderTierRow = (tier: number, cardIds: string[], label: string) => {
     const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - MARKET_SLOTS);
 
     type Slot =
@@ -1363,28 +1282,6 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
     // Pad to MARKET_SLOTS with ghost placeholders
     while (slots.length < MARKET_SLOTS) {
       slots.push({ kind: 'ghost' });
-    }
-
-    if (headerOnly) {
-      // Show a compact thumbnail strip instead of an invisible text stub, so the tier
-      // reads as "upcoming/locked" rather than collapsed. 5 × 40×57 px card-back
-      // silhouettes (~57 px total row height) keep T1 fully in the viewport.
-      const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
-      return (
-        <div key={tier} className="mb-4">
-          <div className="text-[9px] text-white/40 font-semibold uppercase tracking-wider mb-2">
-            Tier {tier} — {label}
-          </div>
-          <div className="flex gap-2 opacity-20 pointer-events-none">
-            {[...Array(MARKET_SLOTS + 1)].map((_, i) => (
-              <div key={i} className="rounded-lg overflow-hidden border border-white/10 shrink-0"
-                style={{ width: 40, height: 57 }}>
-                <BackComponent />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
     }
 
     return (
@@ -1425,15 +1322,17 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
                   }
                 />
               );
-              // Root Lattice deals from the deck into the slot at b6b, then flips face-up
+              // Root Lattice flips over from a face-down deck card when first revealed
               if (cardId === FIRST_FORGE_ID) {
                 return (
-                  <DeckDealReveal
-                    key={beatId === "b6b_root_lattice" ? "deal-active" : "deal-static"}
+                  <CardFlipReveal
+                    key={cardId}
                     shouldAnimate={beatId === "b6b_root_lattice"}
+                    BackFace={CardBackTier1}
+                    delay={720}
                   >
                     {tutCard}
-                  </DeckDealReveal>
+                  </CardFlipReveal>
                 );
               }
               return <Fragment key={cardId}>{tutCard}</Fragment>;
@@ -1458,8 +1357,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref }: {
         highlightDiscounted={highlightDiscounted}
         highlightNeeded={highlightNeeded}
       />
-      {renderTierRow(3, t3Cards, "Galactic", beatId === "b6b_root_lattice")}
-      {renderTierRow(2, t2Cards, "Stellar", beatId === "b6b_root_lattice")}
+      {renderTierRow(3, t3Cards, "Galactic")}
+      {renderTierRow(2, t2Cards, "Stellar")}
       {renderTierRow(1, t1Cards, "Planetary")}
     </div>
   );
@@ -3123,11 +3022,6 @@ function CollectionSheet({ forged, bonuses, onClose }: {
   );
 }
 
-// Beats where Lumii's dialogue floats beside the card cost area rather than
-// appearing in the fixed bottom bar. Declared at module scope so it is not
-// recreated on every render of GameplayPhase.
-const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
-
 // ─── Gameplay Phase ───────────────────────────────────────────────────────────
 function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<TAction> }) {
   const beat = TUTORIAL_BEATS[s.beat];
@@ -3203,16 +3097,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     }
   }, [beatId, beat.mode]);
 
-  // BUG-03: b12_tier2 soft-lock — when the player arrives at this beat with
-  // view already set to "needed" (carried from b10c_needed_peek), subStep stays
-  // at 0 and no tab click fires the SET_VIEW advance. Auto-dispatch SET_VIEW to
-  // immediately advance subStep → 1 so the well and forge become enabled.
-  useEffect(() => {
-    if (beatId === "b12_tier2" && subStep === 0 && s.view === "needed") {
-      dispatch({ type: "SET_VIEW", view: "needed" });
-    }
-  }, [beatId, subStep, s.view, dispatch]);
-
   const isDimmed = beat.mode === "listen" || beat.mode === "look";
   const isWellEnabled = (beat.mode === "act" || beat.mode === "semiOpen") &&
     ["b8_first_harness", "b11_forge_reserved", "b12_tier2", "b13_tier3", "b16_final_forge"].includes(beatId) &&
@@ -3223,7 +3107,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isStorageHighlighted = beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition";
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
-  const isForgeHighlighted = ["b6_forge_appears", "b7_artifact_cost", "b9_first_forge", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
+  const isForgeHighlighted = ["b6_forge_appears", "b7_artifact_cost", "b9_first_forge", "b9b_forge_complete", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
 
   // Flux column locked until Singularity is introduced at b12_tier2
   const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
@@ -3279,32 +3163,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const scrollRef = useRef<HTMLDivElement>(null);
   const forgeRef = useRef<HTMLDivElement>(null);
   const tier1Ref = useRef<HTMLDivElement>(null);
-  // Controls for the board cinematic zoom-out that plays each time the player
-  // arrives at b6_forge_appears (initial={} only fires on mount; useAnimation
-  // fires the same animation on every navigation arrival).
-  const boardControls = useAnimation();
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" = (() => {
-    // b6_forge_appears + b7 beats + b9_first_forge: camera on tier1 so the card slot is front and centre
-    // b9_first_forge included because Root Lattice (T1) is at ~777px in scroll-space — below the fold at scrollTop=0
-    if (beatId === "b6_forge_appears" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge" || beatId === "b9_first_forge") return "tier1";
-    // b6b: Root Lattice just dealt — scroll to forge header; T3/T2 render as
-    // headerOnly (collapsed labels) so T1 fits in the same viewport
-    if (beatId === "b6b_root_lattice") return "forge";
+    if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
     if (beatId === "b8_first_harness") return "well";
-    if (beatId === "b11_forge_reserved" && subStep === 0) return "well";
+    if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
-    // BUG-15: subStep≥2 means harness done, forge enabled — scroll to forge section so
-    // Singularity card (T2) is visible. "market" (scrollTop=0) left TutorialLuminarySection
-    // (~216px) + T3 ghost row (~200px) pushing the card to ~440px in a ~580px viewport.
-    if (beatId === "b12_tier2" && subStep >= 2) return "forge";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
-    // BUG-13: subStep≥1 means harness done, well disabled — scroll to forge section so
-    // Verdance Bloom (T2) is visible. "market" (scrollTop=0) left TutorialLuminarySection
-    // (~216px) + T3 ghost row (~200px) pushing the card below the ~580px viewport fold.
-    if (beatId === "b16_final_forge" && subStep >= 1) return "forge";
     if (beatId === "b9b_forge_complete" || beatId === "b9c_transition" || beatId === "b14_win_condition") return "storage";
-    if (beatId === "b10_reserve") return "forge";
-    if (beatId === "b10b_reserve_granted") return "well";
+    if (beatId === "b10_reserve" || beatId === "b10b_reserve_granted") return "forge";
     return "market";
   })();
 
@@ -3316,92 +3182,45 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
 
   // Auto-scroll (camera is programmatic)
   useEffect(() => {
-    // BUG-09: don't re-scroll while the gem burst animation covers the screen —
-    // the burst clears itself and this effect re-fires when gemBurst → null.
-    if (gemBurst) return;
     const container = scrollRef.current;
     if (!container) return;
-
-    // Helper: compute an element's scroll-space offset from the container top.
-    // Called inside a requestAnimationFrame so that:
-    //   (a) Framer Motion's boardControls.set({scale:1}) — which runs in the
-    //       NEXT useEffect (boardControls, line ~3347) — has been flushed to
-    //       the DOM before getBoundingClientRect is called.
-    //   (b) Any scrollHeight change from T2/T3 unmounting has been reflowed by
-    //       the browser, so the clamped scrollTop is readable.
-    // Without the rAF, getBoundingClientRect reads stale scaled coordinates
-    // from the b6_forge_appears zoom-out animation mid-flight, causing the
-    // camera to overshoot and land at the T1 row rather than the Forge header.
-    const scrollToEl = (el: HTMLElement, cont: HTMLElement) => {
-      // Cancel any in-progress smooth scroll right now (synchronous).
-      cont.scrollTo({ top: cont.scrollTop, behavior: "instant" });
-      requestAnimationFrame(() => {
-        if (!scrollRef.current || !el.isConnected) return;
-        const c = scrollRef.current;
-        // Re-cancel in case something else scrolled during this frame.
-        c.scrollTo({ top: c.scrollTop, behavior: "instant" });
-
-        // Use the offsetTop chain to compute scroll-space position.
-        // getBoundingClientRect returns VISUAL (transformed) coordinates, which
-        // are wrong when boardControls has scale=1.38 + y=-12% applied (e.g., at
-        // b6_forge_appears). offsetTop is a layout measurement and is NOT
-        // affected by CSS transforms on parent elements.
-        //
-        // Walk from el up the offsetParent chain to c's offsetParent, summing
-        // offsetTop values, then subtract c.offsetTop to get el's offset relative
-        // to the scroll container's content top.
-        const scrollerOffsetParent = c.offsetParent;
-        let layoutOffset = 0;
-        let cur: HTMLElement | null = el;
-        while (cur && cur !== scrollerOffsetParent) {
-          layoutOffset += cur.offsetTop;
-          cur = cur.offsetParent as HTMLElement | null;
-        }
-        const target = layoutOffset - c.offsetTop;
-
-        c.scrollTo({ top: target, behavior: "smooth" });
-      });
-    };
-
     const maxScroll = container.scrollHeight - container.clientHeight;
-    if (cameraFocus === "well" || cameraFocus === "storage") {
-      // BUG-01: "storage" was silently falling through to scrollTop:0.
-      // Both well and storage sections live near the bottom of the layout.
+    if (cameraFocus === "well") {
       container.scrollTo({ top: maxScroll, behavior: "smooth" });
     } else if (cameraFocus === "forge") {
+      // Scroll so the forge section lands flush with the top of the visible area,
+      // pushing the luminary section fully out of view.
+      // getBoundingClientRect is used instead of offsetTop because offsetTop is
+      // relative to the offsetParent (the outer relative wrapper), not the scroll
+      // container, which can produce an incorrect value.
       const forgeEl = forgeRef.current;
       if (forgeEl) {
-        scrollToEl(forgeEl, container);
+        const forgeTop =
+          forgeEl.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop;
+        container.scrollTo({ top: forgeTop, behavior: "smooth" });
       }
     } else if (cameraFocus === "tier1") {
+      // Scroll so the Tier 1 row (Foundation) is visible at the bottom of the
+      // viewport, with the Luminary section fully scrolled past.
+      // We aim for the top of the Tier 1 row to sit near the top of the
+      // scroll container, which naturally hides the Luminary section above.
       const tier1El = tier1Ref.current;
       if (tier1El) {
-        scrollToEl(tier1El, container);
+        const tier1Top =
+          tier1El.getBoundingClientRect().top -
+          container.getBoundingClientRect().top +
+          container.scrollTop;
+        container.scrollTo({ top: tier1Top, behavior: "smooth" });
       } else {
-        // Fallback: tier1Ref not yet attached — use forgeRef as the next best anchor
-        const fallbackEl = forgeRef.current;
-        if (fallbackEl) {
-          scrollToEl(fallbackEl, container);
-        } else {
-          container.scrollTo({ top: maxScroll, behavior: "smooth" });
-        }
+        // Fallback: ref not yet populated — scroll to bottom where Tier 1 sits
+        container.scrollTo({ top: maxScroll, behavior: "smooth" });
       }
     } else {
       container.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [beatId, subStep, cameraFocus, gemBurst]);
-
-  // Board cinematic zoom-out: fires on every arrival at b6_forge_appears,
-  // whether via natural navigation or URL-param jump.
-  useEffect(() => {
-    if (beatId === "b6_forge_appears") {
-      boardControls.set({ scale: 1.38, y: "-12%" });
-      void boardControls.start({ scale: 1, y: 0,
-        transition: { duration: 1.6, ease: [0.25, 0.46, 0.45, 0.94] } });
-    } else {
-      boardControls.set({ scale: 1, y: 0 });
-    }
-  }, [beatId, boardControls]);
+  }, [beatId, subStep, cameraFocus]);
 
   // Lock scroll (camera is programmatic)
   useEffect(() => {
@@ -3533,8 +3352,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {/* ── Board content area ───────────────────────────────────────── */}
       <motion.div
         className="relative z-10 flex-1 overflow-hidden"
-        initial={beatId === "b6_forge_appears" ? { scale: 1.38, y: "-12%" } : { scale: 1, y: 0 }}
-        animate={boardControls}
+        initial={beatId === "b6_forge_appears" ? { scale: 1.38, y: "-12%" } : false}
+        animate={{ scale: 1, y: 0 }}
+        transition={{ duration: 1.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         style={{ transformOrigin: "50% 36%" }}
       >
         <div ref={scrollRef} className={`h-full overflow-y-auto px-4 flex flex-col pb-4 ${isShortLandscape ? "py-2 gap-2" : "py-3 gap-3"}`}>
@@ -3677,15 +3497,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const burstActive = !!(purchaseBurst || gemBurst);
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : lumiiPos;
         // Beats where dialogue floats beside Lumii instead of fixed at bottom
+        const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
         const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
         // Dialogue-line excited state: true when the current line has excited:true
         const currentLineExcited = beat.dialogue[s.dlgLine]?.excited ?? false;
         // Excited bounce: scoped to action hint pending, post-forge, or an explicitly excited line
-        // forgeJustHappened is scoped to act-mode beats so Lumii stays calm
-        // on the listen beats that immediately follow a forge (e.g. b9b).
-        const shouldExcitedBounce = hintVisible || (forgeJustHappened && isActMode) || currentLineExcited;
+        const shouldExcitedBounce = hintVisible || forgeJustHappened || currentLineExcited;
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
@@ -3704,7 +3523,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className="absolute pointer-events-auto"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" ? 1.4 : beatId === "b6b_root_lattice" ? 1.3 : 0 }}
+                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" ? 1.4 : 0 }}
                 style={lumiiIsLeft
                   ? { left: 36, top: -64, width: 216 }
                   : { right: 36, top: -64, width: 216 }
@@ -3837,7 +3656,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </AnimatePresence>
 
       {/* Dialogue box — fade in after camera has settled on camera-scroll beats */}
-      {s.dlgLine < beat.dialogue.length && !CARD_DLG_BEATS.has(beatId) && (
+      {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"].includes(beatId) && (
         <motion.div
           key={`dlg-settle-${beatId}-${subStep}`}
           className="fixed left-0 right-0 z-50 px-4"
@@ -3979,13 +3798,8 @@ export function TutorialDirector({ startBeat }: { startBeat?: number }) {
       clearTutorialProgress();
       markTutorialComplete();
     } else if (s.beat > 0 && TUTORIAL_BEATS[s.beat]?.id !== "b3b_farewell") {
-      // BUG-04: don't save at action beats — resuming into an action beat gives
-      // blank INIT_STATE (no crystals/bonuses). Only save at safe passive beats.
-      const savedBeat = TUTORIAL_BEATS[s.beat];
-      if (savedBeat?.mode !== "act" && savedBeat?.mode !== "semiOpen") {
-        saveTutorialProgress(s.beat);
-        saveTutorialProgressId(savedBeat?.id ?? "");
-      }
+      saveTutorialProgress(s.beat);
+      saveTutorialProgressId(TUTORIAL_BEATS[s.beat]?.id ?? "");
     }
     if (s.beat >= BEAT_INDEX["b6_forge_appears"]) {
       markIntroSeen(BEAT_INDEX["b6_forge_appears"]);
