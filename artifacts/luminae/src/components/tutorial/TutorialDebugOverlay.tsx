@@ -8,7 +8,7 @@
  * known bugs at the current beat, and localStorage controls for QA/debugging.
  *
  * Collapsed by default — expands to full panel on click.
- * Collapsed/expanded state is remembered for the current browser session.
+ * Collapsed/expanded state (panel + each section) is remembered for the current browser session.
  */
 import { useState, type Dispatch, type CSSProperties } from "react";
 import { TUTORIAL_BEATS, BEAT_INDEX } from "@/lib/tutorialData";
@@ -22,6 +22,23 @@ function readSessionOpen(): boolean {
 }
 function writeSessionOpen(v: boolean): void {
   try { sessionStorage.setItem(SESSION_KEY, v ? "true" : "false"); } catch { /* ignore */ }
+}
+
+// ─── Per-section collapse state ───────────────────────────────────────────────
+type SectionId = "beat" | "dialogue" | "camera" | "anim" | "game" | "bugs" | "storage";
+const ALL_SECTIONS: SectionId[] = ["beat", "dialogue", "camera", "anim", "game", "bugs", "storage"];
+const SECTIONS_KEY = "tut_debug_sections";
+
+function readSectionOpen(): Record<SectionId, boolean> {
+  const defaults = Object.fromEntries(ALL_SECTIONS.map(id => [id, true])) as Record<SectionId, boolean>;
+  try {
+    const raw = sessionStorage.getItem(SECTIONS_KEY);
+    if (!raw) return defaults;
+    return { ...defaults, ...(JSON.parse(raw) as Partial<Record<SectionId, boolean>>) };
+  } catch { return defaults; }
+}
+function writeSectionOpen(v: Record<SectionId, boolean>): void {
+  try { sessionStorage.setItem(SECTIONS_KEY, JSON.stringify(v)); } catch { /* ignore */ }
 }
 
 // ─── cameraFocus mirror (must stay in sync with GameplayPhase) ────────────────
@@ -124,15 +141,19 @@ const S = {
   } satisfies CSSProperties,
 
   body: {
-    padding: "6px 10px 10px",
+    padding: "4px 0 6px",
     display: "flex",
     flexDirection: "column",
-    gap: 4,
   } satisfies CSSProperties,
 
-  sep: {
-    borderTop: "1px solid rgba(100,160,255,0.13)",
-    margin: "3px 0",
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "3px 10px 3px 10px",
+    cursor: "pointer",
+    userSelect: "none",
+    gap: 4,
   } satisfies CSSProperties,
 
   sectionLabel: {
@@ -140,7 +161,14 @@ const S = {
     letterSpacing: "0.1em",
     color: "#3a5888",
     textTransform: "uppercase" as const,
-    marginBottom: 1,
+  } satisfies CSSProperties,
+
+  sectionBody: {
+    padding: "3px 10px 6px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    borderBottom: "1px solid rgba(100,160,255,0.10)",
   } satisfies CSSProperties,
 
   row: {
@@ -201,6 +229,7 @@ const S = {
 // ─── Component ────────────────────────────────────────────────────────────────
 export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TAction> }) {
   const [open, setOpen] = useState<boolean>(readSessionOpen);
+  const [sections, setSections] = useState<Record<SectionId, boolean>>(readSectionOpen);
   const [storageSnap, setStorageSnap] = useState<Record<string, string | null> | null>(null);
 
   const beat = TUTORIAL_BEATS[s.beat];
@@ -217,6 +246,14 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
     setOpen(prev => {
       const next = !prev;
       writeSessionOpen(next);
+      return next;
+    });
+  }
+
+  function toggleSection(id: SectionId) {
+    setSections(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      writeSectionOpen(next);
       return next;
     });
   }
@@ -287,6 +324,7 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
 
   const knownBugs = BEAT_BUGS[beatId] ?? [];
   const runtimeWarns = detectRuntimeWarnings(s, beatId);
+  const hasBugs = knownBugs.length > 0 || runtimeWarns.length > 0;
 
   function readStorage() {
     const keys = [
@@ -322,12 +360,39 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
     );
   }
 
+  function Section({
+    id,
+    label,
+    labelStyle,
+    children,
+  }: {
+    id: SectionId;
+    label: string;
+    labelStyle?: CSSProperties;
+    children: React.ReactNode;
+  }) {
+    const isOpen = sections[id];
+    return (
+      <>
+        <div
+          style={S.sectionHeader}
+          onClick={(e) => { e.stopPropagation(); toggleSection(id); }}
+          title={isOpen ? `Collapse ${label}` : `Expand ${label}`}
+        >
+          <span style={{ ...S.sectionLabel, ...labelStyle }}>{label}</span>
+          <span style={{ color: "#2a4a6a", fontSize: 10, lineHeight: 1 }}>{isOpen ? "▾" : "▸"}</span>
+        </div>
+        {isOpen && <div style={S.sectionBody}>{children}</div>}
+      </>
+    );
+  }
+
   const beatLabel = isCinematic ? "CINEMATIC" : "GAMEPLAY";
 
   // ── Expanded panel ──────────────────────────────────────────────────────────
   return (
     <div style={S.panel}>
-      {/* Header — click to collapse */}
+      {/* Header — click to collapse whole panel */}
       <div style={S.header} onClick={toggle}>
         <span style={{ color: "#4488cc", fontSize: 10, letterSpacing: "0.08em" }}>
           ◈ TUT DEBUG &nbsp;
@@ -339,99 +404,93 @@ export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TA
       <div style={S.body}>
 
         {/* ── BEAT ──────────────────────────────────────────────────── */}
-        <div style={S.sectionLabel}>BEAT · {beatLabel}</div>
-        <Row label="beat id" value={beatId} />
-        <Row label="index" value={`${s.beat + 1} / ${TUTORIAL_BEATS.length}  (raw: ${s.beat})`} />
-        <Row label="mode" value={beat.mode} />
-        <Row label="subStep" value={String(subStep)} dim={subStep === 0} />
-        <Row label="view" value={s.view} />
-
-        <div style={S.sep} />
+        <Section id="beat" label={`BEAT · ${beatLabel}`}>
+          <Row label="beat id" value={beatId} />
+          <Row label="index" value={`${s.beat + 1} / ${TUTORIAL_BEATS.length}  (raw: ${s.beat})`} />
+          <Row label="mode" value={beat.mode} />
+          <Row label="subStep" value={String(subStep)} dim={subStep === 0} />
+          <Row label="view" value={s.view} />
+        </Section>
 
         {/* ── DIALOGUE ──────────────────────────────────────────────── */}
-        <div style={S.sectionLabel}>DIALOGUE</div>
-        <Row label="dlg line" value={`${s.dlgLine + 1} / ${beat.dialogue.length}`} />
-        <Row label="completion" value={completionStr} />
-        <Row label="expectedAction" value={expectedAction} />
-        {beat.wrongClickNudge && (
-          <Row label="wrongClickNudge" value={beat.wrongClickNudge} dim />
-        )}
-
-        <div style={S.sep} />
+        <Section id="dialogue" label="DIALOGUE">
+          <Row label="dlg line" value={`${s.dlgLine + 1} / ${beat.dialogue.length}`} />
+          <Row label="completion" value={completionStr} />
+          <Row label="expectedAction" value={expectedAction} />
+          {beat.wrongClickNudge && (
+            <Row label="wrongClickNudge" value={beat.wrongClickNudge} dim />
+          )}
+        </Section>
 
         {/* ── CAMERA / LUMII ──────────────────────────────────────── */}
-        <div style={S.sectionLabel}>CAMERA / LUMII</div>
-        <Row label="cameraFocus" value={cameraFocus} warn={cameraWarn} />
-        {cameraWarn && (
-          <div style={{ ...S.warn, fontSize: 10, paddingLeft: 8 }}>
-            BUG-01: no scroll handler for 'storage' — scrolls to market top instead
-          </div>
-        )}
-        <Row label="lumiiZone" value={beat.lumiiZone} />
-        {beat.lumiiPointer && <Row label="lumiiPointer" value={beat.lumiiPointer} />}
-        <Row label="highlightZone" value={beat.highlightZone ?? "none"} dim={!beat.highlightZone} />
-        <Row label="foregroundCard" value={beat.foregroundCardId ?? "none"} dim={!beat.foregroundCardId} />
-        <Row label="primaryHighlight" value={primaryHighlight} dim={primaryHighlight === "none"} />
-        <Row label="lockout" value={beat.mode === "look" || beat.mode === "listen" ? `locked (${beat.mode})` : "interactive"} />
-
-        <div style={S.sep} />
+        <Section id="camera" label="CAMERA / LUMII">
+          <Row label="cameraFocus" value={cameraFocus} warn={cameraWarn} />
+          {cameraWarn && (
+            <div style={{ ...S.warn, fontSize: 10, paddingLeft: 8 }}>
+              BUG-01: no scroll handler for 'storage' — scrolls to market top instead
+            </div>
+          )}
+          <Row label="lumiiZone" value={beat.lumiiZone} />
+          {beat.lumiiPointer && <Row label="lumiiPointer" value={beat.lumiiPointer} />}
+          <Row label="highlightZone" value={beat.highlightZone ?? "none"} dim={!beat.highlightZone} />
+          <Row label="foregroundCard" value={beat.foregroundCardId ?? "none"} dim={!beat.foregroundCardId} />
+          <Row label="primaryHighlight" value={primaryHighlight} dim={primaryHighlight === "none"} />
+          <Row label="lockout" value={beat.mode === "look" || beat.mode === "listen" ? `locked (${beat.mode})` : "interactive"} />
+        </Section>
 
         {/* ── ANIMATION STATE ─────────────────────────────────────── */}
-        <div style={S.sectionLabel}>ANIMATION STATE</div>
-        <Row label="animTrigger" value={animStr} dim={animStr === "none"} />
-        <Row label="cardFlipReveal" value={cardFlipStr} warn={cardFlipWarn} />
-
-        <div style={S.sep} />
+        <Section id="anim" label="ANIMATION STATE">
+          <Row label="animTrigger" value={animStr} dim={animStr === "none"} />
+          <Row label="cardFlipReveal" value={cardFlipStr} warn={cardFlipWarn} />
+        </Section>
 
         {/* ── GAME STATE ──────────────────────────────────────────── */}
-        <div style={S.sectionLabel}>GAME STATE</div>
-        <Row label="crystals" value={crystalStr} dim={crystalStr === "none"} />
-        <Row label="bonuses" value={bonusStr} dim={bonusStr === "none"} />
-        <Row label="forged" value={s.forged.length ? s.forged.join(", ") : "none"} dim={!s.forged.length} />
-        <Row label="reserved" value={s.reserved.length ? s.reserved.join(", ") : "none"} dim={!s.reserved.length} />
-        <Row label="eminence" value={String(s.eminence)} dim={s.eminence === 0} />
-        <Row label="wellSel" value={(() => {
-          const entries = Object.entries(s.wellSel).filter(([, v]) => (v ?? 0) > 0);
-          return entries.length ? entries.map(([k, v]) => `${k}:${v}`).join(" ") : "none";
-        })()} dim />
+        <Section id="game" label="GAME STATE">
+          <Row label="crystals" value={crystalStr} dim={crystalStr === "none"} />
+          <Row label="bonuses" value={bonusStr} dim={bonusStr === "none"} />
+          <Row label="forged" value={s.forged.length ? s.forged.join(", ") : "none"} dim={!s.forged.length} />
+          <Row label="reserved" value={s.reserved.length ? s.reserved.join(", ") : "none"} dim={!s.reserved.length} />
+          <Row label="eminence" value={String(s.eminence)} dim={s.eminence === 0} />
+          <Row label="wellSel" value={(() => {
+            const entries = Object.entries(s.wellSel).filter(([, v]) => (v ?? 0) > 0);
+            return entries.length ? entries.map(([k, v]) => `${k}:${v}`).join(" ") : "none";
+          })()} dim />
+        </Section>
 
         {/* ── KNOWN BUGS ──────────────────────────────────────────── */}
-        {(knownBugs.length > 0 || runtimeWarns.length > 0) && (
-          <>
-            <div style={S.sep} />
-            <div style={{ ...S.sectionLabel, color: "#7a2a2a" }}>KNOWN BUGS AT THIS BEAT</div>
+        {hasBugs && (
+          <Section id="bugs" label="KNOWN BUGS AT THIS BEAT" labelStyle={{ color: "#7a2a2a" }}>
             {knownBugs.map(bug => (
               <div key={bug} style={{ ...S.warn, fontSize: 10, lineHeight: 1.5 }}>⚠ {bug}</div>
             ))}
             {runtimeWarns.map(w => (
               <div key={w} style={{ color: "#fbbf24", fontSize: 10, lineHeight: 1.5, wordBreak: "break-all" }}>🔴 {w}</div>
             ))}
-          </>
+          </Section>
         )}
-
-        <div style={S.sep} />
 
         {/* ── LOCALSTORAGE ──────────────────────────────────────────── */}
-        <div style={S.sectionLabel}>LOCALSTORAGE</div>
-        <div style={{ display: "flex", gap: 5 }}>
-          <button style={S.btn} onClick={readStorage}>Read Storage</button>
-          <button style={S.btnReset} onClick={clearAll} title="Clears progress, seen, completed, intro_seen">Reset All Progress</button>
-        </div>
-        {storageSnap !== null && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
-            {Object.entries(storageSnap).map(([k, v]) => {
-              const shortKey = k.replace("luminae_tutorial_", "t:").replace("luminae_", "");
-              return (
-                <div key={k} style={{ ...S.row, fontSize: 10 }}>
-                  <span style={{ ...S.label, minWidth: 78, fontSize: 10, color: "#3a5878" }}>{shortKey}</span>
-                  <span style={{ fontSize: 10, color: v === null ? "#2a4a6a" : "#90c0f0", wordBreak: "break-all" }}>
-                    {v === null ? "(null)" : v}
-                  </span>
-                </div>
-              );
-            })}
+        <Section id="storage" label="LOCALSTORAGE">
+          <div style={{ display: "flex", gap: 5 }}>
+            <button style={S.btn} onClick={readStorage}>Read Storage</button>
+            <button style={S.btnReset} onClick={clearAll} title="Clears progress, seen, completed, intro_seen">Reset All Progress</button>
           </div>
-        )}
+          {storageSnap !== null && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
+              {Object.entries(storageSnap).map(([k, v]) => {
+                const shortKey = k.replace("luminae_tutorial_", "t:").replace("luminae_", "");
+                return (
+                  <div key={k} style={{ ...S.row, fontSize: 10 }}>
+                    <span style={{ ...S.label, minWidth: 78, fontSize: 10, color: "#3a5878" }}>{shortKey}</span>
+                    <span style={{ fontSize: 10, color: v === null ? "#2a4a6a" : "#90c0f0", wordBreak: "break-all" }}>
+                      {v === null ? "(null)" : v}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Section>
 
       </div>
     </div>
