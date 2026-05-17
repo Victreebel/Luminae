@@ -174,6 +174,31 @@ function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
   );
 }
 
+// ─── Rich dialogue text ───────────────────────────────────────────────────────
+// Replaces bare affinity names in dialogue text with name + inline MiniGem icon.
+const AFFINITY_TOKENS: { name: string; gem: GemKey }[] = [
+  { name: "Radiance",    gem: "pearl"    },
+  { name: "Flare",       gem: "ruby"     },
+  { name: "Continuum",   gem: "sapphire" },
+  { name: "Verdance",    gem: "emerald"  },
+  { name: "Abyss",       gem: "onyx"     },
+  { name: "Singularity", gem: "flux"     },
+];
+const AFFINITY_RE = new RegExp(`(${AFFINITY_TOKENS.map(t => t.name).join("|")})`, "g");
+
+function renderRichText(text: string): React.ReactNode {
+  const parts = text.split(AFFINITY_RE);
+  return parts.map((part, i) => {
+    const token = AFFINITY_TOKENS.find(t => t.name === part);
+    if (!token) return part;
+    return (
+      <span key={i} className="inline-flex items-center gap-0.5 align-middle">
+        {part}<MiniGem gem={token.gem} size={11} />
+      </span>
+    );
+  });
+}
+
 // ─── DialogueBox ──────────────────────────────────────────────────────────────
 function DialogueBox({
   lines, lineIndex, onTap, nudge, mode, showOrb = true, muted = false,
@@ -235,7 +260,7 @@ function DialogueBox({
         <div className="flex items-start gap-3">
           {showOrb && <LumiiOrb size={32} excited={!!nudge} highlightZone={null} muted={muted} />}
           <div className="flex-1">
-            <p className="text-sm text-white/90 leading-relaxed">{text}</p>
+            <p className="text-sm text-white/90 leading-relaxed">{renderRichText(text)}</p>
             {hintText && (
               <motion.p
                 animate={{ opacity: [0.28, 0.60, 0.28] }}
