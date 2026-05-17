@@ -738,15 +738,19 @@ function AffinityWell({
 
   const isGuidedBeat = Object.keys(guidedGems).length > 0;
 
+  const isWellPulse = beatId === "b7b_cost_bridge";
   return (
     <motion.div
-      className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${harnessFlash ? "border-emerald-400/70" : "border-white/10"}`}
+      className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${harnessFlash ? "border-emerald-400/70" : isWellPulse ? "border-transparent" : "border-white/10"}`}
       animate={harnessFlash
         ? { boxShadow: ["0 0 6px rgba(52,211,153,0.15)", "0 0 28px rgba(52,211,153,0.50)", "0 0 14px rgba(52,211,153,0.22)"] }
         : { boxShadow: "none" }
       }
       transition={{ duration: 0.85, ease: "easeOut" }}
-      style={{ background: "rgba(3,3,12,0.78)" }}
+      style={{
+        background: "rgba(3,3,12,0.78)",
+        animation: isWellPulse ? "well-pulse 1.6s ease-in-out infinite" : undefined,
+      }}
     >
       <div className="flex items-center gap-1.5 text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">
         Affinity Well
