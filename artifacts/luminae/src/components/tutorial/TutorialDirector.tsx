@@ -3499,6 +3499,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                   background: hasContent ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)` : "linear-gradient(180deg, #07070b 0%, #0e0e14 100%)",
                   border: `1px solid ${hasContent ? meta.hex + "AA" : meta.hex + "22"}`,
                   boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : "none",
+                  animation: beatId === "b9c_transition" && gem === "emerald" ? "gem-panel-pulse 1.6s ease-in-out infinite" : undefined,
                 }}>
                 {hasContent && <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />}
                 <div className="flex items-center gap-0.5 justify-center">
