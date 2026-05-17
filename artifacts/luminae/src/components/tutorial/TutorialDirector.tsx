@@ -297,7 +297,7 @@ function DialogueBox({
 // pulses with an amber glow. Used on b7_artifact_cost / b7b_cost_bridge beats.
 function CostCallout() {
   const [drawn, setDrawn] = useState(false);
-  const perimeter = 284; // approximate for rx=7, w=104, h=38
+  const perimeter = 246; // approximate for rx=6, w=104, h=24
   return (
     <svg
       className="absolute inset-0 pointer-events-none z-20"
@@ -307,7 +307,7 @@ function CostCallout() {
     >
       {/* Glow fill behind the cost row */}
       <motion.rect
-        x={4} y={117} width={104} height={39} rx={7}
+        x={4} y={134} width={104} height={24} rx={6}
         fill="rgba(251,191,36,0.08)"
         stroke="none"
         initial={{ opacity: 0 }}
@@ -319,7 +319,7 @@ function CostCallout() {
       />
       {/* Draw-in stroke */}
       <motion.rect
-        x={4} y={117} width={104} height={39} rx={7}
+        x={4} y={134} width={104} height={24} rx={6}
         fill="none"
         stroke="#fbbf24"
         strokeWidth={1.8}
