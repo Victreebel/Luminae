@@ -473,12 +473,15 @@ function TutorialCard({
       style={{ width: 112, height: 160 }}
     >
       {costHighlight && <CostCallout />}
+      {ringPulse && (
+        <div
+          className="absolute inset-0 rounded-xl pointer-events-none z-10"
+          style={{ animation: "card-ring-pulse 1.6s ease-in-out infinite" }}
+        />
+      )}
       <div
         className={`absolute inset-0 rounded-xl overflow-hidden shadow-xl ${highlighted ? "ring-2 ring-amber-400" : "ring-1 ring-white/10"} ${forged ? "opacity-40 grayscale" : ""} ${impossible ? "opacity-50" : ""}`}
-        style={{
-          ...bgStyle,
-          animation: ringPulse ? "card-ring-pulse 1.6s ease-in-out infinite" : undefined,
-        }}
+        style={{ ...bgStyle }}
       >
         {foreground && (
           <div
