@@ -3288,7 +3288,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     : lumiiPosRaw;
 
   // Hoisted for use in spotlight/tether overlays (same logic as inside Lumii IIFE)
-  const lumiiIsBurstActive = !!(purchaseBurst || gemBurst);
+  // gemBurst is an affinity-harvest effect — Lumii should NOT dart for that, only for card-forge.
+  const lumiiIsBurstActive = !!purchaseBurst;
   const lumiiEffectivePos = lumiiIsBurstActive ? { x: "90%", y: "7%" } : lumiiPos;
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";
@@ -3643,8 +3644,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {(() => {
         const hintVisible = isActMode && s.dlgLine >= beat.dialogue.length - 1;
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
-        // Dart to top-right corner while burst animations are playing
-        const burstActive = !!(purchaseBurst || gemBurst);
+        // Dart to top-right corner only during card-forge burst — not affinity harvest.
+        const burstActive = !!purchaseBurst;
 
         const basePos = lumiiPos;
         const effectiveLumiiPos = burstActive ? { x: "90%", y: "7%" } : basePos;
