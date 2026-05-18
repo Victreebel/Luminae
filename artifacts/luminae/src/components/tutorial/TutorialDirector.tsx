@@ -3264,15 +3264,19 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "market-t1":      { x: "87%", y: "26%" },
     "market-t2":      { x: "87%", y: "20%" },
     "market-t3":      { x: "87%", y: "14%" },
-    "card-cost":      { x: "78%", y: "40%" },
+    // card-cost highlight is at (76%,38%) — keep Lumii on the LEFT so she points
+    // toward it without standing on it.
+    "card-cost":      { x: "6%", y: "42%" },
     // "well" was at 12% which caused Lumii to overlap the top-[54px] dialogue box
     // when cameraFocus === "well" — moved down to 24% to clear it on all screen sizes
     well:             { x: "87%", y: "24%" },
-    hand:             { x: "13%", y: "20%" },
-    storage:          { x: "13%", y: "20%" },
+    // hand/storage highlights are on the left — keep Lumii on the right edge
+    hand:             { x: "87%", y: "20%" },
+    storage:          { x: "87%", y: "20%" },
     eminence:         { x: "88%", y: "20%" },
-    "discounted-tab": { x: "13%", y: "20%" },
-    "needed-tab":     { x: "13%", y: "20%" },
+    // discounted-tab & needed-tab highlights are centre-left — Lumii on right edge
+    "discounted-tab": { x: "87%", y: "20%" },
+    "needed-tab":     { x: "87%", y: "20%" },
     "top-center":     { x: "50%", y: "18%" },
     center:           { x: "50%", y: "38%" },
     luminary:         { x: "50%", y: "28%" },
@@ -3810,19 +3814,31 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"].includes(beatId) && (
         <motion.div
           key={`dlg-settle-${beatId}-${subStep}`}
-          className="fixed left-0 right-0 z-50 px-4"
+          className="fixed z-50 px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: cameraFocus !== "market" ? 0.68 : 0 }}
           style={(() => {
-            // Position dialogue near Lumii by deriving placement from her y%.
-            // When she's near the top (<= 38%) put dialogue below her;
-            // otherwise put it above so it never covers the action area beneath her.
+            // Vertical: near Lumii — below when she's near the top, above otherwise.
             const lumiiYNum = parseFloat(lumiiEffectivePos.y);
-            if (lumiiYNum <= 38) {
-              return { top: `calc(${lumiiEffectivePos.y} + 62px)` };
-            }
-            return { top: `calc(${lumiiEffectivePos.y} - 115px)` };
+            const vertStyle: React.CSSProperties = lumiiYNum <= 38
+              ? { top: `calc(${lumiiEffectivePos.y} + 62px)` }
+              : { top: `calc(${lumiiEffectivePos.y} - 115px)` };
+
+            // Horizontal: stay on the OPPOSITE side from the highlighted feature
+            // so the dialogue box never floats over what the player is meant to look at.
+            const hlZone = beat.highlightZone
+              ? HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone]
+              : null;
+            const hlXNum = hlZone ? parseFloat(hlZone.x) : 50;
+            const horizStyle: React.CSSProperties =
+              hlXNum > 60
+                ? { left: 0, right: "48%" }       // highlight is right — dialogue on left
+                : hlXNum < 40
+                ? { left: "48%", right: 0 }        // highlight is left  — dialogue on right
+                : { left: 0, right: 0 };           // highlight is centre — full width
+
+            return { ...vertStyle, ...horizStyle };
           })()}
         >
           <AnimatePresence mode="wait">
