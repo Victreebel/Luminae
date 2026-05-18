@@ -3213,6 +3213,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const isEminenceHighlighted = beatId === "b14_win_condition";
   const isHandHighlighted = beatId === "b10b_reserve_granted";
   const isForgeHighlighted = ["b6_forge_appears", "b11_forge_reserved", "b16_final_forge"].includes(beatId);
+  const isForgeStaticGlow = beatId === "b11_forge_reserved";
+  const isForgePulsing = isForgeHighlighted && !isForgeStaticGlow;
 
   // Flux column locked until Singularity is introduced at b12_tier2
   const fluxLocked = s.beat < (BEAT_INDEX["b12_tier2"] ?? 14);
@@ -3500,13 +3502,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             className={`border ${isForgeHighlighted ? "border-transparent" : "border-white/10"} rounded-2xl p-3 backdrop-blur-md`}
             style={{
               background: "rgba(3,3,12,0.72)",
-              animation: isForgeHighlighted ? "forge-pulse 1.6s ease-in-out infinite" : "none",
-              boxShadow: isForgeHighlighted ? undefined : "none",
+              animation: isForgePulsing ? "forge-pulse 1.6s ease-in-out infinite" : "none",
+              boxShadow: isForgeStaticGlow
+                ? "inset 0 0 0 2px rgba(251,191,36,1), inset 0 0 32px rgba(251,191,36,0.75), 0 0 24px rgba(251,191,36,0.55), 0 0 48px rgba(251,191,36,0.25)"
+                : isForgeHighlighted ? undefined : "none",
             }}
           >
             <div
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isForgeHighlighted ? "text-amber-400/70" : "text-white/40"}`}
-              style={isForgeHighlighted ? { animation: "forge-header-pulse 1.6s ease-in-out infinite" } : undefined}
+              style={isForgePulsing ? { animation: "forge-header-pulse 1.6s ease-in-out infinite" } : undefined}
             >
               The Forge
               <Hammer className={`h-3 w-3 shrink-0 ${isForgeHighlighted ? "text-amber-400" : "text-amber-500/70"}`} />
