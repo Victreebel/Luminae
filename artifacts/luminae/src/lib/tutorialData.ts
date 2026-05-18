@@ -35,7 +35,8 @@ export type CompletionTrigger =
   | { type: "dialogue" }
   | { type: "action"; action: TutorialAction }
   | { type: "auto"; ms: number }
-  | { type: "animation" };
+  | { type: "animation" }
+  | { type: "panel_view" };
 
 export type TutorialAction =
   | "harness"
@@ -337,7 +338,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
       { text: "Its bonus will make future artifacts easier to shape." },
       { text: "Your artifacts are always reachable here — tap your panel to see what you have built." },
     ],
-    completion: { type: "dialogue" },
+    completion: { type: "panel_view" },
   },
   {
     id: "b9c_transition",

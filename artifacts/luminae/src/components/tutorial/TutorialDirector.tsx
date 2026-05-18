@@ -3539,8 +3539,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       >
         <button
           type="button"
-          disabled={s.forged.length === 0}
-          onClick={() => { if (s.forged.length > 0) { gameAudio.playCardDraw(); setCollectionOpen(true); } }}
+          disabled={s.forged.length === 0 || (beatId === "b9b_forge_complete" && s.dlgLine < 2)}
+          onClick={() => {
+            if (s.forged.length > 0 && !(beatId === "b9b_forge_complete" && s.dlgLine < 2)) {
+              gameAudio.playCardDraw(); setCollectionOpen(true);
+            }
+          }}
           className={`w-full text-left ${s.forged.length > 0 ? "cursor-pointer active:opacity-80" : "cursor-default"} ${isShortLandscape ? "mb-1" : "mb-2"}`}
         >
           <div className="flex items-center gap-3">
@@ -3586,7 +3590,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             const reservedCount = gem === "flux" ? s.reserved.length : 0;
             const hasContent = gem === "flux" ? (held > 0 || reservedCount > 0) : (held > 0 || bonus > 0);
             const hasFargedOfColor = bonus > 0 && s.forged.some(id => TUTORIAL_CARDS[id]?.bonusColor === gem);
-            const tappable = hasFargedOfColor;
+            const panelLocked = beatId === "b9b_forge_complete" && s.dlgLine < 2;
+            const tappable = hasFargedOfColor && !panelLocked;
             return (
               <div
                 key={gem}
@@ -3773,7 +3778,11 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             forged={s.forged}
             bonuses={s.bonuses}
             filterGem={collectionInitialGem}
-            onClose={() => { setCollectionOpen(false); setCollectionInitialGem(null); }}
+            onClose={() => {
+              setCollectionOpen(false);
+              setCollectionInitialGem(null);
+              if (beatId === "b9b_forge_complete") dispatch({ type: "PANEL_VIEWED" });
+            }}
           />
         )}
       </AnimatePresence>

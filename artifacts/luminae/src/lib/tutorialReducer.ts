@@ -68,6 +68,7 @@ export type TAction =
   | { type: "NUDGE"; msg: string | null }
   | { type: "FF_DONE" }
   | { type: "LUM_DONE" }
+  | { type: "PANEL_VIEWED" }
   | { type: "JUMP_BEAT"; toIndex: number };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -421,6 +422,12 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
 
     case "LUM_DONE":
       return { ...s, lumDone: true, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+
+    case "PANEL_VIEWED": {
+      const beat = TUTORIAL_BEATS[s.beat];
+      if (!beat || beat.completion.type !== "panel_view") return s;
+      return { ...s, beat: s.beat + 1, dlgLine: 0, subStep: 0, nudge: null };
+    }
 
     case "JUMP_BEAT": {
       const idx = Math.max(0, Math.min(a.toIndex, TUTORIAL_BEATS.length - 1));
