@@ -1055,48 +1055,30 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
 }
 
 // ─── Forge Eject Animation ────────────────────────────────────────────────────
-// When a card is forged it briefly animates in its slot: face flips to the card
-// back, then the back rises and fades out toward the viewer before the slot
-// transitions to the deck-draw replacement animation.
-function ForgeEjectAnimation({ tier, card, bonuses, crystals, wellSel, viewMode }: {
-  tier: number;
+// When a card is forged its face briefly flashes bright and rises out of the
+// slot before the DeckDrawAnimation replaces it with the next card.
+function ForgeEjectAnimation({ card, bonuses, crystals, wellSel, viewMode }: {
   card: TutorialCardData;
   bonuses: Record<string, number>;
   crystals: Record<string, number>;
   wellSel: Partial<Record<GemKey, number>>;
   viewMode: TutorialMarketView;
 }) {
-  const [phase, setPhase] = useState<'face-out' | 'back-in' | 'rise'>('face-out');
-  const BackComp = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase('back-in'), 200);
-    const t2 = setTimeout(() => setPhase('rise'), 280);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
-
-  const animStyle: React.CSSProperties =
-    phase === 'face-out' ? { animation: 'forge-face-out 200ms ease-in forwards' } :
-    phase === 'back-in'  ? { animation: 'forge-back-in   80ms ease-out forwards' } :
-                           { animation: 'forge-rise      640ms ease-in forwards' };
-
   return (
-    <div style={{ width: 112, height: 160, flexShrink: 0, position: 'relative', overflow: 'visible' }}>
-      <div style={{ position: 'absolute', inset: 0, transformOrigin: 'center center', zIndex: 50, ...animStyle }}>
-        {phase !== 'face-out' ? <BackComp /> : (
-          <TutorialCard
-            card={card}
-            bonuses={bonuses}
-            crystals={crystals}
-            highlighted={false}
-            foreground={false}
-            costHighlight={false}
-            forged={false}
-            impossible={false}
-            viewMode={viewMode}
-            wellSel={wellSel}
-          />
-        )}
+    <div style={{ width: 112, height: 160, flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, animation: 'forge-eject 900ms ease-in forwards' }}>
+        <TutorialCard
+          card={card}
+          bonuses={bonuses}
+          crystals={crystals}
+          highlighted={false}
+          foreground={false}
+          costHighlight={false}
+          forged={false}
+          impossible={false}
+          viewMode={viewMode}
+          wellSel={wellSel}
+        />
       </div>
     </div>
   );
@@ -1400,7 +1382,6 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
               return (
                 <ForgeEjectAnimation
                   key={`forge-${slot.cardId}`}
-                  tier={tier}
                   card={forgeCard}
                   bonuses={s.bonuses}
                   crystals={s.crystals}
