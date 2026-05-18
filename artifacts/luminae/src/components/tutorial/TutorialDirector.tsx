@@ -3814,24 +3814,16 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: cameraFocus !== "market" ? 0.68 : 0 }}
-          style={lumiiTarget === "player-panel" || lumiiTarget === "verdance-panel"
-            ? {
-                // Lumii is at the bottom — float dialogue just above the player panel
-                bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,
-              }
-            : beatId === "b8_first_harness"
-            ? {
-                // Lumii is at card-cost (78%, 40%) — pin dialogue just above the sprite
-                top: "calc(40% - 110px)",
-              }
-            : cameraFocus === "well"
-            ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
-            : {
-                // In landscape the player panel is ~90px tall; in portrait ~160px.
-                // Keep the dialogue floating just above the panel in both orientations.
-                bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,
-              }
-          }
+          style={(() => {
+            // Position dialogue near Lumii by deriving placement from her y%.
+            // When she's near the top (<= 38%) put dialogue below her;
+            // otherwise put it above so it never covers the action area beneath her.
+            const lumiiYNum = parseFloat(lumiiEffectivePos.y);
+            if (lumiiYNum <= 38) {
+              return { top: `calc(${lumiiEffectivePos.y} + 62px)` };
+            }
+            return { top: `calc(${lumiiEffectivePos.y} - 115px)` };
+          })()}
         >
           <AnimatePresence mode="wait">
             <DialogueBox
