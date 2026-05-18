@@ -335,7 +335,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "forge-btn",
     dialogue: [
-      { text: "Use the Affinities harnessed from the Well to pay the costs." },
+      { text: "Use the Affinities harnessed from the Well to pay the costs of artifacts." },
       { text: "Select Root Lattice and press Forge.", excited: true },
     ],
     completion: { type: "action", action: "forge_market" },
