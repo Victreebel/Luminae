@@ -47,25 +47,11 @@ export type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
-/**
- * Named camera positions available for any beat.
- *
- * market  — top of screen: Luminary portals + view tabs (default)
- * tier1   — Foundation (Tier 1) card row scrolled into view
- * tier2   — Tier 2 card row near top, view tabs still visible
- * forge   — The Forge section at the top of the viewport
- * well    — Bottom of screen: Affinity Well fully visible
- * storage — Same scroll as market; emphasises hand / storage panel
- */
-export type TutorialCamera = "market" | "tier1" | "tier2" | "forge" | "well" | "storage";
-
 export interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
   dialogue: TutorialDialogueLine[];
   lumiiZone: LumiiZone;
-  /** Override the automatic camera position for this beat. */
-  camera?: TutorialCamera;
   highlightZone?: string;
   foregroundCardId?: string;
   completion: CompletionTrigger;
@@ -300,7 +286,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "An artifact's cost is shown at the bottom of its card." },
+      { text: "An artifact's cost is shown here." },
       { text: "Root Lattice costs 1 Flare, 1 Continuum, and 1 Radiance." },
     ],
     completion: { type: "dialogue" },
@@ -335,7 +321,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "forge-btn",
     dialogue: [
-      { text: "Use the Affinities harnessed from the Well to pay the costs of artifacts." },
+      { text: "Use the Affinities harnessed from the Well to pay the costs." },
       { text: "Select Root Lattice and press Forge.", excited: true },
     ],
     completion: { type: "action", action: "forge_market" },

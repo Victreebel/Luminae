@@ -749,23 +749,23 @@ function AffinityWell({
   const isWellPulse = beatId === "b7b_cost_bridge";
   return (
     <motion.div
-      className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${harnessFlash ? "border-teal-400/80" : isWellPulse ? "border-transparent" : "border-teal-500/35"}`}
+      className={`border rounded-2xl p-3 backdrop-blur-md transition-colors ${harnessFlash ? "border-emerald-400/70" : isWellPulse ? "border-transparent" : "border-white/10"}`}
       animate={harnessFlash
-        ? { boxShadow: ["0 0 6px rgba(20,184,166,0.2)", "0 0 28px rgba(20,184,166,0.55)", "0 0 14px rgba(20,184,166,0.25)"] }
+        ? { boxShadow: ["0 0 6px rgba(52,211,153,0.15)", "0 0 28px rgba(52,211,153,0.50)", "0 0 14px rgba(52,211,153,0.22)"] }
         : { boxShadow: "none" }
       }
       transition={{ duration: 0.85, ease: "easeOut" }}
       style={{
-        background: "rgba(0,18,22,0.85)",
+        background: "rgba(3,3,12,0.78)",
         animation: isWellPulse ? "well-pulse 1.6s ease-in-out infinite" : undefined,
       }}
     >
       <div
-        className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isWellPulse ? "text-teal-300" : "text-teal-400/80"}`}
+        className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider mb-2 ${isWellPulse ? "text-cyan-300/80" : "text-white/40"}`}
         style={isWellPulse ? { animation: "well-header-pulse 1.6s ease-in-out infinite" } : undefined}
       >
         Affinity Well
-        <Droplets className="h-3 w-3 shrink-0 text-teal-400" />
+        <Droplets className={`h-3 w-3 shrink-0 ${isWellPulse ? "text-cyan-300" : "text-cyan-400/70"}`} />
       </div>
       <div className="flex gap-2 flex-wrap justify-center mb-3">
         {ALL_GEMS.map(gem => {
@@ -791,7 +791,7 @@ function AffinityWell({
                     ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
                     ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
                   style={{
-                    borderColor: cur > 0 ? meta.hex : isHighlighted ? "#2dd4bf" : "rgba(20,184,166,0.45)",
+                    borderColor: cur > 0 ? meta.hex : isHighlighted ? "#67e8f9" : "rgba(255,255,255,0.15)",
                     animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
                   }}
                 >
@@ -2168,11 +2168,11 @@ function ArchitectAssembly({
         {/* ── Affinity Well ── */}
         <motion.div {...sectionAnim(20, 0.17)}
           className="absolute left-0 right-0 mx-3 rounded-2xl"
-          style={{ top: 432, padding: "8px 8px 10px 8px", background: "rgba(0,18,22,0.88)", border: "1px solid rgba(20,184,166,0.28)" }}
+          style={{ top: 432, padding: "8px 8px 10px 8px", background: "rgba(3,3,12,0.80)", border: "1px solid rgba(255,255,255,0.09)" }}
         >
-          <div className="flex items-center gap-1.5 text-[8px] text-teal-400/80 font-semibold uppercase tracking-wider mb-2">
+          <div className="flex items-center gap-1.5 text-[8px] text-white/40 font-semibold uppercase tracking-wider mb-2">
             Affinity Well
-            <Droplets className="h-2.5 w-2.5 text-teal-400 shrink-0" />
+            <Droplets className="h-2.5 w-2.5 text-cyan-400/70 shrink-0" />
           </div>
           <div className="flex gap-1">
             {ALL_GEMS.map(gem => {
@@ -3264,19 +3264,15 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     "market-t1":      { x: "87%", y: "26%" },
     "market-t2":      { x: "87%", y: "20%" },
     "market-t3":      { x: "87%", y: "14%" },
-    // card-cost highlight is at (76%,38%) — keep Lumii on the LEFT so she points
-    // toward it without standing on it.
-    "card-cost":      { x: "6%", y: "42%" },
+    "card-cost":      { x: "78%", y: "40%" },
     // "well" was at 12% which caused Lumii to overlap the top-[54px] dialogue box
     // when cameraFocus === "well" — moved down to 24% to clear it on all screen sizes
     well:             { x: "87%", y: "24%" },
-    // hand/storage highlights are on the left — keep Lumii on the right edge
-    hand:             { x: "87%", y: "20%" },
-    storage:          { x: "87%", y: "20%" },
+    hand:             { x: "13%", y: "20%" },
+    storage:          { x: "13%", y: "20%" },
     eminence:         { x: "88%", y: "20%" },
-    // discounted-tab & needed-tab highlights are centre-left — Lumii on right edge
-    "discounted-tab": { x: "87%", y: "20%" },
-    "needed-tab":     { x: "87%", y: "20%" },
+    "discounted-tab": { x: "13%", y: "20%" },
+    "needed-tab":     { x: "13%", y: "20%" },
     "top-center":     { x: "50%", y: "18%" },
     center:           { x: "50%", y: "38%" },
     luminary:         { x: "50%", y: "28%" },
@@ -3306,11 +3302,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const tier1Ref = useRef<HTMLDivElement>(null);
   const tier2Ref = useRef<HTMLDivElement>(null);
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" | "tier2" = (() => {
-    // Beat-level override takes priority over all auto logic below.
-    if (beat.camera) return beat.camera;
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
     if (beatId === "b8_first_harness" || beatId === "b9_first_forge" || beatId === "b9b_forge_complete" || beatId === "b9c_transition" || (beatId === "b10_reserve" && s.dlgLine === 0)) return "well";
-    if (beatId === "b10_reserve" && s.dlgLine >= 1) return "market";
+    if (beatId === "b10_reserve" && s.dlgLine >= 1) return "tier2";
     if (beatId === "b11_forge_reserved" && subStep === 0) return "tier1";
     if (beatId === "b12_tier2" && subStep === 1) return "well";
     if (beatId === "b16_final_forge" && subStep === 0) return "well";
@@ -3814,32 +3808,28 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       {s.dlgLine < beat.dialogue.length && !["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"].includes(beatId) && (
         <motion.div
           key={`dlg-settle-${beatId}-${subStep}`}
-          className="fixed z-50 px-4"
+          className="fixed left-0 right-0 z-50 px-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: cameraFocus !== "market" ? 0.68 : 0 }}
-          style={(() => {
-            // Vertical: near Lumii — below when she's near the top, above otherwise.
-            const lumiiYNum = parseFloat(lumiiEffectivePos.y);
-            const vertStyle: React.CSSProperties = lumiiYNum <= 38
-              ? { top: `calc(${lumiiEffectivePos.y} + 62px)` }
-              : { top: `calc(${lumiiEffectivePos.y} - 115px)` };
-
-            // Horizontal: stay on the OPPOSITE side from the highlighted feature
-            // so the dialogue box never floats over what the player is meant to look at.
-            const hlZone = beat.highlightZone
-              ? HIGHLIGHT_ZONE_SCREEN_POS[beat.highlightZone]
-              : null;
-            const hlXNum = hlZone ? parseFloat(hlZone.x) : 50;
-            const horizStyle: React.CSSProperties =
-              hlXNum > 60
-                ? { left: 0, right: "48%" }       // highlight is right — dialogue on left
-                : hlXNum < 40
-                ? { left: "48%", right: 0 }        // highlight is left  — dialogue on right
-                : { left: 0, right: 0 };           // highlight is centre — full width
-
-            return { ...vertStyle, ...horizStyle };
-          })()}
+          style={lumiiTarget === "player-panel" || lumiiTarget === "verdance-panel"
+            ? {
+                // Lumii is at the bottom — float dialogue just above the player panel
+                bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,
+              }
+            : beatId === "b8_first_harness"
+            ? {
+                // Lumii is at card-cost (78%, 40%) — pin dialogue just above the sprite
+                top: "calc(40% - 110px)",
+              }
+            : cameraFocus === "well"
+            ? { top: "calc(54px + env(safe-area-inset-top, 0px))" }
+            : {
+                // In landscape the player panel is ~90px tall; in portrait ~160px.
+                // Keep the dialogue floating just above the panel in both orientations.
+                bottom: `calc(${isShortLandscape ? "96px" : "160px"} + env(safe-area-inset-bottom, 0px))`,
+              }
+          }
         >
           <AnimatePresence mode="wait">
             <DialogueBox
