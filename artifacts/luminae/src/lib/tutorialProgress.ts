@@ -1,8 +1,13 @@
 const PROGRESS_KEY = "luminae_tutorial_progress";
 const PROGRESS_ID_KEY = "luminae_tutorial_progress_id";
+const PROGRESS_VERSION_KEY = "luminae_tutorial_progress_ver";
 const SEEN_KEY = "luminae_tutorial_seen";
 const COMPLETED_KEY = "luminae_tutorial_completed";
 const INTRO_SEEN_KEY = "luminae_intro_seen_beat";
+
+// Increment this whenever beat ordering or IDs change so that stale saved
+// progress (which may point at the wrong beat) is silently discarded.
+const TUTORIAL_SEQUENCE_VERSION = 2;
 
 export function markTutorialSeen(): void {
   try {
@@ -22,12 +27,18 @@ export function hasTutorialSeen(): boolean {
 export function saveTutorialProgress(beat: number): void {
   try {
     localStorage.setItem(PROGRESS_KEY, String(beat));
+    localStorage.setItem(PROGRESS_VERSION_KEY, String(TUTORIAL_SEQUENCE_VERSION));
   } catch {
   }
 }
 
 export function loadTutorialProgress(): number | null {
   try {
+    const ver = localStorage.getItem(PROGRESS_VERSION_KEY);
+    if (ver === null || parseInt(ver, 10) !== TUTORIAL_SEQUENCE_VERSION) {
+      clearTutorialProgress();
+      return null;
+    }
     const v = localStorage.getItem(PROGRESS_KEY);
     if (v === null) return null;
     const n = parseInt(v, 10);
@@ -56,6 +67,7 @@ export function clearTutorialProgress(): void {
   try {
     localStorage.removeItem(PROGRESS_KEY);
     localStorage.removeItem(PROGRESS_ID_KEY);
+    localStorage.removeItem(PROGRESS_VERSION_KEY);
   } catch {
   }
 }

@@ -3313,6 +3313,10 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           container.getBoundingClientRect().top +
           container.scrollTop;
         container.scrollTo({ top: forgeTop, behavior: "smooth" });
+      } else {
+        // Fallback: ref not yet populated — scroll to ~40% which approximates
+        // where the forge section sits relative to the full content height.
+        container.scrollTo({ top: Math.floor(maxScroll * 0.4), behavior: "smooth" });
       }
     } else if (cameraFocus === "tier2") {
       // Scroll so the Tier 2 row is near the top, keeping the view tabs visible
@@ -3633,8 +3637,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
         // Dialogue-line excited state: true when the current line has excited:true
         const currentLineExcited = beat.dialogue[s.dlgLine]?.excited ?? false;
-        // Excited bounce: scoped to action hint pending, post-forge, or an explicitly excited line
-        const shouldExcitedBounce = hintVisible || forgeJustHappened || currentLineExcited;
+        // Excited bounce: scoped to action hint pending, post-forge, or an explicitly excited
+        // dialogue line — but only during act/semiOpen beats (never during listen/look narration).
+        const shouldExcitedBounce = hintVisible || forgeJustHappened || (currentLineExcited && isActMode);
         return (
           <motion.div
             animate={{ left: effectiveLumiiPos.x, top: effectiveLumiiPos.y }}
@@ -3649,7 +3654,13 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className="absolute pointer-events-auto"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" && s.dlgLine === 0 ? 1.4 : 0 }}
+                transition={{ duration: 0.4, delay:
+                    // b6_forge_appears dlgLine 0: wait for board pull-back zoom to finish (1.6s)
+                    beatId === "b6_forge_appears" && s.dlgLine === 0 ? 1.4
+                    // b6b_root_lattice dlgLine 0: wait for camera scroll (~0.6s) + card flip (~1.1s)
+                  : beatId === "b6b_root_lattice" && s.dlgLine === 0 ? 1.4
+                  : 0
+                }}
                 style={lumiiIsLeft
                   ? { left: 36, top: -64, width: 216 }
                   : { right: 36, top: -64, width: 216 }

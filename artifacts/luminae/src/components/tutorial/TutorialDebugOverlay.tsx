@@ -177,7 +177,7 @@ const C = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function TutorialDebugOverlay({ s }: { s: TutState; dispatch: Dispatch<TAction> }) {
-  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [sections, setSections] = useState<Record<SectionId, boolean>>(DEFAULT_OPEN);
   const [storageSnap, setStorageSnap] = useState<Record<string, string | null> | null>(null);
 
