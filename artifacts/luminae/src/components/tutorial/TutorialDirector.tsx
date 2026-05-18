@@ -337,18 +337,6 @@ function CostCallout() {
       height={160}
       style={{ overflow: "visible" }}
     >
-      {/* Glow fill behind the cost row */}
-      <motion.rect
-        x={4} y={134} width={104} height={24} rx={6}
-        fill="rgba(251,191,36,0.08)"
-        stroke="none"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: drawn ? [0.4, 1, 0.4] : 1 }}
-        transition={drawn
-          ? { duration: 1.6, repeat: Infinity, ease: "easeInOut" }
-          : { duration: 0.25, delay: 0.35 }
-        }
-      />
       {/* Draw-in stroke */}
       <motion.rect
         x={4} y={134} width={104} height={24} rx={6}
