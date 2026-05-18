@@ -47,11 +47,25 @@ export type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
+/**
+ * Named camera positions available for any beat.
+ *
+ * market  — top of screen: Luminary portals + view tabs (default)
+ * tier1   — Foundation (Tier 1) card row scrolled into view
+ * tier2   — Tier 2 card row near top, view tabs still visible
+ * forge   — The Forge section at the top of the viewport
+ * well    — Bottom of screen: Affinity Well fully visible
+ * storage — Same scroll as market; emphasises hand / storage panel
+ */
+export type TutorialCamera = "market" | "tier1" | "tier2" | "forge" | "well" | "storage";
+
 export interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
   dialogue: TutorialDialogueLine[];
   lumiiZone: LumiiZone;
+  /** Override the automatic camera position for this beat. */
+  camera?: TutorialCamera;
   highlightZone?: string;
   foregroundCardId?: string;
   completion: CompletionTrigger;

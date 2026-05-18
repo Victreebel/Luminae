@@ -3302,6 +3302,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const tier1Ref = useRef<HTMLDivElement>(null);
   const tier2Ref = useRef<HTMLDivElement>(null);
   const cameraFocus: "market" | "well" | "storage" | "forge" | "tier1" | "tier2" = (() => {
+    // Beat-level override takes priority over all auto logic below.
+    if (beat.camera) return beat.camera;
     if (beatId === "b6b_root_lattice" || beatId === "b7_artifact_cost" || beatId === "b7b_cost_bridge") return "tier1";
     if (beatId === "b8_first_harness" || beatId === "b9_first_forge" || beatId === "b9b_forge_complete" || beatId === "b9c_transition" || (beatId === "b10_reserve" && s.dlgLine === 0)) return "well";
     if (beatId === "b10_reserve" && s.dlgLine >= 1) return "tier2";
