@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 // Does NOT reuse forge visuals — this is a distinct scan→seal→travel sequence.
 //
 // mode="tutorial"  slower/readable  ~1.9 s total
-// mode="game"      faster/snappy    ~0.8 s total
+// mode="game"      faster/snappy    ~1.4 s total
 
 export type CipherApertureMode = "tutorial" | "game";
 
