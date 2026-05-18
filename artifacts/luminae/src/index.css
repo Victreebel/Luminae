@@ -375,11 +375,6 @@
   }
 }
 
-@keyframes tab-ring-blink {
-  0%, 48%  { box-shadow: 0 0 0 2px rgba(251,191,36,1), 0 0 14px rgba(251,191,36,0.8), 0 0 28px rgba(251,191,36,0.4); }
-  50%, 100% { box-shadow: 0 0 0 2px rgba(251,191,36,0), 0 0 0px rgba(251,191,36,0);  }
-}
-
 @keyframes forge-pulse {
   0%, 100% {
     box-shadow:
