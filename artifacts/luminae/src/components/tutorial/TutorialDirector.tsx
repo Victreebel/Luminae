@@ -986,7 +986,7 @@ function MarketTabs({
     <div className="flex gap-1">
       {tabs.map(tab => {
         const isActive = view === tab.key;
-        const isHl = (tab.key === "discounted" && highlightDiscounted) || (tab.key === "needed" && highlightNeeded);
+        const isHl = tab.key === "discounted" && highlightDiscounted;
         return (
           <motion.button
             key={tab.key}
