@@ -300,7 +300,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     foregroundCardId: "t1e01",
     highlightZone: "card-cost",
     dialogue: [
-      { text: "An artifact's cost is shown here." },
+      { text: "An artifact's cost is shown at the bottom of its card." },
       { text: "Root Lattice costs 1 Flare, 1 Continuum, and 1 Radiance." },
     ],
     completion: { type: "dialogue" },
