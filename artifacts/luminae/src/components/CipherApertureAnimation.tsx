@@ -45,7 +45,7 @@ type Phase = "lift" | "scan" | "compress" | "sigil" | "travel" | "arrive";
 const PHASE_ORDER: Phase[] = ["lift", "scan", "compress", "sigil", "travel", "arrive"];
 
 const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
-  game:     { lift: 80,  scan: 165, compress: 205, sigil: 70,  travel: 190, arrive: 90  },
+  game:     { lift: 140, scan: 310, compress: 320, sigil: 160, travel: 290, arrive: 140 },
   tutorial: { lift: 220, scan: 490, compress: 375, sigil: 130, travel: 400, arrive: 255 },
 };
 
@@ -93,11 +93,11 @@ export function CipherApertureAnimation({
   const showLabel = pi >= PHASE_ORDER.indexOf("sigil");
 
   const dimOpacity =
-    at("lift")     ? 0.28 :
-    at("scan")     ? 0.42 :
-    at("compress") ? 0.55 :
-    at("sigil")    ? 0.55 :
-    at("travel")   ? 0.38 : 0;
+    at("lift")     ? 0.35 :
+    at("scan")     ? 0.58 :
+    at("compress") ? 0.66 :
+    at("sigil")    ? 0.66 :
+    at("travel")   ? 0.52 : 0;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[70]">
@@ -183,7 +183,7 @@ export function CipherApertureAnimation({
                   strokeWidth="1.6"
                   fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 0.88 }}
+                  animate={{ pathLength: 1, opacity: 1.0 }}
                   transition={{
                     duration: dur.scan * 0.38 / 1000,
                     delay: i * 0.045,
@@ -202,10 +202,10 @@ export function CipherApertureAnimation({
                   key={`ln-${i}`}
                   d={ln.d}
                   stroke={affinityHex}
-                  strokeWidth={mode === "tutorial" ? 1.4 : 1.1}
+                  strokeWidth={mode === "tutorial" ? 1.4 : 1.5}
                   fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: [0, 0.92, 0.60] }}
+                  animate={{ pathLength: 1, opacity: [0, 1.0, 0.72] }}
                   transition={{
                     pathLength: { duration: dur.scan * 0.54 / 1000, delay: ln.dl, ease: "easeInOut" },
                     opacity:    { duration: dur.scan * 0.82 / 1000, delay: ln.dl, times: [0, 0.28, 1] },
