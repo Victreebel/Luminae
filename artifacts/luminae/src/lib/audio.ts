@@ -225,6 +225,33 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /**
+   * Cipher Seal — soft rising scan + fold click + harmonic shimmer chime.
+   * Communicates: Artifact preserved/sealed (not spent, not destroyed).
+   * Distinct from forge (celebratory burst) and old cardReserved (swooshy pad).
+   * Total audible duration ~0.9 s.
+   */
+  playCipherSeal() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      // Rising scan sweep — narrow noise band 380→1100 Hz (cipher scanning)
+      this.noiseSweep(ctx, t, 0.30, 0.07, 380, 1100);
+
+      // Fold punctuation — brief high-Q resonant click (card sealing shut)
+      this.noiseBlip(ctx, t + 0.24, 0.058, 0.055, 1820, 14);
+
+      // Sealed chord — perfect fifth C5 + G5, quiet and cool (preserved)
+      this.osc(ctx, 523.25, 'sine', t + 0.27, t + 0.88, 0.044, 0.018);
+      this.osc(ctx, 783.99, 'sine', t + 0.31, t + 0.78, 0.027, 0.020);
+
+      // High chime shimmer — crystalline seal confirmation
+      this.osc(ctx, 1760, 'sine', t + 0.38, t + 0.70, 0.028, 0.010);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Cosmic bell — metallic tone with long decay. */
   playTurnStart() {
     if (this.muted) return;

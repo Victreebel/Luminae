@@ -21,6 +21,7 @@ import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
+import { CipherApertureAnimation } from '@/components/CipherApertureAnimation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
@@ -1112,6 +1113,17 @@ export default function GameBoard() {
   } | null>(null);
   const cardActionBurstKeyRef = useRef(0);
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [cipherBurst, setCipherBurst] = useState<{
+    key: number;
+    sourceRect: { x: number; y: number; w: number; h: number };
+    affinityHex: string;
+    cardName: string;
+    gotFlux: boolean;
+    card: ArtifactCard;
+    tier: number;
+    destPos?: { x: number; y: number };
+  } | null>(null);
+  const cipherBurstKeyRef = useRef(0);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const [dealingCard, setDealingCard] = useState<{
@@ -1680,25 +1692,44 @@ export default function GameBoard() {
 
             cardActionBurstKeyRef.current += 1;
             setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
-            setCardActionBurst({
-              key: cardActionBurstKeyRef.current,
-              card: exitCard,
-              tier,
-              actionType: action.type === 'purchase_card' ? 'purchase' : 'reserve',
-              playerName: player?.playerName ?? 'Unknown',
-              avatarId: player?.avatarId ?? null,
-              lumens: exitCard.lumens ?? 0,
-              gotFlux,
-              startRect: rect
-                ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-                : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
-            });
 
-            if (gotFlux) gameAudio.playFluxCoin();
             if (action.type === 'purchase_card') {
+              setCardActionBurst({
+                key: cardActionBurstKeyRef.current,
+                card: exitCard,
+                tier,
+                actionType: 'purchase',
+                playerName: player?.playerName ?? 'Unknown',
+                avatarId: player?.avatarId ?? null,
+                lumens: exitCard.lumens ?? 0,
+                gotFlux: false,
+                startRect: rect
+                  ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+                  : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+              });
               gameAudio.playCardPurchased();
             } else {
-              gameAudio.playCardReserved();
+              // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
+              cipherBurstKeyRef.current += 1;
+              const panelRect = playerPanelRef.current?.getBoundingClientRect();
+              setCipherBurst({
+                key: cipherBurstKeyRef.current,
+                sourceRect: rect
+                  ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+                  : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                affinityHex: exitCard.bonusColor
+                  ? (GEM_META[exitCard.bonusColor as GemKey]?.glowHex ?? '#7090FF')
+                  : '#7090FF',
+                cardName: exitCard.name,
+                gotFlux,
+                card: exitCard,
+                tier,
+                destPos: panelRect
+                  ? { x: panelRect.left + 60, y: panelRect.top + 48 }
+                  : undefined,
+              });
+              if (gotFlux) gameAudio.playFluxCoin();
+              gameAudio.playCipherSeal();
             }
 
             for (const t of cardAnimTimersRef.current) clearTimeout(t);
@@ -5016,6 +5047,21 @@ export default function GameBoard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Cipher Aperture Burst — Encrypt / Reserve from market ── */}
+      {cipherBurst && (
+        <CipherApertureAnimation
+          animKey={cipherBurst.key}
+          mode="game"
+          sourceRect={cipherBurst.sourceRect}
+          affinityHex={cipherBurst.affinityHex}
+          cardName={cipherBurst.cardName}
+          cardFace={<ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />}
+          gotFlux={cipherBurst.gotFlux}
+          destPos={cipherBurst.destPos}
+          onComplete={() => setCipherBurst(null)}
+        />
+      )}
 
       {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
       {dealingCard && (() => {

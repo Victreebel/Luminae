@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
+import { CipherApertureAnimation } from "@/components/CipherApertureAnimation";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
@@ -3167,6 +3168,16 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const [gemBurst, setGemBurst] = useState<{ key: number; gems: GemKey[] } | null>(null);
   const gemBurstKeyRef = useRef(0);
   const [forgeJustHappened, setForgeJustHappened] = useState(false);
+  const [encryptBurst, setEncryptBurst] = useState<{
+    key: number;
+    sourceRect: { x: number; y: number; w: number; h: number };
+    affinityHex: string;
+    cardName: string;
+    gotFlux: boolean;
+    cardId: string;
+    destPos?: { x: number; y: number };
+  } | null>(null);
+  const encryptBurstKeyRef = useRef(0);
 
   useEffect(() => {
     const trigger = s.animTrigger;
@@ -3775,7 +3786,22 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             forgeEnabled={selectedCardData.forgeEnabled}
             reserveEnabled={selectedCardData.reserveEnabled}
             onForge={selectedCardData.onForge ? () => { setSelectedCardData(null); selectedCardData.onForge!(); } : undefined}
-            onReserve={selectedCardData.onReserve ? () => { gameAudio.playCardReserved(); setSelectedCardData(null); selectedCardData.onReserve!(); } : undefined}
+            onReserve={selectedCardData.onReserve ? () => {
+              const affHex = GEM_META[selectedCardData.card.bonusColor as GemKey]?.glowHex ?? '#7090FF';
+              encryptBurstKeyRef.current += 1;
+              setEncryptBurst({
+                key: encryptBurstKeyRef.current,
+                sourceRect: { x: window.innerWidth / 2 - 56, y: window.innerHeight * 0.32, w: 112, h: 160 },
+                affinityHex: affHex,
+                cardName: selectedCardData.card.name,
+                gotFlux: true,
+                cardId: selectedCardData.card.id,
+                destPos: { x: window.innerWidth * 0.12, y: window.innerHeight * 0.76 },
+              });
+              gameAudio.playCipherSeal();
+              setSelectedCardData(null);
+              selectedCardData.onReserve!();
+            } : undefined}
             onClose={() => setSelectedCardData(null)}
           />
         )}
@@ -3854,6 +3880,32 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
           />
         )}
       </AnimatePresence>
+
+      {/* ── Cipher Aperture Burst (Encrypt / tutorial reserve) ──────────── */}
+      {encryptBurst && (() => {
+        const tCard = TUTORIAL_CARDS[encryptBurst.cardId];
+        const artUrl = tCard ? CARD_ART[tCard.id] : undefined;
+        const cardFace = (
+          <div style={{ width: 112, height: 160, position: "relative", overflow: "hidden", borderRadius: 12, background: artUrl ? undefined : "linear-gradient(175deg, #021005, #063020)" }}>
+            {artUrl && <img src={artUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} draggable={false} />}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.82))" }} />
+            <div style={{ position: "absolute", bottom: 8, left: 8, fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.9)", lineHeight: 1.3 }}>{encryptBurst.cardName}</div>
+          </div>
+        );
+        return (
+          <CipherApertureAnimation
+            animKey={encryptBurst.key}
+            mode="tutorial"
+            sourceRect={encryptBurst.sourceRect}
+            affinityHex={encryptBurst.affinityHex}
+            cardName={encryptBurst.cardName}
+            cardFace={cardFace}
+            gotFlux={encryptBurst.gotFlux}
+            destPos={encryptBurst.destPos}
+            onComplete={() => setEncryptBurst(null)}
+          />
+        );
+      })()}
 
       {/* ── Gem Pickup Burst Overlay ─────────────────────────────────────── */}
       <AnimatePresence>
