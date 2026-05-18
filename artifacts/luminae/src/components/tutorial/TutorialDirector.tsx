@@ -3648,11 +3648,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const lumiiClickable = hintVisible && s.dlgLine < beat.dialogue.length;
         const effectiveLumiiPos = lumiiPos;
 
-        // Beats where dialogue floats beside/below Lumii instead of fixed at bottom
+        // Beats where dialogue floats beside Lumii instead of fixed at bottom
         const CARD_DLG_BEATS = new Set(["b6_forge_appears", "b6b_root_lattice", "b7_artifact_cost", "b7b_cost_bridge"]);
-        const BELOW_DLG_BEATS = new Set(["b9_first_forge"]);
-        const showFloatingDlg = (CARD_DLG_BEATS.has(beatId) || BELOW_DLG_BEATS.has(beatId)) && s.dlgLine < beat.dialogue.length;
-        const showBelowLumii = BELOW_DLG_BEATS.has(beatId);
+        const showFloatingDlg = CARD_DLG_BEATS.has(beatId) && s.dlgLine < beat.dialogue.length;
         // Bubble goes to the opposite side from Lumii so it doesn't clip off-screen
         const lumiiIsLeft = parseFloat(effectiveLumiiPos.x) < 50;
         // Dialogue-line excited state: true when the current line has excited:true
@@ -3674,11 +3672,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, delay: beatId === "b6_forge_appears" && s.dlgLine === 0 ? 1.4 : 0 }}
-                style={showBelowLumii
-                  ? { left: -108, top: 36, width: 216 }
-                  : lumiiIsLeft
-                    ? { left: 36, top: -64, width: 216 }
-                    : { right: 36, top: -64, width: 216 }
+                style={lumiiIsLeft
+                  ? { left: 36, top: -64, width: 216 }
+                  : { right: 36, top: -64, width: 216 }
                 }
               >
                 <AnimatePresence mode="wait">
