@@ -38,10 +38,10 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: 2,
-    title: "Step 3 of 5 — Reserve a Card",
+    title: "Step 3 of 5 — Encrypt a Card",
     instruction:
-      "Tap any Artifact card in the market, then tap Reserve. Reserving holds the card so no one else can take it, and gives you 1 Singularity (wild) crystal.",
-    actionHint: "Tap a market card, then tap Reserve for later",
+      "Tap any Artifact card in the market, then tap Encrypt. Encrypting holds the card so no one else can take it, and gives you 1 Singularity (wild) crystal.",
+    actionHint: "Tap a market card, then tap Encrypt for later",
     zone: "market",
     permittedActionTypes: ["reserve_card"],
     requiresConfirm: false,
@@ -253,7 +253,7 @@ export function TutorialOverlay({
               <ul className="text-left text-sm space-y-2 mb-6">
                 {[
                   "Harvesting affinities (3 different or 2 of the same)",
-                  "Reserving cards to hold them for later",
+                  "Encrypting cards to hold them for later",
                   "Forging Artifacts for permanent bonuses",
                   "Claiming Luminaries by meeting their requirements",
                 ].map((item) => (

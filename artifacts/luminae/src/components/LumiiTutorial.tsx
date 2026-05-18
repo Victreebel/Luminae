@@ -915,10 +915,10 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 1,
     highlightZone: "market",
-    objective: "Objective: reserve an Artifact",
+    objective: "Objective: encrypt an Artifact",
     lines: [
-      "Tap any Artifact to examine it. You can Forge it into your civilization now, or Reserve it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
-      "Reserve one now. Tap any Artifact in the market and hit Reserve.",
+      "Tap any Artifact to examine it. You can Forge it into your civilization now, or Encrypt it — securing it and receiving a Singularity current as the cosmos rewards your foresight.",
+      "Encrypt one now. Tap any Artifact in the market and hit Encrypt.",
     ],
     advance: { type: "action", actions: ["reserve_card"] },
   },
@@ -982,10 +982,10 @@ const BEATS: Beat[] = [
     position: "market",
     phase: 2,
     highlightZone: "market",
-    objective: "Objective: forge your reserved Artifact",
+    objective: "Objective: forge your encrypted Artifact",
     lines: [
-      "You have a Verdance Artifact reserved — it costs Abyss and Radiance currents, and your civilization holds both.",
-      "Tap the Hand panel, find your reserved card, and Forge it. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
+      "You have a Verdance Artifact encrypted — it costs Abyss and Radiance currents, and your civilization holds both.",
+      "Tap the Hand panel, find your encrypted card, and Forge it. The Verdant Oracle is waiting — and 15 Eminence is one step away.",
     ],
     advance: { type: "action", actions: ["purchase_reserved"] },
   },
@@ -1061,9 +1061,9 @@ const NUDGE_MESSAGES: Partial<Record<number, string>> = {
   2:  "Tap affinity currents in the Well below to select them, then tap Harness.",
   3:  "Draw more currents from the Affinity Well, then tap Harness.",
   5:  "Tap Discounted or Needed above the market to try the filters, then tap Lumii to continue.",
-  6:  "Tap any Artifact card in the market, then tap Reserve to hold it.",
+  6:  "Tap any Artifact card in the market, then tap Encrypt to hold it.",
   8:  "Tap an Artifact with green costs and hit Forge Artifact.",
-  12: "Open your Hand panel, find your reserved card, and tap Forge Artifact.",
+  12: "Open your Hand panel, find your encrypted card, and tap Forge Artifact.",
 };
 
 // ─── Position helpers ─────────────────────────────────────────────────────────
@@ -1545,7 +1545,7 @@ export function LumiiTutorial({
               <ul className="text-left text-sm space-y-2 mb-5">
                 {[
                   "Harnessing affinity currents from the Affinity Well",
-                  "Reserving Artifacts — securing them and earning Singularity",
+                  "Encrypting Artifacts — securing them and earning Singularity",
                   "Forging relic technologies to build permanent affinity depth",
                   "Using Discounted and Needed filters to find affordable Artifacts",
                   "Calling forth Luminaries by expressing a deep affinity path",

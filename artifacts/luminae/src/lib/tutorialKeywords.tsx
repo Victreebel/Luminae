@@ -52,9 +52,9 @@ export const KEYWORDS: KeywordDef[] = [
     glowColor: "#A855F7",
   },
 
-  // ── Reserve / Reserving / Reserved ──────────────────────────────────────
+  // ── Encrypt / Encrypting / Encrypted ────────────────────────────────────
   {
-    pattern: /\bReserv(?:e[ds]?|ing)\b/g,
+    pattern: /\bEncrypt(?:ed|ing|s)?\b/g,
     color: "#60A5FA",       // blue (matches Continuum / sapphire palette)
     glowColor: "#3B82F6",
   },

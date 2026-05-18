@@ -242,7 +242,7 @@ export function tutorialReducer(s: TutState, a: TAction): TutState {
       const beatId = beat.id;
       if (beatId === "b10_reserve") {
         if (cardId !== RESERVE_CARD_ID) {
-          return { ...s, nudge: "Reserve the highlighted artifact." };
+          return { ...s, nudge: "Encrypt the highlighted artifact." };
         }
         const newCrystals = { ...s.crystals, flux: (s.crystals.flux ?? 0) + 1 };
         return {

@@ -699,7 +699,7 @@ function TutorialCardSheet({
                     : "bg-white/8 text-white/25 cursor-not-allowed"
                 }`}
               >
-                {reserveEnabled ? "Reserve" : "Not yet"}
+                {reserveEnabled ? "Encrypt" : "Not yet"}
               </button>
             )}
           </div>
@@ -845,7 +845,7 @@ function PlayerHand({
 
   return (
     <div className="border border-white/10 rounded-2xl p-3 backdrop-blur-md" style={{ background: "rgba(3,3,12,0.78)" }}>
-      <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Reserved</div>
+      <div className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mb-2">Encrypted</div>
       <div className="flex gap-3 flex-wrap">
         {s.reserved.map(id => {
           const card = TUTORIAL_CARDS[id];

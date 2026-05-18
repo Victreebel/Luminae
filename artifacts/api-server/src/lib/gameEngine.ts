@@ -1332,11 +1332,11 @@ function describeAction(action: ActionPayload, player: PlayerGameState): string 
     case "reserve_card": {
       if (action.cardId) {
         const lore = getCardLore(action.cardId);
-        return `Reserved "${lore.name}"`;
+        return `Encrypted "${lore.name}"`;
       }
       return action.tier
-        ? `Reserved a Tier ${action.tier} card from the deck`
-        : "Reserved a card";
+        ? `Encrypted a Tier ${action.tier} card from the deck`
+        : "Encrypted a card";
     }
     case "purchase_card":
     case "purchase_reserved": {

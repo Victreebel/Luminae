@@ -2594,9 +2594,9 @@ export default function GameBoard() {
       case 'reserve_card': {
         if (action.cardId) {
           const card = allCards.find((c) => c.id === action.cardId);
-          return card ? `Reserve "${card.name}"` : 'Reserve card';
+          return card ? `Encrypt "${card.name}"` : 'Encrypt card';
         }
-        return action.tier ? `Reserve Tier ${action.tier}` : 'Reserve card';
+        return action.tier ? `Encrypt Tier ${action.tier}` : 'Encrypt card';
       }
       case 'take_three_crystals': {
         const crystals = action.crystals ?? {};
@@ -2946,12 +2946,12 @@ export default function GameBoard() {
                 }}
                 disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
                 className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={row.deck === 0 ? 'Deck empty' : 'View deck — reserve a hidden card'}
+                title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
               >
                 <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
                 {(isMyTurn || canPlan) && row.deck > 0 && me && (
                   <div className="absolute inset-x-0 bottom-0 bg-primary/90 text-primary-foreground text-[9px] font-bold uppercase text-center py-1 rounded-b-xl">
-                    {isMyTurn ? 'Reserve' : 'Plan'}
+                    {isMyTurn ? 'Encrypt' : 'Plan'}
                   </div>
                 )}
               </button>
@@ -3579,7 +3579,7 @@ export default function GameBoard() {
                     {([
                       { label: 'Affinity', value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
                       { label: 'Artifacts', value: cardCount,    hex: '#c084fc', glow: '#e0baff' },
-                      { label: 'Reserved', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                      { label: 'Encrypted', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
                     ] as const).map(({ label, value, hex, glow }) => {
                       const has = value > 0;
                       return (
@@ -3687,7 +3687,7 @@ export default function GameBoard() {
                                     </div>
                                   )}
                                   {isFlux && reservedCount > 0 && (
-                                    <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} reserved</span>
+                                    <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} encrypted</span>
                                   )}
                                 </div>
                               );
@@ -3772,7 +3772,7 @@ export default function GameBoard() {
       {myReservedCount > 0 && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">
-            Reserved ({myReservedCount}/3)
+            Encrypted ({myReservedCount}/3)
           </p>
           <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
             {me?.reservedCards.map((c) => {
@@ -3923,7 +3923,7 @@ export default function GameBoard() {
                           <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
                         )}
                         {isFlux && reservedCount > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} rsv</span>
+                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} enc</span>
                         )}
                       </div>
                     );
@@ -3933,7 +3933,7 @@ export default function GameBoard() {
                 {/* Footer: reserved card backs */}
                 {reservedCount > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Reserve:</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Encrypt:</span>
                     <div className="flex gap-1 items-center">
                       {p.reservedCards.map((card, idx) => (
                         <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
@@ -4524,7 +4524,7 @@ export default function GameBoard() {
                               title="Dismiss hint"
                             >
                               <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
-                              <span>Reserves hold this card — tap again to confirm</span>
+                              <span>Encrypting holds this card — tap again to confirm</span>
                               <span className="text-white/40 ml-0.5">✕</span>
                             </motion.button>
                           )}
@@ -4556,7 +4556,7 @@ export default function GameBoard() {
                               </motion.span>
                             ) : (
                               <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                {pendingSheetAction === 'reserve' ? 'Confirm: Reserve' : (me && canReserveMore(me) ? 'Reserve for later' : 'Reserve pile full (3 max)')}
+                                {pendingSheetAction === 'reserve' ? 'Confirm: Encrypt' : (me && canReserveMore(me) ? 'Encrypt for later' : 'Encrypted pile full (3 max)')}
                               </motion.span>
                             )}
                           </AnimatePresence>
@@ -4650,7 +4650,7 @@ export default function GameBoard() {
                               </motion.span>
                             ) : (
                               <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Reserve' : (me && canReserveMore(me) ? 'Plan: Reserve for later' : 'Reserve pile full (3 max)')}
+                                {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Encrypt' : (me && canReserveMore(me) ? 'Plan: Encrypt for later' : 'Encrypted pile full (3 max)')}
                               </motion.span>
                             )}
                           </AnimatePresence>
@@ -4759,11 +4759,11 @@ export default function GameBoard() {
                     </p>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-1">
                       {deckCount} card{deckCount !== 1 ? 's' : ''} remaining in this deck.
-                      You will receive one at random — the card is hidden until reserved.
+                      You will receive one at random — the card is hidden until encrypted.
                     </p>
                     {me && !canReserveMore(me) && (
                       <p className="text-xs font-semibold text-destructive">
-                        Reserve pile full — forge or spend a reserved card first.
+                        Encrypted pile full — forge or spend an encrypted card first.
                       </p>
                     )}
                   </div>
@@ -4835,10 +4835,10 @@ export default function GameBoard() {
                           ) : (
                             <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
                               {pendingDeckConfirm
-                                ? 'Confirm: Reserve Hidden Card'
+                                ? 'Confirm: Encrypt Hidden Card'
                                 : canReserve
-                                ? 'Reserve Hidden Card'
-                                : 'Reserve pile full (3 max)'}
+                                ? 'Encrypt Hidden Card'
+                                : 'Encrypted pile full (3 max)'}
                             </motion.span>
                           )}
                         </AnimatePresence>
@@ -4870,7 +4870,7 @@ export default function GameBoard() {
                         }}
                       >
                         <Bookmark className="h-5 w-5 mr-2" />
-                        {pendingDeckConfirm ? 'Confirm: Plan Reserve' : 'Plan: Reserve Hidden Card'}
+                        {pendingDeckConfirm ? 'Confirm: Plan Encrypt' : 'Plan: Encrypt Hidden Card'}
                       </Button>
                     </motion.div>
                   )}
@@ -4955,7 +4955,7 @@ export default function GameBoard() {
                   className="text-xs font-semibold uppercase tracking-wider"
                   style={{ color: GEM_META.flux.hex }}
                 >
-                  Reserved
+                  Encrypted
                 </span>
               )}
             </motion.div>
@@ -5357,7 +5357,7 @@ export default function GameBoard() {
                   {
                     icon: '🪙',
                     title: 'On your turn — pick one action',
-                    body: 'Harness up to 3 affinities (1 of each type) · Harness 2 of the same (needs 4+ in the well) · Reserve a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
+                    body: 'Harness up to 3 affinities (1 of each type) · Harness 2 of the same (needs 4+ in the well) · Encrypt a card (hold up to 3, gain 1 Singularity) · Forge a card you can afford',
                   },
                   {
                     icon: '🃏',
@@ -5372,7 +5372,7 @@ export default function GameBoard() {
                   {
                     icon: '✋',
                     title: 'Affinity limit',
-                    body: 'You may hold at most 10 affinities at end of turn. You may hold at most 3 reserved cards at once.',
+                    body: 'You may hold at most 10 affinities at end of turn. You may hold at most 3 encrypted cards at once.',
                   },
                 ].map(({ icon, title, body }) => (
                   <div key={title} className="flex gap-3">
@@ -5388,7 +5388,7 @@ export default function GameBoard() {
                   <div className="min-w-0">
                     <div className="font-semibold text-sm">In-game hints</div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Show tips for undo, reserve, and forge the first time you use them.
+                      Show tips for undo, encrypt, and forge the first time you use them.
                     </p>
                   </div>
                   <button
@@ -5423,7 +5423,7 @@ export default function GameBoard() {
               ref={(el) => { reservedOverlayContainerRef.current = el; }}
               role="dialog"
               aria-modal="true"
-              aria-label="Reserved cards"
+              aria-label="Encrypted cards"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -5441,7 +5441,7 @@ export default function GameBoard() {
               <div className="px-5 pb-2 flex items-center justify-between border-b border-border/40 mb-1">
                 <h2 className="text-base font-semibold flex items-center gap-2">
                   <Bookmark className="h-4 w-4 text-muted-foreground" />
-                  Reserved Artifacts ({me.reservedCards.length}/3)
+                  Encrypted Artifacts ({me.reservedCards.length}/3)
                 </h2>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowReservedOverlay(false)}>
                   <X className="h-3.5 w-3.5" />
@@ -5453,7 +5453,7 @@ export default function GameBoard() {
                 style={isTutorial ? { paddingBottom: 'var(--tutorial-panel-height, 160px)' } : undefined}
               >
                 {me.reservedCards.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">No cards reserved.</p>
+                  <p className="text-xs text-muted-foreground italic">No cards encrypted.</p>
                 ) : (
                   <div className="flex flex-col gap-3">
                     {me.reservedCards.map((c) => {

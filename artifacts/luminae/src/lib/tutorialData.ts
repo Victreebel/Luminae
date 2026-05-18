@@ -358,10 +358,10 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     dialogue: [
       { text: "Your first artifact has already changed the path." },
       { text: "The Discounted view reveals artifacts your society has already made closer." },
-      { text: "Reserve this one. It will wait for you until you are ready." },
+      { text: "Encrypt this one. It will wait for you until you are ready." },
     ],
     completion: { type: "action", action: "reserve" },
-    wrongClickNudge: "Reserve the highlighted artifact first.",
+    wrongClickNudge: "Encrypt the highlighted artifact first.",
   },
   {
     id: "b10b_reserve_granted",
@@ -369,7 +369,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "market-t1",
     highlightZone: "hand",
     dialogue: [
-      { text: "Reserving protects a future artifact." },
+      { text: "Encrypting protects a future artifact." },
       { text: "It also grants Singularity." },
       { text: "Hold that for now. A convergence is most useful when the path becomes harder." },
     ],
@@ -382,10 +382,10 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     highlightZone: "needed-tab",
     dialogue: [
       { text: "Before you gather what it needs — notice the Needed view." },
-      { text: "Switch to Needed now. It shows your reserved artifact's exact shortfall." },
+      { text: "Switch to Needed now. It shows your encrypted artifact's exact shortfall." },
     ],
     completion: { type: "action", action: "view_needed" },
-    wrongClickNudge: "Switch to the Needed tab to see your reserved artifact's shortfall.",
+    wrongClickNudge: "Switch to the Needed tab to see your encrypted artifact's shortfall.",
   },
   {
     id: "b11_forge_reserved",
@@ -393,7 +393,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     lumiiZone: "market-t1",
     highlightZone: "hand",
     dialogue: [
-      { text: "Reserved artifacts can still be forged." },
+      { text: "Encrypted artifacts can still be forged." },
       { text: "Notice the shortfall chips — they update live as you select affinities from the well." },
       { text: "Your collection is always one tap away — press your panel below to review it." },
       { text: "Gather what's needed, then forge it from your hand.", excited: true },
