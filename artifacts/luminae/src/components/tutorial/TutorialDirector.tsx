@@ -1202,7 +1202,8 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
 
   const getCardForgeEnabled = (cardId: string) => {
     if (!isForgeMarketBeat) return false;
-    if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID;
+    // Locked until the second dialogue line ("Select Root Lattice and press Forge.") appears
+    if (beatId === "b9_first_forge") return cardId === FIRST_FORGE_ID && s.dlgLine >= 1;
     if (beatId === "b12_tier2") return cardId === TIER2_SINGULARITY_ID && subStep >= 2;
     if (beatId === "b13_tier3") return T3_PURCHASABLE_IDS.includes(cardId);
     if (beatId === "b16_final_forge") return cardId === FINAL_T2_ID && subStep >= 1;
@@ -1350,15 +1351,19 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
                   impossible={isImpossible}
                   viewMode={s.view}
                   wellSel={s.wellSel}
-                  onTap={isImpossible
-                    ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." })
-                    : () => onCardTap(
-                        card,
-                        getCardForgeEnabled(cardId) && affordable,
-                        getCardReserveEnabled(cardId),
-                        () => dispatch({ type: "FORGE_MARKET", cardId }),
-                        () => dispatch({ type: "RESERVE", cardId }),
-                      )
+                  onTap={
+                    // Lock Root Lattice until "Select Root Lattice and press Forge." (dlgLine 1)
+                    (beatId === "b9_first_forge" && cardId === FIRST_FORGE_ID && s.dlgLine < 1)
+                      ? undefined
+                      : isImpossible
+                        ? () => dispatch({ type: "NUDGE", msg: TUTORIAL_BEATS[s.beat]?.wrongClickNudge ?? "That artifact is beyond reach right now." })
+                        : () => onCardTap(
+                            card,
+                            getCardForgeEnabled(cardId) && affordable,
+                            getCardReserveEnabled(cardId),
+                            () => dispatch({ type: "FORGE_MARKET", cardId }),
+                            () => dispatch({ type: "RESERVE", cardId }),
+                          )
                   }
                 />
               );
