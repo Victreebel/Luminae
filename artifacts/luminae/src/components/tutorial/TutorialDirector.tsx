@@ -357,18 +357,18 @@ function CostCallout() {
         strokeWidth={1.8}
         strokeLinecap="round"
         strokeDasharray={perimeter}
-        initial={{ strokeDashoffset: perimeter, opacity: 0, filter: "drop-shadow(0 0 1px rgba(255,255,220,0.9)) drop-shadow(0 0 4px rgba(255,220,50,0.7))" }}
+        initial={{ strokeDashoffset: perimeter, opacity: 0, filter: "drop-shadow(0 0 3px rgba(251,191,36,0.5))" }}
         animate={drawn
           ? {
               strokeDashoffset: 0,
               opacity: [1, 0.5, 1],
               filter: [
-                "drop-shadow(0 0 1px rgba(255,255,230,1)) drop-shadow(0 0 2px rgba(255,240,120,1)) drop-shadow(0 0 4px rgba(251,191,36,0.8)) drop-shadow(0 0 8px rgba(255,160,0,0.35))",
-                "drop-shadow(0 0 1px rgba(255,200,50,0.25)) drop-shadow(0 0 2px rgba(251,191,36,0.1))",
-                "drop-shadow(0 0 1px rgba(255,255,230,1)) drop-shadow(0 0 2px rgba(255,240,120,1)) drop-shadow(0 0 4px rgba(251,191,36,0.8)) drop-shadow(0 0 8px rgba(255,160,0,0.35))",
+                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
+                "drop-shadow(0 0 2px rgba(251,191,36,0.25))",
+                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
               ],
             }
-          : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 1px rgba(255,255,220,1)) drop-shadow(0 0 5px rgba(255,220,50,0.9))" }
+          : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }
         }
         transition={drawn
           ? {
@@ -791,10 +791,9 @@ function AffinityWell({
                     ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
                     ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
                   style={{
-                    borderColor: cur > 0 ? meta.hex : isHighlighted ? meta.glowHex : "rgba(255,255,255,0.15)",
+                    borderColor: cur > 0 ? meta.hex : isHighlighted ? "#67e8f9" : "rgba(255,255,255,0.15)",
                     animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
-                    "--btn-pulse-rgb": (() => { const h = meta.glowHex.slice(1); return `${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}`; })(),
-                  } as React.CSSProperties}
+                  }}
                 >
                   <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} />
                   {cur > 0 && (
@@ -947,7 +946,7 @@ function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) 
                 className="text-xl font-black leading-none tracking-tight"
                 style={{
                   color: hasContent ? "#fff" : meta.hex + "40",
-                  textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : "none",
+                  textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none",
                 }}
               >{held}</span>
               {gem !== "flux" && bonus > 0 && (
@@ -3632,7 +3631,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                   <MiniGem gem={gem} size={7} />
                 </div>
                 <span className={`${isShortLandscape ? "text-lg" : "text-2xl"} font-black leading-none tracking-tight`}
-                  style={{ color: hasContent ? "#fff" : meta.hex + "40", textShadow: hasContent ? `0 0 2px rgba(255,255,255,0.95), 0 0 8px ${meta.glowHex}, 0 0 22px ${meta.glowHex}aa, 0 0 50px ${meta.glowHex}55` : "none" }}
+                  style={{ color: hasContent ? "#fff" : meta.hex + "40", textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none" }}
                 >{held}</span>
                 {gem !== "flux" && bonus > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>}
                 {gem === "flux" && reservedCount > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>}

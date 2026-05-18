@@ -68,7 +68,7 @@ function VariantA() {
             fontSize: "clamp(48px, 7vw, 72px)",
             fontWeight: 700, letterSpacing: "0.02em",
             color: l.color,
-            textShadow: `0 0 2px rgba(255,255,255,0.95), 0 0 6px ${l.glow}ff, 0 0 18px ${l.glow}dd, 0 0 40px ${l.glow}99, 0 0 80px ${l.glow}55, 0 0 130px ${l.glow}22`,
+            textShadow: `0 0 24px ${l.glow}cc, 0 0 60px ${l.glow}55, 0 0 90px ${l.glow}22`,
             lineHeight: 1, display: "inline-block",
           }}>{l.char}</span>
         ))}
