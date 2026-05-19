@@ -44,8 +44,8 @@
   --color-gem-sapphire: #3D6BFF;   /* Continuum */
   --color-gem-emerald: #2ECC71;    /* Verdance */
   --color-gem-onyx: #7B1FA2;       /* Abyss */
-  --color-gem-pearl: #F2F5FF;      /* Radiance */
-  --color-gem-flux: #FFC43D;       /* Singularity */
+  --color-gem-pearl: #DFC878;      /* Radiance — solar gold */
+  --color-gem-flux: #E8E4FF;       /* Singularity — prismatic white */
 
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
@@ -101,7 +101,9 @@
   --app-font-serif: 'Playfair Display', Georgia, serif;
   --app-font-mono: 'Space Mono', Menlo, monospace;
   --radius: 0.75rem;
-  
+  --color-trim-brass: #7C6A4A;
+  --color-trim-brass-bright: #A08C68;
+
   --shadow-2xs: 0px 2px 0px 0px hsl(var(--border) / 0.5);
   --shadow-xs: 0px 2px 0px 0px hsl(var(--border) / 0.5);
   --shadow-sm: 0px 2px 0px 0px hsl(var(--border) / 0.5), 0px 1px 2px -1px hsl(var(--border) / 0.5);
@@ -371,16 +373,57 @@
 @keyframes forge-pulse {
   0%, 100% {
     box-shadow:
-      inset 0 0 0 2px rgba(251, 191, 36, 1),
-      inset 0 0 32px rgba(251, 191, 36, 0.75),
-      0 0 24px rgba(251, 191, 36, 0.55),
-      0 0 48px rgba(251, 191, 36, 0.25);
+      inset 0 0 0 2px rgba(255, 248, 200, 0.95),
+      inset 0 0 32px rgba(255, 230, 140, 0.55),
+      0 0 24px rgba(255, 210, 80, 0.45),
+      0 0 48px rgba(255, 170, 40, 0.20);
   }
   50% {
     box-shadow:
-      inset 0 0 0 2px rgba(251, 191, 36, 0.9),
-      inset 0 0 20px rgba(251, 191, 36, 0.45),
-      0 0 14px rgba(251, 191, 36, 0.4),
-      0 0 30px rgba(251, 191, 36, 0.15);
+      inset 0 0 0 2px rgba(255, 248, 200, 0.80),
+      inset 0 0 20px rgba(255, 230, 140, 0.35),
+      0 0 14px rgba(255, 200, 60, 0.30),
+      0 0 30px rgba(255, 160, 30, 0.12);
   }
+}
+
+/* ── Forge button — dark cosmic metal sweep ─────────────────────────────── */
+@keyframes forge-strike-sweep {
+  0%   { opacity: 0; left: -70%; }
+  8%   { opacity: 1; }
+  42%  { opacity: 0; left: 115%; }
+  100% { opacity: 0; left: 115%; }
+}
+.btn-forge-idle {
+  position: relative;
+  overflow: hidden;
+}
+.btn-forge-idle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 248, 200, 0.07), transparent);
+  animation: forge-strike-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Affinity crystal — queued pulse ────────────────────────────────────── */
+@keyframes crystal-queued-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.18); }
+}
+.crystal-queued-pulse {
+  animation: crystal-queued-pulse 1.6s ease-in-out infinite;
+}
+
+/* ── Brass divider ──────────────────────────────────────────────────────── */
+@layer utilities {
+  .divider-brass {
+    background: linear-gradient(90deg, rgba(160,140,104,0.50), rgba(124,106,74,0.28), transparent);
+  }
+  .gem-pearl { color: var(--color-gem-pearl); }
+  .gem-flux  { color: var(--color-gem-flux); }
 }

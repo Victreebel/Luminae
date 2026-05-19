@@ -71,8 +71,8 @@ const GEM_CARD_GRADIENTS: Record<string, string> = {
   sapphire: 'linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)',
   emerald:  'linear-gradient(175deg, #021005 0%, #063020 35%, #041a10 70%, #020c04 100%)',
   onyx:     'linear-gradient(175deg, #060606 0%, #181818 35%, #0e0e0e 70%, #050505 100%)',
-  pearl:    'linear-gradient(175deg, #06061a 0%, #10103a 35%, #0a0a28 70%, #050516 100%)',
-  flux:     'linear-gradient(175deg, #0a0a02 0%, #282808 35%, #181804 70%, #0a0a02 100%)',
+  pearl:    'linear-gradient(175deg, #100c02 0%, #2a2008 35%, #1c1606 70%, #0c0a02 100%)',
+  flux:     'linear-gradient(175deg, #08080f 0%, #141428 35%, #0e0e1e 70%, #08080f 100%)',
 };
 
 const GEM_KEY_TO_HEX: Record<string, string> = {
@@ -80,8 +80,8 @@ const GEM_KEY_TO_HEX: Record<string, string> = {
   sapphire: '#60a5fa',
   emerald:  '#2ecc71',
   onyx:     '#0f172a',
-  pearl:    '#fef9c3',
-  flux:     '#fbbf24',
+  pearl:    '#DFC878',
+  flux:     '#E8E4FF',
 };
 
 // --- Helper Components ---
@@ -2961,9 +2961,9 @@ export default function GameBoard() {
         ].map(row => (
           <div key={row.tier}>
             <div className="flex items-center gap-2 mb-2 px-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider shrink-0">Tier {row.tier}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#A08C68' }}>Tier {row.tier}</span>
               <span className="text-[9px] text-muted-foreground/50 italic truncate">{row.lore}</span>
-              <div className="shrink-0 w-4 h-px bg-border/40" />
+              <div className="shrink-0 flex-1 h-px divider-brass" />
             </div>
             <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
               {/* Deck pile */}
@@ -2981,7 +2981,10 @@ export default function GameBoard() {
               >
                 <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
                 {(isMyTurn || canPlan) && row.deck > 0 && me && (
-                  <div className="absolute inset-x-0 bottom-0 bg-primary/90 text-primary-foreground text-[9px] font-bold uppercase text-center py-1 rounded-b-xl">
+                  <div
+                    className="absolute inset-x-0 bottom-0 text-[#D0CCFF] text-[9px] font-bold uppercase text-center py-1 rounded-b-xl"
+                    style={{ background: 'linear-gradient(160deg, #0d0d14 0%, #12121e 100%)', boxShadow: '0 -1px 0 0 rgba(190,180,255,0.28), 1px 0 0 0 rgba(255,80,40,0.10), -1px 0 0 0 rgba(40,80,255,0.10)' }}
+                  >
                     {isMyTurn ? 'Encrypt' : 'Plan'}
                   </div>
                 )}
@@ -3100,7 +3103,7 @@ export default function GameBoard() {
               return (
                 <div className="flex items-center gap-1.5 opacity-80">
                   <MiniGem color="flux" size={14} />
-                  <span className="text-[10px] font-mono font-bold text-amber-300/80">{fluxCount}</span>
+                  <span className="text-[10px] font-mono font-bold" style={{ color: '#C8C0FF', opacity: 0.85 }}>{fluxCount}</span>
                   <span className="text-[9px] text-muted-foreground">Singularity</span>
                 </div>
               );
@@ -4003,7 +4006,7 @@ export default function GameBoard() {
                 Continuum: '#3D6BFF',
                 Verdance: '#2ECC71',
                 Abyss: '#9C27B0',
-                Radiance: '#C8D4F8',
+                Radiance: '#DFC878',
               };
               return [...(state.actionLog ?? [])].reverse().slice(0, showAllLog ? undefined : 12).map((entry, i) => {
               const isMe = entry.playerId === session.playerId;
@@ -4503,11 +4506,11 @@ export default function GameBoard() {
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
                           ${pendingSheetAction === 'forge'
                             ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
-                            : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200'
+                            : 'btn-forge-idle text-[#F5E8C8] hover:brightness-[1.15]'
                           }`}
                         style={pendingSheetAction === 'forge'
                           ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
-                          : {}}
+                          : { background: 'linear-gradient(160deg, #1c1810 0%, #26221a 50%, #1a1610 100%)', boxShadow: '0 0 0 1px #5c4e38, inset 0 1px 0 rgba(255,240,180,0.08), inset 0 -1px 0 rgba(0,0,0,0.45)' }}
                         disabled={!me || !canAffordCard(selectedCard.card, me)}
                         onClick={() => {
                           if (pendingSheetAction === 'forge') {
@@ -4561,11 +4564,14 @@ export default function GameBoard() {
                           )}
                         </AnimatePresence>
                         <Button
-                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                             ${pendingSheetAction === 'reserve'
-                              ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                              : 'bg-[#FFC43D]/70 hover:bg-[#FFC43D]/85'
+                              ? 'scale-[1.02]'
+                              : 'hover:brightness-110'
                             }`}
+                          style={pendingSheetAction === 'reserve'
+                            ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
+                            : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
                           disabled={!me || !canReserveMore(me)}
                           onClick={() => {
                             if (pendingSheetAction === 'reserve') {
@@ -4655,11 +4661,14 @@ export default function GameBoard() {
                         style={{ borderRadius: '0.75rem' }}
                       >
                         <Button
-                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                             ${pendingSheetAction === 'plan_reserve'
-                              ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                              : 'bg-[#FFC43D]/70 hover:bg-[#FFC43D]/85'
+                              ? 'scale-[1.02]'
+                              : 'hover:brightness-110'
                             }`}
+                          style={pendingSheetAction === 'plan_reserve'
+                            ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
+                            : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
                           disabled={!me || !canReserveMore(me)}
                           onClick={() => {
                             if (pendingSheetAction === 'plan_reserve') {
@@ -4839,11 +4848,14 @@ export default function GameBoard() {
                         )}
                       </AnimatePresence>
                       <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                           ${pendingDeckConfirm
-                            ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                            : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                            ? 'scale-[1.02]'
+                            : 'hover:brightness-110'
                           }`}
+                        style={pendingDeckConfirm
+                          ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
+                          : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
                         disabled={!canReserve}
                         onClick={() => {
                           if (pendingDeckConfirm) {
@@ -4884,11 +4896,14 @@ export default function GameBoard() {
                       style={{ borderRadius: '0.75rem' }}
                     >
                       <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-zinc-900
+                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                           ${pendingDeckConfirm
-                            ? 'bg-[#FFC43D] ring-2 ring-[#FFE080] ring-offset-1 ring-offset-background scale-[1.02] shadow-[0_0_14px_rgba(255,196,61,0.7)]'
-                            : 'bg-[#FFC43D]/45 hover:bg-[#FFC43D]/65'
+                            ? 'scale-[1.02]'
+                            : 'hover:brightness-110'
                           }`}
+                        style={pendingDeckConfirm
+                          ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
+                          : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
                         onClick={() => {
                           if (pendingDeckConfirm) {
                             gameAudio.playButtonConfirm();
