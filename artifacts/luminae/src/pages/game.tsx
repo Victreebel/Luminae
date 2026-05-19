@@ -141,7 +141,7 @@ function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
       width={size}
       height={size}
       className="rounded-full pointer-events-none select-none shrink-0"
-      style={{ filter: `drop-shadow(0 0 3px ${meta.glowHex}88)` }}
+      style={{ filter: `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 3px ${meta.glowHex}88)` }}
       draggable={false}
     />
   );
@@ -2959,11 +2959,11 @@ export default function GameBoard() {
           { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Forged instruments — crucibles and sigils of focused cosmic mastery' },
           { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, lore: 'Fragments & sparks — raw nascent shards that seed any engine' },
         ].map(row => (
-          <div key={row.tier}>
-            <div className="flex items-center gap-2 mb-2 px-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#A08C68' }}>Tier {row.tier}</span>
+          <div key={row.tier} className="rounded-xl mb-2.5" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
+            <div className="flex items-center gap-2 mb-2 px-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}</span>
               <span className="text-[9px] text-muted-foreground/50 italic truncate">{row.lore}</span>
-              <div className="shrink-0 flex-1 h-px divider-brass" />
+              <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
             <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
               {/* Deck pile */}
@@ -3067,7 +3067,7 @@ export default function GameBoard() {
         }}
       >
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Affinity Well · Harness cosmic essence</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A08C68' }}>Affinity Well · Harness cosmic essence</p>
           <div className="flex items-center gap-3">
             {me && (() => {
               const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
@@ -3164,10 +3164,10 @@ export default function GameBoard() {
                     className="w-[58%] h-[58%] object-contain pointer-events-none select-none"
                     style={{
                       filter: isEmpty
-                        ? 'grayscale(0.8) opacity(0.4)'
+                        ? `${meta.imageFilter ? meta.imageFilter + ' ' : ''}grayscale(0.8) opacity(0.4)`
                         : queued > 0
-                          ? `drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
-                          : `drop-shadow(0 0 7px ${meta.glowHex}80)`,
+                          ? `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
+                          : `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 7px ${meta.glowHex}80)`,
                     }}
                     draggable={false}
                   />

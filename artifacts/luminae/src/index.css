@@ -422,7 +422,7 @@
 /* ── Brass divider ──────────────────────────────────────────────────────── */
 @layer utilities {
   .divider-brass {
-    background: linear-gradient(90deg, rgba(160,140,104,0.50), rgba(124,106,74,0.28), transparent);
+    background: linear-gradient(90deg, rgba(192,164,114,0.70), rgba(160,132,84,0.40), rgba(124,106,74,0.15), transparent);
   }
   .gem-pearl { color: var(--color-gem-pearl); }
   .gem-flux  { color: var(--color-gem-flux); }

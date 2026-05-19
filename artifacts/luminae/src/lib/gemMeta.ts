@@ -20,6 +20,8 @@ export interface GemMeta {
   glowHex: string;
   image: string;
   tagline: string;
+  /** Optional CSS filter applied to the base image pixels before any glow/shadow. */
+  imageFilter?: string;
 }
 
 export const GEM_META: Record<GemKey, GemMeta> = {
@@ -31,6 +33,7 @@ export const GEM_META: Record<GemKey, GemMeta> = {
     glowHex: "#F5E8B8",
     image: gemRadiance,
     tagline: "Clarity \u00b7 Protection",
+    imageFilter: "sepia(0.55) saturate(2.8) hue-rotate(-8deg) brightness(1.08)",
   },
   ruby: {
     key: "ruby",
@@ -76,6 +79,7 @@ export const GEM_META: Record<GemKey, GemMeta> = {
     glowHex: "#C8C0FF",
     image: gemSingularity,
     tagline: "Wild \u00b7 Rare",
+    imageFilter: "saturate(0.05) brightness(1.5) contrast(0.92)",
   },
 };
 

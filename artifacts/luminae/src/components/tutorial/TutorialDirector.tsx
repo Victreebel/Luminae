@@ -169,7 +169,7 @@ function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
     <img
       src={meta.image}
       alt={meta.name}
-      style={{ width: size, height: size, objectFit: "contain", filter: `drop-shadow(0 0 3px ${meta.glowHex}88)` }}
+      style={{ width: size, height: size, objectFit: "contain", filter: `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 3px ${meta.glowHex}88)` }}
       draggable={false}
     />
   );
@@ -784,7 +784,7 @@ function AffinityWell({
                     animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
                   }}
                 >
-                  <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} />
+                  <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} style={meta.imageFilter ? { filter: meta.imageFilter } : undefined} />
                   {cur > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-black shadow"
                       style={{ background: meta.hex }}>{cur}</span>
@@ -2173,7 +2173,7 @@ function ArchitectAssembly({
                       initial={{ opacity: 0, scale: 0.5 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.28, ease: "easeOut" }}
-                      style={{ filter: `drop-shadow(0 0 5px ${meta.glowHex})` }}
+                      style={{ filter: `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 5px ${meta.glowHex})` }}
                     />
                   ) : (
                     <div className="w-4 h-4 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }} />
@@ -2238,7 +2238,7 @@ function ArchitectAssembly({
                   transition={{ duration: 1.05, delay: i * 0.1, times: [0, 0.28, 0.65, 1], ease: "easeInOut" }}
                 >
                   <img src={GEM_META[key].image} alt="" className="w-8 h-8 object-contain" draggable={false}
-                    style={{ filter: `drop-shadow(0 0 8px ${GEM_META[key].glowHex})` }} />
+                    style={{ filter: `${GEM_META[key].imageFilter ? GEM_META[key].imageFilter + ' ' : ''}drop-shadow(0 0 8px ${GEM_META[key].glowHex})` }} />
                 </motion.div>
               );
             })}
@@ -2471,8 +2471,9 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
                 <img
                   src={GEM_META[affKeys[affIdx]].image}
                   alt=""
-                  className="w-32 h-32 object-contain drop-shadow-[0_0_36px_rgba(255,255,255,0.55)]"
+                  className="w-32 h-32 object-contain"
                   draggable={false}
+                  style={{ filter: `${GEM_META[affKeys[affIdx]].imageFilter ? GEM_META[affKeys[affIdx]].imageFilter + ' ' : ''}drop-shadow(0 0 36px rgba(255,255,255,0.55))` }}
                 />
                 <motion.span
                   className="text-white font-serif text-3xl tracking-widest"
