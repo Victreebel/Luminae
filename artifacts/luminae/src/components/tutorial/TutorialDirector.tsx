@@ -34,6 +34,7 @@ import {
 } from "@/lib/tutorialReducer";
 import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from "@/components/ArtifactCardBack";
+import { AffinityEmblem } from "@/components/AffinityEmblem";
 import { gameAudio } from "@/lib/audio";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 
@@ -164,15 +165,7 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, m
 
 // ─── MiniGem ──────────────────────────────────────────────────────────────────
 function MiniGem({ gem, size = 14 }: { gem: GemKey; size?: number }) {
-  const meta = GEM_META[gem];
-  return (
-    <img
-      src={meta.image}
-      alt={meta.name}
-      style={{ width: size, height: size, objectFit: "contain", filter: `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 3px ${meta.glowHex}88)` }}
-      draggable={false}
-    />
-  );
+  return <AffinityEmblem color={gem} size={size} />;
 }
 
 // ─── Rich dialogue text ───────────────────────────────────────────────────────
@@ -784,7 +777,7 @@ function AffinityWell({
                     animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
                   }}
                 >
-                  <img src={meta.image} alt={meta.name} className="w-7 h-7 object-contain" draggable={false} style={meta.imageFilter ? { filter: meta.imageFilter } : undefined} />
+                  <AffinityEmblem color={gem} size={28} />
                   {cur > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center text-black shadow"
                       style={{ background: meta.hex }}>{cur}</span>
@@ -2166,15 +2159,18 @@ function ArchitectAssembly({
                     transition: "background 0.32s ease, border-color 0.32s ease",
                   }}>
                   {active ? (
-                    <motion.img
-                      src={meta.image} alt={meta.shortName}
-                      className="w-4 h-4 object-contain"
-                      draggable={false}
+                    <motion.div
+                      className="w-4 h-4 flex items-center justify-center"
                       initial={{ opacity: 0, scale: 0.5 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.28, ease: "easeOut" }}
-                      style={{ filter: `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 5px ${meta.glowHex})` }}
-                    />
+                    >
+                      <AffinityEmblem
+                        color={gem}
+                        size={16}
+                        style={{ filter: `drop-shadow(0 0 5px ${meta.glowHex})` }}
+                      />
+                    </motion.div>
                   ) : (
                     <div className="w-4 h-4 rounded-full" style={{ background: "rgba(255,255,255,0.07)" }} />
                   )}
@@ -2237,8 +2233,11 @@ function ArchitectAssembly({
                   exit={{ opacity: 0 }}
                   transition={{ duration: 1.05, delay: i * 0.1, times: [0, 0.28, 0.65, 1], ease: "easeInOut" }}
                 >
-                  <img src={GEM_META[key].image} alt="" className="w-8 h-8 object-contain" draggable={false}
-                    style={{ filter: `${GEM_META[key].imageFilter ? GEM_META[key].imageFilter + ' ' : ''}drop-shadow(0 0 8px ${GEM_META[key].glowHex})` }} />
+                  <AffinityEmblem
+                    color={key as GemKey}
+                    size={32}
+                    style={{ filter: `drop-shadow(0 0 8px ${GEM_META[key].glowHex})` }}
+                  />
                 </motion.div>
               );
             })}
@@ -2468,12 +2467,10 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
                 exit={{ x: 380, rotateY: 90, opacity: 0 }}
                 transition={{ duration: 0.52, ease: [0.22, 1.0, 0.36, 1.0] }}
               >
-                <img
-                  src={GEM_META[affKeys[affIdx]].image}
-                  alt=""
-                  className="w-32 h-32 object-contain"
-                  draggable={false}
-                  style={{ filter: `${GEM_META[affKeys[affIdx]].imageFilter ? GEM_META[affKeys[affIdx]].imageFilter + ' ' : ''}drop-shadow(0 0 36px rgba(255,255,255,0.55))` }}
+                <AffinityEmblem
+                  color={affKeys[affIdx] as GemKey}
+                  size={128}
+                  style={{ filter: "drop-shadow(0 0 36px rgba(255,255,255,0.55))" }}
                 />
                 <motion.span
                   className="text-white font-serif text-3xl tracking-widest"

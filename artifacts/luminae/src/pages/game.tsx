@@ -22,6 +22,7 @@ import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation } from '@/components/CipherApertureAnimation';
+import { AffinityEmblem } from '@/components/AffinityEmblem';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
@@ -132,19 +133,7 @@ function RematchCountdown({ endsAt }: { endsAt: number }) {
 }
 
 function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) {
-  const meta = GEM_META[color];
-  return (
-    <img
-      src={meta.image}
-      alt={meta.name}
-      title={meta.name}
-      width={size}
-      height={size}
-      className="rounded-full pointer-events-none select-none shrink-0"
-      style={{ filter: `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 3px ${meta.glowHex}88)` }}
-      draggable={false}
-    />
-  );
+  return <AffinityEmblem color={color} size={size} />;
 }
 
 function BaseDialog({
@@ -3159,17 +3148,16 @@ export default function GameBoard() {
                   {!isEmpty && (
                     <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}99, transparent)` }} />
                   )}
-                  <img
-                    src={meta.image} alt={meta.name}
+                  <AffinityEmblem
+                    color={c as GemKey}
                     className="w-[58%] h-[58%] object-contain pointer-events-none select-none"
                     style={{
                       filter: isEmpty
-                        ? `${meta.imageFilter ? meta.imageFilter + ' ' : ''}grayscale(0.8) opacity(0.4)`
+                        ? 'grayscale(0.8) opacity(0.4)'
                         : queued > 0
-                          ? `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
-                          : `${meta.imageFilter ? meta.imageFilter + ' ' : ''}drop-shadow(0 0 7px ${meta.glowHex}80)`,
+                          ? `drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
+                          : `drop-shadow(0 0 7px ${meta.glowHex}80)`,
                     }}
-                    draggable={false}
                   />
                   <div className="flex items-center gap-0.5 mt-0.5">
                     {/* Shadow behind number for readability against colored background */}
