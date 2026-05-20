@@ -81,12 +81,12 @@ export const GEM_META: Record<GemKey, GemMeta> = {
   },
 };
 
-// Display order: Radiance, Flare, Continuum, Verdance, Abyss, Singularity
+// Display order: Flare, Radiance, Verdance, Continuum, Abyss, Singularity
 export const GEM_KEYS: GemKey[] = [
-  "pearl",
   "ruby",
-  "sapphire",
+  "pearl",
   "emerald",
+  "sapphire",
   "onyx",
   "flux",
 ];

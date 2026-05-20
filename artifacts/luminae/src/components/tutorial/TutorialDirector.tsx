@@ -50,8 +50,8 @@ for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
 }
 
 // ─── Gem images ───────────────────────────────────────────────────────────────
-const ALL_GEMS: GemKey[] = ["ruby", "sapphire", "emerald", "onyx", "pearl", "flux"];
-const GEM_KEYS_NO_FLUX: GemKey[] = ["ruby", "sapphire", "emerald", "onyx", "pearl"];
+const ALL_GEMS: GemKey[] = ["ruby", "pearl", "emerald", "sapphire", "onyx", "flux"];
+const GEM_KEYS_NO_FLUX: GemKey[] = ["ruby", "pearl", "emerald", "sapphire", "onyx"];
 
 // ─── LumiiOrb zone palette (mirrors LumiiTutorial.tsx ZONE_PALETTE) ───────────
 // Each row is 6 node colours subtly shifted toward the zone's affinity theme.
