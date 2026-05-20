@@ -18,7 +18,7 @@ const F  = '#ef4444'; // Flare     (ruby)
 const C  = '#3b82f6'; // Continuum (sapphire)
 const V  = '#22c55e'; // Verdance  (emerald)
 const A  = '#a855f7'; // Abyss     (onyx)
-const R  = '#e2e8f0'; // Radiance  (pearl)
+const R  = '#DFC878'; // Radiance  (pearl)
 
 const GOLD  = '#c4a85a';
 const GOLD2 = '#ead68c';
@@ -413,15 +413,15 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
 
   // Dark absorber-surface base — rich dark, clearly different from card void-black
   const PANEL_BASE: Record<string, string> = {
-    [F]: '#300c0c', [C]: '#09142e', [V]: '#07160d', [A]: '#18082e', [R]: '#0e1218',
+    [F]: '#300c0c', [C]: '#09142e', [V]: '#07160d', [A]: '#18082e', [R]: '#160f00',
   };
   // Mid-body colour — readable affinity tint so each sector is identifiable
   const PANEL_MID: Record<string, string> = {
-    [F]: '#501414', [C]: '#102350', [V]: '#0f3018', [A]: '#2c0f48', [R]: '#424e5e',
+    [F]: '#501414', [C]: '#102350', [V]: '#0f3018', [A]: '#2c0f48', [R]: '#4a3800',
   };
   // 3D bevel shadow (dark affinity) and highlight (bright affinity) colours
   const BEVEL_DARK: Record<string, string> = {
-    [F]: '#250606', [C]: '#050a1c', [V]: '#030b04', [A]: '#0f0320', [R]: '#090c14',
+    [F]: '#250606', [C]: '#050a1c', [V]: '#030b04', [A]: '#0f0320', [R]: '#0c0800',
   };
   const BEVEL_LIGHT: Record<string, string> = {
     [F]: '#ff8888', [C]: '#88bbff', [V]: '#66ee98', [A]: '#cc8aff', [R]: '#ffffff',
@@ -756,11 +756,11 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           </radialGradient>
         ))}
 
-        {/* Central hub gradient — gold convergence point */}
+        {/* Central hub gradient — Radiance-white convergence point */}
         <radialGradient id={`${id}-hub`} cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stopColor="#ffffff" stopOpacity="1"   />
-          <stop offset="28%"  stopColor={GOLD2}   stopOpacity="0.9" />
-          <stop offset="100%" stopColor={GOLD}    stopOpacity="0"   />
+          <stop offset="28%"  stopColor="#e2e8f0" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#c0cce0" stopOpacity="0"   />
         </radialGradient>
 
         <linearGradient id={`${id}-bord`} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -782,51 +782,51 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <feGaussianBlur stdDeviation="3.0" />
         </filter>
 
-        {/* Singularity — black hole: neutral warm-to-white, no faction colors */}
+        {/* Singularity — black hole: radiance-white glow */}
         <radialGradient id={`${id}-accglow`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#ffe8b0" stopOpacity="0.90" />
-          <stop offset="40%"  stopColor="#ffb050" stopOpacity="0.38" />
-          <stop offset="100%" stopColor="#ff8020" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#e2e8f0" stopOpacity="0.90" />
+          <stop offset="40%"  stopColor="#b0bcd0" stopOpacity="0.38" />
+          <stop offset="100%" stopColor="#8090a8" stopOpacity="0"    />
         </radialGradient>
-        {/* Accretion disk: transparent → deep gold → bright gold → warm-white gold → mirror */}
+        {/* Accretion disk: transparent → silver → bright white → mirror */}
         <linearGradient id={`${id}-disk`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#7a5800" stopOpacity="0"    />
-          <stop offset="12%"  stopColor="#b07800" stopOpacity="0.45" />
-          <stop offset="28%"  stopColor="#d4a020" stopOpacity="0.70" />
-          <stop offset="42%"  stopColor="#f0c040" stopOpacity="0.88" />
-          <stop offset="50%"  stopColor="#fde080" stopOpacity="0.95" />
-          <stop offset="58%"  stopColor="#f0c040" stopOpacity="0.88" />
-          <stop offset="72%"  stopColor="#d4a020" stopOpacity="0.70" />
-          <stop offset="88%"  stopColor="#b07800" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#7a5800" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#5a6070" stopOpacity="0"    />
+          <stop offset="12%"  stopColor="#8898b0" stopOpacity="0.45" />
+          <stop offset="28%"  stopColor="#b0bcd0" stopOpacity="0.70" />
+          <stop offset="42%"  stopColor="#d0daea" stopOpacity="0.88" />
+          <stop offset="50%"  stopColor="#e8f0ff" stopOpacity="0.95" />
+          <stop offset="58%"  stopColor="#d0daea" stopOpacity="0.88" />
+          <stop offset="72%"  stopColor="#b0bcd0" stopOpacity="0.70" />
+          <stop offset="88%"  stopColor="#8898b0" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#5a6070" stopOpacity="0"    />
         </linearGradient>
         {/* XZ-plane ring — vertical gradient: opaque at equatorial crossings, fades at poles */}
         <linearGradient id={`${id}-disk-v`} x1="50%" y1="0%" x2="50%" y2="100%">
-          <stop offset="0%"   stopColor="#7a5800" stopOpacity="0"    />
-          <stop offset="15%"  stopColor="#b07800" stopOpacity="0.40" />
-          <stop offset="32%"  stopColor="#d4a020" stopOpacity="0.68" />
-          <stop offset="46%"  stopColor="#f0c040" stopOpacity="0.88" />
-          <stop offset="50%"  stopColor="#fde080" stopOpacity="0.95" />
-          <stop offset="54%"  stopColor="#f0c040" stopOpacity="0.88" />
-          <stop offset="68%"  stopColor="#d4a020" stopOpacity="0.68" />
-          <stop offset="85%"  stopColor="#b07800" stopOpacity="0.40" />
-          <stop offset="100%" stopColor="#7a5800" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#5a6070" stopOpacity="0"    />
+          <stop offset="15%"  stopColor="#8898b0" stopOpacity="0.40" />
+          <stop offset="32%"  stopColor="#b0bcd0" stopOpacity="0.68" />
+          <stop offset="46%"  stopColor="#d0daea" stopOpacity="0.88" />
+          <stop offset="50%"  stopColor="#e8f0ff" stopOpacity="0.95" />
+          <stop offset="54%"  stopColor="#d0daea" stopOpacity="0.88" />
+          <stop offset="68%"  stopColor="#b0bcd0" stopOpacity="0.68" />
+          <stop offset="85%"  stopColor="#8898b0" stopOpacity="0.40" />
+          <stop offset="100%" stopColor="#5a6070" stopOpacity="0"    />
         </linearGradient>
-        {/* Inner disk: bright gold-white core closest to event horizon */}
+        {/* Inner disk: bright white core closest to event horizon */}
         <linearGradient id={`${id}-disk-inner`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#c89020" stopOpacity="0"    />
-          <stop offset="20%"  stopColor="#f0cc50" stopOpacity="0.60" />
-          <stop offset="50%"  stopColor="#fff8d0" stopOpacity="0.92" />
-          <stop offset="80%"  stopColor="#f0cc50" stopOpacity="0.60" />
-          <stop offset="100%" stopColor="#c89020" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#a0b0c8" stopOpacity="0"    />
+          <stop offset="20%"  stopColor="#d0dced" stopOpacity="0.60" />
+          <stop offset="50%"  stopColor="#f8faff" stopOpacity="0.92" />
+          <stop offset="80%"  stopColor="#d0dced" stopOpacity="0.60" />
+          <stop offset="100%" stopColor="#a0b0c8" stopOpacity="0"    />
         </linearGradient>
-        {/* Lensed arc: golden glow for the gravitationally bent far-side image */}
+        {/* Lensed arc: silver-white glow for the gravitationally bent far-side image */}
         <linearGradient id={`${id}-disk-lens`} x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%"   stopColor="#8a6400" stopOpacity="0"    />
-          <stop offset="30%"  stopColor="#d4a020" stopOpacity="0.80" />
-          <stop offset="50%"  stopColor="#f8d860" stopOpacity="0.95" />
-          <stop offset="70%"  stopColor="#d4a020" stopOpacity="0.80" />
-          <stop offset="100%" stopColor="#8a6400" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#6a7890" stopOpacity="0"    />
+          <stop offset="30%"  stopColor="#b0c0d8" stopOpacity="0.80" />
+          <stop offset="50%"  stopColor="#e8f0ff" stopOpacity="0.95" />
+          <stop offset="70%"  stopColor="#b0c0d8" stopOpacity="0.80" />
+          <stop offset="100%" stopColor="#6a7890" stopOpacity="0"    />
         </linearGradient>
         <filter id={`${id}-satbranchglow`} x="-400%" y="-400%" width="900%" height="900%">
           <feGaussianBlur stdDeviation="1.4" />
@@ -848,13 +848,13 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
             scale="10" xChannelSelector="R" yChannelSelector="G" result="disp" />
           <feGaussianBlur stdDeviation="4.5" in="disp" />
         </filter>
-        {/* 2D flat corona — golden ring glow at the event horizon edge */}
+        {/* 2D flat corona — radiance-white ring glow at the event horizon edge */}
         <radialGradient id={`${id}-corona`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%"   stopColor="#f0c040" stopOpacity="0"    />
-          <stop offset="48%"  stopColor="#f0c040" stopOpacity="0"    />
-          <stop offset="62%"  stopColor="#f8d040" stopOpacity="0.85" />
-          <stop offset="75%"  stopColor="#e0a820" stopOpacity="0.45" />
-          <stop offset="100%" stopColor="#b07800" stopOpacity="0"    />
+          <stop offset="0%"   stopColor="#d0dcea" stopOpacity="0"    />
+          <stop offset="48%"  stopColor="#d0dcea" stopOpacity="0"    />
+          <stop offset="62%"  stopColor="#e8f0ff" stopOpacity="0.85" />
+          <stop offset="75%"  stopColor="#c0cce0" stopOpacity="0.45" />
+          <stop offset="100%" stopColor="#8090a8" stopOpacity="0"    />
         </radialGradient>
         {/* Saturn-ring disk — clips for front/back z-split */}
         <clipPath id={`${id}-disk-back`}>
@@ -864,24 +864,24 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
           <rect x="0" y="52" width="70" height="48" />
         </clipPath>
 
-        {/* Per-arm energy beam gradients: affinity color at system → gold at hub */}
+        {/* Per-arm energy beam gradients: affinity color at system → white at hub */}
         {systems.map(({ cx, cy, col }, i) => (
           <linearGradient key={i} id={`${id}-arm${i}`}
             x1={cx} y1={cy} x2={HUB_X} y2={HUB_Y}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%"   stopColor={col}   stopOpacity="1"   />
-            <stop offset="72%"  stopColor={GOLD}  stopOpacity="0.9" />
-            <stop offset="100%" stopColor={GOLD2} stopOpacity="0.6" />
+            <stop offset="0%"   stopColor={col}     stopOpacity="1"   />
+            <stop offset="72%"  stopColor="#e2e8f0" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#ffffff"  stopOpacity="0.6" />
           </linearGradient>
         ))}
 
-        {/* Per-branch gradients: gold at arm junction → affinity at satellite */}
+        {/* Per-branch gradients: white at arm junction → affinity at satellite */}
         {satellites.map(({ bx, by, cx, cy, col }, i) => (
           <linearGradient key={i} id={`${id}-br${i}`}
             x1={bx} y1={by} x2={cx} y2={cy}
             gradientUnits="userSpaceOnUse">
-            <stop offset="0%"   stopColor={GOLD2} stopOpacity="0.7" />
-            <stop offset="100%" stopColor={col}   stopOpacity="1"   />
+            <stop offset="0%"   stopColor="#e2e8f0" stopOpacity="0.7" />
+            <stop offset="100%" stopColor={col}     stopOpacity="1"   />
           </linearGradient>
         ))}
       </defs>
