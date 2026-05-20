@@ -6,7 +6,7 @@ import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, ma
 import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { useLocation } from "wouter";
-import { GEM_META, type GemKey } from "@/lib/gemMeta";
+import { GEM_META, GEM_KEYS, type GemKey } from "@/lib/gemMeta";
 import {
   TUTORIAL_BEATS,
   TUTORIAL_CARDS,
@@ -50,8 +50,8 @@ for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
 }
 
 // ─── Gem images ───────────────────────────────────────────────────────────────
-const ALL_GEMS: GemKey[] = ["ruby", "pearl", "emerald", "sapphire", "onyx", "flux"];
-const GEM_KEYS_NO_FLUX: GemKey[] = ["ruby", "pearl", "emerald", "sapphire", "onyx"];
+const ALL_GEMS: GemKey[] = GEM_KEYS;
+const GEM_KEYS_NO_FLUX: GemKey[] = GEM_KEYS.filter(k => k !== "flux");
 
 // ─── LumiiOrb zone palette (mirrors LumiiTutorial.tsx ZONE_PALETTE) ───────────
 // Each row is 6 node colours subtly shifted toward the zone's affinity theme.
@@ -2304,8 +2304,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     return () => window.removeEventListener("resize", update);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devMarker]);
-  const [affinityNames] = useState(["Flare", "Radiance", "Verdance", "Continuum", "Abyss"]);
-  const [affKeys] = useState<GemKey[]>(["ruby", "pearl", "emerald", "sapphire", "onyx"]);
+  const affKeys = useMemo<GemKey[]>(() => GEM_KEYS.filter(k => k !== "flux"), []);
+  const affinityNames = useMemo(() => affKeys.map(k => GEM_META[k].name), [affKeys]);
 
   const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5c_architect_assembly"];
   // Pre-shatter dialogue beats that can also be skipped — excludes b3b_farewell ("take me home" branch)
