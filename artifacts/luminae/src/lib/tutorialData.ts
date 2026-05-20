@@ -1,13 +1,13 @@
 import { GEM_KEYS, GEM_META, type GemKey } from "@/lib/gemMeta";
 
-export type TutorialBeatMode =
+type TutorialBeatMode =
   | "listen"
   | "look"
   | "act"
   | "cinematic"
   | "semiOpen";
 
-export type LumiiZone =
+type LumiiZone =
   | "hidden"
   | "center"
   | "verdance-panel"
@@ -26,19 +26,19 @@ export type LumiiZone =
   | "card-cost"
   | "player-panel";
 
-export interface TutorialDialogueLine {
+interface TutorialDialogueLine {
   text: string;
   excited?: boolean;
 }
 
-export type CompletionTrigger =
+type CompletionTrigger =
   | { type: "dialogue" }
   | { type: "action"; action: TutorialAction }
   | { type: "auto"; ms: number }
   | { type: "animation" }
   | { type: "panel_view" };
 
-export type TutorialAction =
+type TutorialAction =
   | "harness"
   | "forge_market"
   | "forge_reserved"
@@ -48,7 +48,7 @@ export type TutorialAction =
   | "cinematic_ff"
   | "forge_final";
 
-export interface TutorialBeat {
+interface TutorialBeat {
   id: string;
   mode: TutorialBeatMode;
   dialogue: TutorialDialogueLine[];
@@ -62,7 +62,7 @@ export interface TutorialBeat {
   choices?: { label: string; value: string }[];
 }
 
-export interface TutorialSubStep {
+interface TutorialSubStep {
   label: string;
   action: TutorialAction;
   dialogue?: string;
