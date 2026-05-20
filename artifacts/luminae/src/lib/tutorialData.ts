@@ -504,7 +504,3 @@ export const VERDANCE_LUMINARY_ID = "lum_verdant";
 export const VERDANCE_LUMINARY_EMINENCE = 2;
 
 export const AFFINITY_SEQ_KEYS: GemKey[] = GEM_KEYS.filter(k => k !== "flux");
-
-export const AFFINITY_SEQ_NAMES: Record<GemKey, string> = Object.fromEntries(
-  GEM_KEYS.map(k => [k, GEM_META[k].name])
-) as Record<GemKey, string>;
