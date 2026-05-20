@@ -1,4 +1,4 @@
-import { GEM_KEYS, type GemKey } from "@/lib/gemMeta";
+import { GEM_KEYS, GEM_META, type GemKey } from "@/lib/gemMeta";
 
 export type TutorialBeatMode =
   | "listen"
@@ -505,11 +505,6 @@ export const VERDANCE_LUMINARY_EMINENCE = 2;
 
 export const AFFINITY_SEQ_KEYS: GemKey[] = GEM_KEYS.filter(k => k !== "flux");
 
-export const AFFINITY_SEQ_NAMES: Record<GemKey, string> = {
-  ruby: "Flare",
-  sapphire: "Continuum",
-  emerald: "Verdance",
-  onyx: "Abyss",
-  pearl: "Radiance",
-  flux: "Singularity",
-};
+export const AFFINITY_SEQ_NAMES: Record<GemKey, string> = Object.fromEntries(
+  GEM_KEYS.map(k => [k, GEM_META[k].name])
+) as Record<GemKey, string>;

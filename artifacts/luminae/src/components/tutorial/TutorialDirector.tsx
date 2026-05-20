@@ -18,7 +18,6 @@ import {
   RESERVE_CARD_ID,
   TIER2_SINGULARITY_ID,
   AFFINITY_SEQ_KEYS,
-  AFFINITY_SEQ_NAMES,
   BEAT_INDEX,
   VERDANCE_LUMINARY_ID,
   type TutorialCard as TutorialCardData,
@@ -2304,8 +2303,8 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     return () => window.removeEventListener("resize", update);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devMarker]);
-  const affKeys = useMemo<GemKey[]>(() => GEM_KEYS.filter(k => k !== "flux"), []);
-  const affinityNames = useMemo(() => affKeys.map(k => GEM_META[k].name), [affKeys]);
+  const affKeys = AFFINITY_SEQ_KEYS;
+  const affinityNames = useMemo(() => AFFINITY_SEQ_KEYS.map(k => GEM_META[k].name), []);
 
   const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5c_architect_assembly"];
   // Pre-shatter dialogue beats that can also be skipped — excludes b3b_farewell ("take me home" branch)
