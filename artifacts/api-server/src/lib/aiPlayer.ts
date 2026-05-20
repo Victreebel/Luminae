@@ -320,7 +320,7 @@ function pickCrystalsToReturn(
   state: GameStateData,
   difficulty: AiDifficulty,
 ): Partial<CrystalCounts> {
-  const allColors: CrystalColor[] = ["ruby", "sapphire", "emerald", "onyx", "pearl"];
+  const allColors: CrystalColor[] = CRYSTAL_COLORS;
 
   if (difficulty === "easy") {
     // Easy: just return excess of the most-held colors

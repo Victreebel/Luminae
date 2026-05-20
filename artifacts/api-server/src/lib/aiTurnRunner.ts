@@ -4,6 +4,7 @@ import {
   applyAction,
   formatGameState,
   normalizeState,
+  CRYSTAL_COLORS,
   type GameStateData,
 } from "./gameEngine";
 import { chooseAiAction, type AiDifficulty } from "./aiPlayer";
@@ -91,7 +92,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
             "AI action failed, attempting fallback",
           );
           let recovered = false;
-          for (const color of ["ruby", "sapphire", "emerald", "onyx", "pearl"] as const) {
+          for (const color of CRYSTAL_COLORS) {
             if (state.crystalBank[color] > 0) {
               const fallback = applyAction(state, currentPlayerId, {
                 type: "take_three_crystals",
