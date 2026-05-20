@@ -153,7 +153,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
       }
     } else {
       let recovered = false;
-      for (const color of ["ruby", "sapphire", "emerald", "onyx", "pearl"] as const) {
+      for (const color of ["ruby", "pearl", "emerald", "sapphire", "onyx"] as const) {
         if (state.crystalBank[color] > 0) {
           const fb = applyAction(state, currentPlayer.playerId, {
             type: "take_three_crystals",
@@ -188,7 +188,7 @@ function runOneGame(playerCount: number, difficulty: AiDifficulty, verbose = fal
   }
 
   const maxBonusObserved: Record<CrystalColor, number> = {
-    ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0,
+    ruby: 0, pearl: 0, emerald: 0, sapphire: 0, onyx: 0,
   };
   for (const p of state.players) {
     for (const color of CRYSTAL_COLORS) {
@@ -245,7 +245,7 @@ function percentile(arr: number[], p: number): number {
 }
 
 function lumTier(lum: (typeof LUMINARIES)[0]): number {
-  const colors = ["ruby", "sapphire", "emerald", "onyx", "pearl"] as const;
+  const colors = ["ruby", "pearl", "emerald", "sapphire", "onyx"] as const;
   const nonZero = colors.filter((c) => lum.requirements[c] > 0);
   if (nonZero.length === 1) return lum.lumens <= 1 ? 1 : 2;
   if (nonZero.length === 2) return 3;
@@ -253,9 +253,9 @@ function lumTier(lum: (typeof LUMINARIES)[0]): number {
 }
 
 function reqSummary(lum: (typeof LUMINARIES)[0]): string {
-  const colors = ["ruby", "sapphire", "emerald", "onyx", "pearl"] as const;
+  const colors = ["ruby", "pearl", "emerald", "sapphire", "onyx"] as const;
   const labels: Record<string, string> = {
-    ruby: "Flr", sapphire: "Con", emerald: "Vrd", onyx: "Aby", pearl: "Rad",
+    ruby: "Flr", pearl: "Rad", emerald: "Vrd", sapphire: "Con", onyx: "Aby",
   };
   return colors
     .filter((c) => lum.requirements[c] > 0)
@@ -264,7 +264,7 @@ function reqSummary(lum: (typeof LUMINARIES)[0]): string {
 }
 
 const COLOR_LABEL: Record<CrystalColor, string> = {
-  ruby: "Flr", sapphire: "Con", emerald: "Vrd", onyx: "Aby", pearl: "Rad",
+  ruby: "Flr", pearl: "Rad", emerald: "Vrd", sapphire: "Con", onyx: "Aby",
 };
 
 // ── Single-difficulty report ──────────────────────────────────────────────────
@@ -317,7 +317,7 @@ function runDifficulty(difficulty: AiDifficulty, games: number, players: number,
   const totalActionCounts: Record<string, number> = {};
 
   const peakBonusObserved: Record<CrystalColor, number> = {
-    ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0,
+    ruby: 0, pearl: 0, emerald: 0, sapphire: 0, onyx: 0,
   };
   const gamesActiveCount: Record<string, number> = {};
   for (const lum of LUMINARIES) gamesActiveCount[lum.id] = 0;

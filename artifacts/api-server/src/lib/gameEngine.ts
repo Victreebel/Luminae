@@ -31,10 +31,10 @@ export type CrystalCounts = Record<CrystalColorWithFlux, number>;
 
 export const CRYSTAL_COLORS: CrystalColor[] = [
   "ruby",
-  "sapphire",
-  "emerald",
-  "onyx",
   "pearl",
+  "emerald",
+  "sapphire",
+  "onyx",
 ];
 
 export interface ArtifactCard {
