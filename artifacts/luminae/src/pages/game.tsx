@@ -3042,12 +3042,8 @@ export default function GameBoard() {
         data-tutorial-zone="harvest"
         className="rounded-2xl bg-secondary/40 backdrop-blur overflow-hidden transition-all duration-300"
         style={{
-          border: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
-            ? '1.5px solid #6ee7b7'
-            : '1px solid hsl(var(--border) / 0.5)',
-          boxShadow: (sentFlashBtn === 'harness' || sentFlashBtn === 'plan_harness')
-            ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
-            : (tutorialZone === 'harvest')
+          border: '1px solid hsl(var(--border) / 0.5)',
+          boxShadow: (tutorialZone === 'harvest')
             ? tutorialAttention === 'action'
               ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
               : '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)'
