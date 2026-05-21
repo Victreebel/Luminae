@@ -147,14 +147,14 @@ All six affinity gem token PNGs are automatically normalized to a consistent 512
 ### Protected Gem Token Assets — DO NOT REGENERATE
 The following six files are locked and must not be replaced, overwritten, or regenerated in any asset-generation pass. They were restored from commit `4758e88` after multiple inadvertent replacements destroyed their content (singularity dropped to 3% pixel coverage / 33 KB at worst). The normalization script will refuse to process any of these files if their visible pixel coverage drops below 28%, printing a PROTECTED warning instead of locking in degraded art.
 
-| File | Key | Current size |
-|---|---|---|
-| `attached_assets/luminae_radiance_emblem_v2.png` | Radiance (pearl) | ~305 KB |
-| `attached_assets/luminae_singularity_emblem_v1.png` | Singularity (flux) | ~248 KB |
-| `attached_assets/generated_images/gem_flare.png` | Flare (ruby) | ~260 KB |
-| `attached_assets/generated_images/gem_continuum.png` | Continuum (sapphire) | ~284 KB |
-| `attached_assets/generated_images/gem_verdance.png` | Verdance (emerald) | ~310 KB |
-| `attached_assets/generated_images/gem_abyss.png` | Abyss (onyx) | ~290 KB |
+| File | Key | Source commit | Locked size |
+|---|---|---|---|
+| `attached_assets/luminae_radiance_emblem_v2.png` | Radiance (pearl) | `b846aea` (1254×1254 original) | ~327 KB |
+| `attached_assets/luminae_singularity_emblem_v1.png` | Singularity (flux) | `e10f40b` (512×512 original) | ~437 KB |
+| `attached_assets/generated_images/gem_flare.png` | Flare (ruby) | `41b9cf2` (1024×1024 original) | ~252 KB |
+| `attached_assets/generated_images/gem_continuum.png` | Continuum (sapphire) | `41b9cf2` (1024×1024 original) | ~259 KB |
+| `attached_assets/generated_images/gem_verdance.png` | Verdance (emerald) | `41b9cf2` (1024×1024 original) | ~289 KB |
+| `attached_assets/generated_images/gem_abyss.png` | Abyss (onyx) | `41b9cf2` (1024×1024 original) | ~268 KB |
 
 If you need to replace a token with new art, do so deliberately and verify the new file has ≥30% visible pixel coverage before committing.
 
