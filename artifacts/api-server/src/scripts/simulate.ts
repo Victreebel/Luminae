@@ -40,6 +40,7 @@ import {
   CRYSTAL_COLORS,
   effectiveBonuses,
   zeroCrystals,
+  parseAiDifficulty,
   type GameStateData,
   type CrystalColor,
   type CrystalCounts,
@@ -74,8 +75,19 @@ function parseArgs(): {
     if (args[i] === "--verbose") verbose = true;
     if (args[i] === "--probe" && args[i + 1]) probe = args[++i];
   }
-  const difficulties: AiDifficulty[] =
-    diffArg === "all" ? ["easy", "medium", "hard"] : [diffArg as AiDifficulty];
+  let difficulties: AiDifficulty[];
+  if (diffArg === "all") {
+    difficulties = ["easy", "medium", "hard"];
+  } else {
+    try {
+      difficulties = [parseAiDifficulty(diffArg)];
+    } catch {
+      console.error(
+        `Error: invalid --difficulty value "${diffArg}". Valid values are: easy, medium, hard (or "all").`
+      );
+      process.exit(1);
+    }
+  }
   const playerCounts: number[] =
     playersArg === "all" ? [2, 3, 4] : [parseInt(playersArg, 10)];
   return { games, difficulties, playerCounts, outputFile, verbose, probe };
