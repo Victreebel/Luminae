@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import {
   applyAction,
   formatGameState,
+  parseAiDifficulty,
   type AiDifficulty,
   type GameStateData,
 } from "./gameEngine";
@@ -116,7 +117,7 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
         allPlayers.map((p) => [p.id, p.avatarId ?? null]),
       );
       const aiMap = new Map(
-        allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+        allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
       );
       const formatted = formatGameState(
         roomId,

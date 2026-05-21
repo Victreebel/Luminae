@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import {
   initializeGame,
   formatGameState,
+  parseAiDifficulty,
   type AiDifficulty,
 } from "./gameEngine";
 import {
@@ -267,7 +268,7 @@ async function _executeRematch(roomId: string): Promise<void> {
         p.id,
         {
           isAi: p.isAi,
-          aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null,
+          aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null,
         },
       ]),
     );

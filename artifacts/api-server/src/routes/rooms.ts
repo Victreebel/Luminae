@@ -15,6 +15,7 @@ import {
   initializeGame,
   formatGameState,
   normalizeState,
+  parseAiDifficulty,
   type AiDifficulty,
   type GameStateData,
 } from "../lib/gameEngine";
@@ -508,7 +509,7 @@ router.post("/rooms/:roomId/start", async (req, res): Promise<void> => {
     players.map((p) => [p.id, p.avatarId ?? null]),
   );
   const aiMap = new Map(
-    players.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+    players.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
   );
 
   const formatted = formatGameState(rawId, "playing", gameData, connectedIds, avatarMap, aiMap);

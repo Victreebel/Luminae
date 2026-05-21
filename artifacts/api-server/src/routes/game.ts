@@ -6,6 +6,7 @@ import {
   applyAction,
   formatGameState,
   normalizeState,
+  parseAiDifficulty,
   type AiDifficulty,
   type GameStateData,
   type ActionPayload,
@@ -86,7 +87,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
         playerName: p.name,
         avatarId: p.avatarId ?? null,
         isAi: p.isAi,
-        aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null,
+        aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null,
         crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         bonuses: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
         lumens: 0,
@@ -129,7 +130,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     allPlayers.map((p) => [p.id, p.avatarId ?? null]),
   );
   const aiMap = new Map(
-    allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+    allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
   );
   // Snapshot stored value BEFORE normalizeState (it mutates in place).
   const storedLuminaries = JSON.stringify(
@@ -311,7 +312,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
       allPlayers.map((p) => [p.id, p.avatarId ?? null]),
     );
     const aiMap = new Map(
-      allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+      allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
     );
     const formatted = formatGameState(rawId, room.status, stateData, connectedIds, avatarMap, aiMap);
 

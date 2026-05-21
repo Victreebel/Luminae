@@ -4,6 +4,7 @@ import {
   applyAction,
   formatGameState,
   normalizeState,
+  parseAiDifficulty,
   CRYSTAL_COLORS,
   type GameStateData,
 } from "./gameEngine";
@@ -81,7 +82,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           .limit(1);
         if (!dbPlayer || !dbPlayer.isAi) return { kind: "stop" as const };
 
-        const difficulty = (dbPlayer.aiDifficulty ?? "medium") as AiDifficulty;
+        const difficulty = parseAiDifficulty(dbPlayer.aiDifficulty ?? "medium");
         const action = chooseAiAction(state, currentPlayerId, difficulty);
 
         const expectedVersion = state.version;
@@ -162,7 +163,7 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
           allPlayers.map((p) => [p.id, p.avatarId ?? null]),
         );
         const aiMap = new Map(
-          allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: (p.aiDifficulty as AiDifficulty | null) ?? null }]),
+          allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
         );
 
         const formatted = formatGameState(

@@ -2,6 +2,7 @@
 // Original tabletop engine-building game inspired by gem-market tableau games.
 // Original names, original card designs, original rules presentation.
 
+import { z } from "zod";
 import { getCardLore } from "./cardLore";
 
 export type CrystalColor = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl";
@@ -1452,6 +1453,16 @@ function withLore(card: ArtifactCard) {
 }
 
 export type AiDifficulty = "easy" | "medium" | "hard" | "passive";
+
+export const zAiDifficulty = z.enum(["easy", "medium", "hard", "passive"]);
+
+export function parseAiDifficulty(value: unknown): AiDifficulty {
+  const result = zAiDifficulty.safeParse(value);
+  if (!result.success) {
+    throw new Error(`Invalid AI difficulty value: ${JSON.stringify(value)}`);
+  }
+  return result.data;
+}
 
 export function formatGameState(
   roomId: string,
