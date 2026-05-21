@@ -1284,8 +1284,8 @@ export default function GameBoard() {
   const forgedPillsScrollableProps = forgedSheetMakeScrollableAreaProps({ axis: 'horizontal' });
   const forgedBodyScrollableProps = forgedSheetMakeScrollableAreaProps();
 
-  const TURN_ANNOUNCE_DURATION = 1000;
-  const OPPONENT_ANNOUNCE_DURATION = 1000;
+  const TURN_ANNOUNCE_DURATION = 1800;
+  const OPPONENT_ANNOUNCE_DURATION = 1100;
 
   const setAnimEndTime = (durationMs: number) => {
     const end = Date.now() + durationMs;
