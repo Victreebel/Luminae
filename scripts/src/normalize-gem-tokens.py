@@ -15,13 +15,16 @@ import os
 CANVAS = 512
 FILL_PCT = 0.78  # artwork occupies 78% of the canvas dimension
 
+# Resolve paths relative to the repo root (two levels above this script).
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
 FILES = [
-    "attached_assets/luminae_radiance_emblem_v2.png",
-    "attached_assets/luminae_singularity_emblem_v1.png",
-    "attached_assets/generated_images/gem_flare.png",
-    "attached_assets/generated_images/gem_continuum.png",
-    "attached_assets/generated_images/gem_verdance.png",
-    "attached_assets/generated_images/gem_abyss.png",
+    os.path.join(_REPO_ROOT, "attached_assets/luminae_radiance_emblem_v2.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/luminae_singularity_emblem_v1.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_flare.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_continuum.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_verdance.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_abyss.png"),
 ]
 
 
