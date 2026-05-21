@@ -3,7 +3,8 @@ import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
   useSubmitAction,
-  getGetGameStateQueryKey
+  getGetGameStateQueryKey,
+  useGetCardLoreCatalog,
 } from '@workspace/api-client-react';
 import type { RematchVoteUpdate } from '@/hooks/use-game-websocket';
 import type { 
@@ -1380,6 +1381,8 @@ export default function GameBoard() {
     { sessionToken: session?.sessionToken || '' },
     { query: { enabled: !!roomId && !!session, queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }) } }
   );
+
+  const { data: loreCatalog } = useGetCardLoreCatalog();
 
   // When a tutorial game fails to load due to a stale/missing room (401, 403,
   // or 404), silently clear the session and restart the tutorial instead of
@@ -4372,6 +4375,9 @@ export default function GameBoard() {
                   <div className="font-bold text-base leading-tight">{selectedCard.card.name}</div>
                   {selectedCard.card.flavor && (
                     <p className="text-xs text-muted-foreground italic leading-relaxed">"{selectedCard.card.flavor}"</p>
+                  )}
+                  {loreCatalog?.[selectedCard.card.id]?.practicalUse && (
+                    <p className="text-xs text-muted-foreground/80 leading-relaxed">{loreCatalog[selectedCard.card.id].practicalUse}</p>
                   )}
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground">Bonus:</span>
