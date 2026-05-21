@@ -21,6 +21,7 @@ import type {
   ActionRequest,
   ActiveGamesResponse,
   AddAiPlayerBody,
+  CardLoreCatalog,
   ChallengeAcceptedResponse,
   ChallengeActionBody,
   ChallengeCreatedResponse,
@@ -55,6 +56,81 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Return name, flavour text, and practicalUse for every card
+ */
+export const getGetCardLoreCatalogUrl = () => {
+  return `/api/cards/lore`;
+};
+
+export const getCardLoreCatalog = async (
+  options?: RequestInit,
+): Promise<CardLoreCatalog> => {
+  return customFetch<CardLoreCatalog>(getGetCardLoreCatalogUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCardLoreCatalogQueryKey = () => {
+  return [`/api/cards/lore`] as const;
+};
+
+export const getGetCardLoreCatalogQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCardLoreCatalog>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCardLoreCatalog>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCardLoreCatalogQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCardLoreCatalog>>
+  > = ({ signal }) => getCardLoreCatalog({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCardLoreCatalog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCardLoreCatalogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCardLoreCatalog>>
+>;
+export type GetCardLoreCatalogQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Return name, flavour text, and practicalUse for every card
+ */
+
+export function useGetCardLoreCatalog<
+  TData = Awaited<ReturnType<typeof getCardLoreCatalog>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCardLoreCatalog>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCardLoreCatalogQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Health check

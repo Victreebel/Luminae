@@ -5,6 +5,16 @@
  * Luminae multiplayer tabletop game API
  * OpenAPI spec version: 0.1.0
  */
+export interface CardLoreEntry {
+  name: string;
+  practicalUse: string;
+  flavor: string;
+}
+
+export interface CardLoreCatalog {
+  [key: string]: CardLoreEntry;
+}
+
 export interface HealthStatus {
   status: string;
 }

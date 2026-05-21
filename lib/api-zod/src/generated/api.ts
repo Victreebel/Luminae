@@ -8,6 +8,18 @@
 import * as zod from "zod";
 
 /**
+ * @summary Return name, flavour text, and practicalUse for every card
+ */
+export const GetCardLoreCatalogResponse = zod.record(
+  zod.string(),
+  zod.object({
+    name: zod.string(),
+    practicalUse: zod.string(),
+    flavor: zod.string(),
+  }),
+);
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

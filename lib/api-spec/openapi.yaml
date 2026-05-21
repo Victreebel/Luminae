@@ -21,6 +21,19 @@ tags:
     description: Player challenges
 
 paths:
+  /cards/lore:
+    get:
+      operationId: getCardLoreCatalog
+      tags: [game]
+      summary: Return name, flavour text, and practicalUse for every card
+      responses:
+        "200":
+          description: Card lore map keyed by card ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CardLoreCatalog"
+
   /healthz:
     get:
       operationId: healthCheck
@@ -605,6 +618,25 @@ components:
       type: http
       scheme: bearer
   schemas:
+    CardLoreEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        practicalUse:
+          type: string
+        flavor:
+          type: string
+      required:
+        - name
+        - practicalUse
+        - flavor
+
+    CardLoreCatalog:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/CardLoreEntry"
+
     HealthStatus:
       type: object
       properties:

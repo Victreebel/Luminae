@@ -19,7 +19,7 @@ export interface CardLore {
   artPrompt?: string;
 }
 
-const CARD_LORE: Record<string, CardLore> = {
+export const CARD_LORE: Record<string, CardLore> = {
   // ── Tier 1 ─ Flare ───────────────────────────────────────────────────────
   t1r01: { name: "Ignition Kernel",       flavor: "A dense ignition core that can start a city, a shipyard, or a rescue furnace without becoming a weapon first.",
     practicalUse: "Provides controlled energy, heat, or ignition support for Mantle-to-Orbit Foundry systems.",

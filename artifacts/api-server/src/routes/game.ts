@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
 import { SubmitActionBody } from "@workspace/api-zod";
+import { CARD_LORE } from "../lib/cardLore";
 import {
   applyAction,
   formatGameState,
@@ -345,6 +346,19 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 
   // If next player is an AI, kick off AI turn loop in background
   void runAiTurnsIfNeeded(rawId);
+});
+
+// GET /api/cards/lore
+router.get("/cards/lore", (_req, res) => {
+  const out: Record<string, { name: string; practicalUse: string; flavor: string }> = {};
+  for (const [id, lore] of Object.entries(CARD_LORE)) {
+    out[id] = {
+      name: lore.name,
+      practicalUse: lore.practicalUse ?? "",
+      flavor: lore.flavor,
+    };
+  }
+  res.json(out);
 });
 
 export default router;
