@@ -144,6 +144,20 @@ If a generation pass produces a humanoid figure for a Luminary that should be no
 ### Gem Token Normalization
 All six affinity gem token PNGs are automatically normalized to a consistent 512×512 canvas whenever `pnpm run typecheck` is run. The normalization step (`pnpm run normalize:gems`) runs first, before any TypeScript checks, via `scripts/src/normalize-gem-tokens.py`. If you add or regenerate gem art in `attached_assets/`, simply run `pnpm run typecheck` (or the dedicated `pnpm run normalize:gems`) and the files will be cropped, scaled to 78% fill, and centered in-place.
 
+### Protected Gem Token Assets — DO NOT REGENERATE
+The following six files are locked and must not be replaced, overwritten, or regenerated in any asset-generation pass. They were restored from commit `4758e88` after multiple inadvertent replacements destroyed their content (singularity dropped to 3% pixel coverage / 33 KB at worst). The normalization script will refuse to process any of these files if their visible pixel coverage drops below 28%, printing a PROTECTED warning instead of locking in degraded art.
+
+| File | Key | Current size |
+|---|---|---|
+| `attached_assets/luminae_radiance_emblem_v2.png` | Radiance (pearl) | ~305 KB |
+| `attached_assets/luminae_singularity_emblem_v1.png` | Singularity (flux) | ~248 KB |
+| `attached_assets/generated_images/gem_flare.png` | Flare (ruby) | ~260 KB |
+| `attached_assets/generated_images/gem_continuum.png` | Continuum (sapphire) | ~284 KB |
+| `attached_assets/generated_images/gem_verdance.png` | Verdance (emerald) | ~310 KB |
+| `attached_assets/generated_images/gem_abyss.png` | Abyss (onyx) | ~290 KB |
+
+If you need to replace a token with new art, do so deliberately and verify the new file has ≥30% visible pixel coverage before committing.
+
 ## External Dependencies
 
 -   **Database:** PostgreSQL with Drizzle ORM for schema definition and interaction.
