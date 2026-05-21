@@ -16,6 +16,7 @@ import {
   formatGameState,
   normalizeState,
   parseAiDifficulty,
+  zAiDifficulty,
   type AiDifficulty,
   type GameStateData,
 } from "../lib/gameEngine";
@@ -349,6 +350,13 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
   }
   const { sessionToken, difficulty } = parsed.data;
 
+  const difficultyResult = zAiDifficulty.safeParse(difficulty);
+  if (!difficultyResult.success) {
+    res.status(400).json({ error: `Invalid AI difficulty: "${difficulty}". Must be one of: easy, medium, hard, passive.` });
+    return;
+  }
+  const validatedDifficulty = difficultyResult.data;
+
   const [room] = await db
     .select()
     .from(roomsTable)
@@ -404,7 +412,7 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
       isConnected: true,
       isAi: true,
       avatarId: aiAvatarId,
-      aiDifficulty: difficulty,
+      aiDifficulty: validatedDifficulty,
     })
     .returning();
 
