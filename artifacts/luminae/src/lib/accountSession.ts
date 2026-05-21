@@ -304,7 +304,7 @@ export interface Challenge {
   expiresAt: string;
 }
 
-export interface ChallengeCreated {
+interface ChallengeCreated {
   id: string;
   roomId: string;
   inviteCode: string;
