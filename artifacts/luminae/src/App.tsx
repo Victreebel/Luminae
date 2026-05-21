@@ -15,6 +15,7 @@ import { PwaUpdatePrompt } from "@/components/PwaUpdatePrompt";
 import { AccountProvider } from "@/contexts/AccountContext";
 
 const DevCardBacks = lazy(() => import("@/pages/dev-card-backs"));
+const DevCardBrowser = lazy(() => import("@/pages/dev-card-browser"));
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -70,6 +71,13 @@ function Router() {
         <Route path="/dev/card-backs/:tier">
           <Suspense fallback={null}>
             <DevCardBacks />
+          </Suspense>
+        </Route>
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/dev/card-browser">
+          <Suspense fallback={null}>
+            <DevCardBrowser />
           </Suspense>
         </Route>
       )}
