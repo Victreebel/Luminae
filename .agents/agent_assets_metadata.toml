@@ -1751,3 +1751,9 @@ id = "WZKPQFd5I4mHA_IslmkMv"
 uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/entity_ref.png"
 type = "image"
 title = "Pale Sovereign — Entity reference (animated SVG used in-game)"
+
+[[outputs]]
+id = "nDKzPmn4awH_DwdAgzylE"
+uri = "file://docs/luminae_card_art_manifest.csv"
+type = "table"
+title = "Luminae Card Art Manifest — All 90 Cards"
