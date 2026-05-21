@@ -94,6 +94,16 @@ def normalize(path: str) -> str:
         )
         return "warn"
 
+    # Idempotency guard — if already the target canvas size, there is nothing
+    # to do.  Re-saving an already-normalized file drifts the file size slightly
+    # on every typecheck run due to PNG optimizer non-determinism.
+    if img.width == CANVAS and img.height == CANVAS:
+        print(
+            f"  SKIP {path}\n"
+            f"      already {CANVAS}×{CANVAS}  |  coverage {coverage:.1%}  |  {orig_kb} KB"
+        )
+        return "skip"
+
     bbox = img.getbbox()
     if bbox is None:
         print(f"  SKIP {path} — fully transparent, nothing to do")
