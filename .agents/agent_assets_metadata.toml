@@ -1392,6 +1392,78 @@ uri = "file://artifacts/luminae/src/assets/luminaries/lum_pale/panel_v3.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "qa4x9nuu5-Oh2CjDI6r0H"
+uri = "file://artifacts/luminae/src/assets/cards/t3e04.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5UFtIGxKlgTkCwXEkLRJV"
+uri = "file://artifacts/luminae/src/assets/cards/t3o01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "niL6g7mBSh-dgETHXLKIK"
+uri = "file://artifacts/luminae/src/assets/cards/t3o02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "nXNd1vvGmHksJ8PUVMBAN"
+uri = "file://artifacts/luminae/src/assets/cards/t3o03.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "9VNYvkr10EctjdBCI7cDG"
+uri = "file://artifacts/luminae/src/assets/cards/t3p01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "bE1akYHm3UO9YFDqy6zy9"
+uri = "file://artifacts/luminae/src/assets/cards/t3p02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "xjFsQVvP4KDAGqdl2kk7K"
+uri = "file://artifacts/luminae/src/assets/cards/t3r01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "sOh_EOV6fmsAjKrStqOx8"
+uri = "file://artifacts/luminae/src/assets/cards/t3r02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Pvu6ZJxqK_XOR2qij0PJY"
+uri = "file://artifacts/luminae/src/assets/cards/t3s01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "M-wRnWPvEfZMdfHu5nHic"
+uri = "file://artifacts/luminae/src/assets/cards/t3s02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XOa0toYTVSPSu-kusscJK"
+uri = "file://artifacts/luminae/src/assets/cards/t3e01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "WOmCsCi_6w8R4P8aX4nsp"
+uri = "file://artifacts/luminae/src/assets/cards/t3e02.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
