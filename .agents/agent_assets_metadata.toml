@@ -1680,6 +1680,78 @@ uri = "file://artifacts/luminae/src/assets/cards/t1p08.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "4ovuXLtiqIi_8w9j28Zad"
+uri = "file://attached_assets/generated_images/a_biological_organ_grown_b5cc.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "5b7GkCGErMVlO0R5ke3Ga"
+uri = "file://attached_assets/generated_images/a_galactic_civilization_veto_a12f.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "L7b7VX4fRu7QKjinfVRdn"
+uri = "file://attached_assets/generated_images/a_hand_sized_galactic_4f71.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "zU9Ygy2j0S9OJj8Cb4bU-"
+uri = "file://attached_assets/generated_images/a_multi_species_concordance_cdc6.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "yBa9slBwxur_KdsrJ8Qqv"
+uri = "file://attached_assets/generated_images/gen_t3s01.png"
+type = "image"
+title = "voidline compass"
+
+[[generated]]
+id = "4bhE4JUmTJyy01BR4ka4J"
+uri = "file://attached_assets/generated_images/gen_t3r02.png"
+type = "image"
+title = "extinction furnace veto"
+
+[[generated]]
+id = "0sCTwLsQVNizR3bzSfdMU"
+uri = "file://attached_assets/generated_images/gen_t2p03.png"
+type = "image"
+title = "living treaty organ"
+
+[[generated]]
+id = "-Tai3xmszILYtWKWxTMWM"
+uri = "file://attached_assets/generated_images/gen_t3p01.png"
+type = "image"
+title = "concordance seal"
+
+[[generated]]
+id = "VGC3aY-xBkEPvUUucH3xU"
+uri = "file://attached_assets/generated_images/gen_t3r01.png"
+type = "image"
+title = "relic ignition key"
+
+[[generated]]
+id = "JCWXvEyQF5ql9-NvLlhQI"
+uri = "file://attached_assets/generated_images/gen_t2r03.png"
+type = "image"
+title = "starlift nozzle"
+
+[[generated]]
+id = "Rzl7EdAVHkndk6W-dQud5"
+uri = "file://attached_assets/generated_images/gen_t2e01.png"
+type = "image"
+title = "solar immune organ"
+
+[[generated]]
+id = "A3XxrYrOBagPudsGIxLir"
+uri = "file://attached_assets/generated_images/gen_gem_radiance.png"
+type = "image"
+title = "radiance gem token"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
