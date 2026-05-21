@@ -29,6 +29,8 @@ FILES = [
     os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_continuum.png"),
     os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_verdance.png"),
     os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_abyss.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_radiance.png"),
+    os.path.join(_REPO_ROOT, "attached_assets/generated_images/gem_singularity.png"),
 ]
 
 
