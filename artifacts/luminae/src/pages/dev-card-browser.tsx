@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { useGetCardLoreCatalog } from '@workspace/api-client-react';
+import type { CardLoreEntry } from '@workspace/api-client-react';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 
@@ -161,6 +162,96 @@ function CostPip({ gemKey, count }: { gemKey: GemKey; count: number }) {
     <div className="flex items-center gap-1 bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
       <span className="text-xs font-bold text-white">{count}</span>
       <img src={meta.image} alt={meta.name} className="w-3.5 h-3.5 object-contain" />
+    </div>
+  );
+}
+
+function ArtPromptBox({ prompt }: { prompt: string }) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(prompt).then(() => {
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div style={{ position: 'relative', background: '#080e22', borderRadius: 8, border: '1px solid #1a2450', padding: '10px 12px' }}>
+      <button
+        onClick={handleCopy}
+        style={{
+          position: 'absolute', top: 8, right: 8,
+          background: copied ? '#1a3a1a' : '#10142a',
+          border: `1px solid ${copied ? '#2a6a2a' : '#2a3060'}`,
+          borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+          color: copied ? '#60c060' : '#6080d0', fontSize: 10,
+          fontFamily: 'system-ui', letterSpacing: '0.07em',
+        }}
+      >
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+      <p style={{ fontFamily: 'system-ui', fontSize: 11, color: '#7090c0', lineHeight: 1.7, margin: 0, paddingRight: 56, whiteSpace: 'pre-wrap' }}>
+        {prompt}
+      </p>
+    </div>
+  );
+}
+
+function DevDetails({ lore }: { lore: CardLoreEntry }) {
+  const [open, setOpen] = useState(false);
+
+  const rows: { label: string; value: string | undefined }[] = [
+    { label: 'Artifact Form', value: lore.artifactForm },
+    { label: 'Blueprint Role', value: lore.blueprintRole },
+    { label: 'Blueprint Families', value: lore.blueprintFamilies },
+    { label: 'Civ Lane', value: lore.civLane },
+    { label: 'Engineering Scale', value: lore.engineeringScale },
+  ];
+  const hasDetails = rows.some(r => r.value) || lore.artPrompt;
+
+  if (!hasDetails) return null;
+
+  return (
+    <div style={{ borderTop: '1px solid #1a2040', paddingTop: 10 }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}
+      >
+        <span style={{ fontFamily: 'system-ui', fontSize: 10, color: '#404870', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          Dev Details
+        </span>
+        <span style={{ color: '#404870', fontSize: 10 }}>{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {rows.filter(r => r.value).map(r => (
+            <div key={r.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontFamily: 'system-ui', fontSize: 10, color: '#404870', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {r.label}
+              </span>
+              <span style={{ fontFamily: 'system-ui', fontSize: 12, color: '#8090b0', lineHeight: 1.5 }}>
+                {r.value}
+              </span>
+            </div>
+          ))}
+
+          {lore.artPrompt && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontFamily: 'system-ui', fontSize: 10, color: '#404870', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Art Prompt
+              </span>
+              <ArtPromptBox prompt={lore.artPrompt} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -387,6 +478,8 @@ export default function DevCardBrowser() {
             <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#7080a0', lineHeight: 1.6, fontStyle: 'italic' }}>
               {lore.flavor}
             </div>
+
+            <DevDetails lore={lore} />
           </>
         ) : (
           <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#404870', lineHeight: 1.6, fontStyle: 'italic' }}>

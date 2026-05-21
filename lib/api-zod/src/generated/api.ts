@@ -16,6 +16,14 @@ export const GetCardLoreCatalogResponse = zod.record(
     name: zod.string(),
     practicalUse: zod.string(),
     flavor: zod.string(),
+    artifactForm: zod.string().optional(),
+    blueprintRole: zod.string().optional(),
+    blueprintFamilies: zod.string().optional(),
+    civLane: zod.string().optional(),
+    engineeringScale: zod
+      .enum(["Planetary", "Star-system", "Galactic"])
+      .optional(),
+    artPrompt: zod.string().optional(),
   }),
 );
 

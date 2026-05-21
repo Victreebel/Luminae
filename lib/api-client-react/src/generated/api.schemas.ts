@@ -5,10 +5,25 @@
  * Luminae multiplayer tabletop game API
  * OpenAPI spec version: 0.1.0
  */
+export type CardLoreEntryEngineeringScale =
+  (typeof CardLoreEntryEngineeringScale)[keyof typeof CardLoreEntryEngineeringScale];
+
+export const CardLoreEntryEngineeringScale = {
+  Planetary: "Planetary",
+  "Star-system": "Star-system",
+  Galactic: "Galactic",
+} as const;
+
 export interface CardLoreEntry {
   name: string;
   practicalUse: string;
   flavor: string;
+  artifactForm?: string;
+  blueprintRole?: string;
+  blueprintFamilies?: string;
+  civLane?: string;
+  engineeringScale?: CardLoreEntryEngineeringScale;
+  artPrompt?: string;
 }
 
 export interface CardLoreCatalog {

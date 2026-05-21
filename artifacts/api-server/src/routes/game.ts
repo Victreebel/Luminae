@@ -350,12 +350,28 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 
 // GET /api/cards/lore
 router.get("/cards/lore", (_req, res) => {
-  const out: Record<string, { name: string; practicalUse: string; flavor: string }> = {};
+  const out: Record<string, {
+    name: string;
+    practicalUse: string;
+    flavor: string;
+    artifactForm?: string;
+    blueprintRole?: string;
+    blueprintFamilies?: string;
+    civLane?: string;
+    engineeringScale?: string;
+    artPrompt?: string;
+  }> = {};
   for (const [id, lore] of Object.entries(CARD_LORE)) {
     out[id] = {
       name: lore.name,
       practicalUse: lore.practicalUse ?? "",
       flavor: lore.flavor,
+      ...(lore.artifactForm !== undefined && { artifactForm: lore.artifactForm }),
+      ...(lore.blueprintRole !== undefined && { blueprintRole: lore.blueprintRole }),
+      ...(lore.blueprintFamilies !== undefined && { blueprintFamilies: lore.blueprintFamilies }),
+      ...(lore.civLane !== undefined && { civLane: lore.civLane }),
+      ...(lore.engineeringScale !== undefined && { engineeringScale: lore.engineeringScale }),
+      ...(lore.artPrompt !== undefined && { artPrompt: lore.artPrompt }),
     };
   }
   res.json(out);

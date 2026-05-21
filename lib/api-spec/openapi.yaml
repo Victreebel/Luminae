@@ -627,6 +627,22 @@ components:
           type: string
         flavor:
           type: string
+        artifactForm:
+          type: string
+        blueprintRole:
+          type: string
+        blueprintFamilies:
+          type: string
+        civLane:
+          type: string
+        engineeringScale:
+          type: string
+          enum:
+            - Planetary
+            - Star-system
+            - Galactic
+        artPrompt:
+          type: string
       required:
         - name
         - practicalUse
