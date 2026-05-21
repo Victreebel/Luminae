@@ -1464,6 +1464,96 @@ uri = "file://artifacts/luminae/src/assets/cards/t3e02.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "xetEJkmnwUxbdSyIX4npp"
+uri = "file://artifacts/luminae/src/assets/cards/t2e01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "8wx4qXgsukIYanTzdgSMV"
+uri = "file://artifacts/luminae/src/assets/cards/t2e02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "-SJmy54dPya9KPJZ-WV6j"
+uri = "file://artifacts/luminae/src/assets/cards/t2e03.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Iyt-D6PZA9BjF_BxXzzIH"
+uri = "file://artifacts/luminae/src/assets/cards/t2o01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "SAVZUW4UVLdO9l3vr1WBn"
+uri = "file://artifacts/luminae/src/assets/cards/t2o02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QEvwtEw_JzBGfafH28gKc"
+uri = "file://artifacts/luminae/src/assets/cards/t2r01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "HoomytiMsLmP56mlAWF1e"
+uri = "file://artifacts/luminae/src/assets/cards/t2r02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "f0fJo1YetjiDgdMCHdYuz"
+uri = "file://artifacts/luminae/src/assets/cards/t2r03.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "KVlDdepsoYUEyq0UBx3FC"
+uri = "file://artifacts/luminae/src/assets/cards/t2s01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "ovOHrEcz4c6RCM41ocQ8G"
+uri = "file://artifacts/luminae/src/assets/cards/t2s02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "RHbj8aBcuKFRvxboj02jG"
+uri = "file://artifacts/luminae/src/assets/cards/t2s03.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "1x3Ek59Zp1pMG_-nC_lD6"
+uri = "file://artifacts/luminae/src/assets/cards/t2o03.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "VyJI86szk0eQ33tgnODkA"
+uri = "file://artifacts/luminae/src/assets/cards/t2p01.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "vixQ68wMnCzX-175-Qlyu"
+uri = "file://artifacts/luminae/src/assets/cards/t2p02.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "wGfA2aKInjG-AR3yYGo5g"
+uri = "file://artifacts/luminae/src/assets/cards/t2p03.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
