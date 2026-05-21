@@ -3,12 +3,12 @@
 // database, and AI logic don't need to change. The UI displays cosmic names,
 // matching the Cosmic Affinity art reference.
 
-import gemRadiance from "@assets/luminae_radiance_emblem_v2.png";
+import gemRadiance from "@assets/generated_images/gem_radiance.png";
 import gemFlare from "@assets/generated_images/gem_flare.png";
 import gemContinuum from "@assets/generated_images/gem_continuum.png";
 import gemVerdance from "@assets/generated_images/gem_verdance.png";
 import gemAbyss from "@assets/generated_images/gem_abyss.png";
-import gemSingularity from "@assets/luminae_singularity_emblem_v1.png";
+import gemSingularity from "@assets/generated_images/gem_singularity.png";
 
 export type GemKey = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl" | "flux";
 
