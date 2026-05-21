@@ -6,7 +6,7 @@ export function touchPresence(accountId: string): void {
   presenceMap.set(accountId, Date.now());
 }
 
-export function isPresent(accountId: string): boolean {
+function isPresent(accountId: string): boolean {
   const last = presenceMap.get(accountId);
   return last !== undefined && Date.now() - last < ONLINE_THRESHOLD_MS;
 }

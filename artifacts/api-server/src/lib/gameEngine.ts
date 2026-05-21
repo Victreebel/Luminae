@@ -16,7 +16,7 @@ export interface LuminaryAffinity {
   summonedAtTurnCount: number;
 }
 
-export interface PendingSummonEvent {
+interface PendingSummonEvent {
   eventId: string;
   luminaryId: string;
   claimedByPlayerId: string;
@@ -75,7 +75,7 @@ export interface PlayerGameState {
   plannedActionCancelReason: string | null;
 }
 
-export interface ActionLogEntry {
+interface ActionLogEntry {
   playerId: string;
   playerName: string;
   summary: string;
@@ -141,7 +141,7 @@ function cost(
   return { ruby: r, sapphire: s, emerald: e, onyx: o, pearl: p, flux: 0 };
 }
 
-export const CARD_CATALOG: ArtifactCard[] = [
+const CARD_CATALOG: ArtifactCard[] = [
   // ─── Tier 1 (40 cards — 8 per gem) ───────────────────────────────────────
   // Ruby bonus
   { id: "t1r01", tier: 1, bonusColor: "ruby", lumens: 0, cost: cost(0, 0, 1, 1, 1) },
@@ -519,7 +519,7 @@ export function initializeGame(
 
 // ─── Action Types ─────────────────────────────────────────────────────────────
 
-export type ActionType =
+type ActionType =
   | "take_three_crystals"
   | "take_two_crystals"
   | "reserve_card"

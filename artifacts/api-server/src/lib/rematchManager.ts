@@ -29,7 +29,7 @@ const COUNTDOWN_MS = 5000;
 const ACCELERATE_MS = 300; // Fires this soon when all players have voted early
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export interface PlayerSessionRecord {
+interface PlayerSessionRecord {
   wins: number;
   losses: number;
   ties: number;
@@ -91,7 +91,7 @@ export function clearRematch(roomId: string): void {
   _votes.delete(roomId);
 }
 
-export interface RematchVoteInfo {
+interface RematchVoteInfo {
   voterIds: string[];
   /** ms timestamp; null means no countdown (2-player: waiting for partner). */
   countdownEndsAt: number | null;

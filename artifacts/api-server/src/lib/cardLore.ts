@@ -1,12 +1,12 @@
 // ─── Luminae Card Lore ──────────────────────────────────────────────────────
 // Original names + flavor text for every artifact card.
 
-export interface CardLore {
+interface CardLore {
   name: string;
   flavor: string;
 }
 
-export const CARD_LORE: Record<string, CardLore> = {
+const CARD_LORE: Record<string, CardLore> = {
   // ── Tier 1 ─ Ruby (solar / forge) ────────────────────────────────────────
   t1r01: { name: "Forge Spark", flavor: "The first cinder of a star not yet born." },
   t1r02: { name: "Ember Coil", flavor: "Heat woven into a bracelet of living wire." },
