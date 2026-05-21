@@ -8,6 +8,7 @@ import {
   zeroCrystals,
   effectiveBonuses,
   type ActionPayload,
+  type AiDifficulty,
   type CrystalColor,
   type CrystalColorWithFlux,
   type CrystalCounts,
@@ -18,7 +19,7 @@ import {
   type LuminaryDef,
 } from "./gameEngine";
 
-export type AiDifficulty = "easy" | "medium" | "hard" | "passive";
+export type { AiDifficulty };
 
 function totalCrystals(c: CrystalCounts): number {
   return c.ruby + c.sapphire + c.emerald + c.onyx + c.pearl + c.flux;
