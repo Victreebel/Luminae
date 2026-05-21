@@ -193,6 +193,7 @@ function CrystalIcon({
       className={`relative rounded-full flex items-center justify-center font-bold text-white ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}`}
       style={{
         width: size, height: size,
+        background: `radial-gradient(circle at 35% 35%, ${meta.hex}cc 0%, ${meta.hex}66 55%, ${meta.hex}22 100%)`,
         boxShadow: `0 0 ${size * 0.3}px ${meta.glowHex}55, inset 0 0 4px rgba(0,0,0,0.5)`,
       }}
     >
