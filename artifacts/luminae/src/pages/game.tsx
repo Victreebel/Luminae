@@ -190,11 +190,10 @@ function CrystalIcon({
       title={meta.name}
       aria-label={`${meta.name} affinity${count !== undefined ? `, ${count} available` : ''}`}
       data-testid={`gem-${color}`}
-      className={`relative rounded-full flex items-center justify-center font-bold text-white overflow-hidden ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}`}
+      className={`relative rounded-full flex items-center justify-center font-bold text-white ${selectable ? 'cursor-pointer' : ''} ${selected ? 'ring-4 ring-primary ring-offset-2 ring-offset-background' : ''}`}
       style={{
         width: size, height: size,
-        background: `radial-gradient(circle at 35% 35%, ${meta.hex}cc 0%, ${meta.hex}66 55%, ${meta.hex}22 100%)`,
-        boxShadow: `0 0 ${size * 0.3}px ${meta.glowHex}88, inset 0 0 ${size * 0.15}px rgba(0,0,0,0.6)`,
+        boxShadow: `0 0 ${size * 0.3}px ${meta.glowHex}55, inset 0 0 4px rgba(0,0,0,0.5)`,
       }}
     >
       <img
@@ -3145,26 +3144,15 @@ export default function GameBoard() {
                   {!isEmpty && (
                     <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}99, transparent)` }} />
                   )}
-                  {/* Subtle inner glow disc behind the gem image */}
-                  {!isEmpty && (
-                    <div
-                      className="absolute rounded-full pointer-events-none"
-                      style={{
-                        width: '68%', height: '68%',
-                        background: `radial-gradient(circle at 40% 35%, ${meta.hex}40 0%, ${meta.hex}18 55%, transparent 100%)`,
-                        boxShadow: `inset 0 0 12px ${meta.hex}22`,
-                      }}
-                    />
-                  )}
                   <AffinityEmblem
                     color={c as GemKey}
-                    className="w-[72%] h-[72%] object-contain pointer-events-none select-none relative"
+                    className="w-[58%] h-[58%] object-contain pointer-events-none select-none"
                     style={{
                       filter: isEmpty
                         ? 'grayscale(0.8) opacity(0.4)'
                         : queued > 0
                           ? `drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
-                          : `drop-shadow(0 0 8px ${meta.glowHex}cc) brightness(1.1)`,
+                          : `drop-shadow(0 0 7px ${meta.glowHex}80)`,
                     }}
                   />
                   <div className="flex items-center gap-0.5 mt-0.5">
