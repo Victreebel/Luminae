@@ -12,27 +12,30 @@ export interface AffinityEmblemProps {
 
 /**
  * Unified affinity emblem renderer.
- * All six gems use a PNG asset with transparent background.
- * pearl → luminae_radiance_emblem_v1.png   (solar-gold 8-pt starburst medallion)
- * flux  → luminae_singularity_emblem_v1.png (prismatic crystalline diamond)
- * other → existing affinity coin PNGs
- *
- * The default filter is a per-gem glowHex drop-shadow; callers override via `style`.
+ * Renders as a colored circle (radial gradient from gem hex) with the PNG
+ * overlaid as texture. overflow-hidden + border-radius clips to a perfect
+ * circle so filter:drop-shadow traces the circle edge correctly.
  */
 export function AffinityEmblem({ color, size, className, style }: AffinityEmblemProps) {
   const meta = GEM_META[color];
+  const sizeStyle = size != null ? { width: size, height: size } : {};
   return (
-    <img
-      src={meta.image}
-      alt={meta.name}
-      title={meta.name}
-      {...(size != null ? { width: size, height: size } : {})}
-      className={["rounded-full pointer-events-none select-none shrink-0", className ?? ""].join(" ").trim()}
+    <div
+      className={["rounded-full overflow-hidden pointer-events-none select-none shrink-0 relative", className ?? ""].join(" ").trim()}
       style={{
-        filter: `${meta.imageFilter ? meta.imageFilter + " " : ""}drop-shadow(0 0 3px ${meta.glowHex}88)`,
+        background: `radial-gradient(circle at 35% 35%, ${meta.hex}cc 0%, ${meta.hex}66 55%, ${meta.hex}22 100%)`,
+        filter: `drop-shadow(0 0 3px ${meta.glowHex}88)`,
+        ...sizeStyle,
         ...style,
       }}
-      draggable={false}
-    />
+    >
+      <img
+        src={meta.image}
+        alt={meta.name}
+        title={meta.name}
+        className="absolute inset-0 w-full h-full object-contain"
+        draggable={false}
+      />
+    </div>
   );
 }
