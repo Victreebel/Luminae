@@ -12,7 +12,7 @@ import gemSingularity from "@assets/luminae_singularity_emblem_v1.png";
 
 export type GemKey = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl" | "flux";
 
-export interface GemMeta {
+interface GemMeta {
   key: GemKey;
   name: string;
   shortName: string;

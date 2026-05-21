@@ -25,9 +25,9 @@ export const AVATARS: AvatarDef[] = [
   { id: 'sovereign',   name: 'Sovereign',   image: avatarSovereign,   accent: '#c0392b' },
 ];
 
-export const AVATAR_MAP = new Map<string, AvatarDef>(AVATARS.map(a => [a.id, a]));
+const AVATAR_MAP = new Map<string, AvatarDef>(AVATARS.map(a => [a.id, a]));
 
-export const DEFAULT_AVATAR_ID = 'stargazer';
+const DEFAULT_AVATAR_ID = 'stargazer';
 
 const AVATAR_KEY = 'luminae_avatar';
 

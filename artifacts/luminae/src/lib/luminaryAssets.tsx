@@ -5,7 +5,7 @@ import { gameAudio } from './audio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface LuminaryVisuals {
+interface LuminaryVisuals {
   id: string;
   primaryColor: string;
   secondaryColor: string;
@@ -69,7 +69,7 @@ export interface LuminaryVisuals {
 //   lum_astral  — accepted (cosmic arachnid embedded in dark crystal facets, constellation
 //                  line overlay, dual ruby/sapphire corner gems, fire medallion)
 // ─────────────────────────────────────────────────────────────────────────────
-export const ILLUSTRATED_IDS = new Set<string>([
+const ILLUSTRATED_IDS = new Set<string>([
   'lum_ember',
   'lum_forge',
   'lum_verdant',
@@ -106,7 +106,7 @@ function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura'): strin
 }
 
 /** All three illustrated image slots for one Luminary. null = not yet available → fallback to procedural art. */
-export interface LuminaryImageAssets {
+interface LuminaryImageAssets {
   /** Sealed board panel art. Displayed in the objective tile and as the shattering vessel. */
   panelArt: string | null;
   /** Freed entity transparent cutout. No card border or square portrait edges. */
@@ -115,7 +115,7 @@ export interface LuminaryImageAssets {
   auraLayer: string | null;
 }
 
-export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
+function getLuminaryImageAssets(id: string): LuminaryImageAssets {
   return {
     panelArt:     _getLuminaryImage(id, 'panel'),
     entityCutout: _getLuminaryImage(id, 'entity'),
@@ -1082,7 +1082,7 @@ const PHASES: CutscenePhase[] = [
   'shattering', 'flashing', 'revealed', 'fading', 'done',
 ];
 
-export interface SummonQueueItem {
+interface SummonQueueItem {
   id: string;
   name: string;
   domain: string;

@@ -10,13 +10,13 @@ import React from "react";
  *
  * To add a new term, append an entry to KEYWORDS below.
  */
-export interface KeywordDef {
+interface KeywordDef {
   pattern: RegExp;
   color: string;
   glowColor?: string;
 }
 
-export const KEYWORDS: KeywordDef[] = [
+const KEYWORDS: KeywordDef[] = [
   // ── Forge / Forged ─────────────────────────────────────────────────────
   {
     pattern: /\b(Forge[ds]?|Forging)\b/g,

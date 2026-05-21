@@ -1,4 +1,4 @@
-export interface Session {
+interface Session {
   roomId: string;
   inviteCode: string;
   playerId: string;
