@@ -5445,10 +5445,10 @@ export default function GameBoard() {
                             tier={c.tier}
                             effectiveCosts={ec}
                             onTap={() => {
-                              setShowReservedOverlay(false);
                               openCardSheet(c, true);
+                              setTimeout(() => setShowReservedOverlay(false), 150);
                             }}
-                            tapped={false}
+                            tapped={selectedCard?.card.id === c.id}
                           />
                           <div className="flex-1 flex flex-col gap-2 min-w-0">
                             <div className="font-bold text-sm leading-tight">{c.name}</div>
