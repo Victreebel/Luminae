@@ -2810,7 +2810,7 @@ export default function GameBoard() {
       >
         {/* Zone background — deep cosmic gradient */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'linear-gradient(180deg, rgba(15,8,40,0.98) 0%, rgba(8,5,28,0.92) 100%)',
+          background: 'linear-gradient(180deg, rgba(15,8,40,0.55) 0%, rgba(8,5,28,0.40) 100%)',
           borderBottom: '1px solid rgba(120,80,220,0.22)',
         }} />
         {/* Starfield overlay dots */}
@@ -2942,7 +2942,7 @@ export default function GameBoard() {
       >
         {/* Zone background — warm dark ore/ember gradient */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'linear-gradient(180deg, rgba(28,14,6,0.99) 0%, rgba(20,10,4,0.97) 100%)',
+          background: 'linear-gradient(180deg, rgba(28,14,6,0.50) 0%, rgba(20,10,4,0.38) 100%)',
           borderTop: '1px solid rgba(160,100,30,0.18)',
           borderBottom: '1px solid rgba(160,100,30,0.18)',
         }} />
