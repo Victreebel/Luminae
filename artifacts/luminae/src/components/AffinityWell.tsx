@@ -138,12 +138,13 @@ function ReservoirGauge({
             animate={
               isFilled
                 ? { scale: 1, opacity: 1, backgroundColor: hex }
-                : { scale: 0.35, opacity: 0.12, backgroundColor: 'rgba(255,255,255,0.07)' }
+                : { scale: 1, opacity: 1, backgroundColor: 'transparent' }
             }
             transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               width: 5,
               height: 5,
+              border: isFilled ? `1px solid ${glowHex}60` : `1px solid ${glowHex}35`,
               boxShadow: isFilled ? `0 0 4px ${glowHex}80` : 'none',
             }}
           />
@@ -455,28 +456,6 @@ export function AffinityWellCells({
                       </div>
                     )}
 
-                    {/* Token dots — filled = remaining in bank, hollow = taken */}
-                    <div className="flex gap-[3px] mt-1 flex-wrap justify-center">
-                      {Array.from({ length: gaugeCapacity }, (_, i) => {
-                        const filled = i < bankCount;
-                        return (
-                          <div
-                            key={i}
-                            className="rounded-full"
-                            style={{
-                              width: 5,
-                              height: 5,
-                              background: filled ? meta.hex : 'transparent',
-                              border: filled
-                                ? `1px solid ${meta.glowHex}60`
-                                : `1px solid ${meta.glowHex}35`,
-                              boxShadow: filled ? `0 0 4px ${meta.glowHex}70` : 'none',
-                              transition: 'background 0.3s, box-shadow 0.3s',
-                            }}
-                          />
-                        );
-                      })}
-                    </div>
                   </div>
                 </>
               )}
