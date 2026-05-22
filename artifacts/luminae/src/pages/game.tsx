@@ -2760,7 +2760,7 @@ export default function GameBoard() {
   const BoardTab = () => {
     return (
     <div
-      className="flex flex-col gap-5 p-3 pb-6"
+      className="flex flex-col gap-0 pb-6"
       style={isTutorial && tutorialStep >= 0 && tutorialStep < LUMII_BEAT_COUNT
         ? { paddingBottom: 'var(--tutorial-panel-height, 0px)' }
         : undefined}
@@ -2795,20 +2795,52 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {/* Luminaries */}
+      {/* ═══════════════════════════════════════════════════════
+          THE PARTICLE HORIZON
+          ═══════════════════════════════════════════════════════ */}
       <div
         data-tutorial-zone="luminaries"
+        className="relative"
         style={tutorialZone === 'luminaries' ? {
-          borderRadius: 12,
           boxShadow: tutorialAttention === 'action'
             ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
             : '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)',
           transition: 'box-shadow 0.3s',
         } : undefined}
       >
-        <div className="flex items-center justify-between mb-2 px-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Luminaries</p>
-          {/* Reserved-height slot — always occupies space so header row never shifts */}
+        {/* Zone background — deep cosmic gradient */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(180deg, rgba(15,8,40,0.98) 0%, rgba(8,5,28,0.92) 100%)',
+          borderBottom: '1px solid rgba(120,80,220,0.22)',
+        }} />
+        {/* Starfield overlay dots */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.35 }}>
+          {[...Array(18)].map((_, i) => (
+            <div key={i} className="absolute rounded-full bg-white"
+              style={{
+                width: i % 3 === 0 ? 2 : 1,
+                height: i % 3 === 0 ? 2 : 1,
+                left: `${(i * 37 + 11) % 97}%`,
+                top: `${(i * 53 + 7) % 88}%`,
+                opacity: 0.3 + (i % 5) * 0.14,
+              }}
+            />
+          ))}
+        </div>
+        {/* Zone header */}
+        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex flex-col leading-none">
+              <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(160,130,255,0.55)' }}>The</span>
+              <span className="text-[15px] font-black uppercase tracking-[0.08em] leading-none" style={{
+                color: '#C4AAFF',
+                textShadow: '0 0 24px rgba(180,140,255,0.5), 0 1px 0 rgba(0,0,0,0.8)',
+                letterSpacing: '0.06em',
+              }}>Particle Horizon</span>
+            </div>
+            <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(160,120,255,0.5), transparent)' }} />
+          </div>
+          {/* Reserved-height slot for toggle hint */}
           <span className="text-[9px] italic" style={{ visibility: (() => {
             const tc: number = (state as any)?.turnCount ?? 0;
             const lumAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
@@ -2816,11 +2848,11 @@ export default function GameBoard() {
               la.ownerId === session?.playerId && tc > la.summonedAtTurnCount && (la.eligibleAffinities?.length ?? 0) >= 2
             );
             return hasTogglable ? 'visible' : 'hidden';
-          })() as React.CSSProperties['visibility'], color: 'rgba(255,255,255,0.4)' }}>
-            tap card to change affinity ↻
+          })() as React.CSSProperties['visibility'], color: 'rgba(180,150,255,0.45)' }}>
+            tap to change affinity ↻
           </span>
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+        <div className="relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar">
           {safeLuminaries.map(l => {
             const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
@@ -2895,21 +2927,53 @@ export default function GameBoard() {
         </div>
       </div>
 
-      {/* Market rows */}
+      {/* ═══════════════════════════════════════════════════════
+          THE FORGE
+          ═══════════════════════════════════════════════════════ */}
       <div
         data-tutorial-zone="market"
-        className="flex flex-col gap-4"
+        className="relative"
         style={(tutorialZone === 'market' || tutorialZone === 'filters') ? {
-          borderRadius: 12,
           boxShadow: tutorialAttention === 'action'
             ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
             : '0 0 0 2px rgba(168,85,247,0.35), 0 0 20px 5px rgba(168,85,247,0.08)',
           transition: 'box-shadow 0.3s',
         } : undefined}
       >
-        {/* Cost toggle */}
-        <div className="flex items-center justify-between px-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Artifacts · Forge using Affinities</p>
+        {/* Zone background — warm dark ore/ember gradient */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(180deg, rgba(28,14,6,0.99) 0%, rgba(20,10,4,0.97) 100%)',
+          borderTop: '1px solid rgba(160,100,30,0.18)',
+          borderBottom: '1px solid rgba(160,100,30,0.18)',
+        }} />
+        {/* Ember particle specks */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.25 }}>
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="absolute rounded-full"
+              style={{
+                width: 2, height: 2,
+                background: i % 2 === 0 ? '#FFB340' : '#FF6A1A',
+                left: `${(i * 43 + 9) % 95}%`,
+                top: `${(i * 67 + 13) % 90}%`,
+                opacity: 0.2 + (i % 4) * 0.15,
+              }}
+            />
+          ))}
+        </div>
+        {/* Zone header */}
+        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex flex-col leading-none">
+              <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(192,140,60,0.55)' }}>The</span>
+              <span className="text-[15px] font-black uppercase tracking-[0.08em] leading-none" style={{
+                color: '#D4A84B',
+                textShadow: '0 0 24px rgba(212,168,75,0.45), 0 1px 0 rgba(0,0,0,0.8)',
+                letterSpacing: '0.06em',
+              }}>Forge</span>
+            </div>
+            <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(192,140,60,0.5), transparent)' }} />
+          </div>
+          {/* Cost mode toggle */}
           <div
             data-tutorial-zone="filters"
             className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5"
@@ -2946,12 +3010,13 @@ export default function GameBoard() {
         </div>
 
 
+        <div className="relative flex flex-col gap-3 px-3 pb-3">
         {[
           { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Sovereigns & absolutes — apex relics that bend the cosmos to your will' },
           { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Forged instruments — crucibles and sigils of focused cosmic mastery' },
           { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, lore: 'Fragments & sparks — raw nascent shards that seed any engine' },
         ].map(row => (
-          <div key={row.tier} className="rounded-xl mb-2.5" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
+          <div key={row.tier} className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
             <div className="flex items-center gap-2 mb-2 px-0.5">
               <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}</span>
               <span className="text-[9px] text-muted-foreground/50 italic truncate">{row.lore}</span>
@@ -3038,522 +3103,22 @@ export default function GameBoard() {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
-      {/* Crystal Bank */}
+      {/* Tutorial harvest zone anchor — zero-height, keeps tutorial wiring intact */}
       <div
         data-tutorial-zone="harvest"
-        className="rounded-2xl bg-secondary/40 backdrop-blur overflow-hidden transition-all duration-300"
+        className="h-0 overflow-hidden pointer-events-none"
         style={{
-          border: '1px solid hsl(var(--border) / 0.5)',
-          boxShadow: (tutorialZone === 'harvest')
+          boxShadow: tutorialZone === 'harvest'
             ? tutorialAttention === 'action'
               ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
               : '0 0 0 2px rgba(168,85,247,0.5), 0 0 24px 6px rgba(168,85,247,0.12)'
             : 'none',
-          transition: 'box-shadow 0.3s, border 0.3s',
+          transition: 'box-shadow 0.3s',
         }}
-      >
-        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#A08C68' }}>Affinity Well · Harness cosmic essence</p>
-          <div className="flex items-center gap-3">
-            {me && (() => {
-              const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
-              const pendingTotal = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
-              const projected = heldTotal + pendingTotal;
-              const isRed    = projected >= 10;
-              const isAmber  = !isRed && projected >= 8;
-              const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.45)';
-              const barFill  = isRed ? '#f87171' : isAmber ? '#fbbf24' : '#6366f1';
-              const fillPct  = Math.min(projected / 10, 1) * 100;
-              return (
-                <div className="flex flex-col items-end gap-0.5" title={`Hand: ${projected} / 10 crystals`}>
-                  <div className="flex items-center gap-1">
-                    <Hand className="h-2.5 w-2.5" style={{ color: numColor }} />
-                    <span
-                      className="text-[10px] font-mono font-bold leading-none tabular-nums transition-colors duration-300"
-                      style={{ color: numColor }}
-                    >
-                      {projected}&thinsp;/&thinsp;10
-                    </span>
-                  </div>
-                  <div className="w-12 h-[3px] rounded-full overflow-hidden bg-white/10">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{ width: `${fillPct}%`, background: barFill, boxShadow: projected >= 8 ? `0 0 4px ${barFill}` : 'none' }}
-                    />
-                  </div>
-                </div>
-              );
-            })()}
-            {(() => {
-              const fluxCount = state.crystalBank.flux ?? 0;
-              return (
-                <div className="flex items-center gap-1.5 opacity-80">
-                  <MiniGem color="flux" size={14} />
-                  <span className="text-[10px] font-mono font-bold" style={{ color: '#C8C0FF', opacity: 0.85 }}>{fluxCount}</span>
-                  <span className="text-[9px] text-muted-foreground">Singularity</span>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-        <div className="px-3 pb-3 grid grid-cols-5 gap-1">
-          {CRYSTALS.filter(c => c !== 'flux').map((c) => {
-            const meta = GEM_META[c];
-            const count = state.crystalBank[c as keyof CrystalCounts] ?? 0;
-            const queued = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-            const isPlanningMode = !isActivePlayer && canPlan;
-            const selectable = isMyTurn || (!isActivePlayer && canPlan);
-            const isEmpty = count === 0 && queued === 0;
-            const canTake2 = selectable && count >= 4 && queued !== 2;
-            return (
-              <div key={c} className="flex flex-col items-center">
-                <motion.button
-                  type="button"
-                  disabled={!selectable || isEmpty}
-                  whileTap={selectable && !isEmpty ? { scale: 0.9 } : {}}
-                  animate={queued > 0 ? { scale: [1, 1.1, 1], transition: { duration: 0.25 } } : {}}
-                  onClick={() => handleCrystalClick(c as keyof CrystalCounts)}
-                  className={`relative w-full aspect-square rounded-xl flex flex-col items-center justify-center transition-all overflow-hidden ${
-                    isEmpty ? 'opacity-40' : ''
-                  }`}
-                  style={
-                    queued > 0 && isPlanningMode
-                      ? {
-                          background: `linear-gradient(160deg, #92400e55 0%, #b4530040 50%, #92400e50 100%)`,
-                          border: `2px solid #fbbf24cc`,
-                          boxShadow: `0 0 18px #fbbf2488, 0 0 36px #f59e0b33, inset 0 0 14px #92400e44`,
-                        }
-                      : queued > 0
-                      ? {
-                          background: `linear-gradient(160deg, ${meta.hex}70 0%, ${meta.hex}45 50%, ${meta.hex}60 100%)`,
-                          border: `2px solid ${meta.glowHex}ee`,
-                          boxShadow: `0 0 22px ${meta.glowHex}bb, 0 0 48px ${meta.glowHex}55, inset 0 0 18px ${meta.hex}55`,
-                        }
-                      : isEmpty
-                        ? {
-                            background: `linear-gradient(160deg, ${meta.hex}0a 0%, transparent 100%)`,
-                            border: `1px solid ${meta.hex}18`,
-                          }
-                        : {
-                            background: `linear-gradient(160deg, ${meta.hex}28 0%, ${meta.hex}0c 45%, ${meta.hex}1e 100%)`,
-                            border: `1px solid ${meta.glowHex}55`,
-                            boxShadow: `inset 0 0 22px ${meta.hex}14, inset 0 1px 0 ${meta.glowHex}30`,
-                          }
-                  }
-                >
-                  {/* Top-edge highlight streak */}
-                  {!isEmpty && (
-                    <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}99, transparent)` }} />
-                  )}
-                  <AffinityEmblem
-                    color={c as GemKey}
-                    className="w-[58%] h-[58%] object-contain pointer-events-none select-none"
-                    style={{
-                      filter: isEmpty
-                        ? 'grayscale(0.8) opacity(0.4)'
-                        : queued > 0
-                          ? `drop-shadow(0 0 10px ${meta.glowHex}) drop-shadow(0 0 4px ${meta.glowHex}) brightness(1.3)`
-                          : `drop-shadow(0 0 7px ${meta.glowHex}80)`,
-                    }}
-                  />
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    {/* Shadow behind number for readability against colored background */}
-                    <span
-                      className={`text-sm font-black font-mono leading-none ${isEmpty ? 'text-white/30' : 'text-white'}`}
-                      style={isEmpty ? {} : { textShadow: '0 1px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.6)' }}
-                    >{count - queued}</span>
-                  </div>
-                </motion.button>
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mt-1.5 leading-none" style={{ color: `${meta.glowHex}88` }}>
-                  {meta.shortName}
-                </span>
-                {/* Always rendered — visibility toggled so the cell height never shifts */}
-                <motion.button
-                  type="button"
-                  aria-hidden={!canTake2}
-                  tabIndex={canTake2 ? 0 : -1}
-                  animate={{ opacity: canTake2 ? 1 : 0 }}
-                  transition={{ duration: 0.15 }}
-                  onClick={(e) => { if (!canTake2) return; e.stopPropagation(); promoteToTake2(c); }}
-                  style={{ pointerEvents: canTake2 ? 'auto' : 'none', visibility: canTake2 ? 'visible' : 'hidden' }}
-                  className={`mt-0.5 text-[9px] font-bold rounded-full px-2 py-0.5 transition-colors ${isPlanningMode ? 'text-amber-400/80 hover:text-amber-300 bg-amber-400/10 active:bg-amber-400/25' : 'text-primary/80 hover:text-primary bg-primary/10 active:bg-primary/25'}`}
-                >
-                  harness 2
-                </motion.button>
-              </div>
-            );
-          })}
-        </div>
-        <motion.div
-          animate={{ opacity: crystalQueueActive ? 1 : 0 }}
-          transition={{ duration: 0.2 }}
-          aria-hidden={!crystalQueueActive}
-          style={{
-            pointerEvents: crystalQueueActive ? 'auto' : 'none',
-            ...(tutorialZone === 'harvest' && tutorialAttention === 'action' ? {
-              borderRadius: 12,
-              boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
-              transition: 'box-shadow 0.3s',
-            } : {}),
-          }}
-        >
-              <div className="px-3 pb-3 pt-1 border-t border-white/10">
-                {!isMyTurn && canPlan && (
-                  <p className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug">
-                    Planning — plans may be cancelled if the bank changes before your turn.
-                  </p>
-                )}
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1.5 flex-1 items-center flex-wrap">
-                    {Object.entries(selectedCrystals).map(([c, n]) => (
-                      <div key={c} className="flex items-center gap-1 bg-black/50 rounded-full pl-1.5 pr-2 py-0.5 border border-white/10">
-                        <MiniGem color={c as GemKey} size={12} />
-                        <span className="text-xs font-bold text-white">×{n}</span>
-                      </div>
-                    ))}
-                    <span className={`text-[10px] font-medium ${queueLegality.ok ? (!isMyTurn && canPlan ? 'text-amber-400' : 'text-green-400') : 'text-amber-400'}`}>
-                      {(!isMyTurn && canPlan && queueLegality.reason
-                        ? `Plan: ${queueLegality.reason}`
-                        : queueLegality.reason) || 'Pick affinities'}
-                    </span>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0 relative">
-                    <AnimatePresence>
-                      {showUndoHint && !showForgeHint && !showReserveHint && (
-                        <motion.button
-                          type="button"
-                          initial={{ opacity: 0, y: 6, scale: 0.92 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -6, scale: 0.95 }}
-                          transition={{ duration: 0.3 }}
-                          onClick={dismissUndoHint}
-                          className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
-                          title="Dismiss hint"
-                        >
-                          <Undo2 className="h-2.5 w-2.5 text-white/60 shrink-0" />
-                          <span>← Back removes the last crystal</span>
-                          <span className="text-white/40 ml-0.5">✕</span>
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 w-7 p-0 rounded-lg"
-                      onClick={handleUndoCrystal}
-                      title="Undo last crystal"
-                    >
-                      <Undo2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 w-7 p-0 rounded-lg"
-                      onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); setPrePromotionHistory(null); }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                    {isMyTurnForCoreAction ? (
-                      (() => {
-                        const selKeys = Object.keys(selectedCrystals) as GemKey[];
-                        const hasColors = selKeys.length > 0 && queueLegality.ok;
-                        const borderColor = hasColors
-                          ? `${GEM_META[selKeys[0]].hex}70`
-                          : 'rgba(255,255,255,0.18)';
-                        const conicGradient = selKeys.length === 1
-                          ? `conic-gradient(${GEM_META[selKeys[0]].hex} 0deg, ${GEM_META[selKeys[0]].hex}44 180deg, ${GEM_META[selKeys[0]].hex} 360deg)`
-                          : `conic-gradient(${selKeys.map((k, i) => {
-                              const deg1 = Math.round((i / selKeys.length) * 360);
-                              const deg2 = Math.round(((i + 1) / selKeys.length) * 360);
-                              return `${GEM_META[k].hex} ${deg1}deg ${deg2}deg`;
-                            }).join(', ')})`;
-                        return (
-                          <motion.div
-                            whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                            className={`relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!queueLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-                            style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              borderColor,
-                              boxShadow: hasColors
-                                ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[selKeys[0]].hex}44`
-                                : 'inset 0 1px 0 rgba(255,255,255,0.08)',
-                              backdropFilter: 'blur(6px)',
-                              WebkitBackdropFilter: 'blur(6px)',
-                            }}
-                            onClick={queueLegality.ok ? () => {
-                              setHarnessPulseKey(k => k + 1);
-                              confirmCrystals();
-                            } : undefined}
-                          >
-                            {/* Swirling affinity color fill — remount on press replays flash */}
-                            {selKeys.length > 0 && (
-                              <div
-                                key={harnessPulseKey}
-                                className={harnessPulseKey > 0 ? 'harness-press-flash' : ''}
-                                style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}
-                              >
-                                <div
-                                  className="w-full h-full harness-swirl-ring"
-                                  style={{
-                                    background: conicGradient,
-                                    opacity: 0.48,
-                                    filter: 'blur(8px)',
-                                  }}
-                                />
-                              </div>
-                            )}
-                            {/* Glass top-shine */}
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.13] to-transparent pointer-events-none" />
-                            {/* Label */}
-                            <span
-                              className="relative z-10 text-xs font-bold transition-colors duration-300 select-none"
-                              style={{
-                                color: hasColors ? '#fff' : 'rgba(255,255,255,0.35)',
-                                textShadow: hasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none',
-                              }}
-                            >
-                              <AnimatePresence mode="wait" initial={false}>
-                                {sentFlashBtn === 'harness' ? (
-                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                                    <Check className="h-3 w-3" />Sent
-                                  </motion.span>
-                                ) : (
-                                  <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                    Harness
-                                  </motion.span>
-                                )}
-                              </AnimatePresence>
-                            </span>
-                          </motion.div>
-                        );
-                      })()
-                    ) : canPlan && queueLegality.ok ? (
-                      (() => {
-                        const planSelKeys = Object.keys(selectedCrystals) as GemKey[];
-                        const planHasColors = planSelKeys.length > 0;
-                        const planBorderColor = planHasColors
-                          ? `${GEM_META[planSelKeys[0]].hex}70`
-                          : 'rgba(255,255,255,0.18)';
-                        const planConicGradient = planSelKeys.length === 1
-                          ? `conic-gradient(${GEM_META[planSelKeys[0]].hex} 0deg, ${GEM_META[planSelKeys[0]].hex}44 180deg, ${GEM_META[planSelKeys[0]].hex} 360deg)`
-                          : `conic-gradient(${planSelKeys.map((k, i) => {
-                              const deg1 = Math.round((i / planSelKeys.length) * 360);
-                              const deg2 = Math.round(((i + 1) / planSelKeys.length) * 360);
-                              return `${GEM_META[k].hex} ${deg1}deg ${deg2}deg`;
-                            }).join(', ')})`;
-                        return (
-                          <motion.div
-                            whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                            className="relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
-                            style={{
-                              background: planHasColors ? 'rgba(120,70,0,0.18)' : 'rgba(120,70,0,0.08)',
-                              borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)',
-                              boxShadow: planHasColors
-                                ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px rgba(251,191,36,0.25)'
-                                : 'inset 0 1px 0 rgba(255,255,255,0.06)',
-                              backdropFilter: 'blur(6px)',
-                              WebkitBackdropFilter: 'blur(6px)',
-                            }}
-                            onClick={() => {
-                              if (queueLegality.actionType === 'take3') {
-                                handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });
-                              } else if (queueLegality.actionType === 'take2') {
-                                handlePlanAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
-                              }
-                              flashSent('plan_harness');
-                            }}
-                          >
-                            {/* Amber plan glow — swirls only when affinities are selected */}
-                            {planHasColors && (
-                              <div
-                                style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}
-                              >
-                                <div
-                                  className="w-full h-full harness-swirl-ring"
-                                  style={{
-                                    background: `conic-gradient(rgba(251,191,36,0.7) 0deg, rgba(251,191,36,0.2) 180deg, rgba(251,191,36,0.7) 360deg)`,
-                                    opacity: 0.30,
-                                    filter: 'blur(8px)',
-                                  }}
-                                />
-                              </div>
-                            )}
-                            {/* Glass top-shine */}
-                            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.10] to-transparent pointer-events-none" />
-                            {/* Label — amber PLAN badge + action name */}
-                            <span className="relative z-10 text-xs font-bold select-none flex items-center gap-1.5">
-                              <AnimatePresence mode="wait" initial={false}>
-                                {sentFlashBtn === 'plan_harness' ? (
-                                  <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                                    <Check className="h-3 w-3" />Sent
-                                  </motion.span>
-                                ) : (
-                                  <motion.span key="label" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                    <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">
-                                      PLAN
-                                    </span>
-                                    <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>
-                                      Harness
-                                    </span>
-                                  </motion.span>
-                                )}
-                              </AnimatePresence>
-                            </span>
-                          </motion.div>
-                        );
-                      })()
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-        </motion.div>
-        <AnimatePresence>
-          {returnPhase && isMyTurn && me && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="px-3 pb-3 pt-2 border-t border-amber-500/40 bg-amber-950/25">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-2.5">
-                  <div>
-                    <p className="text-[11px] font-bold text-amber-300">
-                      Return {returnPhase.excessCount} crystal{returnPhase.excessCount > 1 ? 's' : ''} — hand limit is 10
-                    </p>
-                    {(() => {
-                      const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
-                      const remaining = returnPhase.excessCount - sel;
-                      return (
-                        <p className="text-[10px] text-white/50 mt-0.5">
-                          {remaining > 0
-                            ? `Tap crystals below to select ${remaining} more to return`
-                            : 'Selection complete — confirm to harness'}
-                        </p>
-                      );
-                    })()}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={cancelReturnPhase}
-                    className="h-7 w-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
-                    title="Cancel and re-pick"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                {/* Projected hand — crystals currently held + pending take */}
-                <div className="grid grid-cols-6 gap-1.5 mb-3">
-                  {(CRYSTALS as GemKey[]).map((c) => {
-                    const held = me.crystals[c as keyof CrystalCounts] ?? 0;
-                    const taking = returnPhase.pendingTake[c as keyof CrystalCounts] ?? 0;
-                    const have = held + taking;
-                    const returning = returnSelections[c as keyof CrystalCounts] ?? 0;
-                    const available = have - returning;
-                    if (have === 0) return null;
-                    const meta = GEM_META[c as GemKey];
-                    const isMarkedReturn = returning > 0;
-                    const totalSel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
-                    const canAdd = available > 0 && totalSel < returnPhase.excessCount + 5;
-                    return (
-                      <div key={c} className="flex flex-col items-center gap-0.5">
-                        <motion.button
-                          type="button"
-                          whileTap={canAdd ? { scale: 0.88 } : {}}
-                          onClick={() => {
-                            if (!canAdd) return;
-                            setReturnSelections(prev => ({ ...prev, [c]: (prev[c as keyof CrystalCounts] ?? 0) + 1 }));
-                          }}
-                          className="relative w-full aspect-square rounded-xl flex flex-col items-center justify-center overflow-hidden transition-all"
-                          style={isMarkedReturn ? {
-                            background: `linear-gradient(160deg, #7f1d1d99 0%, #991b1b70 100%)`,
-                            border: `2px solid #f87171cc`,
-                            boxShadow: `0 0 16px #f8717166`,
-                            opacity: canAdd ? 1 : 0.85,
-                          } : {
-                            background: `linear-gradient(160deg, ${meta.hex}30 0%, ${meta.hex}12 100%)`,
-                            border: `1px solid ${meta.glowHex}55`,
-                            opacity: canAdd ? 1 : 0.4,
-                          }}
-                        >
-                          <img
-                            src={meta.image} alt={meta.name}
-                            className="w-[55%] h-[55%] object-contain pointer-events-none select-none"
-                            style={{ filter: `drop-shadow(0 0 6px ${meta.glowHex}80)` }}
-                            draggable={false}
-                          />
-                          <span
-                            className="text-xs font-black font-mono leading-none text-white"
-                            style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
-                          >{available}</span>
-                          {isMarkedReturn && (
-                            <div className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white leading-none shadow">
-                              -{returning}
-                            </div>
-                          )}
-                        </motion.button>
-                        <span className="text-[8px] font-semibold uppercase tracking-wider leading-none" style={{ color: `${meta.glowHex}88` }}>
-                          {meta.shortName}
-                        </span>
-                        {returning > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setReturnSelections(prev => {
-                              const curr = prev[c as keyof CrystalCounts] ?? 0;
-                              if (curr <= 1) { const next = { ...prev }; delete next[c as keyof CrystalCounts]; return next; }
-                              return { ...prev, [c]: curr - 1 };
-                            })}
-                            className="text-[8px] text-red-400/70 hover:text-red-400 font-bold leading-none"
-                          >
-                            undo
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Confirm button */}
-                {(() => {
-                  const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
-                  const ready = sel >= returnPhase.excessCount;
-                  return (
-                    <motion.button
-                      type="button"
-                      whileTap={ready ? { scale: 0.96 } : {}}
-                      disabled={!ready}
-                      onClick={confirmReturnPhase}
-                      className="w-full h-9 rounded-xl text-sm font-bold transition-all"
-                      style={ready ? {
-                        background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-                        color: '#fff',
-                        boxShadow: '0 0 18px rgba(124,58,237,0.55)',
-                        border: '1px solid rgba(167,139,250,0.5)',
-                      } : {
-                        background: 'rgba(255,255,255,0.04)',
-                        color: 'rgba(255,255,255,0.25)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        cursor: 'not-allowed',
-                      }}
-                    >
-                      {ready ? 'Confirm Return & Harness' : `Select ${returnPhase.excessCount - Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0)} more to return`}
-                    </motion.button>
-                  );
-                })()}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        {isMyTurn && !crystalQueueActive && !returnPhase && (
-          <div className="px-3 pb-2.5">
-            <p className="text-[9px] text-muted-foreground text-center italic">
-              Tap to harness affinities · up to 3 different or 2 of the same
-            </p>
-          </div>
-        )}
-      </div>
+      />
 
 
       {/* ── Opponents (always visible on Board tab) ── */}
@@ -4138,35 +3703,68 @@ export default function GameBoard() {
         {activeTab === 'log' && LogTab()}
       </main>
 
-      {/* ── Player Info Panel (pinned above nav) ── */}
+      {/* ══════════════════════════════════════════════════════════════
+          THE AFFINITY WELL — pinned player panel
+          Shows the player's holdings + the shared bank availability.
+          Tapping an affinity cell (on your turn) harvests from the Well.
+          ══════════════════════════════════════════════════════════════ */}
       {me && (
         <div
           ref={playerPanelRef}
-          className={`shrink-0 z-20 border-t px-3 py-2 bg-card/90 backdrop-blur transition-all ${isMyTurn ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.25)]' : 'border-border/40'}`}
+          className="shrink-0 z-20 transition-all"
+          style={{
+            background: 'linear-gradient(180deg, rgba(6,4,20,0.97) 0%, rgba(4,2,14,0.99) 100%)',
+            borderTop: isMyTurn
+              ? '1px solid rgba(120,90,255,0.5)'
+              : '1px solid rgba(80,60,160,0.2)',
+            boxShadow: isMyTurn
+              ? '0 -4px 28px rgba(100,70,255,0.15)'
+              : '0 -2px 12px rgba(0,0,0,0.4)',
+          }}
           onClickCapture={() => {
-            // Proactively release focus after any panel tap so the NEXT gesture
-            // in the board area starts clean without a defocus-first event.
             requestAnimationFrame(() => {
               const active = document.activeElement as HTMLElement | null;
-              if (active && playerPanelRef.current?.contains(active)) {
-                active.blur();
-              }
+              if (active && playerPanelRef.current?.contains(active)) active.blur();
             });
           }}
         >
-          {/* Top row: identity + lumens */}
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={22} />
-              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-              <span className="text-xs font-semibold truncate">{me.playerName}</span>
-              {isMyTurn && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>}
+          {/* ── Zone header row ── */}
+          <div className="flex items-center justify-between px-3 pt-2 pb-1">
+            {/* Left: zone name */}
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col leading-none">
+                <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(100,80,200,0.5)' }}>The</span>
+                <span className="text-[12px] font-black uppercase tracking-[0.06em] leading-none" style={{
+                  color: '#9B7FE8',
+                  textShadow: '0 0 18px rgba(140,100,255,0.4)',
+                }}>Affinity Well</span>
+              </div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <span className="flex items-baseline gap-1">
-                <span className="font-serif font-black text-lg text-foreground leading-none">{myTotalGems}</span>
-                <span className="text-[10px] text-muted-foreground">Affinity</span>
-              </span>
+            {/* Center: identity */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={18} />
+              {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+              <span className="text-[11px] font-semibold truncate max-w-[80px]">{me.playerName}</span>
+              {isMyTurn && (
+                <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
+              )}
+            </div>
+            {/* Right: stats */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              {(() => {
+                const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+                const pendingTotal = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
+                const projected = heldTotal + pendingTotal;
+                const isRed = projected >= 10;
+                const isAmber = !isRed && projected >= 8;
+                const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.4)';
+                return (
+                  <div className="flex items-center gap-1" title={`${projected} / 10 tokens held`}>
+                    <Hand className="h-2.5 w-2.5" style={{ color: numColor }} />
+                    <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color: numColor }}>{projected}<span style={{ opacity: 0.5 }}>/10</span></span>
+                  </div>
+                );
+              })()}
               <button
                 type="button"
                 onClick={() => setShowEminenceBreakdown(true)}
@@ -4183,90 +3781,406 @@ export default function GameBoard() {
               </button>
             </div>
           </div>
-          {/* ── Pinned Player Info Panel affinity boxes (6-col flex row) ── */}
-          <div className="flex gap-1.5">
+
+          {/* ── Affinity cells ── */}
+          {/* Each cell = player's held tokens + bank availability + harvest action */}
+          <div className="flex gap-1 px-2 pb-2">
             {CRYSTALS.map((c) => {
+              const meta = GEM_META[c as GemKey];
+              const isFlux = c === 'flux';
               const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
               const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
-              // Living Luminary alliance bonus — same logic as HandTab / effectiveBonuses()
               const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
                 .filter((la: LuminaryActiveState) =>
                   la.ownerId === session?.playerId &&
                   ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
                   la.activeAffinity === c
                 ).length;
-              const meta = GEM_META[c as GemKey];
-              const isFlux = c === 'flux';
               const reservedCount = me.reservedCards.length;
               const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+              const bankCount = state.crystalBank[c as keyof CrystalCounts] ?? 0;
+              const isPlanningMode = !isActivePlayer && canPlan;
+              const selectable = isMyTurn || (!isActivePlayer && canPlan);
+              const bankEmpty = bankCount === 0;
+              const canTake2 = selectable && !isFlux && bankCount >= 4 && pending !== 2;
               const hasContent = isFlux ? (gems > 0 || reservedCount > 0) : (gems > 0 || bonus > 0 || lumBonus > 0);
-              const clickable = isFlux ? reservedCount > 0 : bonus > 0;
+              const showForgedLink = !isFlux && bonus > 0;
+              const showReservedLink = isFlux && reservedCount > 0;
+
               return (
-                <button
-                  key={c}
-                  type="button"
-                  disabled={!clickable}
-                  onClick={() => {
-                    if (isFlux) setShowReservedOverlay(true);
-                    else { setForgedFilter(c as GemKey); setShowForgedOverlay(true); }
-                  }}
-                  className="flex-1 min-h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden transition-all active:scale-95 disabled:cursor-default pt-1.5 pb-1.5"
-                  style={{
-                    background: hasContent
-                      ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
-                      : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                    border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
-                    boxShadow: hasContent
-                      ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33`
-                      : 'none',
-                  }}
-                >
-                  {hasContent && (
-                    <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
-                  )}
-                  {/* Affinity name + icon — top center of Player Info box */}
-                  <div className="flex items-center gap-0.5 w-full justify-center">
-                    <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                    <MiniGem color={c as GemKey} size={7} />
-                  </div>
-                  {/* Token count + pending additions inline to the right */}
-                  <div className="flex items-center gap-0.5">
-                    <span
-                      className="text-2xl font-black leading-none tracking-tight"
-                      style={{
-                        color: hasContent ? '#fff' : meta.hex + '40',
-                        textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none',
-                      }}
-                    >
-                      {gems}
-                    </span>
-                    {pending > 0 && (
-                      <motion.span
-                        key={pending}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="text-[10px] font-black leading-none text-primary"
-                      >+{pending}</motion.span>
+                <div key={c} className="flex-1 flex flex-col gap-0.5">
+                  {/* Main cell — tap to harvest (or view forged/reserved) */}
+                  <motion.button
+                    type="button"
+                    disabled={isFlux ? !showReservedLink : (!selectable || bankEmpty)}
+                    whileTap={(!isFlux && selectable && !bankEmpty) ? { scale: 0.9 } : {}}
+                    animate={pending > 0 ? { scale: [1, 1.06, 1], transition: { duration: 0.2 } } : {}}
+                    onClick={() => {
+                      if (isFlux) {
+                        if (showReservedLink) setShowReservedOverlay(true);
+                      } else if (showForgedLink && !selectable) {
+                        setForgedFilter(c as GemKey); setShowForgedOverlay(true);
+                      } else if (selectable && !bankEmpty) {
+                        handleCrystalClick(c as keyof CrystalCounts);
+                      } else if (showForgedLink) {
+                        setForgedFilter(c as GemKey); setShowForgedOverlay(true);
+                      }
+                    }}
+                    className="relative w-full rounded-lg overflow-hidden transition-all"
+                    style={{
+                      minHeight: 68,
+                      ...(pending > 0 && isPlanningMode
+                        ? {
+                            background: `linear-gradient(180deg, #92400e55 0%, #b4530040 100%)`,
+                            border: `2px solid #fbbf24cc`,
+                            boxShadow: `0 0 14px #fbbf2488, inset 0 0 10px #92400e44`,
+                          }
+                        : pending > 0
+                        ? {
+                            background: `linear-gradient(180deg, ${meta.hex}55 0%, ${meta.hex}2a 100%)`,
+                            border: `2px solid ${meta.glowHex}dd`,
+                            boxShadow: `0 0 18px ${meta.glowHex}99, inset 0 0 14px ${meta.hex}44`,
+                          }
+                        : hasContent
+                        ? {
+                            background: `linear-gradient(180deg, ${meta.hex}22 0%, ${meta.hex}10 100%)`,
+                            border: `1px solid ${meta.hex}88`,
+                            boxShadow: `inset 0 0 10px ${meta.hex}18`,
+                          }
+                        : {
+                            background: `linear-gradient(180deg, ${meta.hex}0a 0%, transparent 100%)`,
+                            border: `1px solid ${meta.hex}20`,
+                          })
+                    }}
+                  >
+                    {/* Top edge glow line */}
+                    {(hasContent || pending > 0) && (
+                      <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none"
+                        style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}BB, transparent)` }} />
                     )}
-                    {isFlux && reservedCount > 0 && (
-                      <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
-                    )}
-                  </div>
-                  {/* Card bonus + Luminary alliance bonus — stacked below token count */}
-                  {!isFlux && (bonus > 0 || lumBonus > 0) && (
-                    <div className="flex flex-col items-center gap-0" style={{ lineHeight: 1 }}>
-                      {bonus > 0 && (
-                        <span className="text-[9px] font-bold leading-none text-primary">+{bonus} bonus</span>
+                    <div className="flex flex-col items-center pt-1.5 pb-1 px-0.5">
+                      {/* Affinity icon */}
+                      <AffinityEmblem
+                        color={c as GemKey}
+                        className="w-6 h-6 object-contain pointer-events-none select-none mb-0.5"
+                        style={{
+                          filter: pending > 0
+                            ? `drop-shadow(0 0 8px ${meta.glowHex}) brightness(1.3)`
+                            : bankEmpty && !isFlux
+                            ? 'grayscale(0.7) opacity(0.4)'
+                            : `drop-shadow(0 0 5px ${meta.glowHex}70)`,
+                        }}
+                      />
+                      {/* Player's held tokens (large) */}
+                      <div className="flex items-baseline gap-0.5">
+                        <span
+                          className="text-xl font-black leading-none"
+                          style={{
+                            color: hasContent ? '#fff' : meta.hex + '35',
+                            textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
+                          }}
+                        >
+                          {gems}
+                        </span>
+                        {pending > 0 && (
+                          <motion.span
+                            key={pending}
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="text-[10px] font-black leading-none text-primary"
+                          >+{pending}</motion.span>
+                        )}
+                        {isFlux && reservedCount > 0 && (
+                          <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
+                        )}
+                      </div>
+                      {/* Bank availability (small, below) */}
+                      {!isFlux && (
+                        <div className="flex items-center gap-0.5 mt-0.5"
+                          title={`${bankCount} available in the shared Well`}>
+                          <span className="text-[8px] font-bold font-mono leading-none"
+                            style={{ color: bankEmpty ? 'rgba(255,255,255,0.18)' : `${meta.glowHex}99` }}>
+                            {bankCount - pending}
+                          </span>
+                          <span className="text-[7px] leading-none" style={{ color: 'rgba(255,255,255,0.22)' }}>well</span>
+                        </div>
                       )}
-                      {lumBonus > 0 && (
-                        <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>
+                      {/* Bonuses */}
+                      {!isFlux && (bonus > 0 || lumBonus > 0) && (
+                        <div className="flex flex-col items-center gap-0 mt-0.5" style={{ lineHeight: 1 }}>
+                          {bonus > 0 && <span className="text-[7px] font-bold leading-none text-primary">+{bonus}b</span>}
+                          {lumBonus > 0 && <span className="text-[7px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>}
+                        </div>
                       )}
+                      {/* Affinity short name */}
+                      <span className="text-[7px] font-semibold uppercase tracking-wider leading-none mt-1"
+                        style={{ color: `${meta.glowHex}70` }}>
+                        {meta.shortName}
+                      </span>
                     </div>
-                  )}
-                </button>
+                  </motion.button>
+                  {/* Harness 2 sub-button */}
+                  <motion.button
+                    type="button"
+                    aria-hidden={!canTake2}
+                    tabIndex={canTake2 ? 0 : -1}
+                    animate={{ opacity: canTake2 ? 1 : 0 }}
+                    transition={{ duration: 0.15 }}
+                    onClick={(e) => { if (!canTake2) return; e.stopPropagation(); promoteToTake2(c); }}
+                    style={{ pointerEvents: canTake2 ? 'auto' : 'none', visibility: canTake2 ? 'visible' : 'hidden' }}
+                    className={`w-full text-[8px] font-bold rounded-md py-0.5 transition-colors leading-none ${isPlanningMode ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25' : 'text-primary/80 bg-primary/10 active:bg-primary/25'}`}
+                  >
+                    ×2
+                  </motion.button>
+                </div>
               );
             })}
           </div>
+
+          {/* ── Queue confirmation bar — appears when affinities are selected ── */}
+          <AnimatePresence>
+            {crystalQueueActive && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.18 }}
+                className="overflow-hidden"
+                style={{
+                  ...(tutorialZone === 'harvest' && tutorialAttention === 'action' ? {
+                    boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
+                  } : {}),
+                }}
+              >
+                <div className="px-2 pb-2 pt-1 border-t border-white/10">
+                  {!isMyTurn && canPlan && (
+                    <p className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug">
+                      Planning — plans may be cancelled if the bank changes before your turn.
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1.5 flex-1 items-center flex-wrap">
+                      {Object.entries(selectedCrystals).map(([c, n]) => (
+                        <div key={c} className="flex items-center gap-1 bg-black/50 rounded-full pl-1.5 pr-2 py-0.5 border border-white/10">
+                          <MiniGem color={c as GemKey} size={12} />
+                          <span className="text-xs font-bold text-white">×{n}</span>
+                        </div>
+                      ))}
+                      <span className={`text-[10px] font-medium ${queueLegality.ok ? (!isMyTurn && canPlan ? 'text-amber-400' : 'text-green-400') : 'text-amber-400'}`}>
+                        {(!isMyTurn && canPlan && queueLegality.reason
+                          ? `Plan: ${queueLegality.reason}`
+                          : queueLegality.reason) || 'Pick affinities'}
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0 relative">
+                      <AnimatePresence>
+                        {showUndoHint && !showForgeHint && !showReserveHint && (
+                          <motion.button
+                            type="button"
+                            initial={{ opacity: 0, y: 6, scale: 0.92 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                            transition={{ duration: 0.3 }}
+                            onClick={dismissUndoHint}
+                            className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                            title="Dismiss hint"
+                          >
+                            <Undo2 className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                            <span>← Back removes the last crystal</span>
+                            <span className="text-white/40 ml-0.5">✕</span>
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" onClick={handleUndoCrystal} title="Undo last crystal">
+                        <Undo2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg"
+                        onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); setPrePromotionHistory(null); }}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                      {isMyTurnForCoreAction ? (
+                        (() => {
+                          const selKeys = Object.keys(selectedCrystals) as GemKey[];
+                          const hasColors = selKeys.length > 0 && queueLegality.ok;
+                          const borderColor = hasColors ? `${GEM_META[selKeys[0]].hex}70` : 'rgba(255,255,255,0.18)';
+                          const conicGradient = selKeys.length === 1
+                            ? `conic-gradient(${GEM_META[selKeys[0]].hex} 0deg, ${GEM_META[selKeys[0]].hex}44 180deg, ${GEM_META[selKeys[0]].hex} 360deg)`
+                            : `conic-gradient(${selKeys.map((k, i) => {
+                                const deg1 = Math.round((i / selKeys.length) * 360);
+                                const deg2 = Math.round(((i + 1) / selKeys.length) * 360);
+                                return `${GEM_META[k].hex} ${deg1}deg ${deg2}deg`;
+                              }).join(', ')})`;
+                          return (
+                            <motion.div
+                              whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                              className={`relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!queueLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                              style={{ background: 'rgba(255,255,255,0.03)', borderColor, boxShadow: hasColors ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[selKeys[0]].hex}44` : 'inset 0 1px 0 rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+                              onClick={queueLegality.ok ? () => { setHarnessPulseKey(k => k + 1); confirmCrystals(); } : undefined}
+                            >
+                              {selKeys.length > 0 && (
+                                <div key={harnessPulseKey} className={harnessPulseKey > 0 ? 'harness-press-flash' : ''} style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}>
+                                  <div className="w-full h-full harness-swirl-ring" style={{ background: conicGradient, opacity: 0.48, filter: 'blur(8px)' }} />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.13] to-transparent pointer-events-none" />
+                              <span className="relative z-10 text-xs font-bold transition-colors duration-300 select-none" style={{ color: hasColors ? '#fff' : 'rgba(255,255,255,0.35)', textShadow: hasColors ? '0 1px 5px rgba(0,0,0,0.85)' : 'none' }}>
+                                <AnimatePresence mode="wait" initial={false}>
+                                  {sentFlashBtn === 'harness' ? (
+                                    <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
+                                      <Check className="h-3 w-3" />Sent
+                                    </motion.span>
+                                  ) : (
+                                    <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                      Harness
+                                    </motion.span>
+                                  )}
+                                </AnimatePresence>
+                              </span>
+                            </motion.div>
+                          );
+                        })()
+                      ) : canPlan && queueLegality.ok ? (
+                        (() => {
+                          const planSelKeys = Object.keys(selectedCrystals) as GemKey[];
+                          const planHasColors = planSelKeys.length > 0;
+                          return (
+                            <motion.div
+                              whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
+                              className="relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
+                              style={{ background: planHasColors ? 'rgba(120,70,0,0.18)' : 'rgba(120,70,0,0.08)', borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)', boxShadow: planHasColors ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px rgba(251,191,36,0.25)' : 'inset 0 1px 0 rgba(255,255,255,0.06)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+                              onClick={() => {
+                                if (queueLegality.actionType === 'take3') {
+                                  handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });
+                                } else if (queueLegality.actionType === 'take2') {
+                                  handlePlanAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+                                }
+                                flashSent('plan_harness');
+                              }}
+                            >
+                              {planHasColors && (
+                                <div style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}>
+                                  <div className="w-full h-full harness-swirl-ring" style={{ background: `conic-gradient(rgba(251,191,36,0.7) 0deg, rgba(251,191,36,0.2) 180deg, rgba(251,191,36,0.7) 360deg)`, opacity: 0.30, filter: 'blur(8px)' }} />
+                                </div>
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-b from-white/[0.10] to-transparent pointer-events-none" />
+                              <span className="relative z-10 text-xs font-bold select-none flex items-center gap-1.5">
+                                <AnimatePresence mode="wait" initial={false}>
+                                  {sentFlashBtn === 'plan_harness' ? (
+                                    <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
+                                      <Check className="h-3 w-3" />Sent
+                                    </motion.span>
+                                  ) : (
+                                    <motion.span key="label" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
+                                      <span className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none">PLAN</span>
+                                      <span style={{ color: planHasColors ? '#fde68a' : 'rgba(255,255,255,0.35)' }}>Harness</span>
+                                    </motion.span>
+                                  )}
+                                </AnimatePresence>
+                              </span>
+                            </motion.div>
+                          );
+                        })()
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Return-crystals phase (hand limit exceeded) ── */}
+          <AnimatePresence>
+            {returnPhase && isMyTurn && me && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="px-2 pb-2 pt-2 border-t border-amber-500/40 bg-amber-950/25">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-amber-300">
+                        Return {returnPhase.excessCount} crystal{returnPhase.excessCount > 1 ? 's' : ''} — hand limit is 10
+                      </p>
+                      {(() => {
+                        const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+                        const remaining = returnPhase.excessCount - sel;
+                        return (
+                          <p className="text-[10px] text-white/50 mt-0.5">
+                            {remaining > 0 ? `Select ${remaining} more to return` : 'Ready — confirm to harness'}
+                          </p>
+                        );
+                      })()}
+                    </div>
+                    <button type="button" onClick={cancelReturnPhase}
+                      className="h-7 w-7 rounded-lg flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1.5 mb-3">
+                    {(CRYSTALS as GemKey[]).map((c) => {
+                      const held = me.crystals[c as keyof CrystalCounts] ?? 0;
+                      const taking = returnPhase.pendingTake[c as keyof CrystalCounts] ?? 0;
+                      const have = held + taking;
+                      const returning = returnSelections[c as keyof CrystalCounts] ?? 0;
+                      const available = have - returning;
+                      if (have === 0) return null;
+                      const meta = GEM_META[c as GemKey];
+                      const isMarkedReturn = returning > 0;
+                      const totalSel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+                      const canAdd = available > 0 && totalSel < returnPhase.excessCount + 5;
+                      return (
+                        <div key={c} className="flex flex-col items-center gap-0.5">
+                          <motion.button type="button" whileTap={canAdd ? { scale: 0.88 } : {}}
+                            onClick={() => { if (!canAdd) return; setReturnSelections(prev => ({ ...prev, [c]: (prev[c as keyof CrystalCounts] ?? 0) + 1 })); }}
+                            className="relative w-full aspect-square rounded-xl flex flex-col items-center justify-center overflow-hidden transition-all"
+                            style={isMarkedReturn ? {
+                              background: `linear-gradient(160deg, #7f1d1d99 0%, #991b1b70 100%)`,
+                              border: `2px solid #f87171cc`, boxShadow: `0 0 16px #f8717166`, opacity: canAdd ? 1 : 0.85,
+                            } : { background: `linear-gradient(160deg, ${meta.hex}30 0%, ${meta.hex}12 100%)`, border: `1px solid ${meta.glowHex}55`, opacity: canAdd ? 1 : 0.4 }}
+                          >
+                            <img src={meta.image} alt={meta.name} className="w-[55%] h-[55%] object-contain pointer-events-none select-none" style={{ filter: `drop-shadow(0 0 6px ${meta.glowHex}80)` }} draggable={false} />
+                            <span className="text-xs font-black font-mono leading-none text-white" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{available}</span>
+                            {isMarkedReturn && (
+                              <div className="absolute top-0.5 right-0.5 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center text-[9px] font-black text-white leading-none shadow">-{returning}</div>
+                            )}
+                          </motion.button>
+                          <span className="text-[8px] font-semibold uppercase tracking-wider leading-none" style={{ color: `${meta.glowHex}88` }}>{meta.shortName}</span>
+                          {returning > 0 && (
+                            <button type="button"
+                              onClick={() => setReturnSelections(prev => {
+                                const curr = prev[c as keyof CrystalCounts] ?? 0;
+                                if (curr <= 1) { const next = { ...prev }; delete next[c as keyof CrystalCounts]; return next; }
+                                return { ...prev, [c]: curr - 1 };
+                              })}
+                              className="text-[8px] text-red-400/70 hover:text-red-400 font-bold leading-none"
+                            >undo</button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {(() => {
+                    const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
+                    const ready = sel >= returnPhase.excessCount;
+                    return (
+                      <motion.button type="button" whileTap={ready ? { scale: 0.96 } : {}} disabled={!ready} onClick={confirmReturnPhase}
+                        className="w-full h-9 rounded-xl text-sm font-bold transition-all"
+                        style={ready ? {
+                          background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)', color: '#fff',
+                          boxShadow: '0 0 18px rgba(124,58,237,0.55)', border: '1px solid rgba(167,139,250,0.5)',
+                        } : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'not-allowed' }}
+                      >
+                        {ready ? 'Confirm Return & Harness' : `Select ${returnPhase.excessCount - Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0)} more to return`}
+                      </motion.button>
+                    );
+                  })()}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
