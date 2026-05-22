@@ -43,6 +43,8 @@ import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
+import { KardashevScene } from '@/components/KardashevScene';
+import { getKardashevTier, getDominantAffinityPalette } from '@/lib/kardashev';
 const gemIcon = "/icon_gem.svg";
 
 function hexRgba(hex: string, alpha: number): string {
@@ -1607,6 +1609,15 @@ export default function GameBoard() {
   const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
+
+  const myPurchasedCards = me?.purchasedCards ?? [];
+  const myBonuses = me?.bonuses ?? {};
+  const kardashevTier = useMemo(
+    () => getKardashevTier(myPurchasedCards, myBonuses as Record<string, number>),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [myPurchasedCards, myBonuses],
+  );
+  const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
     const luminaryAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
@@ -3330,6 +3341,9 @@ export default function GameBoard() {
 
   const HandTab = () => (
     <div className="flex flex-col gap-5 p-4 pb-6">
+      {/* Kardashev Observatory Scene */}
+      <KardashevScene tier={kardashevTier} palette={kardashevPalette} />
+
       {/* Lumens + name */}
       <div className={`rounded-2xl border p-4 bg-card/80 backdrop-blur flex items-center justify-between ${isMyTurn ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-border'}`}>
         <div>
