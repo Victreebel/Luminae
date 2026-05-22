@@ -1,0 +1,65 @@
+Refine the Hand tab by adding a lightweight ambient “Personal Observatory” scene at the top.
+
+Purpose:
+The scene should show the player’s civilization scale based on forged Artifacts. It should feel like the player is watching their civilization grow from local sky → planetary civilization → star-system civilization → galactic civilization.
+
+Do not change gameplay mechanics, card data, scoring, forging rules, artifact costs, tutorial flow, or navigation.
+
+Placement:
+- Add the scene at the top of the Hand tab only.
+- It should not cover or obscure hand cards.
+- It should be compact and responsive on phone width.
+- It should feel like an atmospheric header, not a separate minigame.
+
+Progression:
+Compute an internal Kardashev-style progress value from forged Artifacts:
+- Tier I forged Artifact = 1 point
+- Tier II forged Artifact = 3 points
+- Tier III forged Artifact = 7 points
+
+Map progress to ambient stages:
+- 0 points: K0 / Earth-night sky, tranquil horizon and stars
+- 1–4 points: K1 / rotating planet, faint city lights, early orbital traces
+- 5–11 points: advanced planetary / orbital civilization, more satellites and orbital arcs
+- 12–24 points: K2 / star-system view, central star, multiple planets, solar structures
+- 25+ points or any Tier III forged Artifact: K3 / galactic view, spiral arm glow, interstellar network hints
+
+If this exact artifact-tier data is not easily available, inspect the existing forged Artifact data and derive the safest equivalent without changing game rules.
+
+Affinity influence:
+Tint or accent the scene based on the player’s forged Artifact affinities:
+- Flare: red/orange plasma, warm star glow
+- Radiance: white-gold beacons, civic light grids
+- Verdance: green biosphere glow, organic orbital growth
+- Continuum: blue orbital rings, time-path arcs
+- Abyss: violet shadows, eclipses, dark sectors
+- Singularity: subtle prismatic lensing/anomaly effects
+
+Performance and accessibility:
+- Keep it lightweight.
+- Prefer CSS/SVG/canvas-style effects or simple 3D-compatible layered elements.
+- Avoid heavy 3D rendering unless already supported.
+- Respect reduced-motion settings.
+- Add a simple fallback static scene if animation is disabled or performance is poor.
+- Animation should be slow, ambient, and non-distracting.
+
+UX:
+- Add a small label such as “Personal Observatory” or “Civilization Scale.”
+- Optionally show a subtle stage label: “Planetary,” “Stellar,” or “Galactic.”
+- Do not show complex formulas to the player.
+- The scene should update when forged Artifacts change.
+
+Validation:
+- Confirm Hand tab still loads quickly.
+- Confirm cards remain readable.
+- Confirm scene changes with forged Artifact tier progression.
+- Confirm affinity tinting works without overpowering the UI.
+- Confirm no gameplay mechanics changed.
+- Confirm typecheck and browser console are clean.
+
+Report:
+1. files changed
+2. how Kardashev stage is calculated
+3. how forged Artifacts influence visuals
+4. performance/accessibility fallback
+5. preview readiness
