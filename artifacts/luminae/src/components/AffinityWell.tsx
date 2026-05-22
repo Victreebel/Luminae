@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import type {
   GameState,
@@ -60,20 +60,69 @@ function ReservoirGauge({
   hex: string;
   glowHex: string;
 }) {
+  // Visual pip states — each entry is true (filled) or false (empty).
+  // Updated immediately on fill, but staggered on drain so pips empty top-down.
+  const [pipFilled, setPipFilled] = useState<boolean[]>(() =>
+    Array.from({ length: capacity }, (_, i) => i >= capacity - filledCount),
+  );
+
+  const prevFilledRef = useRef(filledCount);
+  const timerIds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (filledCount === prevFilledRef.current) return;
+
+    // Clear any pending drain timers from a previous interaction
+    timerIds.current.forEach(clearTimeout);
+    timerIds.current = [];
+
+    if (filledCount < prevFilledRef.current) {
+      // Drain: topmost newly-empty pip fires first (seq 0), then cascade downward
+      const firstDraining = capacity - prevFilledRef.current;
+      const lastDraining = capacity - filledCount - 1;
+      for (let i = firstDraining; i <= lastDraining; i++) {
+        const seq = i - firstDraining;
+        const id = setTimeout(() => {
+          setPipFilled((prev) => {
+            const next = [...prev];
+            next[i] = false;
+            return next;
+          });
+        }, seq * 180);
+        timerIds.current.push(id);
+      }
+    } else {
+      // Fill: snap all pips to correct state instantly
+      setPipFilled(
+        Array.from({ length: capacity }, (_, i) => i >= capacity - filledCount),
+      );
+    }
+
+    prevFilledRef.current = filledCount;
+
+    return () => {
+      timerIds.current.forEach(clearTimeout);
+    };
+  }, [filledCount, capacity]);
+
   return (
     <div className="flex flex-col items-center gap-[3px]">
       {Array.from({ length: capacity }, (_, i) => {
-        const isFilled = i >= capacity - filledCount;
+        const isFilled = pipFilled[i] ?? false;
         return (
-          <div
+          <motion.div
             key={i}
             className="rounded-full shrink-0"
+            animate={
+              isFilled
+                ? { scale: 1, opacity: 1, backgroundColor: hex }
+                : { scale: 0.35, opacity: 0.12, backgroundColor: 'rgba(255,255,255,0.07)' }
+            }
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               width: 5,
               height: 5,
-              background: isFilled ? hex : 'rgba(255,255,255,0.07)',
               boxShadow: isFilled ? `0 0 4px ${glowHex}80` : 'none',
-              transition: 'background 0.2s, box-shadow 0.2s',
             }}
           />
         );

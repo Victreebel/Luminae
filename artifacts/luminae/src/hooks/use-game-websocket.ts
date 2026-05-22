@@ -78,6 +78,14 @@ export function useGameWebsocket({
     ws.onopen = () => {
       setIsConnected(true);
       reconnectDelayRef.current = 1000;
+      // Keep the connection alive through Replit's proxy by sending a ping
+      // every 20 s.  The server responds with a pong (no-op on the client).
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 20_000);
+      ws.addEventListener('close', () => clearInterval(pingInterval), { once: true });
     };
 
     ws.onmessage = (event) => {

@@ -1392,7 +1392,22 @@ export default function GameBoard() {
   const { data: state, error } = useGetGameState(
     roomId!,
     { sessionToken: session?.sessionToken || '' },
-    { query: { enabled: !!roomId && !!session, queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }) } }
+    {
+      query: {
+        enabled: !!roomId && !!session,
+        queryKey: getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
+        // Poll every 4 s as a fallback for when the WebSocket drops mid-game.
+        // When WebSocket is healthy the WS state_update messages keep the cache
+        // current and these fetches mostly return 304s. When WebSocket is down
+        // (proxy killed idle connection, brief network hiccup, etc.) this
+        // ensures AI turns and opponent moves are never missed.
+        refetchInterval: (query) => {
+          const data = query.state.data as { status?: string } | undefined;
+          return data?.status !== 'finished' ? 4000 : false;
+        },
+        refetchIntervalInBackground: false,
+      },
+    }
   );
 
   const { data: loreCatalog } = useGetCardLoreCatalog();
