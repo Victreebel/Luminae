@@ -404,6 +404,75 @@ export const LUMINARY_MAP = new Map<string, LuminaryDef>(
   LUMINARIES.map((l) => [l.id, l]),
 );
 
+// ─── Kardashev tier helpers ──────────────────────────────────────────────────
+
+/**
+ * Compute the player's Kardashev tier from their purchased card IDs and the
+ * set of card IDs that were forged entirely through permanent bonus discounts.
+ * Logic mirrors getKardashevTier in the frontend kardashev.ts.
+ */
+function computeKardashevTier(
+  purchasedCardIds: ReadonlyArray<string>,
+  discountedForgeIds: ReadonlyArray<string>,
+): 0 | 1 | 2 | 3 {
+  if (purchasedCardIds.length === 0) return 0;
+
+  const discountedSet = new Set(discountedForgeIds);
+  const cards: Array<{ id: string; tier: number }> = [];
+  for (const id of purchasedCardIds) {
+    const c = CARD_MAP.get(id);
+    if (c) cards.push({ id, tier: c.tier });
+  }
+
+  const tier1 = cards.filter((c) => c.tier === 1);
+  const tier2 = cards.filter((c) => c.tier === 2);
+  const tier3 = cards.filter((c) => c.tier === 3);
+
+  if (tier3.some((c) => discountedSet.has(c.id))) return 3;
+  if (tier3.length > 0 || tier2.some((c) => discountedSet.has(c.id))) return 2;
+  if (tier2.length > 0 || tier1.some((c) => discountedSet.has(c.id))) return 1;
+  return 0;
+}
+
+function kardashevTierLabel(tier: 1 | 2 | 3): string {
+  if (tier === 1) return "Kardashev Type I";
+  if (tier === 2) return "Kardashev Type II";
+  return "Kardashev Type III";
+}
+
+/**
+ * Check whether the player's Kardashev tier advanced after a forge action and,
+ * if so, push a milestone entry to the action log.
+ *
+ * @param oldTier   Tier computed BEFORE the card was added.
+ * @param isDiscount  Whether the card was forged with zero crystals spent.
+ * @param cardTier  Artifact tier of the forged card (1, 2, or 3).
+ */
+function checkKardashevAdvance(
+  state: GameStateData,
+  player: PlayerGameState,
+  oldTier: 0 | 1 | 2 | 3,
+  isDiscount: boolean,
+  cardTier: number,
+): void {
+  const newTier = computeKardashevTier(
+    player.purchasedCardIds,
+    player.discountedForgeIds,
+  );
+  if (newTier <= oldTier) return;
+
+  const reason = isDiscount
+    ? `Tier ${cardTier} Artifact forged entirely on bonuses`
+    : `Tier ${cardTier} Artifact forged`;
+
+  pushLog(state, {
+    playerId: player.playerId,
+    playerName: player.playerName,
+    summary: `reached ${kardashevTierLabel(newTier as 1 | 2 | 3)} (${reason})`,
+    turn: state.roundNumber,
+  });
+}
+
 // Luminaries with complete illustrated assets — only these enter the active
 // pool until the remaining entries have their art finalised.
 // All 12 Luminaries are accessible during iteration. Accepted reference art:
@@ -1048,15 +1117,18 @@ export function applyAction(
       const eff = effectiveCost(card, player, liveBonusesPurchase);
       if (!canAfford(eff, player.crystals))
         return { success: false, error: "Cannot afford this card" };
+      const kardashevBefore = computeKardashevTier(player.purchasedCardIds, player.discountedForgeIds);
       payForCard(card, player, state.crystalBank, liveBonusesPurchase);
       player.purchasedCardIds.push(action.cardId);
-      if (Object.values(eff).every((v) => v === 0)) {
+      const isDiscountPurchase = Object.values(eff).every((v) => v === 0);
+      if (isDiscountPurchase) {
         player.discountedForgeIds.push(action.cardId);
       }
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       checkLuminaries(state, player);
+      checkKardashevAdvance(state, player, kardashevBefore, isDiscountPurchase, card.tier);
       break;
     }
 
@@ -1071,15 +1143,18 @@ export function applyAction(
       const eff = effectiveCost(card, player, liveBonusesReserved);
       if (!canAfford(eff, player.crystals))
         return { success: false, error: "Cannot afford this card" };
+      const kardashevBeforeReserved = computeKardashevTier(player.purchasedCardIds, player.discountedForgeIds);
       payForCard(card, player, state.crystalBank, liveBonusesReserved);
       player.reservedCardIds.splice(idx, 1);
       player.purchasedCardIds.push(action.cardId);
-      if (Object.values(eff).every((v) => v === 0)) {
+      const isDiscountReserved = Object.values(eff).every((v) => v === 0);
+      if (isDiscountReserved) {
         player.discountedForgeIds.push(action.cardId);
       }
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       checkLuminaries(state, player);
+      checkKardashevAdvance(state, player, kardashevBeforeReserved, isDiscountReserved, card.tier);
       break;
     }
 
