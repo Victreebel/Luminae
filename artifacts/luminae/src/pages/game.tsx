@@ -2836,7 +2836,7 @@ export default function GameBoard() {
                 color: '#C4AAFF',
                 textShadow: '0 0 24px rgba(180,140,255,0.5), 0 1px 0 rgba(0,0,0,0.8)',
                 letterSpacing: '0.06em',
-              }}>Particle Horizon</span>
+              }}>Terminus</span>
             </div>
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(160,120,255,0.5), transparent)' }} />
           </div>
