@@ -2961,7 +2961,7 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
+        <div className="relative flex items-center px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col leading-none">
               <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(192,140,60,0.55)' }}>The</span>
@@ -2972,40 +2972,6 @@ export default function GameBoard() {
               }}>Forge</span>
             </div>
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(192,140,60,0.5), transparent)' }} />
-          </div>
-          {/* Cost mode toggle */}
-          <div
-            data-tutorial-zone="filters"
-            className="flex items-center bg-secondary/60 rounded-full border border-border/40 p-0.5 gap-0.5"
-            style={tutorialZone === 'filters' ? {
-              boxShadow: '0 0 0 2px rgba(168,85,247,0.65), 0 0 14px 4px rgba(168,85,247,0.22)',
-              borderColor: 'rgba(168,85,247,0.5)',
-              transition: 'box-shadow 0.3s, border-color 0.3s',
-            } : undefined}
-          >
-            {([
-              { mode: 'printed' as CostMode, label: 'Full', title: 'Show original printed cost' },
-              { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
-              { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harness selection' },
-            ]).map(({ mode, label, title }) => {
-              const isTutorialFilterHighlight = isTutorial && tutorialStep === 5 && (mode === 'after_bonuses' || mode === 'needed_now');
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  title={title}
-                  onClick={() => setCostMode(mode)}
-                  className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  style={isTutorialFilterHighlight ? {
-                    boxShadow: '0 0 0 1.5px rgba(168,85,247,0.8), 0 0 8px 2px rgba(168,85,247,0.4)',
-                    color: costMode === mode ? undefined : 'rgba(200,170,255,0.9)',
-                    transition: 'box-shadow 0.3s, color 0.3s',
-                  } : undefined}
-                >
-                  {label}
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -3103,6 +3069,43 @@ export default function GameBoard() {
             </div>
           </div>
         ))}
+        </div>
+      </div>
+
+      {/* ── Cost view filter strip — beneath The Forge ── */}
+      <div
+        data-tutorial-zone="filters"
+        className="flex items-center gap-2 px-3 py-1.5"
+        style={tutorialZone === 'filters' ? {
+          boxShadow: '0 0 0 2px rgba(168,85,247,0.65), 0 0 14px 4px rgba(168,85,247,0.22)',
+          transition: 'box-shadow 0.3s',
+        } : undefined}
+      >
+        <span className="text-[9px] font-semibold uppercase tracking-widest shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>View</span>
+        <div className="flex items-center bg-secondary/50 rounded-full border border-border/30 p-0.5 gap-0.5">
+          {([
+            { mode: 'printed' as CostMode, label: 'Full', title: 'Show original printed cost' },
+            { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
+            { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harness selection' },
+          ]).map(({ mode, label, title }) => {
+            const isTutorialFilterHighlight = isTutorial && tutorialStep === 5 && (mode === 'after_bonuses' || mode === 'needed_now');
+            return (
+              <button
+                key={mode}
+                type="button"
+                title={title}
+                onClick={() => setCostMode(mode)}
+                className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all leading-none ${costMode === mode ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                style={isTutorialFilterHighlight ? {
+                  boxShadow: '0 0 0 1.5px rgba(168,85,247,0.8), 0 0 8px 2px rgba(168,85,247,0.4)',
+                  color: costMode === mode ? undefined : 'rgba(200,170,255,0.9)',
+                  transition: 'box-shadow 0.3s, color 0.3s',
+                } : undefined}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
