@@ -3227,24 +3227,23 @@ export default function GameBoard() {
                         );
                       })}
                     </div>
+                    {/* View/Hide details — inline between chips and Eminence */}
+                    <button
+                      type="button"
+                      onClick={toggleExpanded}
+                      className="flex items-center gap-1 shrink-0 px-1.5 py-0.5 rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors text-[10px] font-semibold text-primary"
+                    >
+                      {isExpanded ? (
+                        <><ChevronUp className="h-2.5 w-2.5" />Hide</>
+                      ) : (
+                        <><Eye className="h-2.5 w-2.5" />View</>
+                      )}
+                    </button>
                     <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-primary leading-none">
                       <span>{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
                   </div>
-
-                  {/* View button */}
-                  <button
-                    type="button"
-                    onClick={toggleExpanded}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors text-[11px] font-semibold text-primary"
-                  >
-                    {isExpanded ? (
-                      <><ChevronUp className="h-3 w-3" />Hide details</>
-                    ) : (
-                      <><Eye className="h-3 w-3" />View details</>
-                    )}
-                  </button>
 
                   {/* Expanded per-color detail */}
                   <AnimatePresence initial={false}>
