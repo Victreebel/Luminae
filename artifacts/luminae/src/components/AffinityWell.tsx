@@ -248,6 +248,13 @@ export function AffinityWellCells({
 
         return (
           <div key={c} className="flex-1 flex flex-col gap-0.5">
+            {/* Affinity name — overhead */}
+            <span
+              className="text-center text-[7px] font-semibold uppercase tracking-wider leading-none pb-0.5"
+              style={{ color: `${meta.glowHex}90` }}
+            >
+              {meta.shortName}
+            </span>
             <motion.button
               type="button"
               disabled={isFlux ? !showReservedLink : !selectable || bankEmpty}
@@ -346,13 +353,6 @@ export function AffinityWellCells({
                       />
                     ))}
                   </div>
-                  {/* Affinity name */}
-                  <span
-                    className="text-[6px] font-semibold uppercase tracking-wider leading-none mt-1"
-                    style={{ color: `${meta.glowHex}70` }}
-                  >
-                    {meta.shortName}
-                  </span>
                 </div>
               ) : (
                 /* ── Colored affinity cell ── */
@@ -455,13 +455,28 @@ export function AffinityWellCells({
                       </div>
                     )}
 
-                    {/* Affinity name */}
-                    <span
-                      className="text-[7px] font-semibold uppercase tracking-wider leading-none mt-1"
-                      style={{ color: `${meta.glowHex}70` }}
-                    >
-                      {meta.shortName}
-                    </span>
+                    {/* Token dots — filled = remaining in bank, hollow = taken */}
+                    <div className="flex gap-[3px] mt-1 flex-wrap justify-center">
+                      {Array.from({ length: gaugeCapacity }, (_, i) => {
+                        const filled = i < bankCount;
+                        return (
+                          <div
+                            key={i}
+                            className="rounded-full"
+                            style={{
+                              width: 5,
+                              height: 5,
+                              background: filled ? meta.hex : 'transparent',
+                              border: filled
+                                ? `1px solid ${meta.glowHex}60`
+                                : `1px solid ${meta.glowHex}35`,
+                              boxShadow: filled ? `0 0 4px ${meta.glowHex}70` : 'none',
+                              transition: 'background 0.3s, box-shadow 0.3s',
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 </>
               )}
