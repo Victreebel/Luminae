@@ -1611,11 +1611,11 @@ export default function GameBoard() {
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
   const myPurchasedCards = me?.purchasedCards ?? [];
-  const myBonuses = me?.bonuses ?? {};
+  const myDiscountedForgeIds = me?.discountedForgeIds ?? [];
   const kardashevTier = useMemo(
-    () => getKardashevTier(myPurchasedCards, myBonuses as Record<string, number>),
+    () => getKardashevTier(myPurchasedCards, myDiscountedForgeIds),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [myPurchasedCards, myBonuses],
+    [myPurchasedCards, myDiscountedForgeIds],
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 

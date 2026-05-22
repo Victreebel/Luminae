@@ -444,6 +444,12 @@ export const StartGameResponse = zod.object({
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
+      discountedForgeIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+        ),
       purchasedCards: zod.array(
         zod.object({
           id: zod.string(),
@@ -716,6 +722,12 @@ export const RematchResponse = zod.object({
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
+      discountedForgeIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+        ),
       purchasedCards: zod.array(
         zod.object({
           id: zod.string(),
@@ -988,6 +1000,12 @@ export const GetGameStateResponse = zod.object({
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
+      discountedForgeIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+        ),
       purchasedCards: zod.array(
         zod.object({
           id: zod.string(),
@@ -1318,6 +1336,12 @@ export const SubmitActionResponse = zod.object({
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
+      discountedForgeIds: zod
+        .array(zod.string())
+        .optional()
+        .describe(
+          "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
+        ),
       purchasedCards: zod.array(
         zod.object({
           id: zod.string(),

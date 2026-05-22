@@ -70,6 +70,8 @@ export interface PlayerGameState {
   lumens: number;
   reservedCardIds: string[];
   purchasedCardIds: string[];
+  /** Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time). */
+  discountedForgeIds: string[];
   luminaries: string[];
   isConnected: boolean;
   plannedAction: ActionPayload | null;
@@ -476,6 +478,7 @@ export function initializeGame(
     lumens: 0,
     reservedCardIds: [],
     purchasedCardIds: [],
+    discountedForgeIds: [],
     luminaries: [],
     isConnected: true,
     plannedAction: null,
@@ -1047,6 +1050,9 @@ export function applyAction(
         return { success: false, error: "Cannot afford this card" };
       payForCard(card, player, state.crystalBank, liveBonusesPurchase);
       player.purchasedCardIds.push(action.cardId);
+      if (Object.values(eff).every((v) => v === 0)) {
+        player.discountedForgeIds.push(action.cardId);
+      }
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
@@ -1068,6 +1074,9 @@ export function applyAction(
       payForCard(card, player, state.crystalBank, liveBonusesReserved);
       player.reservedCardIds.splice(idx, 1);
       player.purchasedCardIds.push(action.cardId);
+      if (Object.values(eff).every((v) => v === 0)) {
+        player.discountedForgeIds.push(action.cardId);
+      }
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       checkLuminaries(state, player);
@@ -1401,6 +1410,8 @@ export function normalizeState(raw: unknown): GameStateData {
       // ensure Plan Move fields exist (added in Plan Move feature)
       if (!("plannedAction" in p)) p = { ...p, plannedAction: null };
       if (!("plannedActionCancelReason" in p)) p = { ...p, plannedActionCancelReason: null };
+      // ensure discountedForgeIds exists (added in Kardashev bonus-discount feature)
+      if (!Array.isArray(p.discountedForgeIds)) p = { ...p, discountedForgeIds: [] };
       return p;
     });
   }
@@ -1504,6 +1515,7 @@ export function formatGameState(
         .filter(Boolean)
         .map((c) => withLore(c as ArtifactCard)),
       purchasedCardIds: p.purchasedCardIds,
+      discountedForgeIds: p.discountedForgeIds ?? [],
       purchasedCards: p.purchasedCardIds
         .map((id) => CARD_MAP.get(id))
         .filter(Boolean)

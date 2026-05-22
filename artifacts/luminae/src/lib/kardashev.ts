@@ -21,17 +21,12 @@ const DEFAULT_PALETTE: AffinityPalette = {
   accent: '#bfdbfe',
 };
 
-type CardRef = { tier: number; cost: object };
-
-/** Returns true if the card's cost is fully covered by permanent bonuses alone. */
-function isFullyOnDiscounts(card: CardRef, bonuses: Record<string, number>): boolean {
-  return Object.entries(card.cost as Record<string, number>).every(
-    ([color, amt]) => amt === 0 || (bonuses[color] ?? 0) >= amt,
-  );
-}
+type CardRef = { tier: number };
 
 /**
- * Compute the player's Kardashev tier from their forged cards and current bonuses.
+ * Compute the player's Kardashev tier from their forged cards and the set of
+ * card IDs that were forged entirely through permanent bonus discounts (zero
+ * crystals spent at the moment of forging).
  *
  * Type I  — first Tier 2 card forged, OR a Tier 1 card forged entirely through
  *            permanent bonus discounts (cost fully covered, zero crystals spent).
@@ -41,25 +36,32 @@ function isFullyOnDiscounts(card: CardRef, bonuses: Record<string, number>): boo
  *
  * Tier 0 is the initial night-sky state; forging Tier 1 cards alone does NOT
  * advance the tier — that represents a pre-spacefaring terrestrial civilization.
+ *
+ * @param purchasedCards   All forged cards (must include an `id` and `tier`).
+ * @param discountedForgeIds  Card IDs recorded at forge time as fully discount-covered.
+ *                         This is the historically accurate signal — it is NOT
+ *                         re-derived from current bonuses to avoid false positives.
  */
 export function getKardashevTier(
-  purchasedCards: ReadonlyArray<CardRef>,
-  bonuses: Record<string, number> = {},
+  purchasedCards: ReadonlyArray<CardRef & { id: string }>,
+  discountedForgeIds: ReadonlyArray<string> = [],
 ): KardashevTier {
   if (!purchasedCards || purchasedCards.length === 0) return 0;
+
+  const discountedSet = new Set(discountedForgeIds);
 
   const tier1 = purchasedCards.filter((c) => c.tier === 1);
   const tier2 = purchasedCards.filter((c) => c.tier === 2);
   const tier3 = purchasedCards.filter((c) => c.tier === 3);
 
   // Type III: a Tier 3 card fully on discounts
-  if (tier3.some((c) => isFullyOnDiscounts(c, bonuses))) return 3;
+  if (tier3.some((c) => discountedSet.has(c.id))) return 3;
 
   // Type II: any Tier 3 card, OR a Tier 2 card fully on discounts
-  if (tier3.length > 0 || tier2.some((c) => isFullyOnDiscounts(c, bonuses))) return 2;
+  if (tier3.length > 0 || tier2.some((c) => discountedSet.has(c.id))) return 2;
 
   // Type I: any Tier 2 card, OR a Tier 1 card fully on discounts
-  if (tier2.length > 0 || tier1.some((c) => isFullyOnDiscounts(c, bonuses))) return 1;
+  if (tier2.length > 0 || tier1.some((c) => discountedSet.has(c.id))) return 1;
 
   // Still on the ground — only Tier 1 cards forged with crystals
   return 0;

@@ -460,6 +460,8 @@ export interface GamePlayerState {
   lumens: number;
   reservedCards: ArtifactCard[];
   purchasedCardIds: string[];
+  /** Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time) */
+  discountedForgeIds?: string[];
   purchasedCards: ArtifactCard[];
   isConnected: boolean;
   /** IDs of luminaries this player has claimed */
