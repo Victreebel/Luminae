@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
+import { getCivilizationName } from '@/lib/kardashev';
 
 // ── Seeded PRNG ──────────────────────────────────────────────────────────────
 function seededRng(seed: number): () => number {
@@ -590,6 +591,9 @@ export interface KardashevSceneProps {
 }
 
 export function KardashevScene({ tier, palette }: KardashevSceneProps) {
+  const civName = getCivilizationName(palette, tier);
+  const civKey = `${tier}-${palette.primary}`;
+
   return (
     <SceneErrorBoundary>
       <div className="relative h-[220px] rounded-2xl overflow-hidden bg-black">
@@ -603,6 +607,21 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
             transition={{ duration: 0.75, ease: 'easeInOut' }}
           >
             <KardashevCanvas tier={tier} palette={palette} />
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Civilization name — crossfades on tier or dominant affinity change */}
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={civKey}
+            className="absolute bottom-2 left-3 text-[9px] font-mono tracking-widest uppercase select-none pointer-events-none"
+            style={{ color: 'rgba(180,200,255,0.28)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+          >
+            {civName}
           </motion.div>
         </AnimatePresence>
       </div>

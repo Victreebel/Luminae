@@ -65,6 +65,65 @@ export function getKardashevTier(
   return 0;
 }
 
+// ── Civilization name ────────────────────────────────────────────────────────
+
+const PRIMARY_TO_AFFINITY: Record<string, string> = {
+  '#ff5a3c': 'ruby',
+  '#60a5fa': 'sapphire',
+  '#4ade80': 'emerald',
+  '#a855f7': 'onyx',
+  '#f0e6a0': 'pearl',
+  '#c4b5fd': 'flux',
+};
+
+const CIV_NAMES: Record<string, Record<KardashevTier, string>> = {
+  ruby: {
+    0: 'Ember Settlement',
+    1: 'Ember Republic',
+    2: 'Flare Sovereignty',
+    3: 'Ignition Absolute',
+  },
+  sapphire: {
+    0: 'Temporal Enclave',
+    1: 'Temporal Domain',
+    2: 'Continuum Sovereignty',
+    3: 'Causal Infinite',
+  },
+  emerald: {
+    0: 'Verdant Commune',
+    1: 'Verdant Conclave',
+    2: 'Verdant Dominion',
+    3: 'Living Convergence',
+  },
+  onyx: {
+    0: 'Void Enclave',
+    1: 'Void Sovereignty',
+    2: 'Abyss Dominion',
+    3: 'Entropy Absolute',
+  },
+  pearl: {
+    0: 'Radiant Settlement',
+    1: 'Radiant Order',
+    2: 'Radiant Sovereignty',
+    3: 'Coherent Absolute',
+  },
+  flux: {
+    0: 'Flux Enclave',
+    1: 'Flux Nexus',
+    2: 'Singularity Domain',
+    3: 'Flux Transcendence',
+  },
+};
+
+/**
+ * Returns a short lore-appropriate civilization name derived from the player's
+ * dominant affinity palette and their current Kardashev tier.
+ */
+export function getCivilizationName(palette: AffinityPalette, tier: KardashevTier): string {
+  const affinity = PRIMARY_TO_AFFINITY[palette.primary] ?? 'sapphire';
+  return (CIV_NAMES[affinity] ?? CIV_NAMES['sapphire'])[tier];
+}
+
 export function getDominantAffinityPalette(
   purchasedCards: ReadonlyArray<{ bonusColor: string }>,
 ): AffinityPalette {
