@@ -92,10 +92,20 @@ function ReservoirGauge({
         timerIds.current.push(id);
       }
     } else {
-      // Fill: snap all pips to correct state instantly
-      setPipFilled(
-        Array.from({ length: capacity }, (_, i) => i >= capacity - filledCount),
-      );
+      // Fill: bottommost newly-filled pip animates first, cascade upward
+      const firstFilling = capacity - filledCount;
+      const lastFilling = capacity - prevFilledRef.current - 1;
+      for (let i = lastFilling; i >= firstFilling; i--) {
+        const seq = lastFilling - i;
+        const id = setTimeout(() => {
+          setPipFilled((prev) => {
+            const next = [...prev];
+            next[i] = true;
+            return next;
+          });
+        }, seq * 180);
+        timerIds.current.push(id);
+      }
     }
 
     prevFilledRef.current = filledCount;
