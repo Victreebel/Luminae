@@ -243,10 +243,15 @@ function ArtifactCardView({
       whileTap={onTap ? { scale: 0.96 } : {}}
       onClick={onTap}
       className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
-      style={tapped ? {
-        outline: `2px solid ${bonusMeta?.hex ?? '#6366f1'}`,
-        boxShadow: `0 0 20px 4px ${bonusMeta?.glowHex ?? '#818cf8'}66`,
-      } : undefined}
+      style={{
+        outlineWidth: '2px',
+        outlineStyle: 'solid',
+        outlineColor: tapped ? (bonusMeta?.hex ?? '#6366f1') : 'transparent',
+        boxShadow: tapped
+          ? `0 0 20px 4px ${bonusMeta?.glowHex ?? '#818cf8'}66`
+          : '0 0 0px 0px transparent',
+        transition: 'outline-color 150ms ease, box-shadow 150ms ease',
+      }}
       title={card.flavor || card.name}
     >
       <div className="absolute inset-0 pointer-events-none" style={artLayerStyle} />
