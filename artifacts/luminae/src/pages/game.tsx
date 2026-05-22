@@ -240,6 +240,7 @@ function ArtifactCardView({
 
   return (
     <motion.div
+      whileHover={onTap && !tapped ? { y: -2, scale: 1.02, transition: { duration: 0.12, ease: 'easeOut' } } : {}}
       whileTap={onTap ? { scale: 0.96 } : {}}
       animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
