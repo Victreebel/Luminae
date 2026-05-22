@@ -630,6 +630,13 @@ export interface KardashevSceneProps {
 export function KardashevScene({ tier, palette }: KardashevSceneProps) {
   const civName = getCivilizationName(palette, tier);
   const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
+  const secondaryColor = getSecondaryAffinityColor(palette);
+
+  // Dual-affinity: two stacked inset rings — 1 px of primary color, then 1 px of secondary.
+  // Single-affinity: no special ring.
+  const ringBoxShadow = secondaryColor
+    ? `inset 0 0 0 1px ${hexAlpha(palette.primary, 0.45)}, inset 0 0 0 2px ${hexAlpha(secondaryColor, 0.3)}`
+    : undefined;
 
   return (
     <SceneErrorBoundary>
@@ -661,6 +668,14 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
             {civName}
           </motion.div>
         </AnimatePresence>
+
+        {/* Dual-affinity accent ring — inset box-shadow tinted with both affinity colors */}
+        {ringBoxShadow && (
+          <div
+            className="absolute inset-0 rounded-2xl pointer-events-none"
+            style={{ boxShadow: ringBoxShadow }}
+          />
+        )}
       </div>
     </SceneErrorBoundary>
   );
