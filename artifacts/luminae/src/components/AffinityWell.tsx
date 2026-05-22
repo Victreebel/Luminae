@@ -358,20 +358,17 @@ export function AffinityWellCells({
               ) : (
                 /* ── Colored affinity cell ── */
                 <>
-                  {/* Reservoir gauge — absolute left column */}
+                  {/* Reservoir gauge — anchored to bottom-left corner */}
                   <div
-                    className="absolute left-1 top-2 pointer-events-none flex flex-col items-center"
-                    style={{ bottom: 16 }}
+                    className="absolute left-1 bottom-3 pointer-events-none flex flex-col items-center"
                   >
-                    <div className="flex-1 flex items-end">
-                      <ReservoirGauge
-                        capacity={gaugeCapacity}
-                        filledCount={gaugeFilledCount}
-                        hex={meta.hex}
-                        glowHex={meta.glowHex}
-                        burstKey={harvestBurstKeys?.[c] ?? 0}
-                      />
-                    </div>
+                    <ReservoirGauge
+                      capacity={gaugeCapacity}
+                      filledCount={gaugeFilledCount}
+                      hex={meta.hex}
+                      glowHex={meta.glowHex}
+                      burstKey={harvestBurstKeys?.[c] ?? 0}
+                    />
                     {/* Fraction label */}
                     <span
                       className="text-[5px] font-mono leading-none mt-[3px] tabular-nums"
