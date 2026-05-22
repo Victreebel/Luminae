@@ -1,5 +1,5 @@
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import {
   applyAction,
   formatGameState,
@@ -23,6 +23,48 @@ const easyDelay = (isCardAction: boolean): number =>
   isCardAction
     ? 7000 + Math.random() * 4000
     : 5000 + Math.random() * 4000;
+
+// On server startup, resume AI turns for any rooms where the game is in
+// progress and the current player is an AI (e.g. the server restarted mid-turn).
+export async function recoverStuckAiRooms(): Promise<void> {
+  try {
+    const playingRooms = await db
+      .select({ roomId: roomsTable.id })
+      .from(roomsTable)
+      .where(eq(roomsTable.status, "playing"));
+
+    if (playingRooms.length === 0) return;
+
+    const roomIds = playingRooms.map((r) => r.roomId);
+    const gameStates = await db
+      .select()
+      .from(gameStatesTable)
+      .where(inArray(gameStatesTable.roomId, roomIds));
+
+    for (const gs of gameStates) {
+      const state = normalizeState(gs.state);
+      if ((state.phase as string) === "finished") continue;
+      const currentPlayerId = state.players[state.currentPlayerIndex]?.playerId;
+      if (!currentPlayerId) continue;
+
+      const [player] = await db
+        .select()
+        .from(playersTable)
+        .where(eq(playersTable.id, currentPlayerId))
+        .limit(1);
+
+      if (player?.isAi) {
+        logger.info(
+          { roomId: gs.roomId, playerId: currentPlayerId },
+          "Startup recovery: resuming stuck AI turn",
+        );
+        void runAiTurnsIfNeeded(gs.roomId);
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "Error during startup AI recovery scan");
+  }
+}
 
 // Run consecutive AI turns until the active player is human or the game ends.
 // Fire-and-forget: runs in the background. At most one runner per room is

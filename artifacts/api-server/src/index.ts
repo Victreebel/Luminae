@@ -2,6 +2,7 @@ import { createServer } from "http";
 import app from "./app";
 import { setupWebSocket } from "./lib/websocket";
 import { logger } from "./lib/logger";
+import { recoverStuckAiRooms } from "./lib/aiTurnRunner";
 
 // ── Global safety net ────────────────────────────────────────────────────────
 // Catch any unhandled promise rejection or uncaught exception so a single
@@ -43,6 +44,8 @@ function tryListen() {
 server.on("listening", () => {
   setupWebSocket(server);
   logger.info({ port }, "Server listening");
+  // Resume any AI turns that were in-flight when the server last restarted.
+  void recoverStuckAiRooms();
 });
 
 server.on("error", (err: NodeJS.ErrnoException) => {

@@ -2340,6 +2340,7 @@ export default function GameBoard() {
   if (!prevStateRef.current) prevStateRef.current = state;
 
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
+  const currentPlayerIsAi = !isMyTurn && !!(state.players[state.currentPlayerIndex] as any)?.isAi;
   const oblivionRows: Array<{ name: string; amount: number }> = (state.luminaries ?? [])
     .filter(lum => (lum.oblivion ?? 0) > 0 &&
       state.players.some(p => (p.claimedLuminaryIds ?? []).includes(lum.id)))
@@ -3687,14 +3688,23 @@ export default function GameBoard() {
 
         <div className="flex items-center gap-2 min-w-0">
           {/* Turn pill */}
-          <div className={`pl-1 pr-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+          <div className={`pl-1 pr-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : currentPlayerIsAi ? 'bg-violet-950/80 text-violet-300 border border-violet-700/50' : 'bg-secondary text-muted-foreground'}`}>
             <PlayerAvatar
               avatarId={isMyTurn ? session.avatarId : (state.players[state.currentPlayerIndex]?.avatarId ?? null)}
               name={isMyTurn ? session.playerName : currentPlayerName}
               size={22}
             />
-            {!isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />}
-            <span className="truncate max-w-[80px]">{isMyTurn ? 'Your turn' : currentPlayerName}</span>
+            {currentPlayerIsAi ? (
+              <svg className="h-3 w-3 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : !isMyTurn ? (
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            ) : null}
+            <span className="truncate max-w-[80px]">
+              {isMyTurn ? 'Your turn' : currentPlayerIsAi ? `${currentPlayerName}…` : currentPlayerName}
+            </span>
           </div>
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
           <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
