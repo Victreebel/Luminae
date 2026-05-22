@@ -40,6 +40,7 @@ import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
+import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 const gemIcon = "/icon_gem.svg";
@@ -3797,159 +3798,22 @@ export default function GameBoard() {
           </div>
 
           {/* ── Affinity cells ── */}
-          {/* Each cell = player's held tokens + bank availability + harvest action */}
-          <div className="flex gap-1 px-2 pb-2">
-            {CRYSTALS.map((c) => {
-              const meta = GEM_META[c as GemKey];
-              const isFlux = c === 'flux';
-              const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
-              const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
-              const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
-                .filter((la: LuminaryActiveState) =>
-                  la.ownerId === session?.playerId &&
-                  ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
-                  la.activeAffinity === c
-                ).length;
-              const reservedCount = me.reservedCards.length;
-              const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-              const bankCount = state.crystalBank[c as keyof CrystalCounts] ?? 0;
-              const isPlanningMode = !isActivePlayer && canPlan;
-              const selectable = isMyTurn || (!isActivePlayer && canPlan);
-              const bankEmpty = bankCount === 0;
-              const canTake2 = selectable && !isFlux && bankCount >= 4 && pending !== 2;
-              const hasContent = isFlux ? (gems > 0 || reservedCount > 0) : (gems > 0 || bonus > 0 || lumBonus > 0);
-              const showForgedLink = !isFlux && bonus > 0;
-              const showReservedLink = isFlux && reservedCount > 0;
-
-              return (
-                <div key={c} className="flex-1 flex flex-col gap-0.5">
-                  {/* Main cell — tap to harvest (or view forged/reserved) */}
-                  <motion.button
-                    type="button"
-                    disabled={isFlux ? !showReservedLink : (!selectable || bankEmpty)}
-                    whileTap={(!isFlux && selectable && !bankEmpty) ? { scale: 0.9 } : {}}
-                    animate={pending > 0 ? { scale: [1, 1.06, 1], transition: { duration: 0.2 } } : {}}
-                    onClick={() => {
-                      if (isFlux) {
-                        if (showReservedLink) setShowReservedOverlay(true);
-                      } else if (showForgedLink && !selectable) {
-                        setForgedFilter(c as GemKey); setShowForgedOverlay(true);
-                      } else if (selectable && !bankEmpty) {
-                        handleCrystalClick(c as keyof CrystalCounts);
-                      } else if (showForgedLink) {
-                        setForgedFilter(c as GemKey); setShowForgedOverlay(true);
-                      }
-                    }}
-                    className="relative w-full rounded-lg overflow-hidden transition-all"
-                    style={{
-                      minHeight: 68,
-                      ...(pending > 0 && isPlanningMode
-                        ? {
-                            background: `linear-gradient(180deg, #92400e55 0%, #b4530040 100%)`,
-                            border: `2px solid #fbbf24cc`,
-                            boxShadow: `0 0 14px #fbbf2488, inset 0 0 10px #92400e44`,
-                          }
-                        : pending > 0
-                        ? {
-                            background: `linear-gradient(180deg, ${meta.hex}55 0%, ${meta.hex}2a 100%)`,
-                            border: `2px solid ${meta.glowHex}dd`,
-                            boxShadow: `0 0 18px ${meta.glowHex}99, inset 0 0 14px ${meta.hex}44`,
-                          }
-                        : hasContent
-                        ? {
-                            background: `linear-gradient(180deg, ${meta.hex}22 0%, ${meta.hex}10 100%)`,
-                            border: `1px solid ${meta.hex}88`,
-                            boxShadow: `inset 0 0 10px ${meta.hex}18`,
-                          }
-                        : {
-                            background: `linear-gradient(180deg, ${meta.hex}0a 0%, transparent 100%)`,
-                            border: `1px solid ${meta.hex}20`,
-                          })
-                    }}
-                  >
-                    {/* Top edge glow line */}
-                    {(hasContent || pending > 0) && (
-                      <div className="absolute inset-x-0 top-0 h-[1px] pointer-events-none"
-                        style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}BB, transparent)` }} />
-                    )}
-                    <div className="flex flex-col items-center pt-1.5 pb-1 px-0.5">
-                      {/* Affinity icon */}
-                      <AffinityEmblem
-                        color={c as GemKey}
-                        className="w-6 h-6 object-contain pointer-events-none select-none mb-0.5"
-                        style={{
-                          filter: pending > 0
-                            ? `drop-shadow(0 0 8px ${meta.glowHex}) brightness(1.3)`
-                            : bankEmpty && !isFlux
-                            ? 'grayscale(0.7) opacity(0.4)'
-                            : `drop-shadow(0 0 5px ${meta.glowHex}70)`,
-                        }}
-                      />
-                      {/* Player's held tokens (large) */}
-                      <div className="flex items-baseline gap-0.5">
-                        <span
-                          className="text-xl font-black leading-none"
-                          style={{
-                            color: hasContent ? '#fff' : meta.hex + '35',
-                            textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
-                          }}
-                        >
-                          {gems}
-                        </span>
-                        {pending > 0 && (
-                          <motion.span
-                            key={pending}
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="text-[10px] font-black leading-none text-primary"
-                          >+{pending}</motion.span>
-                        )}
-                        {isFlux && reservedCount > 0 && (
-                          <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount}r</span>
-                        )}
-                      </div>
-                      {/* Bank availability (small, below) */}
-                      {!isFlux && (
-                        <div className="flex items-center gap-0.5 mt-0.5"
-                          title={`${bankCount} available in the shared Well`}>
-                          <span className="text-[8px] font-bold font-mono leading-none"
-                            style={{ color: bankEmpty ? 'rgba(255,255,255,0.18)' : `${meta.glowHex}99` }}>
-                            {bankCount - pending}
-                          </span>
-                          <span className="text-[7px] leading-none" style={{ color: 'rgba(255,255,255,0.22)' }}>well</span>
-                        </div>
-                      )}
-                      {/* Bonuses */}
-                      {!isFlux && (bonus > 0 || lumBonus > 0) && (
-                        <div className="flex flex-col items-center gap-0 mt-0.5" style={{ lineHeight: 1 }}>
-                          {bonus > 0 && <span className="text-[7px] font-bold leading-none text-primary">+{bonus}b</span>}
-                          {lumBonus > 0 && <span className="text-[7px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>}
-                        </div>
-                      )}
-                      {/* Affinity short name */}
-                      <span className="text-[7px] font-semibold uppercase tracking-wider leading-none mt-1"
-                        style={{ color: `${meta.glowHex}70` }}>
-                        {meta.shortName}
-                      </span>
-                    </div>
-                  </motion.button>
-                  {/* Harness 2 sub-button */}
-                  <motion.button
-                    type="button"
-                    aria-hidden={!canTake2}
-                    tabIndex={canTake2 ? 0 : -1}
-                    animate={{ opacity: canTake2 ? 1 : 0 }}
-                    transition={{ duration: 0.15 }}
-                    onClick={(e) => { if (!canTake2) return; e.stopPropagation(); promoteToTake2(c); }}
-                    style={{ pointerEvents: canTake2 ? 'auto' : 'none', visibility: canTake2 ? 'visible' : 'hidden' }}
-                    className={`w-full text-[8px] font-bold rounded-md py-0.5 transition-colors leading-none ${isPlanningMode ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25' : 'text-primary/80 bg-primary/10 active:bg-primary/25'}`}
-                  >
-                    ×2
-                  </motion.button>
-                </div>
-              );
-            })}
-          </div>
+          <AffinityWellCells
+            me={me}
+            state={state}
+            selectedCrystals={selectedCrystals}
+            isMyTurn={isMyTurn}
+            canPlan={canPlan}
+            isActivePlayer={isActivePlayer}
+            isTutorial={isTutorial}
+            tutorialZone={tutorialZone}
+            tutorialAttention={tutorialAttention}
+            sessionPlayerId={session?.playerId}
+            onCrystalClick={handleCrystalClick}
+            onPromoteToTake2={promoteToTake2}
+            onOpenReserved={() => setShowReservedOverlay(true)}
+            onOpenForged={(c) => { setForgedFilter(c); setShowForgedOverlay(true); }}
+          />
 
           {/* ── Queue confirmation bar — appears when affinities are selected ── */}
           <AnimatePresence>
