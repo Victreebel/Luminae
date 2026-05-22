@@ -3193,55 +3193,44 @@ export default function GameBoard() {
                   key={p.playerId}
                   className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
-                  {/* Header: identity + lumens */}
-                  <div className="flex items-center gap-3 mb-2">
+                  {/* Header: identity + inline stats + lumens */}
+                  <div className="flex items-center gap-2 mb-2">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
                       {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
                       <span className="text-xs font-semibold truncate">{p.playerName}</span>
                       {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     </div>
+                    {/* Inline stat chips */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {([
+                        { label: 'Aff', value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
+                        { label: 'Art', value: cardCount,     hex: '#c084fc', glow: '#e0baff' },
+                        { label: 'Enc', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                      ] as const).map(({ label, value, hex, glow }) => {
+                        const has = value > 0;
+                        return (
+                          <div key={label} className="flex items-baseline gap-0.5 shrink-0">
+                            <span
+                              className="text-sm font-black leading-none"
+                              style={{ color: has ? hex : hex + '55', textShadow: has ? `0 0 8px ${glow}` : 'none' }}
+                            >
+                              {value}
+                            </span>
+                            <span
+                              className="text-[9px] font-semibold uppercase tracking-wide leading-none"
+                              style={{ color: has ? glow + 'cc' : hex + '44' }}
+                            >
+                              {label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                     <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-primary leading-none">
                       <span>{p.lumens}</span>
                       <Sparkles className="h-3 w-3 text-primary" />
                     </div>
-                  </div>
-
-                  {/* Compressed face: 3 stat boxes */}
-                  <div className="grid grid-cols-3 gap-1.5 mb-2">
-                    {([
-                      { label: 'Affinity', value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
-                      { label: 'Artifacts', value: cardCount,    hex: '#c084fc', glow: '#e0baff' },
-                      { label: 'Encrypted', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
-                    ] as const).map(({ label, value, hex, glow }) => {
-                      const has = value > 0;
-                      return (
-                        <div
-                          key={label}
-                          className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
-                          style={{
-                            background: has
-                              ? `linear-gradient(180deg, #060611 0%, ${hex}33 100%)`
-                              : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                            border: `1px solid ${has ? hex + 'AA' : hex + '22'}`,
-                            boxShadow: has ? `inset 0 0 14px ${hex}22, 0 0 8px ${hex}33` : 'none',
-                          }}
-                        >
-                          {has && (
-                            <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${glow}AA, transparent)` }} />
-                          )}
-                          <span
-                            className="text-2xl font-black leading-none tracking-tight"
-                            style={{ color: has ? '#fff' : hex + '40', textShadow: has ? `0 0 10px ${glow}` : 'none' }}
-                          >
-                            {value}
-                          </span>
-                          <span className="text-[10px] font-semibold uppercase tracking-wider leading-none" style={{ color: has ? glow : hex + '55' }}>
-                            {label}
-                          </span>
-                        </div>
-                      );
-                    })}
                   </div>
 
                   {/* View button */}
