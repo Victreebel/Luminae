@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
-import { getCivilizationName } from '@/lib/kardashev';
+import { getCivilizationName, getSecondaryAffinityColor } from '@/lib/kardashev';
 
 // ── Seeded PRNG ──────────────────────────────────────────────────────────────
 function seededRng(seed: number): () => number {
@@ -216,6 +216,7 @@ function drawPlanet(
   t: number,
   palette: AffinityPalette,
   patches: PlanetPatch[],
+  secondaryColor: string | null,
 ) {
   ctx.save();
 
@@ -244,12 +245,15 @@ function drawPlanet(
   ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
   // Surface patches (scroll = rotation)
+  // When dual-palette, even-index patches tint in the secondary affinity color
   const scroll = (t * 0.22) % (radius * 2);
   ctx.globalAlpha = 0.55;
-  for (const p of patches) {
+  for (let i = 0; i < patches.length; i++) {
+    const p = patches[i]!;
     const px = cx + p.dx * radius + scroll;
     const py = cy + p.dy * radius;
-    const bright = p.hue > 0 ? palette.accent : palette.secondary;
+    const defaultColor = p.hue > 0 ? palette.accent : palette.secondary;
+    const bright = (secondaryColor && i % 2 === 1) ? secondaryColor : defaultColor;
     ctx.fillStyle = hexAlpha(bright, 0.7);
     // Draw patch and two wrapped copies
     for (const xoff of [-radius * 2, 0, radius * 2]) {
@@ -273,7 +277,7 @@ function drawPlanet(
 
   ctx.restore();
 
-  // Thin atmosphere rim
+  // Primary atmosphere rim
   const rim = ctx.createRadialGradient(cx, cy, radius * 0.85, cx, cy, radius * 1.04);
   rim.addColorStop(0, 'rgba(0,0,0,0)');
   rim.addColorStop(0.7, hexAlpha(palette.accent, 0.18));
@@ -282,6 +286,21 @@ function drawPlanet(
   ctx.arc(cx, cy, radius * 1.04, 0, Math.PI * 2);
   ctx.fillStyle = rim;
   ctx.fill();
+
+  // Secondary affinity rim tint — a faint halo in the secondary color offset to one side
+  if (secondaryColor) {
+    const rim2 = ctx.createRadialGradient(
+      cx - radius * 0.15, cy + radius * 0.15, radius * 0.88,
+      cx - radius * 0.1, cy + radius * 0.1, radius * 1.08,
+    );
+    rim2.addColorStop(0, 'rgba(0,0,0,0)');
+    rim2.addColorStop(0.65, hexAlpha(secondaryColor, 0.11));
+    rim2.addColorStop(1, hexAlpha(secondaryColor, 0.24));
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 1.08, 0, Math.PI * 2);
+    ctx.fillStyle = rim2;
+    ctx.fill();
+  }
 }
 
 function drawStar(
@@ -322,13 +341,19 @@ function drawOrbitPlanet(
   orbit: OrbitPlanet,
   t: number,
   palette: AffinityPalette,
+  secondaryColor: string | null,
+  isOutermost: boolean,
 ) {
   const angle = orbit.angle0 + orbit.angSpd * t;
   const px = cx + Math.cos(angle) * orbit.orbitR;
   const py = cy + Math.sin(angle) * orbit.orbitR * 0.48;
 
+  // Outermost orbit uses secondary affinity color when dual-palette is active
+  const useSecondary = isOutermost && secondaryColor !== null;
+  const secCol = secondaryColor ?? palette.secondary;
+
   const colors = [palette.primary, palette.secondary, palette.accent];
-  const col = colors[orbit.colorIdx % colors.length] ?? palette.primary;
+  const col = useSecondary ? secCol : (colors[orbit.colorIdx % colors.length] ?? palette.primary);
 
   // Tiny atmosphere glow
   const glo = ctx.createRadialGradient(px, py, orbit.radius * 0.5, px, py, orbit.radius * 2.2);
@@ -344,9 +369,9 @@ function drawOrbitPlanet(
     px - orbit.radius * 0.3, py - orbit.radius * 0.3, 0,
     px, py, orbit.radius,
   );
-  disc.addColorStop(0, hexAlpha(palette.accent, 0.95));
+  disc.addColorStop(0, hexAlpha(useSecondary ? secCol : palette.accent, 0.95));
   disc.addColorStop(0.5, hexAlpha(col, 0.90));
-  disc.addColorStop(1, hexAlpha(palette.secondary, 0.75));
+  disc.addColorStop(1, hexAlpha(useSecondary ? secCol : palette.secondary, 0.75));
   ctx.beginPath();
   ctx.arc(px, py, orbit.radius, 0, Math.PI * 2);
   ctx.fillStyle = disc;
@@ -372,23 +397,26 @@ function drawGalaxy(
   points: GalaxyPoint[],
   palette: AffinityPalette,
   scale: number,
+  secondaryColor: string | null,
 ) {
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(t * 0.018);
 
-  // Nebula glow behind arms
+  // Nebula glow behind arms — outer stop blends secondary affinity color when dual
+  const outerNebColor = secondaryColor ?? palette.accent;
   const neb = ctx.createRadialGradient(0, 0, scale * 0.04, 0, 0, scale * 0.52);
   neb.addColorStop(0, hexAlpha(palette.primary, 0.25));
   neb.addColorStop(0.3, hexAlpha(palette.secondary, 0.12));
-  neb.addColorStop(0.65, hexAlpha(palette.accent, 0.05));
+  neb.addColorStop(0.65, hexAlpha(outerNebColor, secondaryColor ? 0.08 : 0.05));
   neb.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.beginPath();
   ctx.ellipse(0, 0, scale * 0.52, scale * 0.30, 0, 0, Math.PI * 2);
   ctx.fillStyle = neb;
   ctx.fill();
 
-  // Arm particles
+  // Arm particles — outer arm (frac >= 0.65) uses secondary affinity color when dual
+  const outerArmColor = secondaryColor ?? palette.secondary;
   for (const p of points) {
     const ax = p.x * scale;
     const ay = p.y * scale;
@@ -397,7 +425,7 @@ function drawGalaxy(
       ? hexAlpha(palette.accent, p.alpha)
       : frac < 0.65
         ? hexAlpha(palette.primary, p.alpha * 0.85)
-        : hexAlpha(palette.secondary, p.alpha * 0.65);
+        : hexAlpha(outerArmColor, p.alpha * 0.65);
     ctx.beginPath();
     ctx.arc(ax, ay, p.r, 0, Math.PI * 2);
     ctx.fillStyle = col;
@@ -439,11 +467,12 @@ function renderTier1(
   stars: Star[],
   patches: PlanetPatch[],
   palette: AffinityPalette,
+  secondaryColor: string | null,
 ) {
   drawBackground(ctx, w, h, 1);
   drawStars(ctx, w, h, t, stars, 0.55);
   const pr = Math.min(w, h) * 0.265;
-  drawPlanet(ctx, w * 0.5, h * 0.52, pr, t, palette, patches);
+  drawPlanet(ctx, w * 0.5, h * 0.52, pr, t, palette, patches, secondaryColor);
 }
 
 function renderTier2(
@@ -453,6 +482,7 @@ function renderTier2(
   stars: Star[],
   orbits: OrbitPlanet[],
   palette: AffinityPalette,
+  secondaryColor: string | null,
 ) {
   drawBackground(ctx, w, h, 2);
   drawStars(ctx, w, h, t, stars, 0.42);
@@ -466,7 +496,11 @@ function renderTier2(
     const by = Math.sin(b.angle0 + b.angSpd * t);
     return ay - by;
   });
-  for (const o of sortedOrbits) drawOrbitPlanet(ctx, cx, cy, o, t, palette);
+  // Identify the outermost orbit so we can tint it in the secondary affinity color
+  const maxOrbitR = Math.max(...orbits.map((o) => o.orbitR));
+  for (const o of sortedOrbits) {
+    drawOrbitPlanet(ctx, cx, cy, o, t, palette, secondaryColor, o.orbitR === maxOrbitR);
+  }
 }
 
 function renderTier3(
@@ -476,11 +510,12 @@ function renderTier3(
   stars: Star[],
   galaxyPoints: GalaxyPoint[],
   palette: AffinityPalette,
+  secondaryColor: string | null,
 ) {
   drawBackground(ctx, w, h, 3);
   drawStars(ctx, w, h, t, stars, 0.3);
   const scale = Math.min(w, h) * 0.47;
-  drawGalaxy(ctx, w * 0.5, h * 0.5, t, galaxyPoints, palette, scale);
+  drawGalaxy(ctx, w * 0.5, h * 0.5, t, galaxyPoints, palette, scale, secondaryColor);
 }
 
 // ── Error boundary ───────────────────────────────────────────────────────────
@@ -545,6 +580,8 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
     let rafId = 0;
     const startTime = performance.now();
 
+    const secondaryColor = getSecondaryAffinityColor(palette);
+
     const render = (now: number) => {
       syncSize();
       const w = canvas.width / dpr;
@@ -555,9 +592,9 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
       ctx.clearRect(0, 0, w, h);
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
-      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, palette);
-      else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette);
+      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, palette, secondaryColor);
+      else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
 
       rafId = requestAnimationFrame(render);
     };

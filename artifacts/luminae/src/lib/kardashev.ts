@@ -212,6 +212,21 @@ export function getCivilizationName(palette: AffinityPalette, tier: KardashevTie
   return (CIV_NAMES[primaryKey] ?? CIV_NAMES['sapphire'])[tier];
 }
 
+/**
+ * Returns the secondary affinity's primary color when the palette was built
+ * from two distinct affinities (dual-path strategy), or null for single-affinity
+ * palettes. Use this to drive per-tier dual-color rendering in KardashevScene.
+ */
+export function getSecondaryAffinityColor(palette: AffinityPalette): string | null {
+  const primaryKey   = PRIMARY_TO_AFFINITY[palette.primary];
+  const secondaryKey = PRIMARY_TO_AFFINITY[palette.secondary];
+  if (secondaryKey && secondaryKey !== primaryKey) {
+    // palette.secondary IS the other affinity's primary color
+    return palette.secondary;
+  }
+  return null;
+}
+
 export function getDominantAffinityPalette(
   purchasedCards: ReadonlyArray<{ bonusColor: string }>,
 ): AffinityPalette {
