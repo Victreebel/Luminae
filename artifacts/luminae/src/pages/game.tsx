@@ -241,6 +241,8 @@ function ArtifactCardView({
   return (
     <motion.div
       whileTap={onTap ? { scale: 0.96 } : {}}
+      animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       onClick={onTap}
       className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
       style={{
