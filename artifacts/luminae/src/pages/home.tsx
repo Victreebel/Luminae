@@ -709,6 +709,16 @@ export default function Home() {
       {showCinematic && (
         <ThresholdCinematic onComplete={handleCinematicComplete} />
       )}
+
+      {import.meta.env.DEV && (
+        <button
+          type="button"
+          onClick={() => setLocation("/dev/card-browser")}
+          className="absolute bottom-3 right-3 z-50 text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors px-2 py-1 rounded border border-transparent hover:border-border/30"
+        >
+          dev: card browser
+        </button>
+      )}
     </div>
   );
 }
