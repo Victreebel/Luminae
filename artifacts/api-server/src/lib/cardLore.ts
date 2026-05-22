@@ -29,7 +29,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Extreme macro cross-section view, abstract energy field background. Interior of a dense ignition core sliced open: layered rings of compressed red-orange plasma held in dark metal channels, glowing seams at the containment boundaries. Subject fills the frame — no exterior housing visible. Palette: deep red, molten orange, near-black metal. No planets, no text, no exterior structure." },
 
   t1r02: { name: "Ashroot Bloom",         flavor: "A fire-adapted root organ that turns disaster ash into the first useful tissue of recovery.",
-    practicalUse: "Enables damaged habitats or biospheres to recover in support of Planetary Cradle Engine projects.",
+    practicalUse: "Enables damaged habitats or biospheres to recover. Supports Planetary Cradle Engine projects.",
     artifactForm: "Biotech Module / Catalyst", blueprintRole: "post-burn ecological recovery",
     blueprintFamilies: "Planetary Cradle Engine; Stellar Nursery Rite precursor", civLane: "phoenix biosphere",
     engineeringScale: "Planetary",
@@ -43,7 +43,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric warm glow background. A palm-sized cylindrical memory-core with concentric time-ring etchings on its surface; amber ember light glows from the core's center, casting faint ring shadows. No giant clock, no star, no planet. Palette: warm amber, burnt orange, aged bronze metal. No baked-in text, labels, or title anywhere on the image." },
 
   t1r04: { name: "Causal Spark Coil",     flavor: "A trigger coil that refuses to fire unless the next three consequences remain survivable.",
-    practicalUse: "Governs dangerous decisions or sequences so Mantle-to-Orbit Foundry systems can operate safely.",
+    practicalUse: "Governs dangerous decisions or sequences. Allows Mantle-to-Orbit Foundry systems to operate safely.",
     artifactForm: "Control Instrument / Protocol Object", blueprintRole: "safe trigger sequencing",
     blueprintFamilies: "Mantle-to-Orbit Foundry; Causality Audit Court precursor", civLane: "experimental causal engineer civilization",
     engineeringScale: "Planetary",
@@ -79,7 +79,7 @@ export const CARD_LORE: Record<string, CardLore> = {
 
   // ── Tier 1 ─ Continuum ───────────────────────────────────────────────────
   t1s01: { name: "Echo Splinter",         flavor: "A broken sliver of recorded cause, useful because it remembers the sound before the disaster.",
-    practicalUse: "Reveals dangerous states early so Spiral-Arm Archive precursor systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Spiral-Arm Archive precursor systems to be corrected before failure.",
     artifactForm: "Archive / Sensor", blueprintRole: "event echo capture",
     blueprintFamilies: "Spiral-Arm Archive precursor; Worldshield Covenant", civLane: "planetary memory culture",
     engineeringScale: "Planetary",
@@ -157,7 +157,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Extreme macro worm's-eye view (looking up along the tendril), soft atmospheric warm-green glow background. A charred tendril arching upward — blackened and cracked surface, two small ember-tipped probe nodes at the top glowing green-amber, testing the air above ash. Fills the frame from base to tip. Palette: charcoal black, green ember tips, warm ash-glow. No planets, no giant organic structure, no text." },
 
   t1e04: { name: "Climate Seed Die",      flavor: "A seed-die that prints the first organisms of a climate repair sequence, not the whole world.",
-    practicalUse: "Enables damaged habitats or biospheres to recover in support of Planetary Cradle Engine projects.",
+    practicalUse: "Enables damaged habitats or biospheres to recover. Supports Planetary Cradle Engine projects.",
     artifactForm: "Fabrication Tool / Biotech Module", blueprintRole: "climate repair patterning",
     blueprintFamilies: "Planetary Cradle Engine; Ecumenopolis Lattice", civLane: "restorative biosphere civilization",
     engineeringScale: "Planetary",
@@ -235,7 +235,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Extreme macro cross-section view, mineral/rock surface background — dark soil and substrate. A single dark bio-network node sliced open: inside, branching routing channels direct decay matter toward collecting chambers; the junction glows faint green-purple where active decomposition routing is occurring. Marble-sized scale, fills the frame. Palette: near-black node body, dark soil, faint green-purple junction glow. No full network visible, no planets, no text." },
 
   t1o07: { name: "Absence Shard",         flavor: "A shard measured by what it refuses to reflect; surveyors use it to map invisible load-bearing voids.",
-    practicalUse: "Reveals dangerous states early so Dark-Sector Observatory precursor systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Dark-Sector Observatory precursor systems to be corrected before failure.",
     artifactForm: "Material / Sensor", blueprintRole: "negative-space reference material",
     blueprintFamilies: "Dark-Sector Observatory precursor; Worldshield Covenant", civLane: "absence mathematician culture",
     engineeringScale: "Planetary",
@@ -264,7 +264,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Extreme macro close-up, abstract energy field background — faint white distortion waves suspended motionless. A white-gold crystal shard that appears to be suspending local motion: the energy field around it is frozen in place, forming a small zone of perfect stillness around the shard's surface. Finger-length scale, fills the frame. Palette: white-gold crystal, pale distortion freeze, luminous white field. No planets, no baked-in text or labels anywhere in the image." },
 
   t1p03: { name: "Prismatic Hollow",      flavor: "A hollow prism that separates signal from glamour before either can become policy.",
-    practicalUse: "Reveals dangerous states early so Worldshield Covenant systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Worldshield Covenant systems to be corrected before failure.",
     artifactForm: "Interface / Sensor", blueprintRole: "truth-sorting aperture",
     blueprintFamilies: "Worldshield Covenant; Dark-Sector Observatory precursor", civLane: "revelatory optics civilization",
     engineeringScale: "Planetary",
@@ -278,7 +278,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, dark studio void background. A compact magnetic containment bottle — spherical-ovoid form in white-gold metal; visible gold magnetic field lines curve around the exterior like latitude lines, converging at the poles; a faint warm plasma glow is just visible through the translucent equatorial band. Handheld scale. Palette: white-gold metal, luminous gold field lines, warm plasma interior glow. No planets, no text." },
 
   t1p05: { name: "Recursive Lens",        flavor: "A lens that examines its own assumptions before it is trusted to examine the world.",
-    practicalUse: "Reveals dangerous states early so Causality Audit Court precursor systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Causality Audit Court precursor systems to be corrected before failure.",
     artifactForm: "Sensor / Protocol", blueprintRole: "self-auditing perception",
     blueprintFamilies: "Causality Audit Court precursor; Matrioshka Mind precursor", civLane: "self-correcting optics culture",
     engineeringScale: "Planetary",
@@ -385,7 +385,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Tabletop product-shot, 3/4 overhead angle, soft atmospheric cool glow background. An index shard or prism — faceted deep blue, with faint star-map geometry hints visible as internal refraction patterns inside the crystal; the facets catch sapphire and pale gold light. Handheld scale, sits on a dark surface. Palette: deep sapphire blue, pale gold refraction hints, cool atmospheric glow. No words, no text anywhere in the image." },
 
   t2s06: { name: "Convergence Lens",              flavor: "A lens that shows when different categories are being forced to pretend they were always one.",
-    practicalUse: "Reveals dangerous states early so Singularity Containment Mandala precursor systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Singularity Containment Mandala precursor systems to be corrected before failure.",
     artifactForm: "Sensor / Interface", blueprintRole: "wildcard pressure inspection",
     blueprintFamilies: "Singularity Containment Mandala precursor; Causality Audit Court precursor", civLane: "convergence-risk civilization",
     engineeringScale: "Star-system",
@@ -486,7 +486,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Installation-scale eye-level view, dark studio void background. A multi-story containment lattice facade — white-gold geometric frame with transparent hazard-containment cells arranged in a regular grid across the entire building face; each cell glows softly from within, designed so citizens at ground level can inspect each chamber. The lattice fills the frame from edge to edge. Palette: white-gold frame, luminous containment cell glow, near-black void. No text." },
 
   t2p02: { name: "Null-Convergence Prism",    flavor: "A prism that brightens when too many meanings are being crushed into one convenient answer.",
-    practicalUse: "Reveals dangerous states early so Singularity Containment Mandala precursor systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Singularity Containment Mandala precursor systems to be corrected before failure.",
     artifactForm: "Sensor / Interface", blueprintRole: "category collapse warning",
     blueprintFamilies: "Singularity Containment Mandala precursor; Matrioshka Mind", civLane: "convergence-auditing civilization",
     engineeringScale: "Star-system",
@@ -514,7 +514,7 @@ export const CARD_LORE: Record<string, CardLore> = {
     artPrompt: "Installation-scale product-shot, 3/4 overhead angle, dark studio void background. A large-scale error-correcting computation facility: a building-height cylindrical structure in white-gold housing, its exterior surface covered in ordered correction-geometry panels that glow warm white; concentric correction-field architecture is visible as raised relief banding around the full circumference. The structure fills the frame. Palette: white-gold housing, ordered geometric correction glow, dark void. No text, no labels." },
 
   t2p06: { name: "Radiation Treaty Prism",    flavor: "A prism used to negotiate how much stellar danger each habitat agrees to bear for the others.",
-    practicalUse: "Reveals dangerous states early so Heliosphere Weather Loom systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Heliosphere Weather Loom systems to be corrected before failure.",
     artifactForm: "Civic Signal / Sensor", blueprintRole: "shared radiation governance",
     blueprintFamilies: "Heliosphere Weather Loom; Arkseed Migration Fleet", civLane: "multi-world biosphere treaty culture",
     engineeringScale: "Star-system",
@@ -561,7 +561,7 @@ Object.assign(CARD_LORE, {
     artPrompt: "Tabletop eye-level view, dark studio void background. A palm-sized compass instrument — dark metal housing, its needle is a sliver of voidline material that points along hidden transit routes; subtle star-route hints are etched on the compass rose as geometric paths. Sits upright. Palette: dark metal, voidline needle with cool blue-black glow, dark void. No giant structure, no planets, no text." } as CardLore,
 
   t3s02: { name: "Recursion Witness Key",        flavor: "A key held by the witness, not the engineer, because recursion without testimony becomes tyranny.",
-    practicalUse: "Governs dangerous decisions or sequences so Causality Audit Court systems can operate safely.",
+    practicalUse: "Governs dangerous decisions or sequences. Allows Causality Audit Court systems to operate safely.",
     artifactForm: "Protocol / Civic Signal", blueprintRole: "dangerous recursion authorization",
     blueprintFamilies: "Causality Audit Court; Spiral-Arm Archive", civLane: "legal-temporal civilization",
     engineeringScale: "Galactic",
@@ -619,7 +619,7 @@ Object.assign(CARD_LORE, {
     artPrompt: "Extreme macro close-up, mineral/rock surface background — compressed dark soil, ancient root debris. A small buried seal — near-black disc, its face covered in dark organic root hints visible only under oblique light; the seal is deliberately inconspicuous. Coin-sized scale, fills the frame. Palette: near-black seal, dark green root micro-texture, compressed soil substrate. No full planet, no text." } as CardLore,
 
   t3o02: { name: "Collapse Audit Mirror",        flavor: "A mirror that does not show ruin; it shows which safeguards were missing before anyone called ruin inevitable.",
-    practicalUse: "Reveals dangerous states early so Causality Audit Court systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Causality Audit Court systems to be corrected before failure.",
     artifactForm: "Sensor / Protocol", blueprintRole: "collapse-risk reflection",
     blueprintFamilies: "Causality Audit Court; Singularity Containment Mandala", civLane: "collapse-auditing civilization",
     engineeringScale: "Galactic",
@@ -633,7 +633,7 @@ Object.assign(CARD_LORE, {
     artPrompt: "Extreme macro close-up, dark studio void background. A black archive shard — deep void-black material, smooth surfaces; faint sealed signal lines are just visible as hairline luminous traces on two faces, the only indication that information is stored inside. Fills the frame, finger-length scale. Palette: near-black shard, hairline signal traces in pale blue-white, deep void. No text, no labels." } as CardLore,
 
   t3o04: { name: "Dark-Sector Aperture",         flavor: "An aperture into regions that maps cannot admit exist until a civilization is ready to be watched back.",
-    practicalUse: "Reveals dangerous states early so Dark-Sector Observatory systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Dark-Sector Observatory systems to be corrected before failure.",
     artifactForm: "Interface / Sensor", blueprintRole: "forbidden-sector observation",
     blueprintFamilies: "Dark-Sector Observatory; Black-Map Pilgrimage Engine", civLane: "hidden observer civilization",
     engineeringScale: "Galactic",
@@ -662,7 +662,7 @@ Object.assign(CARD_LORE, {
     artPrompt: "Stellar-scale eye-level view, stellar backdrop background — star visible as luminous context in the distance, no planets. The thermal logic wafer manifested at computation-moon scale: a vast flat luminous structure in stellar orbit, white-gold with nested thermal computation channels visible as warm orange traces across its face; the scale is comparable to a moon, visible against the star behind it. Palette: white-gold surface, warm orange thermal computation traces, stellar light. No text, no labels." } as CardLore,
 
   t3p04: { name: "Species-Rights Witness Prism", flavor: "A witness prism that records not who rules, but which kinds of beings were allowed to remain themselves.",
-    practicalUse: "Reveals dangerous states early so Galactic Concordance Engine systems can be corrected before failure.",
+    practicalUse: "Reveals dangerous states early. Allows Galactic Concordance Engine systems to be corrected before failure.",
     artifactForm: "Civic Signal / Sensor", blueprintRole: "multi-species rights verification",
     blueprintFamilies: "Galactic Concordance Engine; Spiral-Arm Archive", civLane: "multi-species civic civilization",
     engineeringScale: "Galactic",
