@@ -3204,9 +3204,9 @@ export default function GameBoard() {
                     {/* Inline stat chips */}
                     <div className="flex items-center gap-2 shrink-0">
                       {([
-                        { label: 'Aff', value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
-                        { label: 'Art', value: cardCount,     hex: '#c084fc', glow: '#e0baff' },
-                        { label: 'Enc', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                        { label: 'Affinity',  value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
+                        { label: 'Artifact',  value: cardCount,     hex: '#c084fc', glow: '#e0baff' },
+                        { label: 'Encrypted', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
                       ] as const).map(({ label, value, hex, glow }) => {
                         const has = value > 0;
                         return (
