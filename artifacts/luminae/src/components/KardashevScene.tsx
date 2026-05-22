@@ -645,9 +645,9 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
           <motion.div
             key={tier}
             className="absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.03 }}
             transition={{ duration: 0.75, ease: 'easeInOut' }}
           >
             <KardashevCanvas tier={tier} palette={palette} />
