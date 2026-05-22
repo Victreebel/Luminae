@@ -509,10 +509,10 @@ interface KardashevCanvasProps {
 }
 
 const TIER_LABELS: Record<KardashevTier, string> = {
-  0: 'Type 0',
-  1: 'Type I',
-  2: 'Type II',
-  3: 'Type III',
+  0: 'Terrestrial',
+  1: 'Planetary',
+  2: 'Stellar',
+  3: 'Galactic',
 };
 
 function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
