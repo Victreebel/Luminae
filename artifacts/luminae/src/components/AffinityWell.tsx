@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type {
   GameState,
   CrystalCounts,
@@ -23,6 +23,7 @@ export interface AffinityWellCellsProps {
   tutorialZone: string | null;
   tutorialAttention: LumiiAttentionState | null;
   sessionPlayerId: string | undefined;
+  harvestBurstKeys?: Partial<Record<GemKey, number>>;
   onCrystalClick: (color: keyof CrystalCounts) => void;
   onPromoteToTake2: (color: GemKey) => void;
   onOpenReserved: () => void;
@@ -54,17 +55,28 @@ function ReservoirGauge({
   filledCount,
   hex,
   glowHex,
+  burstKey = 0,
 }: {
   capacity: number;
   filledCount: number;
   hex: string;
   glowHex: string;
+  burstKey?: number;
 }) {
   // Visual pip states — each entry is true (filled) or false (empty).
   // Updated immediately on fill, but staggered on drain so pips empty top-down.
   const [pipFilled, setPipFilled] = useState<boolean[]>(() =>
     Array.from({ length: capacity }, (_, i) => i >= capacity - filledCount),
   );
+
+  const [burstId, setBurstId] = useState<number>(0);
+  const prevBurstKeyRef = useRef(burstKey);
+
+  useEffect(() => {
+    if (burstKey === prevBurstKeyRef.current) return;
+    prevBurstKeyRef.current = burstKey;
+    setBurstId((n) => n + 1);
+  }, [burstKey]);
 
   const prevFilledRef = useRef(filledCount);
   const timerIds = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -116,7 +128,7 @@ function ReservoirGauge({
   }, [filledCount, capacity]);
 
   return (
-    <div className="flex flex-col items-center gap-[3px]">
+    <div className="relative flex flex-col items-center gap-[3px]">
       {Array.from({ length: capacity }, (_, i) => {
         const isFilled = pipFilled[i] ?? false;
         return (
@@ -137,6 +149,29 @@ function ReservoirGauge({
           />
         );
       })}
+      <AnimatePresence>
+        {burstId > 0 && (
+          <motion.div
+            key={burstId}
+            className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 0.9, scale: 0.4 }}
+            animate={{ opacity: 0, scale: 2.8 }}
+            exit={{}}
+            transition={{ duration: 0.32, ease: 'easeOut' }}
+            style={{
+              borderRadius: '50%',
+              background: `radial-gradient(ellipse at center, ${hex}cc 0%, ${glowHex}55 40%, transparent 72%)`,
+              top: '50%',
+              left: '50%',
+              width: 14,
+              height: 14,
+              marginTop: -7,
+              marginLeft: -7,
+              position: 'absolute',
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -149,6 +184,7 @@ export function AffinityWellCells({
   canPlan,
   isActivePlayer,
   sessionPlayerId,
+  harvestBurstKeys,
   onCrystalClick,
   onPromoteToTake2,
   onOpenReserved,
@@ -332,6 +368,7 @@ export function AffinityWellCells({
                         filledCount={gaugeFilledCount}
                         hex={meta.hex}
                         glowHex={meta.glowHex}
+                        burstKey={harvestBurstKeys?.[c] ?? 0}
                       />
                     </div>
                     {/* Fraction label */}

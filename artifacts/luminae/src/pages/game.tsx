@@ -941,6 +941,7 @@ export default function GameBoard() {
 
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
+  const [harvestBurstKeys, setHarvestBurstKeys] = useState<Partial<Record<GemKey, number>>>({});
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
@@ -2515,6 +2516,18 @@ export default function GameBoard() {
     return { ok: false, reason: 'Invalid combination', actionType: null };
   })();
 
+  const triggerHarvestBurst = (crystals: Partial<CrystalCounts>) => {
+    setHarvestBurstKeys((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(crystals) as GemKey[]) {
+        if ((crystals[key as keyof CrystalCounts] ?? 0) > 0) {
+          next[key] = (next[key] ?? 0) + 1;
+        }
+      }
+      return next;
+    });
+  };
+
   const confirmCrystals = () => {
     if (!isMyTurnForCoreAction || !queueLegality.ok || !me) return;
     const total = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
@@ -2530,10 +2543,12 @@ export default function GameBoard() {
     }
     if (queueLegality.actionType === 'take3') {
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
+      triggerHarvestBurst(selectedCrystals);
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
       playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
+      triggerHarvestBurst(selectedCrystals);
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
     }
@@ -2553,6 +2568,7 @@ export default function GameBoard() {
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
     playGemBurst(returnPhase.pendingTake, me.playerName, session.avatarId ?? null);
+    triggerHarvestBurst(returnPhase.pendingTake);
     if (returnPhase.actionType === 'take3') {
       executeAction({ type: 'take_three_crystals', crystals: returnPhase.pendingTake, returnCrystals: returnSelections });
     } else {
@@ -3834,6 +3850,7 @@ export default function GameBoard() {
             tutorialZone={tutorialZone}
             tutorialAttention={tutorialAttention}
             sessionPlayerId={session?.playerId}
+            harvestBurstKeys={harvestBurstKeys}
             onCrystalClick={handleCrystalClick}
             onPromoteToTake2={promoteToTake2}
             onOpenReserved={() => setShowReservedOverlay(true)}
