@@ -1240,6 +1240,9 @@ components:
           type: string
         flavor:
           type: string
+        bonusesAtForge:
+          $ref: "#/components/schemas/CrystalCounts"
+          description: "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market/reserved cards and on cards forged before this feature was added."
       required:
         - id
         - tier

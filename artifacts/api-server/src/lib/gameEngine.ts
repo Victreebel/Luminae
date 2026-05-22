@@ -72,6 +72,8 @@ export interface PlayerGameState {
   purchasedCardIds: string[];
   /** Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time). */
   discountedForgeIds: string[];
+  /** Per-card bonus snapshot captured at forge time. Key = card ID. Added in bonus-snapshot feature. */
+  purchasedCardBonusSnapshots?: Record<string, CrystalCounts>;
   luminaries: string[];
   isConnected: boolean;
   plannedAction: ActionPayload | null;
@@ -1124,6 +1126,8 @@ export function applyAction(
       if (isDiscountPurchase) {
         player.discountedForgeIds.push(action.cardId);
       }
+      if (!player.purchasedCardBonusSnapshots) player.purchasedCardBonusSnapshots = {};
+      player.purchasedCardBonusSnapshots[action.cardId] = { ...liveBonusesPurchase };
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
@@ -1151,6 +1155,8 @@ export function applyAction(
       if (isDiscountReserved) {
         player.discountedForgeIds.push(action.cardId);
       }
+      if (!player.purchasedCardBonusSnapshots) player.purchasedCardBonusSnapshots = {};
+      player.purchasedCardBonusSnapshots[action.cardId] = { ...liveBonusesReserved };
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
       checkLuminaries(state, player);
@@ -1487,6 +1493,10 @@ export function normalizeState(raw: unknown): GameStateData {
       if (!("plannedActionCancelReason" in p)) p = { ...p, plannedActionCancelReason: null };
       // ensure discountedForgeIds exists (added in Kardashev bonus-discount feature)
       if (!Array.isArray(p.discountedForgeIds)) p = { ...p, discountedForgeIds: [] };
+      // ensure purchasedCardBonusSnapshots exists (added in bonus-snapshot feature)
+      if (!p.purchasedCardBonusSnapshots || typeof p.purchasedCardBonusSnapshots !== 'object' || Array.isArray(p.purchasedCardBonusSnapshots)) {
+        p = { ...p, purchasedCardBonusSnapshots: {} };
+      }
       return p;
     });
   }
@@ -1594,7 +1604,11 @@ export function formatGameState(
       purchasedCards: p.purchasedCardIds
         .map((id) => CARD_MAP.get(id))
         .filter(Boolean)
-        .map((c) => withLore(c as ArtifactCard)),
+        .map((c) => {
+          const card = withLore(c as ArtifactCard);
+          const snapshot = p.purchasedCardBonusSnapshots?.[card.id];
+          return snapshot ? { ...card, bonusesAtForge: snapshot } : card;
+        }),
       isConnected: connectedPlayerIds.has(p.playerId),
       claimedLuminaryIds: p.luminaries ?? [],
       plannedAction: p.plannedAction ?? null,

@@ -1,3 +1,5 @@
+import type { CrystalCounts } from '@workspace/api-client-react';
+
 export type KardashevTier = 0 | 1 | 2 | 3;
 
 export interface AffinityPalette {
@@ -21,7 +23,42 @@ const DEFAULT_PALETTE: AffinityPalette = {
   accent: '#bfdbfe',
 };
 
-type CardRef = { tier: number };
+const CRYSTAL_COST_COLORS = ['ruby', 'sapphire', 'emerald', 'onyx', 'pearl'] as const;
+type CrystalCostColor = typeof CRYSTAL_COST_COLORS[number];
+
+type CardRef = {
+  tier: number;
+  id: string;
+  /** Card's raw crystal cost by color. Present on cards from the API. */
+  cost?: CrystalCounts;
+  /** Bonus snapshot captured at forge time (added in bonus-snapshot feature).
+   *  When present, used to determine whether the card was fully discount-covered.
+   *  When absent, falls back to the discountedForgeIds set for backward compat. */
+  bonusesAtForge?: CrystalCounts;
+};
+
+/**
+ * Returns true when the card was forged entirely through permanent bonus
+ * discounts (zero crystals spent at the moment of forging).
+ *
+ * Prefers the per-card `bonusesAtForge` snapshot (historically accurate) when
+ * available.  Falls back to the legacy `discountedForgeIds` set for cards that
+ * were forged before the snapshot feature was added.
+ */
+function wasDiscountedAtForge(
+  card: CardRef,
+  discountedSet: Set<string>,
+): boolean {
+  if (card.bonusesAtForge && card.cost) {
+    const bonuses = card.bonusesAtForge;
+    const cost = card.cost;
+    // Re-derive from the snapshot: all colored (non-flux) costs must be fully covered.
+    return CRYSTAL_COST_COLORS.every(
+      (color: CrystalCostColor) => bonuses[color] >= cost[color],
+    );
+  }
+  return discountedSet.has(card.id);
+}
 
 /**
  * Compute the player's Kardashev tier from their forged cards and the set of
@@ -37,13 +74,15 @@ type CardRef = { tier: number };
  * Tier 0 is the initial night-sky state; forging Tier 1 cards alone does NOT
  * advance the tier — that represents a pre-spacefaring terrestrial civilization.
  *
- * @param purchasedCards   All forged cards (must include an `id` and `tier`).
- * @param discountedForgeIds  Card IDs recorded at forge time as fully discount-covered.
- *                         This is the historically accurate signal — it is NOT
- *                         re-derived from current bonuses to avoid false positives.
+ * @param purchasedCards   All forged cards (must include `id`, `tier`, and
+ *                         optionally `cost` + `bonusesAtForge` for per-card
+ *                         historically-accurate discount detection).
+ * @param discountedForgeIds  Legacy fallback: card IDs recorded at forge time
+ *                         as fully discount-covered.  Ignored for cards that
+ *                         carry a `bonusesAtForge` snapshot.
  */
 export function getKardashevTier(
-  purchasedCards: ReadonlyArray<CardRef & { id: string }>,
+  purchasedCards: ReadonlyArray<CardRef>,
   discountedForgeIds: ReadonlyArray<string> = [],
 ): KardashevTier {
   if (!purchasedCards || purchasedCards.length === 0) return 0;
@@ -55,13 +94,13 @@ export function getKardashevTier(
   const tier3 = purchasedCards.filter((c) => c.tier === 3);
 
   // Type III: a Tier 3 card fully on discounts
-  if (tier3.some((c) => discountedSet.has(c.id))) return 3;
+  if (tier3.some((c) => wasDiscountedAtForge(c, discountedSet))) return 3;
 
   // Type II: any Tier 3 card, OR a Tier 2 card fully on discounts
-  if (tier3.length > 0 || tier2.some((c) => discountedSet.has(c.id))) return 2;
+  if (tier3.length > 0 || tier2.some((c) => wasDiscountedAtForge(c, discountedSet))) return 2;
 
   // Type I: any Tier 2 card, OR a Tier 1 card fully on discounts
-  if (tier2.length > 0 || tier1.some((c) => discountedSet.has(c.id))) return 1;
+  if (tier2.length > 0 || tier1.some((c) => wasDiscountedAtForge(c, discountedSet))) return 1;
 
   // Still on the ground — only Tier 1 cards forged with crystals
   return 0;
