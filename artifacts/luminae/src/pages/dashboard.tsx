@@ -184,7 +184,7 @@ function SettingsTab({ accountId }: { accountId: string }) {
 
   const options: { value: CostModePref; label: string; desc: string }[] = [
     { value: "remember", label: "Remember last used", desc: "Restores whichever mode you last used in a game" },
-    { value: "printed", label: "Printed", desc: "Always show the card's base cost" },
+    { value: "printed", label: "Full", desc: "Always show the card's base cost" },
     { value: "after_bonuses", label: "Discounted", desc: "Always show cost after your permanent bonuses" },
     { value: "needed_now", label: "Needed", desc: "Always show what you still need to pay right now" },
   ];

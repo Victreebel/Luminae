@@ -2984,7 +2984,7 @@ export default function GameBoard() {
             } : undefined}
           >
             {([
-              { mode: 'printed' as CostMode, label: 'Printed', title: 'Show original printed cost' },
+              { mode: 'printed' as CostMode, label: 'Full', title: 'Show original printed cost' },
               { mode: 'after_bonuses' as CostMode, label: 'Discounted', title: 'Cost after your permanent bonuses' },
               { mode: 'needed_now' as CostMode, label: 'Needed', title: 'What you still need after bonuses, tokens, and pre-harness selection' },
             ]).map(({ mode, label, title }) => {

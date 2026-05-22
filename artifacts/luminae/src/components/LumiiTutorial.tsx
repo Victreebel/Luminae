@@ -904,7 +904,7 @@ const BEATS: Beat[] = [
     phase: 1,
     highlightZone: "filters",
     lines: [
-      "Above the market, three filters control how costs are displayed: Printed, Discounted, and Needed.",
+      "Above the market, three filters control how costs are displayed: Full, Discounted, and Needed.",
       "Discounted applies your built affinity depth as automatic discounts. Forge two Flare Artifacts and every Flare cost here drops by 2. This is your real cost after civilization depth.",
       "Needed strips away any cost already covered by your depth — only what you still lack appears. Switch to Needed to instantly spot which Artifacts are within reach this turn.",
     ],
