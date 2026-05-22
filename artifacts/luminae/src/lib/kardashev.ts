@@ -118,12 +118,59 @@ const CIV_NAMES: Record<string, Record<KardashevTier, string>> = {
 };
 
 /**
+ * Adjective form of each affinity — used as the primary modifier in dual-affinity names.
+ * e.g. "Verdant" for emerald, "Ember" for ruby.
+ */
+const AFFINITY_ADJECTIVE: Record<string, string> = {
+  ruby:     'Ember',
+  sapphire: 'Temporal',
+  emerald:  'Verdant',
+  onyx:     'Void',
+  pearl:    'Radiant',
+  flux:     'Flux',
+};
+
+/**
+ * Noun (identity) form of each affinity — used as the secondary label in dual-affinity names.
+ * e.g. "Continuum" for sapphire, "Abyss" for onyx.
+ */
+const AFFINITY_NOUN: Record<string, string> = {
+  ruby:     'Flare',
+  sapphire: 'Continuum',
+  emerald:  'Verdance',
+  onyx:     'Abyss',
+  pearl:    'Radiance',
+  flux:     'Singularity',
+};
+
+const DUAL_TIER_SUFFIX: Record<KardashevTier, string> = {
+  0: 'Outpost',
+  1: '',
+  2: 'Sovereignty',
+  3: 'Absolute',
+};
+
+/**
  * Returns a short lore-appropriate civilization name derived from the player's
  * dominant affinity palette and their current Kardashev tier.
+ *
+ * When the palette carries a secondary affinity (set by getDominantAffinityPalette
+ * when a runner-up affinity is within 45% of the top count), the name blends both
+ * affinities — e.g. "Verdant Continuum" or "Ember Void Sovereignty".
+ * Single-affinity players still receive the existing tier names unchanged.
  */
 export function getCivilizationName(palette: AffinityPalette, tier: KardashevTier): string {
-  const affinity = PRIMARY_TO_AFFINITY[palette.primary] ?? 'sapphire';
-  return (CIV_NAMES[affinity] ?? CIV_NAMES['sapphire'])[tier];
+  const primaryKey  = PRIMARY_TO_AFFINITY[palette.primary]   ?? 'sapphire';
+  const secondaryKey = PRIMARY_TO_AFFINITY[palette.secondary];
+
+  if (secondaryKey && secondaryKey !== primaryKey) {
+    const adj    = AFFINITY_ADJECTIVE[primaryKey]   ?? primaryKey;
+    const noun   = AFFINITY_NOUN[secondaryKey]      ?? secondaryKey;
+    const suffix = DUAL_TIER_SUFFIX[tier];
+    return suffix ? `${adj} ${noun} ${suffix}` : `${adj} ${noun}`;
+  }
+
+  return (CIV_NAMES[primaryKey] ?? CIV_NAMES['sapphire'])[tier];
 }
 
 export function getDominantAffinityPalette(

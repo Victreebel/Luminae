@@ -592,7 +592,7 @@ export interface KardashevSceneProps {
 
 export function KardashevScene({ tier, palette }: KardashevSceneProps) {
   const civName = getCivilizationName(palette, tier);
-  const civKey = `${tier}-${palette.primary}`;
+  const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
 
   return (
     <SceneErrorBoundary>
