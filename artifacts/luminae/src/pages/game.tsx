@@ -44,7 +44,7 @@ import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { KardashevScene } from '@/components/KardashevScene';
-import { getKardashevTier, getDominantAffinityPalette } from '@/lib/kardashev';
+import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
 const gemIcon = "/icon_gem.svg";
 
 function hexRgba(hex: string, alpha: number): string {
@@ -5739,6 +5739,11 @@ export default function GameBoard() {
                 {[...state.players].sort((a, b) => b.lumens - a.lumens).map((p, i) => {
                   const isMe = p.playerId === session.playerId;
                   const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
+                  const playerCards = (p.purchasedCards ?? []) as Array<{ id: string; tier: number; bonusColor: string }>;
+                  const playerDiscountedIds = (p.discountedForgeIds ?? []) as string[];
+                  const civPalette = getDominantAffinityPalette(playerCards);
+                  const civTier = getKardashevTier(playerCards, playerDiscountedIds);
+                  const civName = getCivilizationName(civPalette, civTier);
                   return (
                   <motion.div
                     key={p.playerId}
@@ -5750,7 +5755,10 @@ export default function GameBoard() {
                     <span className="font-medium text-sm flex items-center gap-2">
                       {p.playerId === state.winnerId && <span className="text-xs">🏆</span>}
                       <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={24} />
-                      {p.playerName}
+                      <span className="flex flex-col items-start">
+                        <span>{p.playerName}</span>
+                        <span className="text-[10px] font-normal tracking-wide" style={{ color: civPalette.primary, opacity: 0.85 }}>{civName}</span>
+                      </span>
                     </span>
                     <span className="font-bold text-primary flex items-center gap-1">
                       {p.lumens} <Sparkles className="h-3.5 w-3.5" />
