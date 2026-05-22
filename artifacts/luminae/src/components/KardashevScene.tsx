@@ -669,17 +669,21 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Dual-affinity accent ring — fades in/out when dual-affinity status changes */}
+        {/* Dual-affinity accent ring — fades in/out when dual-affinity status changes.
+            The key includes `tier` so the ring exits and re-enters with every tier
+            crossfade, preventing it from sitting at full opacity while the new scene
+            fades in beneath it.  The entrance is delayed so the ring finishes arriving
+            at roughly the same moment the 750 ms tier scene fade completes. */}
         <AnimatePresence initial={false}>
           {ringBoxShadow && (
             <motion.div
-              key="accent-ring"
+              key={`accent-ring-${tier}`}
               className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{ boxShadow: ringBoxShadow }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.6, ease: 'easeInOut' }}
+              transition={{ duration: 0.35, delay: 0.4, ease: 'easeInOut' }}
             />
           )}
         </AnimatePresence>
