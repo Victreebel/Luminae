@@ -418,7 +418,11 @@ export function AffinityWellCells({
                           key={pending}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="text-[10px] font-black leading-none text-primary"
+                          className="text-[10px] font-black leading-none text-primary px-[3px] py-[1px] rounded"
+                          style={{
+                            background: 'rgba(255,255,255,0.10)',
+                            border: '1px solid rgba(255,255,255,0.18)',
+                          }}
                         >
                           +{pending}
                         </motion.span>
