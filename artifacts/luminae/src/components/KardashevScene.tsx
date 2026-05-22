@@ -655,15 +655,14 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
         </AnimatePresence>
 
         {/* Civilization name — crossfades on tier or dominant affinity change */}
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           <motion.div
             key={civKey}
             className="absolute bottom-2 left-3 text-[9px] font-mono tracking-widest uppercase select-none pointer-events-none"
             style={{ color: 'rgba(180,200,255,0.28)' }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            animate={{ opacity: 1, transition: { delay: 0.4, duration: 0.35, ease: 'easeInOut' } }}
+            exit={{ opacity: 0, transition: { duration: 0.2, ease: 'easeInOut' } }}
           >
             {civName}
           </motion.div>
