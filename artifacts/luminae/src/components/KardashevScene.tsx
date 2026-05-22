@@ -669,13 +669,20 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
           </motion.div>
         </AnimatePresence>
 
-        {/* Dual-affinity accent ring — inset box-shadow tinted with both affinity colors */}
-        {ringBoxShadow && (
-          <div
-            className="absolute inset-0 rounded-2xl pointer-events-none"
-            style={{ boxShadow: ringBoxShadow }}
-          />
-        )}
+        {/* Dual-affinity accent ring — fades in/out when dual-affinity status changes */}
+        <AnimatePresence initial={false}>
+          {ringBoxShadow && (
+            <motion.div
+              key="accent-ring"
+              className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{ boxShadow: ringBoxShadow }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: 'easeInOut' }}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </SceneErrorBoundary>
   );
