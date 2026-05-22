@@ -321,6 +321,51 @@ function ArtifactCardView({
   );
 }
 
+function ForgedCardWithTooltip({ card, tier }: { card: ArtifactCard; tier?: number }) {
+  const [show, setShow] = useState(false);
+  const bonuses = card.bonusesAtForge;
+  const nonZero = bonuses
+    ? CRYSTALS.filter(c => c !== 'flux' && (bonuses[c as keyof CrystalCounts] ?? 0) > 0)
+    : [];
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <ArtifactCardView card={card} tier={tier} onTap={() => setShow(v => !v)} />
+      <AnimatePresence>
+        {show && (
+          <motion.div
+            key="forge-tip"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none"
+          >
+            <div className="bg-black/92 rounded-lg px-2.5 py-2 text-[10px] min-w-max max-w-[160px] border border-white/10 shadow-2xl">
+              <p className="text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[9px]">Forged with</p>
+              {nonZero.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {nonZero.map(c => (
+                    <div key={c} className="flex items-center gap-0.5 bg-white/5 rounded px-1 py-0.5">
+                      <MiniGem color={c as GemKey} size={10} />
+                      <span className="text-white font-bold">×{bonuses![c as keyof CrystalCounts]}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground italic text-[9px]">No bonus data</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function QueuedOverlay() {
   return (
     <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 0 2px #fbbf24, 0 0 12px 3px #fbbf2466' }}>
@@ -969,6 +1014,7 @@ export default function GameBoard() {
     return 'printed';
   });
   const [showPurchased, setShowPurchased] = useState(false);
+  const [forgedView, setForgedView] = useState<'cards' | 'timeline'>('cards');
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
 
 
@@ -3480,13 +3526,64 @@ export default function GameBoard() {
                 </div>
               );
             })()}
+            {/* Cards / Timeline toggle */}
+            {(me?.purchasedCards?.length ?? 0) > 0 && (
+              <div className="flex gap-1 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setForgedView('cards')}
+                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'cards' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForgedView('timeline')}
+                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'timeline' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Timeline
+                </button>
+              </div>
+            )}
             {(me?.purchasedCards?.length ?? 0) === 0 ? (
               <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
-            ) : (
+            ) : forgedView === 'cards' ? (
               <div className="flex flex-wrap gap-2">
                 {(me?.purchasedCards ?? []).map((c) => (
-                  <ArtifactCardView key={c.id} card={c} tier={c.tier} />
+                  <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} />
                 ))}
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-border/30">
+                {(me?.purchasedCards ?? []).map((c, idx) => {
+                  const snap = c.bonusesAtForge;
+                  const snapKeys = snap
+                    ? CRYSTALS.filter(k => k !== 'flux' && (snap[k as keyof CrystalCounts] ?? 0) > 0)
+                    : [];
+                  const bonusMeta = GEM_META[c.bonusColor as GemKey];
+                  return (
+                    <div key={c.id} className="flex items-center gap-2.5 py-2">
+                      <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0 tabular-nums">{idx + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{c.name}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {snapKeys.length > 0 ? snapKeys.map(k => (
+                            <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1 py-0.5">
+                              <MiniGem color={k as GemKey} size={9} />
+                              <span className="text-[9px] font-bold text-white">×{snap![k as keyof CrystalCounts]}</span>
+                            </div>
+                          )) : (
+                            <span className="text-[9px] text-muted-foreground italic">no snapshot</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-0.5 rounded-full px-1.5 py-0.5" style={{ background: (bonusMeta?.hex ?? '#888') + '22', border: `1px solid ${(bonusMeta?.hex ?? '#888')}44` }}>
+                        <MiniGem color={c.bonusColor as GemKey} size={9} />
+                        <span className="text-[9px] font-semibold" style={{ color: bonusMeta?.glowHex ?? '#fff' }}>+1</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -3567,7 +3664,7 @@ export default function GameBoard() {
 
                 {/* Footer: reserved card backs */}
                 {reservedCount > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 mb-2">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Encrypt:</span>
                     <div className="flex gap-1 items-center">
                       {p.reservedCards.map((card, idx) => (
@@ -3576,6 +3673,20 @@ export default function GameBoard() {
                     </div>
                   </div>
                 )}
+
+                {/* Opponent forged artifacts — read-only snapshot view */}
+                {((p as any).purchasedCards as ArtifactCard[] | undefined)?.length ? (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Forged ({((p as any).purchasedCards as ArtifactCard[]).length})
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {((p as any).purchasedCards as ArtifactCard[]).map((c) => (
+                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -5502,8 +5613,25 @@ export default function GameBoard() {
                   );
                 })}
               </div>
+              {/* Cards / Timeline toggle */}
+              <div className="px-5 pb-2 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setForgedView('cards')}
+                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'cards' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Cards
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForgedView('timeline')}
+                  className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ${forgedView === 'timeline' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Timeline
+                </button>
+              </div>
               <div {...forgedBodyScrollableProps} className="px-5 overflow-y-auto max-h-[55vh] pb-4">
-                {(() => {
+                {forgedView === 'cards' ? (() => {
                   const cards = forgedFilter
                     ? (me.purchasedCards ?? []).filter(card => card.bonusColor === forgedFilter)
                     : (me.purchasedCards ?? []);
@@ -5514,11 +5642,45 @@ export default function GameBoard() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {cards.map((c) => (
-                        <ArtifactCardView key={c.id} card={c} tier={c.tier} />
+                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} />
                       ))}
                     </div>
                   );
-                })()}
+                })() : (
+                  <div className="flex flex-col divide-y divide-border/30">
+                    {(me.purchasedCards ?? []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
+                    ) : (me.purchasedCards ?? []).map((c, idx) => {
+                      const snap = c.bonusesAtForge;
+                      const snapKeys = snap
+                        ? CRYSTALS.filter(k => k !== 'flux' && (snap[k as keyof CrystalCounts] ?? 0) > 0)
+                        : [];
+                      const bonusMeta = GEM_META[c.bonusColor as GemKey];
+                      return (
+                        <div key={c.id} className="flex items-center gap-3 py-2.5">
+                          <span className="text-[11px] text-muted-foreground w-5 text-right shrink-0 tabular-nums">{idx + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground leading-tight truncate">{c.name}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {snapKeys.length > 0 ? snapKeys.map(k => (
+                                <div key={k} className="flex items-center gap-0.5 bg-black/40 rounded px-1 py-0.5">
+                                  <MiniGem color={k as GemKey} size={10} />
+                                  <span className="text-[10px] font-bold text-white">×{snap![k as keyof CrystalCounts]}</span>
+                                </div>
+                              )) : (
+                                <span className="text-[10px] text-muted-foreground italic">no snapshot</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="shrink-0 flex items-center gap-0.5 rounded-full px-2 py-0.5" style={{ background: (bonusMeta?.hex ?? '#888') + '22', border: `1px solid ${(bonusMeta?.hex ?? '#888')}44` }}>
+                            <MiniGem color={c.bonusColor as GemKey} size={10} />
+                            <span className="text-[10px] font-semibold" style={{ color: bonusMeta?.glowHex ?? '#fff' }}>+1</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
