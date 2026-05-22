@@ -3845,21 +3845,21 @@ export default function GameBoard() {
             onOpenForged={(c) => { setForgedFilter(c); setShowForgedOverlay(true); }}
           />
 
-          {/* ── Queue confirmation bar — appears when affinities are selected ── */}
-          <AnimatePresence>
-            {crystalQueueActive && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-                style={{
-                  ...(tutorialZone === 'harvest' && tutorialAttention === 'action' ? {
-                    boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
-                  } : {}),
-                }}
-              >
+          {/* ── Queue confirmation bar — fixed-height reserved slot, opacity-only ── */}
+          <div
+            className="relative"
+            style={{
+              minHeight: '48px',
+              ...(tutorialZone === 'harvest' && tutorialAttention === 'action' && crystalQueueActive ? {
+                boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
+              } : {}),
+            }}
+          >
+            <motion.div
+              animate={{ opacity: crystalQueueActive ? 1 : 0 }}
+              transition={{ duration: 0.18 }}
+              style={{ pointerEvents: crystalQueueActive ? 'auto' : 'none' }}
+            >
                 <div className="px-2 pb-2 pt-1 border-t border-white/10">
                   {!isMyTurn && canPlan && (
                     <p className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug">
@@ -3992,9 +3992,8 @@ export default function GameBoard() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            </motion.div>
+          </div>
 
           {/* ── Return-crystals phase (hand limit exceeded) ── */}
           <AnimatePresence>
