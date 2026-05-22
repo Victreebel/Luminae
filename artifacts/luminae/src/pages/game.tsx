@@ -242,7 +242,11 @@ function ArtifactCardView({
     <motion.div
       whileTap={onTap ? { scale: 0.96 } : {}}
       onClick={onTap}
-      className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? 'ring-2 ring-primary shadow-[0_0_20px_rgba(var(--primary),0.5)]' : 'ring-1 ring-black/30'}`}
+      className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
+      style={tapped ? {
+        outline: `2px solid ${bonusMeta?.hex ?? '#6366f1'}`,
+        boxShadow: `0 0 20px 4px ${bonusMeta?.glowHex ?? '#818cf8'}66`,
+      } : undefined}
       title={card.flavor || card.name}
     >
       <div className="absolute inset-0 pointer-events-none" style={artLayerStyle} />
