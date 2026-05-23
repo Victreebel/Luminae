@@ -105,6 +105,16 @@ export interface GameStateData {
   players: PlayerGameState[];
   winnerId: string | null;
   winTriggerLuminaryId: string | null;
+  /**
+   * Invariant: every code path that increments `version` MUST also stamp
+   * `lastAction` with `{ type: <action-type>, playerId, ...relevant-payload }`
+   * before returning.  This prevents stale real-action types (e.g. a previous
+   * `purchase_card`) from leaking into the next broadcast and triggering
+   * animation re-fires on non-turn mutations such as `toggle_luminary_affinity`
+   * or `resolve_summon`.  Non-turn cases stamp their own type explicitly;
+   * turn actions are covered by the single assignment at the bottom of
+   * `applyAction` that runs after the switch falls through.
+   */
   lastAction: Record<string, unknown> | null;
   actionLog: ActionLogEntry[];
   turnTimerSeconds: number | null;
@@ -970,6 +980,9 @@ export function applyAction(
         summary: `switched ${lumDef?.name ?? luminaryId} to ${fromLabel}${COLOR_LABEL[affinity] ?? affinity}`,
         turn: state.roundNumber,
       });
+      // Stamp lastAction so the broadcast does not carry a stale real-action
+      // type from the previous turn, which would re-trigger turn animations.
+      state.lastAction = { type: "toggle_luminary_affinity", playerId, luminaryId, affinity };
       state.version++;
       return { success: true };
     }
@@ -1203,6 +1216,9 @@ export function applyAction(
         // Already resolved by another client — no-op, skip version bump.
         return { success: true };
       }
+      // Stamp lastAction so the broadcast does not carry a stale real-action
+      // type from the turn that triggered the summon cutscene.
+      state.lastAction = { type: "resolve_summon", playerId, eventId };
       state.version++;
 
       // Deferred planned-action execution: if this was the last pending summon,
