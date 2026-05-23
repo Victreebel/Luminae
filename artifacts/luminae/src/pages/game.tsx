@@ -4486,6 +4486,29 @@ export default function GameBoard() {
                   {selectedCard.card.flavor && (
                     <p className="text-xs text-muted-foreground italic leading-relaxed">"{selectedCard.card.flavor}"</p>
                   )}
+                  {/* Lore metadata: artifactForm, blueprintRole, civLane, engineeringScale */}
+                  {loreCatalog && (() => {
+                    const lore = loreCatalog[selectedCard.card.id];
+                    if (!lore) return null;
+                    const fields: { label: string; value: string | undefined }[] = [
+                      { label: 'Form', value: lore.artifactForm },
+                      { label: 'Role', value: lore.blueprintRole },
+                      { label: 'Civ Lane', value: lore.civLane },
+                      { label: 'Scale', value: lore.engineeringScale },
+                    ];
+                    const visible = fields.filter(f => f.value);
+                    if (visible.length === 0) return null;
+                    return (
+                      <div className="flex flex-col gap-1 mt-0.5">
+                        {visible.map(({ label, value }) => (
+                          <div key={label} className="flex gap-1.5 items-baseline">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0 w-[46px]">{label}</span>
+                            <span className="text-[10px] text-muted-foreground/80 leading-snug">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground">Bonus:</span>
                     <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
