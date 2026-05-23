@@ -1653,6 +1653,15 @@ export default function GameBoard() {
     return;
   }, [crystalQueueActive, hintsEnabled]);
 
+  // ── Chat effects (must be before early returns to satisfy Rules of Hooks) ──
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  useEffect(() => {
+    if (activeTab === 'log') setUnreadChat(0);
+  }, [activeTab]);
+
   // ── Pre-early-return derived state ────────────────────────────────────────
   // actionsLocked / isMyTurn / me / effectiveCost / canAffordCard are all
   // computed here — before the early returns — so the hint useEffects below
@@ -3569,16 +3578,6 @@ export default function GameBoard() {
     setChatInput('');
     sendChatMessage(text);
   };
-
-  // Auto-scroll to newest message whenever a new one arrives
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
-
-  // Clear the unread badge the moment the player switches to the Log tab
-  useEffect(() => {
-    if (activeTab === 'log') setUnreadChat(0);
-  }, [activeTab]);
 
   const LogTab = () => (
     <div className="flex flex-col gap-4 p-4 pb-6">
