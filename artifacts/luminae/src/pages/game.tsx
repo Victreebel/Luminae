@@ -4222,7 +4222,7 @@ export default function GameBoard() {
             initial={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="px-3 pb-2.5 pt-1"
+            className="px-3 pb-2.5 pt-1 flex justify-center"
           >
             <span className="text-[8.5px] text-white/30 leading-none">
               Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span>.
