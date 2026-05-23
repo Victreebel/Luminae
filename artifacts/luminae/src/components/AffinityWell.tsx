@@ -194,9 +194,7 @@ export function AffinityWellCells({
   const gaugeCapacity = playerCount === 2 ? 4 : playerCount === 3 ? 5 : 7;
 
   return (
-    /* Mobile: 3-column grid (wider cells, better tap targets).
-       sm+: single-row flex (original compact layout). */
-    <div className="grid grid-cols-3 gap-1.5 px-2 pb-2 sm:flex sm:flex-row sm:gap-1">
+    <div className="flex gap-1 px-2 pb-2">
       {CRYSTALS.map((c) => {
         const meta = GEM_META[c];
         const isFlux = c === 'flux';
@@ -250,18 +248,11 @@ export function AffinityWellCells({
 
         return (
           <div key={c} className="flex-1 flex flex-col gap-0.5 min-w-0">
-            {/* Affinity name — overhead */}
-            <span
-              className="text-center text-[8px] sm:text-[7px] font-semibold uppercase tracking-wider leading-none pb-0.5"
-              style={{ color: `${meta.glowHex}90` }}
-            >
-              {meta.shortName}
-            </span>
-
+            {/* Affinity name — inside cell as absolute overlay at top */}
             <motion.button
               type="button"
               disabled={isFlux ? !showReservedLink : !selectable || bankEmpty}
-              whileTap={!isFlux && selectable && !bankEmpty ? { scale: 0.94 } : {}}
+              whileTap={!isFlux && selectable && !bankEmpty ? { scale: 0.9 } : {}}
               animate={
                 pending > 0 ? { scale: [1, 1.06, 1], transition: { duration: 0.2 } } : {}
               }
@@ -277,8 +268,16 @@ export function AffinityWellCells({
                 }
               }}
               className="relative w-full rounded-lg overflow-hidden transition-all"
-              style={{ minHeight: 96, ...cellStyle }}
+              style={{ minHeight: 76, ...cellStyle }}
             >
+              {/* Affinity name — pinned to top of cell */}
+              <span
+                className="absolute top-[3px] inset-x-0 text-center text-[6px] font-semibold uppercase tracking-wider leading-none pointer-events-none z-10"
+                style={{ color: `${meta.glowHex}80` }}
+              >
+                {meta.shortName}
+              </span>
+
               {/* Top ornamental rule */}
               <div
                 className="absolute inset-x-0 top-0 h-[1px] pointer-events-none"
@@ -305,27 +304,26 @@ export function AffinityWellCells({
               <div
                 className="absolute bottom-0 inset-x-0 pointer-events-none"
                 style={{
-                  height: 28,
+                  height: 24,
                   background: `radial-gradient(ellipse 70% 100% at 50% 100%, ${meta.hex}1e, transparent)`,
                 }}
               />
 
               {isFlux ? (
                 /* ── Singularity cell ── */
-                <div className="flex flex-col items-center pt-2 pb-2 px-0.5 h-full">
-                  <div className="relative flex items-center justify-center w-10 h-10 sm:w-9 sm:h-9">
+                <div className="flex flex-col items-center pt-3.5 pb-1.5 px-0.5 h-full">
+                  <div className="relative flex items-center justify-center w-9 h-9">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <CompassRing glowHex={meta.glowHex} size={40} />
+                      <CompassRing glowHex={meta.glowHex} size={36} />
                     </div>
                     <AffinityEmblem
                       color={c}
-                      className="w-10 h-10 sm:w-9 sm:h-9 object-contain pointer-events-none select-none relative z-[1]"
+                      className="w-9 h-9 object-contain pointer-events-none select-none relative z-[1]"
                       style={{ filter: `drop-shadow(0 0 8px ${meta.glowHex}80)` }}
                     />
                   </div>
-                  {/* Owned count */}
                   <span
-                    className="text-xl font-black leading-none mt-1"
+                    className="text-lg font-black leading-none mt-0.5"
                     style={{
                       color: gems > 0 ? '#fff' : meta.hex + '35',
                       textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
@@ -334,14 +332,14 @@ export function AffinityWellCells({
                     {gems}
                   </span>
                   {/* Reserve dots */}
-                  <div className="flex gap-[4px] mt-1.5">
+                  <div className="flex gap-[3px] mt-1">
                     {Array.from({ length: 5 }, (_, i) => (
                       <div
                         key={i}
                         className="rounded-full"
                         style={{
-                          width: 6,
-                          height: 6,
+                          width: 5,
+                          height: 5,
                           background: i < bankCount ? meta.hex : 'transparent',
                           border: i < bankCount
                             ? `1px solid ${meta.glowHex}60`
@@ -353,7 +351,7 @@ export function AffinityWellCells({
                   </div>
                   {showReservedLink && (
                     <span
-                      className="text-[7px] font-semibold leading-none mt-1"
+                      className="text-[6px] font-semibold leading-none mt-0.5"
                       style={{ color: `${meta.glowHex}70` }}
                     >
                       {reservedCount} reserved
@@ -362,100 +360,102 @@ export function AffinityWellCells({
                 </div>
               ) : (
                 /* ── Colored affinity cell ── */
-                <div className="flex flex-col items-center pt-2 pb-1.5 px-0.5 h-full">
-                  {/* Emblem */}
-                  <div className="relative flex items-center justify-center w-10 h-10 sm:w-9 sm:h-9">
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <CompassRing glowHex={meta.glowHex} size={40} />
-                    </div>
-                    <AffinityEmblem
-                      color={c}
-                      className="w-10 h-10 sm:w-9 sm:h-9 object-contain pointer-events-none select-none relative z-[1]"
-                      style={{
-                        filter:
-                          pending > 0
-                            ? `drop-shadow(0 0 8px ${meta.glowHex}) brightness(1.3)`
-                            : bankEmpty
-                            ? 'grayscale(0.7) opacity(0.4)'
-                            : `drop-shadow(0 0 6px ${meta.glowHex}80)`,
-                      }}
-                    />
-                  </div>
-
-                  {/* Count row */}
-                  <div className="flex items-baseline gap-0.5 mt-1">
-                    <span
-                      className="text-xl font-black leading-none"
-                      style={{
-                        color: hasContent ? '#fff' : meta.hex + '35',
-                        textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
-                      }}
-                    >
-                      {gems}
-                    </span>
-                    {pending > 0 && (
-                      <motion.span
-                        key={pending}
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="text-[10px] font-black leading-none text-primary px-[3px] py-[1px] rounded"
-                        style={{
-                          background: 'rgba(255,255,255,0.10)',
-                          border: '1px solid rgba(255,255,255,0.18)',
-                        }}
-                      >
-                        +{pending}
-                      </motion.span>
-                    )}
-                  </div>
-
-                  {/* Bonus pill */}
-                  {(bonus > 0 || lumBonus > 0) && (
-                    <div
-                      className="flex items-center gap-0.5 mt-0.5 px-1 py-[2px] rounded-full"
-                      style={{
-                        background: `${meta.hex}1a`,
-                        border: `1px solid ${meta.hex}40`,
-                      }}
-                    >
-                      {bonus > 0 && (
-                        <span className="text-[7px] sm:text-[6px] font-bold leading-none text-primary">
-                          +{bonus}
-                        </span>
-                      )}
-                      {lumBonus > 0 && (
-                        <span
-                          className="text-[7px] sm:text-[6px] font-bold leading-none"
-                          style={{ color: meta.glowHex }}
-                        >
-                          +{lumBonus}✦
-                        </span>
-                      )}
-                      <span
-                        className="text-[6px] sm:text-[5px] leading-none"
-                        style={{ color: `${meta.glowHex}60` }}
-                      >
-                        bonus
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Reservoir gauge — horizontal row anchored to bottom */}
-                  <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none sm:justify-start sm:left-1 sm:right-auto">
+                <>
+                  {/* Reservoir gauge — anchored to bottom-left */}
+                  <div className="absolute left-1 bottom-2 pointer-events-none flex flex-col items-center">
                     <ReservoirGauge
                       capacity={gaugeCapacity}
                       filledCount={gaugeFilledCount}
                       hex={meta.hex}
                       glowHex={meta.glowHex}
                       burstKey={harvestBurstKeys?.[c] ?? 0}
-                      horizontal
                     />
+                    <span
+                      className="text-[5px] font-mono leading-none mt-[3px] tabular-nums"
+                      style={{ color: `${meta.glowHex}55` }}
+                    >
+                      {gaugeFilledCount}/{gaugeCapacity}
+                    </span>
                   </div>
-                </div>
+
+                  {/* Main content */}
+                  <div className="flex flex-col items-center pt-3.5 pb-1 px-0.5">
+                    {/* Emblem */}
+                    <div className="relative flex items-center justify-center w-9 h-9">
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <CompassRing glowHex={meta.glowHex} size={36} />
+                      </div>
+                      <AffinityEmblem
+                        color={c}
+                        className="w-9 h-9 object-contain pointer-events-none select-none relative z-[1]"
+                        style={{
+                          filter:
+                            pending > 0
+                              ? `drop-shadow(0 0 8px ${meta.glowHex}) brightness(1.3)`
+                              : bankEmpty
+                              ? 'grayscale(0.7) opacity(0.4)'
+                              : `drop-shadow(0 0 6px ${meta.glowHex}80)`,
+                        }}
+                      />
+                    </div>
+
+                    {/* Count + pending badge */}
+                    <div className="flex items-baseline gap-0.5 mt-0.5">
+                      <span
+                        className="text-lg font-black leading-none"
+                        style={{
+                          color: hasContent ? '#fff' : meta.hex + '35',
+                          textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
+                        }}
+                      >
+                        {gems}
+                      </span>
+                      {pending > 0 && (
+                        <motion.span
+                          key={pending}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="text-[10px] font-black leading-none text-primary px-[3px] py-[1px] rounded"
+                          style={{
+                            background: 'rgba(255,255,255,0.10)',
+                            border: '1px solid rgba(255,255,255,0.18)',
+                          }}
+                        >
+                          +{pending}
+                        </motion.span>
+                      )}
+                    </div>
+
+                    {/* Bonus pill — compact, numbers only */}
+                    {(bonus > 0 || lumBonus > 0) && (
+                      <div
+                        className="flex items-center gap-[2px] mt-0.5 px-[3px] py-[1px] rounded-full"
+                        style={{
+                          background: `${meta.hex}1a`,
+                          border: `1px solid ${meta.hex}40`,
+                        }}
+                      >
+                        {bonus > 0 && (
+                          <span className="text-[6px] font-bold leading-none text-primary">
+                            +{bonus}
+                          </span>
+                        )}
+                        {lumBonus > 0 && (
+                          <span
+                            className="text-[6px] font-bold leading-none"
+                            style={{ color: meta.glowHex }}
+                          >
+                            +{lumBonus}✦
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </motion.button>
 
-            {/* ×2 sub-button */}
+            {/* ×2 sub-button — slim but still tappable */}
             <motion.button
               type="button"
               aria-hidden={!canTake2}
@@ -471,7 +471,7 @@ export function AffinityWellCells({
                 pointerEvents: canTake2 ? 'auto' : 'none',
                 visibility: canTake2 ? 'visible' : 'hidden',
               }}
-              className={`w-full text-[11px] sm:text-[8px] font-bold rounded-md py-2 sm:py-0.5 transition-colors leading-none ${
+              className={`w-full text-[9px] font-bold rounded-md py-1 transition-colors leading-none ${
                 isPlanningMode
                   ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25'
                   : 'text-primary/80 bg-primary/10 active:bg-primary/25'
