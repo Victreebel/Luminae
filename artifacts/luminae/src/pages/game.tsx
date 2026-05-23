@@ -3116,9 +3116,9 @@ export default function GameBoard() {
 
         <div className="relative flex flex-col gap-3 px-3 pb-3">
         {[
-          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Sovereigns & absolutes — apex relics that bend the cosmos to your will' },
-          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Forged instruments — crucibles and sigils of focused cosmic mastery' },
-          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, lore: 'Fragments & sparks — raw nascent shards that seed any engine' },
+          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Type II — Galactic' },
+          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Type I — Stellar' },
+          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, lore: 'Type 0 — Planetary' },
         ].map(row => (
           <div key={row.tier} className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
             <div className="flex items-center gap-2 mb-2 px-0.5">
