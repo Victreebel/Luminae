@@ -3981,8 +3981,9 @@ export default function GameBoard() {
             }}
           >
             <motion.div
+              initial={{ opacity: 0 }}
               animate={{ opacity: crystalQueueActive ? 1 : 0 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.15 }}
               style={{ pointerEvents: crystalQueueActive ? 'auto' : 'none' }}
             >
                 <div className="px-2 pb-2 pt-1 border-t border-white/10">
