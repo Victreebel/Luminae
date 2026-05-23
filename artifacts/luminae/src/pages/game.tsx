@@ -3970,21 +3970,19 @@ export default function GameBoard() {
             onOpenForged={(c) => { setForgedFilter(c); setShowForgedOverlay(true); }}
           />
 
-          {/* ── Queue confirmation bar — fixed-height reserved slot, opacity-only ── */}
-          <div
-            className="relative"
-            style={{
-              minHeight: '48px',
-              ...(tutorialZone === 'harvest' && tutorialAttention === 'action' && crystalQueueActive ? {
-                boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
-              } : {}),
-            }}
-          >
+          {/* ── Queue confirmation bar — mounts only when a crystal is selected ── */}
+          <AnimatePresence>
+          {crystalQueueActive && (
             <motion.div
+              key="harness-bar"
               initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: crystalQueueActive ? 1 : 0, y: crystalQueueActive ? 0 : 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
               transition={{ duration: 0.15 }}
-              style={{ pointerEvents: crystalQueueActive ? 'auto' : 'none' }}
+              className="relative"
+              style={tutorialZone === 'harvest' && tutorialAttention === 'action' ? {
+                boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
+              } : undefined}
             >
                 <div className="px-2 pb-2 pt-1 border-t border-white/10">
                   {!isMyTurn && canPlan && (
@@ -4119,7 +4117,8 @@ export default function GameBoard() {
                   </div>
                 </div>
             </motion.div>
-          </div>
+          )}
+          </AnimatePresence>
 
           {/* ── Return-crystals phase (hand limit exceeded) ── */}
           <AnimatePresence>
