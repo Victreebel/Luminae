@@ -271,9 +271,11 @@ function ArtifactCardView({
 
       <div className="relative z-10 h-full p-2 flex flex-col justify-between">
         <div className="flex justify-between items-start">
-          <span className="text-lg font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-            {card.lumens > 0 ? card.lumens : ''}
-          </span>
+          {card.lumens > 0 && (
+            <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">
+              {card.lumens}
+            </span>
+          )}
           <div className="w-9 h-9 rounded-full shadow-md overflow-hidden" title={bonusMeta?.name}>
             <img src={bonusMeta?.image} alt="" className="w-full h-full object-cover" draggable={false} />
           </div>
@@ -827,7 +829,7 @@ function LuminaryCard({
           <div className="relative z-10 h-full p-2 flex flex-col justify-between">
             {/* Top row — lumens/oblivion (left) + accent dot (right), mirroring ArtifactCardView */}
             <div className="flex justify-between items-start">
-              <span className="text-lg font-serif font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+              <span className={`bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,1)] ${luminary.oblivion ? 'text-red-300' : 'text-amber-100'}`}>
                 {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
               </span>
             </div>
