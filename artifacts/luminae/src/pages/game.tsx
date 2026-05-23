@@ -1993,6 +1993,11 @@ export default function GameBoard() {
         }
       }
 
+      // AUDIT: summon-cutscene branch — plan-registration state updates leave
+      // pendingSummonEvents unchanged, so every event in newPending will be found in
+      // prevPending (alreadyKnown = true) and the enqueueSummon call is skipped.  The
+      // secondary guard inside enqueueSummon (handledSummonEventIdsRef) provides an
+      // additional layer.  No separate action-key dedup ref is needed here.
       // Detect newly arrived pendingSummonEvents and start cutscenes for ALL players.
       // The dedup guard in enqueueSummon prevents re-enqueueing the same event.
       {
@@ -2038,8 +2043,12 @@ export default function GameBoard() {
         }
       }
 
+      // AUDIT: take-crystals branch — dedup guard uses JSON.stringify(action) so a
+      // plan-registration state update (version bumps, lastAction unchanged) does not
+      // re-trigger the gem burst.  The previous version-based key incorrectly produced a
+      // new key on every version increment even when the action was identical.
       if (action && (action.type === 'take_three_crystals' || action.type === 'take_two_crystals')) {
-        const takeKey = `${action.type}-${action.playerId}-${newState.version}`;
+        const takeKey = JSON.stringify(action);
         if (takeKey !== lastTakeBurstActionRef.current) {
           lastTakeBurstActionRef.current = takeKey;
           const actorId = action.playerId as string | undefined;
@@ -2087,6 +2096,10 @@ export default function GameBoard() {
         }
       }
 
+      // AUDIT: turn-announcement branch — plan-registration state updates do not change
+      // currentPlayerIndex, so the semantic guard below (playerIndex !== prev playerIndex)
+      // correctly blocks re-fires without needing an additional action-key dedup ref.
+      // fireTurnAnnouncement also has its own lastAnnouncedTurnRef guard as a second layer.
       if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
         const nextPlayer = newState.players[newState.currentPlayerIndex];
         if (nextPlayer && !isTutorial) {

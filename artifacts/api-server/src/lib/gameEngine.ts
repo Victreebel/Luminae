@@ -1242,6 +1242,13 @@ export function applyAction(
       }
       player.plannedAction = inner;
       player.plannedActionCancelReason = null;
+      // Stamp lastAction so the broadcast does not carry a stale real-action type,
+      // which would confuse client-side animation-queue dedup guards (same rationale
+      // as cancel_plan below).  Without this, plan_action state updates keep the
+      // previous lastAction (e.g. take_three_crystals / purchase_card) and the client's
+      // version-sensitive dedup keys produce a fresh key on each version bump, causing
+      // burst animations to re-fire even though no new game action occurred.
+      state.lastAction = { type: "plan_action", playerId };
       state.version++;
 
       // Edge case: if this player is already the active player with no pending
