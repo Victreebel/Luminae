@@ -4022,6 +4022,22 @@ export default function GameBoard() {
             tutorialAttention={tutorialAttention}
             sessionPlayerId={session?.playerId}
             harvestBurstKeys={harvestBurstKeys}
+            forgeDeductions={(() => {
+              if (!selectedCard || !me || !isMyTurn) return undefined;
+              const effCost = effectiveCost(selectedCard.card, me) as Record<string, number>;
+              const result: Partial<Record<GemKey, number>> = {};
+              let fluxNeeded = 0;
+              for (const k of GEM_KEYS) {
+                if (k === 'flux') continue;
+                const need = effCost[k] ?? 0;
+                const have = me.crystals[k as keyof CrystalCounts] ?? 0;
+                const spend = Math.min(have, need);
+                if (spend > 0) result[k as GemKey] = spend;
+                fluxNeeded += Math.max(0, need - have);
+              }
+              if (fluxNeeded > 0) result.flux = fluxNeeded;
+              return Object.keys(result).length > 0 ? result : undefined;
+            })()}
             onCrystalClick={handleCrystalClick}
             onPromoteToTake2={promoteToTake2}
             onOpenReserved={() => setShowReservedOverlay(true)}

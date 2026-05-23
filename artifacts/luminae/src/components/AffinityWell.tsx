@@ -24,6 +24,7 @@ export interface AffinityWellCellsProps {
   tutorialAttention: LumiiAttentionState | null;
   sessionPlayerId: string | undefined;
   harvestBurstKeys?: Partial<Record<GemKey, number>>;
+  forgeDeductions?: Partial<Record<GemKey, number>>;
   onCrystalClick: (color: keyof CrystalCounts) => void;
   onPromoteToTake2: (color: GemKey) => void;
   onOpenReserved: () => void;
@@ -185,6 +186,7 @@ export function AffinityWellCells({
   isActivePlayer,
   sessionPlayerId,
   harvestBurstKeys,
+  forgeDeductions,
   onCrystalClick,
   onPromoteToTake2,
   onOpenReserved,
@@ -246,6 +248,7 @@ export function AffinityWellCells({
           ).length;
         const reservedCount = me.reservedCards.length;
         const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+        const forgeDed = forgeDeductions?.[c as keyof CrystalCounts] ?? 0;
         const bankCount = state.crystalBank[c as keyof CrystalCounts] ?? 0;
         const selectable = isMyTurn || (!isActivePlayer && canPlan);
         const bankEmpty = bankCount === 0;
@@ -352,15 +355,30 @@ export function AffinityWellCells({
                       style={{ filter: `drop-shadow(0 0 8px ${meta.glowHex}80)` }}
                     />
                   </div>
-                  <span
-                    className="text-lg font-black leading-none mt-0.5"
-                    style={{
-                      color: gems > 0 ? '#fff' : meta.hex + '35',
-                      textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
-                    }}
-                  >
-                    {gems}
-                  </span>
+                  {forgeDed > 0 ? (
+                    <motion.span
+                      key="forge-preview"
+                      className="text-lg font-black leading-none mt-0.5"
+                      style={{
+                        color: '#f59e0b',
+                        textShadow: '0 0 10px #f59e0bcc',
+                      }}
+                      animate={{ opacity: [1, 0.55, 1] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      {gems - forgeDed}
+                    </motion.span>
+                  ) : (
+                    <span
+                      className="text-lg font-black leading-none mt-0.5"
+                      style={{
+                        color: gems > 0 ? '#fff' : meta.hex + '35',
+                        textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
+                      }}
+                    >
+                      {gems}
+                    </span>
+                  )}
                   {/* Reserve dots */}
                   <div className="flex gap-[3px] mt-1">
                     {Array.from({ length: 5 }, (_, i) => (
@@ -429,7 +447,7 @@ export function AffinityWellCells({
                       />
                     </div>
 
-                    {/* Count — shows predicted value (gems + pending) during harvest selection */}
+                    {/* Count — predicted value during harvest, post-forge remainder during forge preview */}
                     <div className="flex items-baseline gap-0.5 mt-0.5">
                       {pending > 0 ? (
                         <motion.span
@@ -443,6 +461,19 @@ export function AffinityWellCells({
                           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                         >
                           {gems + pending}
+                        </motion.span>
+                      ) : forgeDed > 0 ? (
+                        <motion.span
+                          key="forge-preview"
+                          className="text-lg font-black leading-none"
+                          style={{
+                            color: '#f59e0b',
+                            textShadow: '0 0 10px #f59e0bcc',
+                          }}
+                          animate={{ opacity: [1, 0.55, 1] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          {gems - forgeDed}
                         </motion.span>
                       ) : (
                         <span
