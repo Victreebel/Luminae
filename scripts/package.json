@@ -8,6 +8,8 @@
     "normalize:gems": "python3 ./src/normalize-gem-tokens.py",
     "compress:art": "python3 ./src/compress-art-assets.py",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint:version-stamps": "tsx ./src/check-version-stamps.ts",
+    "test:version-stamps": "tsx ./src/check-version-stamps.test.ts",
     "audit:overlays": "node overlay-audit/audit-overlays.cjs",
     "test:overlays": "playwright test --config=playwright.config.ts overlay-audit/overlay-centering.spec.ts"
   },
