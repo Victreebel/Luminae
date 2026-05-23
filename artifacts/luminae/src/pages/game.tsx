@@ -1136,13 +1136,6 @@ export default function GameBoard() {
   const [cutscenePostFlash, setCutscenePostFlash] = useState(false);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
   // Client-side only — never written to the server.
-  const [previewedPortals, setPreviewedPortals] = useState<Set<string>>(new Set());
-  // Dev-only: affinity index per luminary for portal preview testing (not sent to server)
-  const [devPortalAffinityIdx, setDevPortalAffinityIdx] = useState<Record<string, number>>({});
-  // Dev-only: when true the Summon Test panel passes a win-sealing color override to the cutscene.
-  const [devSummonWinSeal, setDevSummonWinSeal] = useState(false);
-  // Dev-only: custom hex to use as overrideColor; empty string means use the Luminary's own summonColor.
-  const [devSummonCustomColor, setDevSummonCustomColor] = useState('');
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
     key: number;
     playerName: string;
@@ -2255,8 +2248,7 @@ export default function GameBoard() {
   const SUMMON_CUTSCENE_DURATION_MS = 12_000;
 
   // ── enqueueSummon ─────────────────────────────────────────────────────────
-  // Shared path for both real game events (detected via pendingSummonEvents)
-  // and the dev Summon Test panel.
+  // Triggered by real game events detected via pendingSummonEvents.
   //
   // Dedup guard: skips any eventId already in handledSummonEventIdsRef.
   // Animation barrier: if other animations are running, delays the DOM
@@ -3046,47 +3038,20 @@ export default function GameBoard() {
             const visibleClaimedByPlayer = isSummonInProgress ? null : claimedByPlayer;
             const visibleClaimedByNames  = isSummonInProgress ? []   : claimedByNames;
 
-            // Dev-only: synthesize affinity for portal preview without touching server
-            const isDevPreviewed = import.meta.env.DEV && previewedPortals.has(l.id) && !visibleClaimedByPlayer;
-            const devEligible = isDevPreviewed
-              ? (GEM_KEYS.filter(k => k !== 'flux' && (l.requirements[k as GemKey] ?? 0) > 0) as GemKey[])
-              : [];
-            const devIdx = devPortalAffinityIdx[l.id] ?? 0;
-            const devAffinity: LuminaryActiveState | null = (isDevPreviewed && devEligible.length > 0) ? {
-              luminaryId: l.id,
-              ownerId: 'dev-preview',
-              activeAffinity: devEligible[devIdx % devEligible.length] as any,
-              eligibleAffinities: devEligible as any,
-              summonedAtTurnCount: 0,
-            } : null;
-
-            const effectiveLumAffinity     = isDevPreviewed ? devAffinity              : serverLumAffinity;
-            const effectiveClaimedByNames  = isDevPreviewed ? ['[Preview]']            : visibleClaimedByNames;
-            const effectiveIsOwnedByMe     = isDevPreviewed ? true                     : (isSummonInProgress ? false : isOwnedByMe);
-            const effectiveIsLive          = isDevPreviewed ? true                     : (isSummonInProgress ? false : isLive);
-            const effectiveCanToggle       = isDevPreviewed ? devEligible.length >= 2  : (isSummonInProgress ? false : canToggle);
-            const effectiveClaimedByPlayer = isDevPreviewed ? (me ?? null)             : visibleClaimedByPlayer;
-
             return (
               <LuminaryCard
                 key={l.id}
                 luminary={l}
-                claimedByNames={effectiveClaimedByNames}
+                claimedByNames={visibleClaimedByNames}
                 isReleased={claimedThisSession.includes(l.id)}
-                luminaryAffinity={effectiveLumAffinity}
-                claimedByPlayer={effectiveClaimedByPlayer}
-                isOwnedByMe={effectiveIsOwnedByMe}
-                isLive={effectiveIsLive}
-                canToggle={effectiveCanToggle}
+                luminaryAffinity={serverLumAffinity}
+                claimedByPlayer={visibleClaimedByPlayer}
+                isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
+                isLive={isSummonInProgress ? false : isLive}
+                canToggle={isSummonInProgress ? false : canToggle}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
-                onToggle={isDevPreviewed
-                  ? (affinity) => {
-                      const nextIdx = devEligible.indexOf(affinity as GemKey);
-                      if (nextIdx >= 0) setDevPortalAffinityIdx(prev => ({ ...prev, [l.id]: nextIdx }));
-                    }
-                  : (affinity) => handleToggleLuminaryAffinity(l.id, affinity)
-                }
+                onToggle={(affinity) => handleToggleLuminaryAffinity(l.id, affinity)}
               />
             );
           })}
@@ -6302,159 +6267,6 @@ export default function GameBoard() {
         />
       )}
 
-      {/* Dev test panels — visible in development only, tree-shaken from production */}
-      {import.meta.env.DEV && (
-        <>
-          {/* Summon Test — plays the cinematic without touching server state */}
-          <details className="fixed bottom-16 right-2 z-[8000] text-[10px]" open>
-            <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">⚗ Summon Test</summary>
-            <div className="mt-1 flex flex-col gap-0.5 bg-black/80 rounded p-1.5 border border-white/10 min-w-44">
-              {/* Win-seal burst controls */}
-              <div className="flex items-center gap-1.5 px-1 pb-1 border-b border-white/10">
-                <label className="flex items-center gap-1 cursor-pointer select-none text-white/60 hover:text-white">
-                  <input
-                    type="checkbox"
-                    checked={devSummonWinSeal}
-                    onChange={e => setDevSummonWinSeal(e.target.checked)}
-                    className="accent-amber-400"
-                  />
-                  Win-seal burst
-                </label>
-              </div>
-              {devSummonWinSeal && (
-                <div className="flex items-center gap-1.5 px-1 pb-1 border-b border-white/10">
-                  <span className="text-white/40 shrink-0">Override color:</span>
-                  <input
-                    type="color"
-                    value={devSummonCustomColor || '#ffffff'}
-                    onChange={e => setDevSummonCustomColor(e.target.value)}
-                    className="w-6 h-5 rounded cursor-pointer border-0 bg-transparent"
-                    title="Custom hex override — leave blank to use each Luminary's own summonColor"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Lum color"
-                    value={devSummonCustomColor}
-                    onChange={e => setDevSummonCustomColor(e.target.value)}
-                    className="w-20 bg-white/10 rounded px-1 py-0.5 text-white/80 outline-none font-mono"
-                    maxLength={7}
-                  />
-                  {devSummonCustomColor && (
-                    <button
-                      className="text-white/40 hover:text-white"
-                      onClick={() => setDevSummonCustomColor('')}
-                      title="Clear — use each Luminary's own summonColor"
-                    >✕</button>
-                  )}
-                </div>
-              )}
-              <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
-                {Object.values(LUMINARY_VISUALS).map(v => {
-                  const lumData = safeLuminaries.find(l => l.id === v.id);
-                  const lumSummonColor = (lumData as { summonColor?: string } | undefined)?.summonColor ?? '';
-                  // Resolved win-seal color: custom input > Luminary's own summonColor
-                  const isValidHex = /^#[0-9a-fA-F]{6}$/.test(devSummonCustomColor);
-                  const resolvedSealColor = devSummonWinSeal
-                    ? (isValidHex ? devSummonCustomColor : lumSummonColor || undefined)
-                    : undefined;
-                  return (
-                    <button
-                      key={v.id}
-                      className="text-left px-2 py-0.5 rounded hover:bg-white/10 text-white/70 hover:text-white flex items-center gap-1"
-                      style={{ borderLeft: `3px solid ${v.primaryColor}` }}
-                      onClick={() => {
-                        enqueueSummon(
-                          v.id,
-                          lumData?.name ?? v.id.replace('lum_', '').replace(/^\w/, c => c.toUpperCase()),
-                          (lumData as { domain?: string } | undefined)?.domain ?? '',
-                          (lumData as { oblivion?: number } | undefined)?.oblivion
-                            ? -((lumData as { oblivion?: number }).oblivion as number)
-                            : (lumData?.lumens ?? 0),
-                          (lumData as { flavor?: string } | undefined)?.flavor ?? '',
-                          `dev-test-${v.id}-${Date.now()}`, // unique each click
-                          true,                             // isDevTest — no server resolve
-                          resolvedSealColor,
-                        );
-                      }}
-                    >
-                      <span>{v.id}</span>
-                      {devSummonWinSeal && resolvedSealColor && (
-                        <span
-                          className="ml-auto w-2.5 h-2.5 rounded-full shrink-0 border border-white/20"
-                          style={{ background: resolvedSealColor }}
-                          title={resolvedSealColor}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </details>
-
-          {/* Portal Preview — toggles claimed-portal visual locally, no server write */}
-          <details className="fixed bottom-16 right-40 z-[8000] text-[10px]">
-            <summary className="cursor-pointer text-white/70 hover:text-white select-none px-1">🌀 Portal Preview</summary>
-            <div className="mt-1 bg-black/80 rounded p-1.5 border border-white/10 min-w-48">
-              <p className="text-white/40 leading-tight mb-1.5 px-1">
-                Client-only · no server write
-              </p>
-              <p className="text-white/30 leading-tight mb-1.5 px-1">
-                Toggle portal · click portal card to cycle affinity
-              </p>
-              <div className="flex flex-col gap-0.5 max-h-60 overflow-y-auto">
-                {Object.values(LUMINARY_VISUALS).map(v => {
-                  const isRealClaimed = state.players.some(p => (p.claimedLuminaryIds ?? []).includes(v.id));
-                  const isPreviewed = previewedPortals.has(v.id);
-                  const lumDef = safeLuminaries.find(l => l.id === v.id);
-                  const eligibleForPreview = lumDef
-                    ? GEM_KEYS.filter(k => k !== 'flux' && (lumDef.requirements[k as GemKey] ?? 0) > 0)
-                    : [];
-                  const currentDevIdx = devPortalAffinityIdx[v.id] ?? 0;
-                  const currentDevAffinity = eligibleForPreview.length > 0
-                    ? eligibleForPreview[currentDevIdx % eligibleForPreview.length]
-                    : null;
-                  return (
-                    <button
-                      key={v.id}
-                      className={`text-left px-2 py-0.5 rounded text-white/70 hover:text-white flex items-center gap-1.5 ${isPreviewed ? 'bg-white/10' : 'hover:bg-white/10'}`}
-                      style={{ borderLeft: `3px solid ${isPreviewed ? v.primaryColor : 'transparent'}` }}
-                      disabled={isRealClaimed}
-                      title={isRealClaimed ? 'Already claimed in game state' : (isPreviewed ? 'Click to hide portal' : 'Click to preview portal')}
-                      onClick={() => setPreviewedPortals(prev => {
-                        const next = new Set(prev);
-                        if (next.has(v.id)) {
-                          next.delete(v.id);
-                          setDevPortalAffinityIdx(prev2 => { const n = { ...prev2 }; delete n[v.id]; return n; });
-                        } else {
-                          next.add(v.id);
-                        }
-                        return next;
-                      })}
-                    >
-                      <span className={isPreviewed ? 'text-white' : ''}>{v.id}</span>
-                      {isPreviewed && currentDevAffinity && (
-                        <span className="ml-auto text-white/50" style={{ color: GEM_META[currentDevAffinity as GemKey]?.glowHex }}>
-                          {GEM_META[currentDevAffinity as GemKey]?.shortName}
-                        </span>
-                      )}
-                      {!isPreviewed && isRealClaimed && <span className="ml-auto text-amber-400/70">★</span>}
-                    </button>
-                  );
-                })}
-              </div>
-              {previewedPortals.size > 0 && (
-                <button
-                  className="mt-1.5 w-full text-center text-white/40 hover:text-white/70 px-1 py-0.5 rounded hover:bg-white/10"
-                  onClick={() => { setPreviewedPortals(new Set()); setDevPortalAffinityIdx({}); }}
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-          </details>
-        </>
-      )}
 
     </div>
   );
