@@ -2043,12 +2043,13 @@ export default function GameBoard() {
         }
       }
 
-      // AUDIT: take-crystals branch — dedup guard uses JSON.stringify(action) so a
-      // plan-registration state update (version bumps, lastAction unchanged) does not
-      // re-trigger the gem burst.  The previous version-based key incorrectly produced a
-      // new key on every version increment even when the action was identical.
+      // AUDIT: take-crystals branch — dedup guard uses JSON.stringify(action) + turnCount
+      // so that:
+      //   • plan-registration re-fires (version bumps, same action, same turnCount) are blocked
+      //   • identical consecutive harvests across different turns each fire their burst
+      //     (turnCount increments on advanceTurn so the key differs even when the action JSON is identical)
       if (action && (action.type === 'take_three_crystals' || action.type === 'take_two_crystals')) {
-        const takeKey = JSON.stringify(action);
+        const takeKey = `${(newState as { turnCount?: number }).turnCount ?? 0}:${JSON.stringify(action)}`;
         if (takeKey !== lastTakeBurstActionRef.current) {
           lastTakeBurstActionRef.current = takeKey;
           const actorId = action.playerId as string | undefined;
