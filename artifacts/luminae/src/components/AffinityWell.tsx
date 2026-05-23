@@ -399,30 +399,32 @@ export function AffinityWellCells({
                       />
                     </div>
 
-                    {/* Count + pending badge */}
+                    {/* Count — shows predicted value (gems + pending) during harvest selection */}
                     <div className="flex items-baseline gap-0.5 mt-0.5">
-                      <span
-                        className="text-lg font-black leading-none"
-                        style={{
-                          color: hasContent ? '#fff' : meta.hex + '35',
-                          textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
-                        }}
-                      >
-                        {gems}
-                      </span>
-                      {pending > 0 && (
+                      {pending > 0 ? (
                         <motion.span
-                          key={pending}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="text-[10px] font-black leading-none text-primary px-[3px] py-[1px] rounded"
+                          key="preview"
+                          className="text-lg font-black leading-none"
                           style={{
-                            background: 'rgba(255,255,255,0.10)',
-                            border: '1px solid rgba(255,255,255,0.18)',
+                            color: meta.glowHex,
+                            textShadow: `0 0 10px ${meta.glowHex}`,
+                          }}
+                          animate={{ opacity: [1, 0.55, 1] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          {gems + pending}
+                        </motion.span>
+                      ) : (
+                        <span
+                          key="committed"
+                          className="text-lg font-black leading-none"
+                          style={{
+                            color: hasContent ? '#fff' : meta.hex + '35',
+                            textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
                           }}
                         >
-                          +{pending}
-                        </motion.span>
+                          {gems}
+                        </span>
                       )}
                     </div>
 
