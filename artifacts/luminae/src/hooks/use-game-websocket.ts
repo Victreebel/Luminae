@@ -6,6 +6,13 @@ export interface RematchVoteUpdate {
   sessionStats: Record<string, { wins: number; losses: number; ties: number; playerName: string }>;
 }
 
+export interface ChatMessage {
+  playerId: string;
+  playerName: string;
+  text: string;
+  timestamp: number;
+}
+
 type WebSocketHookParams = {
   roomId: string;
   sessionToken: string;
@@ -19,6 +26,7 @@ type WebSocketHookParams = {
   onRematchStarted?: (state: any, sessionStats: RematchVoteUpdate['sessionStats']) => void;
   onRematchCancelled?: () => void;
   onRematchDeclined?: (sessionStats: RematchVoteUpdate['sessionStats']) => void;
+  onChatMessage?: (msg: ChatMessage) => void;
 };
 
 export function useGameWebsocket({
@@ -34,6 +42,7 @@ export function useGameWebsocket({
   onRematchStarted,
   onRematchCancelled,
   onRematchDeclined,
+  onChatMessage,
 }: WebSocketHookParams) {
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -51,6 +60,7 @@ export function useGameWebsocket({
   const onRematchStartedRef = useRef(onRematchStarted);
   const onRematchCancelledRef = useRef(onRematchCancelled);
   const onRematchDeclinedRef = useRef(onRematchDeclined);
+  const onChatMessageRef = useRef(onChatMessage);
 
   useEffect(() => {
     onStateUpdateRef.current = onStateUpdate;
@@ -63,6 +73,7 @@ export function useGameWebsocket({
     onRematchStartedRef.current = onRematchStarted;
     onRematchCancelledRef.current = onRematchCancelled;
     onRematchDeclinedRef.current = onRematchDeclined;
+    onChatMessageRef.current = onChatMessage;
   });
 
   const connect = useCallback(() => {
@@ -130,6 +141,14 @@ export function useGameWebsocket({
           case 'rematch_declined':
             onRematchDeclinedRef.current?.(data.sessionStats ?? {});
             break;
+          case 'chat_message':
+            onChatMessageRef.current?.({
+              playerId: data.playerId,
+              playerName: data.playerName,
+              text: data.text,
+              timestamp: data.timestamp,
+            });
+            break;
         }
       } catch (err) {
         console.error('Failed to parse WebSocket message', err);
@@ -166,5 +185,12 @@ export function useGameWebsocket({
     };
   }, [connect]);
 
-  return { isConnected };
+  const sendChatMessage = useCallback((text: string) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'chat_message', text }));
+    }
+  }, []);
+
+  return { isConnected, sendChatMessage };
 }

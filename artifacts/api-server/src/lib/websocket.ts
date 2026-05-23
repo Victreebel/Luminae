@@ -138,9 +138,20 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
 
   ws.on("message", (raw) => {
     try {
-      const msg = JSON.parse(raw.toString()) as { type: string };
+      const msg = JSON.parse(raw.toString()) as { type: string; text?: string };
       if (msg.type === "ping") {
         ws.send(JSON.stringify({ type: "pong" }));
+      } else if (msg.type === "chat_message") {
+        const text = (msg.text ?? "").trim().slice(0, 200);
+        if (text) {
+          broadcastToRoom(roomId, {
+            type: "chat_message",
+            playerId,
+            playerName,
+            text,
+            timestamp: Date.now(),
+          });
+        }
       }
     } catch {
       // ignore malformed

@@ -6,7 +6,7 @@ import {
   getGetGameStateQueryKey,
   useGetCardLoreCatalog,
 } from '@workspace/api-client-react';
-import type { RematchVoteUpdate } from '@/hooks/use-game-websocket';
+import type { RematchVoteUpdate, ChatMessage } from '@/hooks/use-game-websocket';
 import type { 
   GameState, 
   CrystalCounts, 
@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
   Bookmark, Gavel, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -1078,6 +1078,10 @@ export default function GameBoard() {
   const forgedOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [unreadChat, setUnreadChat] = useState(0);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
@@ -2111,7 +2115,7 @@ export default function GameBoard() {
   const [hasVoted, setHasVoted] = useState(false);
   const [votePending, setVotePending] = useState(false);
 
-  useGameWebsocket({
+  const { sendChatMessage } = useGameWebsocket({
     roomId: roomId!,
     sessionToken: session?.sessionToken || '',
     onStateUpdate: (newState) => {
@@ -2191,6 +2195,10 @@ export default function GameBoard() {
       // This player was not included — send them home after a brief message
       toast({ title: 'Not included', description: 'The other players started a new game without you.' });
       setTimeout(() => setLocation('/'), 3000);
+    },
+    onChatMessage: (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+      if (activeTab !== 'log') setUnreadChat(prev => prev + 1);
     },
   });
 
@@ -3554,6 +3562,24 @@ export default function GameBoard() {
     </div>
   );
 
+  // ── Chat helpers ─────────────────────────────────────────────────────────
+  const handleSendChat = () => {
+    const text = chatInput.trim();
+    if (!text) return;
+    setChatInput('');
+    sendChatMessage(text);
+  };
+
+  // Auto-scroll to newest message whenever a new one arrives
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  // Clear the unread badge the moment the player switches to the Log tab
+  useEffect(() => {
+    if (activeTab === 'log') setUnreadChat(0);
+  }, [activeTab]);
+
   const LogTab = () => (
     <div className="flex flex-col gap-4 p-4 pb-6">
       {/* Opponents */}
@@ -3725,6 +3751,60 @@ export default function GameBoard() {
             });
             })()
           )}
+        </div>
+      </div>
+
+      {/* ── Chat ── */}
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Chat</p>
+        <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur overflow-hidden mb-2">
+          <div className="max-h-[180px] overflow-y-auto flex flex-col divide-y divide-border/20">
+            {chatMessages.length === 0 ? (
+              <div className="p-3 text-xs text-muted-foreground/60 italic text-center">No messages yet.</div>
+            ) : (
+              chatMessages.map((msg, i) => {
+                const isMe = msg.playerId === session.playerId;
+                const logPlayer = state.players.find((pl) => pl.playerId === msg.playerId);
+                return (
+                  <div key={i} className="flex items-start gap-2 px-3 py-2">
+                    <PlayerAvatar
+                      avatarId={logPlayer?.avatarId ?? (isMe ? session.avatarId : null)}
+                      name={msg.playerName}
+                      size={22}
+                    />
+                    <div className="text-xs leading-relaxed flex-1 min-w-0">
+                      <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{msg.playerName}</span>
+                      <span className="text-foreground/80 ml-1 break-words">{msg.text}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        </div>
+        <div className="flex gap-2 items-center">
+          <input
+            className="flex-1 bg-card/80 border border-border/50 rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50 min-w-0"
+            placeholder="Send a message…"
+            value={chatInput}
+            maxLength={200}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendChat();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleSendChat}
+            disabled={!chatInput.trim()}
+            className="shrink-0 w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary disabled:opacity-30 transition-opacity"
+          >
+            <SendHorizontal className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -4194,7 +4274,7 @@ export default function GameBoard() {
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Hand', icon: Hand, badge: myReservedCount > 0 ? myReservedCount : undefined },
-          { tab: 'log' as ActiveTab, label: 'Log', icon: List },
+          { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
         ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: any; badge?: number }) => (
           <button
             key={tab}
