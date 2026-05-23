@@ -4215,8 +4215,15 @@ export default function GameBoard() {
           </AnimatePresence>
 
           {/* ── Collection rules footer ── */}
+          <AnimatePresence>
           {!crystalQueueActive && (
-          <div className="px-3 pb-2.5 pt-1 flex flex-col gap-0.5">
+          <motion.div
+            key="harvest-rules"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="px-3 pb-2.5 pt-1 flex flex-col gap-0.5"
+          >
             <div className="flex items-center gap-1.5 text-white/22">
               <span className="text-[9px] font-semibold uppercase tracking-widest leading-none">Harvest rules</span>
               <div className="flex-1 h-px bg-white/8" />
@@ -4232,8 +4239,9 @@ export default function GameBoard() {
                 <span className="text-[8.5px] text-white/30 leading-snug">Hand limit <span className="text-white/50 font-semibold">10</span> — return excess</span>
               </div>
             </div>
-          </div>
+          </motion.div>
           )}
+          </AnimatePresence>
         </div>
       )}
 
