@@ -276,7 +276,7 @@ function ArtifactCardView({
               {card.lumens}
             </span>
           )}
-          <div className="w-9 h-9 rounded-full shadow-md overflow-hidden" title={bonusMeta?.name}>
+          <div className="w-9 h-9 rounded-full shadow-md overflow-hidden ml-auto" title={bonusMeta?.name}>
             <img src={bonusMeta?.image} alt="" className="w-full h-full object-cover" draggable={false} />
           </div>
         </div>
