@@ -3970,19 +3970,19 @@ export default function GameBoard() {
             onOpenForged={(c) => { setForgedFilter(c); setShowForgedOverlay(true); }}
           />
 
-          {/* ── Queue confirmation bar — mounts only when a crystal is selected ── */}
-          <AnimatePresence>
-          {crystalQueueActive && (
+          {/* ── Fixed action zone — harness bar and hint crossfade in-place, no layout shift ── */}
+          <div className="relative" style={{ height: 44, overflow: 'hidden' }}>
             <motion.div
-              key="harness-bar"
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
+              animate={{ opacity: crystalQueueActive ? 1 : 0 }}
               transition={{ duration: 0.15 }}
-              className="relative"
-              style={tutorialZone === 'harvest' && tutorialAttention === 'action' ? {
-                boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
-              } : undefined}
+              style={{
+                pointerEvents: crystalQueueActive ? 'auto' : 'none',
+                position: 'absolute',
+                inset: 0,
+                ...(tutorialZone === 'harvest' && tutorialAttention === 'action' && crystalQueueActive ? {
+                  boxShadow: '0 0 0 2px rgba(168,85,247,0.55), 0 0 18px 5px rgba(168,85,247,0.16)',
+                } : {}),
+              }}
             >
                 <div className="px-2 pb-2 pt-1 border-t border-white/10">
                   {!isMyTurn && canPlan && (
@@ -4117,8 +4117,18 @@ export default function GameBoard() {
                   </div>
                 </div>
             </motion.div>
-          )}
-          </AnimatePresence>
+            {/* Hint text — crossfades in the same fixed slot, no layout shift */}
+            <motion.div
+              animate={{ opacity: crystalQueueActive ? 0 : 1 }}
+              transition={{ duration: 0.15 }}
+              style={{ pointerEvents: crystalQueueActive ? 'none' : 'auto', position: 'absolute', inset: 0 }}
+              className="flex items-center justify-center"
+            >
+              <span className="text-[8.5px] text-white/30 leading-none">
+                Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span>.
+              </span>
+            </motion.div>
+          </div>
 
           {/* ── Return-crystals phase (hand limit exceeded) ── */}
           <AnimatePresence>
@@ -4214,23 +4224,6 @@ export default function GameBoard() {
             )}
           </AnimatePresence>
 
-          {/* ── Collection rules footer ── */}
-          <AnimatePresence>
-          {!crystalQueueActive && (
-          <motion.div
-            key="harvest-rules"
-            initial={{ opacity: 1, height: 'auto', paddingTop: 4, paddingBottom: 10 }}
-            exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
-            transition={{ duration: 0.15 }}
-            style={{ overflow: 'hidden' }}
-            className="px-3 flex justify-center"
-          >
-            <span className="text-[8.5px] text-white/30 leading-none">
-              Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span>.
-            </span>
-          </motion.div>
-          )}
-          </AnimatePresence>
         </div>
       )}
 
