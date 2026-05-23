@@ -4223,23 +4223,11 @@ export default function GameBoard() {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="px-3 pb-2.5 pt-1 flex flex-col gap-0.5"
+            className="px-3 pb-2.5 pt-1"
           >
-            <div className="flex items-center gap-1.5 text-white/22">
-              <span className="text-[9px] font-semibold uppercase tracking-widest leading-none">Harvest rules</span>
-              <div className="flex-1 h-px bg-white/8" />
-            </div>
-            <div className="flex flex-col gap-[3px] mt-0.5">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] text-white/30 leading-snug">Take <span className="text-white/50 font-semibold">3 different</span> — one each</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] text-white/30 leading-snug">Take <span className="text-white/50 font-semibold">2 of the same</span> — 4+ in Well</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] text-white/30 leading-snug">Hand limit <span className="text-white/50 font-semibold">10</span> — return excess</span>
-              </div>
-            </div>
+            <span className="text-[8.5px] text-white/30 leading-none">
+              Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span>.
+            </span>
           </motion.div>
           )}
           </AnimatePresence>
