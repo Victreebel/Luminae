@@ -3402,58 +3402,12 @@ export default function GameBoard() {
       <div className={`rounded-2xl border p-4 bg-card/80 backdrop-blur flex items-center justify-between ${isMyTurn ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-border'}`}>
         <div>
           <div className="text-lg font-bold">{me?.playerName}</div>
-          <div className="text-xs text-muted-foreground">
-            {Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0)} affinities in hand
-          </div>
         </div>
         <div className="text-center">
           <div className="text-4xl font-serif font-bold text-primary">{me?.lumens}</div>
           <div className="text-xs text-primary flex items-center gap-0.5 justify-center">
             <Sparkles className="h-3 w-3" /> eminence
           </div>
-        </div>
-      </div>
-
-      {/* My Gems */}
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">My Affinities</p>
-        <div className="grid grid-cols-3 gap-2">
-          {CRYSTALS.map((c) => {
-            const cardBonus = me?.bonuses[c as keyof CrystalCounts] ?? 0;
-            const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
-              .filter((la: LuminaryActiveState) =>
-                la.ownerId === session?.playerId &&
-                ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
-                la.activeAffinity === c
-              ).length;
-            const meta = GEM_META[c as GemKey];
-            return (
-              <div
-                key={c}
-                className="flex flex-col items-center gap-1 rounded-xl px-1.5 pt-1.5 pb-1.5 relative overflow-hidden"
-                style={{
-                  background: `radial-gradient(ellipse at 50% 0%, ${meta.hex}18 0%, ${meta.hex}08 55%, rgba(255,255,255,0.02) 100%)`,
-                  border: `1px solid ${meta.hex}28`,
-                }}
-              >
-                {/* Affinity name + icon — centered at top */}
-                <div className="flex items-center gap-0.5 z-10 w-full justify-center">
-                  <span className="text-[8px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                  <MiniGem color={c as GemKey} size={8} />
-                </div>
-                {/* Token count (primary) with bonus side-by-side */}
-                <div className="flex items-center gap-1 z-10">
-                  <CrystalIcon color={c} size={40} count={me?.crystals[c as keyof CrystalCounts]} />
-                  {(cardBonus > 0 || lumBonus > 0) && (
-                    <div className="flex flex-col gap-0.5">
-                      {cardBonus > 0 && <span className="text-[10px] font-bold text-primary leading-none">+{cardBonus}</span>}
-                      {lumBonus > 0 && <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
 
