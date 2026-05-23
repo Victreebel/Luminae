@@ -4023,7 +4023,7 @@ export default function GameBoard() {
             sessionPlayerId={session?.playerId}
             harvestBurstKeys={harvestBurstKeys}
             forgeDeductions={(() => {
-              if (!selectedCard || !me || !isMyTurn) return undefined;
+              if (!selectedCard || !me || (!isMyTurn && !canPlan)) return undefined;
               const effCost = effectiveCost(selectedCard.card, me) as Record<string, number>;
               const result: Partial<Record<GemKey, number>> = {};
               let fluxNeeded = 0;
