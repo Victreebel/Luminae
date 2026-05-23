@@ -4219,10 +4219,11 @@ export default function GameBoard() {
           {!crystalQueueActive && (
           <motion.div
             key="harvest-rules"
-            initial={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
+            initial={{ opacity: 1, height: 'auto', paddingTop: 4, paddingBottom: 10 }}
+            exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0 }}
             transition={{ duration: 0.15 }}
-            className="px-3 pb-2.5 pt-1 flex justify-center"
+            style={{ overflow: 'hidden' }}
+            className="px-3 flex justify-center"
           >
             <span className="text-[8.5px] text-white/30 leading-none">
               Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span>.
