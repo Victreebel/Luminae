@@ -1233,8 +1233,14 @@ export function applyAction(
           currentPlayer.plannedAction = null;
           const autoResult = applyAction(state, currentPlayer.playerId, deferred, true);
           if (!autoResult.success) {
-            currentPlayer.plannedActionCancelReason =
+            const cancelReason =
               autoResult.error ?? "Planned move is no longer legal.";
+            currentPlayer.plannedActionCancelReason = cancelReason;
+            state.lastAction = {
+              type: "planned_action_cancelled",
+              playerId: currentPlayer.playerId,
+              reason: cancelReason,
+            };
             state.version++;
           }
         }

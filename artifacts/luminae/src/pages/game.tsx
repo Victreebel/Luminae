@@ -1763,6 +1763,24 @@ export default function GameBoard() {
       setClaimedThisSession([]);
     }
       const action = newState.lastAction;
+
+      // ── Planned-action cancellation ────────────────────────────────────────
+      // The engine stamps lastAction = { type: "planned_action_cancelled", playerId, reason }
+      // on the second version bump inside the deferred-failure branch of resolve_summon.
+      // This lets us distinguish a clean summon resolution from one that also voided
+      // the waiting player's planned move.  Only show the notice to the affected player;
+      // no affinity or purchase animation should be triggered for this update.
+      if (action?.type === 'planned_action_cancelled') {
+        const cancelledForMe = (action.playerId as string | undefined) === session?.playerId;
+        if (cancelledForMe) {
+          const reason = (action.reason as string | undefined) ?? 'Your planned move is no longer legal.';
+          setTimeout(() => toast({ variant: 'destructive', title: 'Planned move cancelled', description: reason }), 150);
+        }
+        queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
+        prevStateRef.current = newState;
+        return;
+      }
+
       const isMarketAction = action && (
         action.type === 'purchase_card' ||
         (action.type === 'reserve_card' && action.cardId)
