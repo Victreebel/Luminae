@@ -2119,7 +2119,10 @@ export default function GameBoard() {
       // currentPlayerIndex, so the semantic guard below (playerIndex !== prev playerIndex)
       // correctly blocks re-fires without needing an additional action-key dedup ref.
       // fireTurnAnnouncement also has its own lastAnnouncedTurnRef guard as a second layer.
-      if (newState.status === 'playing' && newState.lastAction && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
+      // Skip re-announcing if this update is a planned_action_cancelled — the preceding
+      // resolve_summon update already triggered the correct announcement and firing again
+      // would produce a duplicate or out-of-order "your turn" banner.
+      if (newState.status === 'playing' && newState.lastAction && newState.lastAction.type !== 'planned_action_cancelled' && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
         const nextPlayer = newState.players[newState.currentPlayerIndex];
         if (nextPlayer && !isTutorial) {
           const isMe = nextPlayer.playerId === session?.playerId;
