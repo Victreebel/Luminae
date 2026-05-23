@@ -4215,6 +4215,7 @@ export default function GameBoard() {
           </AnimatePresence>
 
           {/* ── Collection rules footer ── */}
+          {!crystalQueueActive && (
           <div className="px-3 pb-2.5 pt-1 flex flex-col gap-0.5">
             <div className="flex items-center gap-1.5 text-white/22">
               <span className="text-[9px] font-semibold uppercase tracking-widest leading-none">Harvest rules</span>
@@ -4222,16 +4223,17 @@ export default function GameBoard() {
             </div>
             <div className="flex flex-col gap-[3px] mt-0.5">
               <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] text-white/30 leading-snug">Take <span className="text-white/50 font-semibold">3 different</span> affinities — one of each color</span>
+                <span className="text-[8.5px] text-white/30 leading-snug">Take <span className="text-white/50 font-semibold">3 different</span> — one each</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] text-white/30 leading-snug">Take <span className="text-white/50 font-semibold">2 of the same</span> — if 4+ remain in the Well</span>
+                <span className="text-[8.5px] text-white/30 leading-snug">Take <span className="text-white/50 font-semibold">2 of the same</span> — 4+ in Well</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[8.5px] text-white/30 leading-snug">Hand limit <span className="text-white/50 font-semibold">10</span> — return excess after taking</span>
+                <span className="text-[8.5px] text-white/30 leading-snug">Hand limit <span className="text-white/50 font-semibold">10</span> — return excess</span>
               </div>
             </div>
           </div>
+          )}
         </div>
       )}
 
