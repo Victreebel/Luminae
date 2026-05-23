@@ -440,11 +440,30 @@ export function AffinityWellCells({
                           filter:
                             pending > 0
                               ? `drop-shadow(0 0 8px ${meta.glowHex}) brightness(1.3)`
+                              : forgeDed > 0
+                              ? 'drop-shadow(0 0 6px #ef4444cc) brightness(0.6) saturate(0.35)'
                               : bankEmpty
                               ? 'grayscale(0.7) opacity(0.4)'
                               : `drop-shadow(0 0 6px ${meta.glowHex}80)`,
                         }}
                       />
+                      {/* Forge-cost badge — −N in red, top-right corner of emblem */}
+                      {forgeDed > 0 && (
+                        <motion.span
+                          key={`forge-badge-${forgeDed}`}
+                          className="absolute -top-1 -right-1 z-10 text-[9px] font-black leading-none px-[3px] py-[1px] rounded-full pointer-events-none select-none"
+                          style={{
+                            background: '#1a0505',
+                            color: '#f87171',
+                            border: '1px solid #ef444466',
+                            boxShadow: '0 0 6px #ef4444aa',
+                          }}
+                          animate={{ opacity: [1, 0.6, 1] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          −{forgeDed}
+                        </motion.span>
+                      )}
                     </div>
 
                     {/* Count — predicted value during harvest, post-forge remainder during forge preview */}
