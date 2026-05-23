@@ -100,14 +100,14 @@ Each Luminary represents a distinct form of cosmic living/intelligent existence.
 If a generation pass produces a humanoid figure for a Luminary that should be nonhumanoid, that is a failure to capture the concept. Ask for clarification if the intended form is not clear before generating.
 
 ### Asset review status (current — supersedes all earlier commit notes)
-- **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale — 11 panels locked.
+- **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale, lum_astral — 12 panels locked.
 - **lum_pale notes (fully illustrated, animated entity):** All three slots accepted. Panel regenerated (May 2026): large irregular pearl/silver crystal facets filling the interior, improved border with sunburst-set pearl corner gems, multi-tiered gold diamond crest, richer filigree on all edges, scales medallion at bottom-center. Entity regenerated (May 2026) using seraph-of-judgment reference: multi-winged feathered seraph construct, sun-halo crown, ornate armored spine, horizontal balance beam, brass-chain scale pans, crystal diamond pendants at wingtips, spike at base — luminous ice-white/silver/pearl palette, transparent background. `PaleEntity` animated component in `luminaryAssets.tsx` renders the PNG with a continuous ±3.5° seesaw rotation (5.2 s period, pivot at 50% 62% = beam center) via framer-motion. Aura: soft radial silver/pearl starburst glow, alpha=0 at corners.
-- **Panels needing regeneration:**
-  - lum_astral — REJECTED: crystal reads as a sphere/orb (banned form); facet pattern is geodesic/soccer-ball cells over a sphere (banned pattern); dark corners visible — crystal does not fill the panel. Concept: stellar fire meets cold void weaving intelligence (Flare+Abyss). Next pass must use "massive faceted crystal wall filling entire image, crystal extends past borders on all sides, large irregular triangular/trapezoidal facet planes, fire-ice gradient internal fractures, entity embedded/refracted within crystal volume."
+- **lum_astral notes (panel accepted May 2026):** Cosmic arachnid entity embedded in dark crystal facets. Large irregular triangular/trapezoidal crystal planes fill the interior — no readable sphere silhouette, no geodesic net. Fire-ice gradient (ruby/sapphire) internal fracture coloring. Dual ruby corner gems top, dual sapphire/ruby bottom, fire medallion at bottom-center. Constellation line overlay across crystal facets. Entity fully embedded/refracted within crystal volume.
+- **Panels needing regeneration:** None — all 12 panels accepted.
 - **Entities needing regeneration:** lum_null (thematic miss — sci-fi cyberpunk armor, does not match accepted void-body panel spec).
 - **Auras regenerated (transparent background):** lum_void (soft radial purple void glow, alpha=0 at corners), lum_pale (soft silver/pearl starburst glow, alpha=0 at corners) — both pass screen-blend check, no opaque rectangle visible.
-- **Open concept questions:** None — lum_astral (stellar fire meets cold void weaving entity) has a defined direction; next generation pass should apply crystal-wall rules strictly.
-- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` contains all 12 IDs. lum_pale uses fully illustrated panel + entity + aura (animated SVG retired). lum_astral falls back to procedural SVG art for all slots until its panel is regenerated and accepted.
+- **Open concept questions:** None.
+- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` contains all 12 IDs. lum_pale uses fully illustrated panel + entity + aura (animated SVG retired). All 12 Luminaries use illustrated assets; no Luminary falls back to procedural SVG art.
 
 ## System Architecture
 
