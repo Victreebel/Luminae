@@ -1236,6 +1236,12 @@ export function applyAction(
             const cancelReason =
               autoResult.error ?? "Planned move is no longer legal.";
             currentPlayer.plannedActionCancelReason = cancelReason;
+            pushLog(state, {
+              playerId: currentPlayer.playerId,
+              playerName: currentPlayer.playerName,
+              summary: `planned move voided — ${cancelReason}`,
+              turn: state.roundNumber,
+            });
             state.lastAction = {
               type: "planned_action_cancelled",
               playerId: currentPlayer.playerId,

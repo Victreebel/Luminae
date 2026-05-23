@@ -3746,13 +3746,20 @@ export default function GameBoard() {
               const isMe = entry.playerId === session.playerId;
               const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
               const isAffinityChange = entry.summary.startsWith('switched ');
+              const isCancelled = entry.summary.startsWith('planned move voided');
               const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
               const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
               return (
               <div
                 key={i}
                 className="flex items-start gap-2.5 px-3 py-2.5"
-                style={isAffinityChange ? { background: `${dotColor}0D` } : undefined}
+                style={
+                  isCancelled
+                    ? { background: 'rgba(234,179,8,0.07)' }
+                    : isAffinityChange
+                    ? { background: `${dotColor}0D` }
+                    : undefined
+                }
               >
                 <PlayerAvatar
                   avatarId={logPlayer?.avatarId ?? (isMe ? session.avatarId : null)}
@@ -3761,7 +3768,18 @@ export default function GameBoard() {
                 />
                 <div className="text-xs leading-relaxed flex-1">
                   <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{entry.playerName}</span>
-                  {isAffinityChange ? (
+                  {isCancelled ? (
+                    <>
+                      <span className="text-yellow-400/80 italic"> · Planned move voided</span>
+                      <span
+                        className="inline-flex items-center justify-center ml-1.5 align-middle"
+                        title={entry.summary.replace('planned move voided — ', '')}
+                        style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(234,179,8,0.18)', border: '1px solid rgba(234,179,8,0.4)', flexShrink: 0 }}
+                      >
+                        <span style={{ fontSize: 9, lineHeight: 1, color: '#EAB308' }}>!</span>
+                      </span>
+                    </>
+                  ) : isAffinityChange ? (
                     <>
                       <span className="text-foreground/70 italic"> · {entry.summary}</span>
                       <span
