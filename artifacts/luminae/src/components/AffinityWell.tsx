@@ -223,13 +223,7 @@ export function AffinityWellCells({
         const gaugeFilledCount = Math.max(0, bankCount - pending);
 
         const cellStyle: React.CSSProperties =
-          pending > 0 && isPlanningMode
-            ? {
-                background: 'linear-gradient(180deg, #92400e55 0%, #b4530040 100%)',
-                border: '2px solid #fbbf24cc',
-                boxShadow: '0 0 14px #fbbf2488, inset 0 0 10px #92400e44',
-              }
-            : pending > 0
+          pending > 0
             ? {
                 background: `linear-gradient(180deg, ${meta.hex}55 0%, ${meta.hex}2a 100%)`,
                 border: `2px solid ${meta.glowHex}dd`,
