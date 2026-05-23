@@ -271,12 +271,10 @@ function ArtifactCardView({
 
       <div className="relative z-10 h-full p-2 flex flex-col justify-between">
         <div className="flex justify-between items-start">
-          {card.lumens > 0 && (
-            <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">
-              {card.lumens}
-            </span>
-          )}
-          <div className="w-9 h-9 rounded-full shadow-md overflow-hidden ml-auto" title={bonusMeta?.name}>
+          {card.lumens > 0
+            ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>
+            : <span />}
+          <div className="w-9 h-9 rounded-full shadow-md overflow-hidden" title={bonusMeta?.name}>
             <img src={bonusMeta?.image} alt="" className="w-full h-full object-cover" draggable={false} />
           </div>
         </div>

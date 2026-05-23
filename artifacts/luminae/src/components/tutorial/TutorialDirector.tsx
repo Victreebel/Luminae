@@ -483,8 +483,8 @@ function TutorialCard({
         )}
         <div className="relative z-10 h-full p-2 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            {card.lumens > 0 && <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>}
-            <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden ml-auto">
+            {card.lumens > 0 ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span> : <span />}
+            <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
               <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
             </div>
           </div>
@@ -2849,9 +2849,9 @@ function TutorialForgeBurst({
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/85" />
         <div className="relative z-10 h-full p-2 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            {card.lumens > 0 && <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>}
+            {card.lumens > 0 ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span> : <span />}
             {bonusMeta && (
-              <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden ml-auto">
+              <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
                 <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
               </div>
             )}
@@ -3081,8 +3081,8 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
                     <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
                     <div className="relative z-10 h-full p-2 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
-                        {card.lumens > 0 && <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>}
-                        <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden ml-auto">
+                        {card.lumens > 0 ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span> : <span />}
+                        <div className="w-4 h-4 rounded-full ring-1 ring-black/40 overflow-hidden">
                           <img src={bonusMeta.image} alt={bonusMeta.name} className="w-full h-full object-contain" draggable={false} />
                         </div>
                       </div>
