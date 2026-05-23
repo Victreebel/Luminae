@@ -3086,7 +3086,7 @@ export default function GameBoard() {
             transition: 'box-shadow 0.3s',
           } : undefined}
         >
-          <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>Cost</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest shrink-0" style={{ color: 'rgba(255,255,255,0.25)' }}>Cost View</span>
           <div className="flex items-center bg-secondary/50 rounded-full border border-border/30 p-0.5 gap-0.5">
             {([
               { mode: 'printed' as CostMode, label: 'Full', title: 'Show original printed cost' },
