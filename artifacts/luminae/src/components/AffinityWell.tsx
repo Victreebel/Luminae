@@ -193,8 +193,45 @@ export function AffinityWellCells({
   const playerCount = state.players.length;
   const gaugeCapacity = playerCount === 2 ? 4 : playerCount === 3 ? 5 : 7;
 
+  const isPlanningMode = !isActivePlayer && canPlan;
+  const anyPending = CRYSTALS.some((c) => (selectedCrystals[c as keyof CrystalCounts] ?? 0) > 0);
+  const showPlanningCue = isPlanningMode && anyPending;
+
   return (
-    <div className="flex gap-1 px-2 pb-2">
+    <div className="relative">
+      <AnimatePresence>
+        {showPlanningCue && (
+          <motion.div
+            key="planning-cue"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            className="absolute -top-5 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
+          >
+            <span
+              className="text-[9px] font-semibold tracking-wide px-2 py-[2px] rounded-full"
+              style={{
+                color: '#fbbf24',
+                background: 'rgba(251,191,36,0.12)',
+                border: '1px solid rgba(251,191,36,0.35)',
+                letterSpacing: '0.06em',
+              }}
+            >
+              Planning
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <motion.div
+        animate={
+          showPlanningCue
+            ? { boxShadow: '0 0 0 1px rgba(251,191,36,0.30)' }
+            : { boxShadow: '0 0 0 1px transparent' }
+        }
+        transition={{ duration: 0.25 }}
+        className="flex gap-1 px-2 pb-2 rounded-lg"
+      >
       {CRYSTALS.map((c) => {
         const meta = GEM_META[c];
         const isFlux = c === 'flux';
@@ -210,7 +247,6 @@ export function AffinityWellCells({
         const reservedCount = me.reservedCards.length;
         const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
         const bankCount = state.crystalBank[c as keyof CrystalCounts] ?? 0;
-        const isPlanningMode = !isActivePlayer && canPlan;
         const selectable = isMyTurn || (!isActivePlayer && canPlan);
         const bankEmpty = bankCount === 0;
         const canTake2 = selectable && !isFlux && bankCount >= 4 && pending !== 2;
@@ -478,6 +514,7 @@ export function AffinityWellCells({
           </div>
         );
       })}
+      </motion.div>
     </div>
   );
 }
