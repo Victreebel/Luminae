@@ -268,7 +268,7 @@ export function AffinityWellCells({
                 }
               }}
               className="relative w-full rounded-lg overflow-hidden transition-all"
-              style={{ minHeight: 76, ...cellStyle }}
+              style={{ minHeight: 62, ...cellStyle }}
             >
               {/* Affinity name — pinned to top of cell */}
               <span
@@ -311,7 +311,7 @@ export function AffinityWellCells({
 
               {isFlux ? (
                 /* ── Singularity cell ── */
-                <div className="flex flex-col items-center pt-3.5 pb-1.5 px-0.5 h-full">
+                <div className="flex flex-col items-center pt-2 pb-1.5 px-0.5 h-full">
                   <div className="relative flex items-center justify-center w-9 h-9">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <CompassRing glowHex={meta.glowHex} size={36} />
@@ -379,7 +379,7 @@ export function AffinityWellCells({
                   </div>
 
                   {/* Main content */}
-                  <div className="flex flex-col items-center pt-3.5 pb-1 px-0.5">
+                  <div className="flex flex-col items-center pt-2 pb-1 px-0.5">
                     {/* Emblem */}
                     <div className="relative flex items-center justify-center w-9 h-9">
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
