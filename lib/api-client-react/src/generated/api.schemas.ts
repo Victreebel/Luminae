@@ -16,7 +16,6 @@ export const CardLoreEntryEngineeringScale = {
 
 export interface CardLoreEntry {
   name: string;
-  practicalUse: string;
   flavor: string;
   artifactForm?: string;
   blueprintRole?: string;
@@ -394,9 +393,7 @@ export interface ArtifactCard {
   cost: CrystalCounts;
   name: string;
   flavor: string;
-  /** Snapshot of the player's effective bonuses at the moment this card was forged.
-   * Present only on purchased cards; absent on market/reserved cards and on cards
-   * forged before this feature was added (backward-compat: fall back to discountedForgeIds). */
+  /** Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market/reserved cards and on cards forged before this feature was added. */
   bonusesAtForge?: CrystalCounts;
 }
 

@@ -471,10 +471,6 @@ export default function DevCardBrowser() {
 
         {lore ? (
           <>
-            <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#9090b0', lineHeight: 1.6 }}>
-              {lore.practicalUse}
-            </div>
-
             <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#7080a0', lineHeight: 1.6, fontStyle: 'italic' }}>
               {lore.flavor}
             </div>

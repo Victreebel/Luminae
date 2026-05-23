@@ -25,7 +25,7 @@ paths:
     get:
       operationId: getCardLoreCatalog
       tags: [game]
-      summary: Return name, flavour text, and practicalUse for every card
+      summary: Return name and flavour text for every card
       responses:
         "200":
           description: Card lore map keyed by card ID
@@ -623,8 +623,6 @@ components:
       properties:
         name:
           type: string
-        practicalUse:
-          type: string
         flavor:
           type: string
         artifactForm:
@@ -645,7 +643,6 @@ components:
           type: string
       required:
         - name
-        - practicalUse
         - flavor
 
     CardLoreCatalog:

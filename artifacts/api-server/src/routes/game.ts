@@ -352,7 +352,6 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 router.get("/cards/lore", (_req, res) => {
   const out: Record<string, {
     name: string;
-    practicalUse: string;
     flavor: string;
     artifactForm?: string;
     blueprintRole?: string;
@@ -364,7 +363,6 @@ router.get("/cards/lore", (_req, res) => {
   for (const [id, lore] of Object.entries(CARD_LORE)) {
     out[id] = {
       name: lore.name,
-      practicalUse: lore.practicalUse ?? "",
       flavor: lore.flavor,
       ...(lore.artifactForm !== undefined && { artifactForm: lore.artifactForm }),
       ...(lore.blueprintRole !== undefined && { blueprintRole: lore.blueprintRole }),

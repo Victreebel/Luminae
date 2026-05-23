@@ -8,13 +8,12 @@
 import * as zod from "zod";
 
 /**
- * @summary Return name, flavour text, and practicalUse for every card
+ * @summary Return name and flavour text for every card
  */
 export const GetCardLoreCatalogResponse = zod.record(
   zod.string(),
   zod.object({
     name: zod.string(),
-    practicalUse: zod.string(),
     flavor: zod.string(),
     artifactForm: zod.string().optional(),
     blueprintRole: zod.string().optional(),
@@ -285,6 +284,19 @@ export const StartGameResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier2: zod.array(
@@ -303,6 +315,19 @@ export const StartGameResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier3: zod.array(
@@ -321,6 +346,19 @@ export const StartGameResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   deckCounts: zod.object({
@@ -441,6 +479,19 @@ export const StartGameResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -472,6 +523,19 @@ export const StartGameResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       isConnected: zod.boolean(),
@@ -563,6 +627,19 @@ export const RematchResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier2: zod.array(
@@ -581,6 +658,19 @@ export const RematchResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier3: zod.array(
@@ -599,6 +689,19 @@ export const RematchResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   deckCounts: zod.object({
@@ -719,6 +822,19 @@ export const RematchResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -750,6 +866,19 @@ export const RematchResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       isConnected: zod.boolean(),
@@ -841,6 +970,19 @@ export const GetGameStateResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier2: zod.array(
@@ -859,6 +1001,19 @@ export const GetGameStateResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier3: zod.array(
@@ -877,6 +1032,19 @@ export const GetGameStateResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   deckCounts: zod.object({
@@ -997,6 +1165,19 @@ export const GetGameStateResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -1028,6 +1209,19 @@ export const GetGameStateResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       isConnected: zod.boolean(),
@@ -1177,6 +1371,19 @@ export const SubmitActionResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier2: zod.array(
@@ -1195,6 +1402,19 @@ export const SubmitActionResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   marketTier3: zod.array(
@@ -1213,6 +1433,19 @@ export const SubmitActionResponse = zod.object({
       }),
       name: zod.string(),
       flavor: zod.string(),
+      bonusesAtForge: zod
+        .object({
+          ruby: zod.number(),
+          sapphire: zod.number(),
+          emerald: zod.number(),
+          onyx: zod.number(),
+          pearl: zod.number(),
+          flux: zod.number(),
+        })
+        .optional()
+        .describe(
+          "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+        ),
     }),
   ),
   deckCounts: zod.object({
@@ -1333,6 +1566,19 @@ export const SubmitActionResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       purchasedCardIds: zod.array(zod.string()),
@@ -1364,6 +1610,19 @@ export const SubmitActionResponse = zod.object({
           }),
           name: zod.string(),
           flavor: zod.string(),
+          bonusesAtForge: zod
+            .object({
+              ruby: zod.number(),
+              sapphire: zod.number(),
+              emerald: zod.number(),
+              onyx: zod.number(),
+              pearl: zod.number(),
+              flux: zod.number(),
+            })
+            .optional()
+            .describe(
+              "Snapshot of the player's effective bonuses at the moment this card was forged. Present only on purchased cards; absent on market\/reserved cards and on cards forged before this feature was added.",
+            ),
         }),
       ),
       isConnected: zod.boolean(),

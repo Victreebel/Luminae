@@ -58,7 +58,7 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * @summary Return name, flavour text, and practicalUse for every card
+ * @summary Return name and flavour text for every card
  */
 export const getGetCardLoreCatalogUrl = () => {
   return `/api/cards/lore`;
@@ -109,7 +109,7 @@ export type GetCardLoreCatalogQueryResult = NonNullable<
 export type GetCardLoreCatalogQueryError = ErrorType<unknown>;
 
 /**
- * @summary Return name, flavour text, and practicalUse for every card
+ * @summary Return name and flavour text for every card
  */
 
 export function useGetCardLoreCatalog<

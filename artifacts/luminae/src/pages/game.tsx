@@ -4486,9 +4486,6 @@ export default function GameBoard() {
                   {selectedCard.card.flavor && (
                     <p className="text-xs text-muted-foreground italic leading-relaxed">"{selectedCard.card.flavor}"</p>
                   )}
-                  {loreCatalog?.[selectedCard.card.id]?.practicalUse && (
-                    <p className="text-xs text-muted-foreground/80 leading-relaxed">{loreCatalog[selectedCard.card.id].practicalUse}</p>
-                  )}
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground">Bonus:</span>
                     <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
