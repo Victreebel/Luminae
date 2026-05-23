@@ -3981,8 +3981,8 @@ export default function GameBoard() {
             }}
           >
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: crystalQueueActive ? 1 : 0 }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: crystalQueueActive ? 1 : 0, y: crystalQueueActive ? 0 : 4 }}
               transition={{ duration: 0.15 }}
               style={{ pointerEvents: crystalQueueActive ? 'auto' : 'none' }}
             >
@@ -4220,8 +4220,8 @@ export default function GameBoard() {
           {!crystalQueueActive && (
           <motion.div
             key="harvest-rules"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
             className="px-3 pb-2.5 pt-1"
           >
