@@ -1071,6 +1071,7 @@ export default function GameBoard() {
   } | null>(null);
   const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
+  const lastMarketBurstActionRef = useRef<string | null>(null);
   const cardSheetContainerRef = useRef<HTMLElement | null>(null);
   const reservedOverlayContainerRef = useRef<HTMLElement | null>(null);
   const deckSheetContainerRef = useRef<HTMLElement | null>(null);
@@ -1767,7 +1768,9 @@ export default function GameBoard() {
         (action.type === 'reserve_card' && action.cardId)
       );
 
-      if (prev && isMarketAction && action.cardId) {
+      const marketActionKey = isMarketAction ? JSON.stringify(action) : null;
+      if (prev && isMarketAction && action.cardId && marketActionKey !== lastMarketBurstActionRef.current) {
+        lastMarketBurstActionRef.current = marketActionKey;
         const cardId = action.cardId as string;
         const marketsOld: Record<number, (ArtifactCard | null)[]> = {
           1: prev.marketTier1, 2: prev.marketTier2, 3: prev.marketTier3,
