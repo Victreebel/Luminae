@@ -71,6 +71,12 @@ const TIER_BACKDROPS: Record<number, string> = {
   3: cardTier3Bg,
 };
 
+const TIER_CIVILIZATION: Record<number, string> = {
+  1: 'Planetary',
+  2: 'Stellar',
+  3: 'Galactic',
+};
+
 const GEM_CARD_GRADIENTS: Record<string, string> = {
   ruby:     'linear-gradient(175deg, #1a0404 0%, #3d0808 35%, #220505 70%, #100202 100%)',
   sapphire: 'linear-gradient(175deg, #020510 0%, #071840 35%, #040a28 70%, #020510 100%)',
@@ -1031,6 +1037,7 @@ export default function GameBoard() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [isTutorial, tutorialZone]);
   const [selectedCard, setSelectedCard] = useState<SelectedCard | null>(null);
+  const [cardFlipped, setCardFlipped] = useState(false);
   const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
   const [pendingDeckConfirm, setPendingDeckConfirm] = useState(false);
@@ -2690,6 +2697,7 @@ export default function GameBoard() {
 
   const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
+    setCardFlipped(false);
     setPendingSheetAction(null);
     setSelectedCard({
       card, fromReserve,
@@ -3117,14 +3125,13 @@ export default function GameBoard() {
 
         <div className="relative flex flex-col gap-3 px-3 pb-3">
         {[
-          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, lore: 'Type II — Stellar' },
-          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, lore: 'Type I — Planetary' },
-          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, lore: 'Type 0 — Pre-Spacefaring' },
+          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3 },
+          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2 },
+          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1 },
         ].map(row => (
           <div key={row.tier} className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
             <div className="flex items-center gap-2 mb-2 px-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}</span>
-              <span className="text-[9px] text-muted-foreground/50 italic truncate">{row.lore}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}, {TIER_CIVILIZATION[row.tier]}</span>
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
             <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
@@ -4324,11 +4331,52 @@ export default function GameBoard() {
               </div>
               {/* Card preview + info */}
               <div className="flex gap-4 mb-5">
-                <ArtifactCardView
-                  card={selectedCard.card}
-                  tier={selectedCard.card.tier}
-                  artOnly
-                />
+                {/* Flippable thumbnail column */}
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <div
+                    style={{ perspective: '600px', width: 112, height: 160 }}
+                    className="cursor-pointer"
+                    onClick={() => setCardFlipped(f => !f)}
+                    title={cardFlipped ? 'Tap to see art' : 'Tap to see card back'}
+                  >
+                    <motion.div
+                      animate={{ rotateY: cardFlipped ? 180 : 0 }}
+                      transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+                      style={{ transformStyle: 'preserve-3d', position: 'relative', width: '100%', height: '100%' }}
+                    >
+                      <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0 }}>
+                        <ArtifactCardView card={selectedCard.card} tier={selectedCard.card.tier} artOnly />
+                      </div>
+                      <div style={{ backfaceVisibility: 'hidden', position: 'absolute', inset: 0, transform: 'rotateY(180deg)' }}>
+                        <CardBack tier={selectedCard.card.tier as 1 | 2 | 3} />
+                      </div>
+                    </motion.div>
+                  </div>
+                  {/* Tier civilization label */}
+                  <span className="font-serif tracking-[0.16em] uppercase text-[8px] mt-0.5" style={{ color: '#C0A472', textShadow: '0 1px 8px rgba(192,164,114,0.5)' }}>
+                    Tier {selectedCard.card.tier}, {TIER_CIVILIZATION[selectedCard.card.tier]}
+                  </span>
+                  {/* Cost chips */}
+                  <div className="flex flex-wrap gap-0.5 justify-center">
+                    {CRYSTALS.map((c) => {
+                      const baseCost = selectedCard.card.cost[c as keyof CrystalCounts] ?? 0;
+                      if (baseCost <= 0) return null;
+                      const effCosts = me ? computeCosts(selectedCard.card, costMode) as Record<string, number> : undefined;
+                      const effCost = effCosts ? (effCosts[c] ?? 0) : baseCost;
+                      const isReduced = effCosts !== undefined && effCost < baseCost;
+                      const isFree = isReduced && effCost === 0;
+                      return (
+                        <div key={c} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}>
+                          {isReduced && !isFree && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
+                          <span className={`text-[10px] font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>{isFree ? '✓' : effCost}</span>
+                          <MiniGem color={c} size={10} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="text-[7px] text-white/20">tap to flip</span>
+                </div>
+                {/* Right: lore info */}
                 <div className="flex-1 flex flex-col gap-2 justify-center">
                   {selectedCard.card.flavor && (
                     <p className="text-xs text-muted-foreground italic leading-relaxed">"{selectedCard.card.flavor}"</p>

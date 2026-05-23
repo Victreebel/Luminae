@@ -26,9 +26,9 @@ const GEM_CARD_GRADIENTS: Record<string, string> = {
 };
 
 const TIER_LABELS: Record<number, string> = {
-  1: 'Tier I — Planetary',
-  2: 'Tier II — Stellar',
-  3: 'Tier III — Galactic',
+  1: 'Tier 1, Planetary',
+  2: 'Tier 2, Stellar',
+  3: 'Tier 3, Galactic',
 };
 
 interface CardEntry {
