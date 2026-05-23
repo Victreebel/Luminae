@@ -60,6 +60,14 @@
 :root {
   /* Enforce dark mode by default for Luminae */
   --button-outline: rgba(255,255,255, .10);
+
+  /* ── Artifact card dimensions — fluid across all iPhone widths ──
+     At 430 px (14 Pro Max): 26 vw ≈ 112 px  → clamped to max
+     At 390 px (14 / 15):    26 vw ≈ 101 px
+     At 375 px (SE / 15 std):26 vw ≈  97 px  → clamped to min 96 px
+     Height preserves 7:10 aspect ratio.                            */
+  --card-w: clamp(96px, 26vw, 112px);
+  --card-h: clamp(137px, 37.2vw, 160px);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);

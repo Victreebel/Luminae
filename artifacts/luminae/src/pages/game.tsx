@@ -255,7 +255,7 @@ function ArtifactCardView({
       animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
       onClick={onTap}
-      className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
+      className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
       style={{
         outlineWidth: '2px',
         outlineStyle: 'solid',
@@ -402,7 +402,7 @@ function TurnCountdown({ deadline, active }: { deadline: number | null; active: 
 }
 
 function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: number; tier?: 1 | 2 | 3 }) {
-  const sz = size === 'sm' ? 'w-9 h-12' : 'w-28 h-40';
+  const sz = size === 'sm' ? 'w-9 h-12' : 'w-[var(--card-w)] h-[var(--card-h)]';
   const t = tier ?? 1;
   return (
     <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
@@ -802,7 +802,7 @@ function LuminaryCard({
     <motion.div
       whileHover={isClaimed || (isReleased && !isClaimed) ? {} : { scale: 1.02 }}
       data-luminary-id={luminary.id}
-      className={`relative w-28 h-40 rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
+      className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
         isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30'
       }`}
       title={isClaimed
@@ -3163,7 +3163,7 @@ export default function GameBoard() {
                 const isHidden = hiddenSlots.has(slotKey);
 
                 if (isHidden || !c) {
-                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className="w-28 h-40 rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
+                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className="w-[var(--card-w)] h-[var(--card-h)] rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
                 }
 
                 const isFlipping = flippingCards.has(c.id);
@@ -4334,7 +4334,7 @@ export default function GameBoard() {
                 {/* Flippable thumbnail column */}
                 <div className="flex flex-col items-center gap-1 shrink-0">
                   <div
-                    style={{ perspective: '600px', width: 112, height: 160 }}
+                    style={{ perspective: '600px', width: 'var(--card-w)', height: 'var(--card-h)' }}
                     className="cursor-pointer"
                     onClick={() => setCardFlipped(f => !f)}
                     title={cardFlipped ? 'Tap to see art' : 'Tap to see card back'}
@@ -4776,7 +4776,7 @@ export default function GameBoard() {
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
                   {/* Larger preview — 3× the sm size, matching md width */}
-                  <div className="w-28 h-40 relative rounded-xl overflow-hidden border border-[#c4a85a]/40 shadow-lg bg-[#030509] shrink-0">
+                  <div className="w-[var(--card-w)] h-[var(--card-h)] relative rounded-xl overflow-hidden border border-[#c4a85a]/40 shadow-lg bg-[#030509] shrink-0">
                     {deckTier === 1 && <CardBackTier1 />}
                     {deckTier === 2 && <CardBackTier2 />}
                     {deckTier === 3 && <CardBackTier3 />}
