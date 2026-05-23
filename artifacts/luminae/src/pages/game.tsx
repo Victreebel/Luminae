@@ -3475,16 +3475,32 @@ export default function GameBoard() {
           <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
             {me?.reservedCards.map((c) => {
               const isQueued = plannedCardId === c.id;
+              const lore = loreCatalog?.[c.id];
+              const loreTag = lore?.artifactForm?.split('/')?.[0]?.trim() ?? lore?.civLane?.split('/')?.[0]?.trim();
               return (
-                <div key={c.id} className="relative shrink-0">
-                  <ArtifactCardView
-                    card={c}
-                    tier={c.tier}
-                    onTap={() => openCardSheet(c, true)}
-                    tapped={selectedCard?.card.id === c.id}
-                    effectiveCosts={computeCosts(c, costMode)}
-                  />
-                  {isQueued && <QueuedOverlay />}
+                <div key={c.id} className="relative shrink-0 flex flex-col items-center gap-1" style={{ maxWidth: 90 }}>
+                  <div className="relative">
+                    <ArtifactCardView
+                      card={c}
+                      tier={c.tier}
+                      onTap={() => openCardSheet(c, true)}
+                      tapped={selectedCard?.card.id === c.id}
+                      effectiveCosts={computeCosts(c, costMode)}
+                    />
+                    {isQueued && <QueuedOverlay />}
+                  </div>
+                  <div className="w-full px-0.5">
+                    {c.flavor && (
+                      <p className="text-[9px] text-muted-foreground italic leading-snug line-clamp-2 text-center">
+                        &ldquo;{c.flavor}&rdquo;
+                      </p>
+                    )}
+                    {loreTag && (
+                      <p className="text-[8px] font-semibold uppercase tracking-wider text-primary/50 text-center mt-0.5 truncate">
+                        {loreTag}
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -5651,6 +5667,17 @@ export default function GameBoard() {
                             {c.flavor && (
                               <p className="text-[11px] text-muted-foreground italic leading-relaxed line-clamp-2">"{c.flavor}"</p>
                             )}
+                            {loreCatalog && (() => {
+                              const lore = loreCatalog[c.id];
+                              if (!lore) return null;
+                              const loreTag = lore.artifactForm?.split('/')?.[0]?.trim() ?? lore.civLane?.split('/')?.[0]?.trim();
+                              if (!loreTag) return null;
+                              return (
+                                <span className="text-[9px] font-semibold uppercase tracking-widest text-primary/60 bg-primary/8 rounded px-1.5 py-0.5 self-start border border-primary/15">
+                                  {loreTag}
+                                </span>
+                              );
+                            })()}
                             <div className="flex items-center gap-1.5">
                               <MiniGem color={c.bonusColor as GemKey} size={13} />
                               <span className="text-xs text-muted-foreground">{GEM_META[c.bonusColor as GemKey]?.name ?? c.bonusColor} bonus</span>
