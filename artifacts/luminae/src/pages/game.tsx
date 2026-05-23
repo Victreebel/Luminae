@@ -218,13 +218,14 @@ function CrystalIcon({
 }
 
 function ArtifactCardView({
-  card, onTap, tapped, tier, effectiveCosts,
+  card, onTap, tapped, tier, effectiveCosts, artOnly,
 }: {
   card: ArtifactCard;
   onTap?: () => void;
   tapped?: boolean;
   tier?: number;
   effectiveCosts?: Partial<Record<GemKey, number>>;
+  artOnly?: boolean;
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
   const cardTier = tier ?? card.tier ?? 1;
@@ -267,9 +268,9 @@ function ArtifactCardView({
           style={{ background: `radial-gradient(ellipse at 50% 40%, ${bonusMeta?.glowHex ?? '#ffffff'}22 0%, transparent 70%)` }}
         />
       )}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
+      {!artOnly && <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />}
 
-      <div className="relative z-10 h-full p-2 flex flex-col justify-between">
+      {!artOnly && <div className="relative z-10 h-full p-2 flex flex-col justify-between">
         <div className="flex justify-between items-start">
           {card.lumens > 0
             ? <span className="bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold text-amber-100 drop-shadow-[0_1px_3px_rgba(0,0,0,1)]">{card.lumens}</span>
@@ -316,7 +317,7 @@ function ArtifactCardView({
             })}
           </div>
         </div>
-      </div>
+      </div>}
     </motion.div>
   );
 }
@@ -4326,10 +4327,9 @@ export default function GameBoard() {
                 <ArtifactCardView
                   card={selectedCard.card}
                   tier={selectedCard.card.tier}
-                  effectiveCosts={me ? computeCosts(selectedCard.card, costMode) : undefined}
+                  artOnly
                 />
                 <div className="flex-1 flex flex-col gap-2 justify-center">
-                  <div className="font-bold text-base leading-tight">{selectedCard.card.name}</div>
                   {selectedCard.card.flavor && (
                     <p className="text-xs text-muted-foreground italic leading-relaxed">"{selectedCard.card.flavor}"</p>
                   )}
@@ -4341,12 +4341,6 @@ export default function GameBoard() {
                     <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
                     <span className="text-xs font-semibold">{GEM_META[selectedCard.card.bonusColor as GemKey]?.name ?? selectedCard.card.bonusColor}</span>
                   </div>
-                  {(selectedCard.card.lumens ?? 0) > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-sm font-bold text-primary">{selectedCard.card.lumens} eminence</span>
-                    </div>
-                  )}
                 </div>
               </div>
 
