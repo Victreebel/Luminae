@@ -159,7 +159,7 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   });
 
   ws.on("close", () => {
-    handleClose(roomId, playerId, playerName).catch((err) => {
+    handleClose(ws, roomId, playerId, playerName).catch((err) => {
       logger.error({ err, roomId, playerId }, "Unhandled error in WebSocket close handler");
     });
   });
@@ -169,9 +169,13 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   });
 }
 
-async function handleClose(roomId: string, playerId: string, playerName: string): Promise<void> {
+async function handleClose(ws: WebSocket, roomId: string, playerId: string, playerName: string): Promise<void> {
   const room = connections.get(roomId);
   if (room) {
+    // Only clean up if this socket is still the registered connection for this player.
+    // A newer reconnect may have already replaced it — in that case, leave the new
+    // connection intact and skip the disconnect logic entirely.
+    if (room.get(playerId) !== ws) return;
     room.delete(playerId);
     if (room.size === 0) connections.delete(roomId);
   }
