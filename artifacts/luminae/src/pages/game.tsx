@@ -239,6 +239,9 @@ function ArtifactCardView({
 
   const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
   const rippleCounter = useRef(0);
+  // Touch-scroll vs tap: record where the finger went down so we can ignore
+  // touchend events that followed a scroll gesture in any direction.
+  const touchOrigin = useRef<{ x: number; y: number } | null>(null);
 
   const artLayerStyle: React.CSSProperties = {
     backgroundImage: specificArt
@@ -253,6 +256,10 @@ function ArtifactCardView({
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!onTap) return;
+    // On touch devices the synthesised mouse click fires after touchend; the
+    // touchend handler already called onTap (or suppressed it), so we only
+    // want the mouse path when there was no preceding touch.
+    if (touchOrigin.current !== null) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -261,18 +268,29 @@ function ArtifactCardView({
     onTap();
   }
 
+  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    const t = e.touches[0];
+    if (t) touchOrigin.current = { x: t.clientX, y: t.clientY };
+  }
+
   function handleTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    const origin = touchOrigin.current;
+    touchOrigin.current = null;           // reset for next interaction
     if (!onTap) return;
     const touch = e.changedTouches[0];
-    if (!touch) return;
+    if (!touch || !origin) return;
+    // Suppress if the finger travelled more than 8px in either axis — that's
+    // a scroll gesture, not a tap (covers both vertical and horizontal scrolls).
+    const dx = Math.abs(touch.clientX - origin.x);
+    const dy = Math.abs(touch.clientY - origin.y);
+    if (dx > 8 || dy > 8) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((touch.clientX - rect.left) / rect.width) * 100;
     const y = ((touch.clientY - rect.top) / rect.height) * 100;
     const id = ++rippleCounter.current;
     setRipples(prev => [...prev, { id, x, y }]);
     onTap();
-    // Prevent the browser from synthesising a click event after touchend,
-    // which would fire handleClick a second time with a potentially stale position.
+    // Prevent the browser synthesising a click event after touchend.
     e.preventDefault();
   }
 
@@ -283,6 +301,7 @@ function ArtifactCardView({
       animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
       onClick={handleClick}
+      onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
       style={{
