@@ -487,6 +487,26 @@ export function AffinityWellCells({
                       </div>
                     )}
 
+                    {/* ── Affinity name label ── */}
+                    <span
+                      style={{
+                        fontSize: 6.5,
+                        fontWeight: 700,
+                        letterSpacing: '0.07em',
+                        textTransform: 'uppercase',
+                        lineHeight: 1,
+                        color: `${meta.glowHex}70`,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        width: '100%',
+                        textAlign: 'center',
+                        marginTop: 1,
+                      }}
+                    >
+                      {meta.name}
+                    </span>
+
                     {/* ── Bonus chip (normal affinities, if any bonus) ── */}
                     {!isFlux && (bonus > 0 || lumBonus > 0) && (
                       <div
