@@ -837,7 +837,7 @@ function LuminaryClaimedPortal({
 function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
-  costMode, playerBonuses,
+  costMode, playerBonuses, onOpenSheet,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -850,6 +850,7 @@ function LuminaryCard({
   onToggle?: (affinity: string) => void;
   costMode?: 'printed' | 'after_bonuses' | 'needed_now';
   playerBonuses?: Partial<CrystalCounts>;
+  onOpenSheet?: () => void;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -871,12 +872,13 @@ function LuminaryCard({
       whileTap={!isHidden ? { scale: 0.97 } : {}}
       data-luminary-id={luminary.id}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
-        isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30'
+        isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30 cursor-pointer'
       }`}
       title={isClaimed
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
+      onClick={!isClaimed && !isHidden && onOpenSheet ? onOpenSheet : undefined}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal
@@ -1150,6 +1152,8 @@ export default function GameBoard() {
   const deckSheetContainerRef = useRef<HTMLElement | null>(null);
   const rulesSheetContainerRef = useRef<HTMLElement | null>(null);
   const forgedOverlayContainerRef = useRef<HTMLElement | null>(null);
+  const luminarySheetContainerRef = useRef<HTMLElement | null>(null);
+  const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1350,7 +1354,7 @@ export default function GameBoard() {
   // IMPORTANT — when adding a new overlay, add its boolean here.
   // useScrollLock below reads this same array, so you only need to update
   // this one list; no separately wired scroll-lock effect is required.
-  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay] as const;
+  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, !!selectedLuminary] as const;
   const isAnyOverlayOpen = overlayStates.some(Boolean);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
@@ -1391,6 +1395,13 @@ export default function GameBoard() {
     () => setShowRules(false),
   );
 
+  // Focus-trap: luminary detail sheet
+  useFocusTrap(
+    luminarySheetContainerRef,
+    !!selectedLuminary,
+    () => setSelectedLuminary(null),
+  );
+
   // Focus-trap: forged cards overlay
   useFocusTrap(
     forgedOverlayContainerRef,
@@ -1414,6 +1425,8 @@ export default function GameBoard() {
     useSwipeToDismiss(deckSheetContainerRef, () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); }, { isOpen: selectedDeckTier !== null, peekHeight: 0.4 });
   const { dragProps: rulesSheetDragProps, handleBarProps: rulesSheetHandleBarProps, scrollableAreaProps: rulesSheetScrollableProps, backdropOpacity: rulesSheetBackdropOpacity, sheetScale: rulesSheetScale } =
     useSwipeToDismiss(rulesSheetContainerRef, () => setShowRules(false), { isOpen: showRules });
+  const { dragProps: luminarySheetDragProps, handleBarProps: luminarySheetHandleBarProps, scrollableAreaProps: luminarySheetScrollableProps, backdropOpacity: luminarySheetBackdropOpacity, sheetScale: luminarySheetScale } =
+    useSwipeToDismiss(luminarySheetContainerRef, () => setSelectedLuminary(null), { isOpen: !!selectedLuminary });
   const { dragProps: reservedSheetDragProps, handleBarProps: reservedSheetHandleBarProps, scrollableAreaProps: reservedSheetScrollableProps, backdropOpacity: reservedSheetBackdropOpacity, sheetScale: reservedSheetScale, peekProgress: reservedSheetPeekProgress } =
     useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false), { isOpen: showReservedOverlay, peekHeight: 0.4 });
   const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, makeScrollableAreaProps: forgedSheetMakeScrollableAreaProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale, peekProgress: forgedSheetPeekProgress } =
@@ -3194,6 +3207,7 @@ export default function GameBoard() {
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
                 onToggle={(affinity) => handleToggleLuminaryAffinity(l.id, affinity)}
+                onOpenSheet={visibleClaimedByNames.length === 0 ? () => setSelectedLuminary(l) : undefined}
               />
             );
           })}
@@ -5010,6 +5024,119 @@ export default function GameBoard() {
                 </Button>
               </div>
               </div>{/* end scrollable body */}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Luminary Detail Sheet ── */}
+      {/* Shown when the player taps an unclaimed Luminary portal card.        */}
+      <AnimatePresence>
+        {selectedLuminary && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-end"
+            onClick={() => setSelectedLuminary(null)}
+          >
+            <motion.div style={{ opacity: luminarySheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <motion.div
+              ref={(el) => { luminarySheetContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Luminary details"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{ scale: luminarySheetScale }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl px-5 pt-0 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
+              {...luminarySheetDragProps}
+            >
+              {/* Drag handle */}
+              <div {...luminarySheetHandleBarProps} className="flex flex-col items-center pt-3 pb-1 gap-1">
+                <div className="w-10 h-1 rounded-full bg-border" />
+              </div>
+              {/* Header row: name + lumen reward + close */}
+              <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
+                <Sparkles className="h-4 w-4 shrink-0 text-amber-400" />
+                <span className="font-semibold text-sm leading-tight flex-1 truncate">{selectedLuminary.name}</span>
+                <span className="flex items-center gap-0.5 text-xs font-bold text-amber-300 shrink-0">
+                  +{selectedLuminary.lumens} Eminence
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  aria-label="Close luminary details"
+                  onClick={() => setSelectedLuminary(null)}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {/* Scrollable body */}
+              <div {...luminarySheetScrollableProps} className="overflow-y-auto max-h-[70vh]">
+                <div className="flex items-center justify-end pb-3">
+                  <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4 mb-5">
+                  {/* Panel art column */}
+                  <div className="flex flex-col items-center gap-2 sm:shrink-0">
+                    <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="rounded-xl overflow-hidden shadow-xl">
+                      <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
+                    </div>
+                    <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
+                  </div>
+                  {/* Right column: flavor + requirements */}
+                  <div className="flex-1 flex flex-col gap-3">
+                    {/* Flavor text */}
+                    {selectedLuminary.flavor && (
+                      <p className="text-[11px] text-muted-foreground italic leading-relaxed">"{selectedLuminary.flavor}"</p>
+                    )}
+                    {/* Artifact requirements */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Artifacts Required</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {CRYSTALS.map((c) => {
+                          const req = selectedLuminary.requirements[c as keyof CrystalCounts];
+                          if (!req || req <= 0) return null;
+                          const meta = GEM_META[c];
+                          const bonus = me?.bonuses?.[c as keyof CrystalCounts] ?? 0;
+                          const have = Math.min(req, bonus);
+                          const short = Math.max(0, req - bonus);
+                          const isMet = short === 0;
+                          return (
+                            <div
+                              key={c}
+                              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${isMet ? 'bg-green-900/40 text-green-300' : 'bg-black/40 text-white/80'}`}
+                              style={{ border: `1px solid ${isMet ? 'rgba(74,222,128,0.35)' : `${meta.glowHex}55`}`, boxShadow: isMet ? 'none' : `0 0 8px ${meta.glowHex}33` }}
+                            >
+                              <MiniGem color={c} size={13} />
+                              <span style={{ color: isMet ? undefined : meta.glowHex, textShadow: isMet ? undefined : `0 0 6px ${meta.glowHex}88` }}>{req}</span>
+                              <span className="text-[9px] font-medium text-white/50">{meta.name}</span>
+                              {isMet && <span className="text-green-400 text-[9px] ml-0.5">✓</span>}
+                              {!isMet && bonus > 0 && <span className="text-white/35 text-[8px]">({have}/{req})</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {/* Eminence reward */}
+                    <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-amber-950/30 border border-amber-500/20">
+                      <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400/60">Eminence Reward</span>
+                        <span className="text-sm font-bold text-amber-200">+{selectedLuminary.lumens} Eminence</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setSelectedLuminary(null)}>
+                  Close
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
