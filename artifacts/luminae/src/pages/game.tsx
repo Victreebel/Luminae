@@ -2319,6 +2319,43 @@ export default function GameBoard() {
 
   const submitAction = useSubmitAction();
 
+  // ── Polling-based animation fallback ─────────────────────────────────────
+  // TanStack Query polls the server on a refetch interval. If a WS state_update
+  // is missed (transient disconnect), the poll delivers the new state but
+  // animations are silently skipped — only onStateUpdate (WS) fires them.
+  //
+  // This effect watches `state` (the TQ-cached value) and feeds any version
+  // that prevStateRef hasn't processed into the same queue path. Covers:
+  //   • Local player's own actions when the REST fallback misses edge cases
+  //   • Opponent actions during WS disconnects (no REST path available there)
+  //
+  // Safety: processUpdateRef's version guard (newState.version <= prev.version
+  // → return) prevents double-animation when WS already processed the state.
+  // The summon dedup guard (handledSummonEventIdsRef) adds a second layer for
+  // cutscenes. The effect is intentionally not dep-array-exhaustive — it only
+  // needs to react to `state` changing (the polling result).
+  useEffect(() => {
+    if (!state || !prevStateRef.current) return;
+    const polledVersion = (state as any).version as number | undefined;
+    const prevVersion = prevStateRef.current.version;
+    if (typeof polledVersion !== 'number' || polledVersion <= prevVersion) return;
+    // WS missed this version — feed it through the animation queue.
+    const remaining = animationEndTimeRef.current - Date.now();
+    const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
+    if (remaining > 50 || queueBusy) {
+      stateQueueRef.current.push(state as unknown as GameState);
+      if (!queueTimerRef.current) {
+        queueTimerRef.current = setTimeout(
+          () => drainQueueFnRef.current(),
+          Math.max(remaining + 100, 100),
+        );
+      }
+    } else {
+      processUpdateRef.current(state as unknown as GameState);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
   // ── Summon cutscene duration used for the animation barrier ───────────────
   const SUMMON_CUTSCENE_DURATION_MS = 12_000;
 
