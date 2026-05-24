@@ -4766,7 +4766,6 @@ export default function GameBoard() {
                       { label: 'Form',     value: lore.artifactForm },
                       { label: 'Role',     value: lore.blueprintRole },
                       { label: 'Culture',  value: lore.civLane },
-                      { label: 'Scale',    value: lore.engineeringScale },
                     ];
                     const visible = fields.filter(f => f.value);
                     if (visible.length === 0) return null;
