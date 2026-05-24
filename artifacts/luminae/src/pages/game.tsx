@@ -4334,11 +4334,12 @@ export default function GameBoard() {
               }}
             >
                 <div className="px-2 pb-2 pt-1 border-t border-white/10">
-                  {!isMyTurn && canPlan && (
-                    <p className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug">
-                      Planning — plans may be cancelled if the bank changes before your turn.
-                    </p>
-                  )}
+                  <p
+                    className="text-[9px] italic text-amber-400/60 mb-1.5 leading-snug transition-opacity duration-200 pointer-events-none"
+                    style={{ opacity: !isMyTurn && canPlan ? 1 : 0 }}
+                  >
+                    Planning — plans may be cancelled if the bank changes before your turn.
+                  </p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1.5 flex-1 items-center flex-wrap">
                       {Object.entries(selectedCrystals).map(([c, n]) => (
