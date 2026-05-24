@@ -64,7 +64,7 @@ export const CARD_LORE: Record<string, CardLore> = {
 
   t1r07: { name: "Entropy Pyre Baffle",
     flavor: "Waste heat has a destination before it has a catastrophe. Industrial installations ring themselves with baffles that teach decay where to go, routing entropy into useful work before it teaches the city how to die. The civilization that accounts for its waste is the one permitted to build larger.",
-    artifactForm: "Containment / Thermal Control", blueprintRole: "waste heat and decay routing",
+    artifactForm: "Containment / Thermal Control", blueprintRole: "waste, heat, and decay routing",
     blueprintFamilies: "Mantle-to-Orbit Foundry; Worldshield Covenant", civLane: "entropy-tolerant industrial culture",
     engineeringScale: "Planetary",
     artPrompt: "Installation-scale eye-level view, abstract energy distortion background — industrial heat shimmer. A massive facade of heat-sink baffle panels covering the side of a facility: dark containment fins span the full height of the building, surfaces blackened with soot and oxidation; deep orange-red glows pour from the channel voids where waste heat streams through. The baffle wall fills the entire frame. Palette: dark steel, soot grey, deep orange heat glow. No planets, no text." },
