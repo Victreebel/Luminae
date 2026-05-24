@@ -37,7 +37,7 @@ function CompassRing({ glowHex, size = 40 }: { glowHex: string; size?: number })
   const tick = 3.5;
   const diag = 2.5;
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" style={{ opacity: 0.11 }}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" style={{ opacity: 0.07 }}>
       <circle cx={cx} cy={cx} r={r} stroke={glowHex} strokeWidth="0.5" />
       <line x1={cx} y1={2} x2={cx} y2={2 + tick} stroke={glowHex} strokeWidth="0.7" />
       <line x1={cx} y1={size - 2} x2={cx} y2={size - 2 - tick} stroke={glowHex} strokeWidth="0.7" />
@@ -124,7 +124,7 @@ function ReservoirGauge({
   }, [filledCount, capacity]);
 
   return (
-    <div className="relative flex flex-col items-center gap-[2px]" style={{ opacity: 0.55 }}>
+    <div className="relative flex flex-col items-center gap-[2px]" style={{ opacity: 0.38 }}>
       {Array.from({ length: capacity }, (_, i) => {
         const isFilled = pipFilled[i] ?? false;
         return (
@@ -133,15 +133,15 @@ function ReservoirGauge({
             className="rounded-full shrink-0"
             animate={
               isFilled
-                ? { scale: 1, opacity: 0.9, backgroundColor: hex }
-                : { scale: 1, opacity: 0.4, backgroundColor: 'transparent' }
+                ? { scale: 1, opacity: 0.75, backgroundColor: hex }
+                : { scale: 1, opacity: 0.3, backgroundColor: 'transparent' }
             }
             transition={{ duration: 0.18, ease: 'easeOut' }}
             style={{
               width: 3,
               height: 3,
-              border: isFilled ? `1px solid ${glowHex}50` : `1px solid ${glowHex}25`,
-              boxShadow: isFilled ? `0 0 3px ${glowHex}60` : 'none',
+              border: isFilled ? `1px solid ${glowHex}35` : `1px solid ${glowHex}18`,
+              boxShadow: isFilled ? `0 0 2px ${glowHex}40` : 'none',
             }}
           />
         );
@@ -249,9 +249,15 @@ export function AffinityWellCells({
         const selectable = isMyTurn || (!isActivePlayer && canPlan);
         const bankEmpty = bankCount === 0;
         const canTake2 = selectable && !isFlux && bankCount >= 4 && pending !== 2;
+        // hasContent drives display logic (forged link, count text color, etc.)
         const hasContent = isFlux
           ? gems > 0 || reservedCount > 0
           : gems > 0 || bonus > 0 || lumBonus > 0;
+        // hasGlowContent drives cell border/glow ONLY — bonus does NOT affect glow
+        // so ownership never competes visually with selection/queued state
+        const hasGlowContent = isFlux
+          ? gems > 0 || reservedCount > 0
+          : gems > 0;
         const showForgedLink = !isFlux && bonus > 0;
         const showReservedLink = isFlux && reservedCount > 0;
 
@@ -264,15 +270,15 @@ export function AffinityWellCells({
                 border: `2px solid ${meta.glowHex}dd`,
                 boxShadow: `0 0 18px ${meta.glowHex}99, inset 0 0 14px ${meta.hex}44`,
               }
-            : hasContent
+            : hasGlowContent
             ? {
-                background: `linear-gradient(180deg, ${meta.hex}22 0%, ${meta.hex}10 100%)`,
-                border: `1px solid ${meta.hex}88`,
-                boxShadow: `inset 0 0 10px ${meta.hex}18`,
+                background: `linear-gradient(180deg, ${meta.hex}18 0%, ${meta.hex}0c 100%)`,
+                border: `1px solid ${meta.hex}50`,
+                boxShadow: `inset 0 0 8px ${meta.hex}10`,
               }
             : {
-                background: `linear-gradient(180deg, ${meta.hex}0a 0%, transparent 100%)`,
-                border: `1px solid ${meta.hex}20`,
+                background: `linear-gradient(180deg, ${meta.hex}08 0%, transparent 100%)`,
+                border: `1px solid ${meta.hex}18`,
               };
 
         return (
@@ -332,8 +338,8 @@ export function AffinityWellCells({
               <div
                 className="absolute bottom-0 inset-x-0 pointer-events-none"
                 style={{
-                  height: 22,
-                  background: `radial-gradient(ellipse 70% 100% at 50% 100%, ${meta.hex}18, transparent)`,
+                  height: 16,
+                  background: `radial-gradient(ellipse 70% 100% at 50% 100%, ${meta.hex}0e, transparent)`,
                 }}
               />
 
@@ -357,7 +363,7 @@ export function AffinityWellCells({
                     className="w-3/4 mt-[3px] mb-[3px]"
                     style={{
                       height: 1,
-                      background: `linear-gradient(90deg, transparent, ${meta.glowHex}30, transparent)`,
+                      background: `linear-gradient(90deg, transparent, ${meta.glowHex}18, transparent)`,
                     }}
                   />
 
@@ -455,7 +461,7 @@ export function AffinityWellCells({
                       className="w-3/4 mt-[3px] mb-[2px]"
                       style={{
                         height: 1,
-                        background: `linear-gradient(90deg, transparent, ${meta.glowHex}28, transparent)`,
+                        background: `linear-gradient(90deg, transparent, ${meta.glowHex}18, transparent)`,
                       }}
                     />
 
