@@ -381,7 +381,7 @@ function ArtifactCardView({
   );
 }
 
-function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: ArtifactCard; tier?: number; onOpenSheet?: () => void }) {
+function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: ArtifactCard; tier?: number; onOpenSheet: () => void }) {
   const [show, setShow] = useState(false);
   const bonuses = card.bonusesAtForge;
   const nonZero = bonuses
@@ -393,7 +393,7 @@ function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: ArtifactCard
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
-      <ArtifactCardView card={card} tier={tier} onTap={() => { if (onOpenSheet) { onOpenSheet(); } else { setShow(v => !v); } }} />
+      <ArtifactCardView card={card} tier={tier} onTap={onOpenSheet} />
       <AnimatePresence>
         {show && (
           <motion.div
@@ -4635,6 +4635,30 @@ export default function GameBoard() {
                       })}
                     </div>
                   </div>
+                  {/* Forged with — cost paid snapshot, shown only for already-forged (readOnly) cards */}
+                  {selectedCard.readOnly && (() => {
+                    const snap = selectedCard.card.bonusesAtForge;
+                    const snapKeys = snap
+                      ? CRYSTALS.filter(k => k !== 'flux' && (snap[k as keyof CrystalCounts] ?? 0) > 0)
+                      : [];
+                    return (
+                      <div className="flex flex-col gap-1 border-t border-border/30 pt-2">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Forged with</span>
+                        {snapKeys.length > 0 ? (
+                          <div className="flex flex-wrap gap-0.5">
+                            {snapKeys.map(k => (
+                              <div key={k} className="flex items-center gap-0.5 bg-black/55 rounded px-1 py-0.5">
+                                <MiniGem color={k as GemKey} size={10} />
+                                <span className="text-[10px] font-bold text-white">×{snap![k as keyof CrystalCounts]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic">No snapshot available</span>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/* Flavor text — from lore catalog, fallback to card field */}
                   {(() => {
                     const flavorText = loreCatalog?.[selectedCard.card.id]?.flavor ?? (selectedCard.card as { flavor?: string }).flavor;
