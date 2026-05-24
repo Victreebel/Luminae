@@ -1362,8 +1362,12 @@ export default function GameBoard() {
     let startY    = 0;
     let lastY     = 0;
     let forwarding = false;
+    let touchOnCarousel = false;
 
     const onTouchStart = (e: TouchEvent) => {
+      // If the touch began inside the horizontal affinity-well carousel, don't
+      // set up vertical forwarding — the carousel owns that gesture context.
+      touchOnCarousel = !!(e.target as Element | null)?.closest('[data-well-carousel]');
       startY     = e.touches[0].clientY;
       lastY      = startY;
       forwarding = false;
@@ -1373,6 +1377,8 @@ export default function GameBoard() {
       // Do not forward touch events while any overlay is open — doing so
       // corrupts the main scroll position and leaves it stuck after dismiss.
       if (overlayOpenRef.current) return;
+      // Do not forward gestures that originated in the horizontal carousel.
+      if (touchOnCarousel) return;
 
       const currentY   = e.touches[0].clientY;
       const totalDelta = startY - currentY; // +ve = swipe up

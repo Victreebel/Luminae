@@ -224,9 +224,15 @@ export function AffinityWellCells({
           style={{
             overflowX: 'auto',
             overflowY: 'hidden',
-            scrollbarWidth: 'none',       // Firefox
-            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',         // Firefox
+            // pan-x: browser owns horizontal; vertical falls through to panel
+            // overscrollBehaviorX: contain prevents context leaking to parent
+            touchAction: 'pan-x',
+            overscrollBehaviorX: 'contain',
           }}
+          // data-well-carousel lets the panel's scroll-forwarding code skip
+          // vertical forwarding when a touch starts inside the carousel
+          data-well-carousel=""
           className="[&::-webkit-scrollbar]:hidden"
           onTouchStart={(e) => {
             isDragging.current = false;
