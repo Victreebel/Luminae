@@ -5351,7 +5351,7 @@ export default function GameBoard() {
                       <Button
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                           ${pendingDeckConfirm
-                            ? 'scale-[1.02]'
+                            ? ''
                             : 'hover:brightness-110'
                           }`}
                         style={pendingDeckConfirm
@@ -5399,7 +5399,7 @@ export default function GameBoard() {
                       <Button
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                           ${pendingDeckConfirm
-                            ? 'scale-[1.02]'
+                            ? ''
                             : 'hover:brightness-110'
                           }`}
                         style={pendingDeckConfirm
