@@ -139,125 +139,6 @@ function HorizontalWellMeter({
   );
 }
 
-// ─── BonusCard ─────────────────────────────────────────────────────────────────
-// Card-shaped panel showing per-affinity forged + Luminary bonuses.
-// Sits to the right of the scrollable rail, outside the overflow container,
-// and animates independently via its own internal state.
-
-interface BonusEntry {
-  key: GemKey;
-  bonus: number;
-  lumBonus: number;
-}
-
-function BonusCard({ entries }: { entries: BonusEntry[] }) {
-  const [pulseKey, setPulseKey] = useState(0);
-  const prevRef = useRef<BonusEntry[]>([]);
-
-  useEffect(() => {
-    const prev = prevRef.current;
-    const changed =
-      entries.length !== prev.length ||
-      entries.some((e) => {
-        const p = prev.find((x) => x.key === e.key);
-        return !p || p.bonus !== e.bonus || p.lumBonus !== e.lumBonus;
-      });
-    if (changed) {
-      prevRef.current = entries;
-      setPulseKey((n) => n + 1);
-    }
-  }, [entries]);
-
-  return (
-    <AnimatePresence>
-      {entries.length > 0 && (
-        <motion.div
-          key="bonus-card"
-          initial={{ opacity: 0, scale: 0.85, x: 4 }}
-          animate={{ opacity: 1, scale: 1, x: 0 }}
-          exit={{ opacity: 0, scale: 0.85, x: 4 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
-          style={{
-            width: 36,
-            minHeight: 54,
-            flexShrink: 0,
-            alignSelf: 'center',
-            marginLeft: 4,
-            borderRadius: 7,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            padding: '5px 2px',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Pulse glow flash on value change */}
-          <AnimatePresence>
-            {pulseKey > 0 && (
-              <motion.div
-                key={pulseKey}
-                style={{
-                  position: 'absolute', inset: 0, borderRadius: 7,
-                  background: 'rgba(255,255,255,0.12)',
-                  pointerEvents: 'none',
-                }}
-                initial={{ opacity: 0.7 }}
-                animate={{ opacity: 0 }}
-                exit={{}}
-                transition={{ duration: 0.55, ease: 'easeOut' }}
-              />
-            )}
-          </AnimatePresence>
-
-          {entries.map(({ key, bonus, lumBonus }) => {
-            const meta = GEM_META[key];
-            return (
-              <div
-                key={key}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                {bonus > 0 && (
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      color: 'hsl(var(--primary))',
-                    }}
-                  >
-                    +{bonus}
-                  </span>
-                )}
-                {lumBonus > 0 && (
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      color: meta.glowHex,
-                    }}
-                  >
-                    +{lumBonus}✦
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
 
 // ─── AffinityWellCells ─────────────────────────────────────────────────────────
 // Single-row horizontal carousel of 6 affinity modules.
@@ -292,23 +173,6 @@ export function AffinityWellCells({
   const isDragging    = useRef(false);
   const dragStartX    = useRef(0);
 
-  // Compute per-affinity bonus entries for BonusCard (excludes flux)
-  const luminaryAffinities = (state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [];
-  const turnCount = (state as any)?.turnCount ?? 0;
-  const bonusEntries: BonusEntry[] = CRYSTALS
-    .filter((c) => c !== 'flux')
-    .map((c) => ({
-      key: c,
-      bonus: me.bonuses[c as keyof CrystalCounts] ?? 0,
-      lumBonus: luminaryAffinities.filter(
-        (la: LuminaryActiveState) =>
-          la.ownerId === sessionPlayerId &&
-          turnCount > la.summonedAtTurnCount &&
-          la.activeAffinity === c,
-      ).length,
-    }))
-    .filter(({ bonus, lumBonus }) => bonus > 0 || lumBonus > 0);
-
   return (
     <div className="relative">
 
@@ -338,7 +202,7 @@ export function AffinityWellCells({
         )}
       </AnimatePresence>
 
-      {/* Carousel container — flex row: scrollable rail + BonusCard */}
+      {/* Carousel container — flex row: scrollable rail */}
       <div style={{ display: 'flex', alignItems: 'stretch' }}>
 
         {/* Inner wrapper keeps the right-edge fade clipped to the rail */}
@@ -610,6 +474,21 @@ export function AffinityWellCells({
                       </span>
                     )}
 
+                    {/* ── Inline bonus chip (non-flux only) ── */}
+                    {!isFlux && (bonus + lumBonus > 0) && (
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          marginTop: 1,
+                          color: 'hsl(var(--primary))',
+                        }}
+                      >
+                        +{bonus + lumBonus}
+                      </span>
+                    )}
+
                     {/* ── Well section: Singularity shows encrypted-pile meter ── */}
                     {isFlux && (
                       <div
@@ -700,7 +579,6 @@ export function AffinityWellCells({
         </motion.div>
         </div>{/* end inner wrapper */}
 
-        <BonusCard entries={bonusEntries} />
 
       </div>{/* end carousel flex row */}
     </div>
