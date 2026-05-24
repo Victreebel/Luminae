@@ -4262,14 +4262,45 @@ export default function GameBoard() {
                 const isRed = projected >= 10;
                 const isAmber = !isRed && projected >= 8;
                 const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.4)';
+                const artifactCount = me.purchasedCards?.length ?? 0;
                 return (
-                  <div
-                    className="flex items-center gap-1 rounded-full px-1.5 py-0.5"
-                    title={`${projected} / 10 tokens held`}
-                    style={{ background: `${numColor}14`, border: `1px solid ${numColor}30` }}
-                  >
-                    <Hand className="h-3.5 w-3.5" style={{ color: numColor }} />
-                    <span className="text-xs font-mono font-bold tabular-nums" style={{ color: numColor }}>{projected}<span style={{ opacity: 0.45 }}>/10</span></span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Token counter pill */}
+                    <div
+                      className="flex items-center gap-1 rounded-full px-1.5 py-0.5"
+                      title={`${projected} / 10 tokens held`}
+                      style={{ background: `${numColor}14`, border: `1px solid ${numColor}30` }}
+                    >
+                      <Hand className="h-3.5 w-3.5" style={{ color: numColor }} />
+                      <span className="text-xs font-mono font-bold tabular-nums" style={{ color: numColor }}>{projected}<span style={{ opacity: 0.45 }}>/10</span></span>
+                    </div>
+                    {/* Artifact count — card-shaped badge */}
+                    <div
+                      className="flex flex-col items-center justify-center gap-px"
+                      title={`${artifactCount} artifact${artifactCount !== 1 ? 's' : ''} forged`}
+                      style={{
+                        width: 26, height: 34,
+                        borderRadius: 4,
+                        background: artifactCount > 0
+                          ? 'linear-gradient(160deg, rgba(168,85,247,0.18) 0%, rgba(168,85,247,0.07) 100%)'
+                          : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${artifactCount > 0 ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.12)'}`,
+                        boxShadow: artifactCount > 0 ? '0 0 8px rgba(168,85,247,0.2)' : 'none',
+                      }}
+                    >
+                      <span
+                        className="text-xs font-mono font-black leading-none tabular-nums"
+                        style={{ color: artifactCount > 0 ? 'rgba(216,180,254,0.95)' : 'rgba(255,255,255,0.25)' }}
+                      >
+                        {artifactCount}
+                      </span>
+                      <span
+                        className="font-bold uppercase leading-none"
+                        style={{ fontSize: 5.5, letterSpacing: '0.06em', color: artifactCount > 0 ? 'rgba(168,85,247,0.6)' : 'rgba(255,255,255,0.15)' }}
+                      >
+                        arts
+                      </span>
+                    </div>
                   </div>
                 );
               })()}
