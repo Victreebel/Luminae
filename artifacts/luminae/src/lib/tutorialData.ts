@@ -1,4 +1,4 @@
-import { GEM_KEYS, GEM_META, type GemKey } from "@/lib/gemMeta";
+import { GEM_KEYS, type GemKey } from "@/lib/gemMeta";
 
 type TutorialBeatMode =
   | "listen"

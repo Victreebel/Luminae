@@ -62,8 +62,6 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
     ] as [number, number, string];
   });
 
-  const ORB_R = PR + 4.5;
-
   return (
     <svg
       viewBox="0 0 70 100"
@@ -292,7 +290,6 @@ export function CardBackTier1({ count: _count }: { count?: number }) {
       {([F, R, V, C, A] as string[]).map((col, i) => {
         // Same angle as cityNodes[i] (pentagon, first vertex pointing up)
         const deg = (-0.5 + (2 * i) / 5) * 180;
-        const [mx, my] = pt(PX, PY, PR + 5.5, deg);
         return (
           <g key={i}>
             {/* Dark backing bar */}
@@ -411,10 +408,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
     return cells.sort((a, b) => a.z - b.z);       // back → front
   };
 
-  // Dark absorber-surface base — rich dark, clearly different from card void-black
-  const PANEL_BASE: Record<string, string> = {
-    [F]: '#300c0c', [C]: '#09142e', [V]: '#07160d', [A]: '#18082e', [R]: '#160f00',
-  };
   // Mid-body colour — readable affinity tint so each sector is identifiable
   const PANEL_MID: Record<string, string> = {
     [F]: '#501414', [C]: '#102350', [V]: '#0f3018', [A]: '#2c0f48', [R]: '#4a3800',
@@ -426,32 +419,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
   const BEVEL_LIGHT: Record<string, string> = {
     [F]: '#ff8888', [C]: '#88bbff', [V]: '#66ee98', [A]: '#cc8aff', [R]: '#ffffff',
   };
-  // Per-edge lighting: dot(outward_normal, upper-left light direction)
-  // Vertices are at angle k*PI/3 (flat-top hex); outward normal of edge k→k+1
-  // points at angle k*PI/3 + PI/6. Light comes FROM upper-left (-0.707, -0.707).
-  const edgeLightFactor = (k: number): number => {
-    const mid = (Math.PI / 3) * k + Math.PI / 6;
-    return Math.max(0, Math.cos(mid) * (-0.707) + Math.sin(mid) * (-0.707));
-  };
-
-  // Reassigns solid flags so every affinity colour gets exactly the same count.
-  // Groups cells by colour, finds the minimum group's fair share (minCount/solidMod),
-  // then picks that many evenly-spaced cells from each colour group.
-  const equalizeShellSolids = (cells: HexCell[], solidMod: number): HexCell[] => {
-    const byCol: Record<string, number[]> = {};
-    cells.forEach((c, i) => { (byCol[c.col] ??= []).push(i); });
-    const minCount = Math.min(...Object.values(byCol).map(g => g.length));
-    const target   = Math.max(1, Math.floor(minCount / solidMod));
-    const result   = cells.map(c => ({ ...c, solid: false }));
-    Object.values(byCol).forEach(idxs => {
-      for (let t = 0; t < target; t++) {
-        const pick = Math.round(t * (idxs.length - 1) / Math.max(target - 1, 1));
-        result[idxs[pick]].solid = true;
-      }
-    });
-    return result;
-  };
-
   const shell3 = genShell(30, 3.6, 18, 2);   // single outer shell
 
   const allCells = shell3
@@ -572,9 +539,6 @@ export function CardBackTier2({ count: _count }: { count?: number }) {
         const darkCol  = BEVEL_DARK[col]  ?? '#0a0a0a';
         const lightCol = BEVEL_LIGHT[col] ?? '#e0e0e0';
         const surfCol  = PANEL_MID[col]   ?? '#303040';
-        const dx = CX - cx, dy = CY - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
         if (!solid) return (
           <g key={i}>
             <polygon points={ptStr} fill="none" stroke={col}
@@ -699,9 +663,6 @@ export function CardBackTier3({ count: _count }: { count?: number }) {
     { cx: 22, cy: 70, col: F }, // Flare     — lower-left
     { cx: 14, cy: 45, col: A }, // Abyss     — upper-left
   ];
-
-  // Cycle edge connections (adjacent system index pairs)
-  const pentEdges: [number, number][] = [[0,1],[1,2],[2,3],[3,4],[4,0]];
 
   // Background starfield
   const stars: [number, number, number][] = [

@@ -1082,15 +1082,6 @@ const PHASES: CutscenePhase[] = [
   'shattering', 'flashing', 'revealed', 'fading', 'done',
 ];
 
-interface SummonQueueItem {
-  id: string;
-  name: string;
-  domain: string;
-  lumens: number;
-  flavor: string;
-  /** Viewport coords of the Luminary card's centre + width at trigger time */
-  cardRect?: { cx: number; cy: number; w: number };
-}
 
 export function LuminarySummonCutscene({
   luminaryId,
@@ -1126,7 +1117,7 @@ export function LuminarySummonCutscene({
     : visPrimaryColor;
   // RGB components of primaryColor for rgba() drop-shadows on shatter chunks
   const pRgb = `${parseInt(primaryColor.slice(1,3),16)},${parseInt(primaryColor.slice(3,5),16)},${parseInt(primaryColor.slice(5,7),16)}`;
-  const { panelArt, entityCutout, auraLayer } = getLuminaryImageAssets(luminaryId);
+  const { panelArt, entityCutout } = getLuminaryImageAssets(luminaryId);
 
   // Keep refs so the phase-advance closure always sees the latest callbacks
   // without the effect needing to re-run (which would reset the timer chain).

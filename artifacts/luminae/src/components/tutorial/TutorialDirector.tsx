@@ -3,7 +3,7 @@ import { DevTutorialNav } from "./DevTutorialNav";
 import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
 import { CipherApertureAnimation } from "@/components/CipherApertureAnimation";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
-import { Sparkles, ChevronUp, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
+import { Sparkles, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
 import { useLocation } from "wouter";
 import { GEM_META, GEM_KEYS, type GemKey } from "@/lib/gemMeta";
@@ -50,7 +50,6 @@ for (const [path, url] of Object.entries(CARD_ART_MODULES)) {
 
 // ─── Gem images ───────────────────────────────────────────────────────────────
 const ALL_GEMS: GemKey[] = GEM_KEYS;
-const GEM_KEYS_NO_FLUX: GemKey[] = GEM_KEYS.filter(k => k !== "flux");
 
 // ─── LumiiOrb zone palette (mirrors LumiiTutorial.tsx ZONE_PALETTE) ───────────
 // Each row is 6 node colours subtly shifted toward the zone's affinity theme.
@@ -400,7 +399,6 @@ function TutorialCard({
   const eff = effectiveCost(card, bonuses);
   const artUrl = CARD_ART[card.id];
   const bonusMeta = GEM_META[card.bonusColor];
-  const affordable = canAfford(card, crystals, bonuses);
 
   const bgStyle: React.CSSProperties = artUrl
     ? { backgroundImage: `url(${artUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -869,81 +867,6 @@ function PlayerHand({
   );
 }
 
-// ─── Player Stats ─────────────────────────────────────────────────────────────
-function PlayerStats({ s, highlighted }: { s: TutState; highlighted: boolean }) {
-  return (
-    <div className={`border rounded-2xl p-3 backdrop-blur-md transition-all ${highlighted ? "border-amber-400/50 shadow-amber-400/20 shadow-lg" : "border-white/10"}`}
-      style={{ background: "rgba(3,3,12,0.82)" }}>
-      {/* Eminence row */}
-      <div className="flex items-center gap-3 mb-2.5">
-        <div>
-          <div className="text-[9px] text-white/40 uppercase tracking-wider">Eminence</div>
-          <motion.div
-            key={s.eminence}
-            initial={{ scale: 1.3, color: "#fbbf24" }}
-            animate={{ scale: 1, color: "#ffffff" }}
-            className="text-2xl font-serif font-bold text-white leading-none"
-          >{s.eminence}</motion.div>
-          <div className="text-[9px] text-white/30">of 15</div>
-        </div>
-        <div className="flex-1 bg-white/5 rounded-full h-1.5">
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400"
-            animate={{ width: `${Math.min(100, (s.eminence / 15) * 100)}%` }}
-            transition={{ type: "spring", stiffness: 100 }}
-          />
-        </div>
-      </div>
-      {/* 6-column affinity boxes — matches the game's player panel */}
-      <div className="flex gap-1">
-        {ALL_GEMS.map(gem => {
-          const meta = GEM_META[gem];
-          const held = s.crystals[gem] ?? 0;
-          const bonus = gem !== "flux" ? (s.bonuses[gem] ?? 0) : 0;
-          const reserved = gem === "flux" ? s.reserved.length : 0;
-          const hasContent = gem === "flux" ? (held > 0 || reserved > 0) : (held > 0 || bonus > 0);
-          return (
-            <div
-              key={gem}
-              className="flex-1 min-h-[64px] flex flex-col items-center gap-0.5 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
-              style={{
-                background: hasContent
-                  ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
-                  : "linear-gradient(180deg, #07070b 0%, #0e0e14 100%)",
-                border: `1px solid ${hasContent ? meta.hex + "AA" : meta.hex + "22"}`,
-                boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : "none",
-              }}
-            >
-              {hasContent && (
-                <div className="absolute inset-x-0 top-0 h-[1px]"
-                  style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
-              )}
-              <div className="flex items-center gap-0.5 justify-center">
-                <span className="text-[7px] font-semibold tracking-wide leading-none truncate"
-                  style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                <MiniGem gem={gem} size={7} />
-              </div>
-              <span
-                className="text-xl font-black leading-none tracking-tight"
-                style={{
-                  color: hasContent ? "#fff" : meta.hex + "40",
-                  textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : "none",
-                }}
-              >{held}</span>
-              {gem !== "flux" && bonus > 0 && (
-                <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
-              )}
-              {gem === "flux" && reserved > 0 && (
-                <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reserved}r</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Market view tabs ─────────────────────────────────────────────────────────
 function MarketTabs({
   view, dispatch, beatId, subStep, highlightDiscounted, highlightNeeded,
@@ -986,8 +909,6 @@ function MarketTabs({
 // ─── Deck Pile Visual ─────────────────────────────────────────────────────────
 function DeckPile({ tier, count }: { tier: number; count: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
-  const BADGE_COLORS: Record<number, string> = { 1: "#3a6a5a", 2: "#2a4a6a", 3: "#5a3a6a" };
-  const badgeColor = BADGE_COLORS[tier] ?? "#555";
   return (
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
       <div className="relative shrink-0" style={{ width: 120, height: 168 }}>
@@ -1145,8 +1066,6 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
   tier1Ref?: React.RefObject<HTMLDivElement | null>;
   tier2Ref?: React.RefObject<HTMLDivElement | null>;
 }) {
-  const inFF = beatId === "b15_fast_forward" || s.ffDone;
-
   // Determine which cards appear per tier per beat phase
   const t1Cards: string[] = [];
   const t2Cards: string[] = [];
@@ -1228,7 +1147,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
         return next;
       });
       setDrawingSlots(prev => new Set([...prev, ...newlyForged]));
-      const t2 = setTimeout(() => {
+      setTimeout(() => {
         setDrawingSlots(prev => {
           const next = new Set(prev);
           newlyForged.forEach(id => next.delete(id));
@@ -1515,20 +1434,6 @@ const FS_CRACKS_2: CrackDef[] = [
 
 // Cool blue-white — the colour of light leaking from behind the dark glass panel.
 const FSO_LIGHT = '#a8ccf8';
-
-// Pre-existing crystal facet boundary seams — the natural cleavage planes of the
-// crystal, rendered as faint ice-blue lines from the very first frame.
-// These are the same geometric edges the crack network follows, but appear as
-// the crystal's internal structure rather than damage.
-const FS_CRYSTAL_SEAM_PATHS = [
-  'M35.7,0 L28.6,15 L50,42.5',
-  'M50,42.5 L60.7,35 L100,35',
-  'M50,42.5 L39.3,40 L19.6,37.5 L0,40',
-  'M50,42.5 L41.1,57.5 L25,72.5',
-  'M25,72.5 L46.4,70 L71.4,70 L100,72.5',
-  'M25,72.5 L16.1,76.25 L0,80',
-  'M25,72.5 L33.9,85 L39.3,100',
-] as const;
 
 // 4-layer crack painter: white snap → chasing glow → residual wound → tinted seam.
 // All glow layers use FSO_LIGHT so the crack reads as back-lit (light from behind),
@@ -2251,7 +2156,7 @@ function ArchitectAssembly({
 function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.Dispatch<TAction>; onSkip?: () => void }) {
   const beat = TUTORIAL_BEATS[s.beat];
   const [showLumii, setShowLumii] = useState(false);
-  const [panDone, setPanDone] = useState(false);
+  const [, setPanDone] = useState(false);
   const [affIdx, setAffIdx] = useState(-1);
   const [shatterReady, setShatterReady] = useState(false);
   const [cosmosVisible, setCosmosVisible] = useState(false);
@@ -2324,7 +2229,6 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
     onSkip?.();
   };
 
-  const isContact = beat.id === "b0_contact";
   const isLocate = beat.id === "b1_locate";
   const isShatter = beat.id === "b4_shatter";
   const isAffinityTokens = beat.id === "b5b_affinity_tokens";
@@ -2375,9 +2279,6 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       setAffIdx(i => i + 1);
     }
   };
-
-  const dlgText = beat.dialogue[s.dlgLine]?.text ?? "";
-  const isLastDlg = s.dlgLine >= beat.dialogue.length - 1;
 
   return (
     <div
@@ -3273,7 +3174,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     : lumiiPosRaw;
 
   // Lumii stays at her beat position regardless of burst animations.
-  const lumiiIsBurstActive = false;
   const lumiiEffectivePos = lumiiPos;
 
   const isActMode = beat.mode === "act" || beat.mode === "semiOpen";

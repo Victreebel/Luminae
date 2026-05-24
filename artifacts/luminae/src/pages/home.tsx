@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { saveSession, getSession, clearSession } from "@/lib/session";
 import { getAccountToken, type ActiveGame } from "@/lib/accountSession";
 import { getGameState } from "@workspace/api-client-react";
-import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer, AVATARS } from "@/lib/avatars";
+import { getSavedAvatarId, saveAvatarId, getAvatarForPlayer } from "@/lib/avatars";
 import { AvatarPicker } from "@/components/AvatarPicker";
 import { LoginRegisterForm } from "@/components/LoginRegisterForm";
 import { useAccount } from "@/contexts/AccountContext";

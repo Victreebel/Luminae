@@ -36,7 +36,7 @@ import { getAvatarForPlayer } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, LUMINARY_VISUALS, getLuminaryVisuals } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -796,8 +796,6 @@ function LuminaryCard({
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
   const portalIsNew = !initialClaimedRef.current;
-  const vis = LUMINARY_VISUALS[luminary.id];
-  const accentColor = vis?.primaryColor ?? GEM_META.flux.hex;
   return (
     <motion.div
       whileHover={isClaimed || (isReleased && !isClaimed) ? {} : { scale: 1.02 }}
@@ -2910,8 +2908,6 @@ export default function GameBoard() {
   };
 
   const myReservedCount = me?.reservedCards.length ?? 0;
-  const myTotalGems = Object.values(me?.crystals ?? {}).reduce((a, b) => a + b, 0);
-  const myCardCount = (me as any)?.purchasedCards?.length ?? (me as any)?.purchasedCardIds?.length ?? 0;
 
   // ---- TABS ----
 
@@ -3607,7 +3603,6 @@ export default function GameBoard() {
           {state.players.map((p, i) => {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
-            const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
             const reservedCount = p.reservedCards.length;
             return (
               <div
