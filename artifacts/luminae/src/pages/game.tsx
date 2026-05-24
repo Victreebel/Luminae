@@ -4851,7 +4851,7 @@ export default function GameBoard() {
 
               {/* Action buttons */}
               <div
-                className="flex flex-col gap-2.5 rounded-xl transition-all duration-300"
+                className="flex flex-col gap-2.5 rounded-xl transition-all duration-300 overflow-visible"
                 style={{
                   border: (['forge','reserve','plan_forge','plan_reserve'].includes(sentFlashBtn ?? ''))
                     ? '1.5px solid #6ee7b7'
@@ -4859,6 +4859,7 @@ export default function GameBoard() {
                   boxShadow: (['forge','reserve','plan_forge','plan_reserve'].includes(sentFlashBtn ?? ''))
                     ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
                     : 'none',
+                  overflow: 'visible',
                 }}
               >
 
@@ -4880,7 +4881,7 @@ export default function GameBoard() {
                             exit={{ opacity: 0, y: -6, scale: 0.95 }}
                             transition={{ duration: 0.3 }}
                             onClick={dismissForgeHint}
-                            className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                            className="absolute bottom-full mb-1.5 left-0 max-w-[calc(100vw-3rem)] whitespace-normal flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                             title="Dismiss hint"
                           >
                             <Gavel className="h-2.5 w-2.5 text-white/60 shrink-0" />
@@ -4892,7 +4893,7 @@ export default function GameBoard() {
                       <Button
                         className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
                           ${pendingSheetAction === 'forge'
-                            ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
+                            ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background`
                             : 'btn-forge-idle text-[#F5E8C8] hover:brightness-[1.15]'
                           }`}
                         style={pendingSheetAction === 'forge'
@@ -4941,7 +4942,7 @@ export default function GameBoard() {
                               exit={{ opacity: 0, y: -6, scale: 0.95 }}
                               transition={{ duration: 0.3 }}
                               onClick={dismissReserveHint}
-                              className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                              className="absolute bottom-full mb-1.5 left-0 max-w-[calc(100vw-3rem)] whitespace-normal flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                               title="Dismiss hint"
                             >
                               <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
@@ -4953,7 +4954,7 @@ export default function GameBoard() {
                         <Button
                           className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                             ${pendingSheetAction === 'reserve'
-                              ? 'scale-[1.02]'
+                              ? ''
                               : 'hover:brightness-110'
                             }`}
                           style={pendingSheetAction === 'reserve'
@@ -5003,7 +5004,7 @@ export default function GameBoard() {
                       <Button
                         className={`w-full h-12 text-base font-bold transition-all duration-150
                           ${pendingSheetAction === 'plan_forge'
-                            ? `border-0 ${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background scale-[1.02]`
+                            ? `border-0 ${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background`
                             : 'bg-amber-950/50 hover:bg-amber-900/60 text-amber-200 border border-amber-500/50'
                           }`}
                         style={pendingSheetAction === 'plan_forge'
@@ -5050,7 +5051,7 @@ export default function GameBoard() {
                         <Button
                           className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
                             ${pendingSheetAction === 'plan_reserve'
-                              ? 'scale-[1.02]'
+                              ? ''
                               : 'hover:brightness-110'
                             }`}
                           style={pendingSheetAction === 'plan_reserve'
@@ -5338,7 +5339,7 @@ export default function GameBoard() {
                             exit={{ opacity: 0, y: -6, scale: 0.95 }}
                             transition={{ duration: 0.3 }}
                             onClick={dismissDeckReserveHint}
-                            className="absolute bottom-full mb-1.5 left-0 whitespace-nowrap flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
+                            className="absolute bottom-full mb-1.5 left-0 max-w-[calc(100vw-3rem)] whitespace-normal flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                             title="Dismiss hint"
                           >
                             <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
