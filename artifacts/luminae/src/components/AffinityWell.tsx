@@ -95,7 +95,7 @@ function HorizontalWellMeter({
   }, [filledCount]);
 
   return (
-    <div style={{ display: 'flex', gap: 2, alignItems: 'center', position: 'relative' }}>
+    <div style={{ display: 'flex', gap: 3, alignItems: 'center', position: 'relative' }}>
       {Array.from({ length: capacity }, (_, i) => {
         const filled = pipFilled[i] ?? false;
         return (
@@ -103,14 +103,18 @@ function HorizontalWellMeter({
             key={i}
             animate={
               filled
-                ? { backgroundColor: hex, opacity: 0.90 }
-                : { backgroundColor: 'transparent', opacity: 0.38 }
+                ? { backgroundColor: hex, opacity: 0.90, scale: 1 }
+                : { backgroundColor: 'transparent', opacity: 0.70, scale: 1 }
             }
             transition={{ duration: 0.14, ease: 'easeOut' }}
             style={{
-              width: 4, height: 4, borderRadius: 2, flexShrink: 0,
-              border: filled ? `1px solid ${glowHex}60` : `1px solid ${glowHex}22`,
-              boxShadow: filled ? `0 0 4px ${glowHex}55` : 'none',
+              width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+              border: filled
+                ? `1px solid ${glowHex}88`
+                : `1.5px solid ${glowHex}65`,
+              boxShadow: filled
+                ? `0 0 5px ${glowHex}66`
+                : `inset 0 0 2px ${glowHex}18`,
             }}
           />
         );
