@@ -142,10 +142,6 @@ function pushLog(state: GameStateData, entry: ActionLogEntry): void {
 
 // ─── Card Catalog ────────────────────────────────────────────────────────────
 
-function zeroCost(): CrystalCounts {
-  return { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 };
-}
-
 function cost(
   r: number,
   s: number,
@@ -1423,7 +1419,7 @@ export function applyAction(
 
 // ─── Human-readable action summary ────────────────────────────────────────────
 
-function describeAction(action: ActionPayload, player: PlayerGameState): string {
+function describeAction(action: ActionPayload, _player: PlayerGameState): string {
   switch (action.type) {
     case "take_three_crystals": {
       const sel = action.crystals ?? {};

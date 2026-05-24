@@ -82,7 +82,7 @@ const ORB_EMBERS: OrbEmberDef[] = [
   { angle: 340, r0f: 0.29, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[4], delay: 0.8, dur: 1.7 },
 ];
 
-function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
   const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
@@ -869,7 +869,7 @@ function PlayerHand({
 
 // ─── Market view tabs ─────────────────────────────────────────────────────────
 function MarketTabs({
-  view, dispatch, beatId, subStep, highlightDiscounted, highlightNeeded,
+  view, dispatch, beatId, subStep: _subStep, highlightDiscounted, highlightNeeded,
 }: {
   view: TutorialMarketView;
   dispatch: React.Dispatch<TAction>;
@@ -907,7 +907,7 @@ function MarketTabs({
 }
 
 // ─── Deck Pile Visual ─────────────────────────────────────────────────────────
-function DeckPile({ tier, count }: { tier: number; count: number }) {
+function DeckPile({ tier, count: _count }: { tier: number; count: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
   return (
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>

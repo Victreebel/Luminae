@@ -427,7 +427,7 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 // remaining 3 cycle through the other requirement colours.
 function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, isLive, canToggle, onToggle, isNew = false,
+  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
@@ -2229,7 +2229,7 @@ export default function GameBoard() {
       setVotePending(false);
       toast({ title: 'Rematch cancelled', description: 'Not enough players confirmed. The game has ended.' });
     },
-    onRematchDeclined: (sessionStats) => {
+    onRematchDeclined: (_sessionStats) => {
       // This player was not included — send them home after a brief message
       toast({ title: 'Not included', description: 'The other players started a new game without you.' });
       setTimeout(() => setLocation('/'), 3000);

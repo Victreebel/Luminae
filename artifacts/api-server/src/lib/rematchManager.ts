@@ -13,7 +13,6 @@ import {
   initializeGame,
   formatGameState,
   parseAiDifficulty,
-  type AiDifficulty,
 } from "./gameEngine";
 import {
   broadcastToRoom,

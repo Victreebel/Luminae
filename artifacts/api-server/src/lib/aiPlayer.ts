@@ -16,7 +16,6 @@ import {
   type PlayerGameState,
   type ArtifactCard,
   type LuminaryAffinity,
-  type LuminaryDef,
 } from "./gameEngine";
 
 export type { AiDifficulty };

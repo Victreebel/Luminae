@@ -6,9 +6,8 @@ import {
   normalizeState,
   parseAiDifficulty,
   CRYSTAL_COLORS,
-  type GameStateData,
 } from "./gameEngine";
-import { chooseAiAction, type AiDifficulty } from "./aiPlayer";
+import { chooseAiAction } from "./aiPlayer";
 import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
 import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";

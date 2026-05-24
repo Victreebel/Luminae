@@ -8,17 +8,15 @@ import {
   formatGameState,
   normalizeState,
   parseAiDifficulty,
-  type AiDifficulty,
-  type GameStateData,
   type ActionPayload,
   type CrystalColor,
   type CrystalCounts,
 } from "../lib/gameEngine";
-import { broadcastToRoom, getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
+import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "../lib/websocket";
 import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
-import { recordGameResult, getSessionStats } from "../lib/rematchManager";
+import { recordGameResult } from "../lib/rematchManager";
 
 const router: IRouter = Router();
 

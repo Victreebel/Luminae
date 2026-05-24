@@ -7,7 +7,6 @@ import {
   applyAction,
   formatGameState,
   parseAiDifficulty,
-  type AiDifficulty,
   type GameStateData,
 } from "./gameEngine";
 import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
