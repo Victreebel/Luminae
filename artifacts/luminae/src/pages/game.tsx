@@ -3578,7 +3578,7 @@ export default function GameBoard() {
                     : [];
                   const bonusMeta = GEM_META[c.bonusColor as GemKey];
                   return (
-                    <div key={c.id} className="flex items-center gap-2.5 py-2">
+                    <div key={c.id} className="flex items-center gap-2.5 py-2 cursor-pointer rounded hover:bg-white/5 px-1 -mx-1 transition-colors" onClick={() => openForgedCardSheet(c)}>
                       <span className="text-[10px] text-muted-foreground w-4 text-right shrink-0 tabular-nums">{idx + 1}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] font-semibold text-foreground leading-tight truncate">{c.name}</p>
