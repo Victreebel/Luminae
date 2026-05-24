@@ -422,9 +422,9 @@ export function AffinityWellCells({
                       /* Singularity: owned flux count */
                       <span
                         style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          fontSize: 22, fontWeight: 900, lineHeight: 1,
                           color: gems > 0 ? '#fff' : `${meta.hex}28`,
-                          textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
+                          textShadow: gems > 0 ? `0 0 10px ${meta.glowHex}` : 'none',
                         }}
                       >
                         {gems}
@@ -433,9 +433,9 @@ export function AffinityWellCells({
                       /* Forge-cost preview: projected post-spend count, amber pulse */
                       <motion.span
                         style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          fontSize: 22, fontWeight: 900, lineHeight: 1,
                           color: '#f59e0b',
-                          textShadow: '0 0 10px #f59e0bcc',
+                          textShadow: '0 0 12px #f59e0bcc',
                         }}
                         animate={{ opacity: [1, 0.55, 1] }}
                         transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -446,9 +446,9 @@ export function AffinityWellCells({
                       /* Selected: tentative post-harness count with glow pulse */
                       <motion.span
                         style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          fontSize: 22, fontWeight: 900, lineHeight: 1,
                           color: meta.glowHex,
-                          textShadow: `0 0 10px ${meta.glowHex}cc, 0 0 22px ${meta.glowHex}44`,
+                          textShadow: `0 0 12px ${meta.glowHex}cc, 0 0 26px ${meta.glowHex}44`,
                         }}
                         animate={{ opacity: [1, 0.68, 1] }}
                         transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
@@ -459,9 +459,9 @@ export function AffinityWellCells({
                       /* Normal owned count */
                       <span
                         style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          fontSize: 22, fontWeight: 900, lineHeight: 1,
                           color: hasContent ? '#fff' : `${meta.hex}28`,
-                          textShadow: hasContent ? `0 0 7px ${meta.glowHex}` : 'none',
+                          textShadow: hasContent ? `0 0 9px ${meta.glowHex}` : 'none',
                         }}
                       >
                         {gems}
