@@ -49,8 +49,8 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
-  game:     { lift: 120, circuit: 450, compress: 220, sigil: 110, travel: 300, arrive: 160 },
-  tutorial: { lift: 200, circuit: 600, compress: 280, sigil: 150, travel: 420, arrive: 260 },
+  game:     { lift: 200, circuit: 760, compress: 380, sigil: 185, travel: 510, arrive: 265 },
+  tutorial: { lift: 300, circuit: 960, compress: 500, sigil: 250, travel: 680, arrive: 410 },
 };
 
 export function CipherApertureAnimation({
@@ -63,7 +63,7 @@ export function CipherApertureAnimation({
 
   const cx  = window.innerWidth  / 2;
   const cy  = window.innerHeight / 2;
-  const dest = destPos ?? { x: window.innerWidth * 0.13, y: window.innerHeight * 0.72 };
+  const dest = destPos ?? { x: window.innerWidth / 2, y: window.innerHeight * 0.90 };
 
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);

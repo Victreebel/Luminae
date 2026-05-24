@@ -1949,7 +1949,8 @@ export default function GameBoard() {
             } else {
               // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
               cipherBurstKeyRef.current += 1;
-              const panelRect = playerPanelRef.current?.getBoundingClientRect();
+              const handTabEl = document.querySelector('[data-nav-hand]');
+              const handTabRect = handTabEl?.getBoundingClientRect();
               setCipherBurst({
                 key: cipherBurstKeyRef.current,
                 sourceRect: rect
@@ -1962,8 +1963,8 @@ export default function GameBoard() {
                 gotFlux,
                 card: exitCard,
                 tier,
-                destPos: panelRect
-                  ? { x: panelRect.left + 60, y: panelRect.top + 48 }
+                destPos: handTabRect
+                  ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
                   : undefined,
               });
               if (gotFlux) gameAudio.playFluxCoin();
@@ -4547,6 +4548,7 @@ export default function GameBoard() {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
+            {...(tab === 'hand' ? { 'data-nav-hand': '' } : {})}
             className={`flex flex-col items-center justify-center gap-1 relative transition-colors ${activeTab === tab ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <div className="relative">
