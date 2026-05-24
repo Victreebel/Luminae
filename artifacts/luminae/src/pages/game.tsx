@@ -2270,10 +2270,11 @@ export default function GameBoard() {
         const nextPlayer = newState.players[newState.currentPlayerIndex];
         if (nextPlayer && !isTutorial) {
           const isMe = nextPlayer.playerId === session?.playerId;
+          if (!isMe) return;
           const key = `ws-${newState.currentPlayerIndex}-${newState.version}`;
           const firstLumId = nextPlayer.claimedLuminaryIds?.[0];
           const lum = firstLumId ? newState.luminaries.find(l => l.id === firstLumId) : undefined;
-          const accentColor = lum?.summonColor ?? (isMe ? '#6366f1' : 'rgba(255,255,255,0.7)');
+          const accentColor = lum?.summonColor ?? '#6366f1';
           fireTurnAnnouncement(key, nextPlayer.playerName, nextPlayer.avatarId ?? null, isMe, accentColor, nextPlayer.lumens, newState.turnTimerSeconds ?? null);
         }
       }
