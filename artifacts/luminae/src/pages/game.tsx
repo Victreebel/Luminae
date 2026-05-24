@@ -4655,9 +4655,9 @@ export default function GameBoard() {
                 <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
               </div>
               {/* Card preview + info */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-5">
+              <div className="flex gap-4 mb-5">
                 {/* Flippable thumbnail column */}
-                <div className="flex flex-col items-center gap-1 sm:shrink-0">
+                <div className="flex flex-col items-center gap-1 shrink-0">
                   <div
                     style={{ perspective: '600px', width: 'var(--card-w)', height: 'var(--card-h)' }}
                     className="cursor-pointer"
