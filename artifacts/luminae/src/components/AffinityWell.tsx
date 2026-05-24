@@ -167,6 +167,11 @@ export function AffinityWellCells({
   const anyPending     = CRYSTALS.some((c) => (selectedCrystals[c as keyof CrystalCounts] ?? 0) > 0);
   const showPlanningCue = isPlanningMode && anyPending;
 
+  // Scroll-vs-tap disambiguation: if a touch moves >6px horizontally we
+  // treat it as a scroll gesture and suppress the subsequent click on any cell.
+  const isDragging    = useRef(false);
+  const dragStartX    = useRef(0);
+
   return (
     <div className="relative">
 
@@ -222,8 +227,16 @@ export function AffinityWellCells({
             scrollbarWidth: 'none',       // Firefox
             WebkitOverflowScrolling: 'touch',
           }}
-          // hides scrollbar in WebKit/Blink via Tailwind arbitrary variant
           className="[&::-webkit-scrollbar]:hidden"
+          onTouchStart={(e) => {
+            isDragging.current = false;
+            dragStartX.current = e.touches[0].clientX;
+          }}
+          onTouchMove={(e) => {
+            if (Math.abs(e.touches[0].clientX - dragStartX.current) > 6) {
+              isDragging.current = true;
+            }
+          }}
         >
           <div
             style={{
@@ -311,6 +324,7 @@ export function AffinityWellCells({
                         : {}
                     }
                     onClick={() => {
+                      if (isDragging.current) return;
                       if (isFlux) {
                         onOpenReserved();
                       } else if (showForgedLink && !selectable) {
@@ -503,7 +517,7 @@ export function AffinityWellCells({
                     animate={{ opacity: canTake2 ? 1 : 0 }}
                     transition={{ duration: 0.15 }}
                     onClick={(e) => {
-                      if (!canTake2) return;
+                      if (!canTake2 || isDragging.current) return;
                       e.stopPropagation();
                       onPromoteToTake2(c);
                     }}
