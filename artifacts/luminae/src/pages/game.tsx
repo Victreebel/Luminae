@@ -27,9 +27,9 @@ import { AffinityEmblem } from '@/components/AffinityEmblem';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
-  Volume2, VolumeX, AlertCircle, Sparkles, Clock, ScrollText,
-  Bookmark, Gavel, Eye, EyeOff, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal
+  Volume2, VolumeX, AlertCircle, Sparkles, Clock,
+  Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, List,
+  ChevronDown, ChevronUp, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
