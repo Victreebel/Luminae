@@ -3397,14 +3397,6 @@ export default function GameBoard() {
                     {row.deck}
                   </div>
                 )}
-                {(isMyTurn || canPlan) && row.deck > 0 && me && (
-                  <div
-                    className="absolute inset-x-0 bottom-0 text-[#D0CCFF] text-[9px] font-bold uppercase text-center py-1 rounded-b-xl"
-                    style={{ background: 'linear-gradient(to top, rgba(10,8,22,0.72) 0%, rgba(14,10,28,0.38) 100%)', boxShadow: '0 -1px 0 0 rgba(190,180,255,0.15)' }}
-                  >
-                    {isMyTurn ? 'Encrypt' : 'Plan'}
-                  </div>
-                )}
               </button>
               {row.cards.map((c, i) => {
                 const slotKey = `${row.tier}-${i}`;
