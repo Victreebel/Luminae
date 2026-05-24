@@ -2814,8 +2814,11 @@ export default function GameBoard() {
         if (payload.cardRef) {
           const cardEl = document.querySelector(`[data-reserved-card-id="${payload.cardId}"]`);
           const cardRect = cardEl?.getBoundingClientRect();
-          const handTabEl = document.querySelector('[data-nav-hand]');
-          const handTabRect = handTabEl?.getBoundingClientRect();
+          const isLocalPurchase = (payload.playerId as string | undefined) !== undefined
+            ? (payload.playerId as string) === session?.playerId
+            : true; // executeAction always fires for the local session player
+          const destTabEl = document.querySelector(isLocalPurchase ? '[data-nav-hand]' : '[data-nav-log]');
+          const handTabRect = destTabEl?.getBoundingClientRect();
           cipherBurstKeyRef.current += 1;
           setCipherBurst({
             key: cipherBurstKeyRef.current,
