@@ -4743,8 +4743,10 @@ export default function GameBoard() {
                     const lore = loreCatalog[selectedCard.card.id];
                     if (!lore) return null;
                     const fields: { label: string; value: string | undefined }[] = [
+                      { label: 'Form',     value: lore.artifactForm },
                       { label: 'Role',     value: lore.blueprintRole },
                       { label: 'Culture',  value: lore.civLane },
+                      { label: 'Scale',    value: lore.engineeringScale },
                     ];
                     const visible = fields.filter(f => f.value);
                     if (visible.length === 0) return null;
