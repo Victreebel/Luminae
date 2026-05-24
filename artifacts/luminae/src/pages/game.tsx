@@ -352,6 +352,11 @@ function ForgedCardWithTooltip({ card, tier }: { card: ArtifactCard; tier?: numb
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none"
           >
             <div className="bg-black/92 rounded-lg px-2.5 py-2 text-[10px] min-w-max max-w-[160px] border border-white/10 shadow-2xl">
+              <p className="text-white font-semibold leading-tight mb-0.5">{card.name}</p>
+              {card.flavor && (
+                <p className="text-muted-foreground italic text-[9px] leading-tight mb-1.5">{card.flavor}</p>
+              )}
+              <div className="border-t border-white/10 my-1.5" />
               <p className="text-muted-foreground font-semibold mb-1.5 uppercase tracking-wider text-[9px]">Forged with</p>
               {nonZero.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
