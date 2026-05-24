@@ -887,7 +887,7 @@ function LuminaryCard({
   const glowHex = GEM_META[glowKey].glowHex;
 
   const isHidden = isReleased && !isClaimed;
-  const hoverAnim = isHidden
+  const hoverAnim = (isHidden || !onOpenSheet)
     ? {}
     : { scale: 1.02, boxShadow: `0 0 18px 4px ${glowHex}55, 0 0 6px 1px ${glowHex}33` };
 
@@ -913,7 +913,7 @@ function LuminaryCard({
       } : undefined}
       transition={canAffordLuminary ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
-        isClaimed ? 'ring-1 ring-white/10' : canAffordLuminary ? 'ring-0 cursor-pointer' : 'ring-1 ring-black/30 cursor-pointer'
+        isClaimed ? 'ring-1 ring-white/10' : canAffordLuminary ? 'ring-0' : 'ring-1 ring-black/30'
       }`}
       title={isClaimed
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
@@ -3132,16 +3132,6 @@ export default function GameBoard() {
   const safePlayers = state.players ?? [];
   const safeLuminaries = state.luminaries ?? [];
 
-  const handleToggleLuminaryAffinity = async (luminaryId: string, affinity: string) => {
-    try {
-      await submitAction.mutateAsync({
-        roomId: roomId!,
-        data: { sessionToken: session.sessionToken, type: 'toggle_luminary_affinity', luminaryId, affinity: affinity as any },
-      });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Toggle failed', description: err.message });
-    }
-  };
 
   const dismissUndoHint = () => {
     setShowUndoHint(false);
@@ -3269,7 +3259,6 @@ export default function GameBoard() {
             const isOwnedByMe = claimedByPlayer?.playerId === session?.playerId;
             // isLive: bonus active starting the turn AFTER summoning
             const isLive = !!serverLumAffinity && turnCount > serverLumAffinity.summonedAtTurnCount;
-            const canToggle = isOwnedByMe && isLive && (serverLumAffinity?.eligibleAffinities?.length ?? 0) >= 2;
 
             // Suppress the claimed vortex/portal while a summon cutscene is active
             // for this luminary. The server marks it claimed immediately (for rules /
@@ -3296,12 +3285,10 @@ export default function GameBoard() {
                 claimedByPlayer={visibleClaimedByPlayer}
                 isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
                 isLive={isSummonInProgress ? false : isLive}
-                canToggle={isSummonInProgress ? false : canToggle}
+                canToggle={false}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
                 isMyTurn={isMyTurn}
-                onToggle={(affinity) => handleToggleLuminaryAffinity(l.id, affinity)}
-                onOpenSheet={visibleClaimedByNames.length === 0 ? () => setSelectedLuminary(l) : undefined}
               />
             );
           })}
