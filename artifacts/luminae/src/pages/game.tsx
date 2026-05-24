@@ -4350,7 +4350,7 @@ export default function GameBoard() {
                           <span className="text-xs font-bold text-white">×{n}</span>
                         </div>
                       ))}
-                      <span className={`text-[10px] font-medium ${queueLegality.ok ? (!isMyTurn && canPlan ? 'text-amber-400' : 'text-green-400') : 'text-amber-400'}`}>
+                      <span className={`text-[10px] font-medium ${queueLegality.ok ? (!isMyTurn && canPlan ? 'text-amber-400' : 'text-green-400') : queueLegality.reason ? 'text-amber-400' : 'text-white/40'}`}>
                         {(!isMyTurn && canPlan && queueLegality.reason
                           ? `Plan: ${queueLegality.reason}`
                           : queueLegality.reason) || 'Pick affinities'}
