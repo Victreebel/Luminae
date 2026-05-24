@@ -237,6 +237,9 @@ function ArtifactCardView({
   const cardTier = tier ?? card.tier ?? 1;
   const specificArt = CARD_ART[card.id];
 
+  const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
+  const rippleCounter = useRef(0);
+
   const artLayerStyle: React.CSSProperties = {
     backgroundImage: specificArt
       ? `url(${specificArt})`
@@ -248,13 +251,23 @@ function ArtifactCardView({
     backgroundRepeat: 'no-repeat',
   };
 
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!onTap) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const id = ++rippleCounter.current;
+    setRipples(prev => [...prev, { id, x, y }]);
+    onTap();
+  }
+
   return (
     <motion.div
       whileHover={onTap && !tapped ? { y: -2, scale: 1.02, transition: { duration: 0.12, ease: 'easeOut' } } : {}}
       whileTap={onTap ? { scale: 0.96 } : {}}
       animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      onClick={onTap}
+      onClick={handleClick}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
       style={{
         outlineWidth: '2px',
@@ -324,6 +337,30 @@ function ArtifactCardView({
           </div>
         </div>
       </div>}
+
+      <AnimatePresence>
+        {ripples.map(r => (
+          <motion.span
+            key={r.id}
+            initial={{ scale: 0, opacity: 0.55 }}
+            animate={{ scale: 4.5, opacity: 0 }}
+            exit={{}}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            onAnimationComplete={() => setRipples(prev => prev.filter(p => p.id !== r.id))}
+            className="absolute pointer-events-none rounded-full"
+            style={{
+              left: `${r.x}%`,
+              top: `${r.y}%`,
+              width: 40,
+              height: 40,
+              marginLeft: -20,
+              marginTop: -20,
+              background: `radial-gradient(circle, ${bonusMeta?.glowHex ?? '#ffffff'}bb 0%, ${bonusMeta?.glowHex ?? '#ffffff'}00 70%)`,
+              zIndex: 20,
+            }}
+          />
+        ))}
+      </AnimatePresence>
     </motion.div>
   );
 }
