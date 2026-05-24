@@ -12,6 +12,9 @@ import type { LumiiAttentionState } from '@/components/LumiiTutorial';
 
 const CRYSTALS: GemKey[] = GEM_KEYS;
 
+// Cell width used for all six modules
+const CELL_W = 64;
+
 export interface AffinityWellCellsProps {
   me: GamePlayerState;
   state: GameState;
@@ -31,27 +34,11 @@ export interface AffinityWellCellsProps {
   onOpenForged: (color: GemKey) => void;
 }
 
-function CompassRing({ glowHex, size = 40 }: { glowHex: string; size?: number }) {
-  const cx = size / 2;
-  const r = size / 2 - 2;
-  const tick = 3.5;
-  const diag = 2.5;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} fill="none" style={{ opacity: 0.11 }}>
-      <circle cx={cx} cy={cx} r={r} stroke={glowHex} strokeWidth="0.5" />
-      <line x1={cx} y1={2} x2={cx} y2={2 + tick} stroke={glowHex} strokeWidth="0.7" />
-      <line x1={cx} y1={size - 2} x2={cx} y2={size - 2 - tick} stroke={glowHex} strokeWidth="0.7" />
-      <line x1={2} y1={cx} x2={2 + tick} y2={cx} stroke={glowHex} strokeWidth="0.7" />
-      <line x1={size - 2} y1={cx} x2={size - 2 - tick} y2={cx} stroke={glowHex} strokeWidth="0.7" />
-      <line x1={6} y1={6} x2={6 + diag} y2={6 + diag} stroke={glowHex} strokeWidth="0.4" />
-      <line x1={size - 6} y1={6} x2={size - 6 - diag} y2={6 + diag} stroke={glowHex} strokeWidth="0.4" />
-      <line x1={6} y1={size - 6} x2={6 + diag} y2={size - 6 - diag} stroke={glowHex} strokeWidth="0.4" />
-      <line x1={size - 6} y1={size - 6} x2={size - 6 - diag} y2={size - 6 - diag} stroke={glowHex} strokeWidth="0.4" />
-    </svg>
-  );
-}
+// ─── Horizontal Well Meter ─────────────────────────────────────────────────────
+// Left-to-right pip row showing the shared-bank fill level for one affinity.
+// Animates pip-by-pip with sequential delays when filledCount changes.
 
-function ReservoirGauge({
+function HorizontalWellMeter({
   capacity,
   filledCount,
   hex,
@@ -65,113 +52,96 @@ function ReservoirGauge({
   burstKey?: number;
 }) {
   const [pipFilled, setPipFilled] = useState<boolean[]>(() =>
-    Array.from({ length: capacity }, (_, i) => i >= capacity - filledCount),
+    Array.from({ length: capacity }, (_, i) => i < filledCount),
   );
-
-  const [burstId, setBurstId] = useState<number>(0);
+  const [burstId, setBurstId] = useState(0);
   const prevBurstKeyRef = useRef(burstKey);
+  const prevFilledRef   = useRef(filledCount);
+  const timerIds        = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
-    if (burstKey === prevBurstKeyRef.current) return;
-    prevBurstKeyRef.current = burstKey;
-    setBurstId((n) => n + 1);
+    if (burstKey !== prevBurstKeyRef.current) {
+      prevBurstKeyRef.current = burstKey;
+      setBurstId((n) => n + 1);
+    }
   }, [burstKey]);
-
-  const prevFilledRef = useRef(filledCount);
-  const timerIds = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     if (filledCount === prevFilledRef.current) return;
-
     timerIds.current.forEach(clearTimeout);
     timerIds.current = [];
 
-    if (filledCount < prevFilledRef.current) {
-      const firstDraining = capacity - prevFilledRef.current;
-      const lastDraining = capacity - filledCount - 1;
-      for (let i = firstDraining; i <= lastDraining; i++) {
-        const seq = i - firstDraining;
-        const id = setTimeout(() => {
-          setPipFilled((prev) => {
-            const next = [...prev];
-            next[i] = false;
-            return next;
-          });
-        }, seq * 180);
-        timerIds.current.push(id);
-      }
-    } else {
-      const firstFilling = capacity - filledCount;
-      const lastFilling = capacity - prevFilledRef.current - 1;
-      for (let i = lastFilling; i >= firstFilling; i--) {
-        const seq = lastFilling - i;
-        const id = setTimeout(() => {
-          setPipFilled((prev) => {
-            const next = [...prev];
-            next[i] = true;
-            return next;
-          });
-        }, seq * 180);
-        timerIds.current.push(id);
-      }
-    }
-
+    const prev = prevFilledRef.current;
     prevFilledRef.current = filledCount;
 
-    return () => {
-      timerIds.current.forEach(clearTimeout);
-    };
-  }, [filledCount, capacity]);
+    if (filledCount < prev) {
+      // Draining: clear pips right-to-left
+      for (let i = prev - 1; i >= filledCount; i--) {
+        const seq = prev - 1 - i;
+        timerIds.current.push(
+          setTimeout(() => setPipFilled((p) => { const n = [...p]; n[i] = false; return n; }), seq * 110),
+        );
+      }
+    } else {
+      // Filling: light pips left-to-right
+      for (let i = prev; i < filledCount; i++) {
+        const seq = i - prev;
+        timerIds.current.push(
+          setTimeout(() => setPipFilled((p) => { const n = [...p]; n[i] = true; return n; }), seq * 110),
+        );
+      }
+    }
+    return () => { timerIds.current.forEach(clearTimeout); };
+  }, [filledCount]);
 
   return (
-    <div className="relative flex flex-col items-center gap-[2px]" style={{ opacity: 0.55 }}>
+    <div style={{ display: 'flex', gap: 2, alignItems: 'center', position: 'relative' }}>
       {Array.from({ length: capacity }, (_, i) => {
-        const isFilled = pipFilled[i] ?? false;
+        const filled = pipFilled[i] ?? false;
         return (
           <motion.div
             key={i}
-            className="rounded-full shrink-0"
             animate={
-              isFilled
-                ? { scale: 1, opacity: 0.9, backgroundColor: hex }
-                : { scale: 1, opacity: 0.4, backgroundColor: 'transparent' }
+              filled
+                ? { backgroundColor: hex, opacity: 0.90 }
+                : { backgroundColor: 'transparent', opacity: 0.38 }
             }
-            transition={{ duration: 0.18, ease: 'easeOut' }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
             style={{
-              width: 3,
-              height: 3,
-              border: isFilled ? `1px solid ${glowHex}50` : `1px solid ${glowHex}25`,
-              boxShadow: isFilled ? `0 0 3px ${glowHex}60` : 'none',
+              width: 4, height: 4, borderRadius: 2, flexShrink: 0,
+              border: filled ? `1px solid ${glowHex}60` : `1px solid ${glowHex}22`,
+              boxShadow: filled ? `0 0 4px ${glowHex}55` : 'none',
             }}
           />
         );
       })}
+
+      {/* Burst flash when harvest is received */}
       <AnimatePresence>
         {burstId > 0 && (
           <motion.div
             key={burstId}
-            className="absolute inset-0 pointer-events-none"
-            initial={{ opacity: 0.9, scale: 0.4 }}
-            animate={{ opacity: 0, scale: 2.8 }}
-            exit={{}}
-            transition={{ duration: 0.32, ease: 'easeOut' }}
             style={{
+              position: 'absolute', left: '50%', top: '50%',
+              width: 8, height: 8, marginLeft: -4, marginTop: -4,
               borderRadius: '50%',
-              background: `radial-gradient(ellipse at center, ${hex}cc 0%, ${glowHex}55 40%, transparent 72%)`,
-              top: '50%',
-              left: '50%',
-              width: 10,
-              height: 10,
-              marginTop: -5,
-              marginLeft: -5,
-              position: 'absolute',
+              background: `radial-gradient(ellipse at center, ${hex}cc 0%, transparent 72%)`,
+              pointerEvents: 'none',
             }}
+            initial={{ opacity: 0.9, scale: 0.4 }}
+            animate={{ opacity: 0, scale: 3.2 }}
+            exit={{}}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
           />
         )}
       </AnimatePresence>
     </div>
   );
 }
+
+// ─── AffinityWellCells ─────────────────────────────────────────────────────────
+// Single-row horizontal carousel of 6 affinity modules.
+// Overflows intentionally on narrow viewports; right-edge fade signals scrollability.
 
 export function AffinityWellCells({
   me,
@@ -180,6 +150,9 @@ export function AffinityWellCells({
   isMyTurn,
   canPlan,
   isActivePlayer,
+  isTutorial: _isTutorial,
+  tutorialZone: _tutorialZone,
+  tutorialAttention: _tutorialAttention,
   sessionPlayerId,
   harvestBurstKeys,
   forgeDeductions,
@@ -188,15 +161,16 @@ export function AffinityWellCells({
   onOpenReserved,
   onOpenForged,
 }: AffinityWellCellsProps) {
-  const playerCount = state.players.length;
-  const gaugeCapacity = playerCount === 2 ? 4 : playerCount === 3 ? 5 : 7;
-
+  const playerCount    = state.players.length;
+  const gaugeCapacity  = playerCount === 2 ? 4 : playerCount === 3 ? 5 : 7;
   const isPlanningMode = !isActivePlayer && canPlan;
-  const anyPending = CRYSTALS.some((c) => (selectedCrystals[c as keyof CrystalCounts] ?? 0) > 0);
+  const anyPending     = CRYSTALS.some((c) => (selectedCrystals[c as keyof CrystalCounts] ?? 0) > 0);
   const showPlanningCue = isPlanningMode && anyPending;
 
   return (
     <div className="relative">
+
+      {/* Planning-mode banner — floats above the rail */}
       <AnimatePresence>
         {showPlanningCue && (
           <motion.div
@@ -221,228 +195,182 @@ export function AffinityWellCells({
           </motion.div>
         )}
       </AnimatePresence>
-      <motion.div
-        animate={
-          showPlanningCue
-            ? { boxShadow: '0 0 0 1px rgba(251,191,36,0.30)' }
-            : { boxShadow: '0 0 0 1px transparent' }
-        }
-        transition={{ duration: 0.25 }}
-        className="flex gap-1 px-2 pb-2 rounded-lg"
-      >
-      {CRYSTALS.map((c) => {
-        const meta = GEM_META[c];
-        const isFlux = c === 'flux';
-        const gems = me.crystals[c as keyof CrystalCounts] ?? 0;
-        const bonus = me.bonuses[c as keyof CrystalCounts] ?? 0;
-        const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
-          .filter(
-            (la: LuminaryActiveState) =>
-              la.ownerId === sessionPlayerId &&
-              ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
-              la.activeAffinity === c,
-          ).length;
-        const reservedCount = me.reservedCards.length;
-        const pending = selectedCrystals[c as keyof CrystalCounts] ?? 0;
-        const forgeDed = forgeDeductions?.[c as keyof CrystalCounts] ?? 0;
-        const bankCount = state.crystalBank[c as keyof CrystalCounts] ?? 0;
-        const selectable = isMyTurn || (!isActivePlayer && canPlan);
-        const bankEmpty = bankCount === 0;
-        const canTake2 = selectable && !isFlux && bankCount >= 4 && pending !== 2;
-        const hasContent = isFlux
-          ? gems > 0 || reservedCount > 0
-          : gems > 0 || bonus > 0 || lumBonus > 0;
-        const showForgedLink = !isFlux && bonus > 0;
-        const showReservedLink = isFlux && reservedCount > 0;
 
-        const gaugeFilledCount = Math.max(0, bankCount - pending);
+      {/* Carousel container */}
+      <div style={{ position: 'relative' }}>
 
-        const cellStyle: React.CSSProperties =
-          pending > 0
-            ? {
-                background: `linear-gradient(180deg, ${meta.hex}55 0%, ${meta.hex}2a 100%)`,
-                border: `2px solid ${meta.glowHex}dd`,
-                boxShadow: `0 0 18px ${meta.glowHex}99, inset 0 0 14px ${meta.hex}44`,
-              }
-            : hasContent
-            ? {
-                background: `linear-gradient(180deg, ${meta.hex}22 0%, ${meta.hex}10 100%)`,
-                border: `1px solid ${meta.hex}88`,
-                boxShadow: `inset 0 0 10px ${meta.hex}18`,
-              }
-            : {
-                background: `linear-gradient(180deg, ${meta.hex}0a 0%, transparent 100%)`,
-                border: `1px solid ${meta.hex}20`,
-              };
+        {/* Right-edge fade — signals that more cells lie off-screen */}
+        <div
+          style={{
+            position: 'absolute', right: 0, top: 0, bottom: 0,
+            width: 36, zIndex: 2, pointerEvents: 'none',
+            background: 'linear-gradient(to left, rgba(4,2,14,0.92), transparent)',
+          }}
+        />
 
-        return (
-          <div key={c} className="flex-1 flex flex-col gap-0.5 min-w-0">
-            <motion.button
-              type="button"
-              disabled={isFlux ? !showReservedLink : !selectable || bankEmpty}
-              whileTap={!isFlux && selectable && !bankEmpty ? { scale: 0.9 } : {}}
-              animate={
-                pending > 0 ? { scale: [1, 1.06, 1], transition: { duration: 0.2 } } : {}
-              }
-              onClick={() => {
-                if (isFlux) {
-                  if (showReservedLink) onOpenReserved();
-                } else if (showForgedLink && !selectable) {
-                  onOpenForged(c);
-                } else if (selectable && !bankEmpty) {
-                  onCrystalClick(c as keyof CrystalCounts);
-                } else if (showForgedLink) {
-                  onOpenForged(c);
-                }
-              }}
-              className="relative w-full rounded-lg overflow-hidden transition-all"
-              style={{ minHeight: 66, ...cellStyle }}
-            >
-              {/* Affinity name — pinned to top */}
-              <span
-                className="absolute top-[3px] inset-x-0 text-center text-[6px] font-semibold uppercase tracking-wider leading-none pointer-events-none z-10"
-                style={{ color: `${meta.glowHex}75` }}
-              >
-                {meta.shortName}
-              </span>
+        {/* Scrollable rail */}
+        <motion.div
+          animate={
+            showPlanningCue
+              ? { boxShadow: '0 0 0 1px rgba(251,191,36,0.30)' }
+              : { boxShadow: '0 0 0 1px transparent' }
+          }
+          transition={{ duration: 0.25 }}
+          style={{
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'none',       // Firefox
+            WebkitOverflowScrolling: 'touch',
+          }}
+          // hides scrollbar in WebKit/Blink via Tailwind arbitrary variant
+          className="[&::-webkit-scrollbar]:hidden"
+        >
+          <div
+            style={{
+              display: 'flex',
+              gap: 4,
+              padding: '4px 8px 6px 6px',
+              width: 'max-content',
+            }}
+          >
+            {CRYSTALS.map((c) => {
+              const meta         = GEM_META[c];
+              const isFlux       = c === 'flux';
+              const gems         = me.crystals[c as keyof CrystalCounts] ?? 0;
+              const bonus        = me.bonuses[c as keyof CrystalCounts] ?? 0;
+              const lumBonus     = (
+                ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
+                  .filter(
+                    (la: LuminaryActiveState) =>
+                      la.ownerId === sessionPlayerId &&
+                      ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
+                      la.activeAffinity === c,
+                  ).length
+              );
+              const reservedCount = me.reservedCards.length;
+              const pending       = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+              const forgeDed      = forgeDeductions?.[c as keyof CrystalCounts] ?? 0;
+              const bankCount     = state.crystalBank[c as keyof CrystalCounts] ?? 0;
+              const selectable    = isMyTurn || (!isActivePlayer && canPlan);
+              const bankEmpty     = bankCount === 0;
+              const canTake2      = selectable && !isFlux && bankCount >= 4 && pending !== 2;
+              const showForgedLink = !isFlux && bonus > 0;
+              const gaugeFilledCount = Math.max(0, bankCount - pending);
+              const tentativeCount   = gems + pending;
+              const hasContent       = isFlux
+                ? gems > 0 || reservedCount > 0
+                : gems > 0 || bonus > 0 || lumBonus > 0;
 
-              {/* Top ornamental rule */}
-              <div
-                className="absolute inset-x-0 top-0 h-[1px] pointer-events-none"
-                style={{
-                  background: `linear-gradient(90deg, transparent, ${meta.glowHex}55, transparent)`,
-                }}
-              />
-              {/* Bottom ornamental rule */}
-              <div
-                className="absolute inset-x-0 bottom-0 h-[1px] pointer-events-none"
-                style={{
-                  background: `linear-gradient(90deg, transparent, ${meta.glowHex}28, transparent)`,
-                }}
-              />
-              {/* Vertical glow channel */}
-              <div
-                className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 pointer-events-none"
-                style={{
-                  width: 1,
-                  background: `linear-gradient(180deg, transparent, ${meta.glowHex}15, ${meta.glowHex}08, transparent)`,
-                }}
-              />
-              {/* Base glow at cell bottom */}
-              <div
-                className="absolute bottom-0 inset-x-0 pointer-events-none"
-                style={{
-                  height: 22,
-                  background: `radial-gradient(ellipse 70% 100% at 50% 100%, ${meta.hex}18, transparent)`,
-                }}
-              />
+              // ── Cell background style ──────────────────────────────────────
+              const cellStyle: React.CSSProperties =
+                pending > 0
+                  ? {
+                      background: `linear-gradient(180deg, ${meta.hex}44 0%, ${meta.hex}20 100%)`,
+                      border: `1.5px solid ${meta.glowHex}cc`,
+                      boxShadow: `0 0 14px ${meta.glowHex}55, inset 0 0 10px ${meta.hex}2a`,
+                    }
+                  : hasContent
+                  ? {
+                      background: `linear-gradient(180deg, ${meta.hex}1c 0%, ${meta.hex}0a 100%)`,
+                      border: `1px solid ${meta.hex}60`,
+                      boxShadow: `inset 0 0 8px ${meta.hex}12`,
+                    }
+                  : {
+                      background: `linear-gradient(180deg, ${meta.hex}08 0%, transparent 100%)`,
+                      border: `1px solid ${meta.hex}18`,
+                    };
 
-              {isFlux ? (
-                /* ── Singularity cell ── */
-                <div className="flex flex-col items-center pt-[11px] pb-1.5 px-0.5 h-full gap-0">
-                  {/* Emblem — visual hero */}
-                  <div className="relative flex items-center justify-center w-9 h-9">
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <CompassRing glowHex={meta.glowHex} size={36} />
-                    </div>
-                    <AffinityEmblem
-                      color={c}
-                      className="w-9 h-9 object-contain pointer-events-none select-none relative z-[1]"
-                      style={{ filter: `drop-shadow(0 0 8px ${meta.glowHex}80)` }}
-                    />
-                  </div>
+              // ── Emblem filter ──────────────────────────────────────────────
+              const emblemFilter =
+                pending > 0
+                  ? `drop-shadow(0 0 7px ${meta.glowHex}) brightness(1.25)`
+                  : forgeDed > 0
+                  ? 'drop-shadow(0 0 5px #ef4444bb) brightness(0.55) saturate(0.3)'
+                  : bankEmpty && !isFlux
+                  ? 'grayscale(0.65) opacity(0.4)'
+                  : `drop-shadow(0 0 5px ${meta.glowHex}70)`;
 
-                  {/* Glass divider */}
-                  <div
-                    className="w-3/4 mt-[3px] mb-[3px]"
-                    style={{
-                      height: 1,
-                      background: `linear-gradient(90deg, transparent, ${meta.glowHex}30, transparent)`,
+              return (
+                <div
+                  key={c}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 2, width: CELL_W, flexShrink: 0 }}
+                >
+                  {/* ── Main cell button ── */}
+                  <motion.button
+                    type="button"
+                    // Singularity always tappable; others need selectable + non-empty bank
+                    disabled={isFlux ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
+                    whileTap={
+                      (isFlux || (selectable && !bankEmpty) || showForgedLink)
+                        ? { scale: 0.91 }
+                        : {}
+                    }
+                    animate={
+                      pending > 0
+                        ? { scale: [1, 1.03, 1], transition: { duration: 0.18 } }
+                        : {}
+                    }
+                    onClick={() => {
+                      if (isFlux) {
+                        onOpenReserved();
+                      } else if (showForgedLink && !selectable) {
+                        onOpenForged(c);
+                      } else if (selectable && !bankEmpty) {
+                        onCrystalClick(c as keyof CrystalCounts);
+                      } else if (showForgedLink) {
+                        onOpenForged(c);
+                      }
                     }}
-                  />
-
-                  {/* Owned count */}
-                  <span
-                    className="text-base font-black leading-none"
                     style={{
-                      color: gems > 0 ? '#fff' : `${meta.hex}35`,
-                      textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
+                      width: CELL_W,
+                      borderRadius: 10,
+                      padding: '6px 3px 5px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 2,
+                      cursor:
+                        isFlux || selectable || showForgedLink
+                          ? 'pointer'
+                          : 'default',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      ...cellStyle,
                     }}
                   >
-                    {gems}
-                  </span>
-
-                  {/* Reserved count */}
-                  {reservedCount > 0 && (
-                    <span
-                      className="text-[6px] font-semibold leading-none mt-[3px]"
-                      style={{ color: `${meta.glowHex}65` }}
-                    >
-                      {reservedCount} enc.
-                    </span>
-                  )}
-                </div>
-              ) : (
-                /* ── Colored affinity cell ── */
-                <>
-                  {/* Reservoir gauge — slim, left-edge, secondary */}
-                  <div
-                    className="absolute left-[3px] bottom-[18px] top-[13px] pointer-events-none flex flex-col items-center justify-end"
-                    style={{ gap: 2 }}
-                  >
-                    <ReservoirGauge
-                      capacity={gaugeCapacity}
-                      filledCount={gaugeFilledCount}
-                      hex={meta.hex}
-                      glowHex={meta.glowHex}
-                      burstKey={harvestBurstKeys?.[c] ?? 0}
-                    />
-                    {/* X/N fraction */}
-                    <span
-                      className="font-mono tabular-nums leading-none"
+                    {/* Top ornamental rule */}
+                    <div
                       style={{
-                        fontSize: 5,
-                        color: `${meta.glowHex}50`,
-                        marginTop: 2,
+                        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                        background: `linear-gradient(90deg, transparent, ${meta.glowHex}38, transparent)`,
+                        pointerEvents: 'none',
+                      }}
+                    />
+
+                    {/* ── Emblem (visual hero) ── */}
+                    <div
+                      style={{
+                        position: 'relative', width: 32, height: 32,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}
                     >
-                      {gaugeFilledCount}/{gaugeCapacity}
-                    </span>
-                  </div>
-
-                  {/* Main content */}
-                  <div className="flex flex-col items-center pt-[11px] pb-[5px] px-0.5">
-                    {/* Emblem — visual hero */}
-                    <div className="relative flex items-center justify-center w-9 h-9">
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <CompassRing glowHex={meta.glowHex} size={36} />
-                      </div>
                       <AffinityEmblem
                         color={c}
-                        className="w-9 h-9 object-contain pointer-events-none select-none relative z-[1]"
-                        style={{
-                          filter:
-                            pending > 0
-                              ? `drop-shadow(0 0 8px ${meta.glowHex}) brightness(1.3)`
-                              : forgeDed > 0
-                              ? 'drop-shadow(0 0 6px #ef4444cc) brightness(0.6) saturate(0.35)'
-                              : bankEmpty
-                              ? 'grayscale(0.7) opacity(0.4)'
-                              : `drop-shadow(0 0 6px ${meta.glowHex}80)`,
-                        }}
+                        className="object-contain pointer-events-none select-none"
+                        style={{ width: 32, height: 32, filter: emblemFilter }}
                       />
-                      {/* Forge-cost badge — −N in red, top-right corner of emblem */}
+                      {/* Forge-cost deduction badge */}
                       {forgeDed > 0 && (
                         <motion.span
-                          key={`forge-badge-${forgeDed}`}
-                          className="absolute -top-1 -right-1 z-10 text-[9px] font-black leading-none px-[3px] py-[1px] rounded-full pointer-events-none select-none"
                           style={{
-                            background: '#1a0505',
-                            color: '#f87171',
-                            border: '1px solid #ef444466',
-                            boxShadow: '0 0 6px #ef4444aa',
+                            position: 'absolute', top: -2, right: -2, zIndex: 10,
+                            fontSize: 8, fontWeight: 900, lineHeight: 1,
+                            padding: '1px 3px', borderRadius: 999,
+                            background: '#1a0505', color: '#f87171',
+                            border: '1px solid #ef444455',
+                            boxShadow: '0 0 5px #ef4444aa',
                           }}
-                          animate={{ opacity: [1, 0.6, 1] }}
+                          animate={{ opacity: [1, 0.55, 1] }}
                           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                         >
                           −{forgeDed}
@@ -450,115 +378,154 @@ export function AffinityWellCells({
                       )}
                     </div>
 
-                    {/* Glass divider between emblem and count */}
-                    <div
-                      className="w-3/4 mt-[3px] mb-[2px]"
-                      style={{
-                        height: 1,
-                        background: `linear-gradient(90deg, transparent, ${meta.glowHex}28, transparent)`,
-                      }}
-                    />
-
-                    {/* Count row — owned count + optional +Y delta badge */}
-                    <div className="flex items-baseline justify-center gap-[3px]">
-                      {forgeDed > 0 ? (
-                        <motion.span
-                          key="forge-preview"
-                          className="text-base font-black leading-none"
-                          style={{
-                            color: '#f59e0b',
-                            textShadow: '0 0 10px #f59e0bcc',
-                          }}
-                          animate={{ opacity: [1, 0.55, 1] }}
-                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                        >
-                          {gems - forgeDed}
-                        </motion.span>
-                      ) : (
+                    {/* ── Count display ── */}
+                    {isFlux ? (
+                      /* Singularity: owned count + "N reserved" */
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                         <span
-                          className="text-base font-black leading-none"
                           style={{
-                            color: hasContent ? '#fff' : `${meta.hex}35`,
-                            textShadow: hasContent ? `0 0 8px ${meta.glowHex}` : 'none',
+                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            color: gems > 0 ? '#fff' : `${meta.hex}28`,
+                            textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
                           }}
                         >
                           {gems}
                         </span>
-                      )}
-                      {/* +Y incoming delta — shown to the right when pending */}
-                      {pending > 0 && forgeDed === 0 && (
-                        <motion.span
-                          key="delta"
-                          className="text-[9px] font-bold leading-none"
+                        <span
                           style={{
-                            color: meta.glowHex,
-                            textShadow: `0 0 6px ${meta.glowHex}`,
+                            fontSize: 7, fontWeight: 600, lineHeight: 1,
+                            color: reservedCount > 0 ? `${meta.glowHex}90` : `${meta.glowHex}38`,
                           }}
-                          animate={{ opacity: [1, 0.55, 1] }}
-                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                          +{pending}
-                        </motion.span>
-                      )}
-                    </div>
-
-                    {/* Bonus pill — centered beneath count row */}
-                    {(bonus > 0 || lumBonus > 0) && (
-                      <div
-                        className="flex items-center gap-[2px] mt-[3px] px-[3px] py-[1px] rounded-full"
+                          {reservedCount} reserved
+                        </span>
+                      </div>
+                    ) : forgeDed > 0 ? (
+                      /* Forge-cost preview: projected post-spend count, amber pulse */
+                      <motion.span
                         style={{
-                          background: `${meta.hex}1a`,
-                          border: `1px solid ${meta.hex}40`,
+                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          color: '#f59e0b',
+                          textShadow: '0 0 10px #f59e0bcc',
+                        }}
+                        animate={{ opacity: [1, 0.55, 1] }}
+                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        {gems - forgeDed}
+                      </motion.span>
+                    ) : pending > 0 ? (
+                      /* Selected: tentative post-harness count with glow pulse */
+                      <motion.span
+                        style={{
+                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          color: meta.glowHex,
+                          textShadow: `0 0 10px ${meta.glowHex}cc, 0 0 22px ${meta.glowHex}44`,
+                        }}
+                        animate={{ opacity: [1, 0.68, 1] }}
+                        transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        {tentativeCount}
+                      </motion.span>
+                    ) : (
+                      /* Normal owned count */
+                      <span
+                        style={{
+                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          color: hasContent ? '#fff' : `${meta.hex}28`,
+                          textShadow: hasContent ? `0 0 7px ${meta.glowHex}` : 'none',
+                        }}
+                      >
+                        {gems}
+                      </span>
+                    )}
+
+                    {/* ── Well section (normal affinities only) ── */}
+                    {!isFlux && (
+                      <div
+                        style={{
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', gap: 2, marginTop: 1,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                            color: `${meta.glowHex}42`,
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          WELL {gaugeFilledCount}/{gaugeCapacity}
+                        </span>
+                        <HorizontalWellMeter
+                          capacity={gaugeCapacity}
+                          filledCount={gaugeFilledCount}
+                          hex={meta.hex}
+                          glowHex={meta.glowHex}
+                          burstKey={harvestBurstKeys?.[c] ?? 0}
+                        />
+                      </div>
+                    )}
+
+                    {/* ── Bonus chip (normal affinities, if any bonus) ── */}
+                    {!isFlux && (bonus > 0 || lumBonus > 0) && (
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 2,
+                          padding: '1px 4px', borderRadius: 999, marginTop: 1,
+                          background: `${meta.hex}18`,
+                          border: `1px solid ${meta.hex}38`,
                         }}
                       >
                         {bonus > 0 && (
-                          <span className="text-[6px] font-bold leading-none text-primary">
+                          <span
+                            style={{ fontSize: 7, fontWeight: 700, lineHeight: 1, color: 'hsl(var(--primary))' }}
+                          >
                             +{bonus}
                           </span>
                         )}
                         {lumBonus > 0 && (
                           <span
-                            className="text-[6px] font-bold leading-none"
-                            style={{ color: meta.glowHex }}
+                            style={{ fontSize: 7, fontWeight: 700, lineHeight: 1, color: meta.glowHex }}
                           >
                             +{lumBonus}✦
                           </span>
                         )}
                       </div>
                     )}
-                  </div>
-                </>
-              )}
-            </motion.button>
+                  </motion.button>
 
-            {/* ×2 sub-button — slim but still tappable */}
-            <motion.button
-              type="button"
-              aria-hidden={!canTake2}
-              tabIndex={canTake2 ? 0 : -1}
-              animate={{ opacity: canTake2 ? 1 : 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={(e) => {
-                if (!canTake2) return;
-                e.stopPropagation();
-                onPromoteToTake2(c);
-              }}
-              style={{
-                pointerEvents: canTake2 ? 'auto' : 'none',
-                visibility: canTake2 ? 'visible' : 'hidden',
-              }}
-              className={`w-full text-[9px] font-bold rounded-md py-1 transition-colors leading-none ${
-                isPlanningMode
-                  ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25'
-                  : 'text-primary/80 bg-primary/10 active:bg-primary/25'
-              }`}
-            >
-              ×2
-            </motion.button>
+                  {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
+                  <motion.button
+                    type="button"
+                    aria-hidden={!canTake2}
+                    tabIndex={canTake2 ? 0 : -1}
+                    animate={{ opacity: canTake2 ? 1 : 0 }}
+                    transition={{ duration: 0.15 }}
+                    onClick={(e) => {
+                      if (!canTake2) return;
+                      e.stopPropagation();
+                      onPromoteToTake2(c);
+                    }}
+                    style={{
+                      pointerEvents: canTake2 ? 'auto' : 'none',
+                      visibility: canTake2 ? 'visible' : 'hidden',
+                      width: CELL_W,
+                    }}
+                    className={`text-[9px] font-bold rounded-md py-1 leading-none transition-colors ${
+                      isPlanningMode
+                        ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25'
+                        : 'text-primary/80 bg-primary/10 active:bg-primary/25'
+                    }`}
+                  >
+                    ×2
+                  </motion.button>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
