@@ -275,6 +275,7 @@ export default function Dashboard() {
   useEffect(() => {
     void fetchGames();
     void fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleResume = async (game: ActiveGame) => {

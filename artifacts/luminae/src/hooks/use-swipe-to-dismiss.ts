@@ -520,7 +520,6 @@ export function useSwipeToDismiss(
       } as React.CSSProperties,
     };
   // dragControls is stable for the lifetime of the hook; scrollableElements is a ref.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragControls]);
 
   /**

@@ -542,9 +542,7 @@ function useIsShortLandscape() {
       mq.addEventListener("change", handler);
       return () => mq.removeEventListener("change", handler);
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       mq.addListener(handler);
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       return () => mq.removeListener(handler);
     }
   }, []);
@@ -910,7 +908,7 @@ function MarketTabs({
 // The tutorial uses a scripted fixed card set with no real deck count, so the
 // "Blind" label is the canonical design here. The game board (game.tsx) shows
 // the live remaining count on its own deck pile button.
-function DeckPile({ tier }: { tier: number; count?: number }) {
+function DeckPile({ tier, count }: { tier: number; count?: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
   return (
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
@@ -927,6 +925,13 @@ function DeckPile({ tier }: { tier: number; count?: number }) {
           style={{ left: 0, top: 0, width: 112, height: 160 }}>
           <BackComponent />
         </div>
+        {count !== undefined && count > 0 && (
+          <div className="absolute top-1.5 right-1.5 bg-black/70 border border-white/20 rounded-full
+            min-w-[18px] h-[18px] flex items-center justify-center px-1
+            text-[9px] font-bold text-white/70 leading-none">
+            {count}
+          </div>
+        )}
       </div>
       <span className="text-[6px] text-white/20 font-semibold tracking-wide">Blind</span>
     </div>
@@ -1025,6 +1030,7 @@ function CardFlipReveal({
     const ts = setTimeout(() => gameAudio.playCardFlip(), Math.max(0, delay - soundLead));
     const tf = setTimeout(() => setPhase("out"), delay);
     return () => { clearTimeout(ts); clearTimeout(tf); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once on mount
 
   if (phase === "done") return <>{children}</>;
@@ -1569,7 +1575,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
     });
     timers.push(setTimeout(() => doneRef.current(), t + 300));
     return () => timers.forEach(clearTimeout);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stable star positions — seeded once on mount, same look as the pre-shatter black/starry backdrop.
   const stars = useMemo(() =>
@@ -3201,7 +3207,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Close card sheet on beat/subStep change
   useEffect(() => {
     setSelectedCardData(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beatId, subStep]);
 
   // Auto-scroll (camera is programmatic)

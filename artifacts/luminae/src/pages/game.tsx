@@ -468,8 +468,8 @@ function LuminaryClaimedPortal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [luminary.id],
   );
-  const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
   const hexes = useMemo(() => colors.map(c => c.hex), [colors]);
 
   // Active affinity drives dominant colour; fallback to first requirement colour
@@ -947,6 +947,7 @@ function useScrollLock(
       // Restore scroll focus to <main> so the next swipe immediately
       // scrolls the board — but only if the focus trap hasn't already
       // placed focus on a specific trigger element.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       const main = mainScrollRef.current;
       if (main) {
         requestAnimationFrame(() => {
@@ -1103,7 +1104,6 @@ export default function GameBoard() {
   const checkedInitialSummonRef = useRef(false);
   // Stable ref to enqueueSummon — populated after it is defined below (after
   // the early return) so the initial-load useEffect can call it safely.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enqueueSummonRef = useRef<(...args: any[]) => void>(() => {});
   // Luminary IDs that have been detected as newly summoned in processUpdate but
   // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to
@@ -1424,6 +1424,7 @@ export default function GameBoard() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnAnnouncement?.key]);
 
   useEffect(() => {
@@ -1498,6 +1499,7 @@ export default function GameBoard() {
         fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, true, accentColor, cp.lumens, state.turnTimerSeconds ?? null);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.status, state?.version]);
 
   // ── Initial-load summon check ─────────────────────────────────────────────
@@ -1625,6 +1627,7 @@ export default function GameBoard() {
       gameAudio.playAffinitySwitch();
     }
     seenAiAffinityLogCountRef.current = aiAffinityCount;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.actionLog]);
 
   // ── Undo hint trigger ─────────────────────────────────────────────────────
@@ -1669,11 +1672,10 @@ export default function GameBoard() {
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
-  const myPurchasedCards = me?.purchasedCards ?? [];
-  const myDiscountedForgeIds = me?.discountedForgeIds ?? [];
+  const myPurchasedCards = useMemo(() => me?.purchasedCards ?? [], [me]);
+  const myDiscountedForgeIds = useMemo(() => me?.discountedForgeIds ?? [], [me]);
   const kardashevTier = useMemo(
     () => getKardashevTier(myPurchasedCards, myDiscountedForgeIds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [myPurchasedCards, myDiscountedForgeIds],
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
@@ -1739,6 +1741,7 @@ export default function GameBoard() {
     } else {
       setShowForgeHint(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMyTurn, selectedCard, me, hintsEnabled]);
 
   processUpdateRef.current = (newState: GameState) => {
@@ -2391,7 +2394,6 @@ export default function GameBoard() {
         gameAudio.playWin();
       }, WIN_FANFARE_DELAY_MS);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summonQueue.length, pendingGameOver]);
 
   // In tutorial mode, suppress the summon cutscene entirely — immediately drain

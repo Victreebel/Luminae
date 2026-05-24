@@ -152,6 +152,7 @@ export function TutorialOverlay({
         setTutorialStep(nextStep);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.actionLog?.length, tutorialStep, sessionPlayerId, setTutorialStep]);
 
   // Auto-advance when game ends mid-tutorial
