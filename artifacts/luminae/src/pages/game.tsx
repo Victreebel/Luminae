@@ -2803,6 +2803,30 @@ export default function GameBoard() {
         setAnimEndTime(1400);
         setPurchaseBurst({ key: burstKeyRef.current, lumens, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
+        // Fly-to-hand animation — mirrors the cipher aperture used for reserve_card
+        if (payload.cardRef) {
+          const cardEl = document.querySelector(`[data-reserved-card-id="${payload.cardId}"]`);
+          const cardRect = cardEl?.getBoundingClientRect();
+          const handTabEl = document.querySelector('[data-nav-hand]');
+          const handTabRect = handTabEl?.getBoundingClientRect();
+          cipherBurstKeyRef.current += 1;
+          setCipherBurst({
+            key: cipherBurstKeyRef.current,
+            sourceRect: cardRect
+              ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
+              : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+            affinityHex: bonusColor
+              ? (GEM_META[bonusColor]?.glowHex ?? '#7090FF')
+              : '#7090FF',
+            cardName: name,
+            gotFlux: false,
+            card: payload.cardRef as ArtifactCard,
+            tier: (payload.cardRef as ArtifactCard).tier,
+            destPos: handTabRect
+              ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
+              : undefined,
+          });
+        }
       }
     } catch (err: any) {
       if (CORE_ACTION_TYPES.includes(payload.type)) {
@@ -3670,7 +3694,7 @@ export default function GameBoard() {
               const lore = loreCatalog?.[c.id];
               const loreTag = lore?.artifactForm?.split('/')?.[0]?.trim() ?? lore?.civLane?.split('/')?.[0]?.trim();
               return (
-                <div key={c.id} className="relative shrink-0 flex flex-col items-center gap-1" style={{ maxWidth: 90 }}>
+                <div key={c.id} data-reserved-card-id={c.id} className="relative shrink-0 flex flex-col items-center gap-1" style={{ maxWidth: 90 }}>
                   <div className="relative">
                     <ArtifactCardView
                       card={c}
@@ -5999,6 +6023,7 @@ export default function GameBoard() {
                       return (
                         <button
                           key={c.id}
+                          data-reserved-card-id={c.id}
                           type="button"
                           className="flex gap-3 items-center bg-secondary/30 hover:bg-secondary/50 active:bg-secondary/60 rounded-2xl p-3 w-full text-left transition-colors"
                           onClick={() => {
