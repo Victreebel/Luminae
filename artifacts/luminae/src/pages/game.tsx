@@ -1979,8 +1979,9 @@ export default function GameBoard() {
             } else {
               // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
               cipherBurstKeyRef.current += 1;
-              const handTabEl = document.querySelector('[data-nav-hand]');
-              const handTabRect = handTabEl?.getBoundingClientRect();
+              const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
+              const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
+              const handTabRect = destTabEl?.getBoundingClientRect();
               setCipherBurst({
                 key: cipherBurstKeyRef.current,
                 sourceRect: rect
@@ -4583,7 +4584,7 @@ export default function GameBoard() {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            {...(tab === 'hand' ? { 'data-nav-hand': '' } : {})}
+            {...(tab === 'hand' ? { 'data-nav-hand': '' } : tab === 'log' ? { 'data-nav-log': '' } : {})}
             className={`flex flex-col items-center justify-center gap-1 relative transition-colors ${activeTab === tab ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <div className="relative">
