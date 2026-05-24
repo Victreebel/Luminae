@@ -15,7 +15,7 @@ export function getSession(): Session | null {
   try {
     const data = localStorage.getItem(SESSION_KEY);
     return data ? JSON.parse(data) : null;
-  } catch (e) {
+  } catch (_e) {
     return null;
   }
 }

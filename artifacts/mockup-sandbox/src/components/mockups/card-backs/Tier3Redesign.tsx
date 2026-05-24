@@ -7,7 +7,7 @@
 const F  = '#ef4444';
 const C  = '#3b82f6';
 const V  = '#22c55e';
-const A  = '#a855f7';
+const _A  = '#a855f7'; // Abyss — reserved for future use
 const R  = '#e2e8f0';
 const S  = '#f0c040'; // Singularity
 const GOLD  = '#c4a85a';

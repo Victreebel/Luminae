@@ -8,10 +8,16 @@
     "normalize:gems": "pnpm --filter @workspace/scripts run normalize:gems",
     "lint:version-stamps": "pnpm --filter @workspace/scripts run test:version-stamps && pnpm --filter @workspace/scripts run lint:version-stamps",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run normalize:gems && pnpm run lint:version-stamps && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "lint": "eslint .",
+    "typecheck": "pnpm run normalize:gems && pnpm run lint:version-stamps && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck && pnpm run lint"
   },
+  "type": "module",
   "private": true,
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.59.4",
+    "@typescript-eslint/parser": "^8.59.4",
+    "eslint": "^10.4.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.8.1",
     "sharp": "^0.34.5",
     "typescript": "~5.9.2"
