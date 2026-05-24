@@ -261,6 +261,21 @@ function ArtifactCardView({
     onTap();
   }
 
+  function handleTouchEnd(e: React.TouchEvent<HTMLDivElement>) {
+    if (!onTap) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((touch.clientX - rect.left) / rect.width) * 100;
+    const y = ((touch.clientY - rect.top) / rect.height) * 100;
+    const id = ++rippleCounter.current;
+    setRipples(prev => [...prev, { id, x, y }]);
+    onTap();
+    // Prevent the browser from synthesising a click event after touchend,
+    // which would fire handleClick a second time with a potentially stale position.
+    e.preventDefault();
+  }
+
   return (
     <motion.div
       whileHover={onTap && !tapped ? { y: -2, scale: 1.02, transition: { duration: 0.12, ease: 'easeOut' } } : {}}
@@ -268,6 +283,7 @@ function ArtifactCardView({
       animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
       onClick={handleClick}
+      onTouchEnd={handleTouchEnd}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
       style={{
         outlineWidth: '2px',
