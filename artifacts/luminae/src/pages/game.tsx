@@ -328,7 +328,7 @@ function ArtifactCardView({
   );
 }
 
-function ForgedCardWithTooltip({ card, tier }: { card: ArtifactCard; tier?: number }) {
+function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: ArtifactCard; tier?: number; onOpenSheet?: () => void }) {
   const [show, setShow] = useState(false);
   const bonuses = card.bonusesAtForge;
   const nonZero = bonuses
@@ -340,7 +340,7 @@ function ForgedCardWithTooltip({ card, tier }: { card: ArtifactCard; tier?: numb
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
-      <ArtifactCardView card={card} tier={tier} onTap={() => setShow(v => !v)} />
+      <ArtifactCardView card={card} tier={tier} onTap={() => { if (onOpenSheet) { onOpenSheet(); } else { setShow(v => !v); } }} />
       <AnimatePresence>
         {show && (
           <motion.div
@@ -908,6 +908,7 @@ interface SelectedCard {
   canBuy: boolean;
   canReserve: boolean;
   effectiveCosts?: Partial<Record<GemKey, number>>;
+  readOnly?: boolean;
 }
 
 // --- Centralized body scroll lock ---
@@ -2759,6 +2760,12 @@ export default function GameBoard() {
     });
   };
 
+  const openForgedCardSheet = (card: ArtifactCard) => {
+    setCardFlipped(false);
+    setPendingSheetAction(null);
+    setSelectedCard({ card, fromReserve: false, canBuy: false, canReserve: false, readOnly: true });
+  };
+
   const handleSurrender = () => {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
@@ -3559,7 +3566,7 @@ export default function GameBoard() {
             ) : forgedView === 'cards' ? (
               <div className="flex flex-wrap gap-2">
                 {(me?.purchasedCards ?? []).map((c) => (
-                  <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} />
+                  <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
                 ))}
               </div>
             ) : (
@@ -3698,7 +3705,7 @@ export default function GameBoard() {
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {((p as any).purchasedCards as ArtifactCard[]).map((c) => (
-                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} />
+                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
                       ))}
                     </div>
                   </div>
@@ -4588,7 +4595,7 @@ export default function GameBoard() {
               >
 
                 {/* ── Immediate actions (your active turn only) ── */}
-                {isMyTurnForCoreAction && (
+                {!selectedCard.readOnly && isMyTurnForCoreAction && (
                   <>
                     <motion.div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
@@ -4716,7 +4723,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
-                {canPlan && !isMyTurnForCoreAction && (
+                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && (
                   <>
                     {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
@@ -4816,7 +4823,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Neither available — Luminary cutscene blocking ── */}
-                {!isMyTurn && !canPlan && (
+                {!selectedCard.readOnly && !isMyTurn && !canPlan && (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     <AlertCircle className="inline h-4 w-4 mr-1" />
                     Waiting for Luminary summon…
@@ -5810,7 +5817,7 @@ export default function GameBoard() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {cards.map((c) => (
-                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} />
+                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
                       ))}
                     </div>
                   );
