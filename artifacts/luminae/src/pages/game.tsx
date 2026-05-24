@@ -1812,19 +1812,34 @@ export default function GameBoard() {
   }, [activeTab]);
 
   // ── Pre-early-return derived state ────────────────────────────────────────
-  // actionsLocked / isMyTurn / me / effectiveCost / canAffordCard are all
+  // isMyTurn / canCoreAct / canPlan / me / effectiveCost / canAffordCard are all
   // computed here — before the early returns — so the hint useEffects below
   // have stable closure references on every render regardless of whether
   // state has loaded yet.  When state is null the null-safe forms produce
   // safe false / undefined values, and the early returns below still fire.
-  const actionsLocked = !!turnAnnouncement;
   const summonGateActive = summonQueue.length > 0;
   summonQueueLenRef.current = summonQueue.length;
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
-  const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
-  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
+
+  // isMyTurn = server-authoritative turn ownership, NOT blocked by animation locks.
+  // Use canCoreAct to gate actual submissions.
+  const isMyTurn = isActivePlayer;
+
+  // Named lock reasons — prefer these over scattered booleans.
+  const coreActionLockedReason: 'summonCutscene' | 'turnAnnouncement' | 'submitted' | null =
+    summonGateActive        ? 'summonCutscene'
+    : !!turnAnnouncement    ? 'turnAnnouncement'
+    : coreActionSubmitted   ? 'submitted'
+    : null;
+
+  // canCoreAct replaces isMyTurnForCoreAction at every action guard.
+  const canCoreAct = isActivePlayer && coreActionLockedReason === null;
+
   const me = state?.players.find(p => p.playerId === session?.playerId);
+
+  // canToggleLuminaryAffinity: non-turn action; only hard-blocked by summon cutscene.
+  const canToggleLuminaryAffinity = !!me && (!summonGateActive || localSummonSkipped);
 
   const myPurchasedCards = useMemo(() => me?.purchasedCards ?? [], [me]);
   const myDiscountedForgeIds = useMemo(() => me?.discountedForgeIds ?? [], [me]);
@@ -2885,7 +2900,7 @@ export default function GameBoard() {
   };
 
   const confirmCrystals = () => {
-    if (!isMyTurnForCoreAction || !queueLegality.ok || !me) return;
+    if (!canCoreAct || !queueLegality.ok || !me) return;
     const total = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
     const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
     if (handTotal + total > 10) {
@@ -2920,7 +2935,7 @@ export default function GameBoard() {
   };
 
   const confirmReturnPhase = () => {
-    if (!isMyTurnForCoreAction || !returnPhase || !me) return;
+    if (!canCoreAct || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
     playGemBurst(returnPhase.pendingTake, me.playerName, session.avatarId ?? null);
@@ -2966,16 +2981,20 @@ export default function GameBoard() {
   const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
 
   const handleBuy = (card: ArtifactCard, fromReserve = false) => {
-    if (!isMyTurnForCoreAction) return;
+    if (!canCoreAct) return;
     executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id, cardRef: card });
   };
   const handleReserveCard = (card: ArtifactCard) => {
-    if (!isMyTurnForCoreAction) return;
+    if (!canCoreAct) return;
     executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
   };
   const handleReserveDeck = (tier: number) => {
-    if (!isMyTurnForCoreAction) return;
+    if (!canCoreAct) return;
     executeAction({ type: 'reserve_card', tier, _tier: tier });
+  };
+  const handleToggleLuminaryAffinity = (luminaryId: string) => {
+    if (!canToggleLuminaryAffinity) return;
+    executeAction({ type: 'toggle_luminary_affinity', luminaryId });
   };
   const openDeckSheet = (tier: 1 | 2 | 3) => {
     setPendingDeckConfirm(false);
@@ -2996,8 +3015,8 @@ export default function GameBoard() {
     setPendingSheetAction(null);
     setSelectedCard({
       card, fromReserve,
-      canBuy: isMyTurnForCoreAction && canAffordCard(card, me),
-      canReserve: isMyTurnForCoreAction && !fromReserve && canReserveMore(me),
+      canBuy: canCoreAct && canAffordCard(card, me),
+      canReserve: canCoreAct && !fromReserve && canReserveMore(me),
       effectiveCosts: computeCosts(card, costMode),
     });
   };
@@ -3115,12 +3134,12 @@ export default function GameBoard() {
     sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 900);
   };
 
-  // canPlan is available to any player whenever the game is active and there is
-  // no blocking Luminary summon cutscene. It is intentionally NOT tied to
-  // !isActivePlayer or !isMyTurn — planning should be accessible at all times
-  // (on your turn, off your turn, during animation locks). Only Luminary
-  // cutscenes gate it, because those require player attention.
-  const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
+  // planningLockedReason: only summon cutscenes hard-block planning.
+  // turnAnnouncement does NOT block planning — crystal pre-selection,
+  // Plan: Forge, and Plan: Reserve remain available during the banner.
+  const planningLockedReason: 'summonCutscene' | null =
+    (summonGateActive && !localSummonSkipped) ? 'summonCutscene' : null;
+  const canPlan = state.status === 'playing' && !!me && planningLockedReason === null;
   const myPlannedAction = (me as any)?.plannedAction ?? null;
   const plannedCardId: string | null = myPlannedAction?.cardId ?? null;
 
@@ -3289,7 +3308,8 @@ export default function GameBoard() {
                 claimedByPlayer={visibleClaimedByPlayer}
                 isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
                 isLive={isSummonInProgress ? false : isLive}
-                canToggle={false}
+                canToggle={canToggleLuminaryAffinity && isOwnedByMe && isLive}
+                onToggle={() => handleToggleLuminaryAffinity(l.id)}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
                 isMyTurn={isMyTurn}
@@ -4374,7 +4394,7 @@ export default function GameBoard() {
                         onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); setPrePromotionHistory(null); }}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
-                      {isMyTurnForCoreAction ? (
+                      {canCoreAct ? (
                         (() => {
                           const selKeys = Object.keys(selectedCrystals) as GemKey[];
                           const hasColors = selKeys.length > 0 && queueLegality.ok;
@@ -4476,7 +4496,7 @@ export default function GameBoard() {
 
           {/* ── Return-crystals phase (hand limit exceeded) ── */}
           <AnimatePresence>
-            {returnPhase && isMyTurn && me && (
+            {returnPhase && canCoreAct && me && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -4856,7 +4876,7 @@ export default function GameBoard() {
               >
 
                 {/* ── Immediate actions (your active turn only) ── */}
-                {!selectedCard.readOnly && isMyTurnForCoreAction && (
+                {!selectedCard.readOnly && canCoreAct && (
                   <>
                     <motion.div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
@@ -4984,7 +5004,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
-                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && (
+                {!selectedCard.readOnly && canPlan && !canCoreAct && (
                   <>
                     {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
@@ -5084,7 +5104,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Neither available — Luminary cutscene blocking ── */}
-                {!selectedCard.readOnly && !isMyTurn && !canPlan && (
+                {!selectedCard.readOnly && !isActivePlayer && !canPlan && (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     <AlertCircle className="inline h-4 w-4 mr-1" />
                     Waiting for Luminary summon…
@@ -5228,7 +5248,7 @@ export default function GameBoard() {
             : deckTier === 2
             ? 'Forged instruments — crucibles and sigils of focused cosmic mastery'
             : 'Fragments & sparks — raw nascent shards that seed any engine';
-          const canReserve = isMyTurnForCoreAction && !!me && canReserveMore(me);
+          const canReserve = canCoreAct && !!me && canReserveMore(me);
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -5316,7 +5336,7 @@ export default function GameBoard() {
                 >
 
                   {/* ── Reserve now (active turn) ── */}
-                  {isMyTurnForCoreAction && (
+                  {canCoreAct && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
@@ -5383,7 +5403,7 @@ export default function GameBoard() {
                   )}
 
                   {/* ── Plan: reserve from deck (off-turn) ── */}
-                  {canPlan && !isMyTurnForCoreAction && me && canReserveMore(me) && (
+                  {canPlan && !canCoreAct && me && canReserveMore(me) && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
@@ -5415,7 +5435,7 @@ export default function GameBoard() {
                   )}
 
                   {/* ── Waiting — Luminary cutscene blocking ── */}
-                  {!isMyTurn && !canPlan && (
+                  {!isActivePlayer && !canPlan && (
                     <p className="text-sm text-muted-foreground text-center py-2">
                       <AlertCircle className="inline h-4 w-4 mr-1" />
                       Waiting for Luminary summon…
