@@ -482,7 +482,7 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
   const sz = size === 'sm' ? 'w-9 h-12' : 'w-[var(--card-w)] h-[var(--card-h)]';
   const t = tier ?? 1;
   return (
-    <div className={`${sz} relative rounded-xl overflow-hidden shadow-md bg-[#030509] shrink-0`}>
+    <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
       {t === 1 && <CardBackTier1 count={count} />}
       {t === 2 && <CardBackTier2 count={count} />}
       {t === 3 && <CardBackTier3 count={count} />}
@@ -5263,7 +5263,7 @@ export default function GameBoard() {
                 {/* Header row: large card back + tier info */}
                 <div className="flex gap-4 mb-5">
                   {/* Larger preview — 3× the sm size, matching md width */}
-                  <div className="w-[var(--card-w)] h-[var(--card-h)] relative rounded-xl overflow-hidden shadow-lg bg-[#030509] shrink-0">
+                  <div className="w-[var(--card-w)] h-[var(--card-h)] relative rounded-xl overflow-hidden border border-[#c4a85a]/40 shadow-lg bg-[#030509] shrink-0">
                     {deckTier === 1 && <CardBackTier1 />}
                     {deckTier === 2 && <CardBackTier2 />}
                     {deckTier === 3 && <CardBackTier3 />}
