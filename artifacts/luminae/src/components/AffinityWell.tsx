@@ -9,6 +9,7 @@ import type {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { AffinityEmblem } from '@/components/AffinityEmblem';
 import type { LumiiAttentionState } from '@/components/LumiiTutorial';
+import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 
 const CRYSTALS: GemKey[] = GEM_KEYS;
 
@@ -252,6 +253,125 @@ export function AffinityWellCells({
               width: 'max-content',
             }}
           >
+            {/* ── Forged-artifact card-back cell ── */}
+            {(() => {
+              const cards = me.purchasedCards ?? [];
+              const t1 = cards.filter(c => c.tier === 1).length;
+              const t2 = cards.filter(c => c.tier === 2).length;
+              const t3 = cards.filter(c => c.tier === 3).length;
+              const total = cards.length;
+              // Tier color accents matching card backs
+              const TIER_ACCENT = ['#f59e0b', '#6366f1', '#a855f7'] as const;
+              // Top tier with any cards, for the glow tint
+              const topTier = t3 > 0 ? 3 : t2 > 0 ? 2 : 1;
+              const accentColor = total > 0 ? TIER_ACCENT[topTier - 1] : 'rgba(255,255,255,0.15)';
+              const tiers: { tier: 1|2|3; count: number }[] = [
+                { tier: 3, count: t3 },
+                { tier: 2, count: t2 },
+                { tier: 1, count: t1 },
+              ].filter(t => t.count > 0);
+              const CardForTier = (tier: 1|2|3) =>
+                tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
+              return (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    width: CELL_W,
+                    flexShrink: 0,
+                    alignItems: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: CELL_W,
+                      borderRadius: 10,
+                      padding: '6px 3px 5px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 3,
+                      background: total > 0
+                        ? `linear-gradient(180deg, ${accentColor}22 0%, ${accentColor}0a 100%)`
+                        : 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%)',
+                      border: `1px solid ${total > 0 ? accentColor + '50' : 'rgba(255,255,255,0.1)'}`,
+                      boxShadow: total > 0 ? `inset 0 0 8px ${accentColor}12` : 'none',
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Top ornamental rule */}
+                    <div style={{
+                      position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+                      background: `linear-gradient(90deg, transparent, ${accentColor}38, transparent)`,
+                      pointerEvents: 'none',
+                    }} />
+                    {/* Label */}
+                    <span style={{
+                      fontSize: 6.5, fontWeight: 700, letterSpacing: '0.07em',
+                      textTransform: 'uppercase', lineHeight: 1,
+                      color: total > 0 ? `${accentColor}aa` : 'rgba(255,255,255,0.2)',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      Forged
+                    </span>
+                    {/* Stacked mini card-backs with per-tier count badges */}
+                    {total === 0 ? (
+                      <div style={{
+                        width: 28, height: 40, borderRadius: 3,
+                        border: '1px dashed rgba(255,255,255,0.12)',
+                        opacity: 0.35,
+                      }} />
+                    ) : (
+                      <div style={{ position: 'relative', width: 32, height: 46 }}>
+                        {tiers.map(({ tier, count }, idx) => {
+                          const Component = CardForTier(tier);
+                          const offsetY = idx * 4;
+                          const offsetX = idx * 2;
+                          return (
+                            <div
+                              key={tier}
+                              style={{
+                                position: 'absolute',
+                                top: offsetY, left: offsetX,
+                                width: 28, height: 40,
+                                zIndex: tiers.length - idx,
+                                borderRadius: 3,
+                                overflow: 'hidden',
+                                boxShadow: `0 1px 4px rgba(0,0,0,0.6)`,
+                              }}
+                            >
+                              <Component />
+                              {count > 0 && (
+                                <div style={{
+                                  position: 'absolute', bottom: 1, right: 1,
+                                  background: 'rgba(0,0,0,0.72)',
+                                  borderRadius: 2,
+                                  padding: '0px 2px',
+                                  fontSize: 7, fontWeight: 900, lineHeight: 1.4,
+                                  color: TIER_ACCENT[tier - 1],
+                                }}>
+                                  {count}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Total count */}
+                    <span style={{
+                      fontSize: 16, fontWeight: 900, lineHeight: 1,
+                      color: total > 0 ? '#fff' : 'rgba(255,255,255,0.15)',
+                      textShadow: total > 0 ? `0 0 9px ${accentColor}` : 'none',
+                    }}>
+                      {total}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
             {CRYSTALS.map((c) => {
               const meta         = GEM_META[c];
               const isFlux       = c === 'flux';
