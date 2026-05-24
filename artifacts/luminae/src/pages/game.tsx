@@ -837,7 +837,7 @@ function LuminaryClaimedPortal({
 function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
-  costMode, playerBonuses, onOpenSheet,
+  costMode, playerBonuses, isMyTurn, onOpenSheet,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -850,6 +850,7 @@ function LuminaryCard({
   onToggle?: (affinity: string) => void;
   costMode?: 'printed' | 'after_bonuses' | 'needed_now';
   playerBonuses?: Partial<CrystalCounts>;
+  isMyTurn?: boolean;
   onOpenSheet?: () => void;
 }) {
   const isClaimed = claimedByNames.length > 0;
@@ -866,13 +867,29 @@ function LuminaryCard({
     ? {}
     : { scale: 1.02, boxShadow: `0 0 18px 4px ${glowHex}55, 0 0 6px 1px ${glowHex}33` };
 
+  const canAffordLuminary = !isClaimed && isMyTurn === true && (
+    CRYSTALS.every(c => {
+      const printed = luminary.requirements[c as keyof CrystalCounts] ?? 0;
+      if (printed <= 0) return true;
+      return (playerBonuses?.[c as keyof CrystalCounts] ?? 0) >= printed;
+    })
+  );
+
   return (
     <motion.div
       whileHover={hoverAnim}
       whileTap={!isHidden ? { scale: 0.97 } : {}}
       data-luminary-id={luminary.id}
+      animate={canAffordLuminary ? {
+        boxShadow: [
+          `0 0 0 1.5px ${glowHex}99, 0 0 10px 3px ${glowHex}44`,
+          `0 0 0 2.5px ${glowHex}ff, 0 0 22px 8px ${glowHex}77`,
+          `0 0 0 1.5px ${glowHex}99, 0 0 10px 3px ${glowHex}44`,
+        ],
+      } : undefined}
+      transition={canAffordLuminary ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
-        isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30 cursor-pointer'
+        isClaimed ? 'ring-1 ring-white/10' : canAffordLuminary ? 'ring-0 cursor-pointer' : 'ring-1 ring-black/30 cursor-pointer'
       }`}
       title={isClaimed
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
@@ -902,11 +919,31 @@ function LuminaryCard({
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
           <div className="relative z-10 h-full p-2 flex flex-col justify-between">
-            {/* Top row — lumens/oblivion (left) + accent dot (right), mirroring ArtifactCardView */}
+            {/* Top row — lumens/oblivion (left) + can-afford badge (right), mirroring ArtifactCardView */}
             <div className="flex justify-between items-start">
               <span className={`bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,1)] ${luminary.oblivion ? 'text-red-300' : 'text-amber-100'}`}>
                 {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
               </span>
+              <AnimatePresence>
+                {canAffordLuminary && (
+                  <motion.div
+                    key="can-afford-badge"
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    className="flex items-center justify-center rounded-full bg-black/70 backdrop-blur-sm"
+                    style={{
+                      width: 18, height: 18,
+                      border: `1.5px solid ${glowHex}`,
+                      boxShadow: `0 0 6px 1px ${glowHex}88`,
+                    }}
+                    title="You meet all requirements — claim this Luminary!"
+                  >
+                    <span className="text-[10px] font-bold leading-none" style={{ color: glowHex }}>✓</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Bottom — name + requirement gems */}
@@ -3206,6 +3243,7 @@ export default function GameBoard() {
                 canToggle={isSummonInProgress ? false : canToggle}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
+                isMyTurn={isMyTurn}
                 onToggle={(affinity) => handleToggleLuminaryAffinity(l.id, affinity)}
                 onOpenSheet={visibleClaimedByNames.length === 0 ? () => setSelectedLuminary(l) : undefined}
               />
