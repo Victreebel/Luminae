@@ -4614,10 +4614,6 @@ export default function GameBoard() {
                 <div className="w-10 h-1 rounded-full bg-border" />
                 <SwipeHintBar peekProgress={cardSheetPeekProgress} />
               </div>
-              {/* Esc hint — right-aligned, above the card name bar */}
-              <div className="flex items-center justify-end pb-1">
-                <span className="text-xs text-muted-foreground select-none">Tap outside or press Esc to close</span>
-              </div>
               {/* Sticky peek header — always visible even when the sheet is in the 40 % peek position.
                   Contains the card name + affinity gem so players can identify the card at a glance
                   without needing to expand the sheet.  The close button lives here too so it remains
