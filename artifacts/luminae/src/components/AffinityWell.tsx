@@ -419,26 +419,16 @@ export function AffinityWellCells({
 
                     {/* ── Count display ── */}
                     {isFlux ? (
-                      /* Singularity: owned count + "N reserved" */
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                        <span
-                          style={{
-                            fontSize: 16, fontWeight: 900, lineHeight: 1,
-                            color: gems > 0 ? '#fff' : `${meta.hex}28`,
-                            textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
-                          }}
-                        >
-                          {gems}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 7, fontWeight: 600, lineHeight: 1,
-                            color: reservedCount > 0 ? `${meta.glowHex}90` : `${meta.glowHex}38`,
-                          }}
-                        >
-                          {reservedCount} reserved
-                        </span>
-                      </div>
+                      /* Singularity: owned flux count */
+                      <span
+                        style={{
+                          fontSize: 16, fontWeight: 900, lineHeight: 1,
+                          color: gems > 0 ? '#fff' : `${meta.hex}28`,
+                          textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
+                        }}
+                      >
+                        {gems}
+                      </span>
                     ) : forgeDed > 0 ? (
                       /* Forge-cost preview: projected post-spend count, amber pulse */
                       <motion.span
@@ -476,6 +466,34 @@ export function AffinityWellCells({
                       >
                         {gems}
                       </span>
+                    )}
+
+                    {/* ── Well section: Singularity shows encrypted-pile meter ── */}
+                    {isFlux && (
+                      <div
+                        style={{
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', gap: 2, marginTop: 1,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                            color: `${meta.glowHex}42`,
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          CODED {reservedCount}/3
+                        </span>
+                        <HorizontalWellMeter
+                          capacity={3}
+                          filledCount={reservedCount}
+                          hex={meta.hex}
+                          glowHex={meta.glowHex}
+                          burstKey={0}
+                        />
+                      </div>
                     )}
 
                     {/* ── Well section (normal affinities only) ── */}
