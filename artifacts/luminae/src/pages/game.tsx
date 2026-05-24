@@ -4447,54 +4447,61 @@ export default function GameBoard() {
                   <span className="font-serif tracking-[0.16em] uppercase text-[8px] mt-0.5" style={{ color: '#C0A472', textShadow: '0 1px 8px rgba(192,164,114,0.5)' }}>
                     Tier {selectedCard.card.tier}, {TIER_CIVILIZATION[selectedCard.card.tier]}
                   </span>
-                  {/* Cost chips */}
-                  <div className="flex flex-wrap gap-0.5 justify-center">
-                    {CRYSTALS.map((c) => {
-                      const baseCost = selectedCard.card.cost[c as keyof CrystalCounts] ?? 0;
-                      if (baseCost <= 0) return null;
-                      const effCosts = me ? computeCosts(selectedCard.card, costMode) as Record<string, number> : undefined;
-                      const effCost = effCosts ? (effCosts[c] ?? 0) : baseCost;
-                      const isReduced = effCosts !== undefined && effCost < baseCost;
-                      const isFree = isReduced && effCost === 0;
-                      return (
-                        <div key={c} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}>
-                          {isReduced && !isFree && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
-                          <span className={`text-[10px] font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>{isFree ? '✓' : effCost}</span>
-                          <MiniGem color={c} size={10} />
-                        </div>
-                      );
-                    })}
-                  </div>
                   <span className="text-[7px] text-white/20">tap to flip</span>
                 </div>
-                {/* Right: lore info */}
-                <div className="flex-1 flex flex-col gap-2 justify-center">
-                  {selectedCard.card.flavor && (
-                    <p className="text-xs text-muted-foreground italic leading-relaxed">"{selectedCard.card.flavor}"</p>
-                  )}
-                  {/* Lore metadata: artifactForm, blueprintRole, civLane, engineeringScale */}
+                {/* Right: cost → flavor → lore metadata → bonus */}
+                <div className="flex-1 flex flex-col gap-2.5 justify-center">
+                  {/* Cost — always shown first */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Cost</span>
+                    <div className="flex flex-wrap gap-0.5">
+                      {CRYSTALS.map((c) => {
+                        const baseCost = selectedCard.card.cost[c as keyof CrystalCounts] ?? 0;
+                        if (baseCost <= 0) return null;
+                        const effCosts = me ? computeCosts(selectedCard.card, costMode) as Record<string, number> : undefined;
+                        const effCost = effCosts ? (effCosts[c] ?? 0) : baseCost;
+                        const isReduced = effCosts !== undefined && effCost < baseCost;
+                        const isFree = isReduced && effCost === 0;
+                        return (
+                          <div key={c} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}>
+                            {isReduced && !isFree && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
+                            <span className={`text-[10px] font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>{isFree ? '✓' : effCost}</span>
+                            <MiniGem color={c} size={10} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {/* Flavor text — from lore catalog, fallback to card field */}
+                  {(() => {
+                    const flavorText = loreCatalog?.[selectedCard.card.id]?.flavor ?? (selectedCard.card as { flavor?: string }).flavor;
+                    if (!flavorText) return null;
+                    return (
+                      <p className="text-[11px] text-muted-foreground italic leading-relaxed border-t border-border/30 pt-2">"{flavorText}"</p>
+                    );
+                  })()}
+                  {/* Lore metadata: Blueprint Role and Culture */}
                   {loreCatalog && (() => {
                     const lore = loreCatalog[selectedCard.card.id];
                     if (!lore) return null;
                     const fields: { label: string; value: string | undefined }[] = [
-                      { label: 'Form', value: lore.artifactForm },
                       { label: 'Role', value: lore.blueprintRole },
-                      { label: 'Civ Lane', value: lore.civLane },
-                      { label: 'Scale', value: lore.engineeringScale },
+                      { label: 'Culture', value: lore.civLane },
                     ];
                     const visible = fields.filter(f => f.value);
                     if (visible.length === 0) return null;
                     return (
-                      <div className="flex flex-col gap-1 mt-0.5">
+                      <div className="flex flex-col gap-1">
                         {visible.map(({ label, value }) => (
                           <div key={label} className="flex gap-1.5 items-baseline">
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 shrink-0 w-[46px]">{label}</span>
-                            <span className="text-[10px] text-muted-foreground/80 leading-snug">{value}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 shrink-0 w-[40px]">{label}</span>
+                            <span className="text-[10px] text-muted-foreground/75 leading-snug">{value}</span>
                           </div>
                         ))}
                       </div>
                     );
                   })()}
+                  {/* Bonus gem */}
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-muted-foreground">Bonus:</span>
                     <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
