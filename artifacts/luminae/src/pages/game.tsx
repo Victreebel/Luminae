@@ -2008,32 +2008,6 @@ export default function GameBoard() {
                 const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 2500);
                 cardAnimTimersRef.current.push(tBonus);
               }
-              // Forge-to-hand fly: show the local player where their forged card ends up
-              if ((action.playerId as string) === session?.playerId) {
-                const handTabEl = document.querySelector('[data-nav-hand]');
-                const handTabRect = handTabEl?.getBoundingClientRect();
-                const flySrcRect = rect
-                  ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-                  : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 };
-                const tForgeFly = setTimeout(() => {
-                  cipherBurstKeyRef.current += 1;
-                  setCipherBurst({
-                    key: cipherBurstKeyRef.current,
-                    sourceRect: flySrcRect,
-                    affinityHex: exitCard.bonusColor
-                      ? (GEM_META[exitCard.bonusColor as GemKey]?.glowHex ?? '#7090FF')
-                      : '#7090FF',
-                    cardName: exitCard.name,
-                    gotFlux: false,
-                    card: exitCard,
-                    tier,
-                    destPos: handTabRect
-                      ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
-                      : undefined,
-                  });
-                }, 2200);
-                cardAnimTimersRef.current.push(tForgeFly);
-              }
             }
 
             const slotKey = `${tier}-${idx}`;
