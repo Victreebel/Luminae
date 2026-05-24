@@ -2912,15 +2912,22 @@ export default function GameBoard() {
       setReturnSelections({});
       return;
     }
+    // Snapshot before clearing — WS response can arrive before React processes
+    // the state clear, which would double-count pending into tentativeCount.
+    const snap = { ...selectedCrystals };
+    setSelectedCrystals({});
+    setCrystalHistory([]);
+    setPrePromotionHistory(null);
+    setActionMode('none');
     if (queueLegality.actionType === 'take3') {
-      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
-      triggerHarvestBurst(selectedCrystals);
-      executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
+      playGemBurst(snap, me.playerName, session.avatarId ?? null);
+      triggerHarvestBurst(snap);
+      executeAction({ type: 'take_three_crystals', crystals: snap });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
-      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
-      triggerHarvestBurst(selectedCrystals);
-      executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
+      playGemBurst(snap, me.playerName, session.avatarId ?? null);
+      triggerHarvestBurst(snap);
+      executeAction({ type: 'take_two_crystals', crystal: Object.keys(snap)[0] });
       flashSent('harness');
     }
   };
