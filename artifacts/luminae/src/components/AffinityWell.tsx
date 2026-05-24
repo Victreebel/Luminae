@@ -484,14 +484,14 @@ export function AffinityWellCells({
                             textTransform: 'uppercase',
                           }}
                         >
-                          CODED {reservedCount}/3
+                          WELL {gaugeFilledCount}/5
                         </span>
                         <HorizontalWellMeter
-                          capacity={3}
-                          filledCount={reservedCount}
+                          capacity={5}
+                          filledCount={gaugeFilledCount}
                           hex={meta.hex}
                           glowHex={meta.glowHex}
-                          burstKey={0}
+                          burstKey={harvestBurstKeys?.[c] ?? 0}
                         />
                       </div>
                     )}
