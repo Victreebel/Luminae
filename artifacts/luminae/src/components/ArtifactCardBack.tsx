@@ -47,7 +47,7 @@ const pt = (cx: number, cy: number, r: number, deg: number): [number,number] => 
 // ║  One world mastered: planetary-scale energy grid, continental nodes,    ║
 // ║  atmospheric ring, first orbital arc. Technology is planet-bound.       ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-export function CardBackTier1() {
+export function CardBackTier1({ count: _count }: { count?: number }) {
   const id = 't1cb';
   const PX = 35, PY = 56, PR = 16;
 
@@ -352,7 +352,7 @@ export function CardBackTier1() {
 // ║  A Dyson Swarm: thousands of solar collector satellites in varied        ║
 // ║  orbital planes around a single star, harvesting its full output.       ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
-export function CardBackTier2() {
+export function CardBackTier2({ count: _count }: { count?: number }) {
   const id = 't2cb';
   const CX = 35, CY = 51;   // star / sphere center
 
@@ -649,7 +649,7 @@ export function CardBackTier2() {
 // ║  the point where all affinities unify at galactic scale.               ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
-export function CardBackTier3() {
+export function CardBackTier3({ count: _count }: { count?: number }) {
   const id = 't3cb';
   const HUB_X = 35, HUB_Y = 52; // central convergence hub
 

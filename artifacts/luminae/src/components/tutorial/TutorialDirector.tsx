@@ -82,7 +82,7 @@ const ORB_EMBERS: OrbEmberDef[] = [
   { angle: 340, r0f: 0.29, r1f: 0.62, szf: 0.072, col: EMBER_PALETTE_ORB[4], delay: 0.8, dur: 1.7 },
 ];
 
-function LumiiOrb({ size = 64, excited = false, highlightZone = null, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; muted?: boolean }) {
+function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
   const prefersReducedMotion = useReducedMotion();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
@@ -542,7 +542,9 @@ function useIsShortLandscape() {
       mq.addEventListener("change", handler);
       return () => mq.removeEventListener("change", handler);
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       mq.addListener(handler);
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
       return () => mq.removeListener(handler);
     }
   }, []);
@@ -867,11 +869,12 @@ function PlayerHand({
 
 // ─── Market view tabs ─────────────────────────────────────────────────────────
 function MarketTabs({
-  view, dispatch, beatId, highlightDiscounted, highlightNeeded,
+  view, dispatch, beatId, subStep: _subStep, highlightDiscounted, highlightNeeded,
 }: {
   view: TutorialMarketView;
   dispatch: React.Dispatch<TAction>;
   beatId: string;
+  subStep: number;
   highlightDiscounted: boolean;
   highlightNeeded: boolean;
 }) {
@@ -904,7 +907,7 @@ function MarketTabs({
 }
 
 // ─── Deck Pile Visual ─────────────────────────────────────────────────────────
-function DeckPile({ tier }: { tier: number }) {
+function DeckPile({ tier, count: _count }: { tier: number; count: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
   return (
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
@@ -1019,8 +1022,7 @@ function CardFlipReveal({
     const ts = setTimeout(() => gameAudio.playCardFlip(), Math.max(0, delay - soundLead));
     const tf = setTimeout(() => setPhase("out"), delay);
     return () => { clearTimeout(ts); clearTimeout(tf); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: runs once on mount; delay and shouldAnimate are initial config values, not reactive
-  }, []);
+  }, []); // run once on mount
 
   if (phase === "done") return <>{children}</>;
 
@@ -1177,8 +1179,10 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
   // Each row has a deck pile + 4 card slots. Slots are filled with real cards,
   // deck-draw animations (briefly after forge), or ghost placeholders.
   const MARKET_SLOTS = 4;
+  const DECK_COUNTS: Record<number, number> = { 1: 40, 2: 30, 3: 20 };
 
   const renderTierRow = (tier: number, cardIds: string[], label: string) => {
+    const deckCount = Math.max(0, (DECK_COUNTS[tier] ?? 10) - MARKET_SLOTS);
 
     type Slot =
       | { kind: 'real'; cardId: string }
@@ -1220,7 +1224,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
           Tier {tier} — {label}
         </div>
         <div className="flex gap-3 overflow-x-auto pt-1 pb-2 items-start" style={{ minHeight: 170 }}>
-          <DeckPile tier={tier} />
+          <DeckPile tier={tier} count={deckCount} />
           {slots.map((slot, idx) => {
             if (slot.kind === 'real') {
               const { cardId } = slot;
@@ -1336,6 +1340,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
         view={s.view}
         dispatch={dispatch}
         beatId={beatId}
+        subStep={subStep}
         highlightDiscounted={highlightDiscounted}
         highlightNeeded={highlightNeeded}
       />
@@ -1561,7 +1566,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
     });
     timers.push(setTimeout(() => doneRef.current(), t + 300));
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stable star positions — seeded once on mount, same look as the pre-shatter black/starry backdrop.
   const stars = useMemo(() =>
@@ -2424,7 +2429,7 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
             className="absolute z-30"
           >
             <div style={{ transform: "translate(-50%, -50%)" }}>
-              <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} />
+              <LumiiOrb size={88} excited={s.beat === 2} highlightZone={null} beatKey={s.beat} />
             </div>
           </motion.div>
         )}
@@ -3193,6 +3198,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Close card sheet on beat/subStep change
   useEffect(() => {
     setSelectedCardData(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beatId, subStep]);
 
   // Auto-scroll (camera is programmatic)
@@ -3605,7 +3611,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
-                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} />
+                <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={`${beatId}-${s.dlgLine}`} />
               </div>
             </motion.div>
             </div>

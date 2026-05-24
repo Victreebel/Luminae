@@ -152,7 +152,7 @@ export function TutorialOverlay({
         setTutorialStep(nextStep);
       }
     }
-  }, [state?.actionLog, state?.lastAction, tutorialStep, sessionPlayerId, setTutorialStep]);
+  }, [state?.actionLog?.length, tutorialStep, sessionPlayerId, setTutorialStep]);
 
   // Auto-advance when game ends mid-tutorial
   useEffect(() => {

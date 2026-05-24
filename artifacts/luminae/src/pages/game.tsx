@@ -401,14 +401,14 @@ function TurnCountdown({ deadline, active }: { deadline: number | null; active: 
   );
 }
 
-function CardBack({ size = 'md', tier }: { size?: 'sm' | 'md'; tier?: 1 | 2 | 3 }) {
+function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: number; tier?: 1 | 2 | 3 }) {
   const sz = size === 'sm' ? 'w-9 h-12' : 'w-[var(--card-w)] h-[var(--card-h)]';
   const t = tier ?? 1;
   return (
     <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
-      {t === 1 && <CardBackTier1 />}
-      {t === 2 && <CardBackTier2 />}
-      {t === 3 && <CardBackTier3 />}
+      {t === 1 && <CardBackTier1 count={count} />}
+      {t === 2 && <CardBackTier2 count={count} />}
+      {t === 3 && <CardBackTier3 count={count} />}
     </div>
   );
 }
@@ -427,12 +427,13 @@ function CardBack({ size = 'md', tier }: { size?: 'sm' | 'md'; tier?: 1 | 2 | 3 
 // remaining 3 cycle through the other requirement colours.
 function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, canToggle, onToggle, isNew = false,
+  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
   luminaryAffinity?: LuminaryActiveState | null;
   isOwnedByMe?: boolean;
+  isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
   isNew?: boolean;
@@ -467,10 +468,8 @@ function LuminaryClaimedPortal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [luminary.id],
   );
-  const colors = useMemo(
-    () => accentMeta.length > 0 ? accentMeta : [GEM_META.flux],
-    [accentMeta],
-  );
+  const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const hexes = useMemo(() => colors.map(c => c.hex), [colors]);
 
   // Active affinity drives dominant colour; fallback to first requirement colour
@@ -779,7 +778,7 @@ function LuminaryClaimedPortal({
 
 function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
-  luminaryAffinity, claimedByPlayer, isOwnedByMe, canToggle, onToggle,
+  luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
   costMode, playerBonuses,
 }: {
   luminary: Luminary;
@@ -788,6 +787,7 @@ function LuminaryCard({
   luminaryAffinity?: LuminaryActiveState | null;
   claimedByPlayer?: GamePlayerState | null;
   isOwnedByMe?: boolean;
+  isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
   costMode?: 'printed' | 'after_bonuses' | 'needed_now';
@@ -814,6 +814,7 @@ function LuminaryCard({
           claimedByPlayer={claimedByPlayer}
           luminaryAffinity={luminaryAffinity}
           isOwnedByMe={isOwnedByMe}
+          isLive={isLive}
           canToggle={canToggle}
           onToggle={onToggle}
           isNew={portalIsNew}
@@ -935,9 +936,6 @@ function useScrollLock(
     document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
 
-    // Capture ref value at effect time so cleanup uses the same node.
-    const main = mainScrollRef.current;
-
     return () => {
       // All overlays closed: restore the body and scroll position.
       document.body.style.position = '';
@@ -949,6 +947,7 @@ function useScrollLock(
       // Restore scroll focus to <main> so the next swipe immediately
       // scrolls the board — but only if the focus trap hasn't already
       // placed focus on a specific trigger element.
+      const main = mainScrollRef.current;
       if (main) {
         requestAnimationFrame(() => {
           const active = document.activeElement;
@@ -1104,6 +1103,7 @@ export default function GameBoard() {
   const checkedInitialSummonRef = useRef(false);
   // Stable ref to enqueueSummon — populated after it is defined below (after
   // the early return) so the initial-load useEffect can call it safely.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enqueueSummonRef = useRef<(...args: any[]) => void>(() => {});
   // Luminary IDs that have been detected as newly summoned in processUpdate but
   // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to
@@ -1424,7 +1424,6 @@ export default function GameBoard() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: timer only restarts for a new announcement (new key); adding full turnAnnouncement would restart on unrelated state updates within the same announcement
   }, [turnAnnouncement?.key]);
 
   useEffect(() => {
@@ -1499,7 +1498,6 @@ export default function GameBoard() {
         fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, true, accentColor, cp.lumens, state.turnTimerSeconds ?? null);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fires once per version/status change; fireTurnAnnouncement/isTutorial/session/state are read from closure but adding them as deps would cause infinite re-announcement loops; gate on initialTurnFiredRef prevents double-fire
   }, [state?.status, state?.version]);
 
   // ── Initial-load summon check ─────────────────────────────────────────────
@@ -1627,7 +1625,7 @@ export default function GameBoard() {
       gameAudio.playAffinitySwitch();
     }
     seenAiAffinityLogCountRef.current = aiAffinityCount;
-  }, [state?.actionLog, state?.players]);
+  }, [state?.actionLog]);
 
   // ── Undo hint trigger ─────────────────────────────────────────────────────
   // Must live here — before the early returns — so hook order is stable across
@@ -1671,10 +1669,11 @@ export default function GameBoard() {
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
-  const myPurchasedCards = useMemo(() => me?.purchasedCards ?? [], [me?.purchasedCards]);
-  const myDiscountedForgeIds = useMemo(() => me?.discountedForgeIds ?? [], [me?.discountedForgeIds]);
+  const myPurchasedCards = me?.purchasedCards ?? [];
+  const myDiscountedForgeIds = me?.discountedForgeIds ?? [];
   const kardashevTier = useMemo(
     () => getKardashevTier(myPurchasedCards, myDiscountedForgeIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [myPurchasedCards, myDiscountedForgeIds],
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
@@ -1740,7 +1739,6 @@ export default function GameBoard() {
     } else {
       setShowForgeHint(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- canAffordCard is a non-memoized helper that closes over state; the values that actually matter (isMyTurn, selectedCard, me) are already in deps
   }, [isMyTurn, selectedCard, me, hintsEnabled]);
 
   processUpdateRef.current = (newState: GameState) => {
@@ -2231,7 +2229,7 @@ export default function GameBoard() {
       setVotePending(false);
       toast({ title: 'Rematch cancelled', description: 'Not enough players confirmed. The game has ended.' });
     },
-    onRematchDeclined: () => {
+    onRematchDeclined: (_sessionStats) => {
       // This player was not included — send them home after a brief message
       toast({ title: 'Not included', description: 'The other players started a new game without you.' });
       setTimeout(() => setLocation('/'), 3000);
@@ -2393,6 +2391,7 @@ export default function GameBoard() {
         gameAudio.playWin();
       }, WIN_FANFARE_DELAY_MS);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summonQueue.length, pendingGameOver]);
 
   // In tutorial mode, suppress the summon cutscene entirely — immediately drain
@@ -3044,6 +3043,7 @@ export default function GameBoard() {
                 luminaryAffinity={serverLumAffinity}
                 claimedByPlayer={visibleClaimedByPlayer}
                 isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
+                isLive={isSummonInProgress ? false : isLive}
                 canToggle={isSummonInProgress ? false : canToggle}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
@@ -3164,7 +3164,7 @@ export default function GameBoard() {
                 className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
               >
-                <CardBack tier={row.tier as 1 | 2 | 3} />
+                <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
                 {(isMyTurn || canPlan) && row.deck > 0 && me && (
                   <div
                     className="absolute inset-x-0 bottom-0 text-[#D0CCFF] text-[9px] font-bold uppercase text-center py-1 rounded-b-xl"
