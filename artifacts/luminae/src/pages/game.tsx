@@ -4738,20 +4738,20 @@ export default function GameBoard() {
                   {loreCatalog && (() => {
                     const lore = loreCatalog[selectedCard.card.id];
                     if (!lore) return null;
-                    const fields: { label: string; value: string | undefined }[] = [
+                    const cap = (s: string | undefined) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+                    const fields: { label: string; value: string | undefined; capitalize?: boolean }[] = [
                       { label: 'Form',     value: lore.artifactForm },
-                      { label: 'Role',     value: lore.blueprintRole },
-                      { label: 'Culture',  value: lore.civLane },
-                      { label: 'Scale',    value: lore.engineeringScale },
+                      { label: 'Role',     value: lore.blueprintRole,  capitalize: true },
+                      { label: 'Culture',  value: lore.civLane,        capitalize: true },
                     ];
                     const visible = fields.filter(f => f.value);
                     if (visible.length === 0) return null;
                     return (
                       <div className="flex flex-col gap-1">
-                        {visible.map(({ label, value }) => (
+                        {visible.map(({ label, value, capitalize }) => (
                           <div key={label} className="flex gap-1.5 items-baseline">
                             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 shrink-0 w-[46px]">{label}</span>
-                            <span className="text-[10px] text-muted-foreground/75 leading-snug">{value}</span>
+                            <span className="text-[10px] text-muted-foreground/75 leading-snug">{capitalize ? cap(value) : value}</span>
                           </div>
                         ))}
                       </div>
