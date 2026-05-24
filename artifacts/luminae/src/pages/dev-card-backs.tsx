@@ -37,7 +37,7 @@ export default function DevCardBacks() {
           </div>
           <div className="flex flex-col items-center gap-3">
             <div style={{ width: 36, height: 51 }}>
-              <Component count={tierIdx === 0 ? 20 : tierIdx === 1 ? 15 : 10} />
+              <Component />
             </div>
             <span style={{ color: "#6070a0", fontSize: 11, letterSpacing: "0.08em", fontFamily: "system-ui" }}>
               deck tile

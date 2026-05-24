@@ -401,14 +401,14 @@ function TurnCountdown({ deadline, active }: { deadline: number | null; active: 
   );
 }
 
-function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: number; tier?: 1 | 2 | 3 }) {
+function CardBack({ size = 'md', tier }: { size?: 'sm' | 'md'; tier?: 1 | 2 | 3 }) {
   const sz = size === 'sm' ? 'w-9 h-12' : 'w-[var(--card-w)] h-[var(--card-h)]';
   const t = tier ?? 1;
   return (
     <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
-      {t === 1 && <CardBackTier1 count={count} />}
-      {t === 2 && <CardBackTier2 count={count} />}
-      {t === 3 && <CardBackTier3 count={count} />}
+      {t === 1 && <CardBackTier1 />}
+      {t === 2 && <CardBackTier2 />}
+      {t === 3 && <CardBackTier3 />}
     </div>
   );
 }
@@ -427,13 +427,12 @@ function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: nu
 // remaining 3 cycle through the other requirement colours.
 function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false,
+  isOwnedByMe, canToggle, onToggle, isNew = false,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
   luminaryAffinity?: LuminaryActiveState | null;
   isOwnedByMe?: boolean;
-  isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
   isNew?: boolean;
@@ -780,7 +779,7 @@ function LuminaryClaimedPortal({
 
 function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
-  luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
+  luminaryAffinity, claimedByPlayer, isOwnedByMe, canToggle, onToggle,
   costMode, playerBonuses,
 }: {
   luminary: Luminary;
@@ -789,7 +788,6 @@ function LuminaryCard({
   luminaryAffinity?: LuminaryActiveState | null;
   claimedByPlayer?: GamePlayerState | null;
   isOwnedByMe?: boolean;
-  isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
   costMode?: 'printed' | 'after_bonuses' | 'needed_now';
@@ -816,7 +814,6 @@ function LuminaryCard({
           claimedByPlayer={claimedByPlayer}
           luminaryAffinity={luminaryAffinity}
           isOwnedByMe={isOwnedByMe}
-          isLive={isLive}
           canToggle={canToggle}
           onToggle={onToggle}
           isNew={portalIsNew}
@@ -2235,7 +2232,7 @@ export default function GameBoard() {
       setVotePending(false);
       toast({ title: 'Rematch cancelled', description: 'Not enough players confirmed. The game has ended.' });
     },
-    onRematchDeclined: (_sessionStats) => {
+    onRematchDeclined: () => {
       // This player was not included — send them home after a brief message
       toast({ title: 'Not included', description: 'The other players started a new game without you.' });
       setTimeout(() => setLocation('/'), 3000);
@@ -3048,7 +3045,6 @@ export default function GameBoard() {
                 luminaryAffinity={serverLumAffinity}
                 claimedByPlayer={visibleClaimedByPlayer}
                 isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
-                isLive={isSummonInProgress ? false : isLive}
                 canToggle={isSummonInProgress ? false : canToggle}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
@@ -3169,7 +3165,7 @@ export default function GameBoard() {
                 className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
               >
-                <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
+                <CardBack tier={row.tier as 1 | 2 | 3} />
                 {(isMyTurn || canPlan) && row.deck > 0 && me && (
                   <div
                     className="absolute inset-x-0 bottom-0 text-[#D0CCFF] text-[9px] font-bold uppercase text-center py-1 rounded-b-xl"

@@ -1379,7 +1379,7 @@ export function applyAction(
   pushLog(state, {
     playerId,
     playerName: player.playerName,
-    summary: describeAction(action, player),
+    summary: describeAction(action),
     turn: state.roundNumber,
   });
   state.version++;
@@ -1419,7 +1419,7 @@ export function applyAction(
 
 // ─── Human-readable action summary ────────────────────────────────────────────
 
-function describeAction(action: ActionPayload, _player: PlayerGameState): string {
+function describeAction(action: ActionPayload): string {
   switch (action.type) {
     case "take_three_crystals": {
       const sel = action.crystals ?? {};
