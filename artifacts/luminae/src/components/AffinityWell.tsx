@@ -472,80 +472,86 @@ export function AffinityWellCells({
                       )}
                     </div>
 
-                    {/* ── Count display ── */}
-                    {isFlux ? (
-                      /* Singularity: owned flux count */
-                      <span
-                        style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
-                          color: gems > 0 ? '#fff' : `${meta.hex}28`,
-                          textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
-                        }}
-                      >
-                        {gems}
-                      </span>
-                    ) : forgeDed > 0 ? (
-                      /* Forge-cost preview: projected post-spend count, amber pulse */
-                      <motion.span
-                        style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
-                          color: '#f59e0b',
-                          textShadow: '0 0 10px #f59e0bcc',
-                        }}
-                        animate={{ opacity: [1, 0.55, 1] }}
-                        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        {gems - forgeDed}
-                      </motion.span>
-                    ) : pending > 0 ? (
-                      /* Selected: tentative post-harness count with glow pulse */
-                      <motion.span
-                        style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
-                          color: meta.glowHex,
-                          textShadow: `0 0 10px ${meta.glowHex}cc, 0 0 22px ${meta.glowHex}44`,
-                        }}
-                        animate={{ opacity: [1, 0.68, 1] }}
-                        transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        {tentativeCount}
-                      </motion.span>
-                    ) : (
-                      /* Normal owned count */
-                      <span
-                        style={{
-                          fontSize: 16, fontWeight: 900, lineHeight: 1,
-                          color: hasContent ? '#fff' : `${meta.hex}28`,
-                          textShadow: hasContent ? `0 0 7px ${meta.glowHex}` : 'none',
-                        }}
-                      >
-                        {gems}
-                      </span>
-                    )}
+                    {/* ── Count + bonus chip row ── */}
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      {isFlux ? (
+                        /* Singularity: owned flux count */
+                        <span
+                          style={{
+                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            color: gems > 0 ? '#fff' : `${meta.hex}28`,
+                            textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
+                          }}
+                        >
+                          {gems}
+                        </span>
+                      ) : forgeDed > 0 ? (
+                        /* Forge-cost preview: projected post-spend count, amber pulse */
+                        <motion.span
+                          style={{
+                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            color: '#f59e0b',
+                            textShadow: '0 0 10px #f59e0bcc',
+                          }}
+                          animate={{ opacity: [1, 0.55, 1] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          {gems - forgeDed}
+                        </motion.span>
+                      ) : pending > 0 ? (
+                        /* Selected: tentative post-harness count with glow pulse */
+                        <motion.span
+                          style={{
+                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            color: meta.glowHex,
+                            textShadow: `0 0 10px ${meta.glowHex}cc, 0 0 22px ${meta.glowHex}44`,
+                          }}
+                          animate={{ opacity: [1, 0.68, 1] }}
+                          transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          {tentativeCount}
+                        </motion.span>
+                      ) : (
+                        /* Normal owned count */
+                        <span
+                          style={{
+                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            color: hasContent ? '#fff' : `${meta.hex}28`,
+                            textShadow: hasContent ? `0 0 7px ${meta.glowHex}` : 'none',
+                          }}
+                        >
+                          {gems}
+                        </span>
+                      )}
 
-                    {/* ── Inline bonus chip (non-flux only) ── */}
-                    {!isFlux && (bonus + lumBonus > 0) && (
-                      <motion.span
-                        key={bonusPulseKeys[c] ?? 'static'}
-                        initial={
-                          bonusPulseKeys[c] !== undefined
-                            ? { scale: 1.55, opacity: 0.6, textShadow: `0 0 10px ${meta.glowHex}` }
-                            : false
-                        }
-                        animate={{ scale: 1, opacity: 1, textShadow: `0 0 0px ${meta.glowHex}00` }}
-                        transition={{ duration: 0.4, ease: 'easeOut' }}
-                        style={{
-                          fontSize: 9,
-                          fontWeight: 700,
-                          lineHeight: 1,
-                          marginTop: 1,
-                          color: 'hsl(var(--primary))',
-                          display: 'inline-block',
-                        }}
-                      >
-                        +{bonus + lumBonus}
-                      </motion.span>
-                    )}
+                      {/* ── Inline bonus chip (non-flux only) ── */}
+                      {!isFlux && (bonus + lumBonus > 0) && (
+                        <motion.span
+                          key={bonusPulseKeys[c] ?? 'static'}
+                          initial={
+                            bonusPulseKeys[c] !== undefined
+                              ? { scale: 1.55, opacity: 0.6 }
+                              : false
+                          }
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.4, ease: 'easeOut' }}
+                          style={{
+                            fontSize: 8,
+                            fontWeight: 800,
+                            lineHeight: 1,
+                            padding: '1px 3px',
+                            borderRadius: 4,
+                            border: `1px solid ${meta.glowHex}55`,
+                            background: `${meta.hex}1a`,
+                            color: meta.glowHex,
+                            display: 'inline-block',
+                            flexShrink: 0,
+                          }}
+                        >
+                          +{bonus + lumBonus}
+                        </motion.span>
+                      )}
+                    </div>
 
                     {/* ── Well section: Singularity shows encrypted-pile meter ── */}
                     {isFlux && (
