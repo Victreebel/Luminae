@@ -1104,7 +1104,6 @@ export default function GameBoard() {
   const checkedInitialSummonRef = useRef(false);
   // Stable ref to enqueueSummon — populated after it is defined below (after
   // the early return) so the initial-load useEffect can call it safely.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const enqueueSummonRef = useRef<(...args: any[]) => void>(() => {});
   // Luminary IDs that have been detected as newly summoned in processUpdate but
   // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to

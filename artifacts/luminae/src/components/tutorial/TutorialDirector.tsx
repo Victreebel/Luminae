@@ -542,9 +542,7 @@ function useIsShortLandscape() {
       mq.addEventListener("change", handler);
       return () => mq.removeEventListener("change", handler);
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       mq.addListener(handler);
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       return () => mq.removeListener(handler);
     }
   }, []);
