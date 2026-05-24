@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -5640,70 +5640,48 @@ export default function GameBoard() {
                 {me.reservedCards.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">No cards encrypted.</p>
                 ) : (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
                     {me.reservedCards.map((c) => {
                       const ec = computeCosts(c, costMode);
                       const canBuy = canAffordCard(c, me);
                       return (
-                        <div key={c.id} className="flex gap-4 items-center bg-secondary/30 rounded-2xl p-3">
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="flex gap-3 items-center bg-secondary/30 hover:bg-secondary/50 active:bg-secondary/60 rounded-2xl p-3 w-full text-left transition-colors"
+                          onClick={() => {
+                            setShowReservedOverlay(false);
+                            openCardSheet(c, true);
+                          }}
+                        >
                           <ArtifactCardView
                             card={c}
                             tier={c.tier}
                             effectiveCosts={ec}
-                            onTap={() => {
-                              openCardSheet(c, true);
-                              setTimeout(() => setShowReservedOverlay(false), 150);
-                            }}
-                            tapped={selectedCard?.card.id === c.id}
+                            tapped={false}
                           />
-                          <div className="flex-1 flex flex-col gap-2 min-w-0">
+                          <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                             <div className="font-bold text-sm leading-tight">{c.name}</div>
-                            {c.flavor && (
-                              <p className="text-[11px] text-muted-foreground italic leading-relaxed line-clamp-2">"{c.flavor}"</p>
-                            )}
-                            {loreCatalog && (() => {
-                              const lore = loreCatalog[c.id];
-                              if (!lore) return null;
-                              const loreTag = lore.artifactForm?.split('/')?.[0]?.trim() ?? lore.civLane?.split('/')?.[0]?.trim();
-                              if (!loreTag) return null;
-                              return (
-                                <span className="text-[9px] font-semibold uppercase tracking-widest text-primary/60 bg-primary/8 rounded px-1.5 py-0.5 self-start border border-primary/15">
-                                  {loreTag}
-                                </span>
-                              );
-                            })()}
                             <div className="flex items-center gap-1.5">
                               <MiniGem color={c.bonusColor as GemKey} size={13} />
                               <span className="text-xs text-muted-foreground">{GEM_META[c.bonusColor as GemKey]?.name ?? c.bonusColor} bonus</span>
+                              {(c.lumens ?? 0) > 0 && (
+                                <>
+                                  <span className="text-muted-foreground/40">·</span>
+                                  <Sparkles className="h-3 w-3 text-primary" />
+                                  <span className="text-xs font-bold text-primary">{c.lumens}</span>
+                                </>
+                              )}
                             </div>
-                            {(c.lumens ?? 0) > 0 && (
-                              <div className="flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-primary" />
-                                <span className="text-xs font-bold text-primary">{c.lumens} eminence</span>
-                              </div>
-                            )}
-                            {(isMyTurnForCoreAction || (canPlan && canBuy)) && (
-                              <Button
-                                size="sm"
-                                className={`mt-1 w-full font-bold border-0
-                                  ${isMyTurnForCoreAction
-                                    ? canBuy
-                                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                      : 'bg-secondary text-muted-foreground'
-                                    : 'bg-zinc-700/70 hover:bg-zinc-600/80 text-zinc-200 opacity-80'
-                                  }`}
-                                disabled={isMyTurnForCoreAction && !canBuy}
-                                onClick={() => {
-                                  setShowReservedOverlay(false);
-                                  openCardSheet(c, true);
-                                }}
-                              >
-                                <Gavel className="h-3.5 w-3.5 mr-1.5" />
-                                {isMyTurnForCoreAction ? (canBuy ? 'Forge…' : 'Cannot afford') : <><span className="text-[7px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/50 rounded px-[4px] py-[1px] leading-none mr-1">PLAN</span>Forge…</>}
-                              </Button>
-                            )}
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {canBuy
+                                ? <span className="text-[10px] font-semibold text-emerald-400">Can forge</span>
+                                : <span className="text-[10px] text-muted-foreground/60">Tap to view</span>
+                              }
+                              <ChevronRight className="h-3 w-3 text-muted-foreground/50 ml-auto shrink-0" />
+                            </div>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
