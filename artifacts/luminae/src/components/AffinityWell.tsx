@@ -280,7 +280,7 @@ export function AffinityWellCells({
                 ? gems > 0 || reservedCount > 0
                 : gems > 0 || bonus > 0 || lumBonus > 0;
 
-              // ── Cell background style — tracks bank fill level ─────────────
+              // ── Cell background style ──────────────────────────────────────
               const cellStyle: React.CSSProperties =
                 pending > 0
                   ? {
@@ -288,7 +288,7 @@ export function AffinityWellCells({
                       border: `1.5px solid ${meta.glowHex}cc`,
                       boxShadow: `0 0 14px ${meta.glowHex}55, inset 0 0 10px ${meta.hex}2a`,
                     }
-                  : !bankEmpty
+                  : hasContent
                   ? {
                       background: `linear-gradient(180deg, ${meta.hex}1c 0%, ${meta.hex}0a 100%)`,
                       border: `1px solid ${meta.hex}60`,
@@ -299,13 +299,13 @@ export function AffinityWellCells({
                       border: `1px solid ${meta.hex}18`,
                     };
 
-              // ── Emblem filter — dims when you personally hold none ─────────
+              // ── Emblem filter ──────────────────────────────────────────────
               const emblemFilter =
                 pending > 0
                   ? `drop-shadow(0 0 7px ${meta.glowHex}) brightness(1.25)`
                   : forgeDed > 0
                   ? 'drop-shadow(0 0 5px #ef4444bb) brightness(0.55) saturate(0.3)'
-                  : !hasContent && !isFlux
+                  : bankEmpty && !isFlux
                   ? 'grayscale(0.65) opacity(0.4)'
                   : `drop-shadow(0 0 5px ${meta.glowHex}70)`;
 
