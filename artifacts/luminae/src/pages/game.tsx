@@ -2645,7 +2645,30 @@ export default function GameBoard() {
       if (normalized.crystals) {
         normalized.crystals = { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...normalized.crystals };
       }
-      await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } });
+      const restState = await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } });
+      // Fallback: if the WebSocket state_update is missed (e.g. transient disconnect at the
+      // moment of submission), the WS-driven animation never fires. The REST response contains
+      // the same post-action state (including lastAction) as the WS broadcast. After a short
+      // delay to give the WS time to arrive first, check whether prevStateRef has already
+      // advanced to this version. If not, push the REST state through the same queue path.
+      if (restState && typeof (restState as any).version === 'number') {
+        const restStateTyped = restState as any;
+        setTimeout(() => {
+          if (!prevStateRef.current || prevStateRef.current.version < restStateTyped.version) {
+            if (import.meta.env.DEV) console.log('[forge-trace] WS missed — using REST fallback for v:', restStateTyped.version, 'action:', restStateTyped.lastAction?.type);
+            const remaining = animationEndTimeRef.current - Date.now();
+            const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
+            if (remaining > 50 || queueBusy) {
+              stateQueueRef.current.push(restStateTyped);
+              if (!queueTimerRef.current) {
+                queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), Math.max(remaining + 100, 100));
+              }
+            } else {
+              processUpdateRef.current(restStateTyped);
+            }
+          }
+        }, 200);
+      }
       setActionMode('none');
       setSelectedCrystals({});
       setCrystalHistory([]);
@@ -5357,7 +5380,7 @@ export default function GameBoard() {
         {purchaseBurst && (
           <motion.div
             key={purchaseBurst.key}
-            className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center"
+            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
             initial={{ opacity: 1 }}
             animate={{ opacity: 0 }}
             transition={{ duration: 1.3, ease: 'easeOut' }}

@@ -171,14 +171,13 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
 
 async function handleClose(ws: WebSocket, roomId: string, playerId: string, playerName: string): Promise<void> {
   const room = connections.get(roomId);
-  if (room) {
-    // Only clean up if this socket is still the registered connection for this player.
-    // A newer reconnect may have already replaced it — in that case, leave the new
-    // connection intact and skip the disconnect logic entirely.
-    if (room.get(playerId) !== ws) return;
-    room.delete(playerId);
-    if (room.size === 0) connections.delete(roomId);
-  }
+  if (!room) return; // Room already cleaned up by a concurrent close — skip double-disconnect.
+  // Only clean up if this socket is still the registered connection for this player.
+  // A newer reconnect may have already replaced it — in that case, leave the new
+  // connection intact and skip the disconnect logic entirely.
+  if (room.get(playerId) !== ws) return;
+  room.delete(playerId);
+  if (room.size === 0) connections.delete(roomId);
 
   try {
     await db
