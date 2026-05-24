@@ -3164,7 +3164,15 @@ export default function GameBoard() {
                 className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
               >
-                <CardBack count={row.deck} tier={row.tier as 1 | 2 | 3} />
+                <CardBack tier={row.tier as 1 | 2 | 3} />
+                {row.deck > 0 && (
+                  <div
+                    className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold text-white/90 tabular-nums px-1"
+                    style={{ background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+                  >
+                    {row.deck}
+                  </div>
+                )}
                 {(isMyTurn || canPlan) && row.deck > 0 && me && (
                   <div
                     className="absolute inset-x-0 bottom-0 text-[#D0CCFF] text-[9px] font-bold uppercase text-center py-1 rounded-b-xl"

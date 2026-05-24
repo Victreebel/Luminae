@@ -907,7 +907,10 @@ function MarketTabs({
 }
 
 // ─── Deck Pile Visual ─────────────────────────────────────────────────────────
-function DeckPile({ tier, count: _count }: { tier: number; count: number }) {
+// The tutorial uses a scripted fixed card set with no real deck count, so the
+// "Blind" label is the canonical design here. The game board (game.tsx) shows
+// the live remaining count on its own deck pile button.
+function DeckPile({ tier }: { tier: number }) {
   const BackComponent = tier === 3 ? CardBackTier3 : tier === 2 ? CardBackTier2 : CardBackTier1;
   return (
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
