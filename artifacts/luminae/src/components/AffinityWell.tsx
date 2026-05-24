@@ -173,6 +173,55 @@ export function AffinityWellCells({
   const isDragging    = useRef(false);
   const dragStartX    = useRef(0);
 
+  // ── Bonus chip pulse animation ──────────────────────────────────────────────
+  // Track previous total bonus (card bonus + luminary bonus) per affinity.
+  // When the value increases, increment the pulse key so the motion.span
+  // remounts and replays its initial→animate sequence. Skip on initial mount.
+  const prevBonusRef  = useRef<Partial<Record<GemKey, number>>>({});
+  const isMountedRef  = useRef(false);
+  const [bonusPulseKeys, setBonusPulseKeys] = useState<Partial<Record<GemKey, number>>>({});
+
+  useEffect(() => {
+    const luminaryAffinities = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? []);
+    const turnCount = ((state as any)?.turnCount ?? 0) as number;
+
+    const newTotals: Partial<Record<GemKey, number>> = {};
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      const bonus    = me.bonuses[c as keyof CrystalCounts] ?? 0;
+      const lumBonus = luminaryAffinities.filter(
+        (la: LuminaryActiveState) =>
+          la.ownerId === sessionPlayerId &&
+          turnCount > la.summonedAtTurnCount &&
+          la.activeAffinity === c,
+      ).length;
+      newTotals[c] = bonus + lumBonus;
+    }
+
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      prevBonusRef.current = newTotals;
+      return;
+    }
+
+    const changedKeys: GemKey[] = [];
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      const prev = prevBonusRef.current[c] ?? 0;
+      const next = newTotals[c] ?? 0;
+      if (next > prev) changedKeys.push(c);
+    }
+    prevBonusRef.current = newTotals;
+
+    if (changedKeys.length > 0) {
+      setBonusPulseKeys((prev) => {
+        const next = { ...prev };
+        for (const c of changedKeys) next[c] = (prev[c] ?? 0) + 1;
+        return next;
+      });
+    }
+  }, [me.bonuses, state, sessionPlayerId]);
+
   return (
     <div className="relative">
 
@@ -476,17 +525,26 @@ export function AffinityWellCells({
 
                     {/* ── Inline bonus chip (non-flux only) ── */}
                     {!isFlux && (bonus + lumBonus > 0) && (
-                      <span
+                      <motion.span
+                        key={bonusPulseKeys[c] ?? 'static'}
+                        initial={
+                          bonusPulseKeys[c] !== undefined
+                            ? { scale: 1.55, opacity: 0.6, textShadow: `0 0 10px ${meta.glowHex}` }
+                            : false
+                        }
+                        animate={{ scale: 1, opacity: 1, textShadow: `0 0 0px ${meta.glowHex}00` }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
                         style={{
                           fontSize: 9,
                           fontWeight: 700,
                           lineHeight: 1,
                           marginTop: 1,
                           color: 'hsl(var(--primary))',
+                          display: 'inline-block',
                         }}
                       >
                         +{bonus + lumBonus}
-                      </span>
+                      </motion.span>
                     )}
 
                     {/* ── Well section: Singularity shows encrypted-pile meter ── */}
