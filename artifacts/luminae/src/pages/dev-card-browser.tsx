@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useLocation, useSearch } from 'wouter';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { useGetCardLoreCatalog } from '@workspace/api-client-react';
 import type { CardLoreEntry } from '@workspace/api-client-react';
@@ -258,9 +259,21 @@ function DevDetails({ lore }: { lore: CardLoreEntry }) {
 }
 
 export default function DevCardBrowser() {
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+
   const [filterTier, setFilterTier] = useState<1 | 2 | 3 | null>(null);
   const [filterAffinity, setFilterAffinity] = useState<GemKey | null>(null);
-  const [idx, setIdx] = useState(0);
+
+  const initialIdx = useRef(() => {
+    const id = new URLSearchParams(search).get('id');
+    if (!id) return 0;
+    const i = CATALOG.findIndex(c => c.id === id);
+    return i >= 0 ? i : 0;
+  }).current();
+
+  const [idx, setIdx] = useState(initialIdx);
+  const didMountRef = useRef(false);
 
   const { data: loreData } = useGetCardLoreCatalog();
 
@@ -276,7 +289,19 @@ export default function DevCardBrowser() {
     setIdx(prev => Math.max(0, Math.min(filtered.length - 1, prev + delta)));
   }, [filtered.length]);
 
-  useEffect(() => { setIdx(0); }, [filterTier, filterAffinity]);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    setIdx(0);
+  }, [filterTier, filterAffinity]);
+
+  const card = filtered[clamp(idx)];
+
+  useEffect(() => {
+    if (!card) return;
+    const params = new URLSearchParams(search);
+    if (params.get('id') === card.id) return;
+    setLocation(`/dev/card-browser?id=${card.id}`, { replace: true });
+  }, [card?.id]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -286,8 +311,6 @@ export default function DevCardBrowser() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [go]);
-
-  const card = filtered[clamp(idx)];
 
   if (!card) {
     return (
