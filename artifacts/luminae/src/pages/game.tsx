@@ -3247,6 +3247,10 @@ export default function GameBoard() {
                       />
                     )}
                     {isQueued && <QueuedOverlay />}
+                    <div className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/55 backdrop-blur-sm px-1 py-0.5">
+                      <Eye className="h-2.5 w-2.5 text-white/70" />
+                      <span className="text-[7px] font-medium text-white/65 leading-none">details</span>
+                    </div>
                   </div>
                 );
               })}
@@ -3471,6 +3475,10 @@ export default function GameBoard() {
                       effectiveCosts={computeCosts(c, costMode)}
                     />
                     {isQueued && <QueuedOverlay />}
+                    <div className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/55 backdrop-blur-sm px-1 py-0.5">
+                      <Eye className="h-2.5 w-2.5 text-white/70" />
+                      <span className="text-[7px] font-medium text-white/65 leading-none">details</span>
+                    </div>
                   </div>
                   <div className="w-full px-0.5">
                     {c.flavor && (
