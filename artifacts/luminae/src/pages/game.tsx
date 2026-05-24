@@ -468,8 +468,10 @@ function LuminaryClaimedPortal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [luminary.id],
   );
-  const colors = accentMeta.length > 0 ? accentMeta : [GEM_META.flux];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const colors = useMemo(
+    () => accentMeta.length > 0 ? accentMeta : [GEM_META.flux],
+    [accentMeta],
+  );
   const hexes = useMemo(() => colors.map(c => c.hex), [colors]);
 
   // Active affinity drives dominant colour; fallback to first requirement colour
@@ -936,6 +938,9 @@ function useScrollLock(
     document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
 
+    // Capture ref value at effect time so cleanup uses the same node.
+    const main = mainScrollRef.current;
+
     return () => {
       // All overlays closed: restore the body and scroll position.
       document.body.style.position = '';
@@ -947,7 +952,6 @@ function useScrollLock(
       // Restore scroll focus to <main> so the next swipe immediately
       // scrolls the board — but only if the focus trap hasn't already
       // placed focus on a specific trigger element.
-      const main = mainScrollRef.current;
       if (main) {
         requestAnimationFrame(() => {
           const active = document.activeElement;
@@ -1424,6 +1428,7 @@ export default function GameBoard() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: timer only restarts for a new announcement (new key); adding full turnAnnouncement would restart on unrelated state updates within the same announcement
   }, [turnAnnouncement?.key]);
 
   useEffect(() => {
@@ -1498,6 +1503,7 @@ export default function GameBoard() {
         fireTurnAnnouncement(key, cp.playerName, cp.avatarId ?? null, true, accentColor, cp.lumens, state.turnTimerSeconds ?? null);
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fires once per version/status change; fireTurnAnnouncement/isTutorial/session/state are read from closure but adding them as deps would cause infinite re-announcement loops; gate on initialTurnFiredRef prevents double-fire
   }, [state?.status, state?.version]);
 
   // ── Initial-load summon check ─────────────────────────────────────────────
@@ -1625,7 +1631,7 @@ export default function GameBoard() {
       gameAudio.playAffinitySwitch();
     }
     seenAiAffinityLogCountRef.current = aiAffinityCount;
-  }, [state?.actionLog]);
+  }, [state?.actionLog, state?.players]);
 
   // ── Undo hint trigger ─────────────────────────────────────────────────────
   // Must live here — before the early returns — so hook order is stable across
@@ -1669,11 +1675,10 @@ export default function GameBoard() {
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
-  const myPurchasedCards = me?.purchasedCards ?? [];
-  const myDiscountedForgeIds = me?.discountedForgeIds ?? [];
+  const myPurchasedCards = useMemo(() => me?.purchasedCards ?? [], [me?.purchasedCards]);
+  const myDiscountedForgeIds = useMemo(() => me?.discountedForgeIds ?? [], [me?.discountedForgeIds]);
   const kardashevTier = useMemo(
     () => getKardashevTier(myPurchasedCards, myDiscountedForgeIds),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [myPurchasedCards, myDiscountedForgeIds],
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
@@ -1739,6 +1744,7 @@ export default function GameBoard() {
     } else {
       setShowForgeHint(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- canAffordCard is a non-memoized helper that closes over state; the values that actually matter (isMyTurn, selectedCard, me) are already in deps
   }, [isMyTurn, selectedCard, me, hintsEnabled]);
 
   processUpdateRef.current = (newState: GameState) => {
@@ -2391,7 +2397,6 @@ export default function GameBoard() {
         gameAudio.playWin();
       }, WIN_FANFARE_DELAY_MS);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summonQueue.length, pendingGameOver]);
 
   // In tutorial mode, suppress the summon cutscene entirely — immediately drain

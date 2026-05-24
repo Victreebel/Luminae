@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -246,7 +246,7 @@ export default function Dashboard() {
   const [resumingId, setResumingId] = useState<string | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
 
-  const fetchGames = async () => {
+  const fetchGames = useCallback(async () => {
     if (!token) return;
     setIsLoadingGames(true);
     try {
@@ -257,9 +257,9 @@ export default function Dashboard() {
     } finally {
       setIsLoadingGames(false);
     }
-  };
+  }, [token, toast]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!token) return;
     setIsLoadingStats(true);
     try {
@@ -270,12 +270,12 @@ export default function Dashboard() {
     } finally {
       setIsLoadingStats(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     void fetchGames();
     void fetchStats();
-  }, [token]);
+  }, [fetchGames, fetchStats]);
 
   const handleResume = async (game: ActiveGame) => {
     setResumingId(game.roomId);

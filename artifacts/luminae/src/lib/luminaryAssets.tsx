@@ -1130,7 +1130,7 @@ export function LuminarySummonCutscene({
   // Runs exactly once on mount; respects the user's mute setting internally.
   useEffect(() => {
     gameAudio.playSummonCutscene();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
   useEffect(() => {

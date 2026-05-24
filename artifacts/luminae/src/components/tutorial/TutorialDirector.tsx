@@ -1022,7 +1022,8 @@ function CardFlipReveal({
     const ts = setTimeout(() => gameAudio.playCardFlip(), Math.max(0, delay - soundLead));
     const tf = setTimeout(() => setPhase("out"), delay);
     return () => { clearTimeout(ts); clearTimeout(tf); };
-  }, []); // run once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: runs once on mount; delay and shouldAnimate are initial config values, not reactive
+  }, []);
 
   if (phase === "done") return <>{children}</>;
 
@@ -1566,7 +1567,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
     });
     timers.push(setTimeout(() => doneRef.current(), t + 300));
     return () => timers.forEach(clearTimeout);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stable star positions — seeded once on mount, same look as the pre-shatter black/starry backdrop.
   const stars = useMemo(() =>
@@ -3198,7 +3199,6 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   // Close card sheet on beat/subStep change
   useEffect(() => {
     setSelectedCardData(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beatId, subStep]);
 
   // Auto-scroll (camera is programmatic)
