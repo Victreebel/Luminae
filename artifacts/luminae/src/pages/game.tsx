@@ -854,9 +854,21 @@ function LuminaryCard({
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
   const portalIsNew = !initialClaimedRef.current;
+
+  const glowKey = ((luminaryAffinity?.activeAffinity as GemKey | undefined)
+    ?? (GEM_KEYS.find(k => k !== 'flux' && (luminary.requirements[k as GemKey] ?? 0) > 0) as GemKey | undefined)
+    ?? 'flux') as GemKey;
+  const glowHex = GEM_META[glowKey].glowHex;
+
+  const isHidden = isReleased && !isClaimed;
+  const hoverAnim = isHidden
+    ? {}
+    : { scale: 1.02, boxShadow: `0 0 18px 4px ${glowHex}55, 0 0 6px 1px ${glowHex}33` };
+
   return (
     <motion.div
-      whileHover={isClaimed || (isReleased && !isClaimed) ? {} : { scale: 1.02 }}
+      whileHover={hoverAnim}
+      whileTap={!isHidden ? { scale: 0.97 } : {}}
       data-luminary-id={luminary.id}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
         isClaimed ? 'ring-1 ring-white/10' : 'ring-1 ring-black/30'
@@ -864,7 +876,7 @@ function LuminaryCard({
       title={isClaimed
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
-      style={isReleased && !isClaimed ? { opacity: 0, pointerEvents: 'none' } : undefined}
+      style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal
