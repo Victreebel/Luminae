@@ -495,6 +495,8 @@ export function AffinityWellCells({
                           : 'default',
                       position: 'relative',
                       overflow: 'hidden',
+                      opacity: bankEmpty && !isFlux && pending === 0 ? 0.42 : 1,
+                      transition: 'opacity 0.35s ease',
                       ...cellStyle,
                     }}
                   >
