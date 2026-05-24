@@ -1140,13 +1140,13 @@ export default function GameBoard() {
   type CostMode = 'printed' | 'after_bonuses' | 'needed_now';
   const [costMode, setCostMode] = useState<CostMode>(() => {
     const stored = getAccountSession();
-    if (!stored) return 'printed';
+    if (!stored) return 'needed_now';
     const accountId = stored.account.id;
     const pref = localStorage.getItem(`luminae_cost_mode_pref_${accountId}`);
     if (pref === 'printed' || pref === 'after_bonuses' || pref === 'needed_now') return pref;
     const last = localStorage.getItem(`luminae_cost_mode_${accountId}`);
     if (last === 'printed' || last === 'after_bonuses' || last === 'needed_now') return last;
-    return 'printed';
+    return 'needed_now';
   });
   const [showPurchased, setShowPurchased] = useState(false);
   const [forgedView, setForgedView] = useState<'cards' | 'timeline'>('cards');
