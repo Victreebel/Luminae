@@ -203,12 +203,13 @@ function ArtPromptBox({ prompt }: { prompt: string }) {
 function DevDetails({ lore }: { lore: CardLoreEntry }) {
   const [open, setOpen] = useState(false);
 
+  const toSentenceCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
   const rows: { label: string; value: string | undefined }[] = [
     { label: 'Artifact Form', value: lore.artifactForm },
     { label: 'Blueprint Role', value: lore.blueprintRole },
     { label: 'Blueprint Families', value: lore.blueprintFamilies },
-    { label: 'Civ Lane', value: lore.civLane },
-    { label: 'Engineering Scale', value: lore.engineeringScale },
+    { label: 'Culture', value: lore.civLane },
   ];
   const hasDetails = rows.some(r => r.value) || lore.artPrompt;
 
@@ -237,7 +238,7 @@ function DevDetails({ lore }: { lore: CardLoreEntry }) {
                 {r.label}
               </span>
               <span style={{ fontFamily: 'system-ui', fontSize: 12, color: '#8090b0', lineHeight: 1.5 }}>
-                {r.value}
+                {toSentenceCase(r.value!)}
               </span>
             </div>
           ))}
@@ -469,20 +470,6 @@ export default function DevCardBrowser() {
           {cardName}
         </div>
 
-        {lore ? (
-          <>
-            <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#7080a0', lineHeight: 1.6, fontStyle: 'italic' }}>
-              {lore.flavor}
-            </div>
-
-            <DevDetails lore={lore} />
-          </>
-        ) : (
-          <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#404870', lineHeight: 1.6, fontStyle: 'italic' }}>
-            Loading…
-          </div>
-        )}
-
         <div style={{ borderTop: '1px solid #1a2040', paddingTop: 10 }}>
           <div style={{ fontFamily: 'system-ui', fontSize: 10, color: '#404870', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>
             Cost
@@ -505,6 +492,20 @@ export default function DevCardBrowser() {
             )}
           </div>
         </div>
+
+        {lore ? (
+          <>
+            <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#7080a0', lineHeight: 1.6, fontStyle: 'italic' }}>
+              {lore.flavor}
+            </div>
+
+            <DevDetails lore={lore} />
+          </>
+        ) : (
+          <div style={{ fontFamily: 'system-ui', fontSize: 12, color: '#404870', lineHeight: 1.6, fontStyle: 'italic' }}>
+            Loading…
+          </div>
+        )}
       </div>
     </div>
   );
