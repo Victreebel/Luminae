@@ -296,6 +296,11 @@ function ArtifactCardView({
 
   return (
     <motion.div
+      // SCALE CONVENTION: scale: 1.02 is safe here because this element IS the
+      // overflow-hidden root — it clips its own children, not a parent clipping it.
+      // Do NOT add scale-up hover to buttons/elements whose *ancestor* has overflow-hidden;
+      // that causes the scaled content to be clipped by the parent. Use brightness or
+      // box-shadow for hover feedback on buttons inside constrained panels instead.
       whileHover={onTap && !tapped ? { y: -2, scale: 1.02, transition: { duration: 0.12, ease: 'easeOut' } } : {}}
       whileTap={onTap ? { scale: 0.96 } : {}}
       animate={tapped ? { y: -6, scale: 1.04 } : { y: 0, scale: 1 }}

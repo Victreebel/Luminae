@@ -26,6 +26,20 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-deprecated': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      // Prevent scale-up hover transforms on elements inside overflow-hidden parents.
+      // Scaling an element that has an overflow-hidden ancestor causes the scaled
+      // painted area to be clipped, making buttons appear to shrink on hover.
+      // Safe alternatives: brightness, box-shadow, or whileTap scale-down.
+      // If you need a scale-up on an element that IS the overflow-hidden root itself,
+      // suppress this rule inline with an eslint-disable comment and explain why.
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'JSXAttribute[name.name="className"] > Literal[value=/hover:scale-\\[1\\./]',
+          message:
+            'Avoid hover:scale-[1.x] Tailwind classes — scale-up transforms on elements inside overflow-hidden parents cause visual clipping. Use brightness-110 or box-shadow instead.',
+        },
+      ],
     },
   },
   {

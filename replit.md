@@ -141,6 +141,19 @@ If a generation pass produces a humanoid figure for a Luminary that should be no
 
 ## Developer Workflow
 
+### Button Scale-Transform Convention — Do Not Regress
+Never apply a scale-up hover effect (`scale: 1.x`, `hover:scale-[1.x]`, or `whileHover={{ scale: 1.x }}`) to a button or interactive element whose **ancestor** has `overflow-hidden`. The parent clips the scaled element's painted overflow, causing the button to appear to shrink or get cut off at its edges on hover.
+
+Safe alternatives for hover feedback inside constrained panels:
+- `brightness-110` / `brightness-125` (Tailwind filter, no overflow)
+- `box-shadow` or `drop-shadow` changes (framer-motion `boxShadow`)
+- `y: -2` / subtle translate (safe because translate does not expand the painted area beyond the element's box in most browsers)
+- Scale-down (`scale: 0.97`) on `whileTap` is fine — shrinking never clips
+
+Scale-up transforms are acceptable **only** when the element being scaled is itself the `overflow-hidden` root and no ancestor clips it. (Example: a top-level card that scales up on hover and is its own clipping boundary is fine.)
+
+Tasks 665, 671, and 672 audited and removed the original regressions. The ESLint config enforces a warning for `hover:scale-[1.` Tailwind classes as an additional guardrail.
+
 ### Gem Token Normalization
 All six affinity gem token PNGs are automatically normalized to a consistent 512×512 canvas whenever `pnpm run typecheck` is run. The normalization step (`pnpm run normalize:gems`) runs first, before any TypeScript checks, via `scripts/src/normalize-gem-tokens.py`. If you add or regenerate gem art in `attached_assets/`, simply run `pnpm run typecheck` (or the dedicated `pnpm run normalize:gems`) and the files will be cropped, scaled to 78% fill, and centered in-place.
 
