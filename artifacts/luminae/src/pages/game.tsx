@@ -4405,6 +4405,11 @@ export default function GameBoard() {
               <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
                 <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
                 <span className="font-semibold text-sm leading-tight flex-1 truncate">{selectedCard.card.name}</span>
+                {selectedCard.readOnly && (
+                  <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
+                    Forged
+                  </span>
+                )}
                 {(selectedCard.card.lumens ?? 0) > 0 && (
                   <span className="flex items-center gap-0.5 text-xs font-bold text-primary shrink-0">
                     <Sparkles className="h-3 w-3" />{selectedCard.card.lumens}
