@@ -1362,6 +1362,9 @@ components:
         plannedActionCancelReason:
           type: ["string", "null"]
           description: Reason the last planned action was auto-cancelled, if applicable
+        civName:
+          type: ["string", "null"]
+          description: Player-chosen civilization name; null if not set
       required:
         - playerId
         - playerName
@@ -1398,6 +1401,23 @@ components:
         - activeAffinity
         - eligibleAffinities
         - summonedAtTurnCount
+
+    PendingSummonEvent:
+      type: object
+      properties:
+        eventId:
+          type: string
+        luminaryId:
+          type: string
+        claimedByPlayerId:
+          type: string
+        createdAt:
+          type: integer
+          description: Unix ms timestamp when this event was created; optional for backward compat
+      required:
+        - eventId
+        - luminaryId
+        - claimedByPlayerId
 
     GameState:
       type: object
@@ -1473,6 +1493,11 @@ components:
           description: Unix timestamp (ms) when the current turn auto-passes; null if no timer
         version:
           type: integer
+        pendingSummonEvents:
+          type: array
+          description: Summon events awaiting client acknowledgement (resolve_summon action)
+          items:
+            $ref: "#/components/schemas/PendingSummonEvent"
       required:
         - roomId
         - status
@@ -1491,6 +1516,7 @@ components:
         - lastAction
         - actionLog
         - version
+        - pendingSummonEvents
 
     ActionRequest:
       type: object
@@ -1512,6 +1538,7 @@ components:
             - plan_action
             - cancel_plan
             - tutorial_fast_forward
+            - set_civ_name
         crystals:
           $ref: "#/components/schemas/CrystalCounts"
         crystal:
@@ -1551,6 +1578,9 @@ components:
           type: object
           additionalProperties: true
           description: Nested action payload for plan_action type
+        civName:
+          type: string
+          description: New civilization name for set_civ_name action
       required:
         - sessionToken
         - type

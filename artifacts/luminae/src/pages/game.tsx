@@ -1712,11 +1712,10 @@ export default function GameBoard() {
     if (checkedInitialSummonRef.current) return;
     if (!state) return;
     checkedInitialSummonRef.current = true;
-    const pending: Array<{ eventId: string; luminaryId: string }> =
-      (state as any)?.pendingSummonEvents ?? [];
+    const pending = state?.pendingSummonEvents ?? [];
     // If the game was already finished when we loaded, identify the sealing
     // Luminary so its cutscene burst visuals can use the correct summonColor.
-    const initialWinTrigId = (state as any).winTriggerLuminaryId as string | undefined;
+    const initialWinTrigId = state.winTriggerLuminaryId ?? undefined;
     for (const evt of pending) {
       const lum = state?.luminaries?.find((l: Luminary) => l.id === evt.luminaryId);
       if (lum) {
@@ -2171,7 +2170,7 @@ export default function GameBoard() {
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
         // Count summon events that will actually be dispatched to enqueueSummon
         // in the loop below (not yet in handledSummonEventIdsRef means not deduped).
-        const incomingPending: Array<{ eventId: string }> = (newState as any).pendingSummonEvents ?? [];
+        const incomingPending = newState.pendingSummonEvents ?? [];
         const toEnqueue = incomingPending.filter(
           evt => !handledSummonEventIdsRef.current.has(evt.eventId)
         ).length;
@@ -2182,8 +2181,7 @@ export default function GameBoard() {
           enqueuingCountRef.current += toEnqueue;
           // Capture the sealing Luminary's summonColor for the fanfare.
           // We grab the last *new* event's Luminary (same filter used for toEnqueue).
-          const allPendingEvts: Array<{ eventId: string; luminaryId: string }> =
-            (newState as any).pendingSummonEvents ?? [];
+          const allPendingEvts = newState.pendingSummonEvents ?? [];
           const newPendingEvts = allPendingEvts.filter(
             e => !handledSummonEventIdsRef.current.has(e.eventId)
           );
@@ -2258,10 +2256,8 @@ export default function GameBoard() {
       // Detect newly arrived pendingSummonEvents and start cutscenes for ALL players.
       // The dedup guard in enqueueSummon prevents re-enqueueing the same event.
       {
-        const prevPending: Array<{ eventId: string; luminaryId: string }> =
-          (prev as any)?.pendingSummonEvents ?? [];
-        const newPending: Array<{ eventId: string; luminaryId: string; claimedByPlayerId: string }> =
-          (newState as any)?.pendingSummonEvents ?? [];
+        const prevPending = prev?.pendingSummonEvents ?? [];
+        const newPending = newState?.pendingSummonEvents ?? [];
 
         for (const evt of newPending) {
           // Only enqueue cutscenes for events that weren't in the previous state.

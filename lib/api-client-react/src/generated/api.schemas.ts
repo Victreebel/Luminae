@@ -477,6 +477,11 @@ export interface GamePlayerState {
    * @nullable
    */
   plannedActionCancelReason?: string | null;
+  /**
+   * Player-chosen civilization name; null if not set
+   * @nullable
+   */
+  civName?: string | null;
 }
 
 export type LuminaryActiveStateActiveAffinity =
@@ -507,6 +512,14 @@ export interface LuminaryActiveState {
   activeAffinity: LuminaryActiveStateActiveAffinity;
   eligibleAffinities: LuminaryActiveStateEligibleAffinitiesItem[];
   summonedAtTurnCount: number;
+}
+
+export interface PendingSummonEvent {
+  eventId: string;
+  luminaryId: string;
+  claimedByPlayerId: string;
+  /** Unix ms timestamp when this event was created; optional for backward compat */
+  createdAt?: number;
 }
 
 export type GameStateStatus =
@@ -563,6 +576,8 @@ export interface GameState {
    */
   turnDeadline?: number | null;
   version: number;
+  /** Summon events awaiting client acknowledgement (resolve_summon action) */
+  pendingSummonEvents: PendingSummonEvent[];
 }
 
 export type ActionRequestType =
@@ -581,6 +596,7 @@ export const ActionRequestType = {
   plan_action: "plan_action",
   cancel_plan: "cancel_plan",
   tutorial_fast_forward: "tutorial_fast_forward",
+  set_civ_name: "set_civ_name",
 } as const;
 
 export type ActionRequestCrystal =
@@ -642,6 +658,8 @@ export interface ActionRequest {
   returnCrystals?: ActionRequestReturnCrystals;
   /** Nested action payload for plan_action type */
   plannedActionData?: ActionRequestPlannedActionData;
+  /** New civilization name for set_civ_name action */
+  civName?: string;
 }
 
 export type GetGameStateParams = {

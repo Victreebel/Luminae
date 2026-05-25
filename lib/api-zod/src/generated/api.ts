@@ -427,7 +427,6 @@ export const StartGameResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -555,6 +554,10 @@ export const StartGameResponse = zod.object({
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
+      civName: zod
+        .string()
+        .nullish()
+        .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -581,6 +584,23 @@ export const StartGameResponse = zod.object({
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
   version: zod.number(),
+  pendingSummonEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        luminaryId: zod.string(),
+        claimedByPlayerId: zod.string(),
+        createdAt: zod
+          .number()
+          .optional()
+          .describe(
+            "Unix ms timestamp when this event was created; optional for backward compat",
+          ),
+      }),
+    )
+    .describe(
+      "Summon events awaiting client acknowledgement (resolve_summon action)",
+    ),
 });
 
 /**
@@ -771,7 +791,6 @@ export const RematchResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -899,6 +918,10 @@ export const RematchResponse = zod.object({
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
+      civName: zod
+        .string()
+        .nullish()
+        .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -925,6 +948,23 @@ export const RematchResponse = zod.object({
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
   version: zod.number(),
+  pendingSummonEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        luminaryId: zod.string(),
+        claimedByPlayerId: zod.string(),
+        createdAt: zod
+          .number()
+          .optional()
+          .describe(
+            "Unix ms timestamp when this event was created; optional for backward compat",
+          ),
+      }),
+    )
+    .describe(
+      "Summon events awaiting client acknowledgement (resolve_summon action)",
+    ),
 });
 
 /**
@@ -1115,7 +1155,6 @@ export const GetGameStateResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -1243,6 +1282,10 @@ export const GetGameStateResponse = zod.object({
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
+      civName: zod
+        .string()
+        .nullish()
+        .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -1269,6 +1312,23 @@ export const GetGameStateResponse = zod.object({
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
   version: zod.number(),
+  pendingSummonEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        luminaryId: zod.string(),
+        claimedByPlayerId: zod.string(),
+        createdAt: zod
+          .number()
+          .optional()
+          .describe(
+            "Unix ms timestamp when this event was created; optional for backward compat",
+          ),
+      }),
+    )
+    .describe(
+      "Summon events awaiting client acknowledgement (resolve_summon action)",
+    ),
 });
 
 /**
@@ -1342,7 +1402,7 @@ export const SubmitActionBody = zod.object({
   civName: zod
     .string()
     .optional()
-    .describe("Custom civilization name for set_civ_name action"),
+    .describe("New civilization name for set_civ_name action"),
 });
 
 export const SubmitActionResponse = zod.object({
@@ -1522,7 +1582,6 @@ export const SubmitActionResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -1650,6 +1709,10 @@ export const SubmitActionResponse = zod.object({
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
+      civName: zod
+        .string()
+        .nullish()
+        .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
@@ -1676,6 +1739,23 @@ export const SubmitActionResponse = zod.object({
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
   version: zod.number(),
+  pendingSummonEvents: zod
+    .array(
+      zod.object({
+        eventId: zod.string(),
+        luminaryId: zod.string(),
+        claimedByPlayerId: zod.string(),
+        createdAt: zod
+          .number()
+          .optional()
+          .describe(
+            "Unix ms timestamp when this event was created; optional for backward compat",
+          ),
+      }),
+    )
+    .describe(
+      "Summon events awaiting client acknowledgement (resolve_summon action)",
+    ),
 });
 
 /**

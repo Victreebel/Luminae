@@ -102,6 +102,7 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
       turnTimerSeconds: room.turnTimerSeconds ?? null,
       turnDeadline: null,
       version: 0,
+      pendingSummonEvents: [],
     });
     return;
   }
