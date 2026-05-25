@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -1164,6 +1164,21 @@ export default function GameBoard() {
     if (!account) return;
     localStorage.setItem(`luminae_cost_mode_${account.id}`, costMode);
   }, [costMode, account]);
+
+  const defaultCivLabel = (name: string | undefined) => `${name ?? 'Unknown'}'s Civilization`;
+  const [civLabel, setCivLabel] = useState<string>(() => {
+    const stored = getAccountSession();
+    if (!stored) return defaultCivLabel(undefined);
+    const saved = localStorage.getItem(`luminae_civ_name_${stored.account.id}`);
+    return saved && saved.trim() ? saved : defaultCivLabel(stored.account.username ?? stored.account.id);
+  });
+  const [isEditingCivName, setIsEditingCivName] = useState(false);
+  const [civEditValue, setCivEditValue] = useState('');
+
+  useEffect(() => {
+    if (!account) return;
+    localStorage.setItem(`luminae_civ_name_${account.id}`, civLabel);
+  }, [civLabel, account]);
 
   // Scroll the highlighted tutorial zone into view whenever it changes
   useEffect(() => {
@@ -3870,8 +3885,66 @@ export default function GameBoard() {
 
       {/* Lumens + name */}
       <div className={`rounded-2xl border p-4 bg-card/80 backdrop-blur flex items-center justify-between ${isMyTurn ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-border'}`}>
-        <div>
-          <div className="text-lg font-bold">{me?.playerName}</div>
+        <div className="flex-1 min-w-0 mr-3">
+          {isEditingCivName ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                autoFocus
+                className="bg-transparent border-b border-primary/60 text-base font-bold text-white focus:outline-none w-full min-w-0 placeholder:text-white/30"
+                value={civEditValue}
+                onChange={(e) => setCivEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const trimmed = civEditValue.trim();
+                    setCivLabel(trimmed || defaultCivLabel(me?.playerName));
+                    setIsEditingCivName(false);
+                  } else if (e.key === 'Escape') {
+                    setIsEditingCivName(false);
+                  }
+                }}
+                onBlur={() => {
+                  const trimmed = civEditValue.trim();
+                  setCivLabel(trimmed || defaultCivLabel(me?.playerName));
+                  setIsEditingCivName(false);
+                }}
+                maxLength={48}
+              />
+              <button
+                className="shrink-0 text-primary/80 hover:text-primary transition-colors"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const trimmed = civEditValue.trim();
+                  setCivLabel(trimmed || defaultCivLabel(me?.playerName));
+                  setIsEditingCivName(false);
+                }}
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsEditingCivName(false);
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              className="group flex items-center gap-1.5 text-left w-full min-w-0"
+              onClick={() => {
+                setCivEditValue(civLabel);
+                setIsEditingCivName(true);
+              }}
+              title="Rename your civilization"
+            >
+              <span className="text-base font-bold text-white truncate border-b border-transparent group-hover:border-white/30 transition-colors">
+                {civLabel}
+              </span>
+              <Pencil className="h-3 w-3 shrink-0 text-white/30 group-hover:text-white/60 transition-colors" />
+            </button>
+          )}
         </div>
         <div className="text-center">
           <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
