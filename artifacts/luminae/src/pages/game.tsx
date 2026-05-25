@@ -4058,102 +4058,185 @@ export default function GameBoard() {
   const LogTab = () => (
     <div className="flex flex-col gap-4 p-4 pb-6">
       {/* Opponents */}
+      {state.players.filter(p => p.playerId !== session?.playerId).length > 0 && (
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 px-1">Opponents</p>
-        <div className="flex flex-col gap-3">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Opponents</p>
+        <div className="flex flex-col gap-2">
           {state.players.map((p, i) => {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
+            const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
+            const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
             const reservedCount = p.reservedCards.length;
+            const isExpanded = expandedOpponents.has(p.playerId);
+            const toggleExpanded = () => {
+              setExpandedOpponents((prev) => {
+                const next = new Set(prev);
+                if (next.has(p.playerId)) next.delete(p.playerId);
+                else next.add(p.playerId);
+                return next;
+              });
+            };
             return (
               <div
                 key={p.playerId}
-                className={`rounded-2xl border p-4 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/60 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-border/50'}`}
+                className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
               >
-                {/* Header: avatar + name + lumens */}
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center gap-2">
-                    <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={30} />
-                    {isCurrent && <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
-                    <span className="font-bold text-sm">{p.playerName}</span>
-                    {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">their turn</span>}
+                {/* Header: identity + inline stats + lumens */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
+                    {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                    <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                    {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                   </div>
-                  <div className="flex items-center gap-1 font-serif font-bold text-primary">
-                    <span className="text-2xl">{p.lumens}</span>
-                    <Sparkles className="h-4 w-4" />
+                  {/* Inline stat chips */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {([
+                      { label: 'Affinity',  value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
+                      { label: 'Artifact',  value: cardCount,     hex: '#c084fc', glow: '#e0baff' },
+                      { label: 'Encrypted', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                    ] as const).map(({ label, value, hex, glow }) => {
+                      const has = value > 0;
+                      return (
+                        <div key={label} className="flex items-baseline gap-0.5 shrink-0">
+                          <span
+                            className="text-sm font-black leading-none"
+                            style={{ color: has ? hex : hex + '55', textShadow: has ? `0 0 8px ${glow}` : 'none' }}
+                          >
+                            {value}
+                          </span>
+                          <span
+                            className="text-[9px] font-semibold uppercase tracking-wide leading-none"
+                            style={{ color: has ? glow + 'cc' : hex + '44' }}
+                          >
+                            {label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* View/Hide toggle */}
+                  <button
+                    type="button"
+                    onClick={toggleExpanded}
+                    className="flex items-center gap-1 shrink-0 px-1.5 py-0.5 rounded-md border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors text-[10px] font-semibold text-primary"
+                  >
+                    {isExpanded ? (
+                      <><ChevronUp className="h-2.5 w-2.5" />Hide</>
+                    ) : (
+                      <><Eye className="h-2.5 w-2.5" />View</>
+                    )}
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-primary leading-none">
+                    <span>{p.lumens}</span>
+                    <Sparkles className="h-3 w-3 text-primary" />
                   </div>
                 </div>
 
-                {/* Per-color tall gem boxes */}
-                <div className="grid grid-cols-6 gap-1.5 mb-3">
-                  {CRYSTALS.map((c) => {
-                    const n = p.crystals[c as keyof CrystalCounts] ?? 0;
-                    const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                    const meta = GEM_META[c as GemKey];
-                    const isFlux = c === 'flux';
-                    const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0);
-                    return (
-                      <div
-                        key={c}
-                        className="h-[72px] flex flex-col items-center justify-center gap-1 rounded-lg relative overflow-hidden"
-                        style={{
-                          background: hasContent
-                            ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
-                            : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                          border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
-                          boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
-                        }}
-                      >
-                        {hasContent && (
-                          <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+                {/* Expanded detail */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-2 flex flex-col gap-3">
+                        {/* Per-color gem grid */}
+                        <div className="grid grid-cols-6 gap-1.5">
+                          {CRYSTALS.map((c) => {
+                            const n = p.crystals[c as keyof CrystalCounts] ?? 0;
+                            const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
+                            const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
+                              .filter((la: LuminaryActiveState) =>
+                                la.ownerId === p.playerId &&
+                                ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
+                                la.activeAffinity === c
+                              ).length;
+                            const meta = GEM_META[c as GemKey];
+                            const isFlux = c === 'flux';
+                            const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0 || lumBonus > 0);
+                            return (
+                              <div
+                                key={c}
+                                className="h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
+                                style={{
+                                  background: hasContent
+                                    ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                                    : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                                  border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                                  boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
+                                }}
+                              >
+                                {hasContent && (
+                                  <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+                                )}
+                                <div className="flex items-center gap-0.5 w-full justify-center">
+                                  <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                                  <MiniGem color={c as GemKey} size={7} />
+                                </div>
+                                <span
+                                  className="text-2xl font-black leading-none tracking-tight"
+                                  style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
+                                >
+                                  {n}
+                                </span>
+                                {!isFlux && (bonus > 0 || lumBonus > 0) && (
+                                  <div className="flex flex-col items-center gap-0" style={{ lineHeight: 1 }}>
+                                    {bonus > 0 && (
+                                      <span className="text-[9px] font-bold leading-none text-primary">+{bonus} bonus</span>
+                                    )}
+                                    {lumBonus > 0 && (
+                                      <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>
+                                    )}
+                                  </div>
+                                )}
+                                {isFlux && reservedCount > 0 && (
+                                  <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} encrypted</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Reserved card backs */}
+                        {reservedCount > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Encrypted:</span>
+                            <div className="flex gap-1 items-center">
+                              {p.reservedCards.map((card, idx) => (
+                                <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
+                              ))}
+                            </div>
+                          </div>
                         )}
-                        <span
-                          className="text-2xl font-black leading-none tracking-tight"
-                          style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
-                        >
-                          {n}
-                        </span>
-                        {!isFlux && bonus > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>+{bonus}</span>
-                        )}
-                        {isFlux && reservedCount > 0 && (
-                          <span className="text-[10px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} enc</span>
-                        )}
+
+                        {/* Forged artifacts */}
+                        {((p as any).purchasedCards as ArtifactCard[] | undefined)?.length ? (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                              Forged ({((p as any).purchasedCards as ArtifactCard[]).length})
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {((p as any).purchasedCards as ArtifactCard[]).map((c) => (
+                                <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* Footer: reserved card backs */}
-                {reservedCount > 0 && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Encrypt:</span>
-                    <div className="flex gap-1 items-center">
-                      {p.reservedCards.map((card, idx) => (
-                        <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Opponent forged artifacts — read-only snapshot view */}
-                {((p as any).purchasedCards as ArtifactCard[] | undefined)?.length ? (
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                      Forged ({((p as any).purchasedCards as ArtifactCard[]).length})
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {((p as any).purchasedCards as ArtifactCard[]).map((c) => (
-                        <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             );
           })}
         </div>
       </div>
+      )}
 
       {/* Action Log */}
       <div>
