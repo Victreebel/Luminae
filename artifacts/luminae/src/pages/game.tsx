@@ -2423,7 +2423,7 @@ export default function GameBoard() {
   const [hasVoted, setHasVoted] = useState(false);
   const [votePending, setVotePending] = useState(false);
 
-  const { sendChatMessage } = useGameWebsocket({
+  const { sendChatMessage, isConnected } = useGameWebsocket({
     roomId: roomId!,
     sessionToken: session?.sessionToken || '',
     onStateUpdate: (newState) => {
@@ -2523,15 +2523,18 @@ export default function GameBoard() {
   const submitAction = useSubmitAction();
 
   // Broadcast civLabel to the server so all players can see it in the scoreboard.
-  // Runs on mount (to sync on rejoin) and whenever the player renames their civilization.
+  // Runs on mount, whenever the player renames their civilization, and whenever the
+  // WebSocket reconnects (isConnected flips true) so a mid-game rejoin always
+  // re-syncs the stored civName even when state.status is already 'playing'.
   useEffect(() => {
     if (!session || !roomId || !state || state.status === 'lobby') return;
+    if (!isConnected) return;
     submitAction.mutate({
       roomId,
       data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel } as any,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [civLabel, session?.sessionToken, roomId, state?.status]);
+  }, [civLabel, session?.sessionToken, roomId, state?.status, isConnected]);
 
   // ── Polling-based animation fallback ─────────────────────────────────────
   // TanStack Query polls the server on a refetch interval. If a WS state_update
