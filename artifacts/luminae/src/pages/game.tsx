@@ -3463,6 +3463,7 @@ export default function GameBoard() {
         {/* Zone header */}
         <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
+            <Layers className="h-4 w-4 shrink-0" style={{ color: '#C4AAFF', opacity: 0.85 }} />
             <div className="flex flex-col leading-none">
               <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(160,130,255,0.55)' }}>The</span>
               <span className="text-[15px] font-black uppercase tracking-[0.08em] leading-none" style={{
@@ -3471,7 +3472,6 @@ export default function GameBoard() {
                 letterSpacing: '0.06em',
               }}>Terminus</span>
             </div>
-            <Layers className="h-4 w-4 shrink-0" style={{ color: '#C4AAFF', opacity: 0.85 }} />
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(160,120,255,0.5), transparent)' }} />
           </div>
           {/* Reserved-height slot for toggle hint */}
@@ -3569,6 +3569,7 @@ export default function GameBoard() {
         {/* Zone header */}
         <div className="relative flex items-center px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
+            <Hammer className="h-4 w-4 shrink-0" style={{ color: '#D4A84B', opacity: 0.85 }} />
             <div className="flex flex-col leading-none">
               <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(192,140,60,0.55)' }}>The</span>
               <span className="text-[15px] font-black uppercase tracking-[0.08em] leading-none" style={{
@@ -3577,7 +3578,6 @@ export default function GameBoard() {
                 letterSpacing: '0.06em',
               }}>Forge</span>
             </div>
-            <Hammer className="h-4 w-4 shrink-0" style={{ color: '#D4A84B', opacity: 0.85 }} />
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(192,140,60,0.5), transparent)' }} />
           </div>
         </div>
@@ -4640,6 +4640,7 @@ export default function GameBoard() {
           <div className="flex items-center justify-between px-3 pt-2 pb-1">
             {/* Left: zone name */}
             <div className="flex items-center gap-2">
+              <Gem className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
               <div className="flex flex-col leading-none">
                 <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(168,197,255,0.5)' }}>The</span>
                 <span className="text-[12px] font-black uppercase tracking-[0.06em] leading-none" style={{
@@ -4647,7 +4648,6 @@ export default function GameBoard() {
                   textShadow: '0 0 18px rgba(168,197,255,0.35)',
                 }}>Affinity Well</span>
               </div>
-              <Gem className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
             </div>
             {/* Center: identity */}
             <div className="flex items-center gap-1.5 min-w-0">
