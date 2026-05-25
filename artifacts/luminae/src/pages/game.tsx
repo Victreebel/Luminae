@@ -4939,7 +4939,7 @@ export default function GameBoard() {
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
           { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
-        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: any; badge?: number }) => (
+        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: React.ComponentType<{ className?: string }>; badge?: number }) => (
           <button
             key={tab}
             type="button"
