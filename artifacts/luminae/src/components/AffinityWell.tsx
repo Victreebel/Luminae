@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LockKeyhole } from 'lucide-react';
 import type {
   GameState,
   CrystalCounts,
@@ -410,7 +411,6 @@ export function AffinityWellCells({
                       overflow: 'hidden',
                       opacity: bankEmpty && !isFlux && pending === 0 ? 0.42 : 1,
                       transition: 'opacity 0.35s ease',
-                      ...(isFlux ? { flexGrow: 1 } : {}),
                       ...cellStyle,
                     }}
                   >
@@ -579,16 +579,6 @@ export function AffinityWellCells({
                           glowHex={meta.glowHex}
                           burstKey={harvestBurstKeys?.[c] ?? 0}
                         />
-                        <span
-                          style={{
-                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                            letterSpacing: '0.06em',
-                            textTransform: 'uppercase',
-                            color: reservedCount > 0 ? `${meta.glowHex}99` : `${meta.glowHex}30`,
-                          }}
-                        >
-                          ENC {reservedCount}/3
-                        </span>
                       </div>
                     )}
 
@@ -621,6 +611,37 @@ export function AffinityWellCells({
                     )}
 
                   </motion.button>
+
+                  {/* ── Singularity: encoded-card indicator in the ×2 slot ── */}
+                  {isFlux && (
+                    <motion.button
+                      type="button"
+                      onClick={(e) => {
+                        if (isDragging.current) return;
+                        e.stopPropagation();
+                        onOpenReserved();
+                      }}
+                      style={{
+                        width: CELL_W,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 3,
+                        borderRadius: 6,
+                        padding: '3px 0',
+                        color: reservedCount > 0 ? `${meta.glowHex}cc` : `${meta.glowHex}38`,
+                        background: reservedCount > 0 ? `${meta.hex}18` : 'transparent',
+                        border: `1px solid ${reservedCount > 0 ? `${meta.glowHex}40` : `${meta.glowHex}15`}`,
+                        cursor: 'pointer',
+                        transition: 'color 0.2s, background 0.2s, border-color 0.2s',
+                      }}
+                    >
+                      <LockKeyhole style={{ width: 7, height: 7, flexShrink: 0 }} />
+                      <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1 }}>
+                        {reservedCount}/3
+                      </span>
+                    </motion.button>
+                  )}
 
                   {/* ── ×2 sub-button: take 2 of the same — non-flux only ── */}
                   {!isFlux && (
