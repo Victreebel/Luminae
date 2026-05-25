@@ -557,32 +557,57 @@ export function AffinityWellCells({
                       )}
                     </div>
 
-                    {/* ── Well section: Singularity shows encrypted-pile meter ── */}
+                    {/* ── Well section: Singularity shows reserve-deck meter ── */}
                     {isFlux && (
-                      <div
-                        style={{
-                          display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', gap: 2, marginTop: 1,
-                        }}
-                      >
-                        <span
+                      <>
+                        <div
                           style={{
-                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                            color: `${meta.glowHex}99`,
-                            letterSpacing: '0.06em',
-                            textTransform: 'uppercase',
+                            display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', gap: 2, marginTop: 1,
                           }}
                         >
-                          Available {gaugeFilledCount}/5
-                        </span>
-                        <HorizontalWellMeter
-                          capacity={5}
-                          filledCount={gaugeFilledCount}
-                          hex={meta.hex}
-                          glowHex={meta.glowHex}
-                          burstKey={harvestBurstKeys?.[c] ?? 0}
-                        />
-                      </div>
+                          <span
+                            style={{
+                              fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                              color: `${meta.glowHex}99`,
+                              letterSpacing: '0.06em',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            Available {gaugeFilledCount}/5
+                          </span>
+                          <HorizontalWellMeter
+                            capacity={5}
+                            filledCount={gaugeFilledCount}
+                            hex={meta.hex}
+                            glowHex={meta.glowHex}
+                            burstKey={harvestBurstKeys?.[c] ?? 0}
+                          />
+                        </div>
+
+                        {/* hairline divider */}
+                        <div style={{
+                          width: '80%', height: 1, margin: '5px 0 4px',
+                          background: `linear-gradient(90deg, transparent, ${meta.glowHex}38, transparent)`,
+                        }} />
+                        {/* encrypted count */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                          <span style={{
+                            fontSize: 13, fontWeight: 900, lineHeight: 1,
+                            color: reservedCount > 0 ? meta.glowHex : `${meta.glowHex}30`,
+                            textShadow: reservedCount > 0 ? `0 0 10px ${meta.glowHex}aa` : 'none',
+                          }}>
+                            {reservedCount} / 3
+                          </span>
+                          <span style={{
+                            fontSize: 6, fontWeight: 700, letterSpacing: '0.07em',
+                            textTransform: 'uppercase', lineHeight: 1,
+                            color: `${meta.glowHex}80`,
+                          }}>
+                            Encrypted
+                          </span>
+                        </div>
+                      </>
                     )}
 
                     {/* ── Well section (normal affinities only) ── */}
@@ -615,42 +640,7 @@ export function AffinityWellCells({
 
                   </motion.button>
 
-                  {/* ── Singularity: reserved-count footer ── */}
-                  {isFlux ? (
-                    <motion.button
-                      type="button"
-                      onClick={(e) => {
-                        if (isDragging.current) return;
-                        e.stopPropagation();
-                        onOpenReserved();
-                      }}
-                      style={{
-                        width: CELL_W,
-                        border: `1px solid ${meta.glowHex}30`,
-                        background: reservedCount > 0
-                          ? `linear-gradient(180deg, ${meta.hex}22 0%, ${meta.hex}0e 100%)`
-                          : 'transparent',
-                        boxShadow: reservedCount > 0 ? `0 0 6px ${meta.glowHex}22` : 'none',
-                      }}
-                      className="rounded-md py-1 leading-none flex flex-col items-center gap-[2px] cursor-pointer active:opacity-70 transition-opacity"
-                    >
-                      <span style={{
-                        fontSize: 11, fontWeight: 900, lineHeight: 1,
-                        color: reservedCount > 0 ? meta.glowHex : `${meta.glowHex}40`,
-                        textShadow: reservedCount > 0 ? `0 0 8px ${meta.glowHex}88` : 'none',
-                      }}>
-                        {reservedCount} / 3
-                      </span>
-                      <span style={{
-                        fontSize: 6, fontWeight: 700, letterSpacing: '0.07em',
-                        textTransform: 'uppercase', lineHeight: 1,
-                        color: `${meta.glowHex}70`,
-                      }}>
-                        Encrypted
-                      </span>
-                    </motion.button>
-                  ) : (
-                  /* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */
+                  {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
                   <motion.button
                     type="button"
                     aria-hidden={!canTake2}
@@ -675,7 +665,6 @@ export function AffinityWellCells({
                   >
                     ×2
                   </motion.button>
-                  )}
                 </div>
               );
             })}
