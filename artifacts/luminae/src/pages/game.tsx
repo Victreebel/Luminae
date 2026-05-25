@@ -1187,6 +1187,9 @@ export default function GameBoard() {
   const [coreActionSubmitted, setCoreActionSubmitted] = useState(false);
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
+  /** Pulse rings that appear on the Hand tab when a forged card is absorbed. */
+  const [handAbsorbBurst, setHandAbsorbBurst] = useState<{ key: number; x: number; y: number } | null>(null);
+  const handAbsorbKeyRef = useRef(0);
   const planSubmitInFlight = useRef(false);
   const [gemBurst, setGemBurst] = useState<{
     key: number;
@@ -1957,6 +1960,9 @@ export default function GameBoard() {
             cardActionBurstKeyRef.current += 1;
             setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
 
+            // Capture hand tab centre before setCardActionBurst so we can
+            // schedule the absorption pulse after t1 without closing over stale refs.
+            let burstDestPos: { x: number; y: number } | undefined;
             if (action.type === 'purchase_card') {
               // For the local player's forge, look up the Hand nav tab so the
               // card can fly into it at the end of the burst animation.
@@ -1966,6 +1972,12 @@ export default function GameBoard() {
                 ? document.querySelector('[data-nav-hand]')
                 : null;
               const handTabR = handTabEl?.getBoundingClientRect();
+              burstDestPos = handTabR
+                ? {
+                    x: handTabR.left + handTabR.width / 2,
+                    y: handTabR.top + handTabR.height / 2,
+                  }
+                : undefined;
               setCardActionBurst({
                 key: cardActionBurstKeyRef.current,
                 card: exitCard,
@@ -1978,12 +1990,7 @@ export default function GameBoard() {
                 startRect: rect
                   ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
                   : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
-                destPos: handTabR
-                  ? {
-                      x: handTabR.left + handTabR.width / 2,
-                      y: handTabR.top + handTabR.height / 2,
-                    }
-                  : undefined,
+                destPos: burstDestPos,
               });
               gameAudio.playCardPurchased();
             } else {
@@ -2070,6 +2077,19 @@ export default function GameBoard() {
               }
             }, 3500);
             cardAnimTimersRef.current.push(t1);
+            // Hand-panel absorption pulse — fires as the card reaches the tab.
+            // Timed 300ms before the burst clears so the rings are visually
+            // centred on the moment of arrival.
+            if (burstDestPos) {
+              const dp = burstDestPos;
+              const tAbsorb = setTimeout(() => {
+                if (cardActionBurstKeyRef.current !== seq) return;
+                handAbsorbKeyRef.current += 1;
+                setHandAbsorbBurst({ key: handAbsorbKeyRef.current, x: dp.x, y: dp.y });
+                setTimeout(() => setHandAbsorbBurst(null), 900);
+              }, 3200);
+              cardAnimTimersRef.current.push(tAbsorb);
+            }
             break;
           }
         }
@@ -5616,13 +5636,7 @@ export default function GameBoard() {
                       ],
                     }}
                   >
-                    <motion.div
-                      initial={{ opacity: 1 }}
-                      animate={{ opacity: [1, 1, 1, 0] }}
-                      transition={{ duration: 3.5, times: [0, 0.17, 0.80, 1] }}
-                    >
-                      <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
-                    </motion.div>
+                    <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
                   </motion.div>
                 </div>
               );
@@ -5654,6 +5668,49 @@ export default function GameBoard() {
                 </span>
               </motion.div>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Hand-panel absorption pulse — two expanding rings when a forged card lands ── */}
+      <AnimatePresence>
+        {handAbsorbBurst && (
+          <motion.div
+            key={handAbsorbBurst.key}
+            className="pointer-events-none fixed z-50"
+            style={{
+              left: handAbsorbBurst.x,
+              top: handAbsorbBurst.y,
+              transform: 'translate(-50%, -50%)',
+            }}
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.85, ease: 'easeOut' }}
+          >
+            {/* Outer ring */}
+            <motion.div
+              className="absolute rounded-full border-2 border-amber-300"
+              style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
+              initial={{ width: 12, height: 12, opacity: 1 }}
+              animate={{ width: 80, height: 80, opacity: 0 }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+            />
+            {/* Inner ring — slightly delayed */}
+            <motion.div
+              className="absolute rounded-full border border-amber-400/70"
+              style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
+              initial={{ width: 8, height: 8, opacity: 0.85 }}
+              animate={{ width: 52, height: 52, opacity: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+            />
+            {/* Centre flash dot */}
+            <motion.div
+              className="absolute rounded-full bg-amber-200"
+              style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
+              initial={{ width: 8, height: 8, opacity: 0.9 }}
+              animate={{ width: 0, height: 0, opacity: 0 }}
+              transition={{ duration: 0.35, ease: 'easeIn' }}
+            />
           </motion.div>
         )}
       </AnimatePresence>
