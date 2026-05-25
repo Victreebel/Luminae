@@ -1197,6 +1197,15 @@ export default function GameBoard() {
   const gemBurstKeyRef = useRef(0);
   const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTakeBurstActionRef = useRef<string | null>(null);
+  const [reserveBurst, setReserveBurst] = useState<{
+    key: number;
+    tier: 1 | 2 | 3;
+    gotFlux: boolean;
+    playerId: string;
+    playerName: string;
+    avatarId?: string | null;
+  } | null>(null);
+  const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
   const lastMarketBurstActionRef = useRef<string | null>(null);
   const cardSheetContainerRef = useRef<HTMLElement | null>(null);
@@ -1280,16 +1289,6 @@ export default function GameBoard() {
   const lastAnnouncedTurnRef = useRef<string | null>(null);
   const initialTurnFiredRef = useRef(false);
   const animationEndTimeRef = useRef(0);
-  // Tracks when the KEY visual (burst/travel/arrive) is done — distinct from the
-  // full queue lock (animationEndTimeRef) which also covers the deal-from-deck tail.
-  // Turn announcements wait for THIS ref, not the full lock, so they appear as
-  // soon as the card burst finishes rather than after the market slot refills.
-  const burstDoneTimeRef = useRef(0);
-  // Tracks gem burst end time separately so gem bursts never block the main queue.
-  const gemBurstEndTimeRef = useRef(0);
-  // When true, the next opponent harvest gem burst inside processStateUpdate is
-  // skipped (used by drainQueueFnRef to compress stale harvests in the backlog).
-  const skipGemBurstRef = useRef(false);
   const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateQueueRef = useRef<GameState[]>([]);
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1315,7 +1314,7 @@ export default function GameBoard() {
     affinityHex: string;
     cardName: string;
     gotFlux: boolean;
-    card?: ArtifactCard;
+    card: ArtifactCard;
     tier: number;
     destPos?: { x: number; y: number };
   } | null>(null);
@@ -1514,14 +1513,6 @@ export default function GameBoard() {
     if (end > animationEndTimeRef.current) animationEndTimeRef.current = end;
   };
 
-  // Sets the "burst visual done" timestamp used by fireTurnAnnouncement.
-  // Separate from the full queue lock so announcements appear as soon as
-  // the card burst finishes, not after the deal-from-deck tail completes.
-  const setBurstDoneTime = (durationMs: number) => {
-    const end = Date.now() + durationMs;
-    if (end > burstDoneTimeRef.current) burstDoneTimeRef.current = end;
-  };
-
   const fireTurnAnnouncement = (
     dedupeKey: string,
     playerName: string,
@@ -1539,10 +1530,6 @@ export default function GameBoard() {
     const duration = isYou ? TURN_ANNOUNCE_DURATION : OPPONENT_ANNOUNCE_DURATION;
 
     const doFire = () => {
-      // Wait for the full animation lock to clear — this ensures the deal-from-deck
-      // tail (market slot refilling) finishes before the announcement appears.
-      // The turn announcement is the clean "all done" signal, not an overlay that
-      // competes with a card still sliding into the market.
       const stillRemaining = animationEndTimeRef.current - Date.now();
       if (stillRemaining > 50) {
         pendingTurnAnnounceRef.current = setTimeout(doFire, stillRemaining + 100);
@@ -1552,9 +1539,7 @@ export default function GameBoard() {
       turnAnnounceKeyRef.current += 1;
       const seq = turnAnnounceKeyRef.current;
       setTurnAnnouncement({ key: seq, playerName, avatarId, isYou, accentColor, eminence, turnStartedAt: Date.now(), timerSeconds });
-      // Extend both locks so the queue cannot drain while the overlay is showing.
       setAnimEndTime(duration);
-      setBurstDoneTime(duration);
       if (isYou) gameAudio.playTurnStart();
       else gameAudio.playOpponentTurnStart();
       turnAnnounceTimerRef.current = setTimeout(() => {
@@ -1827,34 +1812,19 @@ export default function GameBoard() {
   }, [activeTab]);
 
   // ── Pre-early-return derived state ────────────────────────────────────────
-  // isMyTurn / canCoreAct / canPlan / me / effectiveCost / canAffordCard are all
+  // actionsLocked / isMyTurn / me / effectiveCost / canAffordCard are all
   // computed here — before the early returns — so the hint useEffects below
   // have stable closure references on every render regardless of whether
   // state has loaded yet.  When state is null the null-safe forms produce
   // safe false / undefined values, and the early returns below still fire.
+  const actionsLocked = !!turnAnnouncement;
   const summonGateActive = summonQueue.length > 0;
   summonQueueLenRef.current = summonQueue.length;
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
-
-  // isMyTurn = server-authoritative turn ownership, NOT blocked by animation locks.
-  // Use canCoreAct to gate actual submissions.
-  const isMyTurn = isActivePlayer;
-
-  // Named lock reasons — prefer these over scattered booleans.
-  const coreActionLockedReason: 'summonCutscene' | 'turnAnnouncement' | 'submitted' | null =
-    summonGateActive        ? 'summonCutscene'
-    : !!turnAnnouncement    ? 'turnAnnouncement'
-    : coreActionSubmitted   ? 'submitted'
-    : null;
-
-  // canCoreAct replaces isMyTurnForCoreAction at every action guard.
-  const canCoreAct = isActivePlayer && coreActionLockedReason === null;
-
+  const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
+  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
-
-  // canToggleLuminaryAffinity: non-turn action; only hard-blocked by summon cutscene.
-  const canToggleLuminaryAffinity = !!me && (!summonGateActive || localSummonSkipped);
 
   const myPurchasedCards = useMemo(() => me?.purchasedCards ?? [], [me]);
   const myDiscountedForgeIds = useMemo(() => me?.discountedForgeIds ?? [], [me]);
@@ -1989,13 +1959,9 @@ export default function GameBoard() {
               (newState.crystalBank.flux ?? 0) < (prev.crystalBank.flux ?? 0);
 
             cardActionBurstKeyRef.current += 1;
+            setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
 
             if (action.type === 'purchase_card') {
-              // Full lock covers burst (3500ms) + deal-from-deck (1500ms) + buffer.
-              // burstDoneTime is shorter: turn announcement fires as soon as the
-              // burst visual lands, while the deal plays quietly behind the overlay.
-              setAnimEndTime(5400);
-              setBurstDoneTime(3500);
               setCardActionBurst({
                 key: cardActionBurstKeyRef.current,
                 card: exitCard,
@@ -2011,10 +1977,7 @@ export default function GameBoard() {
               });
               gameAudio.playCardPurchased();
             } else {
-              // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst).
-              // No deal-from-deck tail, so the full lock matches the burst visual duration.
-              setAnimEndTime(2500);
-              setBurstDoneTime(2200);
+              // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
               cipherBurstKeyRef.current += 1;
               const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
               const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
@@ -2261,28 +2224,18 @@ export default function GameBoard() {
           // Only animate for opponents — local player's burst fires optimistically
           // from the button-click path. Planned harness actions are intentionally
           // silent: they execute at turn start and the board update speaks for itself.
-          //
-          // skipGemBurstRef: set by drainQueueFnRef when this harvest is stale (more
-          // states queued behind it). The burst plays but the queue is not blocked —
-          // gem bursts use gemBurstEndTimeRef and never set animationEndTimeRef.
           if (actorId && actorId !== session?.playerId) {
-            const shouldSkip = skipGemBurstRef.current;
-            skipGemBurstRef.current = false;
-            if (!shouldSkip) {
-              const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
-              if (player) {
-                let crystals: Partial<CrystalCounts> = {};
-                if (action.type === 'take_three_crystals') {
-                  crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
-                } else {
-                  const color = action.crystal as string;
-                  if (color) crystals = { [color]: 2 };
-                }
-                playGemBurst(crystals, player.playerName, player.avatarId ?? null);
+            const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
+            if (player) {
+              let crystals: Partial<CrystalCounts> = {};
+              if (action.type === 'take_three_crystals') {
+                crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
+              } else {
+                const color = action.crystal as string;
+                if (color) crystals = { [color]: 2 };
               }
+              playGemBurst(crystals, player.playerName, player.avatarId ?? null);
             }
-          } else {
-            skipGemBurstRef.current = false;
           }
         }
       }
@@ -2296,29 +2249,18 @@ export default function GameBoard() {
           if (player) {
             const gotFlux = (newState.crystalBank.flux ?? 0) < ((prev ?? state)?.crystalBank.flux ?? 0);
             const tier = Number(action.tier ?? 1) as 1 | 2 | 3;
-            const isLocalReserve = playerId === session?.playerId;
-            const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
-            const deckRect = deckEl?.getBoundingClientRect();
-            const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
-            const destTabRect = destTabEl?.getBoundingClientRect();
-            cipherBurstKeyRef.current += 1;
-            setAnimEndTime(2500);
-            setBurstDoneTime(2200);
-            setCipherBurst({
-              key: cipherBurstKeyRef.current,
-              sourceRect: deckRect
-                ? { x: deckRect.left, y: deckRect.top, w: deckRect.width, h: deckRect.height }
-                : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
-              affinityHex: '#7090FF',
-              cardName: `Tier ${tier} card`,
-              gotFlux,
+            reserveBurstKeyRef.current += 1;
+            setAnimEndTime(3500);
+            setReserveBurst({
+              key: reserveBurstKeyRef.current,
               tier,
-              destPos: destTabRect
-                ? { x: destTabRect.left + destTabRect.width / 2, y: destTabRect.top + destTabRect.height / 2 }
-                : undefined,
+              gotFlux,
+              playerId: player.playerId,
+              playerName: player.playerName,
+              avatarId: player.avatarId ?? null,
             });
             if (gotFlux) gameAudio.playFluxCoin();
-            gameAudio.playCipherSeal();
+            setTimeout(() => setReserveBurst(null), 3500);
           }
         }
       }
@@ -2356,14 +2298,6 @@ export default function GameBoard() {
       return;
     }
     const next = stateQueueRef.current.shift()!;
-    // Harvest compression: if this is an opponent harvest state AND more states
-    // are queued behind it, the gem burst is stale — skip it so the queue doesn't
-    // accumulate a long chain of delayed gem bursts in fast AI games.
-    const nextActionType = (next.lastAction as { type?: string } | null)?.type;
-    const isHarvest = nextActionType === 'take_three_crystals' || nextActionType === 'take_two_crystals';
-    if (isHarvest && stateQueueRef.current.length > 0) {
-      skipGemBurstRef.current = true;
-    }
     processUpdateRef.current(next);
     if (stateQueueRef.current.length > 0) {
       const nextRemaining = animationEndTimeRef.current - Date.now();
@@ -2422,20 +2356,10 @@ export default function GameBoard() {
         // playing.  Visual-only state (hiddenSlots, flippingCards, cardActionBurst,
         // summon cutscene) is derived exclusively from processUpdate, which is still
         // gated by the animation queue, so animations are completely unaffected.
-        //
-        // EXCEPTION: when the currentPlayerIndex changes (turn boundary), skip
-        // the eager push.  The top label reads directly from this query cache, so
-        // an eager push on a turn-change would advance the label to the next
-        // player while the outgoing player's action animation is still playing —
-        // the mismatch the user sees as "animations happening on the wrong turn."
-        const prevIdx = prevStateRef.current?.currentPlayerIndex;
-        const newIdx  = newState.currentPlayerIndex;
-        if (prevIdx === undefined || prevIdx === newIdx) {
-          queryClient.setQueryData(
-            getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
-            newState,
-          );
-        }
+        queryClient.setQueryData(
+          getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
+          newState,
+        );
         if (!queueTimerRef.current) {
           const delay = remaining > 50 ? remaining + 100 : 100;
           queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
@@ -2705,11 +2629,7 @@ export default function GameBoard() {
     setGemBurst({ key: seq, gems, playerName, avatarId });
     gameAudio.playChipsCollected();
     const totalDuration = (gems.length - 1) * 780 + 1250 + 500 + 50;
-    // Gem bursts track their own end time and do NOT set animationEndTimeRef.
-    // This means they run concurrently with other animations (or turn announcements)
-    // without holding the queue — same behaviour as local (optimistic) gem bursts.
-    const gemEnd = Date.now() + totalDuration;
-    if (gemEnd > gemBurstEndTimeRef.current) gemBurstEndTimeRef.current = gemEnd;
+    setAnimEndTime(totalDuration);
     gemBurstTimerRef.current = setTimeout(() => {
       if (gemBurstKeyRef.current === seq) setGemBurst(null);
       gemBurstTimerRef.current = null;
@@ -2965,7 +2885,7 @@ export default function GameBoard() {
   };
 
   const confirmCrystals = () => {
-    if (!canCoreAct || !queueLegality.ok || !me) return;
+    if (!isMyTurnForCoreAction || !queueLegality.ok || !me) return;
     const total = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
     const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
     if (handTotal + total > 10) {
@@ -2977,22 +2897,15 @@ export default function GameBoard() {
       setReturnSelections({});
       return;
     }
-    // Snapshot before clearing — WS response can arrive before React processes
-    // the state clear, which would double-count pending into tentativeCount.
-    const snap = { ...selectedCrystals };
-    setSelectedCrystals({});
-    setCrystalHistory([]);
-    setPrePromotionHistory(null);
-    setActionMode('none');
     if (queueLegality.actionType === 'take3') {
-      playGemBurst(snap, me.playerName, session.avatarId ?? null);
-      triggerHarvestBurst(snap);
-      executeAction({ type: 'take_three_crystals', crystals: snap });
+      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
+      triggerHarvestBurst(selectedCrystals);
+      executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
-      playGemBurst(snap, me.playerName, session.avatarId ?? null);
-      triggerHarvestBurst(snap);
-      executeAction({ type: 'take_two_crystals', crystal: Object.keys(snap)[0] });
+      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
+      triggerHarvestBurst(selectedCrystals);
+      executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
     }
   };
@@ -3007,7 +2920,7 @@ export default function GameBoard() {
   };
 
   const confirmReturnPhase = () => {
-    if (!canCoreAct || !returnPhase || !me) return;
+    if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
     playGemBurst(returnPhase.pendingTake, me.playerName, session.avatarId ?? null);
@@ -3053,20 +2966,16 @@ export default function GameBoard() {
   const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
 
   const handleBuy = (card: ArtifactCard, fromReserve = false) => {
-    if (!canCoreAct) return;
+    if (!isMyTurnForCoreAction) return;
     executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id, cardRef: card });
   };
   const handleReserveCard = (card: ArtifactCard) => {
-    if (!canCoreAct) return;
+    if (!isMyTurnForCoreAction) return;
     executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
   };
   const handleReserveDeck = (tier: number) => {
-    if (!canCoreAct) return;
+    if (!isMyTurnForCoreAction) return;
     executeAction({ type: 'reserve_card', tier, _tier: tier });
-  };
-  const handleToggleLuminaryAffinity = (luminaryId: string) => {
-    if (!canToggleLuminaryAffinity) return;
-    executeAction({ type: 'toggle_luminary_affinity', luminaryId });
   };
   const openDeckSheet = (tier: 1 | 2 | 3) => {
     setPendingDeckConfirm(false);
@@ -3087,8 +2996,8 @@ export default function GameBoard() {
     setPendingSheetAction(null);
     setSelectedCard({
       card, fromReserve,
-      canBuy: canCoreAct && canAffordCard(card, me),
-      canReserve: canCoreAct && !fromReserve && canReserveMore(me),
+      canBuy: isMyTurnForCoreAction && canAffordCard(card, me),
+      canReserve: isMyTurnForCoreAction && !fromReserve && canReserveMore(me),
       effectiveCosts: computeCosts(card, costMode),
     });
   };
@@ -3206,12 +3115,12 @@ export default function GameBoard() {
     sentFlashRef.current = setTimeout(() => setSentFlashBtn(null), 900);
   };
 
-  // planningLockedReason: only summon cutscenes hard-block planning.
-  // turnAnnouncement does NOT block planning — crystal pre-selection,
-  // Plan: Forge, and Plan: Reserve remain available during the banner.
-  const planningLockedReason: 'summonCutscene' | null =
-    (summonGateActive && !localSummonSkipped) ? 'summonCutscene' : null;
-  const canPlan = state.status === 'playing' && !!me && planningLockedReason === null;
+  // canPlan is available to any player whenever the game is active and there is
+  // no blocking Luminary summon cutscene. It is intentionally NOT tied to
+  // !isActivePlayer or !isMyTurn — planning should be accessible at all times
+  // (on your turn, off your turn, during animation locks). Only Luminary
+  // cutscenes gate it, because those require player attention.
+  const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
   const myPlannedAction = (me as any)?.plannedAction ?? null;
   const plannedCardId: string | null = myPlannedAction?.cardId ?? null;
 
@@ -3380,8 +3289,7 @@ export default function GameBoard() {
                 claimedByPlayer={visibleClaimedByPlayer}
                 isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
                 isLive={isSummonInProgress ? false : isLive}
-                canToggle={canToggleLuminaryAffinity && isOwnedByMe && isLive}
-                onToggle={() => handleToggleLuminaryAffinity(l.id)}
+                canToggle={false}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
                 isMyTurn={isMyTurn}
@@ -4466,7 +4374,7 @@ export default function GameBoard() {
                         onClick={() => { setActionMode('none'); setSelectedCrystals({}); setCrystalHistory([]); setPrePromotionHistory(null); }}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
-                      {canCoreAct ? (
+                      {isMyTurnForCoreAction ? (
                         (() => {
                           const selKeys = Object.keys(selectedCrystals) as GemKey[];
                           const hasColors = selKeys.length > 0 && queueLegality.ok;
@@ -4568,7 +4476,7 @@ export default function GameBoard() {
 
           {/* ── Return-crystals phase (hand limit exceeded) ── */}
           <AnimatePresence>
-            {returnPhase && canCoreAct && me && (
+            {returnPhase && isMyTurn && me && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -4948,7 +4856,7 @@ export default function GameBoard() {
               >
 
                 {/* ── Immediate actions (your active turn only) ── */}
-                {!selectedCard.readOnly && canCoreAct && (
+                {!selectedCard.readOnly && isMyTurnForCoreAction && (
                   <>
                     <motion.div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
@@ -5076,7 +4984,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
-                {!selectedCard.readOnly && canPlan && !canCoreAct && (
+                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && (
                   <>
                     {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
@@ -5176,7 +5084,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Neither available — Luminary cutscene blocking ── */}
-                {!selectedCard.readOnly && !isActivePlayer && !canPlan && (
+                {!selectedCard.readOnly && !isMyTurn && !canPlan && (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     <AlertCircle className="inline h-4 w-4 mr-1" />
                     Waiting for Luminary summon…
@@ -5320,7 +5228,7 @@ export default function GameBoard() {
             : deckTier === 2
             ? 'Forged instruments — crucibles and sigils of focused cosmic mastery'
             : 'Fragments & sparks — raw nascent shards that seed any engine';
-          const canReserve = canCoreAct && !!me && canReserveMore(me);
+          const canReserve = isMyTurnForCoreAction && !!me && canReserveMore(me);
           return (
             <motion.div
               initial={{ opacity: 0 }}
@@ -5408,7 +5316,7 @@ export default function GameBoard() {
                 >
 
                   {/* ── Reserve now (active turn) ── */}
-                  {canCoreAct && (
+                  {isMyTurnForCoreAction && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
@@ -5475,7 +5383,7 @@ export default function GameBoard() {
                   )}
 
                   {/* ── Plan: reserve from deck (off-turn) ── */}
-                  {canPlan && !canCoreAct && me && canReserveMore(me) && (
+                  {canPlan && !isMyTurnForCoreAction && me && canReserveMore(me) && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
@@ -5507,7 +5415,7 @@ export default function GameBoard() {
                   )}
 
                   {/* ── Waiting — Luminary cutscene blocking ── */}
-                  {!isActivePlayer && !canPlan && (
+                  {!isMyTurn && !canPlan && (
                     <p className="text-sm text-muted-foreground text-center py-2">
                       <AlertCircle className="inline h-4 w-4 mr-1" />
                       Waiting for Luminary summon…
@@ -5656,9 +5564,7 @@ export default function GameBoard() {
           sourceRect={cipherBurst.sourceRect}
           affinityHex={cipherBurst.affinityHex}
           cardName={cipherBurst.cardName}
-          cardFace={cipherBurst.card
-            ? <ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />
-            : <CardBack tier={cipherBurst.tier as 1 | 2 | 3} />}
+          cardFace={<ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />}
           gotFlux={cipherBurst.gotFlux}
           destPos={cipherBurst.destPos}
           onComplete={() => setCipherBurst(null)}
@@ -6305,6 +6211,93 @@ export default function GameBoard() {
                 )}
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Reserve Burst Overlay ── */}
+      <AnimatePresence>
+        {reserveBurst && (
+          <motion.div
+            key={reserveBurst.key}
+            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+          >
+            <div className="absolute inset-0 bg-black/30" />
+            <div className="relative flex items-center gap-8">
+              {/* Card back flips to center face-down */}
+              <div style={{ perspective: '900px' }}>
+                <motion.div
+                  style={{ transformStyle: 'preserve-3d' }}
+                  initial={{ rotateY: 90, scale: 0.65 }}
+                  animate={{ rotateY: 0, scale: 1 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                  className="relative"
+                >
+                  {/* Fade-out wrapper */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 1, 1, 0] }}
+                    transition={{ duration: 3.2, times: [0, 0.12, 0.72, 1] }}
+                  >
+                    <CardBack tier={reserveBurst.tier} size="md" />
+                  </motion.div>
+
+                  {/* Avatar swoops in over card */}
+                  <motion.div
+                    className="absolute inset-0 flex items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.55, y: -32 }}
+                    animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.55, 0.55, 1.05, 1, 1, 0.96], y: [-32, -32, 0, 0, 0, 0] }}
+                    transition={{ duration: 3.5, times: [0, 0.14, 0.28, 0.42, 0.82, 1] }}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <div
+                        className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
+                        style={{
+                          width: 72, height: 72,
+                          borderColor: `${GEM_META.flux.glowHex}88`,
+                        }}
+                      >
+                        <img
+                          src={getAvatarForPlayer(reserveBurst.avatarId ?? session.avatarId).image}
+                          alt={reserveBurst.playerName}
+                          className="w-full h-full object-cover"
+                          draggable={false}
+                        />
+                      </div>
+                      <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
+                        {reserveBurst.playerName}
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </div>
+
+              {/* Singularity token coin-flips in to the right */}
+              {reserveBurst.gotFlux && (
+                <motion.div
+                  className="flex flex-col items-center gap-2"
+                  style={{ perspective: '900px', transformStyle: 'preserve-3d' }}
+                  initial={{ opacity: 0, rotateY: 90, scale: 0.6 }}
+                  animate={{
+                    opacity: [0, 1, 1, 0],
+                    rotateY: [90, 0, 720, 720],
+                    scale: [0.6, 1, 1, 0.8],
+                  }}
+                  transition={{ duration: 3.0, times: [0, 0.12, 0.72, 1] }}
+                >
+                  <CrystalIcon color="flux" size={64} />
+                  <span
+                    className="text-sm font-bold drop-shadow-[0_0_10px_rgba(255,196,61,0.9)]"
+                    style={{ color: GEM_META.flux.hex }}
+                  >
+                    +1 Singularity
+                  </span>
+                </motion.div>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

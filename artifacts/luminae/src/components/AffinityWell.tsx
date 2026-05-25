@@ -95,7 +95,7 @@ function HorizontalWellMeter({
   }, [filledCount]);
 
   return (
-    <div style={{ display: 'flex', gap: 3, alignItems: 'center', position: 'relative' }}>
+    <div style={{ display: 'flex', gap: 2, alignItems: 'center', position: 'relative' }}>
       {Array.from({ length: capacity }, (_, i) => {
         const filled = pipFilled[i] ?? false;
         return (
@@ -103,18 +103,14 @@ function HorizontalWellMeter({
             key={i}
             animate={
               filled
-                ? { backgroundColor: hex, opacity: 0.90, scale: 1 }
-                : { backgroundColor: 'transparent', opacity: 0.70, scale: 1 }
+                ? { backgroundColor: hex, opacity: 0.90 }
+                : { backgroundColor: 'transparent', opacity: 0.38 }
             }
             transition={{ duration: 0.14, ease: 'easeOut' }}
             style={{
-              width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-              border: filled
-                ? `1px solid ${glowHex}88`
-                : `1.5px solid ${glowHex}65`,
-              boxShadow: filled
-                ? `0 0 5px ${glowHex}66`
-                : `inset 0 0 2px ${glowHex}18`,
+              width: 4, height: 4, borderRadius: 2, flexShrink: 0,
+              border: filled ? `1px solid ${glowHex}60` : `1px solid ${glowHex}22`,
+              boxShadow: filled ? `0 0 4px ${glowHex}55` : 'none',
             }}
           />
         );
@@ -568,12 +564,12 @@ export function AffinityWellCells({
                         <span
                           style={{
                             fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                            color: `${meta.glowHex}99`,
+                            color: `${meta.glowHex}42`,
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                           }}
                         >
-                          Available {gaugeFilledCount}/5
+                          WELL {gaugeFilledCount}/5
                         </span>
                         <HorizontalWellMeter
                           capacity={5}
@@ -596,12 +592,12 @@ export function AffinityWellCells({
                         <span
                           style={{
                             fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                            color: `${meta.glowHex}99`,
+                            color: `${meta.glowHex}42`,
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                           }}
                         >
-                          Available {gaugeFilledCount}/{gaugeCapacity}
+                          WELL {gaugeFilledCount}/{gaugeCapacity}
                         </span>
                         <HorizontalWellMeter
                           capacity={gaugeCapacity}
