@@ -1321,6 +1321,11 @@ export default function GameBoard() {
   const cipherBurstIsDeckRef = useRef(false);
   const [singularityAbsorbKey, setSingularityAbsorbKey] = useState(0);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
+  // Ghost card: keeps the OLD market card visible in its slot while waiting for
+  // the burst animation to start (during queue-drain delay).  Cleared atomically
+  // when setCardActionBurst / setCipherBurst fires so the card transitions directly
+  // from "in slot" to "flying in overlay" with no empty-placeholder flash.
+  const [burstGhostCard, setBurstGhostCard] = useState<{ slotKey: string; card: ArtifactCard } | null>(null);
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -1991,6 +1996,7 @@ export default function GameBoard() {
                     y: handTabR.top + handTabR.height / 2,
                   }
                 : undefined;
+              setBurstGhostCard(null); // ghost served its purpose — burst now owns the card
               setCardActionBurst({
                 key: cardActionBurstKeyRef.current,
                 card: exitCard,
@@ -2031,6 +2037,7 @@ export default function GameBoard() {
                   ? { x: destElRect.left + destElRect.width / 2, y: destElRect.top + destElRect.height / 2 }
                   : undefined,
               });
+              setBurstGhostCard(null); // ghost served its purpose — cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
             }
@@ -2422,6 +2429,10 @@ export default function GameBoard() {
             if (idx >= 0) {
               const eagerSlotKey = `${tier}-${idx}`;
               setHiddenSlots(prev => new Set([...prev, eagerSlotKey]));
+              // Keep the old card visible as a ghost until the burst animation
+              // starts — prevents an empty-slot flash during queue drain delay.
+              const oldCard = (prevMarkets[tier] as (ArtifactCard | null)[])[idx];
+              if (oldCard) setBurstGhostCard({ slotKey: eagerSlotKey, card: oldCard });
               break;
             }
           }
@@ -3586,6 +3597,19 @@ export default function GameBoard() {
               {row.cards.map((c, i) => {
                 const slotKey = `${row.tier}-${i}`;
                 const isHidden = hiddenSlots.has(slotKey);
+
+                // Ghost card: the old card stays visible here while waiting for the
+                // burst animation to start (queue-drain delay).  It carries
+                // data-card-id so processUpdateRef can still measure its rect.
+                // Cleared atomically when setCardActionBurst / setCipherBurst fires.
+                const ghostCard = burstGhostCard?.slotKey === slotKey ? burstGhostCard.card : null;
+                if (ghostCard) {
+                  return (
+                    <div key={ghostCard.id} data-card-id={ghostCard.id} data-slot-key={slotKey} className="relative shrink-0">
+                      <ArtifactCardView card={ghostCard} tier={row.tier} />
+                    </div>
+                  );
+                }
 
                 if (isHidden || !c) {
                   return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className="w-[var(--card-w)] h-[var(--card-h)] rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
