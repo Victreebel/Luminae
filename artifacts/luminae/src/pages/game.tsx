@@ -3463,7 +3463,7 @@ export default function GameBoard() {
         {/* Zone header */}
         <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
-            <span className="text-[18px] font-black leading-none shrink-0" style={{ color: '#C4AAFF', opacity: 0.85, lineHeight: 1 }}>Ω</span>
+            <span className="text-[18px] font-black leading-none shrink-0" style={{ color: '#C4AAFF', opacity: 0.85, lineHeight: 1 }}>†</span>
             <div className="flex flex-col leading-none">
               <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(160,130,255,0.55)' }}>The</span>
               <span className="text-[15px] font-black uppercase tracking-[0.08em] leading-none" style={{
