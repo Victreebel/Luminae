@@ -332,6 +332,7 @@ export function AffinityWellCells({
               const canTake2      = selectable && !isFlux && bankCount >= 4 && pending !== 2;
               const showForgedLink = !isFlux && bonus > 0;
               const gaugeFilledCount = Math.max(0, bankCount - pending);
+              const CellTag = (isFlux ? motion.div : motion.button) as typeof motion.button;
               const tentativeCount   = gems + pending;
               const hasContent       = isFlux
                 ? gems > 0 || reservedCount > 0
@@ -371,13 +372,12 @@ export function AffinityWellCells({
                   key={c}
                   style={{ display: 'flex', flexDirection: 'column', gap: 2, width: CELL_W, flexShrink: 0 }}
                 >
-                  {/* ── Main cell button ── */}
-                  <motion.button
+                  {/* ── Main cell container (non-interactive for flux) ── */}
+                  <CellTag
                     type="button"
-                    // Singularity always tappable; others need selectable + non-empty bank
-                    disabled={isFlux ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
+                    disabled={isFlux ? undefined : (!selectable && !showForgedLink || bankEmpty && !showForgedLink)}
                     whileTap={
-                      (isFlux || (selectable && !bankEmpty) || showForgedLink)
+                      (!isFlux && ((selectable && !bankEmpty) || showForgedLink))
                         ? { scale: 0.91 }
                         : {}
                     }
@@ -386,11 +386,9 @@ export function AffinityWellCells({
                         ? { scale: [1, 1.03, 1], transition: { duration: 0.18 } }
                         : {}
                     }
-                    onClick={() => {
+                    onClick={isFlux ? undefined : () => {
                       if (isDragging.current) return;
-                      if (isFlux) {
-                        onOpenReserved();
-                      } else if (showForgedLink && !selectable) {
+                      if (showForgedLink && !selectable) {
                         onOpenForged(c);
                       } else if (selectable && !bankEmpty) {
                         onCrystalClick(c as keyof CrystalCounts);
@@ -406,10 +404,7 @@ export function AffinityWellCells({
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: 2,
-                      cursor:
-                        isFlux || selectable || showForgedLink
-                          ? 'pointer'
-                          : 'default',
+                      cursor: selectable || showForgedLink ? 'pointer' : 'default',
                       position: 'relative',
                       overflow: 'hidden',
                       opacity: bankEmpty && !isFlux && pending === 0 ? 0.42 : 1,
@@ -590,8 +585,21 @@ export function AffinityWellCells({
                           width: '80%', height: 1, margin: '5px 0 4px',
                           background: `linear-gradient(90deg, transparent, ${meta.glowHex}38, transparent)`,
                         }} />
-                        {/* encrypted count */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        {/* encrypted count — only interactive element in the Singularity cell */}
+                        <motion.button
+                          type="button"
+                          onClick={() => { if (isDragging.current) return; onOpenReserved(); }}
+                          whileTap={{ scale: 0.95 }}
+                          style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            background: reservedCount > 0 ? `${meta.glowHex}18` : 'transparent',
+                            border: `1px solid ${reservedCount > 0 ? meta.glowHex + '40' : 'transparent'}`,
+                            transition: 'background 0.2s ease, border-color 0.2s ease',
+                          }}
+                        >
                           <span style={{
                             fontSize: 13, fontWeight: 900, lineHeight: 1,
                             color: reservedCount > 0 ? meta.glowHex : `${meta.glowHex}30`,
@@ -606,7 +614,7 @@ export function AffinityWellCells({
                           }}>
                             Encrypted
                           </span>
-                        </div>
+                        </motion.button>
                       </>
                     )}
 
@@ -638,7 +646,7 @@ export function AffinityWellCells({
                       </div>
                     )}
 
-                  </motion.button>
+                  </CellTag>
 
                   {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
                   {!isFlux && <motion.button
