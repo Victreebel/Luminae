@@ -65,6 +65,8 @@ export interface LuminaryDef {
 export interface PlayerGameState {
   playerId: string;
   playerName: string;
+  /** Custom civilization name set by the player. Falls back to "{playerName}'s Civilization" on the client when absent. */
+  civName?: string;
   crystals: CrystalCounts;
   bonuses: CrystalCounts;
   lumens: number;
@@ -612,7 +614,8 @@ type ActionType =
   | "resolve_summon"
   | "plan_action"
   | "cancel_plan"
-  | "tutorial_fast_forward";
+  | "tutorial_fast_forward"
+  | "set_civ_name";
 
 export interface ActionPayload {
   type: ActionType;
@@ -625,6 +628,7 @@ export interface ActionPayload {
   affinity?: CrystalColor;
   eventId?: string;
   plannedActionData?: ActionPayload;
+  civName?: string;
 }
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
@@ -935,13 +939,14 @@ export function applyAction(
   }
 
   // Non-turn-gated actions: toggle_luminary_affinity, resolve_summon,
-  // plan_action, cancel_plan, tutorial_fast_forward may be sent at any time.
+  // plan_action, cancel_plan, tutorial_fast_forward, set_civ_name may be sent at any time.
   const isTurnGated =
     action.type !== "toggle_luminary_affinity" &&
     action.type !== "resolve_summon" &&
     action.type !== "plan_action" &&
     action.type !== "cancel_plan" &&
-    action.type !== "tutorial_fast_forward";
+    action.type !== "tutorial_fast_forward" &&
+    action.type !== "set_civ_name";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx)
     return { success: false, error: "Not your turn" };
 
@@ -979,6 +984,14 @@ export function applyAction(
       // Stamp lastAction so the broadcast does not carry a stale real-action
       // type from the previous turn, which would re-trigger turn animations.
       state.lastAction = { type: "toggle_luminary_affinity", playerId, luminaryId, affinity };
+      state.version++;
+      return { success: true };
+    }
+    case "set_civ_name": {
+      const raw = action.civName ?? "";
+      const trimmed = raw.trim().slice(0, 48);
+      player.civName = trimmed || undefined;
+      state.lastAction = { type: "set_civ_name", playerId };
       state.version++;
       return { success: true };
     }
@@ -1618,6 +1631,7 @@ export function formatGameState(
     return {
       playerId: p.playerId,
       playerName: p.playerName,
+      civName: p.civName ?? null,
       avatarId: avatarMap?.get(p.playerId) ?? null,
       isAi: aiEntry?.isAi ?? false,
       aiDifficulty: aiEntry?.aiDifficulty ?? null,

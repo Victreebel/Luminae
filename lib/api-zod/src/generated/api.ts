@@ -427,6 +427,7 @@ export const StartGameResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -770,6 +771,7 @@ export const RematchResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -1113,6 +1115,7 @@ export const GetGameStateResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
@@ -1290,6 +1293,7 @@ export const SubmitActionBody = zod.object({
     "plan_action",
     "cancel_plan",
     "tutorial_fast_forward",
+    "set_civ_name",
   ]),
   crystals: zod
     .object({
@@ -1335,6 +1339,10 @@ export const SubmitActionBody = zod.object({
     .record(zod.string(), zod.unknown())
     .optional()
     .describe("Nested action payload for plan_action type"),
+  civName: zod
+    .string()
+    .optional()
+    .describe("Custom civilization name for set_civ_name action"),
 });
 
 export const SubmitActionResponse = zod.object({
@@ -1514,6 +1522,7 @@ export const SubmitActionResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
+      civName: zod.string().nullish().describe("Custom civilization name set by the player"),
       avatarId: zod.string().nullish(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod

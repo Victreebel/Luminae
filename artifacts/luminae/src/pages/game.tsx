@@ -2512,6 +2512,17 @@ export default function GameBoard() {
 
   const submitAction = useSubmitAction();
 
+  // Broadcast civLabel to the server so all players can see it in the scoreboard.
+  // Runs on mount (to sync on rejoin) and whenever the player renames their civilization.
+  useEffect(() => {
+    if (!session || !roomId || !state || state.status === 'lobby') return;
+    submitAction.mutate({
+      roomId,
+      data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel } as any,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [civLabel, session?.sessionToken, roomId, state?.status]);
+
   // ── Polling-based animation fallback ─────────────────────────────────────
   // TanStack Query polls the server on a refetch interval. If a WS state_update
   // is missed (transient disconnect), the poll delivers the new state but
@@ -3733,6 +3744,10 @@ export default function GameBoard() {
               const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
               const reservedCount = p.reservedCards.length;
               const isExpanded = expandedOpponents.has(p.playerId);
+              const oppCards = (p as any).purchasedCards ?? [];
+              const oppDiscounted = (p as any).discountedForgeIds ?? [];
+              const oppCivPalette = getDominantAffinityPalette(oppCards);
+              const oppCivName = (p as any).civName || getCivilizationName(oppCivPalette, getKardashevTier(oppCards, oppDiscounted));
               const toggleExpanded = () => {
                 setExpandedOpponents((prev) => {
                   const next = new Set(prev);
@@ -3751,7 +3766,10 @@ export default function GameBoard() {
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
                       {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                      <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                      <span className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                        <span className="text-[10px] font-normal tracking-wide truncate" style={{ color: oppCivPalette.primary, opacity: 0.8 }}>{oppCivName}</span>
+                      </span>
                       {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                     </div>
                     {/* Inline stat chips */}
@@ -4145,6 +4163,10 @@ export default function GameBoard() {
             const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
             const reservedCount = p.reservedCards.length;
             const isExpanded = expandedOpponents.has(p.playerId);
+            const logOppCards = (p as any).purchasedCards ?? [];
+            const logOppDiscounted = (p as any).discountedForgeIds ?? [];
+            const logOppCivPalette = getDominantAffinityPalette(logOppCards);
+            const logOppCivName = (p as any).civName || getCivilizationName(logOppCivPalette, getKardashevTier(logOppCards, logOppDiscounted));
             const toggleExpanded = () => {
               setExpandedOpponents((prev) => {
                 const next = new Set(prev);
@@ -4163,7 +4185,10 @@ export default function GameBoard() {
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     <PlayerAvatar avatarId={p.avatarId ?? null} name={p.playerName} size={22} />
                     {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                    <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                    <span className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold truncate">{p.playerName}</span>
+                      <span className="text-[10px] font-normal tracking-wide truncate" style={{ color: logOppCivPalette.primary, opacity: 0.8 }}>{logOppCivName}</span>
+                    </span>
                     {isCurrent && <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>}
                   </div>
                   {/* Inline stat chips */}
