@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LockKeyhole } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import type {
   GameState,
   CrystalCounts,
@@ -636,7 +636,7 @@ export function AffinityWellCells({
                         transition: 'color 0.2s, background 0.2s, border-color 0.2s',
                       }}
                     >
-                      <LockKeyhole style={{ width: 7, height: 7, flexShrink: 0 }} />
+                      <Bookmark style={{ width: 7, height: 7, flexShrink: 0 }} />
                       <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1 }}>
                         {reservedCount}/3
                       </span>
