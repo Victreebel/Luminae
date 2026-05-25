@@ -416,7 +416,7 @@ export function AffinityWellCells({
                   ? `drop-shadow(0 0 7px ${meta.glowHex}) brightness(1.25)`
                   : forgeDed > 0
                   ? 'drop-shadow(0 0 5px #ef4444bb) brightness(0.55) saturate(0.3)'
-                  : bankEmpty && !isFlux
+                  : bankEmpty && !isFlux && !hasContent
                   ? 'grayscale(0.65) opacity(0.4)'
                   : `drop-shadow(0 0 5px ${meta.glowHex}70)`;
 
@@ -467,7 +467,7 @@ export function AffinityWellCells({
                           : 'default',
                       position: 'relative',
                       overflow: 'hidden',
-                      opacity: bankEmpty && !isFlux && pending === 0 ? 0.42 : 1,
+                      opacity: bankEmpty && !isFlux && pending === 0 && !hasContent ? 0.42 : 1,
                       transition: 'opacity 0.35s ease',
                       ...(isFlux ? { flexGrow: 1 } : {}),
                       ...cellStyle,
