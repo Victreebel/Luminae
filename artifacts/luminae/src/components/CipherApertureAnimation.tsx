@@ -419,7 +419,7 @@ function CipherCircuit({ w, h, circuitDurMs, id }: CipherCircuitProps) {
 // Flat-top outer hex + pointy-top inner hex + diamond core.
 // Affinity-coloured with prismatic-white inner highlights.
 
-function CipherSigil({ affinityHex, id }: { affinityHex: string; id: number }) {
+export function CipherSigil({ affinityHex, id }: { affinityHex: string; id: number }) {
   const glowId   = `ca-glow-${id}`;
   const bloomId  = `ca-bloom-${id}`;
   const whiteId  = `ca-white-${id}`;

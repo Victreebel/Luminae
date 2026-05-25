@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark } from 'lucide-react';
+import { CipherSigil } from '@/components/CipherApertureAnimation';
 import type {
   GameState,
   CrystalCounts,
@@ -636,7 +636,9 @@ export function AffinityWellCells({
                         transition: 'color 0.2s, background 0.2s, border-color 0.2s',
                       }}
                     >
-                      <Bookmark style={{ width: 7, height: 7, flexShrink: 0 }} />
+                      <span style={{ width: 10, height: 10, flexShrink: 0, display: 'inline-flex' }}>
+                        <CipherSigil affinityHex={meta.glowHex} id={99} />
+                      </span>
                       <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1 }}>
                         {reservedCount}/3
                       </span>
