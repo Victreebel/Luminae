@@ -3776,9 +3776,9 @@ export default function GameBoard() {
                         <><Eye className="h-2.5 w-2.5" />View</>
                       )}
                     </button>
-                    <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-primary leading-none">
+                    <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-white leading-none">
                       <span>{p.lumens}</span>
-                      <Sparkles className="h-3 w-3 text-primary" />
+                      <Sparkles className="h-3 w-3 text-white" />
                     </div>
                   </div>
 
@@ -3876,8 +3876,8 @@ export default function GameBoard() {
           <div className="text-lg font-bold">{me?.playerName}</div>
         </div>
         <div className="text-center">
-          <div className="text-4xl font-serif font-bold text-primary">{me?.lumens}</div>
-          <div className="text-xs text-primary flex items-center gap-0.5 justify-center">
+          <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
+          <div className="text-xs text-white/70 flex items-center gap-0.5 justify-center">
             <Sparkles className="h-3 w-3" /> eminence
           </div>
         </div>
@@ -4130,9 +4130,9 @@ export default function GameBoard() {
                       <><Eye className="h-2.5 w-2.5" />View</>
                     )}
                   </button>
-                  <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-primary leading-none">
+                  <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-white leading-none">
                     <span>{p.lumens}</span>
-                    <Sparkles className="h-3 w-3 text-primary" />
+                    <Sparkles className="h-3 w-3 text-white" />
                   </div>
                 </div>
 
@@ -4567,8 +4567,8 @@ export default function GameBoard() {
                   transition: 'box-shadow 0.3s',
                 } : undefined}
               >
-                <span className="font-serif font-black text-lg text-primary leading-none">{me.lumens}</span>
-                <Sparkles className="h-3 w-3 text-primary" />
+                <span className="font-serif font-black text-lg text-white leading-none">{me.lumens}</span>
+                <Sparkles className="h-3 w-3 text-white" />
               </button>
             </div>
           </div>
@@ -6397,8 +6397,8 @@ export default function GameBoard() {
                               {(c.lumens ?? 0) > 0 && (
                                 <>
                                   <span className="text-muted-foreground/40">·</span>
-                                  <Sparkles className="h-3 w-3 text-primary" />
-                                  <span className="text-xs font-bold text-primary">{c.lumens}</span>
+                                  <Sparkles className="h-3 w-3 text-white" />
+                                  <span className="text-xs font-bold text-white">{c.lumens}</span>
                                 </>
                               )}
                             </div>
