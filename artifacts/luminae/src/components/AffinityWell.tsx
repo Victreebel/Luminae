@@ -29,6 +29,7 @@ export interface AffinityWellCellsProps {
   tutorialAttention: LumiiAttentionState | null;
   sessionPlayerId: string | undefined;
   harvestBurstKeys?: Partial<Record<GemKey, number>>;
+  harvestBlockedKeys?: Partial<Record<GemKey, number>>;
   forgeDeductions?: Partial<Record<GemKey, number>>;
   singularityAbsorbKey?: number;
   onCrystalClick: (color: keyof CrystalCounts) => void;
@@ -159,6 +160,7 @@ export function AffinityWellCells({
   tutorialAttention: _tutorialAttention,
   sessionPlayerId,
   harvestBurstKeys,
+  harvestBlockedKeys,
   forgeDeductions,
   singularityAbsorbKey,
   onCrystalClick,
@@ -251,6 +253,40 @@ export function AffinityWellCells({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [harvestBurstKeys]);
+
+  // ── Blocked-harvest shake + full-flash indicator ────────────────────────────
+  // When a harvest fires but tokens are capped, the affected gem slots shake
+  // and briefly flash an amber border to signal the slot is full.
+  const [fullFlashKeys, setFullFlashKeys] = useState<Partial<Record<GemKey, number>>>({});
+  const prevBlockedRef = useRef<Partial<Record<GemKey, number>>>({});
+  useEffect(() => {
+    const prev = prevBlockedRef.current;
+    const curr = harvestBlockedKeys ?? {};
+    const toShake: GemKey[] = [];
+    for (const key of GEM_KEYS) {
+      if (key === 'flux') continue;
+      if ((curr[key] ?? 0) > (prev[key] ?? 0)) {
+        toShake.push(key);
+      }
+    }
+    if (toShake.length > 0) {
+      for (const key of toShake) {
+        void gemTokenControls[key]?.start({
+          x: [0, -5, 5, -4, 4, -2, 2, 0],
+          transition: { duration: 0.32, ease: 'easeInOut' },
+        });
+      }
+      setFullFlashKeys(prev => {
+        const next = { ...prev };
+        for (const key of toShake) {
+          next[key] = (next[key] ?? 0) + 1;
+        }
+        return next;
+      });
+    }
+    prevBlockedRef.current = { ...curr };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [harvestBlockedKeys]);
 
   // ── Bonus chip pulse animation ──────────────────────────────────────────────
   // Track previous total bonus (card bonus + luminary bonus) per affinity.
@@ -545,6 +581,28 @@ export function AffinityWellCells({
                               transition={{ duration: 0.45, times: [0, 0.35, 1], ease: 'easeOut' }}
                             />
                           </motion.div>
+                        )}
+                      </AnimatePresence>
+                    )}
+
+                    {/* ── Full-slot amber border flash (blocked harvest feedback) ── */}
+                    {!isFlux && (
+                      <AnimatePresence>
+                        {(fullFlashKeys[c] ?? 0) > 0 && (
+                          <motion.div
+                            key={fullFlashKeys[c]}
+                            style={{
+                              position: 'absolute', inset: 0,
+                              borderRadius: 10,
+                              border: '1.5px solid #f59e0b',
+                              boxShadow: '0 0 8px #f59e0b66, inset 0 0 8px #f59e0b1a',
+                              pointerEvents: 'none',
+                              zIndex: 5,
+                            }}
+                            initial={{ opacity: 1 }}
+                            animate={{ opacity: 0 }}
+                            transition={{ duration: 0.5, ease: 'easeOut' }}
+                          />
                         )}
                       </AnimatePresence>
                     )}

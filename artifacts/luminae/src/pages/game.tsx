@@ -1129,6 +1129,7 @@ export default function GameBoard() {
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [harvestBurstKeys, setHarvestBurstKeys] = useState<Partial<Record<GemKey, number>>>({});
+  const [harvestBlockedKeys, setHarvestBlockedKeys] = useState<Partial<Record<GemKey, number>>>({});
   const pendingHarvestCheckRef = useRef<{ gems: GemKey[]; preCrystals: Partial<CrystalCounts> } | null>(null);
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
@@ -2737,6 +2738,13 @@ export default function GameBoard() {
     );
     if (!anyIncreased) {
       gameAudio.playHarvestBlocked();
+      setHarvestBlockedKeys(prev => {
+        const next = { ...prev };
+        for (const g of check.gems) {
+          if (g !== 'flux') next[g] = (next[g] ?? 0) + 1;
+        }
+        return next;
+      });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.crystals]);
@@ -4448,6 +4456,7 @@ export default function GameBoard() {
             tutorialAttention={tutorialAttention}
             sessionPlayerId={session?.playerId}
             harvestBurstKeys={harvestBurstKeys}
+            harvestBlockedKeys={harvestBlockedKeys}
             forgeDeductions={(() => {
               if (!selectedCard || !me || (!isMyTurn && !canPlan)) return undefined;
               const effCost = effectiveCost(selectedCard.card, me) as Record<string, number>;
