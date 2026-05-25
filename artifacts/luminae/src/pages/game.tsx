@@ -1310,6 +1310,8 @@ export default function GameBoard() {
     destPos?: { x: number; y: number };
   } | null>(null);
   const cipherBurstKeyRef = useRef(0);
+  const cipherBurstIsDeckRef = useRef(false);
+  const [singularityAbsorbKey, setSingularityAbsorbKey] = useState(0);
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(new Set());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const [dealingCard, setDealingCard] = useState<{
@@ -1970,6 +1972,7 @@ export default function GameBoard() {
             } else {
               // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
               cipherBurstKeyRef.current += 1;
+              cipherBurstIsDeckRef.current = false;
               const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
               const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
               const handTabRect = destTabEl?.getBoundingClientRect();
@@ -2247,9 +2250,13 @@ export default function GameBoard() {
             const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
             const deckRect = deckEl?.getBoundingClientRect();
             const isLocalReserve = playerId === session?.playerId;
-            const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
-            const handTabRect = destTabEl?.getBoundingClientRect();
+            // Local player: fly to Singularity panel; opponent: fly to action log
+            const destEl = isLocalReserve
+              ? document.querySelector('[data-singularity-well]')
+              : document.querySelector('[data-nav-log]');
+            const destRect = destEl?.getBoundingClientRect();
             cipherBurstKeyRef.current += 1;
+            cipherBurstIsDeckRef.current = isLocalReserve;
             setAnimEndTime(3500);
             setCipherBurst({
               key: cipherBurstKeyRef.current,
@@ -2263,8 +2270,8 @@ export default function GameBoard() {
               gotFlux,
               card: newCard ?? ({ id: '', name: '', tier, cost: {}, lumens: 0, bonusColor: null } as unknown as ArtifactCard),
               tier,
-              destPos: handTabRect
-                ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
+              destPos: destRect
+                ? { x: destRect.left + destRect.width / 2, y: destRect.top + destRect.height / 2 }
                 : undefined,
             });
             if (gotFlux) gameAudio.playFluxCoin();
@@ -4321,6 +4328,7 @@ export default function GameBoard() {
               if (fluxNeeded > 0) result.flux = fluxNeeded;
               return Object.keys(result).length > 0 ? result : undefined;
             })()}
+            singularityAbsorbKey={singularityAbsorbKey}
             onCrystalClick={handleCrystalClick}
             onPromoteToTake2={promoteToTake2}
             onOpenReserved={() => setShowReservedOverlay(true)}
@@ -5575,7 +5583,13 @@ export default function GameBoard() {
           cardFace={<ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />}
           gotFlux={cipherBurst.gotFlux}
           destPos={cipherBurst.destPos}
-          onComplete={() => setCipherBurst(null)}
+          onComplete={() => {
+            if (cipherBurstIsDeckRef.current) {
+              setSingularityAbsorbKey(k => k + 1);
+              cipherBurstIsDeckRef.current = false;
+            }
+            setCipherBurst(null);
+          }}
         />
       )}
 

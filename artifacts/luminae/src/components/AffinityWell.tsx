@@ -29,6 +29,7 @@ export interface AffinityWellCellsProps {
   sessionPlayerId: string | undefined;
   harvestBurstKeys?: Partial<Record<GemKey, number>>;
   forgeDeductions?: Partial<Record<GemKey, number>>;
+  singularityAbsorbKey?: number;
   onCrystalClick: (color: keyof CrystalCounts) => void;
   onPromoteToTake2: (color: GemKey) => void;
   onOpenReserved: () => void;
@@ -158,6 +159,7 @@ export function AffinityWellCells({
   sessionPlayerId,
   harvestBurstKeys,
   forgeDeductions,
+  singularityAbsorbKey,
   onCrystalClick,
   onPromoteToTake2,
   onOpenReserved,
@@ -173,6 +175,16 @@ export function AffinityWellCells({
   // treat it as a scroll gesture and suppress the subsequent click on any cell.
   const isDragging    = useRef(false);
   const dragStartX    = useRef(0);
+
+  // ── Singularity absorption flash ─────────────────────────────────────────────
+  const [absorbFlash, setAbsorbFlash] = useState(0);
+  const prevAbsorbKeyRef = useRef(singularityAbsorbKey ?? 0);
+  useEffect(() => {
+    if (singularityAbsorbKey !== undefined && singularityAbsorbKey !== prevAbsorbKeyRef.current) {
+      prevAbsorbKeyRef.current = singularityAbsorbKey;
+      setAbsorbFlash(k => k + 1);
+    }
+  }, [singularityAbsorbKey]);
 
   // ── Bonus chip pulse animation ──────────────────────────────────────────────
   // Track previous total bonus (card bonus + luminary bonus) per affinity.
@@ -373,6 +385,7 @@ export function AffinityWellCells({
                     type="button"
                     // Singularity always tappable; others need selectable + non-empty bank
                     disabled={isFlux ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
+                    {...(isFlux ? { 'data-singularity-well': '' } : {})}
                     whileTap={
                       (isFlux || (selectable && !bankEmpty) || showForgedLink)
                         ? { scale: 0.91 }
@@ -423,6 +436,51 @@ export function AffinityWellCells({
                         pointerEvents: 'none',
                       }}
                     />
+
+                    {/* ── Singularity absorption flash ── */}
+                    {isFlux && (
+                      <AnimatePresence>
+                        {absorbFlash > 0 && (
+                          <motion.div
+                            key={absorbFlash}
+                            style={{
+                              position: 'absolute', inset: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              pointerEvents: 'none',
+                              zIndex: 10,
+                            }}
+                            initial={{}}
+                            exit={{}}
+                          >
+                            {/* Implosion ring — contracts inward */}
+                            <motion.div
+                              style={{
+                                position: 'absolute',
+                                width: 56, height: 56,
+                                borderRadius: '50%',
+                                border: `1.5px solid ${meta.glowHex}`,
+                                boxShadow: `0 0 10px 3px ${meta.glowHex}66`,
+                              }}
+                              initial={{ scale: 2.2, opacity: 0.85 }}
+                              animate={{ scale: 0.05, opacity: 0 }}
+                              transition={{ duration: 0.5, ease: [0.30, 0, 0.70, 1] }}
+                            />
+                            {/* Central core flash */}
+                            <motion.div
+                              style={{
+                                position: 'absolute',
+                                width: 20, height: 20,
+                                borderRadius: '50%',
+                                background: `radial-gradient(circle, ${meta.glowHex}ff 0%, ${meta.glowHex}00 70%)`,
+                              }}
+                              initial={{ scale: 0.2, opacity: 0 }}
+                              animate={{ scale: [0.2, 1.4, 0], opacity: [0, 1, 0] }}
+                              transition={{ duration: 0.45, times: [0, 0.35, 1], ease: 'easeOut' }}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    )}
 
                     {/* ── Affinity name label ── */}
                     <span
