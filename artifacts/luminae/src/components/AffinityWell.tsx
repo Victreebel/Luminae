@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { CipherSigil } from '@/components/CipherApertureAnimation';
 import type {
   GameState,
@@ -176,15 +176,28 @@ export function AffinityWellCells({
   const isDragging    = useRef(false);
   const dragStartX    = useRef(0);
 
-  // ── Singularity absorption flash ─────────────────────────────────────────────
+  // ── Singularity absorption flash + token jump-spin ───────────────────────────
   const [absorbFlash, setAbsorbFlash] = useState(0);
   const prevAbsorbKeyRef = useRef(singularityAbsorbKey ?? 0);
+  const tokenControls = useAnimation();
   useEffect(() => {
     if (singularityAbsorbKey !== undefined && singularityAbsorbKey !== prevAbsorbKeyRef.current) {
       prevAbsorbKeyRef.current = singularityAbsorbKey;
       setAbsorbFlash(k => k + 1);
+      // Slight delay so the jump starts as the implosion flash fades
+      setTimeout(() => {
+        void tokenControls.start({
+          y:      [0, -9, 0, 0,   0],
+          rotate: [0,  0, 0, 360, 360],
+          transition: {
+            duration: 1.1,
+            times:    [0, 0.18, 0.32, 0.88, 1],
+            ease:     'easeInOut',
+          },
+        });
+      }, 220);
     }
-  }, [singularityAbsorbKey]);
+  }, [singularityAbsorbKey, tokenControls]);
 
   // ── Bonus chip pulse animation ──────────────────────────────────────────────
   // Track previous total bonus (card bonus + luminary bonus) per affinity.
@@ -502,10 +515,12 @@ export function AffinityWellCells({
                     </span>
 
                     {/* ── Emblem (visual hero) ── */}
-                    <div
+                    <motion.div
+                      animate={isFlux ? tokenControls : {}}
                       style={{
                         position: 'relative', width: 32, height: 32,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transformOrigin: 'center',
                       }}
                     >
                       <AffinityEmblem
@@ -530,7 +545,7 @@ export function AffinityWellCells({
                           −{forgeDed}
                         </motion.span>
                       )}
-                    </div>
+                    </motion.div>
 
                     {/* ── Count + bonus chip row ── */}
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 3 }}>
