@@ -14,6 +14,7 @@ import type {
   Luminary,
   GamePlayerState,
   LuminaryActiveState,
+  ActionRequest,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
@@ -1255,7 +1256,16 @@ export default function GameBoard() {
   const checkedInitialSummonRef = useRef(false);
   // Stable ref to enqueueSummon — populated after it is defined below (after
   // the early return) so the initial-load useEffect can call it safely.
-  const enqueueSummonRef = useRef<(...args: any[]) => void>(() => {});
+  const enqueueSummonRef = useRef<(
+    lumId: string,
+    lumName: string,
+    lumDomain: string,
+    lumLumens: number,
+    lumFlavor: string,
+    eventId: string,
+    isDevTest: boolean,
+    winSealingColor?: string,
+  ) => void>(() => {});
   // Luminary IDs that have been detected as newly summoned in processUpdate but
   // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to
   // suppress the vortex portal during those few frames so it never flashes
@@ -1708,7 +1718,7 @@ export default function GameBoard() {
     // Luminary so its cutscene burst visuals can use the correct summonColor.
     const initialWinTrigId = (state as any).winTriggerLuminaryId as string | undefined;
     for (const evt of pending) {
-      const lum = (state as any).luminaries?.find((l: any) => l.id === evt.luminaryId);
+      const lum = state?.luminaries?.find((l: Luminary) => l.id === evt.luminaryId);
       if (lum) {
         const isSealing = initialWinTrigId && evt.luminaryId === initialWinTrigId;
         const wsc: string | undefined = isSealing ? (lum.summonColor ?? '') || undefined : undefined;
@@ -2903,7 +2913,15 @@ export default function GameBoard() {
     gameAudio.playCrystalPicked(color);
   };
 
-  const executeAction = async (payload: any) => {
+  type ExecuteActionPayload = Omit<ActionRequest, 'sessionToken' | 'crystals' | 'crystal'> & {
+    _tier?: number;
+    cardRef?: ArtifactCard;
+    playerId?: string;
+    crystals?: Partial<CrystalCounts>;
+    crystal?: string;
+  };
+
+  const executeAction = async (payload: ExecuteActionPayload) => {
     // Tutorial gate — only permit the action type for the current step.
     // Steps 0–3 each have specific permitted types; step 4 (Luminaries intro,
     // requiresConfirm) has an empty list, so ALL actions are blocked until the
@@ -2925,9 +2943,9 @@ export default function GameBoard() {
       const normalized = { ...payload };
       delete normalized._tier;
       if (normalized.crystals) {
-        normalized.crystals = { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...normalized.crystals };
+        normalized.crystals = Object.assign({ ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 }, normalized.crystals) as CrystalCounts;
       }
-      const restState = await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } });
+      const restState = await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } as ActionRequest });
       // Fallback: if the WebSocket state_update is missed (e.g. transient disconnect at the
       // moment of submission), the WS-driven animation never fires. The REST response contains
       // the same post-action state (including lastAction) as the WS broadcast. After a short
@@ -3000,11 +3018,11 @@ export default function GameBoard() {
           });
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (CORE_ACTION_TYPES.includes(payload.type)) {
         setCoreActionSubmitted(false);
       }
-      toast({ variant: 'destructive', title: 'Action failed', description: err.message });
+      toast({ variant: 'destructive', title: 'Action failed', description: err instanceof Error ? err.message : String(err) });
     }
   };
 
@@ -3194,7 +3212,7 @@ export default function GameBoard() {
   // back here, giving them the choice between resuming or starting fresh.
   const handleReturnToMenu = () => setLocation('/?newgame=1');
 
-  const getPlannedActionSummary = (action: any): string => {
+  const getPlannedActionSummary = (action: Record<string, unknown>): string => {
     if (!action) return '';
     const allCards: ArtifactCard[] = [
       ...(state?.marketTier1 ?? []),
@@ -3216,7 +3234,7 @@ export default function GameBoard() {
         return action.tier ? `Encrypt Tier ${action.tier}` : 'Encrypt card';
       }
       case 'take_three_crystals': {
-        const crystals = action.crystals ?? {};
+        const crystals = (action.crystals ?? {}) as Record<string, number>;
         const parts = (CRYSTALS as string[])
           .filter(c => c !== 'flux' && (crystals[c] ?? 0) > 0)
           .map(c => GEM_META[c as GemKey]?.shortName ?? c);
@@ -3281,8 +3299,8 @@ export default function GameBoard() {
       setCrystalHistory([]);
       setPrePromotionHistory(null);
       setActionMode('none');
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Plan failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Plan failed', description: err instanceof Error ? err.message : String(err) });
     } finally {
       planSubmitInFlight.current = false;
     }
@@ -3301,11 +3319,11 @@ export default function GameBoard() {
       // up to 4.3 s before the WebSocket state update is drained and rendered.
       queryClient.setQueryData(
         getGetGameStateQueryKey(roomId!, { sessionToken: session.sessionToken }),
-        (old: any) => {
+        (old: GameState | undefined) => {
           if (!old) return old;
           return {
             ...old,
-            players: (old.players as any[]).map((p) =>
+            players: old.players.map((p) =>
               p.playerId === session.playerId
                 ? { ...p, plannedAction: null, plannedActionCancelReason: null }
                 : p,
@@ -3313,8 +3331,8 @@ export default function GameBoard() {
           };
         },
       );
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Cancel failed', description: err.message ?? 'Something went wrong' });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Cancel failed', description: err instanceof Error ? err.message : 'Something went wrong' });
     }
   };
 
