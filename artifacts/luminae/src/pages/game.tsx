@@ -2733,19 +2733,19 @@ export default function GameBoard() {
     const check = pendingHarvestCheckRef.current;
     if (!check || !me) return;
     pendingHarvestCheckRef.current = null;
-    const anyIncreased = check.gems.some(
-      (g) => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals[g as keyof CrystalCounts] ?? 0),
+    const blockedGems = check.gems.filter(
+      (g) => g !== 'flux' && (me.crystals[g as keyof CrystalCounts] ?? 0) <= (check.preCrystals[g as keyof CrystalCounts] ?? 0),
     );
-    if (!anyIncreased) {
-      // Play a per-affinity blocked thud for each gem that didn't increase,
+    if (blockedGems.length > 0) {
+      // Play a per-affinity blocked thud for each blocked gem only,
       // staggered by 80 ms so overlapping colors remain distinguishable.
-      check.gems.forEach((g, i) => {
+      blockedGems.forEach((g, i) => {
         setTimeout(() => gameAudio.playHarvestBlocked(g), i * 80);
       });
       setHarvestBlockedKeys(prev => {
         const next = { ...prev };
-        for (const g of check.gems) {
-          if (g !== 'flux') next[g] = (next[g] ?? 0) + 1;
+        for (const g of blockedGems) {
+          next[g as GemKey] = (next[g as GemKey] ?? 0) + 1;
         }
         return next;
       });
