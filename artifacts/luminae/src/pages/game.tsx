@@ -1970,12 +1970,14 @@ export default function GameBoard() {
               });
               gameAudio.playCardPurchased();
             } else {
-              // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
+              // reserve_card with cardId → Cipher Aperture animation; flies to Singularity panel
               cipherBurstKeyRef.current += 1;
-              cipherBurstIsDeckRef.current = false;
               const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
-              const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
-              const handTabRect = destTabEl?.getBoundingClientRect();
+              cipherBurstIsDeckRef.current = isLocalReserve;
+              const destEl = isLocalReserve
+                ? document.querySelector('[data-singularity-well]')
+                : document.querySelector('[data-nav-log]');
+              const destElRect = destEl?.getBoundingClientRect();
               setCipherBurst({
                 key: cipherBurstKeyRef.current,
                 sourceRect: rect
@@ -1988,8 +1990,8 @@ export default function GameBoard() {
                 gotFlux,
                 card: exitCard,
                 tier,
-                destPos: handTabRect
-                  ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
+                destPos: destElRect
+                  ? { x: destElRect.left + destElRect.width / 2, y: destElRect.top + destElRect.height / 2 }
                   : undefined,
               });
               if (gotFlux) gameAudio.playFluxCoin();
