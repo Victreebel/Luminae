@@ -6838,7 +6838,7 @@ export default function GameBoard() {
                       <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={24} />
                       <span className="flex flex-col items-start">
                         <span>{p.playerName}</span>
-                        <span className="text-[10px] font-normal tracking-wide" style={{ color: civPalette.primary, opacity: 0.85 }}>{civName}</span>
+                        <span className="text-[10px] font-normal tracking-wide" style={{ color: civPalette.primary, opacity: 0.85 }}>{isMe ? civLabel : civName}</span>
                       </span>
                     </span>
                     <span className="font-bold text-primary flex items-center gap-1">
