@@ -215,15 +215,17 @@ export function AffinityWellCells({
   useEffect(() => {
     const prev = prevHarvestRef.current;
     const curr = harvestBurstKeys ?? {};
-    for (const key of GEM_KEYS) {
+    for (let i = 0; i < GEM_KEYS.length; i++) {
+      const key = GEM_KEYS[i];
       if (key === 'flux') continue;
       const prevVal = prev[key] ?? 0;
       const currVal = curr[key] ?? 0;
       if (currVal > prevVal) {
+        const delay = i * 0.09;
         void gemTokenControls[key]?.start({
-          y:       [0, -9, 0,   0,   0],
-          rotateY: [0,  0, 0, 360, 360],
-          transition: { duration: 1.1, times: [0, 0.18, 0.32, 0.88, 1], ease: 'easeInOut' },
+          y:       [0, -9, 0,   0],
+          rotateY: [0,  0, 0, 360],
+          transition: { duration: 1.5, times: [0, 0.12, 0.22, 1], ease: 'easeOut', delay },
         });
       }
     }
