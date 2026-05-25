@@ -578,6 +578,16 @@ export function AffinityWellCells({
                           glowHex={meta.glowHex}
                           burstKey={harvestBurstKeys?.[c] ?? 0}
                         />
+                        <span
+                          style={{
+                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                            color: reservedCount > 0 ? `${meta.glowHex}99` : `${meta.glowHex}30`,
+                          }}
+                        >
+                          ENC {reservedCount}/3
+                        </span>
                       </div>
                     )}
 
