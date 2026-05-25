@@ -4548,11 +4548,11 @@ export default function GameBoard() {
                 const projected = heldTotal + pendingTotal;
                 const isRed = projected >= 10;
                 const isAmber = !isRed && projected >= 8;
-                const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.4)';
+                const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.85)';
                 return (
                   <div className="flex items-center gap-1" title={`${projected} / 10 tokens held`}>
-                    <Hand className="h-2.5 w-2.5" style={{ color: numColor }} />
-                    <span className="text-[10px] font-mono font-bold tabular-nums" style={{ color: numColor }}>{projected}<span style={{ opacity: 0.5 }}>/10</span></span>
+                    <Hand className="h-3.5 w-3.5" style={{ color: numColor }} />
+                    <span className="text-sm font-black font-mono tabular-nums leading-none" style={{ color: numColor }}>{projected}<span className="text-[10px] font-semibold" style={{ opacity: 0.5 }}>/10</span></span>
                   </div>
                 );
               })()}
