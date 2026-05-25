@@ -1539,9 +1539,11 @@ export default function GameBoard() {
     const duration = isYou ? TURN_ANNOUNCE_DURATION : OPPONENT_ANNOUNCE_DURATION;
 
     const doFire = () => {
-      // Wait for the burst visual to finish (not the full queue lock — that may
-      // include the deal-from-deck tail which runs behind the announcement).
-      const stillRemaining = burstDoneTimeRef.current - Date.now();
+      // Wait for the full animation lock to clear — this ensures the deal-from-deck
+      // tail (market slot refilling) finishes before the announcement appears.
+      // The turn announcement is the clean "all done" signal, not an overlay that
+      // competes with a card still sliding into the market.
+      const stillRemaining = animationEndTimeRef.current - Date.now();
       if (stillRemaining > 50) {
         pendingTurnAnnounceRef.current = setTimeout(doFire, stillRemaining + 100);
         return;
@@ -1550,8 +1552,7 @@ export default function GameBoard() {
       turnAnnounceKeyRef.current += 1;
       const seq = turnAnnounceKeyRef.current;
       setTurnAnnouncement({ key: seq, playerName, avatarId, isYou, accentColor, eminence, turnStartedAt: Date.now(), timerSeconds });
-      // Extend both locks for the announcement duration so the queue cannot
-      // drain while the overlay is still showing.
+      // Extend both locks so the queue cannot drain while the overlay is showing.
       setAnimEndTime(duration);
       setBurstDoneTime(duration);
       if (isYou) gameAudio.playTurnStart();
@@ -1563,9 +1564,7 @@ export default function GameBoard() {
       pendingTurnAnnounceRef.current = null;
     };
 
-    // Use burstDoneTimeRef: fire as soon as the key animation (burst/travel/arrive)
-    // is done — before the deal-from-deck tail, which can run behind the overlay.
-    const remaining = burstDoneTimeRef.current - Date.now();
+    const remaining = animationEndTimeRef.current - Date.now();
     if (remaining > 50) {
       pendingTurnAnnounceRef.current = setTimeout(doFire, remaining + 100);
     } else {
