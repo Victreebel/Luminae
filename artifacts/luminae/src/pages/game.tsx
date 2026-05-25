@@ -4652,13 +4652,7 @@ export default function GameBoard() {
             <div className="flex items-center gap-1.5 min-w-0">
               <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={18} />
               {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-              <span className="flex flex-col min-w-0">
-                <span className="text-[11px] font-semibold truncate max-w-[80px]">{me.playerName}</span>
-                <span
-                  className="text-[9px] font-normal tracking-wide truncate max-w-[80px]"
-                  style={{ color: getDominantAffinityPalette((me.purchasedCards ?? []) as Array<{ id: string; tier: number; bonusColor: string }>).primary, opacity: 0.8 }}
-                >{civLabel}</span>
-              </span>
+              <span className="text-[11px] font-semibold truncate max-w-[80px]">{me.playerName}</span>
               {isMyTurn && (
                 <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
               )}
