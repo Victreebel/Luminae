@@ -1296,6 +1296,9 @@ export default function GameBoard() {
     lumens: number;
     gotFlux: boolean;
     startRect: { x: number; y: number; w: number; h: number };
+    /** Center of the nav tab the card should fly into at the end of the burst.
+     *  Undefined for remote-player purchases — card shrinks in place. */
+    destPos?: { x: number; y: number };
   } | null>(null);
   const cardActionBurstKeyRef = useRef(0);
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -1955,6 +1958,14 @@ export default function GameBoard() {
             setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
 
             if (action.type === 'purchase_card') {
+              // For the local player's forge, look up the Hand nav tab so the
+              // card can fly into it at the end of the burst animation.
+              const isLocalPurch =
+                (action.playerId as string | undefined) === session?.playerId;
+              const handTabEl = isLocalPurch
+                ? document.querySelector('[data-nav-hand]')
+                : null;
+              const handTabR = handTabEl?.getBoundingClientRect();
               setCardActionBurst({
                 key: cardActionBurstKeyRef.current,
                 card: exitCard,
@@ -1967,6 +1978,12 @@ export default function GameBoard() {
                 startRect: rect
                   ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
                   : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                destPos: handTabR
+                  ? {
+                      x: handTabR.left + handTabR.width / 2,
+                      y: handTabR.top + handTabR.height / 2,
+                    }
+                  : undefined,
               });
               gameAudio.playCardPurchased();
             } else {
@@ -5522,7 +5539,7 @@ export default function GameBoard() {
               style={{ bottom: window.innerHeight / 2 + Math.round(cardActionBurst.startRect.h * 0.625) + 24 }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: [0, 0, 1, 1, 0], y: [12, 12, 0, 0, -8] }}
-              transition={{ duration: 3.5, times: [0, 0.17, 0.3, 0.82, 1] }}
+              transition={{ duration: 3.5, times: [0, 0.17, 0.3, 0.74, 0.82] }}
             >
               <div
                 className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
@@ -5565,32 +5582,51 @@ export default function GameBoard() {
               )}
             </motion.div>
 
-            <div style={{ perspective: '900px' }}>
-              <motion.div
-                style={{ position: 'fixed', transformStyle: 'preserve-3d', left: 0, top: 0, width: cardActionBurst.startRect.w, height: cardActionBurst.startRect.h }}
-                initial={{
-                  x: cardActionBurst.startRect.x,
-                  y: cardActionBurst.startRect.y,
-                  scale: 1,
-                  rotateY: 0,
-                }}
-                animate={{
-                  x: window.innerWidth / 2 - cardActionBurst.startRect.w / 2,
-                  y: window.innerHeight / 2 - cardActionBurst.startRect.h / 2 - 20,
-                  scale: 1.25,
-                  rotateY: 360,
-                }}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <motion.div
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: [1, 1, 1, 0] }}
-                  transition={{ duration: 3.5, times: [0, 0.2, 0.78, 1] }}
-                >
-                  <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
-                </motion.div>
-              </motion.div>
-            </div>
+            {(() => {
+              const { startRect, destPos } = cardActionBurst;
+              const w = startRect.w;
+              const h = startRect.h;
+              const centerX = window.innerWidth / 2 - w / 2;
+              const centerY = window.innerHeight / 2 - h / 2 - 20;
+              // If destPos is set (local player's forge), fly into the Hand tab.
+              // Otherwise shrink in place so the overlay still clears cleanly.
+              const finalX = destPos ? destPos.x - w / 2 : centerX;
+              const finalY = destPos ? destPos.y - h / 2 : centerY;
+              return (
+                <div style={{ perspective: '900px' }}>
+                  <motion.div
+                    style={{ position: 'fixed', transformStyle: 'preserve-3d', left: 0, top: 0, width: w, height: h }}
+                    initial={{ x: startRect.x, y: startRect.y, scale: 1, rotateY: 0 }}
+                    animate={{
+                      // Phase 1 (0–17%): fly from market slot to screen centre, spin, scale up.
+                      // Phase 2 (17–80%): hold at centre — "Forged!" is readable.
+                      // Phase 3 (80–100%): fly into the Hand nav tab and shrink away.
+                      x: [startRect.x, centerX, centerX, finalX],
+                      y: [startRect.y, centerY, centerY, finalY],
+                      scale: [1, 1.25, 1.25, 0],
+                      rotateY: [0, 360, 360, 360],
+                    }}
+                    transition={{
+                      duration: 3.5,
+                      times: [0, 0.17, 0.80, 1.0],
+                      ease: [
+                        [0.22, 1, 0.36, 1], // spring-out: market → centre
+                        'linear',            // hold
+                        [0.4, 0, 1, 1],      // ease-in: suck into hand tab
+                      ],
+                    }}
+                  >
+                    <motion.div
+                      initial={{ opacity: 1 }}
+                      animate={{ opacity: [1, 1, 1, 0] }}
+                      transition={{ duration: 3.5, times: [0, 0.17, 0.80, 1] }}
+                    >
+                      <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
+                    </motion.div>
+                  </motion.div>
+                </div>
+              );
+            })()}
 
             {cardActionBurst.gotFlux && (
               <motion.div
