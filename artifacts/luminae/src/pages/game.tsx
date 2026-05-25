@@ -31,7 +31,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Hammer, Gem
+  Hammer, Droplets
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
@@ -4640,7 +4640,7 @@ export default function GameBoard() {
           <div className="flex items-center justify-between px-3 pt-2 pb-1">
             {/* Left: zone name */}
             <div className="flex items-center gap-2">
-              <Gem className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
+              <Droplets className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
               <div className="flex flex-col leading-none">
                 <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(168,197,255,0.5)' }}>The</span>
                 <span className="text-[12px] font-black uppercase tracking-[0.06em] leading-none" style={{
