@@ -2653,6 +2653,20 @@ export default function GameBoard() {
     }, totalDuration);
   };
 
+  // Auto-dismiss returnPhase if the server state changes and the condition
+  // is no longer true (e.g. player purchased a card and crystals dropped).
+  // Must be BEFORE the early returns below so this hook fires on every render.
+  useEffect(() => {
+    if (!returnPhase || !me) return;
+    const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+    const pendingTotal = Object.values(returnPhase.pendingTake).reduce((a, b) => a + (b ?? 0), 0);
+    if (handTotal + pendingTotal <= 10) {
+      setReturnPhase(null);
+      setReturnSelections({});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.crystals, returnPhase]);
+
   if (error) {
     return <div className="h-[100dvh] flex items-center justify-center text-destructive">Error loading game.</div>;
   }
@@ -2901,17 +2915,6 @@ export default function GameBoard() {
     });
   };
 
-  // Auto-dismiss returnPhase if the server state changes and the condition
-  // is no longer true (e.g. player purchased a card and crystals dropped).
-  useEffect(() => {
-    if (!returnPhase || !me) return;
-    const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
-    const pendingTotal = Object.values(returnPhase.pendingTake).reduce((a, b) => a + (b ?? 0), 0);
-    if (handTotal + pendingTotal <= 10) {
-      setReturnPhase(null);
-      setReturnSelections({});
-    }
-  }, [me?.crystals, returnPhase]);
 
   const confirmCrystals = () => {
     if (!isMyTurnForCoreAction || !queueLegality.ok || !me) return;
