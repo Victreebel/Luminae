@@ -149,17 +149,24 @@ class GameAudio {
    * Short dull thud for a harvest that yielded no new tokens — all gems were
    * already at cap. Quieter, lower-pitched, and muffled vs. the landing chime:
    * a soft knock against a full container, not a crystal ring.
+   *
+   * The base pitch is derived from the affinity's own GEM_FREQ divided by 4,
+   * placing each color in the 100–220 Hz thud range while keeping a clearly
+   * distinct timbre per affinity (onyx rumbles deepest at ~104 Hz; flux thuds
+   * brightest at ~220 Hz).
    */
-  playHarvestBlocked() {
+  playHarvestBlocked(color: GemKey = 'ruby') {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
-      // Soft low thud — low sine + muffled noise
-      this.osc(ctx, 110, 'sine', t, t + 0.22, 0.06, 0.005);
-      this.osc(ctx, 80,  'sine', t, t + 0.30, 0.04, 0.008);
-      // Dull muffled knock — low-frequency bandpass noise, very short
-      this.noiseBlip(ctx, t, 0.09, 0.055, 200, 3);
+      // Derive affinity-pitched thud frequency (100–220 Hz range).
+      const base = GEM_FREQS[color] / 4;
+      // Primary low thud — sine at affinity pitch + sub-bass underpinning
+      this.osc(ctx, base,       'sine', t, t + 0.26, 0.07, 0.006);
+      this.osc(ctx, base * 0.5, 'sine', t, t + 0.34, 0.04, 0.010);
+      // Muffled knock — bandpass noise centred near the affinity frequency
+      this.noiseBlip(ctx, t, 0.09, 0.055, base * 1.2, 3);
     } catch (e) { console.warn('SFX failed', e); }
   }
 

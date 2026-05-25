@@ -2737,7 +2737,11 @@ export default function GameBoard() {
       (g) => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals[g as keyof CrystalCounts] ?? 0),
     );
     if (!anyIncreased) {
-      gameAudio.playHarvestBlocked();
+      // Play a per-affinity blocked thud for each gem that didn't increase,
+      // staggered by 80 ms so overlapping colors remain distinguishable.
+      check.gems.forEach((g, i) => {
+        setTimeout(() => gameAudio.playHarvestBlocked(g), i * 80);
+      });
       setHarvestBlockedKeys(prev => {
         const next = { ...prev };
         for (const g of check.gems) {
