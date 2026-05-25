@@ -1325,6 +1325,17 @@ export default function GameBoard() {
     tier: number;
     deckRect: { x: number; y: number; w: number; h: number };
     slotRect: { x: number; y: number; w: number; h: number };
+    // Precomputed stable animate targets — created once at deal-start so the
+    // motion.div receives the same array references across re-renders.  If
+    // these were computed inline, every React re-render (e.g. the
+    // setHandAbsorbBurst(null) call at t≈4100ms) would pass new array
+    // instances to Framer Motion, which compares by reference and can
+    // short-circuit the in-flight animation, firing onAnimationComplete early
+    // and revealing the card before the deal completes.
+    animX: number[];
+    animY: number[];
+    animRotateY: [number, number, number];
+    animScale: [number, number, number];
   } | null>(null);
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
@@ -2051,11 +2062,20 @@ export default function GameBoard() {
                 const slotR = slotEl?.getBoundingClientRect();
                 if (deckR && slotR) {
                   setAnimEndTime(1700); // extend lock to cover the 1500ms deal animation
+                  const _dx = slotR.left - deckR.left;
+                  const _dy = slotR.top  - deckR.top;
+                  const _arcY = Math.min(_dy - 60, -40);
                   setDealingCard({
                     card: newCard,
                     tier,
                     deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
                     slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                    // Stable animate arrays — computed once so re-renders don't
+                    // create new references and accidentally restart the animation.
+                    animX: [0, _dx * 0.5, _dx],
+                    animY: [0, _arcY, _dy],
+                    animRotateY: [0, 90, 180],
+                    animScale: [1, 1.08, 1],
                   });
                   gameAudio.playCardDraw();
                 } else {
@@ -5738,9 +5758,6 @@ export default function GameBoard() {
 
       {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
       {dealingCard && (() => {
-        const dx = dealingCard.slotRect.x - dealingCard.deckRect.x;
-        const dy = dealingCard.slotRect.y - dealingCard.deckRect.y;
-        const arcY = Math.min(dy - 60, -40); // arc upward before descending
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none', perspective: '1200px' }}>
             <motion.div
@@ -5755,10 +5772,10 @@ export default function GameBoard() {
               }}
               initial={{ x: 0, y: 0, rotateY: 0, scale: 1 }}
               animate={{
-                x: [0, dx * 0.5, dx],
-                y: [0, arcY, dy],
-                rotateY: [0, 90, 180],
-                scale: [1, 1.08, 1],
+                x: dealingCard.animX,
+                y: dealingCard.animY,
+                rotateY: dealingCard.animRotateY,
+                scale: dealingCard.animScale,
               }}
               transition={{
                 duration: 1.5,
