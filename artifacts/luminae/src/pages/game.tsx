@@ -1197,15 +1197,6 @@ export default function GameBoard() {
   const gemBurstKeyRef = useRef(0);
   const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTakeBurstActionRef = useRef<string | null>(null);
-  const [reserveBurst, setReserveBurst] = useState<{
-    key: number;
-    tier: 1 | 2 | 3;
-    gotFlux: boolean;
-    playerId: string;
-    playerName: string;
-    avatarId?: string | null;
-  } | null>(null);
-  const reserveBurstKeyRef = useRef(0);
   const reserveBurstActionRef = useRef<string | null>(null);
   const lastMarketBurstActionRef = useRef<string | null>(null);
   const cardSheetContainerRef = useRef<HTMLElement | null>(null);
@@ -1314,7 +1305,7 @@ export default function GameBoard() {
     affinityHex: string;
     cardName: string;
     gotFlux: boolean;
-    card: ArtifactCard;
+    card?: ArtifactCard;
     tier: number;
     destPos?: { x: number; y: number };
   } | null>(null);
@@ -2264,18 +2255,28 @@ export default function GameBoard() {
           if (player) {
             const gotFlux = (newState.crystalBank.flux ?? 0) < ((prev ?? state)?.crystalBank.flux ?? 0);
             const tier = Number(action.tier ?? 1) as 1 | 2 | 3;
-            reserveBurstKeyRef.current += 1;
+            const isLocalReserve = playerId === session?.playerId;
+            const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+            const deckRect = deckEl?.getBoundingClientRect();
+            const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
+            const destTabRect = destTabEl?.getBoundingClientRect();
+            cipherBurstKeyRef.current += 1;
             setAnimEndTime(3500);
-            setReserveBurst({
-              key: reserveBurstKeyRef.current,
-              tier,
+            setCipherBurst({
+              key: cipherBurstKeyRef.current,
+              sourceRect: deckRect
+                ? { x: deckRect.left, y: deckRect.top, w: deckRect.width, h: deckRect.height }
+                : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+              affinityHex: '#7090FF',
+              cardName: `Tier ${tier} card`,
               gotFlux,
-              playerId: player.playerId,
-              playerName: player.playerName,
-              avatarId: player.avatarId ?? null,
+              tier,
+              destPos: destTabRect
+                ? { x: destTabRect.left + destTabRect.width / 2, y: destTabRect.top + destTabRect.height / 2 }
+                : undefined,
             });
             if (gotFlux) gameAudio.playFluxCoin();
-            setTimeout(() => setReserveBurst(null), 3500);
+            gameAudio.playCipherSeal();
           }
         }
       }
@@ -5591,7 +5592,9 @@ export default function GameBoard() {
           sourceRect={cipherBurst.sourceRect}
           affinityHex={cipherBurst.affinityHex}
           cardName={cipherBurst.cardName}
-          cardFace={<ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />}
+          cardFace={cipherBurst.card
+            ? <ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />
+            : <CardBack tier={cipherBurst.tier as 1 | 2 | 3} />}
           gotFlux={cipherBurst.gotFlux}
           destPos={cipherBurst.destPos}
           onComplete={() => setCipherBurst(null)}
@@ -6238,93 +6241,6 @@ export default function GameBoard() {
                 )}
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Reserve Burst Overlay ── */}
-      <AnimatePresence>
-        {reserveBurst && (
-          <motion.div
-            key={reserveBurst.key}
-            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            <div className="absolute inset-0 bg-black/30" />
-            <div className="relative flex items-center gap-8">
-              {/* Card back flips to center face-down */}
-              <div style={{ perspective: '900px' }}>
-                <motion.div
-                  style={{ transformStyle: 'preserve-3d' }}
-                  initial={{ rotateY: 90, scale: 0.65 }}
-                  animate={{ rotateY: 0, scale: 1 }}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
-                  className="relative"
-                >
-                  {/* Fade-out wrapper */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0, 1, 1, 0] }}
-                    transition={{ duration: 3.2, times: [0, 0.12, 0.72, 1] }}
-                  >
-                    <CardBack tier={reserveBurst.tier} size="md" />
-                  </motion.div>
-
-                  {/* Avatar swoops in over card */}
-                  <motion.div
-                    className="absolute inset-0 flex items-center justify-center"
-                    initial={{ opacity: 0, scale: 0.55, y: -32 }}
-                    animate={{ opacity: [0, 0, 1, 1, 1, 0], scale: [0.55, 0.55, 1.05, 1, 1, 0.96], y: [-32, -32, 0, 0, 0, 0] }}
-                    transition={{ duration: 3.5, times: [0, 0.14, 0.28, 0.42, 0.82, 1] }}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <div
-                        className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
-                        style={{
-                          width: 72, height: 72,
-                          borderColor: `${GEM_META.flux.glowHex}88`,
-                        }}
-                      >
-                        <img
-                          src={getAvatarForPlayer(reserveBurst.avatarId ?? session.avatarId).image}
-                          alt={reserveBurst.playerName}
-                          className="w-full h-full object-cover"
-                          draggable={false}
-                        />
-                      </div>
-                      <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
-                        {reserveBurst.playerName}
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              {/* Singularity token coin-flips in to the right */}
-              {reserveBurst.gotFlux && (
-                <motion.div
-                  className="flex flex-col items-center gap-2"
-                  style={{ perspective: '900px', transformStyle: 'preserve-3d' }}
-                  initial={{ opacity: 0, rotateY: 90, scale: 0.6 }}
-                  animate={{
-                    opacity: [0, 1, 1, 0],
-                    rotateY: [90, 0, 720, 720],
-                    scale: [0.6, 1, 1, 0.8],
-                  }}
-                  transition={{ duration: 3.0, times: [0, 0.12, 0.72, 1] }}
-                >
-                  <CrystalIcon color="flux" size={64} />
-                  <span
-                    className="text-sm font-bold drop-shadow-[0_0_10px_rgba(255,196,61,0.9)]"
-                    style={{ color: GEM_META.flux.hex }}
-                  >
-                    +1 Singularity
-                  </span>
-                </motion.div>
-              )}
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
