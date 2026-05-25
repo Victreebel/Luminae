@@ -146,6 +146,24 @@ class GameAudio {
   // ── SFX ─────────────────────────────────────────────────────────────────
 
   /**
+   * Short dull thud for a harvest that yielded no new tokens — all gems were
+   * already at cap. Quieter, lower-pitched, and muffled vs. the landing chime:
+   * a soft knock against a full container, not a crystal ring.
+   */
+  playHarvestBlocked() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Soft low thud — low sine + muffled noise
+      this.osc(ctx, 110, 'sine', t, t + 0.22, 0.06, 0.005);
+      this.osc(ctx, 80,  'sine', t, t + 0.30, 0.04, 0.008);
+      // Dull muffled knock — low-frequency bandpass noise, very short
+      this.noiseBlip(ctx, t, 0.09, 0.055, 200, 3);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  /**
    * Soft crystal chime timed to the moment a harvested token lands.
    * Lighter and shorter than playCrystalPicked — meant to play once per gem
    * at the exact landing frame of the harvest spin animation.

@@ -1129,6 +1129,7 @@ export default function GameBoard() {
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [harvestBurstKeys, setHarvestBurstKeys] = useState<Partial<Record<GemKey, number>>>({});
+  const pendingHarvestCheckRef = useRef<{ gems: GemKey[]; preCrystals: Partial<CrystalCounts> } | null>(null);
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
@@ -2724,6 +2725,22 @@ export default function GameBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.crystals, returnPhase]);
 
+  // Detect zero-yield harvest: play a blocked cue when a harvest action was
+  // submitted but the player's actual crystal counts didn't increase for any
+  // targeted gem. Must be BEFORE the early returns so the hook always runs.
+  useEffect(() => {
+    const check = pendingHarvestCheckRef.current;
+    if (!check || !me) return;
+    pendingHarvestCheckRef.current = null;
+    const anyIncreased = check.gems.some(
+      (g) => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals[g as keyof CrystalCounts] ?? 0),
+    );
+    if (!anyIncreased) {
+      gameAudio.playHarvestBlocked();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me?.crystals]);
+
   if (error) {
     return <div className="h-[100dvh] flex items-center justify-center text-destructive">Error loading game.</div>;
   }
@@ -2989,11 +3006,19 @@ export default function GameBoard() {
     if (queueLegality.actionType === 'take3') {
       gameAudio.playChipsCollected();
       triggerHarvestBurst(selectedCrystals);
+      pendingHarvestCheckRef.current = {
+        gems: Object.keys(selectedCrystals) as GemKey[],
+        preCrystals: { ...me.crystals },
+      };
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
       gameAudio.playChipsCollected();
       triggerHarvestBurst(selectedCrystals);
+      pendingHarvestCheckRef.current = {
+        gems: Object.keys(selectedCrystals) as GemKey[],
+        preCrystals: { ...me.crystals },
+      };
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
     }
@@ -3014,6 +3039,10 @@ export default function GameBoard() {
     if (totalSelected < returnPhase.excessCount) return;
     gameAudio.playChipsCollected();
     triggerHarvestBurst(returnPhase.pendingTake);
+    pendingHarvestCheckRef.current = {
+      gems: Object.keys(returnPhase.pendingTake) as GemKey[],
+      preCrystals: { ...me.crystals },
+    };
     if (returnPhase.actionType === 'take3') {
       executeAction({ type: 'take_three_crystals', crystals: returnPhase.pendingTake, returnCrystals: returnSelections });
     } else {
