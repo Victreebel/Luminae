@@ -410,6 +410,7 @@ export function AffinityWellCells({
                       overflow: 'hidden',
                       opacity: bankEmpty && !isFlux && pending === 0 ? 0.42 : 1,
                       transition: 'opacity 0.35s ease',
+                      ...(isFlux ? { flexGrow: 1 } : {}),
                       ...cellStyle,
                     }}
                   >
@@ -621,31 +622,33 @@ export function AffinityWellCells({
 
                   </motion.button>
 
-                  {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
-                  <motion.button
-                    type="button"
-                    aria-hidden={!canTake2}
-                    tabIndex={canTake2 ? 0 : -1}
-                    animate={{ opacity: canTake2 ? 1 : 0 }}
-                    transition={{ duration: 0.15 }}
-                    onClick={(e) => {
-                      if (!canTake2 || isDragging.current) return;
-                      e.stopPropagation();
-                      onPromoteToTake2(c);
-                    }}
-                    style={{
-                      pointerEvents: canTake2 ? 'auto' : 'none',
-                      visibility: canTake2 ? 'visible' : 'hidden',
-                      width: CELL_W,
-                    }}
-                    className={`text-[9px] font-bold rounded-md py-1 leading-none transition-colors ${
-                      isPlanningMode
-                        ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25'
-                        : 'text-primary/80 bg-primary/10 active:bg-primary/25'
-                    }`}
-                  >
-                    ×2
-                  </motion.button>
+                  {/* ── ×2 sub-button: take 2 of the same — non-flux only ── */}
+                  {!isFlux && (
+                    <motion.button
+                      type="button"
+                      aria-hidden={!canTake2}
+                      tabIndex={canTake2 ? 0 : -1}
+                      animate={{ opacity: canTake2 ? 1 : 0 }}
+                      transition={{ duration: 0.15 }}
+                      onClick={(e) => {
+                        if (!canTake2 || isDragging.current) return;
+                        e.stopPropagation();
+                        onPromoteToTake2(c);
+                      }}
+                      style={{
+                        pointerEvents: canTake2 ? 'auto' : 'none',
+                        visibility: canTake2 ? 'visible' : 'hidden',
+                        width: CELL_W,
+                      }}
+                      className={`text-[9px] font-bold rounded-md py-1 leading-none transition-colors ${
+                        isPlanningMode
+                          ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25'
+                          : 'text-primary/80 bg-primary/10 active:bg-primary/25'
+                      }`}
+                    >
+                      ×2
+                    </motion.button>
+                  )}
                 </div>
               );
             })}
