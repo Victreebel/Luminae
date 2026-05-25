@@ -2528,7 +2528,7 @@ export default function GameBoard() {
     if (!isConnected) return;
     submitAction.mutate({
       roomId,
-      data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel } as unknown as ActionRequest,
+      data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [civLabel, session?.sessionToken, roomId, state?.status, isConnected]);
