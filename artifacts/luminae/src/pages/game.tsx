@@ -2360,6 +2360,7 @@ export default function GameBoard() {
                 : '#7090FF',
               cardName: newCard?.name ?? '',
               gotFlux,
+              // eslint-disable-next-line no-restricted-syntax -- ArtifactCard has many optional fields; this sentinel fallback intentionally omits them so the animation overlay can render without a real card object. Not an API type cast.
               card: newCard ?? ({ id: '', name: '', tier, cost: {}, lumens: 0, bonusColor: null } as unknown as ArtifactCard),
               tier,
               destPos: destRect
@@ -2557,6 +2558,7 @@ export default function GameBoard() {
     const remaining = animationEndTimeRef.current - Date.now();
     const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
     if (remaining > 50 || queueBusy) {
+      // eslint-disable-next-line no-restricted-syntax -- `state` comes from TanStack Query's inferred return type which may be slightly wider than GameState; the cast is safe because the server always returns a conforming GameState object validated by Zod.
       stateQueueRef.current.push(state as unknown as GameState);
       if (!queueTimerRef.current) {
         queueTimerRef.current = setTimeout(
@@ -2565,6 +2567,7 @@ export default function GameBoard() {
         );
       }
     } else {
+      // eslint-disable-next-line no-restricted-syntax -- same TanStack Query width mismatch as above; server response is Zod-validated so the cast is safe.
       processUpdateRef.current(state as unknown as GameState);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

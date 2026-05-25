@@ -1434,6 +1434,7 @@ export function LuminarySummonCutscene({
                 y: shakeY,
                 rotate: shakeR,
                 boxShadow: (isPressure || hasCracks)
+                  // eslint-disable-next-line no-restricted-syntax -- vesselGlow is a framer-motion MotionValue<string>; boxShadow accepts string | MotionValue<string> at runtime but the TS overload only accepts string, so the double-cast is required to satisfy framer-motion's type definitions.
                   ? (vesselGlow as unknown as string)
                   : '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
               }}

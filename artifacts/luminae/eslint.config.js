@@ -33,21 +33,23 @@ export default [
       // If you need a scale-up on an element that IS the overflow-hidden root itself,
       // suppress this rule inline with an eslint-disable comment and explain why.
       'no-restricted-syntax': [
-        'warn',
+        'error',
         {
           selector: 'JSXAttribute[name.name="className"] > Literal[value=/hover:scale-\\[1\\./]',
           message:
             'Avoid hover:scale-[1.x] Tailwind classes — scale-up transforms on elements inside overflow-hidden parents cause visual clipping. Use brightness-110 or box-shadow instead.',
         },
         {
-          // Catches `expr as unknown as ActionRequest` — a stale workaround that was
-          // needed when the generated type was missing fields (e.g. civName). The
-          // OpenAPI spec is now complete, so callers should construct the request
-          // object directly from the generated schema instead of double-casting.
+          // Catches any `expr as unknown as <T>` double-cast pattern. The inner
+          // `as unknown` erases type information before recasting, silently bypassing
+          // the type-checker for all generated API types (request objects, response
+          // types, sub-objects, etc.). Construct typed objects directly instead.
+          // If the cast is genuinely necessary (e.g. framer-motion API mismatch or
+          // internal ref narrowing), suppress inline with an explanatory comment.
           selector:
-            'TSAsExpression[typeAnnotation.typeName.name="ActionRequest"] > TSAsExpression[typeAnnotation.type="TSUnknownKeyword"]',
+            'TSAsExpression > TSAsExpression[typeAnnotation.type="TSUnknownKeyword"]',
           message:
-            'Avoid "as unknown as ActionRequest" — construct the request object directly from the generated ActionRequest type instead of double-casting. This pattern hides missing fields that the type-checker would otherwise catch.',
+            'Avoid "as unknown as <T>" double-casts — they silently bypass the type-checker for generated API types and other typed objects. Construct the object directly from the target type, or suppress inline with an explanatory eslint-disable-next-line comment if the cast is genuinely unavoidable.',
         },
       ],
     },

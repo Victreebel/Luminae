@@ -477,11 +477,13 @@ export function useSwipeToDismiss(
           // Horizontal scroll area: only intercept downward-vertical drags for
           // the sheet. Horizontal drags are left to the browser's native pan-x.
           if (!isPrimarilyHorizontal && dy > 0) {
+            // eslint-disable-next-line no-restricted-syntax -- framer-motion dragControls.start() accepts PointerEvent but its TS overload requires React.PointerEvent; the TouchEvent → React.PointerEvent double-cast is intentional and unavoidable here.
             dragControls.start(moveEvent as unknown as React.PointerEvent);
           }
         } else {
           if (isPrimarilyHorizontal) {
             // Horizontal flick — activate sheet drag regardless of scroll position.
+            // eslint-disable-next-line no-restricted-syntax -- same framer-motion PointerEvent workaround as above; TouchEvent must be double-cast to satisfy the dragControls.start() overload.
             dragControls.start(moveEvent as unknown as React.PointerEvent);
           } else if (dy > 0 && el.scrollTop === 0) {
             // Downward swipe from the top — activate the sheet drag.
@@ -489,6 +491,7 @@ export function useSwipeToDismiss(
             // framer-motion anchors the drag origin to where the finger is right
             // now. Using nativeEvent here would cause a visible jump because the
             // pointer has already travelled ≥6 px (the dead zone) since touchdown.
+            // eslint-disable-next-line no-restricted-syntax -- same framer-motion PointerEvent workaround; TouchEvent → React.PointerEvent is the only way to pass a touch-move event to dragControls.start().
             dragControls.start(moveEvent as unknown as React.PointerEvent);
           }
           // Upward swipe or downward-when-not-at-top — let the browser handle.
