@@ -641,7 +641,7 @@ export function AffinityWellCells({
                   </motion.button>
 
                   {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
-                  <motion.button
+                  {!isFlux && <motion.button
                     type="button"
                     aria-hidden={!canTake2}
                     tabIndex={canTake2 ? 0 : -1}
@@ -664,7 +664,7 @@ export function AffinityWellCells({
                     }`}
                   >
                     ×2
-                  </motion.button>
+                  </motion.button>}
                 </div>
               );
             })}
