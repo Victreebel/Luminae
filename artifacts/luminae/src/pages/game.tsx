@@ -2372,10 +2372,20 @@ export default function GameBoard() {
         // playing.  Visual-only state (hiddenSlots, flippingCards, cardActionBurst,
         // summon cutscene) is derived exclusively from processUpdate, which is still
         // gated by the animation queue, so animations are completely unaffected.
-        queryClient.setQueryData(
-          getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
-          newState,
-        );
+        //
+        // EXCEPTION: when the currentPlayerIndex changes (turn boundary), skip
+        // the eager push.  The top label reads directly from this query cache, so
+        // an eager push on a turn-change would advance the label to the next
+        // player while the outgoing player's action animation is still playing —
+        // the mismatch the user sees as "animations happening on the wrong turn."
+        const prevIdx = prevStateRef.current?.currentPlayerIndex;
+        const newIdx  = newState.currentPlayerIndex;
+        if (prevIdx === undefined || prevIdx === newIdx) {
+          queryClient.setQueryData(
+            getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
+            newState,
+          );
+        }
         if (!queueTimerRef.current) {
           const delay = remaining > 50 ? remaining + 100 : 100;
           queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
