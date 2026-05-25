@@ -568,7 +568,7 @@ export function AffinityWellCells({
                         <span
                           style={{
                             fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                            color: `${meta.glowHex}42`,
+                            color: `${meta.glowHex}99`,
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                           }}
@@ -596,7 +596,7 @@ export function AffinityWellCells({
                         <span
                           style={{
                             fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                            color: `${meta.glowHex}42`,
+                            color: `${meta.glowHex}99`,
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
                           }}
