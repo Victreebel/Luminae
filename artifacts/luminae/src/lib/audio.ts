@@ -145,6 +145,25 @@ class GameAudio {
 
   // ── SFX ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Soft crystal chime timed to the moment a harvested token lands.
+   * Lighter and shorter than playCrystalPicked — meant to play once per gem
+   * at the exact landing frame of the harvest spin animation.
+   */
+  playHarvestLand(color: GemKey = 'ruby') {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      const freq = GEM_FREQS[color];
+      // Soft sine ting — quieter and shorter than crystalPicked
+      this.osc(ctx, freq,     'sine', t, t + 0.28, 0.07, 0.003);
+      this.osc(ctx, freq * 2, 'sine', t, t + 0.14, 0.025, 0.002);
+      // Tiny tactile click for the landing impact
+      this.noiseBlip(ctx, t, 0.04, 0.05, freq * 0.9, 7);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Crystalline ting at gem-specific pitch + tiny tactile click. */
   playCrystalPicked(color: GemKey = 'ruby') {
     if (this.muted) return;

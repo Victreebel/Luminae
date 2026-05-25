@@ -8,6 +8,7 @@ import type {
   LuminaryActiveState,
 } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
+import { gameAudio } from '@/lib/audio';
 import { AffinityEmblem } from '@/components/AffinityEmblem';
 import type { LumiiAttentionState } from '@/components/LumiiTutorial';
 
@@ -212,7 +213,13 @@ export function AffinityWellCells({
     sapphire: ctrlSapphire, onyx: ctrlOnyx,
   };
   const prevHarvestRef = useRef<Partial<Record<GemKey, number>>>({});
+  // Timer IDs for in-flight harvest landing sounds — cleared on cleanup / re-fire.
+  const harvestSoundTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   useEffect(() => {
+    // Cancel any previously scheduled landing sounds before starting new ones.
+    harvestSoundTimers.current.forEach(id => clearTimeout(id));
+    harvestSoundTimers.current = [];
+
     const prev = prevHarvestRef.current;
     const curr = harvestBurstKeys ?? {};
     for (let i = 0; i < GEM_KEYS.length; i++) {
@@ -227,9 +234,21 @@ export function AffinityWellCells({
           rotateY: [0,  0, 0, 360],
           transition: { duration: 1.5, times: [0, 0.12, 0.22, 1], ease: 'easeOut', delay },
         });
+        // Schedule the landing chime to coincide with times[2]=0.22 of duration=1.5 s.
+        // Landing offset = stagger delay + 0.22 * 1500 ms = i*90 + 330 ms.
+        const landMs = Math.round(delay * 1000 + 0.22 * 1500);
+        const gemKey = key; // capture for closure
+        harvestSoundTimers.current.push(
+          setTimeout(() => gameAudio.playHarvestLand(gemKey), landMs),
+        );
       }
     }
     prevHarvestRef.current = { ...curr };
+
+    return () => {
+      harvestSoundTimers.current.forEach(id => clearTimeout(id));
+      harvestSoundTimers.current = [];
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [harvestBurstKeys]);
 
