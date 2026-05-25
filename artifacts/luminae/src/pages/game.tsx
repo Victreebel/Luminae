@@ -4877,7 +4877,7 @@ export default function GameBoard() {
               className="flex items-center justify-center"
             >
               <span className="text-[8.5px] text-white/30 leading-none">
-                Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span> affinities. Limit 10.
+                Select <span className="text-white/50 font-semibold">3 different</span> or <span className="text-white/50 font-semibold">2 of the same</span> affinities. Limit <span className="text-white/50 font-semibold">10</span>.
               </span>
             </motion.div>
           </div>
