@@ -49,6 +49,7 @@ import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
 const gemIcon = "/icon_gem.svg";
 
+
 function hexRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16) || 0;
   const g = parseInt(hex.slice(3, 5), 16) || 0;
@@ -1733,7 +1734,7 @@ export default function GameBoard() {
     const pendingIds = new Set(pending.map(e => e.luminaryId));
     const alreadyClaimed: string[] = [];
     for (const player of (state.players ?? [])) {
-      for (const lumId of ((player as any).claimedLuminaryIds ?? [])) {
+      for (const lumId of (player.claimedLuminaryIds ?? [])) {
         if (!pendingIds.has(lumId) && !alreadyClaimed.includes(lumId)) {
           alreadyClaimed.push(lumId);
         }
@@ -1878,8 +1879,8 @@ export default function GameBoard() {
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
-    const luminaryAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
-    const turnCount: number = (state as any)?.turnCount ?? 0;
+    const luminaryAffinities: LuminaryActiveState[] = state?.luminaryAffinities ?? [];
+    const turnCount: number = state?.turnCount ?? 0;
     const out: Record<string, number> = {};
     for (const c of CRYSTALS) {
       if (c === 'flux') continue;
@@ -2153,8 +2154,8 @@ export default function GameBoard() {
       // Detect planned action cancellation for the local player and show a toast.
       const myNewPlayer = (newState.players as GamePlayerState[]).find(p => p.playerId === session?.playerId);
       const myOldPlayer = prev ? (prev.players as GamePlayerState[]).find(p => p.playerId === session?.playerId) : null;
-      const newCancelReason = (myNewPlayer as any)?.plannedActionCancelReason;
-      const oldCancelReason = (myOldPlayer as any)?.plannedActionCancelReason;
+      const newCancelReason = myNewPlayer?.plannedActionCancelReason;
+      const oldCancelReason = myOldPlayer?.plannedActionCancelReason;
       if (newCancelReason && newCancelReason !== oldCancelReason) {
         setTimeout(() => toast({ variant: 'destructive', title: 'Planned move cancelled', description: newCancelReason }), 150);
       }
@@ -2188,7 +2189,7 @@ export default function GameBoard() {
           if (newPendingEvts.length > 0) {
             const lastEvt = newPendingEvts[newPendingEvts.length - 1];
             const sealingLum = newState.luminaries.find(l => l.id === lastEvt.luminaryId);
-            const lumSummonColor: string = (sealingLum as any)?.summonColor ?? '';
+            const lumSummonColor: string = sealingLum?.summonColor ?? '';
 
             // Store the raw summonColor for the cutscene visual burst override.
             // This is the Luminary's canonical color and is what the task requires.
@@ -2284,9 +2285,9 @@ export default function GameBoard() {
               enqueueSummon(
                 evt.luminaryId,
                 lum.name,
-                (lum as any).domain ?? '',
+                lum.domain ?? '',
                 lum.oblivion ? -lum.oblivion : lum.lumens,
-                (lum as any).flavor ?? '',
+                lum.flavor ?? '',
                 evt.eventId,
                 false,
                 wsc,
@@ -2527,7 +2528,7 @@ export default function GameBoard() {
     if (!isConnected) return;
     submitAction.mutate({
       roomId,
-      data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel } as any,
+      data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel } as unknown as ActionRequest,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [civLabel, session?.sessionToken, roomId, state?.status, isConnected]);
@@ -2549,7 +2550,7 @@ export default function GameBoard() {
   // needs to react to `state` changing (the polling result).
   useEffect(() => {
     if (!state || !prevStateRef.current) return;
-    const polledVersion = (state as any).version as number | undefined;
+    const polledVersion: number | undefined = state.version;
     const prevVersion = prevStateRef.current.version;
     if (typeof polledVersion !== 'number' || polledVersion <= prevVersion) return;
     // WS missed this version — feed it through the animation queue.
@@ -2818,7 +2819,7 @@ export default function GameBoard() {
   if (!prevStateRef.current) prevStateRef.current = state;
 
   const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
-  const currentPlayerIsAi = !isMyTurn && !!(state.players[state.currentPlayerIndex] as any)?.isAi;
+  const currentPlayerIsAi = !isMyTurn && !!state.players[state.currentPlayerIndex]?.isAi;
   const oblivionRows: Array<{ name: string; amount: number }> = (state.luminaries ?? [])
     .filter(lum => (lum.oblivion ?? 0) > 0 &&
       state.players.some(p => (p.claimedLuminaryIds ?? []).includes(lum.id)))
@@ -2950,8 +2951,8 @@ export default function GameBoard() {
       // the same post-action state (including lastAction) as the WS broadcast. After a short
       // delay to give the WS time to arrive first, check whether prevStateRef has already
       // advanced to this version. If not, push the REST state through the same queue path.
-      if (restState && typeof (restState as any).version === 'number') {
-        const restStateTyped = restState as any;
+      if (restState && typeof restState.version === 'number') {
+        const restStateTyped: GameState = restState;
         setTimeout(() => {
           if (!prevStateRef.current || prevStateRef.current.version < restStateTyped.version) {
             if (import.meta.env.DEV) console.log('[forge-trace] WS missed — using REST fallback for v:', restStateTyped.version, 'action:', restStateTyped.lastAction?.type);
@@ -3257,7 +3258,7 @@ export default function GameBoard() {
     try {
       const restState = await submitAction.mutateAsync({
         roomId: roomId!,
-        data: { sessionToken: session.sessionToken, type: 'plan_action', plannedActionData } as any,
+        data: { sessionToken: session.sessionToken, type: 'plan_action', plannedActionData } as ActionRequest,
       });
       // If the server auto-executed the plan (race: turn switched to this player
       // just before the plan arrived), restState.lastAction.type will be the inner
@@ -3265,9 +3266,9 @@ export default function GameBoard() {
       // the state through the same REST-fallback path as executeAction so the
       // correct purchase/reserve animation fires.  Don't show a "Move planned"
       // toast — the animation conveys what happened.
-      const restStateTyped = restState as any;
+      const restStateTyped = restState;
       const autoExecuted =
-        restStateTyped && restStateTyped.lastAction?.type !== 'plan_action';
+        restStateTyped && (restStateTyped.lastAction as { type?: string } | null)?.type !== 'plan_action';
       if (autoExecuted) {
         setTimeout(() => {
           if (
@@ -3310,7 +3311,7 @@ export default function GameBoard() {
     try {
       await submitAction.mutateAsync({
         roomId: roomId!,
-        data: { sessionToken: session.sessionToken, type: 'cancel_plan' } as any,
+        data: { sessionToken: session.sessionToken, type: 'cancel_plan' } as ActionRequest,
       });
       // Optimistically clear the planned action immediately after the server
       // confirms the cancel (HTTP 200). Without this, the UI update is gated
@@ -3353,8 +3354,8 @@ export default function GameBoard() {
   // (on your turn, off your turn, during animation locks). Only Luminary
   // cutscenes gate it, because those require player attention.
   const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
-  const myPlannedAction = (me as any)?.plannedAction ?? null;
-  const plannedCardId: string | null = myPlannedAction?.cardId ?? null;
+  const myPlannedAction = me?.plannedAction ?? null;
+  const plannedCardId: string | null = (myPlannedAction?.cardId as string | undefined) ?? null;
 
   // Forge / Plan:Forge confirmed-state color — solid affinity color of the card being acted on.
   const _forgeCardMeta = selectedCard
@@ -3475,8 +3476,8 @@ export default function GameBoard() {
           </div>
           {/* Reserved-height slot for toggle hint */}
           <span className="text-[9px] italic" style={{ visibility: (() => {
-            const tc: number = (state as any)?.turnCount ?? 0;
-            const lumAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
+            const tc: number = state.turnCount;
+            const lumAffinities: LuminaryActiveState[] = state.luminaryAffinities;
             const hasTogglable = lumAffinities.some(la =>
               la.ownerId === session?.playerId && tc > la.summonedAtTurnCount && (la.eligibleAffinities?.length ?? 0) >= 2
             );
@@ -3489,10 +3490,10 @@ export default function GameBoard() {
           {safeLuminaries.map(l => {
             const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
-            const turnCount: number = (state as any)?.turnCount ?? 0;
+            const turnCount: number = state.turnCount;
 
             // Real server affinity state
-            const serverLumAffinity = ((state as any).luminaryAffinities as LuminaryActiveState[] ?? []).find(la => la.luminaryId === l.id) ?? null;
+            const serverLumAffinity = state.luminaryAffinities.find(la => la.luminaryId === l.id) ?? null;
             const isOwnedByMe = claimedByPlayer?.playerId === session?.playerId;
             // isLive: bonus active starting the turn AFTER summoning
             const isLive = !!serverLumAffinity && turnCount > serverLumAffinity.summonedAtTurnCount;
@@ -3758,13 +3759,13 @@ export default function GameBoard() {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
               const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
-              const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
+              const cardCount = p.purchasedCards?.length ?? p.purchasedCardIds?.length ?? 0;
               const reservedCount = p.reservedCards.length;
               const isExpanded = expandedOpponents.has(p.playerId);
-              const oppCards = (p as any).purchasedCards ?? [];
-              const oppDiscounted = (p as any).discountedForgeIds ?? [];
+              const oppCards = p.purchasedCards ?? [];
+              const oppDiscounted = p.discountedForgeIds ?? [];
               const oppCivPalette = getDominantAffinityPalette(oppCards);
-              const oppCivName = (p as any).civName || getCivilizationName(oppCivPalette, getKardashevTier(oppCards, oppDiscounted));
+              const oppCivName = p.civName || getCivilizationName(oppCivPalette, getKardashevTier(oppCards, oppDiscounted));
               const toggleExpanded = () => {
                 setExpandedOpponents((prev) => {
                   const next = new Set(prev);
@@ -3848,10 +3849,10 @@ export default function GameBoard() {
                             {CRYSTALS.map((c) => {
                               const n = p.crystals[c as keyof CrystalCounts] ?? 0;
                               const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                              const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
+                              const lumBonus = state.luminaryAffinities
                                 .filter((la: LuminaryActiveState) =>
                                   la.ownerId === p.playerId &&
-                                  ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
+                                  state.turnCount > la.summonedAtTurnCount &&
                                   la.activeAffinity === c
                                 ).length;
                               const meta = GEM_META[c as GemKey];
@@ -4058,8 +4059,8 @@ export default function GameBoard() {
           <div className="p-3">
             {/* Bonus summary — card bonuses + living luminary alliance bonuses */}
             {(() => {
-              const lumAffinities: LuminaryActiveState[] = (state as any)?.luminaryAffinities ?? [];
-              const tc: number = (state as any)?.turnCount ?? 0;
+              const lumAffinities: LuminaryActiveState[] = state.luminaryAffinities;
+              const tc: number = state.turnCount;
               const myLumBonus: Partial<Record<GemKey, number>> = {};
               for (const la of lumAffinities) {
                 if (la.ownerId !== session?.playerId || tc <= la.summonedAtTurnCount) continue;
@@ -4177,13 +4178,13 @@ export default function GameBoard() {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
             const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
-            const cardCount = (p as any).purchasedCards?.length ?? (p as any).purchasedCardIds?.length ?? 0;
+            const cardCount = p.purchasedCards?.length ?? p.purchasedCardIds?.length ?? 0;
             const reservedCount = p.reservedCards.length;
             const isExpanded = expandedOpponents.has(p.playerId);
-            const logOppCards = (p as any).purchasedCards ?? [];
-            const logOppDiscounted = (p as any).discountedForgeIds ?? [];
+            const logOppCards = p.purchasedCards ?? [];
+            const logOppDiscounted = p.discountedForgeIds ?? [];
             const logOppCivPalette = getDominantAffinityPalette(logOppCards);
-            const logOppCivName = (p as any).civName || getCivilizationName(logOppCivPalette, getKardashevTier(logOppCards, logOppDiscounted));
+            const logOppCivName = p.civName || getCivilizationName(logOppCivPalette, getKardashevTier(logOppCards, logOppDiscounted));
             const toggleExpanded = () => {
               setExpandedOpponents((prev) => {
                 const next = new Set(prev);
@@ -4268,10 +4269,10 @@ export default function GameBoard() {
                           {CRYSTALS.map((c) => {
                             const n = p.crystals[c as keyof CrystalCounts] ?? 0;
                             const bonus = p.bonuses[c as keyof CrystalCounts] ?? 0;
-                            const lumBonus = ((state as any)?.luminaryAffinities as LuminaryActiveState[] ?? [])
+                            const lumBonus = state.luminaryAffinities
                               .filter((la: LuminaryActiveState) =>
                                 la.ownerId === p.playerId &&
-                                ((state as any)?.turnCount ?? 0) > la.summonedAtTurnCount &&
+                                state.turnCount > la.summonedAtTurnCount &&
                                 la.activeAffinity === c
                               ).length;
                             const meta = GEM_META[c as GemKey];
@@ -4333,13 +4334,13 @@ export default function GameBoard() {
                         )}
 
                         {/* Forged artifacts */}
-                        {((p as any).purchasedCards as ArtifactCard[] | undefined)?.length ? (
+                        {(p.purchasedCards as ArtifactCard[] | undefined)?.length ? (
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                              Forged ({((p as any).purchasedCards as ArtifactCard[]).length})
+                              Forged ({(p.purchasedCards as ArtifactCard[]).length})
                             </p>
                             <div className="flex flex-wrap gap-1.5">
-                              {((p as any).purchasedCards as ArtifactCard[]).map((c) => (
+                              {(p.purchasedCards as ArtifactCard[]).map((c) => (
                                 <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
                               ))}
                             </div>
