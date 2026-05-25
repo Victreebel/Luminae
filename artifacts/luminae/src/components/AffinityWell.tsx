@@ -592,11 +592,11 @@ export function AffinityWellCells({
                           color: reservedCount > 0 ? `${meta.glowHex}cc` : `${meta.glowHex}30`,
                           transition: 'color 0.2s',
                         }}>
-                          <span style={{ width: 11, height: 11, flexShrink: 0, display: 'inline-flex' }}>
-                            <CipherSigil affinityHex={reservedCount > 0 ? meta.glowHex : `${meta.glowHex}50`} id={99} />
-                          </span>
                           <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1 }}>
                             {reservedCount}/3
+                          </span>
+                          <span style={{ width: 11, height: 11, flexShrink: 0, display: 'inline-flex' }}>
+                            <CipherSigil affinityHex={reservedCount > 0 ? meta.glowHex : `${meta.glowHex}50`} id={99} />
                           </span>
                         </div>
                       </div>
