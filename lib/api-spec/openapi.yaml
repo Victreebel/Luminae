@@ -1368,15 +1368,21 @@ components:
       required:
         - playerId
         - playerName
+        - avatarId
         - isAi
+        - aiDifficulty
         - crystals
         - bonuses
         - lumens
         - reservedCards
         - purchasedCardIds
+        - discountedForgeIds
         - purchasedCards
         - isConnected
         - claimedLuminaryIds
+        - plannedAction
+        - plannedActionCancelReason
+        - civName
 
     LuminaryActiveState:
       type: object
@@ -1513,8 +1519,11 @@ components:
         - luminaryAffinities
         - players
         - winnerId
+        - winTriggerLuminaryId
         - lastAction
         - actionLog
+        - turnTimerSeconds
+        - turnDeadline
         - version
         - pendingSummonEvents
 

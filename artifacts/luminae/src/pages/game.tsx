@@ -2285,9 +2285,9 @@ export default function GameBoard() {
               enqueueSummon(
                 evt.luminaryId,
                 lum.name,
-                lum.domain ?? '',
+                lum.domain,
                 lum.oblivion ? -lum.oblivion : lum.lumens,
-                lum.flavor ?? '',
+                lum.flavor,
                 evt.eventId,
                 false,
                 wsc,
@@ -2550,7 +2550,7 @@ export default function GameBoard() {
   // needs to react to `state` changing (the polling result).
   useEffect(() => {
     if (!state || !prevStateRef.current) return;
-    const polledVersion: number | undefined = state.version;
+    const polledVersion = state.version;
     const prevVersion = prevStateRef.current.version;
     if (typeof polledVersion !== 'number' || polledVersion <= prevVersion) return;
     // WS missed this version — feed it through the animation queue.
@@ -2952,7 +2952,7 @@ export default function GameBoard() {
       // delay to give the WS time to arrive first, check whether prevStateRef has already
       // advanced to this version. If not, push the REST state through the same queue path.
       if (restState && typeof restState.version === 'number') {
-        const restStateTyped: GameState = restState;
+        const restStateTyped = restState;
         setTimeout(() => {
           if (!prevStateRef.current || prevStateRef.current.version < restStateTyped.version) {
             if (import.meta.env.DEV) console.log('[forge-trace] WS missed — using REST fallback for v:', restStateTyped.version, 'action:', restStateTyped.lastAction?.type);
@@ -3763,11 +3763,11 @@ export default function GameBoard() {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
               const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
-              const cardCount = p.purchasedCards?.length ?? p.purchasedCardIds?.length ?? 0;
+              const cardCount = p.purchasedCards.length;
               const reservedCount = p.reservedCards.length;
               const isExpanded = expandedOpponents.has(p.playerId);
-              const oppCards = p.purchasedCards ?? [];
-              const oppDiscounted = p.discountedForgeIds ?? [];
+              const oppCards = p.purchasedCards;
+              const oppDiscounted = p.discountedForgeIds;
               const oppCivPalette = getDominantAffinityPalette(oppCards);
               const oppCivName = p.civName || getCivilizationName(oppCivPalette, getKardashevTier(oppCards, oppDiscounted));
               const toggleExpanded = () => {
@@ -4182,11 +4182,11 @@ export default function GameBoard() {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
             const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
-            const cardCount = p.purchasedCards?.length ?? p.purchasedCardIds?.length ?? 0;
+            const cardCount = p.purchasedCards.length;
             const reservedCount = p.reservedCards.length;
             const isExpanded = expandedOpponents.has(p.playerId);
-            const logOppCards = p.purchasedCards ?? [];
-            const logOppDiscounted = p.discountedForgeIds ?? [];
+            const logOppCards = p.purchasedCards;
+            const logOppDiscounted = p.discountedForgeIds;
             const logOppCivPalette = getDominantAffinityPalette(logOppCards);
             const logOppCivName = p.civName || getCivilizationName(logOppCivPalette, getKardashevTier(logOppCards, logOppDiscounted));
             const toggleExpanded = () => {
@@ -4338,13 +4338,13 @@ export default function GameBoard() {
                         )}
 
                         {/* Forged artifacts */}
-                        {(p.purchasedCards as ArtifactCard[] | undefined)?.length ? (
+                        {p.purchasedCards.length > 0 ? (
                           <div>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                              Forged ({(p.purchasedCards as ArtifactCard[]).length})
+                              Forged ({p.purchasedCards.length})
                             </p>
                             <div className="flex flex-wrap gap-1.5">
-                              {(p.purchasedCards as ArtifactCard[]).map((c) => (
+                              {p.purchasedCards.map((c) => (
                                 <ForgedCardWithTooltip key={c.id} card={c} tier={c.tier} onOpenSheet={() => openForgedCardSheet(c)} />
                               ))}
                             </div>

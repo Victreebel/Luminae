@@ -427,7 +427,7 @@ export const StartGameResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      avatarId: zod.string().nullish(),
+      avatarId: zod.string().nullable(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
         .union([
@@ -436,7 +436,7 @@ export const StartGameResponse = zod.object({
           zod.literal("hard"),
           zod.literal(null),
         ])
-        .nullish()
+        .nullable()
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
@@ -497,7 +497,6 @@ export const StartGameResponse = zod.object({
       purchasedCardIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
-        .optional()
         .describe(
           "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
         ),
@@ -544,26 +543,26 @@ export const StartGameResponse = zod.object({
         .describe("IDs of luminaries this player has claimed"),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
-        .nullish()
+        .nullable()
         .describe(
           "Pre-committed action to auto-execute when this player's turn arrives",
         ),
       plannedActionCancelReason: zod
         .string()
-        .nullish()
+        .nullable()
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
       civName: zod
         .string()
-        .nullish()
+        .nullable()
         .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
   winTriggerLuminaryId: zod
     .string()
-    .nullish()
+    .nullable()
     .describe(
       "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
     ),
@@ -576,10 +575,10 @@ export const StartGameResponse = zod.object({
       turn: zod.number(),
     }),
   ),
-  turnTimerSeconds: zod.number().nullish(),
+  turnTimerSeconds: zod.number().nullable(),
   turnDeadline: zod
     .number()
-    .nullish()
+    .nullable()
     .describe(
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
@@ -791,7 +790,7 @@ export const RematchResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      avatarId: zod.string().nullish(),
+      avatarId: zod.string().nullable(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
         .union([
@@ -800,7 +799,7 @@ export const RematchResponse = zod.object({
           zod.literal("hard"),
           zod.literal(null),
         ])
-        .nullish()
+        .nullable()
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
@@ -861,7 +860,6 @@ export const RematchResponse = zod.object({
       purchasedCardIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
-        .optional()
         .describe(
           "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
         ),
@@ -908,26 +906,26 @@ export const RematchResponse = zod.object({
         .describe("IDs of luminaries this player has claimed"),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
-        .nullish()
+        .nullable()
         .describe(
           "Pre-committed action to auto-execute when this player's turn arrives",
         ),
       plannedActionCancelReason: zod
         .string()
-        .nullish()
+        .nullable()
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
       civName: zod
         .string()
-        .nullish()
+        .nullable()
         .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
   winTriggerLuminaryId: zod
     .string()
-    .nullish()
+    .nullable()
     .describe(
       "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
     ),
@@ -940,10 +938,10 @@ export const RematchResponse = zod.object({
       turn: zod.number(),
     }),
   ),
-  turnTimerSeconds: zod.number().nullish(),
+  turnTimerSeconds: zod.number().nullable(),
   turnDeadline: zod
     .number()
-    .nullish()
+    .nullable()
     .describe(
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
@@ -1155,7 +1153,7 @@ export const GetGameStateResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      avatarId: zod.string().nullish(),
+      avatarId: zod.string().nullable(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
         .union([
@@ -1164,7 +1162,7 @@ export const GetGameStateResponse = zod.object({
           zod.literal("hard"),
           zod.literal(null),
         ])
-        .nullish()
+        .nullable()
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
@@ -1225,7 +1223,6 @@ export const GetGameStateResponse = zod.object({
       purchasedCardIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
-        .optional()
         .describe(
           "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
         ),
@@ -1272,26 +1269,26 @@ export const GetGameStateResponse = zod.object({
         .describe("IDs of luminaries this player has claimed"),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
-        .nullish()
+        .nullable()
         .describe(
           "Pre-committed action to auto-execute when this player's turn arrives",
         ),
       plannedActionCancelReason: zod
         .string()
-        .nullish()
+        .nullable()
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
       civName: zod
         .string()
-        .nullish()
+        .nullable()
         .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
   winTriggerLuminaryId: zod
     .string()
-    .nullish()
+    .nullable()
     .describe(
       "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
     ),
@@ -1304,10 +1301,10 @@ export const GetGameStateResponse = zod.object({
       turn: zod.number(),
     }),
   ),
-  turnTimerSeconds: zod.number().nullish(),
+  turnTimerSeconds: zod.number().nullable(),
   turnDeadline: zod
     .number()
-    .nullish()
+    .nullable()
     .describe(
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),
@@ -1582,7 +1579,7 @@ export const SubmitActionResponse = zod.object({
     zod.object({
       playerId: zod.string(),
       playerName: zod.string(),
-      avatarId: zod.string().nullish(),
+      avatarId: zod.string().nullable(),
       isAi: zod.boolean().describe("Whether this player is an AI"),
       aiDifficulty: zod
         .union([
@@ -1591,7 +1588,7 @@ export const SubmitActionResponse = zod.object({
           zod.literal("hard"),
           zod.literal(null),
         ])
-        .nullish()
+        .nullable()
         .describe(
           "AI difficulty level, null for human players or easy AI that never toggles",
         ),
@@ -1652,7 +1649,6 @@ export const SubmitActionResponse = zod.object({
       purchasedCardIds: zod.array(zod.string()),
       discountedForgeIds: zod
         .array(zod.string())
-        .optional()
         .describe(
           "Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time)",
         ),
@@ -1699,26 +1695,26 @@ export const SubmitActionResponse = zod.object({
         .describe("IDs of luminaries this player has claimed"),
       plannedAction: zod
         .record(zod.string(), zod.unknown())
-        .nullish()
+        .nullable()
         .describe(
           "Pre-committed action to auto-execute when this player's turn arrives",
         ),
       plannedActionCancelReason: zod
         .string()
-        .nullish()
+        .nullable()
         .describe(
           "Reason the last planned action was auto-cancelled, if applicable",
         ),
       civName: zod
         .string()
-        .nullish()
+        .nullable()
         .describe("Player-chosen civilization name; null if not set"),
     }),
   ),
   winnerId: zod.string().nullable(),
   winTriggerLuminaryId: zod
     .string()
-    .nullish()
+    .nullable()
     .describe(
       "ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge",
     ),
@@ -1731,10 +1727,10 @@ export const SubmitActionResponse = zod.object({
       turn: zod.number(),
     }),
   ),
-  turnTimerSeconds: zod.number().nullish(),
+  turnTimerSeconds: zod.number().nullable(),
   turnDeadline: zod
     .number()
-    .nullish()
+    .nullable()
     .describe(
       "Unix timestamp (ms) when the current turn auto-passes; null if no timer",
     ),

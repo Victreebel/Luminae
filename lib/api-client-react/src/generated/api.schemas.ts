@@ -448,21 +448,21 @@ export interface GamePlayerState {
   playerId: string;
   playerName: string;
   /** @nullable */
-  avatarId?: string | null;
+  avatarId: string | null;
   /** Whether this player is an AI */
   isAi: boolean;
   /**
    * AI difficulty level, null for human players or easy AI that never toggles
    * @nullable
    */
-  aiDifficulty?: GamePlayerStateAiDifficulty;
+  aiDifficulty: GamePlayerStateAiDifficulty;
   crystals: CrystalCounts;
   bonuses: CrystalCounts;
   lumens: number;
   reservedCards: ArtifactCard[];
   purchasedCardIds: string[];
   /** Card IDs that were forged with zero crystals spent (fully covered by bonuses at forge time) */
-  discountedForgeIds?: string[];
+  discountedForgeIds: string[];
   purchasedCards: ArtifactCard[];
   isConnected: boolean;
   /** IDs of luminaries this player has claimed */
@@ -471,17 +471,17 @@ export interface GamePlayerState {
    * Pre-committed action to auto-execute when this player's turn arrives
    * @nullable
    */
-  plannedAction?: GamePlayerStatePlannedAction;
+  plannedAction: GamePlayerStatePlannedAction;
   /**
    * Reason the last planned action was auto-cancelled, if applicable
    * @nullable
    */
-  plannedActionCancelReason?: string | null;
+  plannedActionCancelReason: string | null;
   /**
    * Player-chosen civilization name; null if not set
    * @nullable
    */
-  civName?: string | null;
+  civName: string | null;
 }
 
 export type LuminaryActiveStateActiveAffinity =
@@ -564,17 +564,17 @@ export interface GameState {
    * ID of the Luminary whose summon sealed the win; null if the win was sealed by a card forge
    * @nullable
    */
-  winTriggerLuminaryId?: string | null;
+  winTriggerLuminaryId: string | null;
   /** @nullable */
   lastAction: GameStateLastAction;
   actionLog: ActionLogEntry[];
   /** @nullable */
-  turnTimerSeconds?: number | null;
+  turnTimerSeconds: number | null;
   /**
    * Unix timestamp (ms) when the current turn auto-passes; null if no timer
    * @nullable
    */
-  turnDeadline?: number | null;
+  turnDeadline: number | null;
   version: number;
   /** Summon events awaiting client acknowledgement (resolve_summon action) */
   pendingSummonEvents: PendingSummonEvent[];
