@@ -4445,7 +4445,7 @@ export default function GameBoard() {
                             </motion.div>
                           );
                         })()
-                      ) : canPlan && queueLegality.ok ? (
+                      ) : canPlan && !coreActionSubmitted && queueLegality.ok ? (
                         (() => {
                           const planSelKeys = Object.keys(selectedCrystals) as GemKey[];
                           const planHasColors = planSelKeys.length > 0;
@@ -5014,7 +5014,7 @@ export default function GameBoard() {
                 )}
 
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
-                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && (
+                {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && !coreActionSubmitted && (
                   <>
                     {me && canAffordCard(selectedCard.card, me) && (
                     <motion.div
@@ -5413,7 +5413,7 @@ export default function GameBoard() {
                   )}
 
                   {/* ── Plan: reserve from deck (off-turn) ── */}
-                  {canPlan && !isMyTurnForCoreAction && me && canReserveMore(me) && (
+                  {canPlan && !isMyTurnForCoreAction && !coreActionSubmitted && me && canReserveMore(me) && (
                     <motion.div
                       whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                       style={{ borderRadius: '0.75rem' }}
