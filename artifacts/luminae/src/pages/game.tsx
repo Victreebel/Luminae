@@ -4506,10 +4506,10 @@ export default function GameBoard() {
           style={{
             background: 'linear-gradient(180deg, rgba(6,4,20,0.97) 0%, rgba(4,2,14,0.99) 100%)',
             borderTop: isMyTurn
-              ? '1px solid rgba(120,90,255,0.5)'
-              : '1px solid rgba(80,60,160,0.2)',
+              ? '1px solid rgba(168,197,255,0.5)'
+              : '1px solid rgba(168,197,255,0.2)',
             boxShadow: isMyTurn
-              ? '0 -4px 28px rgba(100,70,255,0.15)'
+              ? '0 -4px 28px rgba(168,197,255,0.12)'
               : '0 -2px 12px rgba(0,0,0,0.4)',
           }}
           onClickCapture={() => {
@@ -4524,10 +4524,10 @@ export default function GameBoard() {
             {/* Left: zone name */}
             <div className="flex items-center gap-2">
               <div className="flex flex-col leading-none">
-                <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(100,80,200,0.5)' }}>The</span>
+                <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(168,197,255,0.5)' }}>The</span>
                 <span className="text-[12px] font-black uppercase tracking-[0.06em] leading-none" style={{
-                  color: '#9B7FE8',
-                  textShadow: '0 0 18px rgba(140,100,255,0.4)',
+                  color: '#a8c5ff',
+                  textShadow: '0 0 18px rgba(168,197,255,0.35)',
                 }}>Affinity Well</span>
               </div>
             </div>
