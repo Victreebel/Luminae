@@ -1280,6 +1280,16 @@ export default function GameBoard() {
   const lastAnnouncedTurnRef = useRef<string | null>(null);
   const initialTurnFiredRef = useRef(false);
   const animationEndTimeRef = useRef(0);
+  // Tracks when the KEY visual (burst/travel/arrive) is done — distinct from the
+  // full queue lock (animationEndTimeRef) which also covers the deal-from-deck tail.
+  // Turn announcements wait for THIS ref, not the full lock, so they appear as
+  // soon as the card burst finishes rather than after the market slot refills.
+  const burstDoneTimeRef = useRef(0);
+  // Tracks gem burst end time separately so gem bursts never block the main queue.
+  const gemBurstEndTimeRef = useRef(0);
+  // When true, the next opponent harvest gem burst inside processStateUpdate is
+  // skipped (used by drainQueueFnRef to compress stale harvests in the backlog).
+  const skipGemBurstRef = useRef(false);
   const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateQueueRef = useRef<GameState[]>([]);
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1504,6 +1514,14 @@ export default function GameBoard() {
     if (end > animationEndTimeRef.current) animationEndTimeRef.current = end;
   };
 
+  // Sets the "burst visual done" timestamp used by fireTurnAnnouncement.
+  // Separate from the full queue lock so announcements appear as soon as
+  // the card burst finishes, not after the deal-from-deck tail completes.
+  const setBurstDoneTime = (durationMs: number) => {
+    const end = Date.now() + durationMs;
+    if (end > burstDoneTimeRef.current) burstDoneTimeRef.current = end;
+  };
+
   const fireTurnAnnouncement = (
     dedupeKey: string,
     playerName: string,
@@ -1521,7 +1539,9 @@ export default function GameBoard() {
     const duration = isYou ? TURN_ANNOUNCE_DURATION : OPPONENT_ANNOUNCE_DURATION;
 
     const doFire = () => {
-      const stillRemaining = animationEndTimeRef.current - Date.now();
+      // Wait for the burst visual to finish (not the full queue lock — that may
+      // include the deal-from-deck tail which runs behind the announcement).
+      const stillRemaining = burstDoneTimeRef.current - Date.now();
       if (stillRemaining > 50) {
         pendingTurnAnnounceRef.current = setTimeout(doFire, stillRemaining + 100);
         return;
@@ -1530,7 +1550,10 @@ export default function GameBoard() {
       turnAnnounceKeyRef.current += 1;
       const seq = turnAnnounceKeyRef.current;
       setTurnAnnouncement({ key: seq, playerName, avatarId, isYou, accentColor, eminence, turnStartedAt: Date.now(), timerSeconds });
+      // Extend both locks for the announcement duration so the queue cannot
+      // drain while the overlay is still showing.
       setAnimEndTime(duration);
+      setBurstDoneTime(duration);
       if (isYou) gameAudio.playTurnStart();
       else gameAudio.playOpponentTurnStart();
       turnAnnounceTimerRef.current = setTimeout(() => {
@@ -1540,7 +1563,9 @@ export default function GameBoard() {
       pendingTurnAnnounceRef.current = null;
     };
 
-    const remaining = animationEndTimeRef.current - Date.now();
+    // Use burstDoneTimeRef: fire as soon as the key animation (burst/travel/arrive)
+    // is done — before the deal-from-deck tail, which can run behind the overlay.
+    const remaining = burstDoneTimeRef.current - Date.now();
     if (remaining > 50) {
       pendingTurnAnnounceRef.current = setTimeout(doFire, remaining + 100);
     } else {
@@ -1965,9 +1990,13 @@ export default function GameBoard() {
               (newState.crystalBank.flux ?? 0) < (prev.crystalBank.flux ?? 0);
 
             cardActionBurstKeyRef.current += 1;
-            setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
 
             if (action.type === 'purchase_card') {
+              // Full lock covers burst (3500ms) + deal-from-deck (1500ms) + buffer.
+              // burstDoneTime is shorter: turn announcement fires as soon as the
+              // burst visual lands, while the deal plays quietly behind the overlay.
+              setAnimEndTime(5400);
+              setBurstDoneTime(3500);
               setCardActionBurst({
                 key: cardActionBurstKeyRef.current,
                 card: exitCard,
@@ -1983,7 +2012,10 @@ export default function GameBoard() {
               });
               gameAudio.playCardPurchased();
             } else {
-              // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst)
+              // reserve_card with cardId → Cipher Aperture animation (distinct from forge burst).
+              // No deal-from-deck tail, so the full lock matches the burst visual duration.
+              setAnimEndTime(2500);
+              setBurstDoneTime(2200);
               cipherBurstKeyRef.current += 1;
               const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
               const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
@@ -2230,18 +2262,28 @@ export default function GameBoard() {
           // Only animate for opponents — local player's burst fires optimistically
           // from the button-click path. Planned harness actions are intentionally
           // silent: they execute at turn start and the board update speaks for itself.
+          //
+          // skipGemBurstRef: set by drainQueueFnRef when this harvest is stale (more
+          // states queued behind it). The burst plays but the queue is not blocked —
+          // gem bursts use gemBurstEndTimeRef and never set animationEndTimeRef.
           if (actorId && actorId !== session?.playerId) {
-            const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
-            if (player) {
-              let crystals: Partial<CrystalCounts> = {};
-              if (action.type === 'take_three_crystals') {
-                crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
-              } else {
-                const color = action.crystal as string;
-                if (color) crystals = { [color]: 2 };
+            const shouldSkip = skipGemBurstRef.current;
+            skipGemBurstRef.current = false;
+            if (!shouldSkip) {
+              const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
+              if (player) {
+                let crystals: Partial<CrystalCounts> = {};
+                if (action.type === 'take_three_crystals') {
+                  crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
+                } else {
+                  const color = action.crystal as string;
+                  if (color) crystals = { [color]: 2 };
+                }
+                playGemBurst(crystals, player.playerName, player.avatarId ?? null);
               }
-              playGemBurst(crystals, player.playerName, player.avatarId ?? null);
             }
+          } else {
+            skipGemBurstRef.current = false;
           }
         }
       }
@@ -2261,7 +2303,8 @@ export default function GameBoard() {
             const destTabEl = document.querySelector(isLocalReserve ? '[data-nav-hand]' : '[data-nav-log]');
             const destTabRect = destTabEl?.getBoundingClientRect();
             cipherBurstKeyRef.current += 1;
-            setAnimEndTime(3500);
+            setAnimEndTime(2500);
+            setBurstDoneTime(2200);
             setCipherBurst({
               key: cipherBurstKeyRef.current,
               sourceRect: deckRect
@@ -2314,6 +2357,14 @@ export default function GameBoard() {
       return;
     }
     const next = stateQueueRef.current.shift()!;
+    // Harvest compression: if this is an opponent harvest state AND more states
+    // are queued behind it, the gem burst is stale — skip it so the queue doesn't
+    // accumulate a long chain of delayed gem bursts in fast AI games.
+    const nextActionType = (next.lastAction as { type?: string } | null)?.type;
+    const isHarvest = nextActionType === 'take_three_crystals' || nextActionType === 'take_two_crystals';
+    if (isHarvest && stateQueueRef.current.length > 0) {
+      skipGemBurstRef.current = true;
+    }
     processUpdateRef.current(next);
     if (stateQueueRef.current.length > 0) {
       const nextRemaining = animationEndTimeRef.current - Date.now();
@@ -2655,7 +2706,11 @@ export default function GameBoard() {
     setGemBurst({ key: seq, gems, playerName, avatarId });
     gameAudio.playChipsCollected();
     const totalDuration = (gems.length - 1) * 780 + 1250 + 500 + 50;
-    setAnimEndTime(totalDuration);
+    // Gem bursts track their own end time and do NOT set animationEndTimeRef.
+    // This means they run concurrently with other animations (or turn announcements)
+    // without holding the queue — same behaviour as local (optimistic) gem bursts.
+    const gemEnd = Date.now() + totalDuration;
+    if (gemEnd > gemBurstEndTimeRef.current) gemBurstEndTimeRef.current = gemEnd;
     gemBurstTimerRef.current = setTimeout(() => {
       if (gemBurstKeyRef.current === seq) setGemBurst(null);
       gemBurstTimerRef.current = null;
