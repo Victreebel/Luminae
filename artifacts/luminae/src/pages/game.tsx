@@ -4542,30 +4542,6 @@ export default function GameBoard() {
             </div>
             {/* Right: stats */}
             <div className="flex items-center gap-2.5 shrink-0">
-              {/* Card count chip — forged + encrypted */}
-              <div
-                className="flex items-center gap-1"
-                title={`${myForgedCount} forged · ${myReservedCount} encrypted`}
-              >
-                {myReservedCount > 0 ? (
-                  <>
-                    <Package className="h-2.5 w-2.5" style={{ color: '#c084fc' }} />
-                    <span className="text-[12px] font-black tabular-nums leading-none" style={{ color: '#e0baff', textShadow: '0 0 8px #c084fc88' }}>{myForgedCount}</span>
-                    <span className="text-[10px] font-bold tabular-nums leading-none" style={{ color: '#fbbf24cc', textShadow: '0 0 6px #fbbf2466' }}>+{myReservedCount}</span>
-                  </>
-                ) : (
-                  <>
-                    <Package className="h-2.5 w-2.5" style={{ color: myForgedCount > 0 ? '#c084fc' : 'rgba(192,132,252,0.3)' }} />
-                    <span
-                      className="text-[12px] font-black tabular-nums leading-none"
-                      style={{
-                        color: myForgedCount > 0 ? '#e0baff' : 'rgba(224,186,255,0.3)',
-                        textShadow: myForgedCount > 0 ? '0 0 8px #c084fc88' : 'none',
-                      }}
-                    >{myForgedCount}</span>
-                  </>
-                )}
-              </div>
               {(() => {
                 const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
                 const pendingTotal = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
@@ -4890,15 +4866,15 @@ export default function GameBoard() {
       <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
-          { tab: 'hand' as ActiveTab, label: 'Hand', icon: Hand, badge: myTotalCardCount > 0 ? myTotalCardCount : undefined },
+          { tab: 'hand' as ActiveTab, label: 'Hand', icon: Hand, count: myTotalCardCount },
           { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
-        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: any; badge?: number }) => (
+        ] as const).map(({ tab, label, icon: Icon, badge, count }: { tab: ActiveTab; label: string; icon: any; badge?: number; count?: number }) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             {...(tab === 'hand' ? { 'data-nav-hand': '' } : tab === 'log' ? { 'data-nav-log': '' } : {})}
-            className={`flex flex-col items-center justify-center gap-1 relative transition-colors ${activeTab === tab ? 'text-primary' : 'text-muted-foreground'}`}
+            className={`flex flex-col items-center justify-center gap-0.5 relative transition-colors ${activeTab === tab ? 'text-primary' : 'text-muted-foreground'}`}
           >
             <div className="relative">
               <Icon className="h-5 w-5" />
@@ -4908,7 +4884,16 @@ export default function GameBoard() {
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-semibold">{label}</span>
+            {count !== undefined ? (
+              <>
+                <span className="text-[10px] font-semibold leading-none">{label}</span>
+                <span className={`text-base font-black tabular-nums leading-none ${count > 0 ? (activeTab === tab ? 'text-primary' : 'text-foreground/80') : 'text-muted-foreground/30'}`}>
+                  {count}
+                </span>
+              </>
+            ) : (
+              <span className="text-[10px] font-semibold">{label}</span>
+            )}
             {activeTab === tab && (
               <div className="absolute -top-2 inset-x-4 h-0.5 bg-primary rounded-full" />
             )}
