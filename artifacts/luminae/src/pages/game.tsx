@@ -31,7 +31,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Layers, Hammer, Gem
+  Hammer, Gem
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
@@ -3463,7 +3463,7 @@ export default function GameBoard() {
         {/* Zone header */}
         <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
-            <Layers className="h-4 w-4 shrink-0" style={{ color: '#C4AAFF', opacity: 0.85 }} />
+            <span className="text-[18px] font-black leading-none shrink-0" style={{ color: '#C4AAFF', opacity: 0.85, lineHeight: 1 }}>Ω</span>
             <div className="flex flex-col leading-none">
               <span className="text-[8px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(160,130,255,0.55)' }}>The</span>
               <span className="text-[15px] font-black uppercase tracking-[0.08em] leading-none" style={{
