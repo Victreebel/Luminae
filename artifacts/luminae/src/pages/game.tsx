@@ -3342,8 +3342,6 @@ export default function GameBoard() {
   };
 
   const myReservedCount = me?.reservedCards.length ?? 0;
-  const myForgedCount = me?.purchasedCards?.length ?? 0;
-  const myTotalCardCount = myForgedCount + myReservedCount;
 
   // ---- TABS ----
 
@@ -4866,7 +4864,7 @@ export default function GameBoard() {
       <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
-          { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark, count: myTotalCardCount },
+          { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
           { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
         ] as const).map(({ tab, label, icon: Icon, badge, count }: { tab: ActiveTab; label: string; icon: any; badge?: number; count?: number }) => (
           <button
