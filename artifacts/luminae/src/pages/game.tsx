@@ -32,7 +32,7 @@ import {
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import { getAvatarForPlayer } from '@/lib/avatars';
+import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
@@ -1165,12 +1165,12 @@ export default function GameBoard() {
     localStorage.setItem(`luminae_cost_mode_${account.id}`, costMode);
   }, [costMode, account]);
 
-  const defaultCivLabel = (name: string | undefined) => `${name ?? 'Unknown'}'s Civilization`;
   const [civLabel, setCivLabel] = useState<string>(() => {
     const stored = getAccountSession();
-    if (!stored) return defaultCivLabel(undefined);
+    if (!stored) return getDefaultCivName(getSavedAvatarId(), undefined);
     const saved = localStorage.getItem(`luminae_civ_name_${stored.account.id}`);
-    return saved && saved.trim() ? saved : defaultCivLabel(stored.account.username ?? stored.account.id);
+    if (saved && saved.trim()) return saved;
+    return getDefaultCivName(getSavedAvatarId(), stored.account.username ?? stored.account.id);
   });
   const [isEditingCivName, setIsEditingCivName] = useState(false);
   const [civEditValue, setCivEditValue] = useState('');
@@ -3896,7 +3896,7 @@ export default function GameBoard() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const trimmed = civEditValue.trim();
-                    setCivLabel(trimmed || defaultCivLabel(me?.playerName));
+                    setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
                     setIsEditingCivName(false);
                   } else if (e.key === 'Escape') {
                     setIsEditingCivName(false);
@@ -3904,7 +3904,7 @@ export default function GameBoard() {
                 }}
                 onBlur={() => {
                   const trimmed = civEditValue.trim();
-                  setCivLabel(trimmed || defaultCivLabel(me?.playerName));
+                  setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
                   setIsEditingCivName(false);
                 }}
                 maxLength={48}
@@ -3914,7 +3914,7 @@ export default function GameBoard() {
                 onMouseDown={(e) => {
                   e.preventDefault();
                   const trimmed = civEditValue.trim();
-                  setCivLabel(trimmed || defaultCivLabel(me?.playerName));
+                  setCivLabel(trimmed || getDefaultCivName(getSavedAvatarId(), me?.playerName));
                   setIsEditingCivName(false);
                 }}
               >

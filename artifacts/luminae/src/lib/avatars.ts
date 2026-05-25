@@ -42,3 +42,25 @@ export function saveAvatarId(id: string): void {
 export function getAvatarForPlayer(avatarId?: string | null): AvatarDef {
   return AVATAR_MAP.get(avatarId ?? '') ?? AVATARS[0];
 }
+
+const AVATAR_CIV_NAMES: Record<string, string> = {
+  stargazer:   'The Astral Observatory',
+  forgemaster: 'The Iron Foundry',
+  voidcaller:  'The Void Dominion',
+  archivist:   'The Eternal Archive',
+  cultivator:  'The Living Canopy',
+  sentinel:    'The Radiant Bastion',
+  oracle:      'The Farseer Circle',
+  sovereign:   'The Grand Sovereignty',
+};
+
+/**
+ * Returns a thematic civilization name derived from the given avatar ID.
+ * Falls back to a generic name using the player's display name.
+ */
+export function getDefaultCivName(avatarId: string | null | undefined, playerName: string | undefined): string {
+  if (avatarId && AVATAR_CIV_NAMES[avatarId]) {
+    return AVATAR_CIV_NAMES[avatarId];
+  }
+  return `${playerName ?? 'Unknown'}'s Civilization`;
+}
