@@ -3088,11 +3088,44 @@ export default function GameBoard() {
     if (planSubmitInFlight.current) return;
     planSubmitInFlight.current = true;
     try {
-      await submitAction.mutateAsync({
+      const restState = await submitAction.mutateAsync({
         roomId: roomId!,
         data: { sessionToken: session.sessionToken, type: 'plan_action', plannedActionData } as any,
       });
-      toast({ title: 'Move planned', description: getPlannedActionSummary(plannedActionData) });
+      // If the server auto-executed the plan (race: turn switched to this player
+      // just before the plan arrived), restState.lastAction.type will be the inner
+      // action type (e.g. 'purchase_card'), not 'plan_action'.  In that case push
+      // the state through the same REST-fallback path as executeAction so the
+      // correct purchase/reserve animation fires.  Don't show a "Move planned"
+      // toast — the animation conveys what happened.
+      const restStateTyped = restState as any;
+      const autoExecuted =
+        restStateTyped && restStateTyped.lastAction?.type !== 'plan_action';
+      if (autoExecuted) {
+        setTimeout(() => {
+          if (
+            !prevStateRef.current ||
+            prevStateRef.current.version < restStateTyped.version
+          ) {
+            const remaining = animationEndTimeRef.current - Date.now();
+            const queueBusy =
+              stateQueueRef.current.length > 0 || !!queueTimerRef.current;
+            if (remaining > 50 || queueBusy) {
+              stateQueueRef.current.push(restStateTyped);
+              if (!queueTimerRef.current) {
+                queueTimerRef.current = setTimeout(
+                  () => drainQueueFnRef.current(),
+                  Math.max(remaining + 100, 100),
+                );
+              }
+            } else {
+              processUpdateRef.current(restStateTyped);
+            }
+          }
+        }, 200);
+      } else {
+        toast({ title: 'Move planned', description: getPlannedActionSummary(plannedActionData) });
+      }
       setSelectedCard(null);
       setSelectedCrystals({});
       setCrystalHistory([]);

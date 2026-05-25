@@ -1275,22 +1275,20 @@ export function applyAction(
       state.lastAction = { type: "plan_action", playerId };
       state.version++;
 
-      // Edge case: if this player is already the active player with no pending
-      // summon gate (plan_action arrived at the server after another player's
-      // turn action already advanced the turn to this player), execute the plan
-      // immediately rather than leaving it stuck until the next full lap.
+      // Race condition: the turn already switched to this player before the
+      // plan_action arrived (e.g. submitted just as another player's action
+      // advanced the turn).  Execute the inner action as a genuine real action
+      // (_isAutoExec=false) so that lastAction, version, and advanceTurn all
+      // resolve exactly as if the player had submitted the action directly.
+      // The WS broadcast will carry lastAction = inner type (e.g. purchase_card),
+      // not plan_action, so the client fires the correct purchase/reserve animation
+      // rather than seeing a silent market mutation.
       if (
         !_isAutoExec &&
         state.currentPlayerIndex === playerIdx &&
         (state.pendingSummonEvents ?? []).length === 0
       ) {
-        player.plannedAction = null;
-        const autoResult = applyAction(state, playerId, inner, true);
-        if (!autoResult.success) {
-          player.plannedActionCancelReason =
-            autoResult.error ?? "Planned move is no longer legal.";
-          state.version++;
-        }
+        return applyAction(state, playerId, inner, false);
       }
 
       return { success: true };
