@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
-  Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, List,
+  Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
@@ -4866,7 +4866,7 @@ export default function GameBoard() {
       <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
-          { tab: 'hand' as ActiveTab, label: 'Hand', icon: Hand, count: myTotalCardCount },
+          { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark, count: myTotalCardCount },
           { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
         ] as const).map(({ tab, label, icon: Icon, badge, count }: { tab: ActiveTab; label: string; icon: any; badge?: number; count?: number }) => (
           <button
