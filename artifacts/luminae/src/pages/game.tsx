@@ -4392,12 +4392,12 @@ export default function GameBoard() {
                             title="Dismiss hint"
                           >
                             <Undo2 className="h-2.5 w-2.5 text-white/60 shrink-0" />
-                            <span>← Back removes the last crystal</span>
+                            <span>← Back removes the last affinity</span>
                             <span className="text-white/40 ml-0.5">✕</span>
                           </motion.button>
                         )}
                       </AnimatePresence>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" onClick={handleUndoCrystal} title="Undo last crystal">
+                      <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg" onClick={handleUndoCrystal} title="Undo last affinity">
                         <Undo2 className="h-3.5 w-3.5" />
                       </Button>
                       <Button variant="outline" size="sm" className="h-7 w-7 p-0 rounded-lg"
@@ -4517,7 +4517,7 @@ export default function GameBoard() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="text-[11px] font-bold text-amber-300">
-                        Return {returnPhase.excessCount} crystal{returnPhase.excessCount > 1 ? 's' : ''} — hand limit is 10
+                        Return {returnPhase.excessCount} affinity token{returnPhase.excessCount > 1 ? 's' : ''} — hand limit is 10
                       </p>
                       {(() => {
                         const sel = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
@@ -4907,7 +4907,7 @@ export default function GameBoard() {
                             title="Dismiss hint"
                           >
                             <Gavel className="h-2.5 w-2.5 text-white/60 shrink-0" />
-                            <span>Tap to spend your crystals and claim this Artifact</span>
+                            <span>Tap to spend your affinities and claim this Artifact</span>
                             <span className="text-white/40 ml-0.5">✕</span>
                           </motion.button>
                         )}
