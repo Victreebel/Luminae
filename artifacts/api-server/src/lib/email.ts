@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { logger } from "./logger";
 
 let resendClient: Resend | null = null;
 
@@ -16,9 +17,9 @@ export async function sendPasswordResetEmail(
 
   if (!resend) {
     if (process.env.NODE_ENV !== "production") {
-      console.warn(`[email] RESEND_API_KEY not set — reset URL: ${resetUrl}`);
+      logger.warn({ resetUrl }, "[email] RESEND_API_KEY not set — reset URL logged above");
     } else {
-      console.warn(`[email] RESEND_API_KEY not set — password reset email not sent to ${to}`);
+      logger.warn({ to }, "[email] RESEND_API_KEY not set — password reset email not sent");
     }
     return;
   }
