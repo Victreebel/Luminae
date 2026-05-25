@@ -5380,7 +5380,7 @@ export default function GameBoard() {
                   </p>
                 )}
 
-                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
+                <Button variant="ghost" className="w-full text-muted-foreground focus:outline-none focus-visible:outline-none" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
                   Close
                 </Button>
               </div>
