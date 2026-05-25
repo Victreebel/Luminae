@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, List,
-  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal
+  ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen
 } from 'lucide-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer } from '@/lib/avatars';
@@ -3160,6 +3160,13 @@ export default function GameBoard() {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
   };
 
+  // Navigate back to the main menu without forfeiting.  The server keeps the
+  // game alive; the session token stays in localStorage so the home page shows
+  // the "Active game — Resume" banner.  ?newgame=1 prevents the home page
+  // auto-navigate that would otherwise immediately bounce a logged-in player
+  // back here, giving them the choice between resuming or starting fresh.
+  const handleReturnToMenu = () => setLocation('/?newgame=1');
+
   const getPlannedActionSummary = (action: any): string => {
     if (!action) return '';
     const allCards: ArtifactCard[] = [
@@ -4372,6 +4379,9 @@ export default function GameBoard() {
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={handleReturnToMenu} title="Return to menu (game stays active)">
+            <DoorOpen className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={handleSurrender} title="Surrender">
             <Flag className="h-4 w-4" />
