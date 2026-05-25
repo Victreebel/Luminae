@@ -171,7 +171,7 @@ function VariantC() {
           background: linear-gradient(105deg,
             #06060f  0%,
             #06060f  6%,
-            #d0dcff 10%, #C8D4F8 13%, #d0dcff 16%,
+            #ffe08a 10%, #FFC43D 13%, #ffe08a 16%,
             #06060f 20%,
             #06060f 27%,
             #ff9070 31%, #FF6B52 34%, #ff9070 37%,
