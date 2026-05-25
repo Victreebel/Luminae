@@ -615,7 +615,42 @@ export function AffinityWellCells({
 
                   </motion.button>
 
-                  {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
+                  {/* ── Singularity: reserved-count footer ── */}
+                  {isFlux ? (
+                    <motion.button
+                      type="button"
+                      onClick={(e) => {
+                        if (isDragging.current) return;
+                        e.stopPropagation();
+                        onOpenReserved();
+                      }}
+                      style={{
+                        width: CELL_W,
+                        border: `1px solid ${meta.glowHex}30`,
+                        background: reservedCount > 0
+                          ? `linear-gradient(180deg, ${meta.hex}22 0%, ${meta.hex}0e 100%)`
+                          : 'transparent',
+                        boxShadow: reservedCount > 0 ? `0 0 6px ${meta.glowHex}22` : 'none',
+                      }}
+                      className="rounded-md py-1 leading-none flex flex-col items-center gap-[2px] cursor-pointer active:opacity-70 transition-opacity"
+                    >
+                      <span style={{
+                        fontSize: 11, fontWeight: 900, lineHeight: 1,
+                        color: reservedCount > 0 ? meta.glowHex : `${meta.glowHex}40`,
+                        textShadow: reservedCount > 0 ? `0 0 8px ${meta.glowHex}88` : 'none',
+                      }}>
+                        {reservedCount} / 3
+                      </span>
+                      <span style={{
+                        fontSize: 6, fontWeight: 700, letterSpacing: '0.07em',
+                        textTransform: 'uppercase', lineHeight: 1,
+                        color: `${meta.glowHex}70`,
+                      }}>
+                        Encrypted
+                      </span>
+                    </motion.button>
+                  ) : (
+                  /* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */
                   <motion.button
                     type="button"
                     aria-hidden={!canTake2}
@@ -640,6 +675,7 @@ export function AffinityWellCells({
                   >
                     ×2
                   </motion.button>
+                  )}
                 </div>
               );
             })}
