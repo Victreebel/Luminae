@@ -199,6 +199,38 @@ export function AffinityWellCells({
     }
   }, [singularityAbsorbKey, tokenControls]);
 
+  // ── Per-gem harvest token jump + rotateY spin ────────────────────────────────
+  // One controller per non-flux gem, in GEM_KEYS order (ruby, pearl, emerald, sapphire, onyx).
+  // Hooks must be called unconditionally so we declare all 5 up-front.
+  const ctrlRuby     = useAnimation();
+  const ctrlPearl    = useAnimation();
+  const ctrlEmerald  = useAnimation();
+  const ctrlSapphire = useAnimation();
+  const ctrlOnyx     = useAnimation();
+  const gemTokenControls: Partial<Record<GemKey, ReturnType<typeof useAnimation>>> = {
+    ruby: ctrlRuby, pearl: ctrlPearl, emerald: ctrlEmerald,
+    sapphire: ctrlSapphire, onyx: ctrlOnyx,
+  };
+  const prevHarvestRef = useRef<Partial<Record<GemKey, number>>>({});
+  useEffect(() => {
+    const prev = prevHarvestRef.current;
+    const curr = harvestBurstKeys ?? {};
+    for (const key of GEM_KEYS) {
+      if (key === 'flux') continue;
+      const prevVal = prev[key] ?? 0;
+      const currVal = curr[key] ?? 0;
+      if (currVal > prevVal) {
+        void gemTokenControls[key]?.start({
+          y:       [0, -9, 0,   0,   0],
+          rotateY: [0,  0, 0, 360, 360],
+          transition: { duration: 1.1, times: [0, 0.18, 0.32, 0.88, 1], ease: 'easeInOut' },
+        });
+      }
+    }
+    prevHarvestRef.current = { ...curr };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [harvestBurstKeys]);
+
   // ── Bonus chip pulse animation ──────────────────────────────────────────────
   // Track previous total bonus (card bonus + luminary bonus) per affinity.
   // When the value increases, increment the pulse key so the motion.span
@@ -515,8 +547,9 @@ export function AffinityWellCells({
                     </span>
 
                     {/* ── Emblem (visual hero) ── */}
+                    <div style={{ perspective: '180px' }}>
                     <motion.div
-                      animate={isFlux ? tokenControls : {}}
+                      animate={isFlux ? tokenControls : (gemTokenControls[c] ?? {})}
                       style={{
                         position: 'relative', width: 32, height: 32,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -546,6 +579,7 @@ export function AffinityWellCells({
                         </motion.span>
                       )}
                     </motion.div>
+                    </div>
 
                     {/* ── Count + bonus chip row ── */}
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 3 }}>

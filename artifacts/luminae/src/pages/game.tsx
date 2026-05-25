@@ -2915,12 +2915,12 @@ export default function GameBoard() {
       return;
     }
     if (queueLegality.actionType === 'take3') {
-      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
+      gameAudio.playChipsCollected();
       triggerHarvestBurst(selectedCrystals);
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
-      playGemBurst(selectedCrystals, me.playerName, session.avatarId ?? null);
+      gameAudio.playChipsCollected();
       triggerHarvestBurst(selectedCrystals);
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
@@ -2940,7 +2940,7 @@ export default function GameBoard() {
     if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
-    playGemBurst(returnPhase.pendingTake, me.playerName, session.avatarId ?? null);
+    gameAudio.playChipsCollected();
     triggerHarvestBurst(returnPhase.pendingTake);
     if (returnPhase.actionType === 'take3') {
       executeAction({ type: 'take_three_crystals', crystals: returnPhase.pendingTake, returnCrystals: returnSelections });
