@@ -573,7 +573,7 @@ export function AffinityWellCells({
                             textTransform: 'uppercase',
                           }}
                         >
-                          WELL {gaugeFilledCount}/5
+                          Available {gaugeFilledCount}/5
                         </span>
                         <HorizontalWellMeter
                           capacity={5}
@@ -601,7 +601,7 @@ export function AffinityWellCells({
                             textTransform: 'uppercase',
                           }}
                         >
-                          WELL {gaugeFilledCount}/{gaugeCapacity}
+                          Available {gaugeFilledCount}/{gaugeCapacity}
                         </span>
                         <HorizontalWellMeter
                           capacity={gaugeCapacity}
