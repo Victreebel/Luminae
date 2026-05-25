@@ -232,13 +232,13 @@ export function AffinityWellCells({
       if (currVal > prevVal) {
         const delay = i * 0.09;
         void gemTokenControls[key]?.start({
-          y:       [0, -9,    0,    0],
-          rotateY: [0,  0,    0, 1080],
-          transition: { duration: 1.5, times: [0, 0.12, 0.22, 1], ease: 'easeOut', delay },
+          y:       [0, -9, 0,   0,   0],
+          rotateY: [0, 180, 360, 540, 720],
+          transition: { duration: 1.25, times: [0, 0.18, 0.46, 0.74, 1], delay },
         });
-        // Schedule the landing chime to coincide with times[2]=0.22 of duration=1.5 s.
-        // Landing offset = stagger delay + 0.22 * 1500 ms = i*90 + 330 ms.
-        const landMs = Math.round(delay * 1000 + 0.22 * 1500);
+        // Schedule the landing chime to coincide with times[2]=0.46 of duration=1.25 s.
+        // Landing offset = stagger delay + 0.46 * 1250 ms = i*90 + 575 ms.
+        const landMs = Math.round(delay * 1000 + 0.46 * 1250);
         const gemKey = key; // capture for closure
         harvestSoundTimers.current.push(
           setTimeout(() => gameAudio.playHarvestLand(gemKey), landMs),
