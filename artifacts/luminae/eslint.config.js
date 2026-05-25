@@ -39,6 +39,16 @@ export default [
           message:
             'Avoid hover:scale-[1.x] Tailwind classes — scale-up transforms on elements inside overflow-hidden parents cause visual clipping. Use brightness-110 or box-shadow instead.',
         },
+        {
+          // Catches `expr as unknown as ActionRequest` — a stale workaround that was
+          // needed when the generated type was missing fields (e.g. civName). The
+          // OpenAPI spec is now complete, so callers should construct the request
+          // object directly from the generated schema instead of double-casting.
+          selector:
+            'TSAsExpression[typeAnnotation.typeName.name="ActionRequest"] > TSAsExpression[typeAnnotation.type="TSUnknownKeyword"]',
+          message:
+            'Avoid "as unknown as ActionRequest" — construct the request object directly from the generated ActionRequest type instead of double-casting. This pattern hides missing fields that the type-checker would otherwise catch.',
+        },
       ],
     },
   },
