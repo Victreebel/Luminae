@@ -455,13 +455,13 @@ export function AffinityWellCells({
                   ? {
                       background: `linear-gradient(180deg, ${meta.hex}44 0%, ${meta.hex}20 100%)`,
                       border: `1.5px solid ${meta.glowHex}cc`,
-                      boxShadow: `0 0 14px ${meta.glowHex}55, inset 0 0 10px ${meta.hex}2a`,
+                      boxShadow: `0 0 14px #a8c5ff55, inset 0 0 10px #a8c5ff2a`,
                     }
                   : hasContent
                   ? {
                       background: `linear-gradient(180deg, ${meta.hex}1c 0%, ${meta.hex}0a 100%)`,
                       border: `1px solid ${meta.hex}60`,
-                      boxShadow: `inset 0 0 8px ${meta.hex}12`,
+                      boxShadow: `inset 0 0 8px #a8c5ff12`,
                     }
                   : {
                       background: `linear-gradient(180deg, ${meta.hex}08 0%, transparent 100%)`,
@@ -535,7 +535,7 @@ export function AffinityWellCells({
                     <div
                       style={{
                         position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-                        background: `linear-gradient(90deg, transparent, ${meta.glowHex}38, transparent)`,
+                        background: `linear-gradient(90deg, transparent, #a8c5ff38, transparent)`,
                         pointerEvents: 'none',
                       }}
                     />
@@ -623,7 +623,7 @@ export function AffinityWellCells({
                         letterSpacing: '0.07em',
                         textTransform: 'uppercase',
                         lineHeight: 1,
-                        color: `${meta.glowHex}70`,
+                        color: `#a8c5ffcc`,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',

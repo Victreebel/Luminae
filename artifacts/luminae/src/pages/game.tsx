@@ -3742,8 +3742,8 @@ export default function GameBoard() {
                     <div className="flex items-center gap-2 shrink-0">
                       {([
                         { label: 'Affinity',  value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
-                        { label: 'Artifact',  value: cardCount,     hex: '#c084fc', glow: '#e0baff' },
-                        { label: 'Encrypted', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                        { label: 'Artifact',  value: cardCount,     hex: '#ffc43d', glow: '#ffe28a' },
+                        { label: 'Encrypted', value: reservedCount, hex: '#E8E4FF', glow: '#C8C0FF' },
                       ] as const).map(({ label, value, hex, glow }) => {
                         const has = value > 0;
                         return (
@@ -4096,8 +4096,8 @@ export default function GameBoard() {
                   <div className="flex items-center gap-2 shrink-0">
                     {([
                       { label: 'Affinity',  value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
-                      { label: 'Artifact',  value: cardCount,     hex: '#c084fc', glow: '#e0baff' },
-                      { label: 'Encrypted', value: reservedCount, hex: '#ffc43d', glow: '#ffe28a' },
+                      { label: 'Artifact',  value: cardCount,     hex: '#ffc43d', glow: '#ffe28a' },
+                      { label: 'Encrypted', value: reservedCount, hex: '#E8E4FF', glow: '#C8C0FF' },
                     ] as const).map(({ label, value, hex, glow }) => {
                       const has = value > 0;
                       return (

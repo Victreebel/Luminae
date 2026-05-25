@@ -3523,9 +3523,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
                   boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : "none",
                   animation: beatId === "b9b_forge_complete" && gem === "emerald" ? "gem-panel-pulse 1.6s ease-in-out infinite" : undefined,
                 }}>
-                {hasContent && <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />}
+                {hasContent && <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, #a8c5ff38, transparent)` }} />}
                 <div className="flex items-center gap-0.5 justify-center">
-                  <span className="text-[7px] font-semibold tracking-wide leading-none" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                  <span className="text-[7px] font-semibold tracking-wide leading-none" style={{ color: '#a8c5ffcc' }}>{meta.shortName}</span>
                   <MiniGem gem={gem} size={7} />
                 </div>
                 <span className={`${isShortLandscape ? "text-lg" : "text-2xl"} font-black leading-none tracking-tight`}
