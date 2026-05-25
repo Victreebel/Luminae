@@ -230,17 +230,18 @@ export function AffinityWellCells({
       const prevVal = prev[key] ?? 0;
       const currVal = curr[key] ?? 0;
       if (currVal > prevVal) {
+        const delay = i * 0.09;
         void gemTokenControls[key]?.start({
-          y:       [0, -9, 0,   0],
-          rotateY: [0,  0, 0, 360],
-          transition: { duration: 1.5, times: [0, 0.12, 0.22, 1], ease: 'easeOut' },
+          y:       [0, -9,    0,    0],
+          rotateY: [0,  0,    0, 1080],
+          transition: { duration: 1.5, times: [0, 0.12, 0.22, 1], ease: 'easeOut', delay },
         });
         // Schedule the landing chime to coincide with times[2]=0.22 of duration=1.5 s.
-        // Landing offset = 0.22 * 1500 ms = 330 ms (no stagger — all harvested gems
-        // animate simultaneously so multiple gems don't read as separate "spin" events).
+        // Landing offset = stagger delay + 0.22 * 1500 ms = i*90 + 330 ms.
+        const landMs = Math.round(delay * 1000 + 0.22 * 1500);
         const gemKey = key; // capture for closure
         harvestSoundTimers.current.push(
-          setTimeout(() => gameAudio.playHarvestLand(gemKey), 330),
+          setTimeout(() => gameAudio.playHarvestLand(gemKey), landMs),
         );
       }
     }
