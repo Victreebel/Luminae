@@ -4939,7 +4939,7 @@ export default function GameBoard() {
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
           { tab: 'log' as ActiveTab, label: 'Log', icon: List, badge: unreadChat > 0 ? unreadChat : undefined },
-        ] as const).map(({ tab, label, icon: Icon, badge, count }: { tab: ActiveTab; label: string; icon: any; badge?: number; count?: number }) => (
+        ] as const).map(({ tab, label, icon: Icon, badge }: { tab: ActiveTab; label: string; icon: any; badge?: number }) => (
           <button
             key={tab}
             type="button"
@@ -4955,16 +4955,7 @@ export default function GameBoard() {
                 </span>
               )}
             </div>
-            {count !== undefined ? (
-              <>
-                <span className="text-[10px] font-semibold leading-none">{label}</span>
-                <span className={`text-base font-black tabular-nums leading-none ${count > 0 ? (activeTab === tab ? 'text-primary' : 'text-foreground/80') : 'text-muted-foreground/30'}`}>
-                  {count}
-                </span>
-              </>
-            ) : (
-              <span className="text-[10px] font-semibold">{label}</span>
-            )}
+            <span className="text-[10px] font-semibold">{label}</span>
             {activeTab === tab && (
               <div className="absolute -top-2 inset-x-4 h-0.5 bg-primary rounded-full" />
             )}
