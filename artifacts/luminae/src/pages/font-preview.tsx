@@ -190,7 +190,7 @@ function VariantC() {
           background-size: 400% 100%;
           -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
           animation: shimmer-sweep 50s linear infinite;
-          filter: drop-shadow(0 0 1px rgba(255,255,255,0.8)) drop-shadow(0 0 18px rgba(160,140,255,0.3)) drop-shadow(0 0 40px rgba(100,80,180,0.15));
+          filter: drop-shadow(0 0 1px rgba(255,196,61,0.9)) drop-shadow(0 0 18px rgba(255,196,61,0.25)) drop-shadow(0 0 40px rgba(200,140,40,0.15));
           position: relative; z-index: 1;
         }
       `}</style>
@@ -206,30 +206,30 @@ function VariantC() {
       {[{ top: 20, left: 20 }, { top: 20, right: 20 }, { bottom: 20, left: 20 }, { bottom: 20, right: 20 }].map((pos, i) => (
         <div key={i} style={{
           position: "absolute", width: 18, height: 18,
-          borderTop: i < 2 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-          borderBottom: i >= 2 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-          borderLeft: i % 2 === 0 ? "1px solid rgba(200,210,255,0.2)" : undefined,
-          borderRight: i % 2 === 1 ? "1px solid rgba(200,210,255,0.2)" : undefined,
+          borderTop: i < 2 ? "1px solid rgba(255,196,61,0.3)" : undefined,
+          borderBottom: i >= 2 ? "1px solid rgba(255,196,61,0.3)" : undefined,
+          borderLeft: i % 2 === 0 ? "1px solid rgba(255,196,61,0.3)" : undefined,
+          borderRight: i % 2 === 1 ? "1px solid rgba(255,196,61,0.3)" : undefined,
           ...pos,
         }} />
       ))}
 
       <div style={{ width: "70%", display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}>
-        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15))" }} />
-        <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,255,255,0.25)" }} />
-        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.15))" }} />
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,196,61,0.3))" }} />
+        <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,196,61,0.45)" }} />
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,196,61,0.3))" }} />
       </div>
 
       <h1 className="fp-void-title">LUMINAE</h1>
 
-      <p style={{ margin: 0, fontSize: 8, letterSpacing: "0.45em", color: "rgba(200,210,255,0.3)", textTransform: "uppercase", fontFamily: "'Cinzel', serif", fontWeight: 400, position: "relative", zIndex: 1 }}>
+      <p style={{ margin: 0, fontSize: 8, letterSpacing: "0.45em", color: "rgba(255,196,61,0.45)", textTransform: "uppercase", fontFamily: "'Cinzel', serif", fontWeight: 400, position: "relative", zIndex: 1 }}>
         Collect · Forge · Ascend
       </p>
 
       <div style={{ width: "70%", display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}>
-        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15))" }} />
-        <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,255,255,0.25)" }} />
-        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.15))" }} />
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,196,61,0.3))" }} />
+        <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,196,61,0.45)" }} />
+        <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,196,61,0.3))" }} />
       </div>
     </div>
   );
