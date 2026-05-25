@@ -332,7 +332,6 @@ export function AffinityWellCells({
               const canTake2      = selectable && !isFlux && bankCount >= 4 && pending !== 2;
               const showForgedLink = !isFlux && bonus > 0;
               const gaugeFilledCount = Math.max(0, bankCount - pending);
-              const CellTag = (isFlux ? motion.div : motion.button) as typeof motion.button;
               const tentativeCount   = gems + pending;
               const hasContent       = isFlux
                 ? gems > 0 || reservedCount > 0
@@ -372,12 +371,13 @@ export function AffinityWellCells({
                   key={c}
                   style={{ display: 'flex', flexDirection: 'column', gap: 2, width: CELL_W, flexShrink: 0 }}
                 >
-                  {/* ── Main cell container (non-interactive for flux) ── */}
-                  <CellTag
+                  {/* ── Main cell button ── */}
+                  <motion.button
                     type="button"
-                    disabled={isFlux ? undefined : (!selectable && !showForgedLink || bankEmpty && !showForgedLink)}
+                    // Singularity always tappable; others need selectable + non-empty bank
+                    disabled={isFlux ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
                     whileTap={
-                      (!isFlux && ((selectable && !bankEmpty) || showForgedLink))
+                      (isFlux || (selectable && !bankEmpty) || showForgedLink)
                         ? { scale: 0.91 }
                         : {}
                     }
@@ -386,9 +386,11 @@ export function AffinityWellCells({
                         ? { scale: [1, 1.03, 1], transition: { duration: 0.18 } }
                         : {}
                     }
-                    onClick={isFlux ? undefined : () => {
+                    onClick={() => {
                       if (isDragging.current) return;
-                      if (showForgedLink && !selectable) {
+                      if (isFlux) {
+                        onOpenReserved();
+                      } else if (showForgedLink && !selectable) {
                         onOpenForged(c);
                       } else if (selectable && !bankEmpty) {
                         onCrystalClick(c as keyof CrystalCounts);
@@ -404,7 +406,10 @@ export function AffinityWellCells({
                       flexDirection: 'column',
                       alignItems: 'center',
                       gap: 2,
-                      cursor: selectable || showForgedLink ? 'pointer' : 'default',
+                      cursor:
+                        isFlux || selectable || showForgedLink
+                          ? 'pointer'
+                          : 'default',
                       position: 'relative',
                       overflow: 'hidden',
                       opacity: bankEmpty && !isFlux && pending === 0 ? 0.42 : 1,
@@ -552,70 +557,32 @@ export function AffinityWellCells({
                       )}
                     </div>
 
-                    {/* ── Well section: Singularity shows reserve-deck meter ── */}
+                    {/* ── Well section: Singularity shows encrypted-pile meter ── */}
                     {isFlux && (
-                      <>
-                        <div
+                      <div
+                        style={{
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', gap: 2, marginTop: 1,
+                        }}
+                      >
+                        <span
                           style={{
-                            display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', gap: 2, marginTop: 1,
+                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                            color: `${meta.glowHex}99`,
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
                           }}
                         >
-                          <span
-                            style={{
-                              fontSize: 5.5, fontWeight: 700, lineHeight: 1,
-                              color: `${meta.glowHex}99`,
-                              letterSpacing: '0.06em',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            Available {gaugeFilledCount}/5
-                          </span>
-                          <HorizontalWellMeter
-                            capacity={5}
-                            filledCount={gaugeFilledCount}
-                            hex={meta.hex}
-                            glowHex={meta.glowHex}
-                            burstKey={harvestBurstKeys?.[c] ?? 0}
-                          />
-                        </div>
-
-                        {/* hairline divider */}
-                        <div style={{
-                          width: '80%', height: 1, margin: '5px 0 4px',
-                          background: `linear-gradient(90deg, transparent, ${meta.glowHex}38, transparent)`,
-                        }} />
-                        {/* encrypted count — only interactive element in the Singularity cell */}
-                        <motion.button
-                          type="button"
-                          onClick={() => { if (isDragging.current) return; onOpenReserved(); }}
-                          whileTap={{ scale: 0.95 }}
-                          style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            background: reservedCount > 0 ? `${meta.glowHex}18` : 'transparent',
-                            border: `1px solid ${reservedCount > 0 ? meta.glowHex + '40' : 'transparent'}`,
-                            transition: 'background 0.2s ease, border-color 0.2s ease',
-                          }}
-                        >
-                          <span style={{
-                            fontSize: 13, fontWeight: 900, lineHeight: 1,
-                            color: reservedCount > 0 ? meta.glowHex : `${meta.glowHex}30`,
-                            textShadow: reservedCount > 0 ? `0 0 10px ${meta.glowHex}aa` : 'none',
-                          }}>
-                            {reservedCount} / 3
-                          </span>
-                          <span style={{
-                            fontSize: 6, fontWeight: 700, letterSpacing: '0.07em',
-                            textTransform: 'uppercase', lineHeight: 1,
-                            color: `${meta.glowHex}80`,
-                          }}>
-                            Encrypted
-                          </span>
-                        </motion.button>
-                      </>
+                          Available {gaugeFilledCount}/5
+                        </span>
+                        <HorizontalWellMeter
+                          capacity={5}
+                          filledCount={gaugeFilledCount}
+                          hex={meta.hex}
+                          glowHex={meta.glowHex}
+                          burstKey={harvestBurstKeys?.[c] ?? 0}
+                        />
+                      </div>
                     )}
 
                     {/* ── Well section (normal affinities only) ── */}
@@ -646,10 +613,10 @@ export function AffinityWellCells({
                       </div>
                     )}
 
-                  </CellTag>
+                  </motion.button>
 
                   {/* ── ×2 sub-button: take 2 of the same — only visible when eligible ── */}
-                  {!isFlux && <motion.button
+                  <motion.button
                     type="button"
                     aria-hidden={!canTake2}
                     tabIndex={canTake2 ? 0 : -1}
@@ -672,7 +639,7 @@ export function AffinityWellCells({
                     }`}
                   >
                     ×2
-                  </motion.button>}
+                  </motion.button>
                 </div>
               );
             })}
