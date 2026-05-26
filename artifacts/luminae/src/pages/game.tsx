@@ -4361,9 +4361,11 @@ export default function GameBoard() {
                 if (marketCompact) {
                   const effCosts = computeCosts(c, costMode) ?? c.cost;
                   const costEntries = CRYSTALS.filter(k => (effCosts[k as keyof CrystalCounts] ?? 0) > 0);
-                  // "free" only when permanent bonuses alone zero out the cost — not when tokens happen to cover it.
+                  // Truly free = permanent bonuses alone zero out the cost (no tokens required).
                   const bonusOnlyCosts = computeCosts(c, 'after_bonuses') ?? c.cost;
                   const isTrulyFree = CRYSTALS.every(k => (bonusOnlyCosts[k as keyof CrystalCounts] ?? 0) === 0);
+                  // canAfford = player has enough tokens + bonuses to forge right now.
+                  const canAfford = !isTrulyFree && !!me && canAffordCard(c, me);
                   const bonusMeta = GEM_META[c.bonusColor as GemKey];
                   const isTapped = selectedCard?.card.id === c.id;
                   const chipArt = CARD_ART[c.id];
@@ -4405,10 +4407,19 @@ export default function GameBoard() {
                               <span className="text-[7px] font-bold text-white/60 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
                             </div>
                           )) : isTrulyFree ? (
-                            <span className="text-[8px] text-white/30 leading-none">free</span>
+                            <span className="text-[9px] font-bold text-green-400 leading-none">✓</span>
                           ) : null}
                         </div>
                       </div>
+                      {/* Affordability badge — shown when player can cover the cost with current tokens */}
+                      {(isTrulyFree || canAfford) && (
+                        <div
+                          className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none"
+                          style={{ background: 'rgba(34,197,94,0.85)', boxShadow: '0 0 6px rgba(34,197,94,0.6)' }}
+                        >
+                          <span className="text-[8px] font-black text-white">✓</span>
+                        </div>
+                      )}
                       {isQueued && <QueuedOverlay />}
                       {showTutorialGlow && (
                         <div className="pointer-events-none absolute inset-0 rounded-lg animate-pulse"
