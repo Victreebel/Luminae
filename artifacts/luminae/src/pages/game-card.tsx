@@ -100,7 +100,7 @@ export function CrystalIcon({
 }
 
 export function ArtifactCardView({
-  card, onTap, tapped, tier, effectiveCosts, bonusCosts, artOnly,
+  card, onTap, tapped, tier, effectiveCosts, bonusCosts, artOnly, hideStrike,
 }: {
   card: ArtifactCard;
   onTap?: () => void;
@@ -110,6 +110,8 @@ export function ArtifactCardView({
   /** Pure after-bonuses cost (no tokens subtracted). Used to gate the "free" ✓ chip so it only fires when bonuses alone cover the cost, not when tokens happen to cover it. */
   bonusCosts?: Partial<Record<GemKey, number>>;
   artOnly?: boolean;
+  /** When true, suppresses the crossed-out original cost shown alongside a reduced cost (e.g. when costMode is 'needed_now'). */
+  hideStrike?: boolean;
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
   const cardTier = tier ?? card.tier ?? 1;
@@ -244,7 +246,7 @@ export function ArtifactCardView({
                   }
                   className={`flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}
                 >
-                  {isReduced && !isFree && (
+                  {isReduced && !isFree && !hideStrike && (
                     <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>
                   )}
                   <span className={`text-[10px] font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>

@@ -3142,6 +3142,7 @@ export default function GameBoard() {
                           tapped={selectedCard?.card.id === c.id}
                           effectiveCosts={computeCosts(c, costMode)}
                           bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
+                          hideStrike={costMode === 'needed_now'}
                         />
                       </motion.div>
                       {isQueued && <QueuedOverlay />}
@@ -3257,6 +3258,7 @@ export default function GameBoard() {
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
                       bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
+                      hideStrike={costMode === 'needed_now'}
                     />
                     {showTutorialGlow && (
                       <div
@@ -3613,6 +3615,7 @@ export default function GameBoard() {
                       onTap={() => openCardSheet(c, true)}
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
+                      hideStrike={costMode === 'needed_now'}
                     />
                     {isQueued && <QueuedOverlay />}
                     <div
@@ -5767,6 +5770,7 @@ export default function GameBoard() {
                     onTap={() => {}}
                     tapped={false}
                     effectiveCosts={computeCosts(dealingCard.card, costMode)}
+                    hideStrike={costMode === 'needed_now'}
                   />
                 </div>
               </div>
@@ -6228,6 +6232,7 @@ export default function GameBoard() {
                             effectiveCosts={ec}
                             bonusCosts={ecBonus}
                             tapped={false}
+                            hideStrike={costMode === 'needed_now'}
                           />
                           <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                             <div className="font-bold text-sm leading-tight">{c.name}</div>
