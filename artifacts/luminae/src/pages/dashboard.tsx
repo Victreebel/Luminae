@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { useAccount } from "@/contexts/AccountContext";
+import { RequireAuth } from "@/components/RequireAuth";
 import {
   apiGetMyGames,
   apiQuitRoom,
@@ -30,7 +31,6 @@ import {
   Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 
@@ -233,9 +233,9 @@ function SettingsTab({ accountId }: { accountId: string }) {
 
 type DashboardTab = "games" | "history" | "settings";
 
-export default function Dashboard() {
+function DashboardContent() {
   const [, setLocation] = useLocation();
-  const { account, token, logout, isLoading } = useAccount();
+  const { account, token, logout } = useAccount();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>("games");
@@ -337,12 +337,7 @@ export default function Dashboard() {
     setLocation("/");
   };
 
-  if (isLoading) return <AccountLoadingScreen />;
-
-  if (!account) {
-    setLocation("/");
-    return null;
-  }
+  if (!account) return null;
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground relative overflow-hidden">
@@ -570,5 +565,13 @@ export default function Dashboard() {
         onChallengeCreated={handleChallengeCreated}
       />
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <RequireAuth>
+      <DashboardContent />
+    </RequireAuth>
   );
 }
