@@ -432,6 +432,7 @@ export default function GameBoard() {
     animY: number[];
     animRotateY: [number, number, number];
     animScale: [number, number, number];
+    faceScale: number;
   } | null>(null);
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
@@ -1191,18 +1192,23 @@ export default function GameBoard() {
                     const slotR = slotEl?.getBoundingClientRect();
                     if (deckR && slotR) {
                       setAnimEndTime(1700); // extend lock for 1500ms deal animation
-                      const _dx = slotR.left - deckR.left;
-                      const _dy = slotR.top  - deckR.top;
+                      const _rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+                      const _faceScale = slotR.width / _rawCardW;
+                      const _startX = deckR.left + (deckR.width  - slotR.width)  / 2;
+                      const _startY = deckR.top  + (deckR.height - slotR.height) / 2;
+                      const _dx = slotR.left - _startX;
+                      const _dy = slotR.top  - _startY;
                       const _arcY = Math.min(_dy - 60, -40);
                       setDealingCard({
                         card: newCard,
                         tier,
-                        deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                        deckRect: { x: _startX, y: _startY, w: slotR.width, h: slotR.height },
                         slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
                         animX: [0, _dx * 0.5, _dx],
                         animY: [0, _arcY, _dy],
                         animRotateY: [0, 90, 180],
-                        animScale: [1, 1.08, 1],
+                        animScale: [1, 1, 1],
+                        faceScale: _faceScale,
                       });
                       gameAudio.playCardDraw();
                     } else {
@@ -1272,20 +1278,25 @@ export default function GameBoard() {
                     const slotR = slotEl?.getBoundingClientRect();
                     if (deckR && slotR) {
                       setAnimEndTime(1700); // extend lock to cover the 1500ms deal animation
-                      const _dx = slotR.left - deckR.left;
-                      const _dy = slotR.top  - deckR.top;
+                      const _rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+                      const _faceScale = slotR.width / _rawCardW;
+                      const _startX = deckR.left + (deckR.width  - slotR.width)  / 2;
+                      const _startY = deckR.top  + (deckR.height - slotR.height) / 2;
+                      const _dx = slotR.left - _startX;
+                      const _dy = slotR.top  - _startY;
                       const _arcY = Math.min(_dy - 60, -40);
                       setDealingCard({
                         card: newCard,
                         tier,
-                        deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                        deckRect: { x: _startX, y: _startY, w: slotR.width, h: slotR.height },
                         slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
                         // Stable animate arrays — computed once so re-renders don't
                         // create new references and accidentally restart the animation.
                         animX: [0, _dx * 0.5, _dx],
                         animY: [0, _arcY, _dy],
                         animRotateY: [0, 90, 180],
-                        animScale: [1, 1.08, 1],
+                        animScale: [1, 1, 1],
+                        faceScale: _faceScale,
                       });
                       gameAudio.playCardDraw();
                     } else {
@@ -1371,18 +1382,23 @@ export default function GameBoard() {
                   const slotR = slotEl?.getBoundingClientRect();
                   if (deckR && slotR) {
                     setAnimEndTime(1700);
-                    const _dx = slotR.left - deckR.left;
-                    const _dy = slotR.top  - deckR.top;
+                    const _rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+                    const _faceScale = slotR.width / _rawCardW;
+                    const _startX = deckR.left + (deckR.width  - slotR.width)  / 2;
+                    const _startY = deckR.top  + (deckR.height - slotR.height) / 2;
+                    const _dx = slotR.left - _startX;
+                    const _dy = slotR.top  - _startY;
                     const _arcY = Math.min(_dy - 60, -40);
                     setDealingCard({
                       card: cipherNewCard,
                       tier,
-                      deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                      deckRect: { x: _startX, y: _startY, w: slotR.width, h: slotR.height },
                       slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
                       animX: [0, _dx * 0.5, _dx],
                       animY: [0, _arcY, _dy],
                       animRotateY: [0, 90, 180],
-                      animScale: [1, 1.08, 1],
+                      animScale: [1, 1, 1],
+                      faceScale: _faceScale,
                     });
                     gameAudio.playCardDraw();
                   } else {
@@ -5716,28 +5732,38 @@ export default function GameBoard() {
                 setHiddenSlots(new Set());
               }}
             >
-              {/* Card back — visible during first half of flight */}
+              {/* Card back — fills container via w-full/h-full */}
               <div style={{
                 position: 'absolute', inset: 0,
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
+                overflow: 'hidden',
+                borderRadius: 12,
               }}>
-                <CardBack tier={dealingCard.tier as 1 | 2 | 3} />
+                <div className="w-full h-full relative rounded-xl bg-[#030509] border border-[#c4a85a]/30">
+                  {dealingCard.tier === 1 && <CardBackTier1 />}
+                  {dealingCard.tier === 2 && <CardBackTier2 />}
+                  {dealingCard.tier === 3 && <CardBackTier3 />}
+                </div>
               </div>
-              {/* Card face — revealed after half-flip */}
+              {/* Card face — revealed after half-flip, scaled to fit container */}
               <div style={{
                 position: 'absolute', inset: 0,
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
                 transform: 'rotateY(180deg)',
+                overflow: 'hidden',
+                borderRadius: 12,
               }}>
-                <ArtifactCardView
-                  card={dealingCard.card}
-                  tier={dealingCard.tier}
-                  onTap={() => {}}
-                  tapped={false}
-                  effectiveCosts={computeCosts(dealingCard.card, costMode)}
-                />
+                <div style={{ transformOrigin: 'top left', transform: `scale(${dealingCard.faceScale})` }}>
+                  <ArtifactCardView
+                    card={dealingCard.card}
+                    tier={dealingCard.tier}
+                    onTap={() => {}}
+                    tapped={false}
+                    effectiveCosts={computeCosts(dealingCard.card, costMode)}
+                  />
+                </div>
               </div>
             </motion.div>
           </div>
