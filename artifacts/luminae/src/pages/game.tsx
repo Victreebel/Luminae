@@ -4045,7 +4045,20 @@ export default function GameBoard() {
                 // Cleared atomically when setCardActionBurst / setCipherBurst fires.
                 const ghostCard = burstGhostCards[slotKey] ?? null;
                 if (ghostCard) {
-                  return (
+                  // In compact mode clamp to chip dimensions so the slot never causes reflow.
+                  return marketCompact ? (
+                    <div
+                      key={ghostCard.id}
+                      data-card-id={ghostCard.id}
+                      data-slot-key={slotKey}
+                      className="relative shrink-0 overflow-hidden rounded-lg"
+                      style={{ width: 56, height: 78 }}
+                    >
+                      <div className="absolute inset-0 scale-[0.47] origin-top-left pointer-events-none" style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}>
+                        <ArtifactCardView card={ghostCard} tier={row.tier} />
+                      </div>
+                    </div>
+                  ) : (
                     <div key={ghostCard.id} data-card-id={ghostCard.id} data-slot-key={slotKey} className="relative shrink-0">
                       <ArtifactCardView card={ghostCard} tier={row.tier} />
                     </div>
@@ -4064,6 +4077,36 @@ export default function GameBoard() {
                 const isFlipping = flippingCards.has(c.id);
                 const isQueued = plannedCardId === c.id;
                 if (isFlipping) {
+                  // In compact mode keep the slot at chip dimensions to prevent reflow.
+                  if (marketCompact) {
+                    return (
+                      <div
+                        key={c.id}
+                        data-card-id={c.id}
+                        className="relative shrink-0 overflow-hidden rounded-lg"
+                        style={{ width: 56, height: 78, perspective: '400px' }}
+                        {...(cardFocusProps ?? {})}
+                      >
+                        <motion.div
+                          initial={{ rotateY: 180, scale: 0.85 }}
+                          animate={{ rotateY: 0, scale: 1 }}
+                          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                          className="absolute inset-0 scale-[0.47] origin-top-left"
+                          style={{ transformStyle: 'preserve-3d', width: 'var(--card-w)', height: 'var(--card-h)' }}
+                        >
+                          <ArtifactCardView
+                            card={c}
+                            tier={row.tier}
+                            onTap={() => openCardSheet(c, false)}
+                            tapped={selectedCard?.card.id === c.id}
+                            effectiveCosts={computeCosts(c, costMode)}
+                            bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
+                          />
+                        </motion.div>
+                        {isQueued && <QueuedOverlay />}
+                      </div>
+                    );
+                  }
                   return (
                     <div
                       key={c.id}
