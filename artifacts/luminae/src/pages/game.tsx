@@ -2978,14 +2978,19 @@ export default function GameBoard() {
                     openDeckSheet(row.tier as 1 | 2 | 3);
                   }}
                   disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
-                  className="relative shrink-0 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ width: 40, minHeight: 78, borderColor: 'rgba(192,164,114,0.35)', background: 'rgba(192,164,114,0.05)' }}
+                  className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
                 >
-                  <span className="text-[13px] font-bold font-serif tabular-nums" style={{ color: row.deck > 0 ? 'rgba(212,168,75,0.85)' : 'rgba(200,80,80,0.7)' }}>
-                    {row.deck > 0 ? row.deck : '0'}
-                  </span>
-                  <span className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(192,164,114,0.4)' }}>deck</span>
+                  <CardBack size="compact" tier={row.tier as 1 | 2 | 3} />
+                  <div
+                    className="absolute top-1 right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full text-[8px] font-bold tabular-nums px-0.5"
+                    style={row.deck > 0
+                      ? { background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.9)' }
+                      : { background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(160,60,60,0.5)', color: 'rgba(255,120,120,0.9)' }
+                    }
+                  >
+                    {row.deck > 0 ? row.deck : '∅'}
+                  </div>
                 </button>
               ) : (
                 <button
@@ -3264,14 +3269,19 @@ export default function GameBoard() {
                     openDeckSheet(row.tier as 1 | 2 | 3);
                   }}
                   disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
-                  className="relative shrink-0 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ width: 40, minHeight: 78, borderColor: 'rgba(192,164,114,0.35)', background: 'rgba(192,164,114,0.05)' }}
+                  className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
                 >
-                  <span className="text-[13px] font-bold font-serif tabular-nums" style={{ color: row.deck > 0 ? 'rgba(212,168,75,0.85)' : 'rgba(200,80,80,0.7)' }}>
-                    {row.deck > 0 ? row.deck : '0'}
-                  </span>
-                  <span className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(192,164,114,0.4)' }}>deck</span>
+                  <CardBack size="compact" tier={row.tier as 1 | 2 | 3} />
+                  <div
+                    className="absolute top-1 right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full text-[8px] font-bold tabular-nums px-0.5"
+                    style={row.deck > 0
+                      ? { background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.9)' }
+                      : { background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(160,60,60,0.5)', color: 'rgba(255,120,120,0.9)' }
+                    }
+                  >
+                    {row.deck > 0 ? row.deck : '∅'}
+                  </div>
                 </button>
               ) : (
                 <button

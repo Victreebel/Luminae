@@ -363,8 +363,8 @@ export function TurnCountdown({ deadline, active }: { deadline: number | null; a
   );
 }
 
-export function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md'; count?: number; tier?: 1 | 2 | 3 }) {
-  const sz = size === 'sm' ? 'w-9 h-12' : 'w-[var(--card-w)] h-[var(--card-h)]';
+export function CardBack({ size = 'md', count, tier }: { size?: 'sm' | 'md' | 'compact'; count?: number; tier?: 1 | 2 | 3 }) {
+  const sz = size === 'sm' ? 'w-9 h-12' : size === 'compact' ? 'w-[56px] h-[78px]' : 'w-[var(--card-w)] h-[var(--card-h)]';
   const t = tier ?? 1;
   return (
     <div className={`${sz} relative rounded-xl overflow-hidden border border-[#c4a85a]/30 shadow-md bg-[#030509] shrink-0`}>
