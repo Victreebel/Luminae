@@ -1199,11 +1199,13 @@ function CompactCardGhost({
   chipRect: DOMRect;
   onDone: () => void;
 }) {
+  const onDoneRef = useRef(onDone);
   useEffect(() => {
-    // delay(0.5s) + duration(5s) + buffer(300ms)
-    const t = setTimeout(onDone, 5800);
+    // delay(0.5s) + duration(5s) + buffer(300ms) — fires once on mount; key ensures remount per ghost
+    const t = setTimeout(() => onDoneRef.current(), 5800);
     return () => clearTimeout(t);
-  }, [onDone]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return createPortal(
     <motion.div
@@ -1227,19 +1229,22 @@ function CompactCardGhost({
   );
 }
 
-// --- Chip absorb ripple: portal burst that fires as the ghost card lands in the chip ---
-// Pill bounce overlay + pill-shaped expanding rings + central flash + radial particles.
-const ABSORB_PARTICLE_ANGLES = [0, 60, 120, 180, 240, 300, 30, 150, 210, 330];
+// --- Chip absorb ripple: portal burst that fires as the ghost card descends into the chip ---
+// Instant bleach flash → pill bounce glow → 5 expanding rings → central nova → 10 sparks.
+const ABSORB_PARTICLE_ANGLES = [0, 36, 72, 108, 144, 180, 216, 252, 288, 324];
 
 function ChipAbsorbRipple({
   chipRect, color, onDone,
 }: {
   chipRect: DOMRect; color: string; onDone: () => void;
 }) {
+  const onDoneRef = useRef(onDone);
   useEffect(() => {
-    const t = setTimeout(onDone, 2000);
+    // Fires once on mount; key in parent guarantees remount per event.
+    const t = setTimeout(() => onDoneRef.current(), 1800);
     return () => clearTimeout(t);
-  }, [onDone]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cw = chipRect.width;
   const ch = chipRect.height;
@@ -1249,7 +1254,24 @@ function ChipAbsorbRipple({
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9997 }}>
 
-      {/* ── Pill bounce overlay: glowing clone of the chip that slams outward then snaps back ── */}
+      {/* ── Immediate bleach flash: bright radial burst centered on chip ── */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          top: chipRect.top - ch * 0.6,
+          left: chipRect.left - cw * 0.6,
+          width: cw * 2.2,
+          height: ch * 2.2,
+          borderRadius: 14,
+          background: `radial-gradient(ellipse at center, ${color}ff 0%, ${color}99 25%, ${color}44 55%, transparent 75%)`,
+          filter: 'blur(3px)',
+        }}
+        initial={{ scale: 0.3, opacity: 0 }}
+        animate={{ scale: [0.3, 1.1, 0.1], opacity: [0, 1, 0] }}
+        transition={{ duration: 0.5, ease: 'easeOut', times: [0, 0.28, 1] }}
+      />
+
+      {/* ── Pill bounce overlay: glowing clone of the chip that slams and snaps ── */}
       <motion.div
         style={{
           position: 'absolute',
@@ -1258,21 +1280,20 @@ function ChipAbsorbRipple({
           width: cw,
           height: ch,
           borderRadius: 8,
-          background: `radial-gradient(ellipse at center, ${color}55 0%, transparent 70%)`,
-          boxShadow: `0 0 28px 10px ${color}, inset 0 0 16px 6px ${color}aa`,
-          transformOrigin: 'center center',
+          background: `radial-gradient(ellipse at center, ${color}77 0%, transparent 70%)`,
+          boxShadow: `0 0 48px 20px ${color}, 0 0 90px 32px ${color}55, inset 0 0 24px 10px ${color}dd`,
         }}
-        initial={{ scale: 0.7, opacity: 0 }}
+        initial={{ scale: 0.75, opacity: 0 }}
         animate={{
-          scale:   [0.7, 1.55, 0.90, 1.30, 0.97, 1.0],
-          opacity: [0,   1.0,  0.85, 0.70, 0.40, 0  ],
+          scale:   [0.75, 2.0, 0.82, 1.6, 0.94, 1.0],
+          opacity: [0,    1.0, 0.92, 0.75, 0.35, 0  ],
         }}
-        transition={{ duration: 1.1, ease: 'easeOut', times: [0, 0.18, 0.38, 0.58, 0.80, 1.0] }}
+        transition={{ duration: 1.25, ease: 'easeOut', times: [0, 0.14, 0.32, 0.52, 0.76, 1.0] }}
       />
 
       {/* ── Pill-shaped rings expanding from chip center ── */}
       <div style={{ position: 'absolute', top: cy, left: cx, width: 0, height: 0 }}>
-        {[0, 110, 220, 330, 440].map((delayMs, i) => (
+        {[0, 90, 185, 290, 410].map((delayMs, i) => (
           <motion.div
             key={i}
             style={{
@@ -1280,53 +1301,53 @@ function ChipAbsorbRipple({
               width: cw,
               height: ch,
               borderRadius: 9,
-              border: `${3 - i * 0.4}px solid ${color}`,
-              boxShadow: `0 0 10px 3px ${color}`,
+              border: `${4 - i * 0.55}px solid ${color}`,
+              boxShadow: `0 0 18px 6px ${color}, 0 0 36px 10px ${color}66`,
               x: -(cw / 2),
               y: -(ch / 2),
             }}
-            initial={{ scale: 0.4, opacity: 1 }}
-            animate={{ scale: 4.0, opacity: 0 }}
-            transition={{ duration: 1.1, delay: delayMs / 1000, ease: 'easeOut' }}
+            initial={{ scale: 0.25, opacity: 1 }}
+            animate={{ scale: 5.5, opacity: 0 }}
+            transition={{ duration: 1.05, delay: delayMs / 1000, ease: 'easeOut' }}
           />
         ))}
 
-        {/* Central flash burst */}
+        {/* Central nova burst */}
         <motion.div
           style={{
             position: 'absolute',
-            width: 36, height: 36,
+            width: 44, height: 44,
             borderRadius: '50%',
             background: color,
-            x: -18, y: -18,
-            filter: 'blur(10px)',
+            x: -22, y: -22,
+            filter: 'blur(14px)',
           }}
           initial={{ scale: 0, opacity: 1 }}
-          animate={{ scale: 8, opacity: 0 }}
-          transition={{ duration: 0.7, ease: 'easeOut' }}
+          animate={{ scale: 12, opacity: 0 }}
+          transition={{ duration: 0.65, ease: 'easeOut' }}
         />
 
-        {/* Radial spark particles */}
+        {/* Radial spark particles — evenly spaced full circle */}
         {ABSORB_PARTICLE_ANGLES.map((angleDeg, i) => {
           const rad = (angleDeg * Math.PI) / 180;
-          const dist = 48 + (i % 3) * 14;
+          const dist = 65 + (i % 3) * 22;
           const tx = Math.cos(rad) * dist;
           const ty = Math.sin(rad) * dist;
+          const sz = i % 2 === 0 ? 7 : 4;
           return (
             <motion.div
               key={i}
               style={{
                 position: 'absolute',
-                width: i % 2 === 0 ? 5 : 3,
-                height: i % 2 === 0 ? 5 : 3,
+                width: sz, height: sz,
                 borderRadius: '50%',
                 background: color,
-                boxShadow: `0 0 5px 2px ${color}`,
-                x: -2, y: -2,
+                boxShadow: `0 0 8px 4px ${color}`,
+                x: -(sz / 2), y: -(sz / 2),
               }}
-              initial={{ x: -2, y: -2, opacity: 1, scale: 1 }}
-              animate={{ x: tx - 2, y: ty - 2, opacity: 0, scale: 0 }}
-              transition={{ duration: 0.65, delay: 0.04 * i, ease: 'easeOut' }}
+              initial={{ x: -(sz / 2), y: -(sz / 2), opacity: 1, scale: 1.3 }}
+              animate={{ x: tx - sz / 2, y: ty - sz / 2, opacity: 0, scale: 0 }}
+              transition={{ duration: 0.8, delay: 0.025 * i, ease: 'easeOut' }}
             />
           );
         })}
@@ -2421,7 +2442,7 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 3000);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -2507,7 +2528,7 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 3000);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -2601,7 +2622,7 @@ export default function GameBoard() {
                       const slotR = slotEl?.getBoundingClientRect();
                       if (slotR) {
                         setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
-                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 3000);
                       }
                     }
                     const t2 = setTimeout(() => {

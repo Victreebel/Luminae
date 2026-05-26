@@ -21,6 +21,7 @@ export interface AffinityEmblemProps {
  */
 export function AffinityEmblem({ color, size, className, style }: AffinityEmblemProps) {
   const meta = GEM_META[color];
+  if (!meta) return null;
   return (
     <img
       src={meta.image}
