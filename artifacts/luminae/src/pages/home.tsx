@@ -291,6 +291,10 @@ export default function Home() {
             0%   { background-position: -200% center; }
             100% { background-position: 200% center; }
           }
+          @keyframes home-pulse-glow {
+            0%, 100% { opacity: 0.55; }
+            50%       { opacity: 0.85; }
+          }
           .home-luminae-title {
             font-family: 'Cinzel Decorative', 'Cinzel', serif;
             font-weight: 900;
@@ -321,21 +325,68 @@ export default function Home() {
                     drop-shadow(0 0 40px rgba(100,80,180,0.15));
           }
         `}</style>
+
+        {/* Pulsing radial glow */}
+        <div style={{
+          position: "absolute", width: 500, height: 200, borderRadius: "50%",
+          background: "radial-gradient(ellipse, rgba(100,80,180,0.12) 0%, transparent 70%)",
+          top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+          pointerEvents: "none", animation: "home-pulse-glow 4s ease-in-out infinite",
+        }} />
+
+        {/* Corner brackets */}
+        {([{ top: 8, left: 8 }, { top: 8, right: 8 }, { bottom: 8, left: 8 }, { bottom: 8, right: 8 }] as const).map((pos, i) => (
+          <div key={i} style={{
+            position: "absolute", width: 18, height: 18,
+            borderTop: i < 2 ? "1px solid rgba(200,210,255,0.2)" : undefined,
+            borderBottom: i >= 2 ? "1px solid rgba(200,210,255,0.2)" : undefined,
+            borderLeft: i % 2 === 0 ? "1px solid rgba(200,210,255,0.2)" : undefined,
+            borderRight: i % 2 === 1 ? "1px solid rgba(200,210,255,0.2)" : undefined,
+            ...pos,
+          }} />
+        ))}
+
+        {/* Top decorative rule */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.08 }}
+          style={{ width: "70%", display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}
+        >
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15))" }} />
+          <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,255,255,0.25)" }} />
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.15))" }} />
+        </motion.div>
+
         <motion.h1
           className="home-luminae-title text-5xl"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.12 }}
+          style={{ position: "relative", zIndex: 1 }}
         >
           LUMINAE
         </motion.h1>
+
+        {/* Bottom decorative rule */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.22 }}
+          style={{ width: "70%", display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}
+        >
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.15))" }} />
+          <div style={{ width: 5, height: 5, transform: "rotate(45deg)", border: "1px solid rgba(255,255,255,0.25)" }} />
+          <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.15))" }} />
+        </motion.div>
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.28 }}
-          className="text-muted-foreground text-sm tracking-wide"
+          style={{ margin: 0, fontSize: 9, letterSpacing: "0.45em", color: "rgba(200,210,255,0.35)", textTransform: "uppercase", fontFamily: "'Cinzel', serif", fontWeight: 400, position: "relative", zIndex: 1 }}
         >
-          Harness affinities. Forge artifacts. Shape the cosmos.
+          Collect · Forge · Ascend
         </motion.p>
 
         {/* Avatar selector — shown for guest modes */}
