@@ -203,7 +203,7 @@ export function ForgeAnimation({
           height:  [0, 0, w * 2.2, w * 3.0, 0],
           opacity: [0, 0, 0.85, 0.3, 0],
         }}
-        transition={{ duration: P3_END + 0.05, times: [0, P2_END / (P3_END + 0.05), 0.6, 0.85, 1] }}
+        transition={{ duration: P3_END + 0.05, times: [0, 0.62, 0.80, 0.92, 1] }}
       />
 
       {/* ── Phase 2: Affinity energy streams (SVG) ───────────────────────── */}
@@ -354,13 +354,9 @@ export function ForgeAnimation({
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 0, 1.1, 1, 1, 0.15], opacity: [0, 0, 1, 1, 1, 0] }}
           transition={{
-            duration: P6_END - P5_END + (P5_END - P4_END),
+            duration: P6_END - P4_END, // 0.40s, delay P4_END; t=0.5 = P5_END boundary
             delay: P4_END,
-            times: [0, (P5_END - P4_END - 0.20) / (P6_END - P4_END),
-                       (P5_END - P4_END - 0.02) / (P6_END - P4_END),
-                       (P5_END - P4_END + 0.02) / (P6_END - P4_END),
-                       (P6_END - P4_END - 0.22) / (P6_END - P4_END),
-                       1.0],
+            times: [0, 0.38, 0.50, 0.62, 0.78, 1.0],
           }}
         >
           {/* Hammer on seal */}
