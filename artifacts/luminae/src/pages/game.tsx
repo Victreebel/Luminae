@@ -3762,7 +3762,7 @@ export default function GameBoard() {
 
   // ---- TABS ----
 
-  const BoardTab = () => {
+  const BoardTabMain = () => {
     return (
     <div
       className="flex flex-col gap-0 pb-6"
@@ -4152,13 +4152,16 @@ export default function GameBoard() {
           transition: 'box-shadow 0.3s',
         }}
       />
+    </div>
+  );
+  };
 
-
-      {/* ── Opponents (always visible on Board tab) ── */}
-      {state.players.filter(p => p.playerId !== session?.playerId).length > 0 && (
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Opponents</p>
-          <div className="flex flex-col gap-2">
+  const BoardTabOpponents = () => {
+    if (state.players.filter(p => p.playerId !== session?.playerId).length === 0) return null;
+    return (
+      <div className="px-0 pb-6">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Opponents</p>
+        <div className="flex flex-col gap-2">
             {state.players.map((p, i) => {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
@@ -4316,9 +4319,7 @@ export default function GameBoard() {
             })}
           </div>
         </div>
-      )}
-    </div>
-  );
+    );
   };
 
   const HandTab = () => (
@@ -5014,7 +5015,6 @@ export default function GameBoard() {
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         tabIndex={-1}
         className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none"
-        style={compactView && activeTab === 'board' ? { overflowY: 'hidden' } : undefined}
         onPointerDown={() => {
           // Fallback for non-iOS (Android Chrome, desktop): blur any focused
           // panel element as soon as a pointer gesture starts in the board.
@@ -5025,21 +5025,26 @@ export default function GameBoard() {
         }}
       >
         {activeTab === 'board' && (
-          <div
-            ref={boardCompactWrapperRef}
-            style={compactView && boardCompactScale < 1 ? {
-              transform: `scale(${boardCompactScale})`,
-              transformOrigin: 'top center',
-              // Collapse the dead layout space below the visually-scaled content.
-              // After scale(N) with transformOrigin top-center, the visual footprint
-              // is N*naturalH, but the layout box remains naturalH. The negative margin
-              // pulls everything below it up by (1-N)*naturalH, so the element's
-              // effective layout contribution equals its visual height exactly.
-              marginBottom: `${(boardCompactScale - 1) * boardCompactNaturalH}px`,
-            } : undefined}
-          >
-            {BoardTab()}
-          </div>
+          <>
+            {/* Scaled zone — Luminaries + card market; scaled to fit viewport in compact view */}
+            <div
+              ref={boardCompactWrapperRef}
+              style={compactView && boardCompactScale < 1 ? {
+                transform: `scale(${boardCompactScale})`,
+                transformOrigin: 'top center',
+                // Collapse the dead layout space below the visually-scaled content.
+                // After scale(N) with transformOrigin top-center, the visual footprint
+                // is N*naturalH, but the layout box remains naturalH. The negative margin
+                // pulls everything below it up by (1-N)*naturalH, so the element's
+                // effective layout contribution equals its visual height exactly.
+                marginBottom: `${(boardCompactScale - 1) * boardCompactNaturalH}px`,
+              } : undefined}
+            >
+              {BoardTabMain()}
+            </div>
+            {/* Opponents zone — always 1× scale; scroll down to reach in compact view */}
+            {BoardTabOpponents()}
+          </>
         )}
         {activeTab === 'hand' && HandTab()}
         {activeTab === 'log' && LogTab()}
