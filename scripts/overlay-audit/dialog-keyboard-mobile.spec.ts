@@ -239,34 +239,22 @@ test.describe('A. TutorialStartModal — /tutorial — mobile keyboard nav', () 
 });
 
 // ════════════════════════════════════════════════════════════════════════════
-// B. FriendsPanel — /lobby/:roomId
+// B. FriendsPanel — /dashboard
 //
-// The dashboard page redirects to "/" on first render before AccountContext
-// hydrates from localStorage (no isLoading guard around the !account check).
-// The lobby page is a safe alternative: it shows the Friends button once
-// AccountContext hydrates but does NOT redirect on !account.
+// The dashboard redirect guard now checks isLoading first, so a logged-in
+// user who navigates directly to /dashboard will never be bounced to "/"
+// while AccountContext is still hydrating from localStorage.
 // ════════════════════════════════════════════════════════════════════════════
 
-test.describe('B. FriendsPanel — /lobby/:roomId — mobile keyboard nav', () => {
+test.describe('B. FriendsPanel — /dashboard — mobile keyboard nav', () => {
   async function openFriendsPanel(page: Page): Promise<Locator> {
     const session = await createTestAccount('fp');
 
-    const { room, player, sessionToken } = (await apiPost('/api/rooms', {
-      hostName: session.account.username,
-      maxPlayers: 2,
-      turnTimerSeconds: null,
-    })) as {
-      room: { id: string; inviteCode: string };
-      player: { id: string };
-      sessionToken: string;
-    };
-
-    // Inject both sessions via localStorage on the root page
+    // Inject account session via localStorage on the root page, then navigate
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.evaluate(
-      ({ accountKey, accountData, roomKey, roomData }) => {
+      ({ accountKey, accountData }) => {
         localStorage.setItem(accountKey, JSON.stringify(accountData));
-        localStorage.setItem(roomKey, JSON.stringify(roomData));
       },
       {
         accountKey: ACCOUNT_SESSION_KEY,
@@ -275,20 +263,10 @@ test.describe('B. FriendsPanel — /lobby/:roomId — mobile keyboard nav', () =
           token: session.token,
           expiresAt: session.expiresAt,
         },
-        roomKey: 'luminae_session',
-        roomData: {
-          roomId: room.id,
-          inviteCode: room.inviteCode,
-          playerId: player.id,
-          sessionToken,
-          playerName: session.account.username,
-          isHost: true,
-          avatarId: 'avatar_1',
-        },
       },
     );
 
-    await page.goto(`${BASE}/lobby/${room.id}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE}/dashboard`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(800); // AccountContext useEffect + re-render
 
     const friendsBtn = page.locator('button').filter({ hasText: /friends/i }).first();

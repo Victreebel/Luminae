@@ -234,7 +234,7 @@ type DashboardTab = "games" | "history" | "settings";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const { account, token, logout } = useAccount();
+  const { account, token, logout, isLoading } = useAccount();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>("games");
@@ -335,6 +335,8 @@ export default function Dashboard() {
     await logout();
     setLocation("/");
   };
+
+  if (isLoading) return null;
 
   if (!account) {
     setLocation("/");
