@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -1183,6 +1184,57 @@ function useScrollLock(
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAnyOpen]);
+}
+
+// --- Compact market ghost: renders via portal so it escapes overflow-hidden ancestors ---
+// The market row has overflow-x:auto which forces overflow-y:auto too, clipping any
+// absolute child that goes above the row.  A fixed-position portal renders in the
+// viewport layer and is never clipped.
+function CompactCardGhost({ cardViewProps }: { cardViewProps: React.ComponentProps<typeof ArtifactCardView> }) {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [chipRect, setChipRect] = useState<DOMRect | null>(null);
+
+  useEffect(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    setChipRect(el.getBoundingClientRect());
+  }, []);
+
+  return (
+    <>
+      {/* Zero-size anchor positioned on the chip slot so we can read its screen rect */}
+      <div ref={anchorRef} className="absolute inset-0 pointer-events-none" />
+      {chipRect && createPortal(
+        <motion.div
+          className="pointer-events-none rounded-xl overflow-hidden"
+          style={{
+            position: 'fixed',
+            // Start the card so its top-left corner is 170 px above the chip slot
+            top: chipRect.top - 170,
+            left: chipRect.left,
+            width: 'var(--card-w)',
+            height: 'var(--card-h)',
+            transformOrigin: 'top left',
+            zIndex: 9999,
+          }}
+          animate={{
+            // y travels +170 so the top-left lands exactly on the chip's top-left
+            scale:   [1,    1,    0.47],
+            y:       [0,    0,    170 ],
+            opacity: [1,    1,    0   ],
+          }}
+          transition={{
+            duration: 5.5,
+            times: [0, 0.09, 1],
+            ease: 'easeInOut',
+          }}
+        >
+          <ArtifactCardView {...cardViewProps} />
+        </motion.div>,
+        document.body,
+      )}
+    </>
+  );
 }
 
 // --- Main Page ---
@@ -4113,28 +4165,8 @@ export default function GameBoard() {
                           </div>
                         </div>
 
-                        {/* Ghost: full card hovers above, shrinks + fades into the chip slot */}
-                        <motion.div
-                          className="absolute overflow-hidden rounded-xl pointer-events-none"
-                          style={{
-                            top: 0, left: 0,
-                            width: 'var(--card-w)', height: 'var(--card-h)',
-                            transformOrigin: 'top left',
-                            zIndex: 20,
-                          }}
-                          animate={{
-                            scale:   [1,     1,     0.47],
-                            y:       [-170,  -170,  0   ],
-                            opacity: [1,     1,     0   ],
-                          }}
-                          transition={{
-                            duration: 5.5,
-                            times: [0, 0.09, 1],
-                            ease: 'easeInOut',
-                          }}
-                        >
-                          <ArtifactCardView {...cardViewProps} />
-                        </motion.div>
+                        {/* Ghost: portal-rendered so it escapes overflow-hidden ancestors */}
+                        <CompactCardGhost cardViewProps={cardViewProps} />
 
                         {isQueued && <QueuedOverlay />}
                       </div>
