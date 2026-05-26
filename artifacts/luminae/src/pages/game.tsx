@@ -1915,6 +1915,25 @@ export default function GameBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
+  // ── Burst-ghost safety valve ───────────────────────────────────────────────
+  // Ghost cards should be cleared within ~1–3 s (queue drain + animation start).
+  // If the queue is blocked (e.g., 12 s Luminary cutscene) or a clearing path
+  // is missed, ghosts persist and the slot appears frozen.  This effect sets a
+  // 7 s deadline: any ghost still alive after that is force-cleared.  7 s is
+  // longer than the longest regular animation (cipher burst ~6.5 s) but shorter
+  // than the summon cutscene (12 s), so it catches genuinely stuck ghosts
+  // without interfering with in-flight animations.
+  useEffect(() => {
+    if (Object.keys(burstGhostCards).length === 0) return;
+    const t = setTimeout(() => {
+      setBurstGhostCards(prev => {
+        if (Object.keys(prev).length === 0) return prev;
+        return {};
+      });
+    }, 7000);
+    return () => clearTimeout(t);
+  }, [burstGhostCards]);
+
   // ── Summon cutscene duration used for the animation barrier ───────────────
   const SUMMON_CUTSCENE_DURATION_MS = 12_000;
 
