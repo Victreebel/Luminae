@@ -1431,6 +1431,22 @@ export default function GameBoard() {
         }
       }
 
+      // Dedup-safe ghost sweep: if the animation block above was skipped (duplicate action key
+      // or card not found in old markets), any eagerly-set burst ghost for this card will be
+      // stranded forever. Clear it unconditionally — the bail-early guard makes it a no-op
+      // when the ghost was already removed inside the animation block.
+      if (isMarketAction && action.cardId) {
+        const _cardId = action.cardId as string;
+        setBurstGhostCards(prev => {
+          if (!Object.values(prev).some((c: ArtifactCard) => c.id === _cardId)) return prev;
+          const next = { ...prev };
+          for (const key of Object.keys(next)) {
+            if ((next[key] as ArtifactCard)?.id === _cardId) delete next[key];
+          }
+          return next;
+        });
+      }
+
       // Detect opponent purchase_reserved (buy from own reserve) — fly the card to their chip.
       if (
         action?.type === 'purchase_reserved' &&
@@ -3156,9 +3172,6 @@ export default function GameBoard() {
                 if (marketCompact) {
                   const effCosts = computeCosts(c, costMode) ?? c.cost;
                   const costEntries = CRYSTALS.filter(k => (effCosts[k as keyof CrystalCounts] ?? 0) > 0);
-                  const bonusOnlyCosts = computeCosts(c, 'after_bonuses') ?? c.cost;
-                  const isTrulyFree = CRYSTALS.every(k => (bonusOnlyCosts[k as keyof CrystalCounts] ?? 0) === 0);
-                  const canAfford = !isTrulyFree && !!me && canAffordCard(c, me);
                   const bonusMeta = GEM_META[c.bonusColor as GemKey];
                   const isTapped = selectedCard?.card.id === c.id;
                   return (
