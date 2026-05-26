@@ -163,7 +163,7 @@ export default function GameBoard() {
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [harvestBurstKeys, setHarvestBurstKeys] = useState<Partial<Record<GemKey, number>>>({});
   const [harvestBlockedKeys, setHarvestBlockedKeys] = useState<Partial<Record<GemKey, number>>>({});
-  const pendingHarvestCheckRef = useRef<{ gems: GemKey[]; preCrystals: Partial<CrystalCounts>; tally: Partial<CrystalCounts> } | null>(null);
+  const pendingHarvestCheckRef = useRef<{ gems: GemKey[]; preCrystals: Partial<CrystalCounts>; tally: Partial<CrystalCounts>; submittedVersion: number } | null>(null);
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
@@ -2151,6 +2151,18 @@ export default function GameBoard() {
   useEffect(() => {
     const check = pendingHarvestCheckRef.current;
     if (!check || !me) return;
+    // Guard: only process when the state that contains our action has arrived.
+    // me?.crystals is a new reference on EVERY WS update (not just harvests),
+    // so without this guard an unrelated opponent action fires the effect while
+    // preCrystals is still equal to me.crystals — falsely marking all gems as
+    // blocked and triggering the amber border flash.
+    // We need EITHER a value-level crystal change (normal harvest) OR the state
+    // version to have advanced past what it was at submit time (zero-yield block).
+    const crystalsChanged = check.gems.some(
+      g => g !== 'flux' && (me.crystals[g as keyof CrystalCounts] ?? 0) !== (check.preCrystals[g as keyof CrystalCounts] ?? 0),
+    );
+    const versionAdvanced = (state?.version ?? 0) > check.submittedVersion;
+    if (!crystalsChanged && !versionAdvanced) return;
     pendingHarvestCheckRef.current = null;
     const blockedGems = check.gems.filter(
       (g) => g !== 'flux' && (me.crystals[g as keyof CrystalCounts] ?? 0) <= (check.preCrystals[g as keyof CrystalCounts] ?? 0),
@@ -2449,6 +2461,7 @@ export default function GameBoard() {
         gems: Object.keys(selectedCrystals) as GemKey[],
         preCrystals: { ...me.crystals },
         tally: { ...selectedCrystals },
+        submittedVersion: state!.version,
       };
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
@@ -2459,6 +2472,7 @@ export default function GameBoard() {
         gems: Object.keys(selectedCrystals) as GemKey[],
         preCrystals: { ...me.crystals },
         tally: { ...selectedCrystals },
+        submittedVersion: state!.version,
       };
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
@@ -2484,6 +2498,7 @@ export default function GameBoard() {
       gems: Object.keys(returnPhase.pendingTake) as GemKey[],
       preCrystals: { ...me.crystals },
       tally: { ...returnPhase.pendingTake },
+      submittedVersion: state!.version,
     };
     if (returnPhase.actionType === 'take3') {
       executeAction({ type: 'take_three_crystals', crystals: returnPhase.pendingTake, returnCrystals: returnSelections });
