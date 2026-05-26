@@ -308,13 +308,15 @@ function CrystalIcon({
 }
 
 function ArtifactCardView({
-  card, onTap, tapped, tier, effectiveCosts, artOnly,
+  card, onTap, tapped, tier, effectiveCosts, bonusCosts, artOnly,
 }: {
   card: ArtifactCard;
   onTap?: () => void;
   tapped?: boolean;
   tier?: number;
   effectiveCosts?: Partial<Record<GemKey, number>>;
+  /** Pure after-bonuses cost (no tokens subtracted). Used to gate the "free" ✓ chip so it only fires when bonuses alone cover the cost, not when tokens happen to cover it. */
+  bonusCosts?: Partial<Record<GemKey, number>>;
   artOnly?: boolean;
 }) {
   const bonusMeta = GEM_META[card.bonusColor as GemKey];
@@ -433,7 +435,10 @@ function ArtifactCardView({
               if (baseCost <= 0) return null;
               const effCost = effectiveCosts !== undefined ? (effectiveCosts[c] ?? 0) : baseCost;
               const isReduced = effectiveCosts !== undefined && effCost < baseCost;
-              const isFree = isReduced && effCost === 0;
+              // "free" only when permanent bonuses alone cover this affinity — not when tokens happen to cover it.
+              // If bonusCosts is provided (needed_now mode), check the bonus-only cost; otherwise fall back to effCost.
+              const bonusEffCost = bonusCosts !== undefined ? (bonusCosts[c as GemKey] ?? baseCost) : effCost;
+              const isFree = isReduced && effCost === 0 && bonusEffCost === 0;
               const chipKey = `${c}-${isFree ? 'free' : effCost}`;
               return (
                 <motion.div
@@ -4021,6 +4026,7 @@ export default function GameBoard() {
                           onTap={() => openCardSheet(c, false)}
                           tapped={selectedCard?.card.id === c.id}
                           effectiveCosts={computeCosts(c, costMode)}
+                          bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
                         />
                       </motion.div>
                       {isQueued && <QueuedOverlay />}
@@ -4034,6 +4040,9 @@ export default function GameBoard() {
                 if (marketCompact) {
                   const effCosts = computeCosts(c, costMode) ?? c.cost;
                   const costEntries = CRYSTALS.filter(k => (effCosts[k as keyof CrystalCounts] ?? 0) > 0);
+                  // "free" only when permanent bonuses alone zero out the cost — not when tokens happen to cover it.
+                  const bonusOnlyCosts = computeCosts(c, 'after_bonuses') ?? c.cost;
+                  const isTrulyFree = CRYSTALS.every(k => (bonusOnlyCosts[k as keyof CrystalCounts] ?? 0) === 0);
                   const bonusMeta = GEM_META[c.bonusColor as GemKey];
                   const isTapped = selectedCard?.card.id === c.id;
                   return (
@@ -4061,9 +4070,9 @@ export default function GameBoard() {
                               <MiniGem color={k as GemKey} size={8} />
                               <span className="text-[7px] font-bold text-white/60 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
                             </div>
-                          )) : (
+                          )) : isTrulyFree ? (
                             <span className="text-[8px] text-white/30 leading-none">free</span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                       {isQueued && <QueuedOverlay />}
@@ -4089,6 +4098,7 @@ export default function GameBoard() {
                       onTap={() => openCardSheet(c, false)}
                       tapped={selectedCard?.card.id === c.id}
                       effectiveCosts={computeCosts(c, costMode)}
+                      bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
                     />
                     {showTutorialGlow && (
                       <div
@@ -5557,7 +5567,9 @@ export default function GameBoard() {
                         const effCosts = me ? computeCosts(selectedCard.card, costMode) as Record<string, number> : undefined;
                         const effCost = effCosts ? (effCosts[c] ?? 0) : baseCost;
                         const isReduced = effCosts !== undefined && effCost < baseCost;
-                        const isFree = isReduced && effCost === 0;
+                        const bonusOnlyForSheet = me ? computeCosts(selectedCard.card, 'after_bonuses') as Record<string, number> | undefined : undefined;
+                        const bonusEffCostSheet = bonusOnlyForSheet ? (bonusOnlyForSheet[c] ?? baseCost) : effCost;
+                        const isFree = isReduced && effCost === 0 && bonusEffCostSheet === 0;
                         return (
                           <div key={c} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}>
                             {isReduced && !isFree && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
@@ -6998,6 +7010,7 @@ export default function GameBoard() {
                   <div className="flex flex-col gap-2">
                     {me.reservedCards.map((c) => {
                       const ec = computeCosts(c, costMode);
+                      const ecBonus = computeCosts(c, 'after_bonuses') ?? undefined;
                       const canBuy = canAffordCard(c, me);
                       return (
                         <button
@@ -7014,6 +7027,7 @@ export default function GameBoard() {
                             card={c}
                             tier={c.tier}
                             effectiveCosts={ec}
+                            bonusCosts={ecBonus}
                             tapped={false}
                           />
                           <div className="flex-1 flex flex-col gap-1.5 min-w-0">
