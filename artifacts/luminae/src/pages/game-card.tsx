@@ -232,25 +232,28 @@ export function ArtifactCardView({
               // If bonusCosts is provided (needed_now mode), check the bonus-only cost; otherwise fall back to effCost.
               const bonusEffCost = bonusCosts !== undefined ? (bonusCosts[c as GemKey] ?? baseCost) : effCost;
               const isFree = isReduced && effCost === 0 && bonusEffCost === 0;
-              const chipKey = `${c}-${isFree ? 'free' : effCost}`;
+              // In needed_now mode, effCost=0 means the player has enough right now — show ✓ visually but do not set isFree (backend uses isFree for pricing).
+              const isNeededCovered = hideStrike && effCost === 0 && !isFree;
+              const isGreen = isFree || isNeededCovered;
+              const chipKey = `${c}-${isFree ? 'free' : isNeededCovered ? 'covered' : effCost}`;
               return (
                 <motion.div
                   key={chipKey}
-                  initial={{ scale: isFree ? 1.85 : isReduced ? 1.35 : 1, opacity: isFree || isReduced ? 0 : 1 }}
+                  initial={{ scale: isGreen ? 1.85 : isReduced ? 1.35 : 1, opacity: isGreen || isReduced ? 0 : 1 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={isFree
+                  transition={isGreen
                     ? { type: 'spring', stiffness: 480, damping: 13, mass: 0.55 }
                     : isReduced
                       ? { type: 'spring', stiffness: 340, damping: 24, mass: 0.65 }
                       : { duration: 0 }
                   }
-                  className={`flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}
+                  className={`flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 ${isGreen ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}
                 >
-                  {isReduced && !isFree && !hideStrike && (
+                  {isReduced && !isGreen && !hideStrike && (
                     <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>
                   )}
-                  <span className={`text-[10px] font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>
-                    {isFree ? '✓' : effCost}
+                  <span className={`text-[10px] font-bold ${isGreen ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>
+                    {isGreen ? '✓' : effCost}
                   </span>
                   <MiniGem color={c} size={10} />
                 </motion.div>
