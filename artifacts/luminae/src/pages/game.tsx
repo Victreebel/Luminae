@@ -163,7 +163,7 @@ export default function GameBoard() {
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [harvestBurstKeys, setHarvestBurstKeys] = useState<Partial<Record<GemKey, number>>>({});
   const [harvestBlockedKeys, setHarvestBlockedKeys] = useState<Partial<Record<GemKey, number>>>({});
-  const pendingHarvestCheckRef = useRef<{ gems: GemKey[]; preCrystals: Partial<CrystalCounts> } | null>(null);
+  const pendingHarvestCheckRef = useRef<{ gems: GemKey[]; preCrystals: Partial<CrystalCounts>; tally: Partial<CrystalCounts> } | null>(null);
   const [crystalHistory, setCrystalHistory] = useState<Array<keyof CrystalCounts>>([]);
   const [prePromotionHistory, setPrePromotionHistory] = useState<Array<keyof CrystalCounts> | null>(null);
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
@@ -2448,6 +2448,7 @@ export default function GameBoard() {
       pendingHarvestCheckRef.current = {
         gems: Object.keys(selectedCrystals) as GemKey[],
         preCrystals: { ...me.crystals },
+        tally: { ...selectedCrystals },
       };
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
@@ -2457,6 +2458,7 @@ export default function GameBoard() {
       pendingHarvestCheckRef.current = {
         gems: Object.keys(selectedCrystals) as GemKey[],
         preCrystals: { ...me.crystals },
+        tally: { ...selectedCrystals },
       };
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
@@ -2481,6 +2483,7 @@ export default function GameBoard() {
     pendingHarvestCheckRef.current = {
       gems: Object.keys(returnPhase.pendingTake) as GemKey[],
       preCrystals: { ...me.crystals },
+      tally: { ...returnPhase.pendingTake },
     };
     if (returnPhase.actionType === 'take3') {
       executeAction({ type: 'take_three_crystals', crystals: returnPhase.pendingTake, returnCrystals: returnSelections });
@@ -2510,12 +2513,16 @@ export default function GameBoard() {
     const afterBonus = effectiveCost(card, me) as Record<string, number>;
     if (mode === 'after_bonuses') return afterBonus as Partial<Record<GemKey, number>>;
     // 'needed_now': after bonuses, subtract held tokens + pre-harvest tally, clamp >= 0
+    // Use pendingHarvestCheckRef.tally when selectedCrystals has already been cleared
+    // (executeAction resets it synchronously) but me.crystals hasn't updated yet —
+    // prevents a one-render flash to higher costs on harvest submission.
+    const activeTally = pendingHarvestCheckRef.current?.tally ?? selectedCrystals;
     const out: Partial<Record<GemKey, number>> = {};
     for (const c of CRYSTALS) {
       if (c === 'flux') continue;
       const eff = afterBonus[c] ?? 0;
       const held = me.crystals[c as keyof CrystalCounts] ?? 0;
-      const harvest = selectedCrystals[c as keyof CrystalCounts] ?? 0;
+      const harvest = activeTally[c as keyof CrystalCounts] ?? 0;
       out[c as GemKey] = Math.max(0, eff - held - harvest);
     }
     return out;
