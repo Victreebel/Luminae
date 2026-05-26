@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 const TOTAL = 2.7;
 const COMPLETE_DELAY = 2.75;
@@ -10,6 +11,9 @@ interface Props {
 
 export function ThresholdCinematic({ onComplete }: Props) {
   const prefersReducedMotion = useReducedMotion();
+  const containerRef = useRef<HTMLElement | null>(null);
+
+  useFocusTrap(containerRef, true, onComplete, { handleEscape: false });
 
   useEffect(() => {
     const t = setTimeout(onComplete, COMPLETE_DELAY * 1000);
@@ -18,7 +22,15 @@ export function ThresholdCinematic({ onComplete }: Props) {
 
   if (prefersReducedMotion) {
     return (
-      <div className="fixed inset-0 z-[200]" style={{ background: "#04020f" }}>
+      <div
+        ref={(el) => { containerRef.current = el; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Loading cinematic"
+        className="fixed inset-0 z-[200]"
+        style={{ background: "#04020f", outline: "none" }}
+        tabIndex={0}
+      >
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -31,8 +43,13 @@ export function ThresholdCinematic({ onComplete }: Props) {
 
   return (
     <div
+      ref={(el) => { containerRef.current = el; }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Loading cinematic"
       className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
-      style={{ background: "#04020f" }}
+      style={{ background: "#04020f", outline: "none" }}
+      tabIndex={0}
     >
       {/* Blur-frost over home — quickly desaturates and smears the home content */}
       <motion.div
