@@ -2472,6 +2472,13 @@ export default function GameBoard() {
         tally: { ...selectedCrystals },
         submittedVersion: state!.version,
       };
+      // Clear selection immediately so AffinityWell drops the colored gem-slot
+      // borders right away. selectedCrystals closure value is still correct for
+      // the executeAction call below (setState is batched, not synchronous).
+      setSelectedCrystals({});
+      setCrystalHistory([]);
+      setPrePromotionHistory(null);
+      setActionMode('none');
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
@@ -2483,6 +2490,10 @@ export default function GameBoard() {
         tally: { ...selectedCrystals },
         submittedVersion: state!.version,
       };
+      setSelectedCrystals({});
+      setCrystalHistory([]);
+      setPrePromotionHistory(null);
+      setActionMode('none');
       executeAction({ type: 'take_two_crystals', crystal: Object.keys(selectedCrystals)[0] });
       flashSent('harness');
     }
