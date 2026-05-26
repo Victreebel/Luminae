@@ -2512,11 +2512,22 @@ export default function GameBoard() {
     if (mode === 'printed') return undefined;
     const afterBonus = effectiveCost(card, me) as Record<string, number>;
     if (mode === 'after_bonuses') return afterBonus as Partial<Record<GemKey, number>>;
-    // 'needed_now': after bonuses, subtract held tokens + pre-harvest tally, clamp >= 0
-    // Use pendingHarvestCheckRef.tally when selectedCrystals has already been cleared
-    // (executeAction resets it synchronously) but me.crystals hasn't updated yet —
-    // prevents a one-render flash to higher costs on harvest submission.
-    const activeTally = pendingHarvestCheckRef.current?.tally ?? selectedCrystals;
+    // 'needed_now': after bonuses, subtract held tokens + pre-harvest tally, clamp >= 0.
+    // Strategy: use pendingHarvestCheckRef.tally only while the server update hasn't
+    // landed yet. We know the update has landed when me.crystals has moved past the
+    // pre-snapshot for at least one of the harvested gems. This covers two gaps:
+    //   (a) selectedCrystals is cleared synchronously by executeAction before the
+    //       server response arrives — tally keeps costs stable in that window.
+    //   (b) me.crystals updates before the useEffect clears the ref — the alreadyLanded
+    //       check prevents a one-frame double-deduction (tally + updated held).
+    const check = pendingHarvestCheckRef.current;
+    let activeTally: Partial<CrystalCounts> = selectedCrystals;
+    if (check?.tally && check?.preCrystals) {
+      const alreadyLanded = Object.keys(check.tally).some(
+        g => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals![g as keyof CrystalCounts] ?? 0),
+      );
+      if (!alreadyLanded) activeTally = check.tally;
+    }
     const out: Partial<Record<GemKey, number>> = {};
     for (const c of CRYSTALS) {
       if (c === 'flux') continue;
