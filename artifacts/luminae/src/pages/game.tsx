@@ -5295,6 +5295,7 @@ export default function GameBoard() {
                     <Sparkles className="h-3 w-3" />{selectedCard.card.lumens}
                   </span>
                 )}
+                <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -6608,9 +6609,12 @@ export default function GameBoard() {
               </div>
               <div className="px-5 pb-2 flex items-center justify-between">
                 <h2 className="text-lg font-serif font-bold">How to Play</h2>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowRules(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowRules(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div {...rulesSheetScrollableProps} className="px-5 overflow-y-auto max-h-[60vh] space-y-4 pb-4">
                 {[
@@ -6730,9 +6734,12 @@ export default function GameBoard() {
                   <Bookmark className="h-4 w-4 text-muted-foreground" />
                   Encrypted Artifacts ({me.reservedCards.length}/3)
                 </h2>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowReservedOverlay(false)}>
-                  <X className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowReservedOverlay(false)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
               <div
                 {...reservedSheetScrollableProps}
@@ -6843,6 +6850,7 @@ export default function GameBoard() {
                       show all
                     </button>
                   )}
+                  <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
                   <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close forged artifacts" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
