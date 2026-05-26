@@ -1186,50 +1186,44 @@ function useScrollLock(
   }, [isAnyOpen]);
 }
 
-// --- Compact market ghost: renders via portal so it escapes overflow-hidden ancestors ---
-// The market row has overflow-x:auto which forces overflow-y:auto too, clipping any
-// absolute child that goes above the row.  A fixed-position portal renders in the
-// viewport layer and is never clipped.
-function CompactCardGhost({ cardViewProps }: { cardViewProps: React.ComponentProps<typeof ArtifactCardView> }) {
-  const anchorRef = useRef<HTMLDivElement>(null);
-  const [chipRect, setChipRect] = useState<DOMRect | null>(null);
-
+// --- Compact market ghost: fire-and-forget portal that escapes all overflow containers ---
+// Accepts the chip's pre-measured DOMRect so it doesn't need to touch the DOM itself.
+// Self-destructs after the animation finishes via onDone — it is NOT tied to flippingCards,
+// so the pre-cleanup that clears flippingCards on the next action cannot kill it early.
+function CompactCardGhost({
+  cardViewProps,
+  chipRect,
+  onDone,
+}: {
+  cardViewProps: React.ComponentProps<typeof ArtifactCardView>;
+  chipRect: DOMRect;
+  onDone: () => void;
+}) {
   useEffect(() => {
-    const el = anchorRef.current;
-    if (!el) return;
-    setChipRect(el.getBoundingClientRect());
-  }, []);
+    // delay(0.5s) + duration(5s) + buffer(300ms)
+    const t = setTimeout(onDone, 5800);
+    return () => clearTimeout(t);
+  }, [onDone]);
 
-  return (
-    <>
-      {/* Zero-size anchor positioned on the chip slot so we can read its screen rect */}
-      <div ref={anchorRef} className="absolute inset-0 pointer-events-none" />
-      {chipRect && createPortal(
-        <motion.div
-          className="pointer-events-none rounded-xl overflow-hidden"
-          style={{
-            position: 'fixed',
-            // Start the card so its top-left corner is 170 px above the chip slot
-            top: chipRect.top - 170,
-            left: chipRect.left,
-            width: 'var(--card-w)',
-            height: 'var(--card-h)',
-            transformOrigin: 'top left',
-            zIndex: 9999,
-          }}
-          initial={{ scale: 1, y: 0, opacity: 1 }}
-          animate={{ scale: 0.47, y: 170, opacity: 0 }}
-          transition={{
-            duration: 5,
-            delay: 0.5,
-            ease: 'linear',
-          }}
-        >
-          <ArtifactCardView {...cardViewProps} />
-        </motion.div>,
-        document.body,
-      )}
-    </>
+  return createPortal(
+    <motion.div
+      className="pointer-events-none rounded-xl overflow-hidden"
+      style={{
+        position: 'fixed',
+        top: chipRect.top - 170,
+        left: chipRect.left,
+        width: 'var(--card-w)',
+        height: 'var(--card-h)',
+        transformOrigin: 'top left',
+        zIndex: 9999,
+      }}
+      initial={{ scale: 1, y: 0, opacity: 1 }}
+      animate={{ scale: 0.47, y: 170, opacity: 0 }}
+      transition={{ duration: 5, delay: 0.5, ease: 'linear' }}
+    >
+      <ArtifactCardView {...cardViewProps} />
+    </motion.div>,
+    document.body,
   );
 }
 
@@ -1510,6 +1504,12 @@ export default function GameBoard() {
   // card transitions directly from "in slot" to "flying in overlay" with no flash.
   const [burstGhostCards, setBurstGhostCards] = useState<Record<string, ArtifactCard>>({});
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
+  // Fire-and-forget ghost independent of flippingCards so pre-cleanup can't kill it mid-flight.
+  const [compactGhost, setCompactGhost] = useState<{
+    id: string;
+    cardViewProps: React.ComponentProps<typeof ArtifactCardView>;
+    chipRect: DOMRect;
+  } | null>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
     tier: number;
@@ -2303,6 +2303,11 @@ export default function GameBoard() {
                       setAnimEndTime(5800);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
+                      if (marketCompact) {
+                        const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                        const slotR = slotEl?.getBoundingClientRect();
+                        if (slotR) setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
+                      }
                       const t2 = setTimeout(() => {
                         if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
                         setFlippingCards(new Set());
@@ -2381,6 +2386,11 @@ export default function GameBoard() {
                       setAnimEndTime(5800);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
+                      if (marketCompact) {
+                        const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                        const slotR = slotEl?.getBoundingClientRect();
+                        if (slotR) setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
+                      }
                       const t2 = setTimeout(() => {
                         if (cardActionBurstKeyRef.current !== seq) return;
                         setFlippingCards(new Set());
@@ -2467,6 +2477,11 @@ export default function GameBoard() {
                     setAnimEndTime(5800);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
+                    if (marketCompact) {
+                      const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                      const slotR = slotEl?.getBoundingClientRect();
+                      if (slotR) setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
+                    }
                     const t2 = setTimeout(() => {
                       if (cipherBurstKeyRef.current !== cipherSeq) return;
                       setFlippingCards(new Set());
@@ -4161,8 +4176,7 @@ export default function GameBoard() {
                           </div>
                         </div>
 
-                        {/* Ghost: portal-rendered so it escapes overflow-hidden ancestors */}
-                        <CompactCardGhost cardViewProps={cardViewProps} />
+                        {/* Ghost is rendered at top-level via compactGhost state — see bottom of JSX */}
 
                         {isQueued && <QueuedOverlay />}
                       </div>
@@ -7765,7 +7779,15 @@ export default function GameBoard() {
         />
       )}
 
-
+      {/* Compact market ghost — fire-and-forget, independent of flippingCards lifecycle */}
+      {compactGhost && (
+        <CompactCardGhost
+          key={compactGhost.id}
+          cardViewProps={compactGhost.cardViewProps}
+          chipRect={compactGhost.chipRect}
+          onDone={() => setCompactGhost(null)}
+        />
+      )}
     </div>
   );
 }
