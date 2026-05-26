@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation, useParams } from "wouter";
 import {
   useStartGame,
@@ -152,6 +153,10 @@ export default function Lobby() {
       toast({ variant: "destructive", title: "Could not add AI player", description: err.message });
     }
   };
+
+  useEscapeToClose([
+    { isOpen: friendsOpen, onClose: () => setFriendsOpen(false) },
+  ]);
 
   const fetchFriends = useCallback(async () => {
     const token = getAccountToken();

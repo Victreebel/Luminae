@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
 import { loadTutorialProgress, clearTutorialProgress, hasTutorialBeenCompleted, getIntroSeenBeat, clearIntroSeen } from "@/lib/tutorialProgress";
 import { TUTORIAL_BEATS } from "@/lib/tutorialData";
@@ -82,6 +83,13 @@ export default function Home() {
   const [turnTimer, setTurnTimer] = useState<string>("0");
   const [playerName, setPlayerName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+
+  useEscapeToClose([
+    { isOpen: showCinematic,     onClose: () => setShowCinematic(false) },
+    { isOpen: showTutorialModal, onClose: () => setShowTutorialModal(false) },
+    { isOpen: showAvatarPicker,  onClose: () => setShowAvatarPicker(false) },
+    { isOpen: confirmLogout,     onClose: () => setConfirmLogout(false) },
+  ]);
 
   // If account user has active games, redirect to dashboard; otherwise stay on home with name prefilled
   useEffect(() => {

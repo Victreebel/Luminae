@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -319,6 +320,10 @@ function DashboardContent() {
       setQuittingId(null);
     }
   };
+
+  useEscapeToClose([
+    { isOpen: friendsOpen, onClose: () => setFriendsOpen(false) },
+  ]);
 
   const handleChallengeCreated = (roomId: string, inviteCode: string, sessionToken: string, playerId: string) => {
     saveSession({

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { consumePendingStartBeat } from "@/lib/tutorialStartBeat";
@@ -71,6 +72,10 @@ export default function Tutorial() {
       navigate("/");
     }
   }
+
+  useEscapeToClose([
+    { isOpen: phase === "prompt", onClose: () => handleChoice("cancel") },
+  ]);
 
   if (isLoading) return <AccountLoadingScreen />;
 

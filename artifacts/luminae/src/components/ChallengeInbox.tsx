@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,10 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
       // silently fail
     }
   }, [token]);
+
+  useEscapeToClose([
+    { isOpen, onClose: () => setIsOpen(false) },
+  ]);
 
   // Poll every 20 seconds for new challenges
   useEffect(() => {
