@@ -4078,21 +4078,24 @@ export default function GameBoard() {
                 const isQueued = plannedCardId === c.id;
                 if (isFlipping) {
                   // In compact mode keep the slot at chip dimensions to prevent reflow.
+                  // Use a scale-shrink-in instead of a 3D flip — the chip starts slightly
+                  // zoomed and drifts down into its slot position, avoiding the clip/pop
+                  // that a rotateY flip produces inside overflow-hidden at this small size.
                   if (marketCompact) {
                     return (
-                      <div
+                      <motion.div
                         key={c.id}
                         data-card-id={c.id}
                         className="relative shrink-0 overflow-hidden rounded-lg"
-                        style={{ width: 56, height: 78, perspective: '400px' }}
+                        initial={{ scale: 1.3, opacity: 0, y: -8 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                        style={{ width: 56, height: 78 }}
                         {...(cardFocusProps ?? {})}
                       >
-                        <motion.div
-                          initial={{ rotateY: 180, scale: 0.85 }}
-                          animate={{ rotateY: 0, scale: 1 }}
-                          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                        <div
                           className="absolute inset-0 scale-[0.47] origin-top-left"
-                          style={{ transformStyle: 'preserve-3d', width: 'var(--card-w)', height: 'var(--card-h)' }}
+                          style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}
                         >
                           <ArtifactCardView
                             card={c}
@@ -4102,9 +4105,9 @@ export default function GameBoard() {
                             effectiveCosts={computeCosts(c, costMode)}
                             bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
                           />
-                        </motion.div>
+                        </div>
                         {isQueued && <QueuedOverlay />}
-                      </div>
+                      </motion.div>
                     );
                   }
                   return (
