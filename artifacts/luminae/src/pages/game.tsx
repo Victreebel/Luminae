@@ -4087,9 +4087,9 @@ export default function GameBoard() {
                         key={c.id}
                         data-card-id={c.id}
                         className="relative shrink-0 overflow-hidden rounded-lg"
-                        initial={{ scale: 1.3, opacity: 0, y: -8 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                        initial={{ scale: 1.25, opacity: 0, y: -6, filter: 'blur(5px)' }}
+                        animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
                         style={{ width: 56, height: 78 }}
                         {...(cardFocusProps ?? {})}
                       >
