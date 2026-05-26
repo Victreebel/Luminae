@@ -140,18 +140,21 @@ function OpponentChip({
   player,
   isActive,
   isLocalTurn,
+  absorbPulse = 0,
 }: {
   player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
   isActive: boolean;
   isLocalTurn: boolean;
+  absorbPulse?: number;
 }) {
   const dimmed = !isActive && !isLocalTurn;
   return (
     <motion.div
+      data-opponent-chip={player.playerId}
       initial={false}
       animate={isActive ? 'active' : 'idle'}
       variants={opponentTurnVariants}
-      className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
+      className={`relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
         isActive
           ? 'ring-1 ring-primary bg-primary/10 text-foreground'
           : dimmed
@@ -159,6 +162,18 @@ function OpponentChip({
           : 'bg-secondary/60 text-muted-foreground'
       }`}
     >
+      <AnimatePresence>
+        {absorbPulse > 0 && (
+          <motion.span
+            key={absorbPulse}
+            className="pointer-events-none absolute inset-[-2px] rounded-full"
+            initial={{ boxShadow: '0 0 0 2px rgba(99,102,241,0.75), 0 0 14px 5px rgba(99,102,241,0.45)' }}
+            animate={{ boxShadow: '0 0 0 5px rgba(99,102,241,0), 0 0 20px 10px rgba(99,102,241,0)' }}
+            exit={{}}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
       <PlayerAvatar avatarId={player.avatarId} name={player.playerName} size={20} />
       {isActive && player.isAi ? (
         <svg className="h-2.5 w-2.5 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
@@ -1268,6 +1283,17 @@ export default function GameBoard() {
   /** Pulse rings that appear on the Hand tab when a forged card is absorbed. */
   const [handAbsorbBurst, setHandAbsorbBurst] = useState<{ key: number; x: number; y: number } | null>(null);
   const handAbsorbKeyRef = useRef(0);
+  /** Opponent forge fly-to-chip animation — card shrinks and flies into the opponent's chip. */
+  const [opponentForgeAbsorb, setOpponentForgeAbsorb] = useState<{
+    key: number;
+    card: ArtifactCard;
+    tier: number;
+    startRect: { x: number; y: number; w: number; h: number };
+    chipCenter: { x: number; y: number };
+  } | null>(null);
+  const opponentForgeAbsorbKeyRef = useRef(0);
+  /** Per-opponent chip absorption pulse key — increment to flash the chip ring. */
+  const [chipAbsorbPulse, setChipAbsorbPulse] = useState<Record<string, number>>({});
   const planSubmitInFlight = useRef(false);
   const [gemBurst, setGemBurst] = useState<{
     key: number;
@@ -2168,43 +2194,183 @@ export default function GameBoard() {
             const gotFlux = action.type === 'reserve_card' &&
               (newState.crystalBank.flux ?? 0) < (prev.crystalBank.flux ?? 0);
 
-            cardActionBurstKeyRef.current += 1;
-            setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
+            // Common pre-cleanup: cancel any in-flight card animations before starting new ones.
+            for (const t of cardAnimTimersRef.current) clearTimeout(t);
+            cardAnimTimersRef.current = [];
+            setHiddenSlots(new Set());
+            setFlippingCards(new Set());
+            setDealingCard(null);
 
-            // Capture hand tab centre before setCardActionBurst so we can
-            // schedule the absorption pulse after t1 without closing over stale refs.
-            let burstDestPos: { x: number; y: number } | undefined;
+            const slotKey = `${tier}-${idx}`;
+
             if (action.type === 'purchase_card') {
-              // For the local player's forge, look up the Hand nav tab so the
-              // card can fly into it at the end of the burst animation.
               const isLocalPurch =
                 (action.playerId as string | undefined) === session?.playerId;
-              const handTabEl = isLocalPurch
-                ? document.querySelector('[data-nav-hand]')
-                : null;
-              const handTabR = handTabEl?.getBoundingClientRect();
-              burstDestPos = handTabR
-                ? {
-                    x: handTabR.left + handTabR.width / 2,
-                    y: handTabR.top + handTabR.height / 2,
+
+              if (!isLocalPurch) {
+                // ── Opponent forge: card shrinks and flies into their chip ──────
+                const actingPlayerId = action.playerId as string;
+                const chipEl = document.querySelector(`[data-opponent-chip="${actingPlayerId}"]`);
+                const chipR = chipEl?.getBoundingClientRect();
+                const chipCenter = chipR
+                  ? { x: chipR.left + chipR.width / 2, y: chipR.top + chipR.height / 2 }
+                  : { x: window.innerWidth / 2, y: 28 };
+
+                opponentForgeAbsorbKeyRef.current += 1;
+                const absorbSeq = opponentForgeAbsorbKeyRef.current;
+                setAnimEndTime(900); // 650ms fly + 250ms pulse buffer
+                setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
+                setOpponentForgeAbsorb({
+                  key: absorbSeq,
+                  card: exitCard,
+                  tier,
+                  startRect: rect
+                    ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+                    : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                  chipCenter,
+                });
+                setHiddenSlots(new Set([slotKey]));
+                gameAudio.playCardPurchased();
+                const bonusColor = exitCard.bonusColor as GemKey;
+                if (bonusColor && bonusColor !== 'flux') {
+                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 750);
+                  cardAnimTimersRef.current.push(tBonus);
+                }
+                const newCard = marketsNew[tier][idx];
+                const tOpponent = setTimeout(() => {
+                  if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
+                  setOpponentForgeAbsorb(null);
+                  // Flash the chip with an absorption pulse ring.
+                  setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
+                  if (newCard) {
+                    const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+                    const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                    const deckR = deckEl?.getBoundingClientRect();
+                    const slotR = slotEl?.getBoundingClientRect();
+                    if (deckR && slotR) {
+                      setAnimEndTime(1700); // extend lock for 1500ms deal animation
+                      const _dx = slotR.left - deckR.left;
+                      const _dy = slotR.top  - deckR.top;
+                      const _arcY = Math.min(_dy - 60, -40);
+                      setDealingCard({
+                        card: newCard,
+                        tier,
+                        deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                        slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                        animX: [0, _dx * 0.5, _dx],
+                        animY: [0, _arcY, _dy],
+                        animRotateY: [0, 90, 180],
+                        animScale: [1, 1.08, 1],
+                      });
+                      gameAudio.playCardDraw();
+                    } else {
+                      setAnimEndTime(900);
+                      setFlippingCards(new Set([newCard.id]));
+                      gameAudio.playCardDraw();
+                      const t2 = setTimeout(() => {
+                        if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
+                        setFlippingCards(new Set());
+                        setHiddenSlots(new Set());
+                      }, 800);
+                      cardAnimTimersRef.current.push(t2);
+                    }
+                  } else {
+                    setHiddenSlots(new Set());
                   }
-                : undefined;
-              setBurstGhostCards(prev => { const n = { ...prev }; delete n[`${tier}-${idx}`]; return n; });
-              setCardActionBurst({
-                key: cardActionBurstKeyRef.current,
-                card: exitCard,
-                tier,
-                actionType: 'purchase',
-                playerName: player?.playerName ?? 'Unknown',
-                avatarId: player?.avatarId ?? null,
-                lumens: exitCard.lumens ?? 0,
-                gotFlux: false,
-                startRect: rect
-                  ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-                  : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
-                destPos: burstDestPos,
-              });
-              gameAudio.playCardPurchased();
+                }, 650);
+                cardAnimTimersRef.current.push(tOpponent);
+              } else {
+                // ── Local player forge: full celebration burst ──────────────────
+                cardActionBurstKeyRef.current += 1;
+                setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
+                const handTabEl = document.querySelector('[data-nav-hand]');
+                const handTabR = handTabEl?.getBoundingClientRect();
+                const burstDestPos: { x: number; y: number } | undefined = handTabR
+                  ? { x: handTabR.left + handTabR.width / 2, y: handTabR.top + handTabR.height / 2 }
+                  : undefined;
+                setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
+                setCardActionBurst({
+                  key: cardActionBurstKeyRef.current,
+                  card: exitCard,
+                  tier,
+                  actionType: 'purchase',
+                  playerName: player?.playerName ?? 'Unknown',
+                  avatarId: player?.avatarId ?? null,
+                  lumens: exitCard.lumens ?? 0,
+                  gotFlux: false,
+                  startRect: rect
+                    ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
+                    : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                  destPos: burstDestPos,
+                });
+                gameAudio.playCardPurchased();
+                const bonusColor = exitCard.bonusColor as GemKey;
+                if (bonusColor && bonusColor !== 'flux') {
+                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 2500);
+                  cardAnimTimersRef.current.push(tBonus);
+                }
+                setHiddenSlots(new Set([slotKey]));
+                const seq = cardActionBurstKeyRef.current;
+                const newCard = marketsNew[tier][idx];
+                const t1 = setTimeout(() => {
+                  if (cardActionBurstKeyRef.current !== seq) return;
+                  setCardActionBurst(null);
+                  if (newCard) {
+                    const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+                    const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                    const deckR = deckEl?.getBoundingClientRect();
+                    const slotR = slotEl?.getBoundingClientRect();
+                    if (deckR && slotR) {
+                      setAnimEndTime(1700); // extend lock to cover the 1500ms deal animation
+                      const _dx = slotR.left - deckR.left;
+                      const _dy = slotR.top  - deckR.top;
+                      const _arcY = Math.min(_dy - 60, -40);
+                      setDealingCard({
+                        card: newCard,
+                        tier,
+                        deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                        slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                        // Stable animate arrays — computed once so re-renders don't
+                        // create new references and accidentally restart the animation.
+                        animX: [0, _dx * 0.5, _dx],
+                        animY: [0, _arcY, _dy],
+                        animRotateY: [0, 90, 180],
+                        animScale: [1, 1.08, 1],
+                      });
+                      gameAudio.playCardDraw();
+                    } else {
+                      // Fallback: flip in place if DOM elements not found.
+                      // Keep the slot hidden until the flip completes — do NOT clear
+                      // hiddenSlots immediately or the new card pops in before the flip.
+                      setAnimEndTime(900);
+                      setFlippingCards(new Set([newCard.id]));
+                      gameAudio.playCardDraw();
+                      const t2 = setTimeout(() => {
+                        if (cardActionBurstKeyRef.current !== seq) return;
+                        setFlippingCards(new Set());
+                        setHiddenSlots(new Set());
+                      }, 800);
+                      cardAnimTimersRef.current.push(t2);
+                    }
+                  } else {
+                    setHiddenSlots(new Set());
+                  }
+                }, 3500);
+                cardAnimTimersRef.current.push(t1);
+                // Hand-panel absorption pulse — fires as the card reaches the tab.
+                // Timed 300ms before the burst clears so the rings are visually
+                // centred on the moment of arrival.
+                if (burstDestPos) {
+                  const dp = burstDestPos;
+                  const tAbsorb = setTimeout(() => {
+                    if (cardActionBurstKeyRef.current !== seq) return;
+                    handAbsorbKeyRef.current += 1;
+                    setHandAbsorbBurst({ key: handAbsorbKeyRef.current, x: dp.x, y: dp.y });
+                    setTimeout(() => setHandAbsorbBurst(null), 900);
+                  }, 3200);
+                  cardAnimTimersRef.current.push(tAbsorb);
+                }
+              }
             } else {
               // reserve_card with cardId → Cipher Aperture animation; flies to Singularity panel
               cipherBurstKeyRef.current += 1;
@@ -2230,90 +2396,102 @@ export default function GameBoard() {
                   ? { x: destElRect.left + destElRect.width / 2, y: destElRect.top + destElRect.height / 2 }
                   : undefined,
               });
-              setBurstGhostCards(prev => { const n = { ...prev }; delete n[`${tier}-${idx}`]; return n; }); // cipher burst now owns the card
+              setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
-            }
-
-            for (const t of cardAnimTimersRef.current) clearTimeout(t);
-            cardAnimTimersRef.current = [];
-            setHiddenSlots(new Set());
-            setFlippingCards(new Set());
-            setDealingCard(null);
-
-            if (action.type === 'purchase_card') {
-              const bonusColor = exitCard.bonusColor as GemKey;
-              if (bonusColor && bonusColor !== 'flux') {
-                const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 2500);
-                cardAnimTimersRef.current.push(tBonus);
-              }
-            }
-
-            const slotKey = `${tier}-${idx}`;
-            setHiddenSlots(new Set([slotKey]));
-
-            const seq = cardActionBurstKeyRef.current;
-            const newCard = marketsNew[tier][idx];
-            const t1 = setTimeout(() => {
-              if (cardActionBurstKeyRef.current !== seq) return;
-              setCardActionBurst(null);
-              if (newCard) {
-                const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
-                const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
-                const deckR = deckEl?.getBoundingClientRect();
-                const slotR = slotEl?.getBoundingClientRect();
-                if (deckR && slotR) {
-                  setAnimEndTime(1700); // extend lock to cover the 1500ms deal animation
-                  const _dx = slotR.left - deckR.left;
-                  const _dy = slotR.top  - deckR.top;
-                  const _arcY = Math.min(_dy - 60, -40);
-                  setDealingCard({
-                    card: newCard,
-                    tier,
-                    deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
-                    slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
-                    // Stable animate arrays — computed once so re-renders don't
-                    // create new references and accidentally restart the animation.
-                    animX: [0, _dx * 0.5, _dx],
-                    animY: [0, _arcY, _dy],
-                    animRotateY: [0, 90, 180],
-                    animScale: [1, 1.08, 1],
-                  });
-                  gameAudio.playCardDraw();
+              setAnimEndTime(5400); // cipher animation + deal-from-deck + buffer
+              setHiddenSlots(new Set([slotKey]));
+              // Deal replacement card from deck after the cipher aperture animation clears.
+              const cipherSeq = cipherBurstKeyRef.current;
+              const cipherNewCard = marketsNew[tier][idx];
+              const tCipherDeal = setTimeout(() => {
+                if (cipherBurstKeyRef.current !== cipherSeq) return;
+                if (cipherNewCard) {
+                  const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+                  const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                  const deckR = deckEl?.getBoundingClientRect();
+                  const slotR = slotEl?.getBoundingClientRect();
+                  if (deckR && slotR) {
+                    setAnimEndTime(1700);
+                    const _dx = slotR.left - deckR.left;
+                    const _dy = slotR.top  - deckR.top;
+                    const _arcY = Math.min(_dy - 60, -40);
+                    setDealingCard({
+                      card: cipherNewCard,
+                      tier,
+                      deckRect: { x: deckR.left, y: deckR.top, w: deckR.width, h: deckR.height },
+                      slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                      animX: [0, _dx * 0.5, _dx],
+                      animY: [0, _arcY, _dy],
+                      animRotateY: [0, 90, 180],
+                      animScale: [1, 1.08, 1],
+                    });
+                    gameAudio.playCardDraw();
+                  } else {
+                    setAnimEndTime(900);
+                    setFlippingCards(new Set([cipherNewCard.id]));
+                    gameAudio.playCardDraw();
+                    const t2 = setTimeout(() => {
+                      if (cipherBurstKeyRef.current !== cipherSeq) return;
+                      setFlippingCards(new Set());
+                      setHiddenSlots(new Set());
+                    }, 800);
+                    cardAnimTimersRef.current.push(t2);
+                  }
                 } else {
-                  // Fallback: flip in place if DOM elements not found.
-                  // Keep the slot hidden until the flip completes — do NOT clear
-                  // hiddenSlots immediately or the new card pops in before the flip.
-                  setAnimEndTime(900);
-                  setFlippingCards(new Set([newCard.id]));
-                  gameAudio.playCardDraw();
-                  const t2 = setTimeout(() => {
-                    if (cardActionBurstKeyRef.current !== seq) return;
-                    setFlippingCards(new Set());
-                    setHiddenSlots(new Set());
-                  }, 800);
-                  cardAnimTimersRef.current.push(t2);
+                  setHiddenSlots(new Set());
                 }
-              } else {
-                setHiddenSlots(new Set());
-              }
-            }, 3500);
-            cardAnimTimersRef.current.push(t1);
-            // Hand-panel absorption pulse — fires as the card reaches the tab.
-            // Timed 300ms before the burst clears so the rings are visually
-            // centred on the moment of arrival.
-            if (burstDestPos) {
-              const dp = burstDestPos;
-              const tAbsorb = setTimeout(() => {
-                if (cardActionBurstKeyRef.current !== seq) return;
-                handAbsorbKeyRef.current += 1;
-                setHandAbsorbBurst({ key: handAbsorbKeyRef.current, x: dp.x, y: dp.y });
-                setTimeout(() => setHandAbsorbBurst(null), 900);
-              }, 3200);
-              cardAnimTimersRef.current.push(tAbsorb);
+              }, 3500);
+              cardAnimTimersRef.current.push(tCipherDeal);
             }
             break;
           }
+        }
+      }
+
+      // Detect opponent purchase_reserved (buy from own reserve) — fly the card to their chip.
+      if (
+        action?.type === 'purchase_reserved' &&
+        prev &&
+        (action.playerId as string | undefined) !== session?.playerId
+      ) {
+        const actingPlayerId = action.playerId as string;
+        const cardId = action.cardId as string | undefined;
+        const prevActingPlayer = (prev.players as GamePlayerState[]).find(
+          (p) => p.playerId === actingPlayerId,
+        );
+        const reservedCard = cardId
+          ? prevActingPlayer?.reservedCards?.find((c: ArtifactCard) => c.id === cardId)
+          : undefined;
+        if (reservedCard) {
+          const chipEl = document.querySelector(`[data-opponent-chip="${actingPlayerId}"]`);
+          const chipR = chipEl?.getBoundingClientRect();
+          const chipCenter = chipR
+            ? { x: chipR.left + chipR.width / 2, y: chipR.top + chipR.height / 2 }
+            : { x: window.innerWidth / 2, y: 28 };
+          const cardEl = document.querySelector(`[data-reserved-card-id="${cardId}"]`);
+          const cardRect = cardEl?.getBoundingClientRect();
+          opponentForgeAbsorbKeyRef.current += 1;
+          const absorbSeq = opponentForgeAbsorbKeyRef.current;
+          for (const t of cardAnimTimersRef.current) clearTimeout(t);
+          cardAnimTimersRef.current = [];
+          setAnimEndTime(900);
+          setOpponentForgeAbsorb({
+            key: absorbSeq,
+            card: reservedCard,
+            tier: reservedCard.tier,
+            startRect: cardRect
+              ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
+              : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+            chipCenter,
+          });
+          gameAudio.playCardPurchased();
+          const tAbsorb = setTimeout(() => {
+            if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
+            setOpponentForgeAbsorb(null);
+            setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
+          }, 650);
+          cardAnimTimersRef.current.push(tAbsorb);
         }
       }
 
@@ -4748,6 +4926,7 @@ export default function GameBoard() {
                   state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
                 }
                 isLocalTurn={isMyTurn}
+                absorbPulse={chipAbsorbPulse[opponent.playerId] ?? 0}
               />
             ))}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
@@ -6260,6 +6439,44 @@ export default function GameBoard() {
             />
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* ── Opponent Forge Absorb — card shrinks and flies into opponent's chip ── */}
+      <AnimatePresence>
+        {opponentForgeAbsorb && (() => {
+          const { startRect, chipCenter } = opponentForgeAbsorb;
+          const w = startRect.w;
+          const h = startRect.h;
+          return (
+            <motion.div
+              key={opponentForgeAbsorb.key}
+              className="pointer-events-none fixed z-[52]"
+              style={{
+                left: startRect.x,
+                top: startRect.y,
+                width: w,
+                height: h,
+              }}
+              initial={{ scale: 1, opacity: 1, x: 0, y: 0 }}
+              animate={{
+                scale: 0.12,
+                opacity: [1, 1, 0],
+                x: chipCenter.x - startRect.x - w / 2,
+                y: chipCenter.y - startRect.y - h / 2,
+              }}
+              transition={{
+                duration: 0.6,
+                ease: [0.4, 0, 1, 1],
+                opacity: { duration: 0.6, times: [0, 0.72, 1], ease: 'linear' },
+                scale: { duration: 0.6, ease: [0.4, 0, 1, 1] },
+                x: { duration: 0.6, ease: [0.4, 0, 1, 1] },
+                y: { duration: 0.6, ease: [0.4, 0, 1, 1] },
+              }}
+            >
+              <ArtifactCardView card={opponentForgeAbsorb.card} tier={opponentForgeAbsorb.tier} />
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── Cipher Aperture Burst — Encrypt / Reserve from market ── */}
