@@ -1227,6 +1227,56 @@ function CompactCardGhost({
   );
 }
 
+// --- Chip absorb ripple: portal burst that fires as the ghost card lands in the chip ---
+// Three expanding rings + a central flash, colored by the card's affinity glowHex.
+function ChipAbsorbRipple({
+  cx, cy, color, onDone,
+}: {
+  cx: number; cy: number; color: string; onDone: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 1500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return createPortal(
+    <div style={{ position: 'fixed', top: cy, left: cx, width: 0, height: 0, pointerEvents: 'none', zIndex: 9997 }}>
+      {/* Central flash: small glowing disc expands and fades */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          width: 24, height: 24,
+          borderRadius: '50%',
+          background: color,
+          x: -12, y: -12,
+          filter: 'blur(6px)',
+        }}
+        initial={{ scale: 0, opacity: 1 }}
+        animate={{ scale: 5, opacity: 0 }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+      />
+      {/* Expanding rings — staggered */}
+      {([0, 180, 360] as const).map((delayMs, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 56, height: 56,
+            borderRadius: '50%',
+            border: `${2.5 - i * 0.5}px solid ${color}`,
+            boxShadow: `0 0 6px 1px ${color}`,
+            x: -28, y: -28,
+          }}
+          initial={{ scale: 0.2, opacity: 0.9 }}
+          animate={{ scale: 2.2, opacity: 0 }}
+          transition={{ duration: 0.85, delay: delayMs / 1000, ease: 'easeOut' }}
+        />
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
 // --- Main Page ---
 
 export default function GameBoard() {
@@ -1509,6 +1559,10 @@ export default function GameBoard() {
     id: string;
     cardViewProps: React.ComponentProps<typeof ArtifactCardView>;
     chipRect: DOMRect;
+  } | null>(null);
+  // Absorb ripple — fires when the ghost card lands in the chip, independent of flippingCards.
+  const [chipAbsorbRipple, setChipAbsorbRipple] = useState<{
+    id: string; cx: number; cy: number; color: string;
   } | null>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -2306,7 +2360,10 @@ export default function GameBoard() {
                       if (marketCompact) {
                         const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                         const slotR = slotEl?.getBoundingClientRect();
-                        if (slotR) setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
+                        if (slotR) {
+                          setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, cx: slotR.left + 28, cy: slotR.top + 39, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                        }
                       }
                       const t2 = setTimeout(() => {
                         if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
@@ -2389,7 +2446,10 @@ export default function GameBoard() {
                       if (marketCompact) {
                         const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                         const slotR = slotEl?.getBoundingClientRect();
-                        if (slotR) setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
+                        if (slotR) {
+                          setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, cx: slotR.left + 28, cy: slotR.top + 39, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                        }
                       }
                       const t2 = setTimeout(() => {
                         if (cardActionBurstKeyRef.current !== seq) return;
@@ -2480,7 +2540,10 @@ export default function GameBoard() {
                     if (marketCompact) {
                       const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                       const slotR = slotEl?.getBoundingClientRect();
-                      if (slotR) setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
+                      if (slotR) {
+                        setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
+                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, cx: slotR.left + 28, cy: slotR.top + 39, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                      }
                     }
                     const t2 = setTimeout(() => {
                       if (cipherBurstKeyRef.current !== cipherSeq) return;
@@ -7786,6 +7849,16 @@ export default function GameBoard() {
           cardViewProps={compactGhost.cardViewProps}
           chipRect={compactGhost.chipRect}
           onDone={() => setCompactGhost(null)}
+        />
+      )}
+      {/* Chip absorb ripple — fires when the ghost card lands */}
+      {chipAbsorbRipple && (
+        <ChipAbsorbRipple
+          key={chipAbsorbRipple.id}
+          cx={chipAbsorbRipple.cx}
+          cy={chipAbsorbRipple.cy}
+          color={chipAbsorbRipple.color}
+          onDone={() => setChipAbsorbRipple(null)}
         />
       )}
     </div>
