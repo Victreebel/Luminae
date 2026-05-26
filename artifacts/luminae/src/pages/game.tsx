@@ -3869,7 +3869,10 @@ export default function GameBoard() {
             tap to change affinity ↻
           </span>
         </div>
-        <div className="relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar">
+        <div
+          className={compactView ? 'relative pb-3 px-4' : 'relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar'}
+          style={compactView ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: '8px' } : undefined}
+        >
           {safeLuminaries.map(l => {
             const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
@@ -4023,7 +4026,10 @@ export default function GameBoard() {
               <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}, {TIER_CIVILIZATION[row.tier]}</span>
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
+            <div
+              className={compactView ? 'pb-1' : 'flex gap-2.5 overflow-x-auto pb-1 no-scrollbar'}
+              style={compactView ? { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' } : undefined}
+            >
               {row.cards.map((c, i) => {
                 const colIdx = colIndices[i];
                 const slotKey = `${row.tier}-${i}`;
@@ -5168,7 +5174,7 @@ export default function GameBoard() {
                 // Terminus row) naturally fits the available viewport height without
                 // needing an aggressive CSS transform. 88 × 62 keeps cards readable
                 // while reducing board height from ~760 px to ~560 px.
-                ...(compactView ? { '--card-h': '88px', '--card-w': '62px' } as React.CSSProperties : {}),
+                ...(compactView ? { '--card-h': '88px', '--card-w': '100%' } as React.CSSProperties : {}),
                 // Secondary safety: if the board still overflows after the card-size
                 // reduction, the existing scale transform pulls it back into view.
                 ...(compactView && boardCompactScale < 1 ? {
