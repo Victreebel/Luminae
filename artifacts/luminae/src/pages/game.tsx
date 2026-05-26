@@ -186,9 +186,6 @@ function OpponentChip({
         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
       ) : null}
       <span className="truncate max-w-[60px]">{player.playerName}</span>
-      <span className={`flex items-center gap-0.5 font-mono text-[10px] shrink-0 ${isActive ? 'text-white' : 'text-muted-foreground/70'}`}>
-        {player.lumens}<Sparkles className="h-2.5 w-2.5 shrink-0" />
-      </span>
     </motion.div>
   );
 }
