@@ -4583,20 +4583,7 @@ export default function GameBoard() {
       {/* ── Header ── */}
       <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">
         <div className="flex items-center gap-2">
-          <div className="flex flex-col leading-none">
-            <h1 className="text-sm font-serif font-bold text-primary tracking-wide">Luminae</h1>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(session.inviteCode).then(() =>
-                  toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
-                );
-              }}
-              className="text-[9px] font-mono text-white/35 hover:text-white/65 tracking-widest mt-0.5 transition-colors text-left"
-              title="Tap to copy game code — share with friends to join"
-            >
-              {session.inviteCode}
-            </button>
-          </div>
+          <h1 className="text-sm font-serif font-bold text-primary tracking-wide">Luminae</h1>
         </div>
 
         <div className="flex items-center gap-1.5 min-w-0">
@@ -4614,6 +4601,7 @@ export default function GameBoard() {
               />
             ))}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
+          <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>
 
         <DropdownMenu open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
@@ -4623,9 +4611,18 @@ export default function GameBoard() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <div className="px-2 py-1.5 text-xs text-muted-foreground font-mono select-none">
-              Round {state.roundNumber}
-            </div>
+            <button
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground font-mono hover:text-foreground transition-colors"
+              onClick={() => {
+                navigator.clipboard.writeText(session.inviteCode).then(() =>
+                  toast({ title: 'Game code copied', description: `Share code: ${session.inviteCode}` })
+                );
+              }}
+              title="Tap to copy game code"
+            >
+              <Package className="h-3.5 w-3.5 shrink-0" />
+              {session.inviteCode}
+            </button>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(() => setShowRules(true), 0); }}>
               <HelpCircle className="h-4 w-4" />
