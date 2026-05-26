@@ -11,7 +11,8 @@
     "lint:version-stamps": "tsx ./src/check-version-stamps.ts",
     "test:version-stamps": "tsx ./src/check-version-stamps.test.ts",
     "audit:overlays": "node overlay-audit/audit-overlays.cjs",
-    "test:overlays": "playwright test --config=playwright.config.ts overlay-audit/overlay-centering.spec.ts"
+    "test:overlays": "playwright test --config=playwright.config.ts overlay-audit/overlay-centering.spec.ts",
+    "test:dialog-keyboard": "playwright test --config=dialog-keyboard.config.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
