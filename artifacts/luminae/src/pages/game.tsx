@@ -26,6 +26,7 @@ import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
+import { StellarForgeAnimation } from '@/components/StellarForgeAnimation';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -382,6 +383,9 @@ export default function GameBoard() {
     /** Center of the nav tab the card should fly into at the end of the burst.
      *  Undefined for remote-player purchases — card shrinks in place. */
     destPos?: { x: number; y: number };
+    /** When 'stellar', renders the cinematic Tier 2 forge sequence instead of
+     *  the generic burst animation. */
+    forgeStyle?: 'stellar';
   } | null>(null);
   const cardActionBurstKeyRef = useRef(0);
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -1238,7 +1242,10 @@ export default function GameBoard() {
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
+                const isStellar = tier === 2;
+                // Tier 2 uses the faster cinematic forge (~1.15s); tiers 1 & 3 use the classic 3.5s burst.
+                const burstDuration = isStellar ? 1150 : 3500;
+                setAnimEndTime(burstDuration + 1500 + 400);
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();
                 const burstDestPos: { x: number; y: number } | undefined = handTabR
@@ -1258,11 +1265,12 @@ export default function GameBoard() {
                     ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
                     : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
                   destPos: burstDestPos,
+                  ...(isStellar ? { forgeStyle: 'stellar' } : {}),
                 });
                 gameAudio.playCardPurchased();
                 const bonusColor = exitCard.bonusColor as GemKey;
                 if (bonusColor && bonusColor !== 'flux') {
-                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 2500);
+                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), isStellar ? 900 : 2500);
                   cardAnimTimersRef.current.push(tBonus);
                 }
                 setHiddenSlots(new Set([slotKey]));
@@ -5545,8 +5553,21 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Card Action Burst (market purchase/reserve) ── */}
+      {/* Tier 2 purchases use the cinematic StellarForgeAnimation; all others use the classic burst. */}
+      {cardActionBurst?.forgeStyle === 'stellar' && cardActionBurst.destPos && (
+        <StellarForgeAnimation
+          key={cardActionBurst.key}
+          animKey={cardActionBurst.key}
+          card={cardActionBurst.card}
+          startRect={cardActionBurst.startRect}
+          destPos={cardActionBurst.destPos}
+          lumens={cardActionBurst.lumens}
+          playerName={cardActionBurst.playerName}
+          avatarId={cardActionBurst.avatarId}
+        />
+      )}
       <AnimatePresence>
-        {cardActionBurst && (
+        {cardActionBurst && cardActionBurst.forgeStyle !== 'stellar' && (
           <motion.div
             key={cardActionBurst.key}
             className="pointer-events-none fixed inset-0 z-50"
