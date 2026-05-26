@@ -4082,41 +4082,62 @@ export default function GameBoard() {
                   // zoomed and drifts down into its slot position, avoiding the clip/pop
                   // that a rotateY flip produces inside overflow-hidden at this small size.
                   if (marketCompact) {
+                    // Ghost-card-to-chip animation:
+                    // A full-size ghost card hovers above the slot, holds briefly so the
+                    // player can see it, then descends + shrinks to chip scale + fades out.
+                    // The chip itself is always rendered underneath so it's revealed as the
+                    // ghost dissolves — "the card shrinks and fades into the pill."
+                    const cardViewProps = {
+                      card: c,
+                      tier: row.tier,
+                      onTap: () => openCardSheet(c, false),
+                      tapped: selectedCard?.card.id === c.id,
+                      effectiveCosts: computeCosts(c, costMode),
+                      bonusCosts: computeCosts(c, 'after_bonuses') ?? undefined,
+                    } as const;
                     return (
-                      <motion.div
+                      <div
                         key={c.id}
                         data-card-id={c.id}
-                        className="relative shrink-0 overflow-hidden rounded-lg"
-                        initial={{ opacity: 0, y: -18, scale: 1.1, filter: 'blur(8px)' }}
-                        animate={{
-                          opacity: [0,        1,          1  ],
-                          y:       [-18,      -18,        0  ],
-                          scale:   [1.1,      1.1,        1  ],
-                          filter:  ['blur(8px)', 'blur(0px)', 'blur(0px)'],
-                        }}
-                        transition={{
-                          duration: 2.2,
-                          times: [0, 0.18, 1],
-                          ease: 'easeOut',
-                        }}
+                        className="relative shrink-0"
                         style={{ width: 56, height: 78 }}
                         {...(cardFocusProps ?? {})}
                       >
-                        <div
-                          className="absolute inset-0 scale-[0.47] origin-top-left"
-                          style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}
-                        >
-                          <ArtifactCardView
-                            card={c}
-                            tier={row.tier}
-                            onTap={() => openCardSheet(c, false)}
-                            tapped={selectedCard?.card.id === c.id}
-                            effectiveCosts={computeCosts(c, costMode)}
-                            bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
-                          />
+                        {/* Chip — always present underneath the ghost */}
+                        <div className="absolute inset-0 overflow-hidden rounded-lg">
+                          <div
+                            className="absolute inset-0 scale-[0.47] origin-top-left"
+                            style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}
+                          >
+                            <ArtifactCardView {...cardViewProps} />
+                          </div>
                         </div>
+
+                        {/* Ghost: full card hovers above, shrinks + fades into the chip slot */}
+                        <motion.div
+                          className="absolute overflow-hidden rounded-xl pointer-events-none"
+                          style={{
+                            top: 0, left: 0,
+                            width: 'var(--card-w)', height: 'var(--card-h)',
+                            transformOrigin: 'top left',
+                            zIndex: 20,
+                          }}
+                          animate={{
+                            scale:   [1,     1,     0.47],
+                            y:       [-170,  -170,  0   ],
+                            opacity: [1,     1,     0   ],
+                          }}
+                          transition={{
+                            duration: 2.2,
+                            times: [0, 0.22, 1],
+                            ease: 'easeInOut',
+                          }}
+                        >
+                          <ArtifactCardView {...cardViewProps} />
+                        </motion.div>
+
                         {isQueued && <QueuedOverlay />}
-                      </motion.div>
+                      </div>
                     );
                   }
                   return (
