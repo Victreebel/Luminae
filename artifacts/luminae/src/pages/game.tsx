@@ -6810,7 +6810,7 @@ export default function GameBoard() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 flex items-end"
-            onClick={() => setShowForgedOverlay(false)}
+            onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}
           >
             <motion.div style={{ opacity: forgedSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
