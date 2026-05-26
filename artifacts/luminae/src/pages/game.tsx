@@ -4360,58 +4360,40 @@ export default function GameBoard() {
                 // ── Compact chip ───────────────────────────────────────────
                 if (marketCompact) {
                   const effCosts = computeCosts(c, costMode) ?? c.cost;
-                  const costEntries = CRYSTALS.filter(k => (effCosts[k as keyof CrystalCounts] ?? 0) > 0);
-                  // Truly free = permanent bonuses alone zero out the cost (no tokens required).
                   const bonusOnlyCosts = computeCosts(c, 'after_bonuses') ?? c.cost;
                   const isTrulyFree = CRYSTALS.every(k => (bonusOnlyCosts[k as keyof CrystalCounts] ?? 0) === 0);
-                  // canAfford = player has enough tokens + bonuses to forge right now.
                   const canAfford = !isTrulyFree && !!me && canAffordCard(c, me);
                   const bonusMeta = GEM_META[c.bonusColor as GemKey];
                   const isTapped = selectedCard?.card.id === c.id;
-                  const chipArt = CARD_ART[c.id];
                   return (
                     <div
                       key={c.id}
                       data-card-id={c.id}
-                      className="relative shrink-0 rounded-lg border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 overflow-hidden"
+                      className="relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
                       style={{
-                        width: 56, minHeight: 78,
-                        background: `${bonusMeta?.hex ?? '#888'}18`,
-                        borderColor: isTapped ? (bonusMeta?.hex ?? '#888') : `${bonusMeta?.hex ?? '#888'}55`,
+                        width: 56, height: 80,
+                        outline: isTapped ? `2px solid ${bonusMeta?.hex ?? '#6366f1'}` : '2px solid transparent',
+                        boxShadow: isTapped ? `0 0 12px 2px ${bonusMeta?.glowHex ?? '#818cf8'}66` : undefined,
+                        transition: 'outline-color 150ms ease, box-shadow 150ms ease',
                       }}
                       onClick={() => openCardSheet(c, false)}
                       {...(cardFocusProps ?? {})}
                       title={c.name}
                     >
-                      {/* Ghost art — very faint background texture */}
-                      {chipArt && (
-                        <img
-                          src={chipArt}
-                          alt=""
-                          draggable={false}
-                          className="pointer-events-none absolute inset-0 w-full h-full object-cover select-none"
-                          style={{ opacity: 0.22, mixBlendMode: 'luminosity' }}
+                      {/* Scaled-down full card — 0.5× fits 112→56 px (max card-w) */}
+                      <div
+                        className="pointer-events-none origin-top-left"
+                        style={{ transform: 'scale(0.5)', width: 'var(--card-w)', height: 'var(--card-h)' }}
+                      >
+                        <ArtifactCardView
+                          card={c}
+                          tier={row.tier}
+                          tapped={false}
+                          effectiveCosts={effCosts}
+                          bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
                         />
-                      )}
-                      {/* Subtle gradient veil so text stays readable over art */}
-                      <div className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.5) 100%)' }} />
-                      <div className="relative flex flex-col items-center justify-between h-full p-1.5 gap-1" style={{ minHeight: 78 }}>
-                        <span className="text-[11px] font-bold font-serif text-amber-100 leading-none">
-                          {(c.lumens ?? 0) > 0 ? c.lumens : '—'}
-                        </span>
-                        {c.bonusColor && <MiniGem color={c.bonusColor as GemKey} size={16} />}
-                        <div className="flex flex-wrap justify-center gap-0.5">
-                          {costEntries.length > 0 ? costEntries.map(k => (
-                            <div key={k} className="flex items-center">
-                              <MiniGem color={k as GemKey} size={8} />
-                              <span className="text-[7px] font-bold text-white/60 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
-                            </div>
-                          )) : isTrulyFree ? (
-                            <span className="text-[9px] font-bold text-green-400 leading-none">✓</span>
-                          ) : null}
-                        </div>
                       </div>
-                      {/* Affordability badge — shown when player can cover the cost with current tokens */}
+                      {/* Affordability badge */}
                       {(isTrulyFree || canAfford) && (
                         <div
                           className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none"
