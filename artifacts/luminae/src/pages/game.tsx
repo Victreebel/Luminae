@@ -2151,18 +2151,27 @@ export default function GameBoard() {
   useEffect(() => {
     const check = pendingHarvestCheckRef.current;
     if (!check || !me) return;
-    // Guard: only process when the state that contains our action has arrived.
-    // me?.crystals is a new reference on EVERY WS update (not just harvests),
-    // so without this guard an unrelated opponent action fires the effect while
-    // preCrystals is still equal to me.crystals — falsely marking all gems as
+    // Guard: only process when the state that contains OUR action has arrived.
+    // me?.crystals is a new reference on EVERY WS update (opponent actions,
+    // turn advances, etc.), so without this guard an unrelated update fires the
+    // effect while preCrystals equals me.crystals — falsely marking all gems as
     // blocked and triggering the amber border flash.
-    // We need EITHER a value-level crystal change (normal harvest) OR the state
-    // version to have advanced past what it was at submit time (zero-yield block).
+    //
+    // Two ways to know our harvest has landed:
+    //   1. Any targeted crystal count changed by value  →  normal / partial-block
+    //   2. state.lastAction is our own harvest type     →  zero-yield edge case
+    //      (bank drained by another player between our selection and submission)
+    //
+    // NOTE: we cannot use versionAdvanced alone — opponent actions also increment
+    // state.version, so that check would still trigger false positives.
     const crystalsChanged = check.gems.some(
       g => g !== 'flux' && (me.crystals[g as keyof CrystalCounts] ?? 0) !== (check.preCrystals[g as keyof CrystalCounts] ?? 0),
     );
-    const versionAdvanced = (state?.version ?? 0) > check.submittedVersion;
-    if (!crystalsChanged && !versionAdvanced) return;
+    const la = state?.lastAction as { type?: string; playerId?: string } | null;
+    const ourHarvestLanded =
+      (la?.type === 'take_three_crystals' || la?.type === 'take_two_crystals') &&
+      la?.playerId === session?.playerId;
+    if (!crystalsChanged && !ourHarvestLanded) return;
     pendingHarvestCheckRef.current = null;
     const blockedGems = check.gems.filter(
       (g) => g !== 'flux' && (me.crystals[g as keyof CrystalCounts] ?? 0) <= (check.preCrystals[g as keyof CrystalCounts] ?? 0),
