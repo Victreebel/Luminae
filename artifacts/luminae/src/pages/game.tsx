@@ -959,7 +959,7 @@ export default function GameBoard() {
   // ── Undo hint trigger ─────────────────────────────────────────────────────
   // Must live here — before the early returns — so hook order is stable across
   // renders when state/session are null on the first render cycle.
-  const crystalQueueActive = Object.keys(selectedCrystals).length > 0;
+  const crystalQueueActive = Object.keys(selectedCrystals).length > 0 && !coreActionSubmitted;
   useEffect(() => {
     if (!crystalQueueActive) {
       setShowUndoHint(false);
