@@ -4014,30 +4014,6 @@ export default function GameBoard() {
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
             <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
-              {/* Deck pile */}
-              <button
-                type="button"
-                data-deck-tier={row.tier}
-                onClick={() => {
-                  if (row.deck === 0 || !me) return;
-                  if (!isMyTurn && !canPlan) return;
-                  openDeckSheet(row.tier as 1 | 2 | 3);
-                }}
-                disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
-                className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
-              >
-                <CardBack tier={row.tier as 1 | 2 | 3} />
-                <div
-                  className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold tabular-nums px-1"
-                  style={row.deck > 0
-                    ? { background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.9)' }
-                    : { background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(160,60,60,0.5)', color: 'rgba(255,120,120,0.9)' }
-                  }
-                >
-                  {row.deck > 0 ? row.deck : 'Empty'}
-                </div>
-              </button>
               {row.cards.map((c, i) => {
                 const colIdx = colIndices[i];
                 const slotKey = `${row.tier}-${i}`;
@@ -4129,6 +4105,30 @@ export default function GameBoard() {
                   </div>
                 );
               })}
+              {/* Deck pile — sits at the right end of the card stream */}
+              <button
+                type="button"
+                data-deck-tier={row.tier}
+                onClick={() => {
+                  if (row.deck === 0 || !me) return;
+                  if (!isMyTurn && !canPlan) return;
+                  openDeckSheet(row.tier as 1 | 2 | 3);
+                }}
+                disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
+                className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
+              >
+                <CardBack tier={row.tier as 1 | 2 | 3} />
+                <div
+                  className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold tabular-nums px-1"
+                  style={row.deck > 0
+                    ? { background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.9)' }
+                    : { background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(160,60,60,0.5)', color: 'rgba(255,120,120,0.9)' }
+                  }
+                >
+                  {row.deck > 0 ? row.deck : 'Empty'}
+                </div>
+              </button>
             </div>
           </div>
           );
