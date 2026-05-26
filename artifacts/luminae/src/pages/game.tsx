@@ -3840,7 +3840,7 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
+        <div className={`relative flex items-center justify-between px-4 pt-3 pb-2${compactView ? ' hidden' : ''}`}>
           <div className="flex items-center gap-2.5">
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none" className="shrink-0" style={{ color: '#C4AAFF', opacity: 0.85 }}>
               <polygon points="5,0 1.5,4.5 8.5,4.5" fill="currentColor" />
@@ -3950,7 +3950,7 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className="relative flex items-center px-4 pt-3 pb-2">
+        <div className={`relative flex items-center px-4 pt-3 pb-2${compactView ? ' hidden' : ''}`}>
           <div className="flex items-center gap-2.5">
             <Hammer className="h-4 w-4 shrink-0" style={{ color: '#D4A84B', opacity: 0.85 }} />
             <div className="flex flex-col leading-none">
@@ -5210,7 +5210,7 @@ export default function GameBoard() {
           }}
         >
           {/* ── Zone header row ── */}
-          <div className="flex items-center justify-between px-3 pt-2 pb-1">
+          <div className={`flex items-center justify-between px-3 pt-2 pb-1${compactView ? ' hidden' : ''}`}>
             {/* Left: zone name */}
             <div className="flex items-center gap-2">
               <Droplets className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
