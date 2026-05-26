@@ -1284,6 +1284,7 @@ export default function GameBoard() {
   const rulesSheetContainerRef = useRef<HTMLElement | null>(null);
   const forgedOverlayContainerRef = useRef<HTMLElement | null>(null);
   const luminarySheetContainerRef = useRef<HTMLElement | null>(null);
+  const winOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -1926,6 +1927,13 @@ export default function GameBoard() {
   const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
+
+  // Focus-trap: win overlay (game over screen — Escape is a no-op since there is nothing to dismiss)
+  useFocusTrap(
+    winOverlayContainerRef,
+    state?.status === 'finished' && !pendingGameOver && summonQueue.length === 0,
+    () => { /* terminal state — no dismiss action */ },
+  );
 
   const myPurchasedCards = useMemo(() => me?.purchasedCards ?? [], [me]);
   const myDiscountedForgeIds = useMemo(() => me?.discountedForgeIds ?? [], [me]);
@@ -5728,6 +5736,9 @@ export default function GameBoard() {
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-full bg-card rounded-t-3xl border-t border-border shadow-2xl p-5 pb-[max(env(safe-area-inset-bottom,0px),1.25rem)]"
                 ref={(el) => { deckSheetContainerRef.current = el; }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Reserve from deck"
                 {...deckSheetDragProps}
               >
                 {/* Drag handle */}
@@ -6421,6 +6432,9 @@ export default function GameBoard() {
             <motion.div style={{ opacity: rulesSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
               ref={(el) => { rulesSheetContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="How to play"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -6615,6 +6629,9 @@ export default function GameBoard() {
             <motion.div style={{ opacity: forgedSheetBackdropOpacity }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <motion.div
               ref={(el) => { forgedOverlayContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Forged artifacts"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -6647,7 +6664,7 @@ export default function GameBoard() {
                       show all
                     </button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close forged artifacts" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -6769,6 +6786,10 @@ export default function GameBoard() {
             <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, hsl(var(--primary) / 0.18) 0%, transparent 70%)' }} />
 
             <motion.div
+              ref={(el) => { winOverlayContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={state.winnerId === session.playerId ? 'Victory' : 'Game over'}
               initial={{ scale: 0.75, y: 40, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.15 }}

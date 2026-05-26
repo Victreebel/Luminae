@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/accountSession";
 import { Users, Bell, Search, X, Check, UserMinus, Swords, Loader2, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 type Tab = "friends" | "requests" | "search";
 
@@ -35,6 +36,8 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [challengingId, setChallengingId] = useState<string | null>(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  useFocusTrap(panelRef, isOpen, onClose);
 
   const refresh = useCallback(async () => {
     if (!token) return;
@@ -129,6 +132,10 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
 
           {/* Panel */}
           <motion.div
+            ref={(el) => { panelRef.current = el; }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Friends"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -142,6 +149,7 @@ export function FriendsPanel({ isOpen, onClose, onChallengeCreated }: Props) {
               </h2>
               <button
                 type="button"
+                aria-label="Close friends panel"
                 onClick={onClose}
                 className="rounded-lg p-1.5 hover:bg-secondary transition-colors"
               >

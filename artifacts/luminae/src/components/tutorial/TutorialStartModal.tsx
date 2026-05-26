@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 interface Props {
   hasProgress: boolean;
@@ -9,6 +11,9 @@ interface Props {
 }
 
 export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoice }: Props) {
+  const modalRef = useRef<HTMLElement | null>(null);
+  useFocusTrap(modalRef, true, () => onChoice("cancel"));
+
   const stepDisplay =
     hasProgress && savedBeat != null && totalBeats != null
       ? `Step ${savedBeat + 1} of ${totalBeats}`
@@ -26,6 +31,10 @@ export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoic
       >
         <motion.div
           key="tutorial-modal-content"
+          ref={(el) => { modalRef.current = el; }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tutorial-modal-title"
           initial={{ opacity: 0, scale: 0.88, y: 28 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.88, y: 28 }}
@@ -54,7 +63,7 @@ export function TutorialStartModal({ hasProgress, savedBeat, totalBeats, onChoic
             </div>
           </div>
 
-          <h2 className="text-center text-lg font-bold text-white mb-1.5">
+          <h2 id="tutorial-modal-title" className="text-center text-lg font-bold text-white mb-1.5">
             {hasProgress ? "Continue Your Journey" : "Enter the Threshold"}
           </h2>
           <p className="text-center text-xs text-white/45 mb-1 leading-relaxed">
