@@ -4125,7 +4125,7 @@ export default function GameBoard() {
                           alt=""
                           draggable={false}
                           className="pointer-events-none absolute inset-0 w-full h-full object-cover select-none"
-                          style={{ opacity: 0.13, mixBlendMode: 'luminosity' }}
+                          style={{ opacity: 0.22, mixBlendMode: 'luminosity' }}
                         />
                       )}
                       {/* Subtle gradient veil so text stays readable over art */}
