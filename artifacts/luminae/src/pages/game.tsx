@@ -1239,7 +1239,7 @@ export default function GameBoard() {
   });
   const [showPurchased, setShowPurchased] = useState(false);
   const [forgedView, setForgedView] = useState<'cards' | 'timeline'>('cards');
-  const [forgedCompact, setForgedCompact] = useState(false);
+  const [marketCompact, setMarketCompact] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
 
 
@@ -3888,7 +3888,7 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className="relative flex items-center px-4 pt-3 pb-2">
+        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
             <Hammer className="h-4 w-4 shrink-0" style={{ color: '#D4A84B', opacity: 0.85 }} />
             <div className="flex flex-col leading-none">
@@ -3901,6 +3901,15 @@ export default function GameBoard() {
             </div>
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(192,140,60,0.5), transparent)' }} />
           </div>
+          <button
+            type="button"
+            onClick={() => setMarketCompact(v => !v)}
+            className={`rounded p-1.5 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
+            title={marketCompact ? 'Full card view' : 'Compact view — all cards visible'}
+            aria-pressed={marketCompact}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* ── COST filter strip — above Tier 3 ── */}
@@ -3961,7 +3970,7 @@ export default function GameBoard() {
               <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}, {TIER_CIVILIZATION[row.tier]}</span>
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-1 no-scrollbar">
+            <div className={`flex pb-1 no-scrollbar ${marketCompact ? 'flex-wrap gap-2' : 'gap-2.5 overflow-x-auto'}`}>
               {row.cards.map((c, i) => {
                 const colIdx = colIndices[i];
                 const slotKey = `${row.tier}-${i}`;
@@ -3981,7 +3990,7 @@ export default function GameBoard() {
                 }
 
                 if (isHidden || !c) {
-                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className="w-[var(--card-w)] h-[var(--card-h)] rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
+                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className={`rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0 ${marketCompact ? 'w-[56px] h-[78px]' : 'w-[var(--card-w)] h-[var(--card-h)]'}`} />;
                 }
 
                 // Keyboard-nav focus props for this card slot (roving tabindex).
@@ -4020,6 +4029,53 @@ export default function GameBoard() {
                 }
 
                 const showTutorialGlow = isTutorial && (tutorialStep === 6 || tutorialStep === 8) && !selectedCard;
+
+                // ── Compact chip ───────────────────────────────────────────
+                if (marketCompact) {
+                  const effCosts = computeCosts(c, costMode) ?? c.cost;
+                  const costEntries = CRYSTALS.filter(k => (effCosts[k as keyof CrystalCounts] ?? 0) > 0);
+                  const bonusMeta = GEM_META[c.bonusColor as GemKey];
+                  const isTapped = selectedCard?.card.id === c.id;
+                  return (
+                    <div
+                      key={c.id}
+                      data-card-id={c.id}
+                      className="relative shrink-0 rounded-lg border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                      style={{
+                        width: 56, minHeight: 78,
+                        background: `${bonusMeta?.hex ?? '#888'}18`,
+                        borderColor: isTapped ? (bonusMeta?.hex ?? '#888') : `${bonusMeta?.hex ?? '#888'}55`,
+                      }}
+                      onClick={() => openCardSheet(c, false)}
+                      {...(cardFocusProps ?? {})}
+                      title={c.name}
+                    >
+                      <div className="flex flex-col items-center justify-between h-full p-1.5 gap-1" style={{ minHeight: 78 }}>
+                        <span className="text-[11px] font-bold font-serif text-amber-100 leading-none">
+                          {(c.lumens ?? 0) > 0 ? c.lumens : '—'}
+                        </span>
+                        <MiniGem color={c.bonusColor as GemKey} size={16} />
+                        <div className="flex flex-wrap justify-center gap-0.5">
+                          {costEntries.length > 0 ? costEntries.map(k => (
+                            <div key={k} className="flex items-center">
+                              <MiniGem color={k as GemKey} size={8} />
+                              <span className="text-[7px] font-bold text-white/60 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
+                            </div>
+                          )) : (
+                            <span className="text-[8px] text-white/30 leading-none">free</span>
+                          )}
+                        </div>
+                      </div>
+                      {isQueued && <QueuedOverlay />}
+                      {showTutorialGlow && (
+                        <div className="pointer-events-none absolute inset-0 rounded-lg animate-pulse"
+                          style={{ boxShadow: '0 0 0 2px rgba(250,204,21,0.7), 0 0 14px 4px rgba(250,204,21,0.35)' }}
+                        />
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={c.id}
@@ -4394,36 +4450,17 @@ export default function GameBoard() {
 
       {/* Forged Cards */}
       <div className="rounded-2xl border border-border/50 overflow-hidden">
-        <div className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 text-sm font-semibold">
-          <button
-            type="button"
-            onClick={() => setShowPurchased(v => !v)}
-            className="flex items-center gap-2 flex-1 min-w-0 text-left"
-          >
-            <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>Forged Artifacts ({me?.purchasedCards?.length ?? 0})</span>
-          </button>
-          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-            {showPurchased && (me?.purchasedCards?.length ?? 0) > 0 && (
-              <button
-                type="button"
-                onClick={() => setForgedCompact(v => !v)}
-                className={`rounded p-1 transition-colors ${forgedCompact ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                title={forgedCompact ? 'Full card view' : 'Compact view'}
-                aria-pressed={forgedCompact}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowPurchased(v => !v)}
-              className="text-muted-foreground"
-            >
-              {showPurchased ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowPurchased(v => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 text-sm font-semibold"
+        >
+          <span className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            Forged Artifacts ({me?.purchasedCards?.length ?? 0})
+          </span>
+          {showPurchased ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
         {showPurchased && (
           <div className="p-3">
             {/* Bonus summary — card bonuses + living luminary alliance bonuses */}
@@ -4483,43 +4520,6 @@ export default function GameBoard() {
             )}
             {(me?.purchasedCards?.length ?? 0) === 0 ? (
               <p className="text-xs text-muted-foreground italic">No cards forged yet.</p>
-            ) : forgedView === 'cards' && forgedCompact ? (
-              <div className="flex flex-wrap gap-1.5">
-                {(me?.purchasedCards ?? []).map((c) => {
-                  const bonusMeta = GEM_META[c.bonusColor as GemKey];
-                  const costs = CRYSTALS.filter(k => (c.cost[k as keyof CrystalCounts] ?? 0) > 0);
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => openForgedCardSheet(c)}
-                      className="rounded-lg flex flex-col items-center justify-between p-1.5 gap-1 border transition-colors"
-                      style={{
-                        width: 52,
-                        minHeight: 68,
-                        background: `${bonusMeta?.hex ?? '#888'}18`,
-                        borderColor: `${bonusMeta?.hex ?? '#888'}44`,
-                      }}
-                      title={c.name}
-                    >
-                      <span className="text-[11px] font-bold font-serif text-amber-100 leading-none">
-                        {(c.lumens ?? 0) > 0 ? c.lumens : '—'}
-                      </span>
-                      <MiniGem color={c.bonusColor as GemKey} size={16} />
-                      <div className="flex flex-wrap justify-center gap-0.5">
-                        {costs.length > 0 ? costs.map(k => (
-                          <div key={k} className="flex items-center">
-                            <MiniGem color={k as GemKey} size={8} />
-                            <span className="text-[7px] font-bold text-white/60 leading-none">{c.cost[k as keyof CrystalCounts]}</span>
-                          </div>
-                        )) : (
-                          <span className="text-[8px] text-white/30 leading-none">free</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
             ) : forgedView === 'cards' ? (
               <div className="flex flex-wrap gap-2">
                 {(me?.purchasedCards ?? []).map((c) => (
