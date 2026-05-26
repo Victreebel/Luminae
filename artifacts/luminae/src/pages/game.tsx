@@ -118,6 +118,43 @@ function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null;
   );
 }
 
+function OpponentChip({
+  player,
+  isActive,
+  isLocalTurn,
+}: {
+  player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
+  isActive: boolean;
+  isLocalTurn: boolean;
+}) {
+  const dimmed = !isActive && !isLocalTurn;
+  return (
+    <div
+      className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
+        isActive
+          ? 'ring-1 ring-primary bg-primary/10 text-foreground'
+          : dimmed
+          ? 'bg-secondary/40 text-muted-foreground/50'
+          : 'bg-secondary/60 text-muted-foreground'
+      }`}
+    >
+      <PlayerAvatar avatarId={player.avatarId} name={player.playerName} size={20} />
+      {isActive && player.isAi ? (
+        <svg className="h-2.5 w-2.5 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : isActive ? (
+        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+      ) : null}
+      <span className="truncate max-w-[60px]">{player.playerName}</span>
+      <span className={`font-mono text-[10px] shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground/70'}`}>
+        {player.lumens}E
+      </span>
+    </div>
+  );
+}
+
 function RematchCountdown({ endsAt }: { endsAt: number }) {
   const [remaining, setRemaining] = useState(() => Math.max(0, endsAt - Date.now()));
   useEffect(() => {
@@ -2821,8 +2858,6 @@ export default function GameBoard() {
 
   if (!prevStateRef.current) prevStateRef.current = state;
 
-  const currentPlayerName = state.players[state.currentPlayerIndex]?.playerName ?? '';
-  const currentPlayerIsAi = !isMyTurn && !!state.players[state.currentPlayerIndex]?.isAi;
   const oblivionRows: Array<{ name: string; amount: number }> = (state.luminaries ?? [])
     .filter(lum => (lum.oblivion ?? 0) > 0 &&
       state.players.some(p => (p.claimedLuminaryIds ?? []).includes(lum.id)))
@@ -4558,26 +4593,20 @@ export default function GameBoard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 min-w-0">
-          {/* Turn pill */}
-          <div className={`pl-1 pr-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 ${isMyTurn ? 'bg-primary text-primary-foreground' : currentPlayerIsAi ? 'bg-violet-950/80 text-violet-300 border border-violet-700/50' : 'bg-secondary text-muted-foreground'}`}>
-            <PlayerAvatar
-              avatarId={isMyTurn ? session.avatarId : (state.players[state.currentPlayerIndex]?.avatarId ?? null)}
-              name={isMyTurn ? session.playerName : currentPlayerName}
-              size={22}
-            />
-            {currentPlayerIsAi ? (
-              <svg className="h-3 w-3 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : !isMyTurn ? (
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            ) : null}
-            <span className="truncate max-w-[80px]">
-              {isMyTurn ? 'Your turn' : currentPlayerIsAi ? `${currentPlayerName}…` : currentPlayerName}
-            </span>
-          </div>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {/* Opponent chips — one per non-local player, always visible */}
+          {state.players
+            .filter(p => p.playerId !== session.playerId)
+            .map(opponent => (
+              <OpponentChip
+                key={opponent.playerId}
+                player={opponent}
+                isActive={
+                  state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
+                }
+                isLocalTurn={isMyTurn}
+              />
+            ))}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
           <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>
