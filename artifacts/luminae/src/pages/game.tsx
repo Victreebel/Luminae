@@ -1229,8 +1229,6 @@ export default function GameBoard() {
     const accountId = stored.account.id;
     const pref = localStorage.getItem(`luminae_cost_mode_pref_${accountId}`);
     if (pref === 'printed' || pref === 'after_bonuses' || pref === 'needed_now') return pref;
-    const last = localStorage.getItem(`luminae_cost_mode_${accountId}`);
-    if (last === 'printed' || last === 'after_bonuses' || last === 'needed_now') return last;
     return 'needed_now';
   });
   const [showPurchased, setShowPurchased] = useState(false);
@@ -1238,10 +1236,6 @@ export default function GameBoard() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
 
 
-  useEffect(() => {
-    if (!account) return;
-    localStorage.setItem(`luminae_cost_mode_${account.id}`, costMode);
-  }, [costMode, account]);
 
   const [civLabel, setCivLabel] = useState<string>(() => {
     const stored = getAccountSession();
