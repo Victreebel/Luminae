@@ -25,7 +25,7 @@ import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
-import { CipherApertureAnimation } from '@/components/CipherApertureAnimation';
+import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -4994,7 +4994,7 @@ export default function GameBoard() {
                             }
                           }}
                         >
-                          <Bookmark className="h-5 w-5 mr-2" />
+                          <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9001} /></span>
                           <AnimatePresence mode="wait" initial={false}>
                             {sentFlashBtn === 'reserve' ? (
                               <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
@@ -5091,7 +5091,7 @@ export default function GameBoard() {
                             }
                           }}
                         >
-                          <Bookmark className="h-5 w-5 mr-2" />
+                          <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9002} /></span>
                           <AnimatePresence mode="wait" initial={false}>
                             {sentFlashBtn === 'plan_reserve' ? (
                               <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
