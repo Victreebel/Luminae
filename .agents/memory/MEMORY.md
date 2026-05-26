@@ -1,0 +1,1 @@
+- [Win overlay keyboard tests](win-overlay-keyboard-tests.md) — surrender is turn-gated; filtered locators collapse to 0 inside getFocusables for framer-motion dialogs; use direct locators instead.

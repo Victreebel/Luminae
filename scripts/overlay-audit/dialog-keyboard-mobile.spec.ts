@@ -476,3 +476,422 @@ test.describe('C. Card action sheet — /game/:id — mobile keyboard nav', () =
     await page.screenshot({ path: `${OUT}/C4-card-sheet-escaped.png` });
   });
 });
+
+// ════════════════════════════════════════════════════════════════════════════
+// D. Remaining game dialogs — /game/:id
+//
+// Covers four more game-page dialogs not tested in Section C:
+//   D1. Reserved cards overlay  — click [data-singularity-well] (flux crystal)
+//   D2. Deck reserve sheet      — click [data-deck-tier]:not([disabled])
+//   D3. Rules sheet             — header ⋮ menu → Rules
+//   D4. Win overlay             — API surrender action ends the game
+//
+// Each dialog uses the same 6-assertion pattern as Sections A–C:
+//   role="dialog", aria-modal="true", Tab-wrap, Shift+Tab-wrap, arrow keys,
+//   and Escape.  The win overlay is a terminal state — its useFocusTrap
+//   onClose is a no-op — so its Escape test asserts the overlay stays visible.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Shared game factory for Section D — creates a room with one easy AI and starts it. */
+async function createAndStartGameD() {
+  const { room, player, sessionToken } = (await apiPost('/api/rooms', {
+    hostName: 'KeyNavD-Test',
+    maxPlayers: 2,
+    turnTimerSeconds: null,
+  })) as {
+    room: { id: string; inviteCode: string };
+    player: { id: string };
+    sessionToken: string;
+  };
+
+  await apiPost(`/api/rooms/${room.id}/ai-players`, { sessionToken, difficulty: 'easy' });
+  await apiPost(`/api/rooms/${room.id}/start`, { sessionToken });
+
+  return { room, player, sessionToken };
+}
+
+/** Navigate the browser to the game page as the human host player. */
+async function navigateToGameD(
+  page: Page,
+  room: { id: string; inviteCode: string },
+  player: { id: string },
+  sessionToken: string,
+): Promise<void> {
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(
+    ({ roomId, inviteCode, playerId, token }) => {
+      localStorage.setItem(
+        'luminae_session',
+        JSON.stringify({
+          roomId,
+          inviteCode,
+          playerId,
+          sessionToken: token,
+          playerName: 'KeyNavD-Test',
+          isHost: true,
+          avatarId: 'avatar_1',
+        }),
+      );
+    },
+    { roomId: room.id, inviteCode: room.inviteCode, playerId: player.id, token: sessionToken },
+  );
+
+  await page.goto(`${BASE}/game/${room.id}`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('text=AFFINITY WELL').first()).toBeVisible({ timeout: 15_000 });
+  await page.waitForTimeout(600);
+}
+
+/** Dismiss the turn-announcement overlay if it appears (any player). */
+async function dismissTurnAnnouncementD(page: Page): Promise<void> {
+  const overlay = page.locator('[class*="fixed"][class*="inset-0"][class*="cursor-pointer"]');
+  const appeared = await overlay
+    .waitFor({ state: 'visible', timeout: 12_000 })
+    .then(() => true, () => false);
+  if (appeared) {
+    await page.mouse.click(195, 422);
+    await overlay.waitFor({ state: 'hidden', timeout: 5_000 }).catch(() => {});
+    await page.waitForTimeout(500);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// D1. Reserved cards overlay
+// ────────────────────────────────────────────────────────────────────────────
+
+test.describe('D1. Reserved cards overlay — /game/:id — mobile keyboard nav', () => {
+  /**
+   * The Singularity (flux) crystal cell always calls onOpenReserved() when clicked,
+   * regardless of whose turn it is or how many cards are reserved.
+   * It carries data-singularity-well so we can target it precisely.
+   *
+   * We pre-reserve a card from tier-1 via the API (blind reserve — no cardId needed)
+   * so the overlay contains at least 2 focusable elements: the reserved-card button
+   * and the close (×) button.  This is required for the Tab-wrap assertion.
+   */
+  async function openReservedOverlay(page: Page): Promise<Locator> {
+    const { room, player, sessionToken } = await createAndStartGameD();
+    await navigateToGameD(page, room, player, sessionToken);
+    await dismissTurnAnnouncementD(page);
+
+    // Wait until it is the human player's turn (deck buttons become enabled).
+    const enabledDeck = page.locator('[data-deck-tier]:not([disabled])').first();
+    await expect(enabledDeck).toBeVisible({ timeout: 25_000 });
+
+    // Blind-reserve a tier-1 card via the API — this is the player's core action
+    // and will advance the turn to the AI after submission.
+    await apiPost(`/api/rooms/${room.id}/actions`, {
+      type: 'reserve_card',
+      tier: 1,
+      sessionToken,
+    });
+    await page.waitForTimeout(300); // allow WebSocket state delivery
+
+    // Open the reserved cards overlay — the flux crystal is always clickable.
+    const singularityCell = page.locator('[data-singularity-well]').first();
+    await expect(singularityCell).toBeVisible({ timeout: 10_000 });
+    await singularityCell.click();
+    await page.waitForTimeout(450);
+
+    const dialog = page.locator('[role="dialog"]').first();
+    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    return dialog;
+  }
+
+  test('role="dialog" is present', async ({ page }) => {
+    const dialog = await openReservedOverlay(page);
+    await page.screenshot({ path: `${OUT}/D1a-reserved-overlay-open.png` });
+    expect(await dialog.getAttribute('role')).toBe('dialog');
+  });
+
+  test('aria-modal="true" is present', async ({ page }) => {
+    const dialog = await openReservedOverlay(page);
+    expect(await dialog.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('Tab from last focusable wraps to first (focus trap)', async ({ page }) => {
+    const dialog = await openReservedOverlay(page);
+    await assertTabWraps(page, dialog, 'Reserved cards overlay');
+    await page.screenshot({ path: `${OUT}/D1b-reserved-overlay-tab-trap.png` });
+  });
+
+  test('Shift+Tab from first focusable wraps to last (focus trap)', async ({ page }) => {
+    const dialog = await openReservedOverlay(page);
+    await assertShiftTabWraps(page, dialog, 'Reserved cards overlay');
+  });
+
+  test('Arrow keys do not move focus outside the dialog', async ({ page }) => {
+    const dialog = await openReservedOverlay(page);
+    await assertArrowKeysStayInDialog(page, dialog, 'Reserved cards overlay');
+    await page.screenshot({ path: `${OUT}/D1c-reserved-overlay-arrow-keys.png` });
+  });
+
+  test('Escape closes the overlay', async ({ page }) => {
+    const dialog = await openReservedOverlay(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    await expect(dialog).not.toBeVisible({ timeout: 3_000 });
+    await page.screenshot({ path: `${OUT}/D1d-reserved-overlay-escaped.png` });
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// D2. Deck reserve sheet
+// ────────────────────────────────────────────────────────────────────────────
+
+test.describe('D2. Deck reserve sheet — /game/:id — mobile keyboard nav', () => {
+  /**
+   * The deck-pile buttons carry data-deck-tier and are only enabled when
+   * it is the human player's turn (disabled={!isMyTurn && !canPlan}).
+   * Wait for any non-disabled deck button to become available, then click it.
+   */
+  async function openDeckSheet(page: Page): Promise<Locator> {
+    const { room, player, sessionToken } = await createAndStartGameD();
+    await navigateToGameD(page, room, player, sessionToken);
+    await dismissTurnAnnouncementD(page);
+
+    // Wait until at least one deck-tier button is enabled (player's turn).
+    // Timeout accounts for up to one full AI turn before the human's first move.
+    const enabledDeckBtn = page.locator('[data-deck-tier]:not([disabled])').first();
+    await expect(enabledDeckBtn).toBeVisible({ timeout: 25_000 });
+    await enabledDeckBtn.click();
+    await page.waitForTimeout(450);
+
+    const dialog = page.locator('[role="dialog"]').first();
+    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    return dialog;
+  }
+
+  test('role="dialog" is present', async ({ page }) => {
+    const dialog = await openDeckSheet(page);
+    await page.screenshot({ path: `${OUT}/D2a-deck-sheet-open.png` });
+    expect(await dialog.getAttribute('role')).toBe('dialog');
+  });
+
+  test('aria-modal="true" is present', async ({ page }) => {
+    const dialog = await openDeckSheet(page);
+    expect(await dialog.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('Tab from last focusable wraps to first (focus trap)', async ({ page }) => {
+    const dialog = await openDeckSheet(page);
+    await assertTabWraps(page, dialog, 'Deck reserve sheet');
+    await page.screenshot({ path: `${OUT}/D2b-deck-sheet-tab-trap.png` });
+  });
+
+  test('Shift+Tab from first focusable wraps to last (focus trap)', async ({ page }) => {
+    const dialog = await openDeckSheet(page);
+    await assertShiftTabWraps(page, dialog, 'Deck reserve sheet');
+  });
+
+  test('Arrow keys do not move focus outside the dialog', async ({ page }) => {
+    const dialog = await openDeckSheet(page);
+    await assertArrowKeysStayInDialog(page, dialog, 'Deck reserve sheet');
+    await page.screenshot({ path: `${OUT}/D2c-deck-sheet-arrow-keys.png` });
+  });
+
+  test('Escape closes the sheet', async ({ page }) => {
+    const dialog = await openDeckSheet(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    await expect(dialog).not.toBeVisible({ timeout: 3_000 });
+    await page.screenshot({ path: `${OUT}/D2d-deck-sheet-escaped.png` });
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// D3. Rules sheet
+// ────────────────────────────────────────────────────────────────────────────
+
+test.describe('D3. Rules sheet — /game/:id — mobile keyboard nav', () => {
+  /**
+   * The rules sheet is opened via the header ⋮ (MoreVertical) dropdown:
+   *   1. Click the ghost-icon button that contains the ⋮ SVG icon.
+   *   2. Click the "Rules" DropdownMenuItem.
+   */
+  async function openRulesSheet(page: Page): Promise<Locator> {
+    const { room, player, sessionToken } = await createAndStartGameD();
+    await navigateToGameD(page, room, player, sessionToken);
+    await dismissTurnAnnouncementD(page);
+
+    // The header bar renders: avatar / round info / timer / R{n} / ⋮ (MoreVertical)
+    // The ⋮ trigger is the last button inside the <header> element and is always
+    // visible regardless of whose turn it is.
+    const headerMoreBtn = page.locator('header button').last();
+    await expect(headerMoreBtn).toBeVisible({ timeout: 8_000 });
+    await headerMoreBtn.click();
+    await page.waitForTimeout(300);
+
+    // Click the "Rules" item inside the now-open dropdown
+    const rulesItem = page.locator('[role="menuitem"]').filter({ hasText: /rules/i }).first();
+    await expect(rulesItem).toBeVisible({ timeout: 4_000 });
+    await rulesItem.click();
+    await page.waitForTimeout(500);
+
+    const dialog = page.locator('[role="dialog"]').first();
+    await expect(dialog).toBeVisible({ timeout: 5_000 });
+    return dialog;
+  }
+
+  test('role="dialog" is present', async ({ page }) => {
+    const dialog = await openRulesSheet(page);
+    await page.screenshot({ path: `${OUT}/D3a-rules-sheet-open.png` });
+    expect(await dialog.getAttribute('role')).toBe('dialog');
+  });
+
+  test('aria-modal="true" is present', async ({ page }) => {
+    const dialog = await openRulesSheet(page);
+    expect(await dialog.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('Tab from last focusable wraps to first (focus trap)', async ({ page }) => {
+    const dialog = await openRulesSheet(page);
+    await assertTabWraps(page, dialog, 'Rules sheet');
+    await page.screenshot({ path: `${OUT}/D3b-rules-sheet-tab-trap.png` });
+  });
+
+  test('Shift+Tab from first focusable wraps to last (focus trap)', async ({ page }) => {
+    const dialog = await openRulesSheet(page);
+    await assertShiftTabWraps(page, dialog, 'Rules sheet');
+  });
+
+  test('Arrow keys do not move focus outside the dialog', async ({ page }) => {
+    const dialog = await openRulesSheet(page);
+    await assertArrowKeysStayInDialog(page, dialog, 'Rules sheet');
+    await page.screenshot({ path: `${OUT}/D3c-rules-sheet-arrow-keys.png` });
+  });
+
+  test('Escape closes the sheet', async ({ page }) => {
+    const dialog = await openRulesSheet(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    await expect(dialog).not.toBeVisible({ timeout: 3_000 });
+    await page.screenshot({ path: `${OUT}/D3d-rules-sheet-escaped.png` });
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// D4. Win overlay
+// ────────────────────────────────────────────────────────────────────────────
+
+test.describe('D4. Win overlay — /game/:id — mobile keyboard nav', () => {
+  /**
+   * Trigger the win overlay by submitting a surrender action via the API.
+   * This ends the game immediately (AI wins) without requiring browser confirm().
+   * The win overlay renders for ALL players once state.status === 'finished',
+   * so the human player's browser will show the "Game Over" variant.
+   *
+   * Note: The win overlay's useFocusTrap onClose is intentionally a no-op
+   * (terminal state — there is nothing to dismiss).  Pressing Escape consumes
+   * the event but the overlay remains visible.  The Escape test below asserts
+   * this correct behavior instead of expecting the overlay to close.
+   */
+  async function openWinOverlay(page: Page): Promise<Locator> {
+    const { room, player, sessionToken } = await createAndStartGameD();
+    await navigateToGameD(page, room, player, sessionToken);
+    await dismissTurnAnnouncementD(page);
+
+    // Surrender is turn-gated — the game engine rejects it unless it is the
+    // human player's turn.  Wait for a deck button to become enabled (the
+    // reliable signal that the player is now the active player) before
+    // submitting the action.  The timeout accounts for one full AI turn.
+    const enabledDeck = page.locator('[data-deck-tier]:not([disabled])').first();
+    await expect(enabledDeck).toBeVisible({ timeout: 25_000 });
+
+    // Submit the surrender action directly via the REST API, bypassing the
+    // browser confirm() dialog that the in-game Surrender button uses.
+    await apiPost(`/api/rooms/${room.id}/actions`, {
+      type: 'surrender',
+      sessionToken,
+    });
+
+    // Wait for the win overlay — the WebSocket delivers the finished state.
+    // The win overlay is the only role=dialog with aria-modal=true that
+    // contains a "Back to Home" button; it appears for both winners and losers.
+    const dialog = page.locator('[role="dialog"][aria-modal="true"]').filter({
+      has: page.locator('button', { hasText: /back to home/i }),
+    });
+    await expect(dialog).toBeVisible({ timeout: 12_000 });
+
+    // The action buttons ("Play Again", "Back to Home") sit inside a motion.div
+    // with transition delay: 0.9 s.  Wait for both to be fully visible before
+    // returning so getFocusables() finds real, interactive elements.
+    await expect(dialog.locator('button', { hasText: /back to home/i })).toBeVisible({ timeout: 6_000 });
+    await expect(dialog.locator('button', { hasText: /play again/i })).toBeVisible({ timeout: 3_000 });
+    return dialog;
+  }
+
+  test('role="dialog" is present', async ({ page }) => {
+    const dialog = await openWinOverlay(page);
+    await page.screenshot({ path: `${OUT}/D4a-win-overlay-open.png` });
+    expect(await dialog.getAttribute('role')).toBe('dialog');
+  });
+
+  test('aria-modal="true" is present', async ({ page }) => {
+    const dialog = await openWinOverlay(page);
+    expect(await dialog.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('Tab from last focusable wraps to first (focus trap)', async ({ page }) => {
+    // The win overlay contains exactly two action buttons: "Play Again" (first)
+    // and "Back to Home" (last).  Bypass the getFocusables helper and address
+    // them directly so the test does not depend on the filtered-locator chain
+    // that intermittently collapses when the framer-motion entry animation
+    // briefly resets after a React reconciliation cycle.
+    await openWinOverlay(page);
+    const backHome = page.locator('[role="dialog"][aria-modal="true"] button', { hasText: /back to home/i });
+    await backHome.focus();
+    await page.waitForTimeout(80);
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(80);
+    // Focus must remain inside the dialog (trap wrapped to first button).
+    const focusedInsideDialog = await page.evaluate(() => {
+      const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
+      return dlg ? dlg.contains(document.activeElement) : false;
+    });
+    expect(focusedInsideDialog, 'Tab from last element should keep focus inside the dialog').toBe(true);
+    await page.screenshot({ path: `${OUT}/D4b-win-overlay-tab-trap.png` });
+  });
+
+  test('Shift+Tab from first focusable wraps to last (focus trap)', async ({ page }) => {
+    await openWinOverlay(page);
+    const playAgain = page.locator('[role="dialog"][aria-modal="true"] button', { hasText: /play again/i });
+    await playAgain.focus();
+    await page.waitForTimeout(80);
+    await page.keyboard.press('Shift+Tab');
+    await page.waitForTimeout(80);
+    // Focus must remain inside the dialog (trap wrapped to last button).
+    const focusedInsideDialog = await page.evaluate(() => {
+      const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
+      return dlg ? dlg.contains(document.activeElement) : false;
+    });
+    expect(focusedInsideDialog, 'Shift+Tab from first element should keep focus inside the dialog').toBe(true);
+  });
+
+  test('Arrow keys do not move focus outside the dialog', async ({ page }) => {
+    await openWinOverlay(page);
+    const playAgain = page.locator('[role="dialog"][aria-modal="true"] button', { hasText: /play again/i });
+    await playAgain.focus();
+    await page.waitForTimeout(80);
+    for (const key of ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'] as const) {
+      await page.keyboard.press(key);
+      await page.waitForTimeout(50);
+      const focusedInside = await page.evaluate(() => {
+        const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
+        return dlg ? dlg.contains(document.activeElement) : false;
+      });
+      expect(focusedInside, `Arrow key ${key} must not move focus outside the dialog`).toBe(true);
+    }
+    await page.screenshot({ path: `${OUT}/D4c-win-overlay-arrow-keys.png` });
+  });
+
+  test('Escape is consumed but overlay stays visible (terminal state — no dismiss)', async ({ page }) => {
+    // The win overlay is a terminal game state.  useFocusTrap is wired with an
+    // empty onClose callback, so Escape does not close the overlay.
+    const dialog = await openWinOverlay(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    // The dialog must still be present — the overlay is intentionally non-dismissible.
+    await expect(dialog).toBeVisible({ timeout: 2_000 });
+    await page.screenshot({ path: `${OUT}/D4d-win-overlay-escape-noop.png` });
+  });
+});
