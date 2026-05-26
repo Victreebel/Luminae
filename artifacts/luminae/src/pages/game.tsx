@@ -4740,7 +4740,7 @@ export default function GameBoard() {
                         const isFree = isReduced && effCost === 0 && bonusEffCostSheet === 0;
                         return (
                           <div key={c} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isFree ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}>
-                            {isReduced && !isFree && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
+                            {isReduced && !isFree && costMode !== 'needed_now' && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
                             <span className={`text-[10px] font-bold ${isFree ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>{isFree ? '✓' : effCost}</span>
                             <MiniGem color={c} size={10} />
                           </div>
