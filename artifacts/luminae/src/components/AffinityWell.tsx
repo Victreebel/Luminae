@@ -488,7 +488,7 @@ export function AffinityWellCells({
                     type="button"
                     // Singularity always tappable; others need selectable + non-empty bank
                     disabled={isFlux ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
-                    {...(isFlux ? { 'data-singularity-well': '' } : {})}
+                    {...(isFlux ? { 'data-singularity-well': '' } : { 'data-affinity-well': c })}
                     whileTap={
                       (isFlux || (selectable && !bankEmpty) || showForgedLink)
                         ? { scale: 0.91 }

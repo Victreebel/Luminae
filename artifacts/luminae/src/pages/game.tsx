@@ -59,9 +59,10 @@ import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
 import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
-import { MiniGem, BaseDialog, type EminenceBreakdown, CrystalIcon, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
+import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
+import { ForgeAnimation } from './game-forge-animation';
 
 type ActiveTab = 'board' | 'hand' | 'log';
 
@@ -246,8 +247,6 @@ export default function GameBoard() {
   const [purchaseBurst, setPurchaseBurst] = useState<{ key: number; lumens: number; name: string } | null>(null);
   const burstKeyRef = useRef(0);
   /** Pulse rings that appear on the Hand tab when a forged card is absorbed. */
-  const [handAbsorbBurst, setHandAbsorbBurst] = useState<{ key: number; x: number; y: number } | null>(null);
-  const handAbsorbKeyRef = useRef(0);
   /** Opponent forge fly-to-chip animation — card shrinks and flies into the opponent's chip. */
   const [opponentForgeAbsorb, setOpponentForgeAbsorb] = useState<{
     key: number;
@@ -382,6 +381,8 @@ export default function GameBoard() {
     /** Center of the nav tab the card should fly into at the end of the burst.
      *  Undefined for remote-player purchases — card shrinks in place. */
     destPos?: { x: number; y: number };
+    /** Which affinity colors the player spent (for energy-stream animation). */
+    spentColors: GemKey[];
   } | null>(null);
   const cardActionBurstKeyRef = useRef(0);
   const cardAnimTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -1238,12 +1239,17 @@ export default function GameBoard() {
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(5400); // 3500ms burst + 1500ms deal-from-deck + 400ms buffer
+                setAnimEndTime(3000); // 1300ms forge anim + 1500ms deal-from-deck + 200ms buffer
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();
                 const burstDestPos: { x: number; y: number } | undefined = handTabR
                   ? { x: handTabR.left + handTabR.width / 2, y: handTabR.top + handTabR.height / 2 }
                   : undefined;
+                // Compute which affinity colors were spent for the energy-stream animation.
+                const _spentCost = player ? effectiveCost(exitCard, player) as Record<string, number> : {};
+                const _spentColors = (Object.entries(_spentCost)
+                  .filter(([, v]) => v > 0)
+                  .map(([c]) => c as GemKey));
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setCardActionBurst({
                   key: cardActionBurstKeyRef.current,
@@ -1258,11 +1264,12 @@ export default function GameBoard() {
                     ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
                     : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
                   destPos: burstDestPos,
+                  spentColors: _spentColors,
                 });
                 gameAudio.playCardPurchased();
                 const bonusColor = exitCard.bonusColor as GemKey;
                 if (bonusColor && bonusColor !== 'flux') {
-                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 2500);
+                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 1000);
                   cardAnimTimersRef.current.push(tBonus);
                 }
                 setHiddenSlots(new Set([slotKey]));
@@ -1324,21 +1331,12 @@ export default function GameBoard() {
                   } else {
                     setHiddenSlots(new Set());
                   }
-                }, 3500);
+                }, 1350); // 1250ms forge anim + 100ms buffer
                 cardAnimTimersRef.current.push(t1);
                 // Hand-panel absorption pulse — fires as the card reaches the tab.
                 // Timed 300ms before the burst clears so the rings are visually
                 // centred on the moment of arrival.
-                if (burstDestPos) {
-                  const dp = burstDestPos;
-                  const tAbsorb = setTimeout(() => {
-                    if (cardActionBurstKeyRef.current !== seq) return;
-                    handAbsorbKeyRef.current += 1;
-                    setHandAbsorbBurst({ key: handAbsorbKeyRef.current, x: dp.x, y: dp.y });
-                    setTimeout(() => setHandAbsorbBurst(null), 900);
-                  }, 3200);
-                  cardAnimTimersRef.current.push(tAbsorb);
-                }
+                // Absorption rings at the hand tab are handled by ForgeAnimation (Step 6).
               }
             } else {
               // reserve_card with cardId → Cipher Aperture animation; flies to Singularity panel
@@ -5544,184 +5542,22 @@ export default function GameBoard() {
         })()}
       </AnimatePresence>
 
-      {/* ── Card Action Burst (market purchase/reserve) ── */}
+      {/* ── Card Action Burst — 6-step Forge Animation ── */}
       <AnimatePresence>
         {cardActionBurst && (
-          <motion.div
-            key={cardActionBurst.key}
-            className="pointer-events-none fixed inset-0 z-50"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div
-              className="absolute inset-0 bg-black/40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            />
-
-            {/* Avatar + action label — positioned above the card */}
-            <motion.div
-              className="fixed left-0 right-0 flex flex-col items-center gap-2"
-              style={{ bottom: window.innerHeight / 2 + Math.round(cardActionBurst.startRect.h * 0.625) + 24 }}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: [0, 0, 1, 1, 0], y: [12, 12, 0, 0, -8] }}
-              transition={{ duration: 3.5, times: [0, 0.17, 0.3, 0.74, 0.82] }}
-            >
-              <div
-                className="rounded-full overflow-hidden border-4 shadow-[0_0_24px_rgba(255,255,255,0.35)]"
-                style={{
-                  width: 72, height: 72,
-                  borderColor: cardActionBurst.actionType === 'purchase'
-                    ? 'rgba(99,102,241,0.55)'
-                    : `${GEM_META.flux.glowHex}88`,
-                }}
-              >
-                <img
-                  src={getAvatarForPlayer(cardActionBurst.avatarId ?? session.avatarId).image}
-                  alt={cardActionBurst.playerName}
-                  className="w-full h-full object-cover"
-                  draggable={false}
-                />
-              </div>
-              <div className="rounded-full bg-black/65 px-3 py-1 text-xs font-semibold text-white shadow-lg backdrop-blur">
-                {cardActionBurst.playerName}
-              </div>
-              {cardActionBurst.actionType === 'purchase' && (
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-2xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
-                    Forged!
-                  </span>
-                  {cardActionBurst.lumens > 0 && (
-                    <span className="flex items-center gap-1.5 text-base font-bold" style={{ color: GEM_META.flux.hex }}>
-                      <Sparkles className="h-4 w-4" /> +{cardActionBurst.lumens} eminence
-                    </span>
-                  )}
-                </div>
-              )}
-              {cardActionBurst.actionType === 'reserve' && (
-                <span
-                  className="text-xs font-semibold uppercase tracking-wider"
-                  style={{ color: GEM_META.flux.hex }}
-                >
-                  Encrypted
-                </span>
-              )}
-            </motion.div>
-
-            {(() => {
-              const { startRect, destPos } = cardActionBurst;
-              const w = startRect.w;
-              const h = startRect.h;
-              const centerX = window.innerWidth / 2 - w / 2;
-              const centerY = window.innerHeight / 2 - h / 2 - 20;
-              // If destPos is set (local player's forge), fly into the Hand tab.
-              // Otherwise shrink in place so the overlay still clears cleanly.
-              const finalX = destPos ? destPos.x - w / 2 : centerX;
-              const finalY = destPos ? destPos.y - h / 2 : centerY;
-              return (
-                <div style={{ perspective: '900px' }}>
-                  <motion.div
-                    style={{ position: 'fixed', transformStyle: 'preserve-3d', left: 0, top: 0, width: w, height: h }}
-                    initial={{ x: startRect.x, y: startRect.y, scale: 1, rotateY: 0 }}
-                    animate={{
-                      // Phase 1 (0–17%): fly from market slot to screen centre, spin, scale up.
-                      // Phase 2 (17–80%): hold at centre — "Forged!" is readable.
-                      // Phase 3 (80–100%): fly into the Hand nav tab and shrink away.
-                      x: [startRect.x, centerX, centerX, finalX],
-                      y: [startRect.y, centerY, centerY, finalY],
-                      scale: [1, 1.25, 1.25, 0],
-                      rotateY: [0, 360, 360, 360],
-                    }}
-                    transition={{
-                      duration: 3.5,
-                      times: [0, 0.17, 0.80, 1.0],
-                      ease: [
-                        [0.22, 1, 0.36, 1], // spring-out: market → centre
-                        'linear',            // hold
-                        [0.4, 0, 1, 1],      // ease-in: suck into hand tab
-                      ],
-                    }}
-                  >
-                    <ArtifactCardView card={cardActionBurst.card} tier={cardActionBurst.tier} />
-                  </motion.div>
-                </div>
-              );
-            })()}
-
-            {cardActionBurst.gotFlux && (
-              <motion.div
-                className="fixed flex flex-col items-center gap-2"
-                style={{
-                  left: window.innerWidth / 2 + 90,
-                  top: window.innerHeight / 2 - 40,
-                  perspective: '900px',
-                  transformStyle: 'preserve-3d',
-                }}
-                initial={{ opacity: 0, rotateY: 90, scale: 0.6 }}
-                animate={{
-                  opacity: [0, 1, 1, 0],
-                  rotateY: [90, 0, 720, 720],
-                  scale: [0.6, 1, 1, 0.8],
-                }}
-                transition={{ duration: 3.0, times: [0, 0.12, 0.72, 1] }}
-              >
-                <CrystalIcon color="flux" size={52} />
-                <span
-                  className="text-sm font-bold drop-shadow-[0_0_10px_rgba(255,196,61,0.9)]"
-                  style={{ color: GEM_META.flux.hex }}
-                >
-                  +1 Singularity
-                </span>
-              </motion.div>
-            )}
-          </motion.div>
+          <ForgeAnimation
+            animKey={cardActionBurst.key}
+            card={cardActionBurst.card}
+            tier={cardActionBurst.tier}
+            startRect={cardActionBurst.startRect}
+            destPos={cardActionBurst.destPos}
+            spentColors={cardActionBurst.spentColors}
+            lumens={cardActionBurst.lumens}
+            gotFlux={cardActionBurst.gotFlux}
+          />
         )}
       </AnimatePresence>
 
-      {/* ── Hand-panel absorption pulse — two expanding rings when a forged card lands ── */}
-      <AnimatePresence>
-        {handAbsorbBurst && (
-          <motion.div
-            key={handAbsorbBurst.key}
-            className="pointer-events-none fixed z-50"
-            style={{
-              left: handAbsorbBurst.x,
-              top: handAbsorbBurst.y,
-              transform: 'translate(-50%, -50%)',
-            }}
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            transition={{ duration: 0.85, ease: 'easeOut' }}
-          >
-            {/* Outer ring */}
-            <motion.div
-              className="absolute rounded-full border-2 border-amber-300"
-              style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
-              initial={{ width: 12, height: 12, opacity: 1 }}
-              animate={{ width: 80, height: 80, opacity: 0 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-            />
-            {/* Inner ring — slightly delayed */}
-            <motion.div
-              className="absolute rounded-full border border-amber-400/70"
-              style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
-              initial={{ width: 8, height: 8, opacity: 0.85 }}
-              animate={{ width: 52, height: 52, opacity: 0 }}
-              transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
-            />
-            {/* Centre flash dot */}
-            <motion.div
-              className="absolute rounded-full bg-amber-200"
-              style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
-              initial={{ width: 8, height: 8, opacity: 0.9 }}
-              animate={{ width: 0, height: 0, opacity: 0 }}
-              transition={{ duration: 0.35, ease: 'easeIn' }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Opponent Forge Absorb — card shrinks and flies into opponent's chip ── */}
       <AnimatePresence>
