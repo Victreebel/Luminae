@@ -1274,6 +1274,7 @@ export default function GameBoard() {
   const luminarySheetContainerRef = useRef<HTMLElement | null>(null);
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -4618,14 +4619,14 @@ export default function GameBoard() {
           <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>
 
-        <DropdownMenu>
+        <DropdownMenu open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setShowRules(true)}>
+            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(() => setShowRules(true), 0); }}>
               <HelpCircle className="h-4 w-4" />
               Rules
             </DropdownMenuItem>
@@ -4633,12 +4634,12 @@ export default function GameBoard() {
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               {muted ? 'Unmute' : 'Mute'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleReturnToMenu}>
+            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSurrender} className="text-red-500 focus:text-red-500">
+            <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleSurrender, 0); }} className="text-red-500 focus:text-red-500">
               <Flag className="h-4 w-4" />
               Surrender
             </DropdownMenuItem>
