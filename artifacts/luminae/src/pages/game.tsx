@@ -1680,6 +1680,7 @@ export default function GameBoard() {
     { isOpen: showForgedOverlay,        onClose: () => { setShowForgedOverlay(false); setForgedFilter(null); } },
     { isOpen: showReservedOverlay,      onClose: () => setShowReservedOverlay(false) },
     { isOpen: showRules,                onClose: () => setShowRules(false) },
+    { isOpen: showEminenceBreakdown,    onClose: () => setShowEminenceBreakdown(false) },
   ]);
 
   // Keyboard shortcuts — suppressed while any modal/sheet is open or a text input is focused.
