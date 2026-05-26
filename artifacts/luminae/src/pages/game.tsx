@@ -2526,7 +2526,11 @@ export default function GameBoard() {
       const alreadyLanded = Object.keys(check.tally).some(
         g => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals![g as keyof CrystalCounts] ?? 0),
       );
-      if (!alreadyLanded) activeTally = check.tally;
+      // If landed: harvest is already in me.crystals — use {} so we never
+      // double-deduct from selectedCrystals (which may not have been cleared
+      // yet when the WS update races ahead of the REST response).
+      // If not landed: use the tally snapshot to bridge the selectedCrystals gap.
+      activeTally = alreadyLanded ? {} : check.tally;
     }
     const out: Partial<Record<GemKey, number>> = {};
     for (const c of CRYSTALS) {
