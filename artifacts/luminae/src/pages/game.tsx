@@ -54,7 +54,6 @@ import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
-const gemIcon = "/icon_gem.svg";
 
 
 function hexRgba(hex: string, alpha: number): string {
@@ -4584,7 +4583,6 @@ export default function GameBoard() {
       {/* ── Header ── */}
       <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">
         <div className="flex items-center gap-2">
-          <img src={gemIcon} alt="" className="h-7 w-7 drop-shadow-[0_0_10px_rgba(80,130,255,0.5)]" draggable={false} />
           <div className="flex flex-col leading-none">
             <h1 className="text-sm font-serif font-bold text-primary tracking-wide">Luminae</h1>
             <button
