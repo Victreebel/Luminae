@@ -3204,9 +3204,9 @@ export default function GameBoard() {
                             </span>
                           )}
                         </div>
-                        {/* Bottom row: cost pips in a dark pill, or ✓ */}
-                        <div className="flex justify-center">
-                          {costEntries.length > 0 ? (
+                        {/* Bottom row: cost pips in a dark pill (nothing when all covered) */}
+                        {costEntries.length > 0 && (
+                          <div className="flex justify-center">
                             <div className="flex flex-wrap items-center justify-center gap-0.5">
                               {costEntries.map(k => (
                                 <div
@@ -3219,13 +3219,8 @@ export default function GameBoard() {
                                 </div>
                               ))}
                             </div>
-                          ) : (
-                            <span
-                              className="text-[10px] font-bold text-green-400 leading-none px-1 py-0.5 rounded"
-                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
-                            >✓</span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                       {/* Affordability badge */}
                       {!isTrulyFree && canAfford && (
