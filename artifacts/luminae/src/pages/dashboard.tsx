@@ -30,6 +30,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 
@@ -336,7 +337,7 @@ export default function Dashboard() {
     setLocation("/");
   };
 
-  if (isLoading) return null;
+  if (isLoading) return <AccountLoadingScreen />;
 
   if (!account) {
     setLocation("/");
