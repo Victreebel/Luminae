@@ -19,6 +19,7 @@ import { FriendsPanel } from "@/components/FriendsPanel";
 import { ChallengeInbox } from "@/components/ChallengeInbox";
 import { useAccount } from "@/contexts/AccountContext";
 import { apiListFriends, apiInviteFriendToRoom, getAccountToken, type Friend } from "@/lib/accountSession";
+import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
 const gemIcon = "/icon_gem.svg";
@@ -46,7 +47,7 @@ export default function Lobby() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { account } = useAccount();
+  const { account, isLoading } = useAccount();
 
   const session = getSession();
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -166,6 +167,8 @@ export default function Lobby() {
   useEffect(() => {
     fetchFriends();
   }, [fetchFriends]);
+
+  if (isLoading) return <AccountLoadingScreen />;
 
   const handleInviteFriend = async (username: string) => {
     const token = getAccountToken();

@@ -19,6 +19,7 @@ import type {
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
 import { useAccount } from '@/contexts/AccountContext';
+import { AccountLoadingScreen } from '@/components/AccountLoadingScreen';
 import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
@@ -1180,7 +1181,7 @@ export default function GameBoard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { account } = useAccount();
+  const { account, isLoading: accountLoading } = useAccount();
   const session = getSession();
 
   const isTutorial = useMemo(() => {
@@ -3174,6 +3175,8 @@ export default function GameBoard() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.crystals]);
+
+  if (accountLoading) return <AccountLoadingScreen />;
 
   if (error) {
     return <div className="h-[100dvh] flex items-center justify-center text-destructive">Error loading game.</div>;
