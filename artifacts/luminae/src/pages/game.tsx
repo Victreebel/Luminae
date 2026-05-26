@@ -4409,12 +4409,13 @@ export default function GameBoard() {
                         {/* Bottom row: cost pips in a dark pill, or ✓ */}
                         <div className="flex justify-center">
                           {costEntries.length > 0 ? (
-                            <div
-                              className="flex flex-wrap items-center justify-center gap-0.5 px-1 py-0.5 rounded"
-                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
-                            >
+                            <div className="flex flex-wrap items-center justify-center gap-0.5">
                               {costEntries.map(k => (
-                                <div key={k} className="flex items-center gap-px">
+                                <div
+                                  key={k}
+                                  className="flex items-center gap-px px-1 py-0.5 rounded"
+                                  style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                                >
                                   <MiniGem color={k as GemKey} size={10} />
                                   <span className="text-[8px] font-bold text-white/90 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
                                 </div>
