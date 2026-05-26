@@ -1228,50 +1228,109 @@ function CompactCardGhost({
 }
 
 // --- Chip absorb ripple: portal burst that fires as the ghost card lands in the chip ---
-// Three expanding rings + a central flash, colored by the card's affinity glowHex.
+// Pill bounce overlay + pill-shaped expanding rings + central flash + radial particles.
+const ABSORB_PARTICLE_ANGLES = [0, 60, 120, 180, 240, 300, 30, 150, 210, 330];
+
 function ChipAbsorbRipple({
-  cx, cy, color, onDone,
+  chipRect, color, onDone,
 }: {
-  cx: number; cy: number; color: string; onDone: () => void;
+  chipRect: DOMRect; color: string; onDone: () => void;
 }) {
   useEffect(() => {
-    const t = setTimeout(onDone, 1500);
+    const t = setTimeout(onDone, 2000);
     return () => clearTimeout(t);
   }, [onDone]);
 
+  const cw = chipRect.width;
+  const ch = chipRect.height;
+  const cx = chipRect.left + cw / 2;
+  const cy = chipRect.top + ch / 2;
+
   return createPortal(
-    <div style={{ position: 'fixed', top: cy, left: cx, width: 0, height: 0, pointerEvents: 'none', zIndex: 9997 }}>
-      {/* Central flash: small glowing disc expands and fades */}
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9997 }}>
+
+      {/* ── Pill bounce overlay: glowing clone of the chip that slams outward then snaps back ── */}
       <motion.div
         style={{
           position: 'absolute',
-          width: 24, height: 24,
-          borderRadius: '50%',
-          background: color,
-          x: -12, y: -12,
-          filter: 'blur(6px)',
+          top: chipRect.top,
+          left: chipRect.left,
+          width: cw,
+          height: ch,
+          borderRadius: 8,
+          background: `radial-gradient(ellipse at center, ${color}55 0%, transparent 70%)`,
+          boxShadow: `0 0 28px 10px ${color}, inset 0 0 16px 6px ${color}aa`,
+          transformOrigin: 'center center',
         }}
-        initial={{ scale: 0, opacity: 1 }}
-        animate={{ scale: 5, opacity: 0 }}
-        transition={{ duration: 0.55, ease: 'easeOut' }}
+        initial={{ scale: 0.7, opacity: 0 }}
+        animate={{
+          scale:   [0.7, 1.55, 0.90, 1.30, 0.97, 1.0],
+          opacity: [0,   1.0,  0.85, 0.70, 0.40, 0  ],
+        }}
+        transition={{ duration: 1.1, ease: 'easeOut', times: [0, 0.18, 0.38, 0.58, 0.80, 1.0] }}
       />
-      {/* Expanding rings — staggered */}
-      {([0, 180, 360] as const).map((delayMs, i) => (
+
+      {/* ── Pill-shaped rings expanding from chip center ── */}
+      <div style={{ position: 'absolute', top: cy, left: cx, width: 0, height: 0 }}>
+        {[0, 110, 220, 330, 440].map((delayMs, i) => (
+          <motion.div
+            key={i}
+            style={{
+              position: 'absolute',
+              width: cw,
+              height: ch,
+              borderRadius: 9,
+              border: `${3 - i * 0.4}px solid ${color}`,
+              boxShadow: `0 0 10px 3px ${color}`,
+              x: -(cw / 2),
+              y: -(ch / 2),
+            }}
+            initial={{ scale: 0.4, opacity: 1 }}
+            animate={{ scale: 4.0, opacity: 0 }}
+            transition={{ duration: 1.1, delay: delayMs / 1000, ease: 'easeOut' }}
+          />
+        ))}
+
+        {/* Central flash burst */}
         <motion.div
-          key={i}
           style={{
             position: 'absolute',
-            width: 56, height: 56,
+            width: 36, height: 36,
             borderRadius: '50%',
-            border: `${2.5 - i * 0.5}px solid ${color}`,
-            boxShadow: `0 0 6px 1px ${color}`,
-            x: -28, y: -28,
+            background: color,
+            x: -18, y: -18,
+            filter: 'blur(10px)',
           }}
-          initial={{ scale: 0.2, opacity: 0.9 }}
-          animate={{ scale: 2.2, opacity: 0 }}
-          transition={{ duration: 0.85, delay: delayMs / 1000, ease: 'easeOut' }}
+          initial={{ scale: 0, opacity: 1 }}
+          animate={{ scale: 8, opacity: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
         />
-      ))}
+
+        {/* Radial spark particles */}
+        {ABSORB_PARTICLE_ANGLES.map((angleDeg, i) => {
+          const rad = (angleDeg * Math.PI) / 180;
+          const dist = 48 + (i % 3) * 14;
+          const tx = Math.cos(rad) * dist;
+          const ty = Math.sin(rad) * dist;
+          return (
+            <motion.div
+              key={i}
+              style={{
+                position: 'absolute',
+                width: i % 2 === 0 ? 5 : 3,
+                height: i % 2 === 0 ? 5 : 3,
+                borderRadius: '50%',
+                background: color,
+                boxShadow: `0 0 5px 2px ${color}`,
+                x: -2, y: -2,
+              }}
+              initial={{ x: -2, y: -2, opacity: 1, scale: 1 }}
+              animate={{ x: tx - 2, y: ty - 2, opacity: 0, scale: 0 }}
+              transition={{ duration: 0.65, delay: 0.04 * i, ease: 'easeOut' }}
+            />
+          );
+        })}
+      </div>
     </div>,
     document.body,
   );
@@ -1562,7 +1621,7 @@ export default function GameBoard() {
   } | null>(null);
   // Absorb ripple — fires when the ghost card lands in the chip, independent of flippingCards.
   const [chipAbsorbRipple, setChipAbsorbRipple] = useState<{
-    id: string; cx: number; cy: number; color: string;
+    id: string; chipRect: DOMRect; color: string;
   } | null>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -2362,7 +2421,7 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, cx: slotR.left + 28, cy: slotR.top + 39, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -2448,7 +2507,7 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, cx: slotR.left + 28, cy: slotR.top + 39, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -2542,7 +2601,7 @@ export default function GameBoard() {
                       const slotR = slotEl?.getBoundingClientRect();
                       if (slotR) {
                         setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
-                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, cx: slotR.left + 28, cy: slotR.top + 39, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
+                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 4800);
                       }
                     }
                     const t2 = setTimeout(() => {
@@ -7855,8 +7914,7 @@ export default function GameBoard() {
       {chipAbsorbRipple && (
         <ChipAbsorbRipple
           key={chipAbsorbRipple.id}
-          cx={chipAbsorbRipple.cx}
-          cy={chipAbsorbRipple.cy}
+          chipRect={chipAbsorbRipple.chipRect}
           color={chipAbsorbRipple.color}
           onDone={() => setChipAbsorbRipple(null)}
         />
