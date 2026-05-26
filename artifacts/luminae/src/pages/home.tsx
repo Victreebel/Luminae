@@ -386,7 +386,7 @@ export default function Home() {
           transition={{ delay: 0.28 }}
           style={{ margin: 0, fontSize: 9, letterSpacing: "0.45em", color: "rgba(200,210,255,0.35)", textTransform: "uppercase", fontFamily: "'Cinzel', serif", fontWeight: 400, position: "relative", zIndex: 1 }}
         >
-          Collect · Forge · Ascend
+          Harness · Forge · Ascend
         </motion.p>
 
         {/* Avatar selector — shown for guest modes */}
