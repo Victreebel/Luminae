@@ -4910,10 +4910,6 @@ export default function GameBoard() {
 
       {/* ── Header ── */}
       <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">
-        <div className="flex items-center gap-2">
-          <h1 className="text-sm font-serif font-bold text-primary tracking-wide">Luminae</h1>
-        </div>
-
         <div className="flex items-center gap-1.5 min-w-0">
           {/* Opponent chips — one per non-local player, always visible */}
           {state.players
