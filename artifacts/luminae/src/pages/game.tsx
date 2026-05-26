@@ -6089,7 +6089,7 @@ export default function GameBoard() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 shrink-0"
+                    className="h-7 w-7 shrink-0 focus-visible:outline-none focus-visible:ring-0"
                     aria-label="Close deck sheet"
                     onClick={closeDeckSheet}
                   >
@@ -6247,7 +6247,7 @@ export default function GameBoard() {
                     </p>
                   )}
 
-                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={closeDeckSheet}>
+                  <Button variant="ghost" className="w-full text-muted-foreground focus-visible:outline-none focus-visible:ring-0" onClick={closeDeckSheet}>
                     Close
                   </Button>
                 </div>
@@ -6824,7 +6824,7 @@ export default function GameBoard() {
                 <h2 className="text-lg font-serif font-bold">How to Play</h2>
                 <div className="flex items-center gap-1.5">
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowRules(false)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 focus-visible:outline-none focus-visible:ring-0" onClick={() => setShowRules(false)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -6949,7 +6949,7 @@ export default function GameBoard() {
                 </h2>
                 <div className="flex items-center gap-1.5">
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowReservedOverlay(false)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 focus-visible:outline-none focus-visible:ring-0" onClick={() => setShowReservedOverlay(false)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -7064,7 +7064,7 @@ export default function GameBoard() {
                     </button>
                   )}
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Close forged artifacts" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 focus-visible:outline-none focus-visible:ring-0" aria-label="Close forged artifacts" onClick={() => { setShowForgedOverlay(false); setForgedFilter(null); }}>
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
