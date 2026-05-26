@@ -1293,6 +1293,7 @@ export default function GameBoard() {
     localStorage.getItem('luminae_compact_view') === '1'
   );
   const [boardCompactScale, setBoardCompactScale] = useState(1);
+  const [boardCompactNaturalH, setBoardCompactNaturalH] = useState(0);
   const [showAllLog, setShowAllLog] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -1459,25 +1460,38 @@ export default function GameBoard() {
   useEffect(() => {
     if (!compactView || activeTab !== 'board') {
       setBoardCompactScale(1);
+      setBoardCompactNaturalH(0);
       return;
     }
     const computeScale = () => {
       const wrapper = boardCompactWrapperRef.current;
       const main = mainScrollRef.current;
       if (!wrapper || !main) return;
+      // Temporarily reset transform so scrollHeight reflects natural content height
+      const prevTransform = wrapper.style.transform;
+      const prevMargin = wrapper.style.marginBottom;
+      wrapper.style.transform = '';
+      wrapper.style.marginBottom = '';
       const naturalH = wrapper.scrollHeight;
+      wrapper.style.transform = prevTransform;
+      wrapper.style.marginBottom = prevMargin;
       const viewH = main.clientHeight;
       if (naturalH <= viewH) {
         setBoardCompactScale(1);
+        setBoardCompactNaturalH(0);
       } else {
-        setBoardCompactScale(Math.max(0.45, viewH / naturalH));
+        const scale = Math.max(0.45, viewH / naturalH);
+        setBoardCompactNaturalH(naturalH);
+        setBoardCompactScale(scale);
       }
     };
     const raf = requestAnimationFrame(computeScale);
     const main = mainScrollRef.current;
+    const wrapper = boardCompactWrapperRef.current;
     if (!main) return () => cancelAnimationFrame(raf);
     const observer = new ResizeObserver(computeScale);
     observer.observe(main);
+    if (wrapper) observer.observe(wrapper);
     return () => {
       cancelAnimationFrame(raf);
       observer.disconnect();
@@ -4766,7 +4780,12 @@ export default function GameBoard() {
             style={compactView && boardCompactScale < 1 ? {
               transform: `scale(${boardCompactScale})`,
               transformOrigin: 'top center',
-              overflow: 'hidden',
+              // Collapse the dead layout space below the visually-scaled content.
+              // After scale(N) with transformOrigin top-center, the visual footprint
+              // is N*naturalH, but the layout box remains naturalH. The negative margin
+              // pulls everything below it up by (1-N)*naturalH, so the element's
+              // effective layout contribution equals its visual height exactly.
+              marginBottom: `${(boardCompactScale - 1) * boardCompactNaturalH}px`,
             } : undefined}
           >
             {BoardTab()}
