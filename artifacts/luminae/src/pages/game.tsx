@@ -53,6 +53,7 @@ import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
+import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
 
@@ -1821,6 +1822,25 @@ export default function GameBoard() {
   useEffect(() => {
     setCoreActionSubmitted(false);
   }, [state?.currentPlayerIndex]);
+
+  // Market keyboard navigation — roving tabindex for the 3×N card Forge grid.
+  // Counts how many keyboard-navigable (non-ghost, non-hidden, non-null) cards
+  // exist per tier row so the hook knows when to wrap focus.
+  const marketTierCardCounts = useMemo(() => {
+    if (!state) return [0, 0, 0];
+    return [
+      { tierNum: 3, cards: state.marketTier3 },
+      { tierNum: 2, cards: state.marketTier2 },
+      { tierNum: 1, cards: state.marketTier1 },
+    ].map(({ tierNum, cards }) =>
+      cards.filter((c, i) => {
+        const sk = `${tierNum}-${i}`;
+        return !burstGhostCards[sk] && !hiddenSlots.has(sk) && c !== null;
+      }).length,
+    );
+  }, [state, burstGhostCards, hiddenSlots]);
+
+  const { getCardFocusProps } = useMarketKeyboardNav(marketTierCardCounts);
 
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
@@ -3772,10 +3792,20 @@ export default function GameBoard() {
 
         <div className="relative flex flex-col gap-3 px-3 pb-3">
         {[
-          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3 },
-          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2 },
-          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1 },
-        ].map(row => (
+          { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, tierIdx: 0 },
+          { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, tierIdx: 1 },
+          { tier: 1, cards: state.marketTier1, deck: state.deckCounts.tier1, tierIdx: 2 },
+        ].map(row => {
+          // Pre-compute the keyboard-nav column index for each slot.
+          // Ghost / hidden / null slots get -1 (not keyboard-navigable).
+          // Valid cards get a sequential 0-based index within this tier row.
+          let _col = 0;
+          const colIndices = row.cards.map((c, i) => {
+            const sk = `${row.tier}-${i}`;
+            if (burstGhostCards[sk] || hiddenSlots.has(sk) || !c) return -1;
+            return _col++;
+          });
+          return (
           <div key={row.tier} className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
             <div className="flex items-center gap-2 mb-2 px-0.5">
               <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}, {TIER_CIVILIZATION[row.tier]}</span>
@@ -3807,6 +3837,7 @@ export default function GameBoard() {
                 </div>
               </button>
               {row.cards.map((c, i) => {
+                const colIdx = colIndices[i];
                 const slotKey = `${row.tier}-${i}`;
                 const isHidden = hiddenSlots.has(slotKey);
 
@@ -3827,11 +3858,22 @@ export default function GameBoard() {
                   return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className="w-[var(--card-w)] h-[var(--card-h)] rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0" />;
                 }
 
+                // Keyboard-nav focus props for this card slot (roving tabindex).
+                const cardFocusProps = colIdx >= 0
+                  ? getCardFocusProps(row.tierIdx, colIdx, c.name, c.lumens, row.tier, () => openCardSheet(c, false))
+                  : null;
+
                 const isFlipping = flippingCards.has(c.id);
                 const isQueued = plannedCardId === c.id;
                 if (isFlipping) {
                   return (
-                    <div key={c.id} data-card-id={c.id} className="relative shrink-0" style={{ perspective: '800px' }}>
+                    <div
+                      key={c.id}
+                      data-card-id={c.id}
+                      className="relative shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                      style={{ perspective: '800px' }}
+                      {...(cardFocusProps ?? {})}
+                    >
                       <motion.div
                         initial={{ rotateY: 180, scale: 0.85 }}
                         animate={{ rotateY: 0, scale: 1 }}
@@ -3853,7 +3895,12 @@ export default function GameBoard() {
 
                 const showTutorialGlow = isTutorial && (tutorialStep === 6 || tutorialStep === 8) && !selectedCard;
                 return (
-                  <div key={c.id} data-card-id={c.id} className="relative shrink-0">
+                  <div
+                    key={c.id}
+                    data-card-id={c.id}
+                    className="relative shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                    {...(cardFocusProps ?? {})}
+                  >
                     <ArtifactCardView
                       card={c}
                       tier={row.tier}
@@ -3882,7 +3929,8 @@ export default function GameBoard() {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
         </div>
       </div>
 
