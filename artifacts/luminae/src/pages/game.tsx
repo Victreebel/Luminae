@@ -143,11 +143,15 @@ function OpponentChip({
   isActive,
   isLocalTurn,
   absorbPulse = 0,
+  onClick,
+  popoverOpen = false,
 }: {
   player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
   isActive: boolean;
   isLocalTurn: boolean;
   absorbPulse?: number;
+  onClick?: () => void;
+  popoverOpen?: boolean;
 }) {
   const dimmed = !isActive && !isLocalTurn;
   return (
@@ -156,8 +160,13 @@ function OpponentChip({
       initial={false}
       animate={isActive ? 'active' : 'idle'}
       variants={opponentTurnVariants}
+      onClick={onClick}
       className={`relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
-        isActive
+        onClick ? 'cursor-pointer select-none' : ''
+      } ${
+        popoverOpen
+          ? 'ring-2 ring-primary/70 bg-primary/20 text-foreground'
+          : isActive
           ? 'ring-1 ring-primary bg-primary/10 text-foreground'
           : dimmed
           ? 'bg-secondary/40 text-muted-foreground/50'
@@ -1323,6 +1332,7 @@ export default function GameBoard() {
   );
   const [boardCompactScale, setBoardCompactScale] = useState(1);
   const [boardCompactNaturalH, setBoardCompactNaturalH] = useState(0);
+  const [openOpponentId, setOpenOpponentId] = useState<string | null>(null);
   const [showAllLog, setShowAllLog] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -1483,7 +1493,7 @@ export default function GameBoard() {
     const next = !compactView;
     setCompactView(next);
     localStorage.setItem('luminae_compact_view', next ? '1' : '0');
-    if (!next) setBoardCompactScale(1);
+    if (!next) { setBoardCompactScale(1); setOpenOpponentId(null); }
   };
 
   useEffect(() => {
@@ -4154,6 +4164,7 @@ export default function GameBoard() {
   };
 
   const BoardTabOpponents = () => {
+    if (compactView) return null;
     if (state.players.filter(p => p.playerId !== session?.playerId).length === 0) return null;
     return (
       <div className="px-0 pb-6">
@@ -4948,6 +4959,8 @@ export default function GameBoard() {
                 }
                 isLocalTurn={isMyTurn}
                 absorbPulse={chipAbsorbPulse[opponent.playerId] ?? 0}
+                onClick={compactView ? () => setOpenOpponentId(prev => prev === opponent.playerId ? null : opponent.playerId) : undefined}
+                popoverOpen={compactView && openOpponentId === opponent.playerId}
               />
             ))}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
@@ -5005,6 +5018,130 @@ export default function GameBoard() {
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
+
+      {/* ── Compact-view opponent popover ── */}
+      {compactView && openOpponentId !== null && (() => {
+        const opp = state.players.find(p => p.playerId === openOpponentId);
+        if (!opp) return null;
+        const isCurrent = state.status === 'playing' && state.players[state.currentPlayerIndex]?.playerId === opp.playerId;
+        const totalAffinity = Object.values(opp.crystals).reduce((a, b) => a + b, 0);
+        const cardCount = opp.purchasedCards.length;
+        const reservedCount = opp.reservedCards.length;
+        const oppCivPalette = getDominantAffinityPalette(opp.purchasedCards);
+        const oppCivName = opp.civName || getCivilizationName(oppCivPalette, getKardashevTier(opp.purchasedCards, opp.discountedForgeIds));
+        return (
+          <>
+            {/* Backdrop — click outside to close */}
+            <div
+              className="fixed inset-0 z-[24]"
+              onClick={() => setOpenOpponentId(null)}
+            />
+            {/* Panel */}
+            <AnimatePresence>
+              <motion.div
+                key={openOpponentId}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.15 }}
+                className="fixed left-2 right-2 z-[25] rounded-2xl border border-border/60 bg-card/95 backdrop-blur shadow-xl p-3"
+                style={{ top: 'calc(56px + env(safe-area-inset-top) + 4px)' }}
+              >
+                {/* Header row */}
+                <div className="flex items-center gap-2 mb-3">
+                  <PlayerAvatar avatarId={opp.avatarId ?? null} name={opp.playerName} size={24} />
+                  {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-sm font-bold truncate">{opp.playerName}</span>
+                    <span className="text-[10px] font-normal tracking-wide truncate" style={{ color: oppCivPalette.primary, opacity: 0.8 }}>{oppCivName}</span>
+                  </div>
+                  {isCurrent && (
+                    <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>
+                  )}
+                  <div className="flex items-center gap-1 font-serif font-black text-xl text-white leading-none shrink-0">
+                    <span>{opp.lumens}</span>
+                    <Sparkles className="h-3.5 w-3.5 text-white" />
+                  </div>
+                </div>
+
+                {/* Stat chips row */}
+                <div className="flex items-center gap-3 mb-3">
+                  {([
+                    { label: 'Affinity',  value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
+                    { label: 'Artifact',  value: cardCount,     hex: '#ffc43d', glow: '#ffe28a' },
+                    { label: 'Encrypted', value: reservedCount, hex: '#E8E4FF', glow: '#C8C0FF' },
+                  ] as const).map(({ label, value, hex, glow }) => {
+                    const has = value > 0;
+                    return (
+                      <div key={label} className="flex items-baseline gap-0.5">
+                        <span className="text-base font-black leading-none" style={{ color: has ? hex : hex + '55', textShadow: has ? `0 0 8px ${glow}` : 'none' }}>
+                          {value}
+                        </span>
+                        <span className="text-[9px] font-semibold uppercase tracking-wide leading-none" style={{ color: has ? glow + 'cc' : hex + '44' }}>
+                          {label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Per-affinity crystal grid */}
+                <div className="grid grid-cols-6 gap-1.5">
+                  {CRYSTALS.map((c) => {
+                    const n = opp.crystals[c as keyof CrystalCounts] ?? 0;
+                    const bonus = opp.bonuses[c as keyof CrystalCounts] ?? 0;
+                    const lumBonus = state.luminaryAffinities
+                      .filter((la: LuminaryActiveState) =>
+                        la.ownerId === opp.playerId &&
+                        state.turnCount > la.summonedAtTurnCount &&
+                        la.activeAffinity === c
+                      ).length;
+                    const meta = GEM_META[c as GemKey];
+                    const isFlux = c === 'flux';
+                    const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0 || lumBonus > 0);
+                    return (
+                      <div
+                        key={c}
+                        className="h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
+                        style={{
+                          background: hasContent
+                            ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
+                            : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
+                          border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
+                          boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
+                        }}
+                      >
+                        {hasContent && (
+                          <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
+                        )}
+                        <div className="flex items-center gap-0.5 w-full justify-center">
+                          <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
+                          <MiniGem color={c as GemKey} size={7} />
+                        </div>
+                        <span
+                          className="text-2xl font-black leading-none tracking-tight"
+                          style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
+                        >
+                          {n}
+                        </span>
+                        {!isFlux && (bonus > 0 || lumBonus > 0) && (
+                          <div className="flex flex-col items-center gap-0" style={{ lineHeight: 1 }}>
+                            {bonus > 0 && <span className="text-[9px] font-bold leading-none text-primary">+{bonus} bonus</span>}
+                            {lumBonus > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>}
+                          </div>
+                        )}
+                        {isFlux && reservedCount > 0 && (
+                          <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} encrypted</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </>
+        );
+      })()}
 
       {/* ── Tab Content ── */}
       <main
