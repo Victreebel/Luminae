@@ -5083,9 +5083,12 @@ export default function GameBoard() {
       />
 
       {/* ── Header ── */}
-      <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center justify-between bg-card/70 backdrop-blur border-b border-border z-20">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {/* Opponent chips — one per non-local player, always visible */}
+      <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/70 backdrop-blur border-b border-border z-20">
+        {/* Balancing spacer — same width as the menu button so chips stay centred */}
+        <div className="w-8 shrink-0" />
+
+        {/* Opponent chips — centred in the remaining space */}
+        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
           {state.players
             .filter(p => p.playerId !== session.playerId)
             .map(opponent => (
