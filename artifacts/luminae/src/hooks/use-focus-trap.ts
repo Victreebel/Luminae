@@ -9,12 +9,23 @@ const FOCUSABLE_SELECTORS = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+export interface FocusTrapOptions {
+  /**
+   * Whether pressing Escape should call `onClose`.
+   * Default: true.
+   *
+   * Pass `false` when a higher-level handler (e.g. `useEscapeToClose`) owns
+   * Escape for this sheet so that a single keypress never closes two dialogs.
+   */
+  handleEscape?: boolean;
+}
+
 /**
  * Traps keyboard focus within `containerRef` while `isOpen` is true.
  *
  * Behaviours:
  * - Tab / Shift+Tab cycle only through focusable descendants of the container.
- * - Escape calls `onClose`.
+ * - Escape calls `onClose` (unless `options.handleEscape` is `false`).
  * - On open, focuses the first focusable element inside the container.
  * - On close, returns focus to whatever element was focused when the trap activated.
  */
@@ -22,7 +33,9 @@ export function useFocusTrap(
   containerRef: React.RefObject<HTMLElement | null>,
   isOpen: boolean,
   onClose: () => void,
+  options: FocusTrapOptions = {},
 ): void {
+  const { handleEscape = true } = options;
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
@@ -51,9 +64,11 @@ export function useFocusTrap(
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        onCloseRef.current();
+        if (handleEscape) {
+          e.preventDefault();
+          e.stopPropagation();
+          onCloseRef.current();
+        }
         return;
       }
 
@@ -90,5 +105,5 @@ export function useFocusTrap(
         previouslyFocused.focus({ preventScroll: true });
       }
     };
-  }, [isOpen, containerRef]);
+  }, [isOpen, containerRef, handleEscape]);
 }

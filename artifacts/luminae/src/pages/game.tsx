@@ -51,6 +51,7 @@ import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHT
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
+import { useEscapeToClose } from '@/hooks/use-escape-to-close';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
@@ -1620,10 +1621,12 @@ export default function GameBoard() {
   useScrollLock(overlayStates, mainScrollRef);
 
   // Focus-trap: card action sheet
+  // handleEscape: false — useEscapeToClose owns Escape for all game sheets.
   useFocusTrap(
     cardSheetContainerRef,
     !!selectedCard,
     () => { setSelectedCard(null); setPendingSheetAction(null); },
+    { handleEscape: false },
   );
 
   // Focus-trap: reserved cards overlay
@@ -1631,6 +1634,7 @@ export default function GameBoard() {
     reservedOverlayContainerRef,
     showReservedOverlay,
     () => setShowReservedOverlay(false),
+    { handleEscape: false },
   );
 
   // Focus-trap: deck reserve sheet
@@ -1638,6 +1642,7 @@ export default function GameBoard() {
     deckSheetContainerRef,
     selectedDeckTier !== null,
     () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); },
+    { handleEscape: false },
   );
 
   // Focus-trap: rules sheet
@@ -1645,6 +1650,7 @@ export default function GameBoard() {
     rulesSheetContainerRef,
     showRules,
     () => setShowRules(false),
+    { handleEscape: false },
   );
 
   // Focus-trap: luminary detail sheet
@@ -1652,6 +1658,7 @@ export default function GameBoard() {
     luminarySheetContainerRef,
     !!selectedLuminary,
     () => setSelectedLuminary(null),
+    { handleEscape: false },
   );
 
   // Focus-trap: forged cards overlay
@@ -1659,7 +1666,20 @@ export default function GameBoard() {
     forgedOverlayContainerRef,
     showForgedOverlay,
     () => { setShowForgedOverlay(false); setForgedFilter(null); },
+    { handleEscape: false },
   );
+
+  // Escape-to-close: closes whichever sheet is open when Esc is pressed.
+  // Priority order — most contextual/recently-opened first so that nested
+  // sheets close inner-to-outer (e.g. card sheet before reserved overlay).
+  useEscapeToClose([
+    { isOpen: !!selectedCard,           onClose: () => { setSelectedCard(null); setPendingSheetAction(null); } },
+    { isOpen: !!selectedLuminary,       onClose: () => setSelectedLuminary(null) },
+    { isOpen: selectedDeckTier !== null, onClose: () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); } },
+    { isOpen: showForgedOverlay,        onClose: () => { setShowForgedOverlay(false); setForgedFilter(null); } },
+    { isOpen: showReservedOverlay,      onClose: () => setShowReservedOverlay(false) },
+    { isOpen: showRules,                onClose: () => setShowRules(false) },
+  ]);
 
   // Keyboard shortcuts — suppressed while any modal/sheet is open or a text input is focused.
   // Covers panels not in overlayStates (rules, eminence breakdown, deck sheet) so that
