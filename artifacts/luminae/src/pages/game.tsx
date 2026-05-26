@@ -3204,9 +3204,9 @@ export default function GameBoard() {
                             </span>
                           )}
                         </div>
-                        {/* Bottom row: cost pips in a dark pill (nothing when all covered) */}
-                        {costEntries.length > 0 && (
-                          <div className="flex justify-center">
+                        {/* Bottom row: cost pips in a dark pill, or ✓ when fully covered */}
+                        <div className="flex justify-center">
+                          {costEntries.length > 0 ? (
                             <div className="flex flex-wrap items-center justify-center gap-0.5">
                               {costEntries.map(k => (
                                 <div
@@ -3219,18 +3219,14 @@ export default function GameBoard() {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                      {/* Affordability badge */}
-                      {!isTrulyFree && canAfford && (
-                        <div
-                          className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none"
-                          style={{ background: 'rgba(34,197,94,0.85)', boxShadow: '0 0 6px rgba(34,197,94,0.6)' }}
-                        >
-                          <span className="text-[8px] font-black text-white">✓</span>
+                          ) : (
+                            <span
+                              className="text-[10px] font-bold text-green-400 leading-none px-1 py-0.5 rounded"
+                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                            >✓</span>
+                          )}
                         </div>
-                      )}
+                      </div>
                       {isQueued && <QueuedOverlay />}
                       {showTutorialGlow && (
                         <div className="pointer-events-none absolute inset-0 rounded-lg animate-pulse"
