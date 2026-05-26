@@ -5163,16 +5163,20 @@ export default function GameBoard() {
             {/* Scaled zone — Luminaries + card market; scaled to fit viewport in compact view */}
             <div
               ref={boardCompactWrapperRef}
-              style={compactView && boardCompactScale < 1 ? {
-                transform: `scale(${boardCompactScale})`,
-                transformOrigin: 'top center',
-                // Collapse the dead layout space below the visually-scaled content.
-                // After scale(N) with transformOrigin top-center, the visual footprint
-                // is N*naturalH, but the layout box remains naturalH. The negative margin
-                // pulls everything below it up by (1-N)*naturalH, so the element's
-                // effective layout contribution equals its visual height exactly.
-                marginBottom: `${(boardCompactScale - 1) * boardCompactNaturalH}px`,
-              } : undefined}
+              style={{
+                // In compact view, override card dimensions so the full board (3 tiers +
+                // Terminus row) naturally fits the available viewport height without
+                // needing an aggressive CSS transform. 88 × 62 keeps cards readable
+                // while reducing board height from ~760 px to ~560 px.
+                ...(compactView ? { '--card-h': '88px', '--card-w': '62px' } as React.CSSProperties : {}),
+                // Secondary safety: if the board still overflows after the card-size
+                // reduction, the existing scale transform pulls it back into view.
+                ...(compactView && boardCompactScale < 1 ? {
+                  transform: `scale(${boardCompactScale})`,
+                  transformOrigin: 'top center',
+                  marginBottom: `${(boardCompactScale - 1) * boardCompactNaturalH}px`,
+                } : {}),
+              }}
             >
               {BoardTabMain()}
             </div>
