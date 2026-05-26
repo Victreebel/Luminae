@@ -4103,11 +4103,12 @@ export default function GameBoard() {
                   const isTrulyFree = CRYSTALS.every(k => (bonusOnlyCosts[k as keyof CrystalCounts] ?? 0) === 0);
                   const bonusMeta = GEM_META[c.bonusColor as GemKey];
                   const isTapped = selectedCard?.card.id === c.id;
+                  const chipArt = CARD_ART[c.id];
                   return (
                     <div
                       key={c.id}
                       data-card-id={c.id}
-                      className="relative shrink-0 rounded-lg border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+                      className="relative shrink-0 rounded-lg border cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 overflow-hidden"
                       style={{
                         width: 56, minHeight: 78,
                         background: `${bonusMeta?.hex ?? '#888'}18`,
@@ -4117,7 +4118,19 @@ export default function GameBoard() {
                       {...(cardFocusProps ?? {})}
                       title={c.name}
                     >
-                      <div className="flex flex-col items-center justify-between h-full p-1.5 gap-1" style={{ minHeight: 78 }}>
+                      {/* Ghost art — very faint background texture */}
+                      {chipArt && (
+                        <img
+                          src={chipArt}
+                          alt=""
+                          draggable={false}
+                          className="pointer-events-none absolute inset-0 w-full h-full object-cover select-none"
+                          style={{ opacity: 0.13, mixBlendMode: 'luminosity' }}
+                        />
+                      )}
+                      {/* Subtle gradient veil so text stays readable over art */}
+                      <div className="pointer-events-none absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.5) 100%)' }} />
+                      <div className="relative flex flex-col items-center justify-between h-full p-1.5 gap-1" style={{ minHeight: 78 }}>
                         <span className="text-[11px] font-bold font-serif text-amber-100 leading-none">
                           {(c.lumens ?? 0) > 0 ? c.lumens : '—'}
                         </span>
