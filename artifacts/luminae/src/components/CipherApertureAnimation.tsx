@@ -53,6 +53,12 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
   tutorial: { lift: 300, circuit: 960, compress: 500, sigil: 250, travel: 680, arrive: 410 },
 };
 
+/**
+ * Intentionally inert overlay — `pointer-events-none` on the root div means no
+ * keyboard or pointer events reach this layer from outside.  There are zero
+ * focusable elements inside the animation; a focus trap would have nothing to
+ * cycle through and is therefore not needed here.
+ */
 export function CipherApertureAnimation({
   animKey, mode, sourceRect, affinityHex, cardName, cardFace,
   destPos, gotFlux, onComplete,

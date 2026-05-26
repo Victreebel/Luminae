@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence } from 'framer-motion';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
@@ -1119,6 +1120,13 @@ export function LuminarySummonCutscene({
   const pRgb = `${parseInt(primaryColor.slice(1,3),16)},${parseInt(primaryColor.slice(3,5),16)},${parseInt(primaryColor.slice(5,7),16)}`;
   const { panelArt, entityCutout } = getLuminaryImageAssets(luminaryId);
 
+  // Trap keyboard focus inside the cutscene container for the duration of the
+  // animation.  When onSkip is provided a "Skip view" button is the only
+  // focusable element; without it the cutscene has no interactive elements and
+  // the trap activates but immediately releases on Escape via the onSkip path.
+  const containerRef = useRef<HTMLElement | null>(null);
+  useFocusTrap(containerRef, true, onSkip ?? (() => {}));
+
   // Keep refs so the phase-advance closure always sees the latest callbacks
   // without the effect needing to re-run (which would reset the timer chain).
   const onFlashRef = useRef(onFlash);
@@ -1344,7 +1352,7 @@ export function LuminarySummonCutscene({
   const vesselTop  = vh / 2 - BOARD_CARD_H / 2;
 
   return (
-    <div className="fixed inset-0 z-[9000]">
+    <div ref={(el) => { containerRef.current = el; }} className="fixed inset-0 z-[9000]">
 
       {/* ── Skip View button ───────────────────────────────────────────────── */}
       {onSkip && (

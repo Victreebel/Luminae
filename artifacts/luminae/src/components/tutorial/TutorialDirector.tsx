@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { DevTutorialNav } from "./DevTutorialNav";
 import { TutorialDebugOverlay } from "./TutorialDebugOverlay";
 import { CipherApertureAnimation } from "@/components/CipherApertureAnimation";
@@ -567,6 +568,10 @@ function TutorialCardSheet({
   onReserve?: () => void;
   onClose: () => void;
 }) {
+  const sheetRef = useRef<HTMLElement | null>(null);
+  // Sheet is always mounted when visible (AnimatePresence controls lifecycle).
+  useFocusTrap(sheetRef, true, onClose);
+
   const artUrl = CARD_ART[card.id];
   const bonusMeta = GEM_META[card.bonusColor];
   const eff = effectiveCost(card, bonuses);
@@ -606,6 +611,10 @@ function TutorialCardSheet({
         onClick={onClose}
       />
       <motion.div
+        ref={(el) => { sheetRef.current = el; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Card actions"
         key="card-sheet-panel"
         className="fixed left-0 right-0 bottom-0 z-[81] rounded-t-2xl border-t border-white/15 shadow-2xl"
         style={{ background: "rgba(6,6,17,0.97)" }}
@@ -2923,6 +2932,10 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
   filterGem?: GemKey | null;
   onClose: () => void;
 }) {
+  const collSheetRef = useRef<HTMLElement | null>(null);
+  // Sheet is always mounted when visible (AnimatePresence controls lifecycle).
+  useFocusTrap(collSheetRef, true, onClose);
+
   const bonusTotals = (Object.entries(bonuses) as [GemKey, number][]).filter(([, v]) => v > 0);
   const visibleCards = filterGem
     ? forged.filter(id => TUTORIAL_CARDS[id]?.bonusColor === filterGem)
@@ -2938,6 +2951,10 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
         onClick={onClose}
       />
       <motion.div
+        ref={(el) => { collSheetRef.current = el; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Your collection"
         key="coll-panel"
         className="fixed left-0 right-0 bottom-0 z-[81] rounded-t-2xl border-t border-white/15 shadow-2xl"
         style={{ background: "rgba(6,6,17,0.97)" }}
@@ -3025,6 +3042,8 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
   const beatId = beat.id;
   const subStep = s.subStep;
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuDrawerRef = useRef<HTMLElement | null>(null);
+  useFocusTrap(menuDrawerRef, menuOpen, () => setMenuOpen(false));
   const isShortLandscape = useIsShortLandscape();
 
   // Flash of light on b9c_transition → b10_reserve beat boundary
@@ -3367,6 +3386,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               onClick={() => setMenuOpen(false)}
             />
             <motion.div
+              ref={(el) => { menuDrawerRef.current = el; }}
+              role="menu"
+              aria-label="Tutorial options"
               key="menu-drawer"
               className="absolute top-[48px] right-3 z-50 rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
               style={{ background: "rgba(8,8,24,0.96)", minWidth: 196 }}

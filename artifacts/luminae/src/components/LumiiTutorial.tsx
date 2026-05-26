@@ -7,6 +7,7 @@ import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
 import type { GemKey } from "@/lib/gemMeta";
 import { renderKeywords } from "@/lib/tutorialKeywords";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 // ─── Viewport height hook ────────────────────────────────────────────────────
 
@@ -1231,6 +1232,8 @@ export function LumiiTutorial({
   const ffTriggeredRef = useRef(false);
   const nudgeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipConfirmRef = useRef<HTMLElement | null>(null);
+  const completionRef  = useRef<HTMLElement | null>(null);
 
   const beat = BEATS[tutorialStep] ?? null;
   const currentAttention = LUMII_ATTENTION[tutorialStep] ?? "listening";
@@ -1411,6 +1414,11 @@ export function LumiiTutorial({
     setLocation("/");
   };
 
+  // Focus traps for the two user-blocking modals — placed after handler
+  // definitions to avoid ReferenceError in the hook's escape callback.
+  useFocusTrap(skipConfirmRef, showSkipConfirm, () => setShowSkipConfirm(false));
+  useFocusTrap(completionRef, showCompletion, handleFinish);
+
   if (tutorialStep < 0) return null;
 
   const isLastLine = !beat || lineIdx >= beat.lines.length - 1;
@@ -1453,6 +1461,9 @@ export function LumiiTutorial({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.7 }}
+            // Intentionally inert: no focusable elements. This is a purely
+            // visual "advancing through time" loading screen with no user
+            // interaction — it dismisses automatically when fast-forward ends.
             className="fixed inset-0 z-[9000] bg-black flex flex-col items-center justify-center gap-4"
           >
             <motion.div
@@ -1486,12 +1497,16 @@ export function LumiiTutorial({
             className="fixed inset-0 z-[8000] flex items-center justify-center bg-black/75 px-5"
           >
             <motion.div
+              ref={(el) => { skipConfirmRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lumii-skip-heading"
               initial={{ scale: 0.9, y: 12 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 12 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl"
             >
-              <h2 className="text-lg font-bold mb-2">Leave the ascension path?</h2>
+              <h2 id="lumii-skip-heading" className="text-lg font-bold mb-2">Leave the ascension path?</h2>
               <p className="text-sm text-muted-foreground mb-5">
                 You'll return to the home screen. You can begin your civilization's journey from there at any time.
               </p>
@@ -1526,6 +1541,10 @@ export function LumiiTutorial({
             className="fixed inset-0 z-[8000] flex items-center justify-center bg-black/82 px-5"
           >
             <motion.div
+              ref={(el) => { completionRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lumii-completion-heading"
               initial={{ scale: 0.88, y: 16 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 280, damping: 22 }}
@@ -1538,7 +1557,7 @@ export function LumiiTutorial({
               >
                 <LumiiOrb size={68} excited highlightZone={null} />
               </motion.div>
-              <h2 className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
+              <h2 id="lumii-completion-heading" className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 You've seen the full arc of ascension in Luminae.
               </p>

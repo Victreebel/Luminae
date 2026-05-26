@@ -235,12 +235,21 @@ function BaseDialog({
   title: string;
   children: React.ReactNode;
 }) {
+  const containerRef = useRef<HTMLElement | null>(null);
+  // Escape is handled by the parent useEscapeToClose; only tab-cycle here.
+  useFocusTrap(containerRef, open, onClose, { handleEscape: false });
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 px-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60">
+      <div
+        ref={(el) => { containerRef.current = el; }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="base-dialog-title"
+        className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/60"
+      >
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-white">{title}</h2>
+          <h2 id="base-dialog-title" className="text-base font-bold text-white">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -6698,7 +6707,12 @@ export default function GameBoard() {
         })()}
       </AnimatePresence>
 
-      {/* ── Turn Announcement Overlay ── */}
+      {/* ── Turn Announcement Overlay ──
+           Intentionally inert for keyboard purposes: this is a transient, timed
+           notification with no focusable elements.  Users can click anywhere to
+           dismiss early, but it auto-dismisses on a timer regardless.  A focus
+           trap would steal focus from nothing and then fail to restore it cleanly
+           when the overlay exits mid-animation. */}
       <AnimatePresence>
         {turnAnnouncement && (
           <motion.div

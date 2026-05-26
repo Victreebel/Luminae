@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,10 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+
+  // Trap keyboard focus inside the panel when open; Escape is handled by useEscapeToClose.
+  useFocusTrap(panelRef, isOpen, () => setIsOpen(false), { handleEscape: false });
 
   const fetchChallenges = useCallback(async () => {
     if (!token) return;
@@ -121,6 +126,10 @@ export function ChallengeInbox({ onWebSocketChallenge: _ws }: Props) {
 
               {/* Panel */}
               <motion.div
+                ref={(el) => { panelRef.current = el; }}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Challenges"
                 initial={{ opacity: 0, scale: 0.95, y: -8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -8 }}

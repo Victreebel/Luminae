@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { X, ChevronRight, BookOpen } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
 import { clearSession } from "@/lib/session";
+import { useFocusTrap } from "@/hooks/use-focus-trap";
 
 interface TutorialStep {
   id: number;
@@ -88,6 +89,8 @@ export function TutorialOverlay({
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const prevLogLenRef = useRef(0);
   const innerPanelRef = useRef<HTMLDivElement | null>(null);
+  const skipConfirmRef = useRef<HTMLElement | null>(null);
+  const completionRef = useRef<HTMLElement | null>(null);
 
   const step = TUTORIAL_STEPS[tutorialStep] ?? null;
 
@@ -183,6 +186,11 @@ export function TutorialOverlay({
     setLocation("/");
   };
 
+  // Focus traps — placed after callback definitions so they are valid references.
+  // Escape on skip-confirm = dismiss (keep learning); Escape on completion = finish.
+  useFocusTrap(skipConfirmRef, showSkipConfirm, () => setShowSkipConfirm(false));
+  useFocusTrap(completionRef, showCompletion, handleFinish);
+
   if (tutorialStep < 0) return null;
 
   const isActive = tutorialStep >= 0 && tutorialStep < TUTORIAL_STEPS.length;
@@ -201,12 +209,16 @@ export function TutorialOverlay({
             className="fixed inset-0 z-[300] flex items-center justify-center bg-black/75 px-5"
           >
             <motion.div
+              ref={(el) => { skipConfirmRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="skip-confirm-title"
               initial={{ scale: 0.92, y: 12 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.92, y: 12 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl"
             >
-              <h2 className="text-lg font-bold mb-2">Skip the tutorial?</h2>
+              <h2 id="skip-confirm-title" className="text-lg font-bold mb-2">Skip the tutorial?</h2>
               <p className="text-sm text-muted-foreground mb-5">
                 You'll be taken back to the home screen. You can always start a normal game from there.
               </p>
@@ -241,13 +253,17 @@ export function TutorialOverlay({
             className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 px-5"
           >
             <motion.div
+              ref={(el) => { completionRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="completion-title"
               initial={{ scale: 0.88, y: 16 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 280, damping: 22 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl text-center"
             >
               <div className="text-4xl mb-3">🎉</div>
-              <h2 className="text-xl font-bold font-serif mb-2">You're ready!</h2>
+              <h2 id="completion-title" className="text-xl font-bold font-serif mb-2">You're ready!</h2>
               <p className="text-sm text-muted-foreground mb-5">
                 You've learned the core mechanics of Luminae:
               </p>
