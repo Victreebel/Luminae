@@ -5963,7 +5963,7 @@ export default function GameBoard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 shrink-0"
+                  className="h-7 w-7 shrink-0 focus-visible:outline-none focus-visible:ring-0"
                   aria-label="Close luminary details"
                   onClick={() => setSelectedLuminary(null)}
                 >
@@ -6027,7 +6027,7 @@ export default function GameBoard() {
                     </div>
                   </div>
                 </div>
-                <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setSelectedLuminary(null)}>
+                <Button variant="ghost" className="w-full text-muted-foreground focus-visible:outline-none focus-visible:ring-0" onClick={() => setSelectedLuminary(null)}>
                   Close
                 </Button>
               </div>
