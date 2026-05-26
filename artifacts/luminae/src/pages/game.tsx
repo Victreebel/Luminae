@@ -5474,7 +5474,7 @@ export default function GameBoard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 shrink-0"
+                  className="h-7 w-7 shrink-0 focus-visible:outline-none focus-visible:ring-0"
                   aria-label="Close card actions"
                   onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}
                 >
@@ -5913,7 +5913,7 @@ export default function GameBoard() {
                   </p>
                 )}
 
-                <Button variant="ghost" className="w-full text-muted-foreground focus:outline-none focus-visible:outline-none" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
+                <Button variant="ghost" className="w-full text-muted-foreground focus:outline-none focus-visible:outline-none focus-visible:ring-0" onClick={() => { setSelectedCard(null); setPendingSheetAction(null); }}>
                   Close
                 </Button>
               </div>
