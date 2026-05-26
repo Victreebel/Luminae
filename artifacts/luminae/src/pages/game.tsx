@@ -395,15 +395,12 @@ function ArtifactCardView({
       onClick={handleClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''} ${tapped ? '' : 'ring-1 ring-black/30'}`}
+      className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden bg-black shrink-0 ${onTap ? 'cursor-pointer active:brightness-110' : ''}`}
       style={{
-        outlineWidth: '2px',
-        outlineStyle: 'solid',
-        outlineColor: tapped ? (bonusMeta?.hex ?? '#6366f1') : 'transparent',
         boxShadow: tapped
-          ? `0 0 20px 4px ${bonusMeta?.glowHex ?? '#818cf8'}66`
-          : '0 0 0px 0px transparent',
-        transition: 'outline-color 150ms ease, box-shadow 150ms ease',
+          ? `inset 0 0 0 2px ${bonusMeta?.hex ?? '#6366f1'}, 0 0 20px 4px ${bonusMeta?.glowHex ?? '#818cf8'}66, 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)`
+          : `inset 0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)`,
+        transition: 'box-shadow 150ms ease',
       }}
       title={card.flavor || card.name}
     >
@@ -4373,9 +4370,10 @@ export default function GameBoard() {
                       className="relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
                       style={{
                         width: 56, height: 80,
-                        outline: isTapped ? `2px solid ${bonusMeta?.hex ?? '#6366f1'}` : '2px solid transparent',
-                        boxShadow: isTapped ? `0 0 12px 2px ${bonusMeta?.glowHex ?? '#818cf8'}66` : undefined,
-                        transition: 'outline-color 150ms ease, box-shadow 150ms ease',
+                        boxShadow: isTapped
+                          ? `inset 0 0 0 2px ${bonusMeta?.hex ?? '#6366f1'}, 0 0 12px 2px ${bonusMeta?.glowHex ?? '#818cf8'}66`
+                          : 'inset 0 0 0 1px rgba(0,0,0,0.25)',
+                        transition: 'box-shadow 150ms ease',
                       }}
                       onClick={() => openCardSheet(c, false)}
                       {...(cardFocusProps ?? {})}
