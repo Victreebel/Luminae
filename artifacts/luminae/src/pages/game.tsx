@@ -106,6 +106,16 @@ const GEM_KEY_TO_HEX: Record<string, string> = {
 
 // --- Helper Components ---
 
+const opponentTurnVariants = {
+  idle:   { scale: 1 },
+  active: { scale: [1, 1.14, 1], transition: { duration: 0.45, ease: [0.34, 1.56, 0.64, 1] as const } },
+};
+
+const localTurnVariants = {
+  idle:   { scale: 1 },
+  active: { scale: [1, 1.07, 1], transition: { duration: 0.4,  ease: [0.34, 1.56, 0.64, 1] as const } },
+};
+
 function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null; name: string; size?: number }) {
   const avatar = getAvatarForPlayer(avatarId);
   return (
@@ -135,7 +145,10 @@ function OpponentChip({
 }) {
   const dimmed = !isActive && !isLocalTurn;
   return (
-    <div
+    <motion.div
+      initial={false}
+      animate={isActive ? 'active' : 'idle'}
+      variants={opponentTurnVariants}
       className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
         isActive
           ? 'ring-1 ring-primary bg-primary/10 text-foreground'
@@ -157,7 +170,7 @@ function OpponentChip({
       <span className={`flex items-center gap-0.5 font-mono text-[10px] shrink-0 ${isActive ? 'text-white' : 'text-muted-foreground/70'}`}>
         {player.lumens}<Sparkles className="h-2.5 w-2.5 shrink-0" />
       </span>
-    </div>
+    </motion.div>
   );
 }
 
@@ -4704,14 +4717,19 @@ export default function GameBoard() {
               </div>
             </div>
             {/* Center: identity */}
-            <div className="flex items-center gap-1.5 min-w-0">
+            <motion.div
+              initial={false}
+              animate={isMyTurn ? 'active' : 'idle'}
+              variants={localTurnVariants}
+              className="flex items-center gap-1.5 min-w-0"
+            >
               <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={18} />
               {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
               <span className="text-[11px] font-semibold truncate max-w-[80px]">{me.playerName}</span>
               {isMyTurn && (
                 <span className="text-[9px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">your turn</span>
               )}
-            </div>
+            </motion.div>
             {/* Right: stats */}
             <div className="flex items-center gap-2.5 shrink-0">
               {(() => {
