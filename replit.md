@@ -154,6 +154,22 @@ Scale-up transforms are acceptable **only** when the element being scaled is its
 
 Tasks 665, 671, and 672 audited and removed the original regressions. The ESLint config enforces a warning for `hover:scale-[1.` Tailwind classes as an additional guardrail.
 
+### Keyboard Focus Trap — Lint Enforcement
+Every JSX element with `role="dialog"` must be rendered by a component that calls `useFocusTrap()` (from `artifacts/luminae/src/hooks/use-focus-trap.ts`). Without the hook, keyboard focus leaks into the background while the dialog is open.
+
+The ESLint rule **`luminae/dialog-needs-focus-trap`** (defined in `artifacts/luminae/eslint.config.js`) enforces this at lint time:
+- It is set to `'error'` so `pnpm run lint` and `pnpm run typecheck` will fail if the rule is violated.
+- Inline JSX callbacks (`ref={(el) => {...}}`) and IIFEs used inside JSX expressions are correctly treated as transparent — the rule checks the enclosing component function.
+- If a dialog manages its own focus externally (e.g. a Radix UI primitive), suppress the rule with `// eslint-disable-next-line luminae/dialog-needs-focus-trap` and a brief explanation.
+
+Standard pattern:
+```tsx
+const containerRef = useRef<HTMLElement | null>(null);
+useFocusTrap(containerRef, isOpen, onClose);
+// ...
+<div ref={(el) => { containerRef.current = el; }} role="dialog" aria-modal="true">
+```
+
 ### Gem Token Normalization
 All six affinity gem token PNGs are automatically normalized to a consistent 512×512 canvas whenever `pnpm run typecheck` is run. The normalization step (`pnpm run normalize:gems`) runs first, before any TypeScript checks, via `scripts/src/normalize-gem-tokens.py`. If you add or regenerate gem art in `attached_assets/`, simply run `pnpm run typecheck` (or the dedicated `pnpm run normalize:gems`) and the files will be cropped, scaled to 78% fill, and centered in-place.
 
