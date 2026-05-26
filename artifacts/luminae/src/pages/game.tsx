@@ -1244,7 +1244,7 @@ export default function GameBoard() {
                 cardActionBurstKeyRef.current += 1;
                 const isStellar = tier === 2;
                 // Tier 2 uses the faster cinematic forge (~1.15s); tiers 1 & 3 use the classic 3.5s burst.
-                const burstDuration = isStellar ? 1150 : 3500;
+                const burstDuration = isStellar ? 2750 : 3500;
                 setAnimEndTime(burstDuration + 1500 + 400);
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();

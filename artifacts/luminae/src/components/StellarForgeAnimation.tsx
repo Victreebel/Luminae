@@ -12,13 +12,13 @@ import { Sparkles } from 'lucide-react';
 // + affinity-colored energy streams. "Outward Manifestation."
 //
 // Phase sequence and timing (ms):
-//  1. lift      (  0– 120)  card rises from slot; solar gold radial flare ignites
-//  2. burns     (120– 320)  affinity cost streams flow from well to card
-//  3. locks     (320– 520)  card border flares gold-white; white-hot pulse
-//  4. compress  (520– 720)  card compresses to ForgeSeal sigil
-//  5. arc       (720– 970)  sigil arcs toward ownership destination
-//  6. absorb    (970–1150)  destination absorbs seal; pulse rings; label
-//  → onComplete fires at 1150ms
+//  1. lift      (   0–  300)  card rises from slot; solar gold radial flare ignites
+//  2. burns     ( 300–  800)  affinity cost streams flow from well to card
+//  3. locks     ( 800– 1250)  card border flares gold-white; white-hot pulse
+//  4. compress  (1250– 1700)  card compresses to ForgeSeal sigil
+//  5. arc       (1700– 2300)  sigil arcs toward ownership destination
+//  6. absorb    (2300– 2750)  destination absorbs seal; pulse rings; label
+//  → onComplete fires at 2750ms
 //
 // Intentionally inert overlay — pointer-events-none on root means no keyboard
 // or pointer events leak through. No focusable elements inside; focus trap
@@ -27,12 +27,12 @@ import { Sparkles } from 'lucide-react';
 export type ForgePhase = 'lift' | 'burns' | 'locks' | 'compress' | 'arc' | 'absorb' | 'done';
 
 const PHASE_DUR: Record<Exclude<ForgePhase, 'done'>, number> = {
-  lift:     120,
-  burns:    200,
-  locks:    200,
-  compress: 200,
-  arc:      250,
-  absorb:   180,
+  lift:     300,
+  burns:    500,
+  locks:    450,
+  compress: 450,
+  arc:      600,
+  absorb:   450,
 };
 
 const T: Record<string, number> = {
@@ -163,7 +163,7 @@ function EnergyStreams({
     const mx = (origin.x + cardCx) / 2;
     const my = (origin.y + cardCy) / 2 - 90;
     const d = `M ${origin.x},${origin.y} Q ${mx},${my} ${cardCx},${cardCy}`;
-    return { ...gem, d, delay: i * 30 };
+    return { ...gem, d, delay: i * 70 };
   });
 
   return (
@@ -193,7 +193,7 @@ function EnergyStreams({
             animate={active
               ? { pathLength: 1, opacity: [0, 0.28, 0.18] }
               : { opacity: 0 }}
-            transition={{ duration: 0.18, delay: s.delay / 1000, ease: 'easeOut' }}
+            transition={{ duration: 0.44, delay: s.delay / 1000, ease: 'easeOut' }}
           />
           {/* Sharp line */}
           <motion.path
@@ -206,7 +206,7 @@ function EnergyStreams({
             animate={active
               ? { pathLength: 1, opacity: [0, 0.90, 0.65] }
               : { opacity: 0 }}
-            transition={{ duration: 0.17, delay: s.delay / 1000, ease: 'easeOut' }}
+            transition={{ duration: 0.42, delay: s.delay / 1000, ease: 'easeOut' }}
           />
           {/* Leading bead */}
           <motion.circle
@@ -215,7 +215,7 @@ function EnergyStreams({
             opacity="0.9"
             initial={{ offsetDistance: '0%', opacity: 0 }}
             animate={active ? { opacity: [0, 1, 0] } : { opacity: 0 }}
-            transition={{ duration: 0.18, delay: s.delay / 1000 }}
+            transition={{ duration: 0.44, delay: s.delay / 1000 }}
           />
         </g>
       ))}
@@ -232,7 +232,7 @@ function FlareRings({ cx, cy, active }: { cx: number; cy: number; active: boolea
       className="pointer-events-none fixed"
       style={{ left: cx, top: cy, transform: 'translate(-50%, -50%)', zIndex: 2 }}
     >
-      {([0, 60, 120] as const).map((delay) => (
+      {([0, 150, 300] as const).map((delay) => (
         <motion.div
           key={delay}
           className="absolute rounded-full border-2"
@@ -243,9 +243,9 @@ function FlareRings({ cx, cy, active }: { cx: number; cy: number; active: boolea
           }}
           initial={{ width: 20, height: 20, opacity: 0.7 }}
           animate={active
-            ? { width: [20, 140], height: [20, 140], opacity: [0.7, 0] }
+            ? { width: [20, 180], height: [20, 180], opacity: [0.7, 0] }
             : { opacity: 0 }}
-          transition={{ duration: 0.32, delay: delay / 1000, ease: 'easeOut' }}
+          transition={{ duration: 0.80, delay: delay / 1000, ease: 'easeOut' }}
         />
       ))}
       {/* White-hot core burst */}
@@ -258,9 +258,9 @@ function FlareRings({ cx, cy, active }: { cx: number; cy: number; active: boolea
         }}
         initial={{ width: 0, height: 0, opacity: 1 }}
         animate={active
-          ? { width: [0, 80, 60], height: [0, 80, 60], opacity: [1, 0.6, 0] }
+          ? { width: [0, 100, 80], height: [0, 100, 80], opacity: [1, 0.6, 0] }
           : { opacity: 0 }}
-        transition={{ duration: 0.25, ease: 'easeOut' }}
+        transition={{ duration: 0.60, ease: 'easeOut' }}
       />
     </div>
   );
@@ -282,16 +282,16 @@ function AbsorbPulse({ x, y, affinityHex, active }: {
         className="absolute rounded-full border-2"
         style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%', borderColor: '#FBC23E' }}
         initial={{ width: 12, height: 12, opacity: 0 }}
-        animate={active ? { width: [12, 100], height: [12, 100], opacity: [0.9, 0] } : {}}
-        transition={{ duration: 0.45, ease: 'easeOut' }}
+        animate={active ? { width: [12, 120], height: [12, 120], opacity: [0.9, 0] } : {}}
+        transition={{ duration: 1.10, ease: 'easeOut' }}
       />
       {/* Affinity color ring */}
       <motion.div
         className="absolute rounded-full border"
         style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%', borderColor: affinityHex }}
         initial={{ width: 8, height: 8, opacity: 0 }}
-        animate={active ? { width: [8, 64], height: [8, 64], opacity: [0.8, 0] } : {}}
-        transition={{ duration: 0.40, delay: 0.06, ease: 'easeOut' }}
+        animate={active ? { width: [8, 80], height: [8, 80], opacity: [0.8, 0] } : {}}
+        transition={{ duration: 1.00, delay: 0.15, ease: 'easeOut' }}
       />
       {/* Core flash */}
       <motion.div
@@ -299,7 +299,7 @@ function AbsorbPulse({ x, y, affinityHex, active }: {
         style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%', background: '#FBC23E' }}
         initial={{ width: 10, height: 10, opacity: 0.95 }}
         animate={active ? { width: 0, height: 0, opacity: 0 } : {}}
-        transition={{ duration: 0.28, ease: 'easeIn' }}
+        transition={{ duration: 0.70, ease: 'easeIn' }}
       />
     </div>
   );
@@ -323,7 +323,7 @@ export function StellarForgeAnimation({
   const cardCx = cardX + w / 2;
   const cardCy = cardY + h / 2;
 
-  const bonusKey  = card.bonusColor as GemKey;
+  const bonusKey    = card.bonusColor as GemKey;
   const affinityHex = GEM_META[bonusKey]?.glowHex ?? '#FBC23E';
 
   // Build cost gem list (unique gem types with count > 0)
@@ -363,12 +363,12 @@ export function StellarForgeAnimation({
 
   if (phase === 'done') return null;
 
-  const showCard  = phase === 'lift' || phase === 'burns' || phase === 'locks';
-  const showSeal  = phase === 'compress' || phase === 'arc';
+  const showCard   = phase === 'lift' || phase === 'burns' || phase === 'locks';
+  const showSeal   = phase === 'compress' || phase === 'arc';
   const showAbsorb = phase === 'absorb';
 
   // Seal position: at card centre during compress, travels to destPos during arc
-  const sealSize = 64;
+  const sealSize   = 64;
   const sealStartX = cardCx - sealSize / 2;
   const sealStartY = cardCy - sealSize / 2;
   const sealDestX  = destPos.x - sealSize / 2;
@@ -385,7 +385,7 @@ export function StellarForgeAnimation({
         className="absolute inset-0 bg-black/38"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.12 }}
+        transition={{ duration: 0.30 }}
       />
 
       {/* ── Solar flare rings — burst during lift ── */}
@@ -433,7 +433,7 @@ export function StellarForgeAnimation({
             scale: 1.08,
             filter: 'brightness(1.55) drop-shadow(0 0 36px rgba(255,255,230,0.90))',
           }}
-          transition={{ duration: phase === 'lift' ? 0.11 : 0.18, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: phase === 'lift' ? 0.28 : 0.44, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Gold border flash during locks */}
           {phase === 'locks' && (
@@ -442,7 +442,7 @@ export function StellarForgeAnimation({
               style={{ border: '2.5px solid #FBC23E', boxShadow: '0 0 0px 0px rgba(255,251,230,0)' }}
               initial={{ opacity: 0, boxShadow: '0 0 0px 0px rgba(255,251,230,0)' }}
               animate={{ opacity: [0, 1, 0.7], boxShadow: ['0 0 0px 0px rgba(255,251,230,0)', '0 0 24px 8px rgba(255,251,230,0.80)', '0 0 14px 4px rgba(251,194,62,0.55)'] }}
-              transition={{ duration: 0.19 }}
+              transition={{ duration: 0.44 }}
             />
           )}
           {/* Cost pips row — visible during burns/locks, staggered fade-in */}
@@ -460,7 +460,7 @@ export function StellarForgeAnimation({
                   }}
                   initial={{ opacity: 0, scale: 0.3 }}
                   animate={{ opacity: 1, scale: [0.3, 1.4, 1.0] }}
-                  transition={{ duration: 0.14, delay: i * 0.04 }}
+                  transition={{ duration: 0.32, delay: i * 0.10 }}
                 />
               ))}
             </div>
@@ -487,8 +487,8 @@ export function StellarForgeAnimation({
               }
           }
           transition={phase === 'compress'
-            ? { duration: 0.18, ease: [0.22, 1, 0.36, 1] }
-            : { duration: 0.24, times: [0, 0.5, 1], ease: 'easeIn' }
+            ? { duration: 0.44, ease: [0.22, 1, 0.36, 1] }
+            : { duration: 0.58, times: [0, 0.5, 1], ease: 'easeIn' }
           }
         >
           <ForgeSeal affinityHex={affinityHex} id={animKey} />
@@ -515,7 +515,7 @@ export function StellarForgeAnimation({
             }}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: [0, 1, 1, 0], y: [6, 0, 0, -6] }}
-            transition={{ duration: 0.17, times: [0, 0.25, 0.75, 1] }}
+            transition={{ duration: 0.42, times: [0, 0.20, 0.75, 1] }}
           >
             <span className="text-xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.9)] whitespace-nowrap">
               Forged!
@@ -540,7 +540,7 @@ export function StellarForgeAnimation({
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 1, 0] }}
-            transition={{ duration: 0.17 }}
+            transition={{ duration: 0.42 }}
           >
             <div
               className="rounded-full overflow-hidden border-2 shadow-[0_0_12px_rgba(251,194,62,0.50)]"
