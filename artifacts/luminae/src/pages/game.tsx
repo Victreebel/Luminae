@@ -143,15 +143,11 @@ function OpponentChip({
   isActive,
   isLocalTurn,
   absorbPulse = 0,
-  onClick,
-  popoverOpen = false,
 }: {
   player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
   isActive: boolean;
   isLocalTurn: boolean;
   absorbPulse?: number;
-  onClick?: () => void;
-  popoverOpen?: boolean;
 }) {
   const dimmed = !isActive && !isLocalTurn;
   return (
@@ -160,13 +156,8 @@ function OpponentChip({
       initial={false}
       animate={isActive ? 'active' : 'idle'}
       variants={opponentTurnVariants}
-      onClick={onClick}
       className={`relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
-        onClick ? 'cursor-pointer select-none' : ''
-      } ${
-        popoverOpen
-          ? 'ring-2 ring-primary/70 bg-primary/20 text-foreground'
-          : isActive
+        isActive
           ? 'ring-1 ring-primary bg-primary/10 text-foreground'
           : dimmed
           ? 'bg-secondary/40 text-muted-foreground/50'
@@ -1327,12 +1318,6 @@ export default function GameBoard() {
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
-  const [compactView, setCompactView] = useState(() =>
-    localStorage.getItem('luminae_compact_view') === '1'
-  );
-  const [boardCompactScale, setBoardCompactScale] = useState(1);
-  const [boardCompactNaturalH, setBoardCompactNaturalH] = useState(0);
-  const [openOpponentId, setOpenOpponentId] = useState<string | null>(null);
   const [showAllLog, setShowAllLog] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -1478,7 +1463,6 @@ export default function GameBoard() {
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
-  const boardCompactWrapperRef = useRef<HTMLDivElement>(null);
   const overlayOpenRef = useRef(false);
   // Tracks how many AI affinity-change log entries have already triggered the
   // switch sound, so that we only fire for genuinely new entries.
@@ -1489,53 +1473,6 @@ export default function GameBoard() {
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
 
-  const toggleCompactView = () => {
-    const next = !compactView;
-    setCompactView(next);
-    localStorage.setItem('luminae_compact_view', next ? '1' : '0');
-    if (!next) { setBoardCompactScale(1); setOpenOpponentId(null); }
-  };
-
-  useEffect(() => {
-    if (!compactView || activeTab !== 'board') {
-      setBoardCompactScale(1);
-      setBoardCompactNaturalH(0);
-      return;
-    }
-    const computeScale = () => {
-      const wrapper = boardCompactWrapperRef.current;
-      const main = mainScrollRef.current;
-      if (!wrapper || !main) return;
-      // Temporarily reset transform so scrollHeight reflects natural content height
-      const prevTransform = wrapper.style.transform;
-      const prevMargin = wrapper.style.marginBottom;
-      wrapper.style.transform = '';
-      wrapper.style.marginBottom = '';
-      const naturalH = wrapper.scrollHeight;
-      wrapper.style.transform = prevTransform;
-      wrapper.style.marginBottom = prevMargin;
-      const viewH = main.clientHeight;
-      if (naturalH <= viewH) {
-        setBoardCompactScale(1);
-        setBoardCompactNaturalH(0);
-      } else {
-        const scale = Math.max(0.45, viewH / naturalH);
-        setBoardCompactNaturalH(naturalH);
-        setBoardCompactScale(scale);
-      }
-    };
-    const raf = requestAnimationFrame(computeScale);
-    const main = mainScrollRef.current;
-    const wrapper = boardCompactWrapperRef.current;
-    if (!main) return () => cancelAnimationFrame(raf);
-    const observer = new ResizeObserver(computeScale);
-    observer.observe(main);
-    if (wrapper) observer.observe(wrapper);
-    return () => {
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-    };
-  }, [compactView, activeTab]);
 
   // Start ambient music when the game board mounts (user has already
   // interacted via buttons to get here, so AudioContext is allowed).
@@ -3840,7 +3777,7 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className={`relative flex items-center justify-between px-4 pt-3 pb-2${compactView ? ' hidden' : ''}`}>
+        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none" className="shrink-0" style={{ color: '#C4AAFF', opacity: 0.85 }}>
               <polygon points="5,0 1.5,4.5 8.5,4.5" fill="currentColor" />
@@ -3950,7 +3887,7 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className={`relative flex items-center px-4 pt-3 pb-2${compactView ? ' hidden' : ''}`}>
+        <div className="relative flex items-center px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
             <Hammer className="h-4 w-4 shrink-0" style={{ color: '#D4A84B', opacity: 0.85 }} />
             <div className="flex flex-col leading-none">
@@ -4164,7 +4101,6 @@ export default function GameBoard() {
   };
 
   const BoardTabOpponents = () => {
-    if (compactView) return null;
     if (state.players.filter(p => p.playerId !== session?.playerId).length === 0) return null;
     return (
       <div className="px-0 pb-6">
@@ -4959,8 +4895,6 @@ export default function GameBoard() {
                 }
                 isLocalTurn={isMyTurn}
                 absorbPulse={chipAbsorbPulse[opponent.playerId] ?? 0}
-                onClick={compactView ? () => setOpenOpponentId(prev => prev === opponent.playerId ? null : opponent.playerId) : undefined}
-                popoverOpen={compactView && openOpponentId === opponent.playerId}
               />
             ))}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
@@ -4995,17 +4929,6 @@ export default function GameBoard() {
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               {muted ? 'Unmute' : 'Mute'}
             </DropdownMenuItem>
-            <button
-              type="button"
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors outline-none"
-              onClick={(e) => { e.preventDefault(); toggleCompactView(); }}
-            >
-              <LayoutGrid className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-left">Compact View</span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${compactView ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                {compactView ? 'ON' : 'OFF'}
-              </span>
-            </button>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
@@ -5018,130 +4941,6 @@ export default function GameBoard() {
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
-
-      {/* ── Compact-view opponent popover ── */}
-      {compactView && openOpponentId !== null && (() => {
-        const opp = state.players.find(p => p.playerId === openOpponentId);
-        if (!opp) return null;
-        const isCurrent = state.status === 'playing' && state.players[state.currentPlayerIndex]?.playerId === opp.playerId;
-        const totalAffinity = Object.values(opp.crystals).reduce((a, b) => a + b, 0);
-        const cardCount = opp.purchasedCards.length;
-        const reservedCount = opp.reservedCards.length;
-        const oppCivPalette = getDominantAffinityPalette(opp.purchasedCards);
-        const oppCivName = opp.civName || getCivilizationName(oppCivPalette, getKardashevTier(opp.purchasedCards, opp.discountedForgeIds));
-        return (
-          <>
-            {/* Backdrop — click outside to close */}
-            <div
-              className="fixed inset-0 z-[24]"
-              onClick={() => setOpenOpponentId(null)}
-            />
-            {/* Panel */}
-            <AnimatePresence>
-              <motion.div
-                key={openOpponentId}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.15 }}
-                className="fixed left-2 right-2 z-[25] rounded-2xl border border-border/60 bg-card/95 backdrop-blur shadow-xl p-3"
-                style={{ top: 'calc(56px + env(safe-area-inset-top) + 4px)' }}
-              >
-                {/* Header row */}
-                <div className="flex items-center gap-2 mb-3">
-                  <PlayerAvatar avatarId={opp.avatarId ?? null} name={opp.playerName} size={24} />
-                  {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-sm font-bold truncate">{opp.playerName}</span>
-                    <span className="text-[10px] font-normal tracking-wide truncate" style={{ color: oppCivPalette.primary, opacity: 0.8 }}>{oppCivName}</span>
-                  </div>
-                  {isCurrent && (
-                    <span className="text-[10px] font-bold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full shrink-0">their turn</span>
-                  )}
-                  <div className="flex items-center gap-1 font-serif font-black text-xl text-white leading-none shrink-0">
-                    <span>{opp.lumens}</span>
-                    <Sparkles className="h-3.5 w-3.5 text-white" />
-                  </div>
-                </div>
-
-                {/* Stat chips row */}
-                <div className="flex items-center gap-3 mb-3">
-                  {([
-                    { label: 'Affinity',  value: totalAffinity, hex: '#7aa2ff', glow: '#a8c5ff' },
-                    { label: 'Artifact',  value: cardCount,     hex: '#ffc43d', glow: '#ffe28a' },
-                    { label: 'Encrypted', value: reservedCount, hex: '#E8E4FF', glow: '#C8C0FF' },
-                  ] as const).map(({ label, value, hex, glow }) => {
-                    const has = value > 0;
-                    return (
-                      <div key={label} className="flex items-baseline gap-0.5">
-                        <span className="text-base font-black leading-none" style={{ color: has ? hex : hex + '55', textShadow: has ? `0 0 8px ${glow}` : 'none' }}>
-                          {value}
-                        </span>
-                        <span className="text-[9px] font-semibold uppercase tracking-wide leading-none" style={{ color: has ? glow + 'cc' : hex + '44' }}>
-                          {label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Per-affinity crystal grid */}
-                <div className="grid grid-cols-6 gap-1.5">
-                  {CRYSTALS.map((c) => {
-                    const n = opp.crystals[c as keyof CrystalCounts] ?? 0;
-                    const bonus = opp.bonuses[c as keyof CrystalCounts] ?? 0;
-                    const lumBonus = state.luminaryAffinities
-                      .filter((la: LuminaryActiveState) =>
-                        la.ownerId === opp.playerId &&
-                        state.turnCount > la.summonedAtTurnCount &&
-                        la.activeAffinity === c
-                      ).length;
-                    const meta = GEM_META[c as GemKey];
-                    const isFlux = c === 'flux';
-                    const hasContent = isFlux ? (n > 0 || reservedCount > 0) : (n > 0 || bonus > 0 || lumBonus > 0);
-                    return (
-                      <div
-                        key={c}
-                        className="h-[72px] flex flex-col items-center gap-1 rounded-lg relative overflow-hidden pt-1.5 pb-1.5"
-                        style={{
-                          background: hasContent
-                            ? `linear-gradient(180deg, #060611 0%, ${meta.hex}33 100%)`
-                            : 'linear-gradient(180deg, #07070b 0%, #0e0e14 100%)',
-                          border: `1px solid ${hasContent ? meta.hex + 'AA' : meta.hex + '22'}`,
-                          boxShadow: hasContent ? `inset 0 0 14px ${meta.hex}22, 0 0 8px ${meta.hex}33` : 'none',
-                        }}
-                      >
-                        {hasContent && (
-                          <div className="absolute inset-x-0 top-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${meta.glowHex}AA, transparent)` }} />
-                        )}
-                        <div className="flex items-center gap-0.5 w-full justify-center">
-                          <span className="text-[7px] font-semibold tracking-wide leading-none truncate" style={{ color: meta.glowHex }}>{meta.shortName}</span>
-                          <MiniGem color={c as GemKey} size={7} />
-                        </div>
-                        <span
-                          className="text-2xl font-black leading-none tracking-tight"
-                          style={{ color: hasContent ? '#fff' : meta.hex + '40', textShadow: hasContent ? `0 0 10px ${meta.glowHex}` : 'none' }}
-                        >
-                          {n}
-                        </span>
-                        {!isFlux && (bonus > 0 || lumBonus > 0) && (
-                          <div className="flex flex-col items-center gap-0" style={{ lineHeight: 1 }}>
-                            {bonus > 0 && <span className="text-[9px] font-bold leading-none text-primary">+{bonus} bonus</span>}
-                            {lumBonus > 0 && <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>+{lumBonus}✦</span>}
-                          </div>
-                        )}
-                        {isFlux && reservedCount > 0 && (
-                          <span className="text-[9px] font-bold leading-none" style={{ color: meta.glowHex }}>{reservedCount} encrypted</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </>
-        );
-      })()}
 
       {/* ── Tab Content ── */}
       <main
@@ -5160,23 +4959,7 @@ export default function GameBoard() {
       >
         {activeTab === 'board' && (
           <>
-            {/* Scaled zone — Luminaries + card market; scaled to fit viewport in compact view */}
-            <div
-              ref={boardCompactWrapperRef}
-              style={compactView && boardCompactScale < 1 ? {
-                transform: `scale(${boardCompactScale})`,
-                transformOrigin: 'top center',
-                // Collapse the dead layout space below the visually-scaled content.
-                // After scale(N) with transformOrigin top-center, the visual footprint
-                // is N*naturalH, but the layout box remains naturalH. The negative margin
-                // pulls everything below it up by (1-N)*naturalH, so the element's
-                // effective layout contribution equals its visual height exactly.
-                marginBottom: `${(boardCompactScale - 1) * boardCompactNaturalH}px`,
-              } : undefined}
-            >
-              {BoardTabMain()}
-            </div>
-            {/* Opponents zone — always 1× scale; scroll down to reach in compact view */}
+            {BoardTabMain()}
             {BoardTabOpponents()}
           </>
         )}
@@ -5212,7 +4995,7 @@ export default function GameBoard() {
           {/* ── Zone header row ── */}
           <div className="flex items-center justify-between px-3 pt-2 pb-1">
             {/* Left: zone name */}
-            <div className={`flex items-center gap-2${compactView ? ' hidden' : ''}`}>
+            <div className="flex items-center gap-2">
               <Droplets className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
               <div className="flex flex-col leading-none">
                 <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(168,197,255,0.5)' }}>The</span>
