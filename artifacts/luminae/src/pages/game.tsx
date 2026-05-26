@@ -2916,11 +2916,14 @@ export default function GameBoard() {
           <button
             type="button"
             onClick={() => setMarketCompact(v => !v)}
-            className={`rounded p-1.5 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
-            title={marketCompact ? 'Full card view' : 'Compact view — all cards visible'}
+            className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
+            title={marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
             aria-pressed={marketCompact}
           >
-            <LayoutGrid className="h-3.5 w-3.5" />
+            <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[9px] font-bold uppercase tracking-wide leading-none">
+              {marketCompact ? 'Compact' : 'Full'}
+            </span>
           </button>
         </div>
 
@@ -4662,14 +4665,6 @@ export default function GameBoard() {
               <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
                 <MiniGem color={selectedCard.card.bonusColor as GemKey} size={14} />
                 <span className="font-semibold text-sm leading-tight flex-1 truncate">{selectedCard.card.name}</span>
-                {!selectedCard.readOnly && (
-                  <span className="shrink-0 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-white/5 text-white/40 border border-white/10">
-                    {selectedCard.fromReserve
-                      ? <><Bookmark className="h-2.5 w-2.5 mr-0.5" />Reserve</>
-                      : <><LayoutGrid className="h-2.5 w-2.5 mr-0.5" />Market</>
-                    }
-                  </span>
-                )}
                 {selectedCard.readOnly && (
                   <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-emerald-900/60 text-emerald-300 border border-emerald-700/50">
                     Forged
