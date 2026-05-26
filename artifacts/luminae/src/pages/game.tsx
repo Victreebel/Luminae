@@ -1245,6 +1245,19 @@ export default function GameBoard() {
   const [showPurchased, setShowPurchased] = useState(false);
   const [forgedView, setForgedView] = useState<'cards' | 'timeline'>('cards');
   const [marketCompact, setMarketCompact] = useState(false);
+  const [deckPosition, setDeckPosition] = useState<'left' | 'right'>(() => {
+    const stored = getAccountSession();
+    const key = stored ? `luminae_deck_pos_${stored.account.id}` : 'luminae_deck_pos';
+    const pref = localStorage.getItem(key);
+    return pref === 'right' ? 'right' : 'left';
+  });
+  const toggleDeckPosition = () => {
+    const next = deckPosition === 'left' ? 'right' : 'left';
+    setDeckPosition(next);
+    const stored = getAccountSession();
+    const key = stored ? `luminae_deck_pos_${stored.account.id}` : 'luminae_deck_pos';
+    localStorage.setItem(key, next);
+  };
   const [activeTab, setActiveTab] = useState<ActiveTab>('board');
 
 
@@ -3976,6 +3989,51 @@ export default function GameBoard() {
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
             <div className={`flex pb-1 no-scrollbar ${marketCompact ? 'flex-wrap gap-2' : 'gap-2.5 overflow-x-auto'}`}>
+              {/* Deck — left position */}
+              {deckPosition === 'left' && (marketCompact ? (
+                <button
+                  type="button"
+                  data-deck-tier={row.tier}
+                  onClick={() => {
+                    if (row.deck === 0 || !me) return;
+                    if (!isMyTurn && !canPlan) return;
+                    openDeckSheet(row.tier as 1 | 2 | 3);
+                  }}
+                  disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
+                  className="relative shrink-0 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ width: 40, minHeight: 78, borderColor: 'rgba(192,164,114,0.35)', background: 'rgba(192,164,114,0.05)' }}
+                  title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
+                >
+                  <span className="text-[13px] font-bold font-serif tabular-nums" style={{ color: row.deck > 0 ? 'rgba(212,168,75,0.85)' : 'rgba(200,80,80,0.7)' }}>
+                    {row.deck > 0 ? row.deck : '0'}
+                  </span>
+                  <span className="text-[7px] uppercase tracking-wider" style={{ color: 'rgba(192,164,114,0.4)' }}>deck</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  data-deck-tier={row.tier}
+                  onClick={() => {
+                    if (row.deck === 0 || !me) return;
+                    if (!isMyTurn && !canPlan) return;
+                    openDeckSheet(row.tier as 1 | 2 | 3);
+                  }}
+                  disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
+                  className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
+                >
+                  <CardBack tier={row.tier as 1 | 2 | 3} />
+                  <div
+                    className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[9px] font-bold tabular-nums px-1"
+                    style={row.deck > 0
+                      ? { background: 'rgba(10,10,20,0.78)', border: '1px solid rgba(192,164,114,0.38)', boxShadow: '0 1px 4px rgba(0,0,0,0.5)', color: 'rgba(255,255,255,0.9)' }
+                      : { background: 'rgba(40,10,10,0.85)', border: '1px solid rgba(160,60,60,0.5)', color: 'rgba(255,120,120,0.9)' }
+                    }
+                  >
+                    {row.deck > 0 ? row.deck : 'Empty'}
+                  </div>
+                </button>
+              ))}
               {row.cards.map((c, i) => {
                 const colIdx = colIndices[i];
                 const slotKey = `${row.tier}-${i}`;
@@ -4119,8 +4177,8 @@ export default function GameBoard() {
                   </div>
                 );
               })}
-              {/* Deck pile — sits at the right end of the card stream */}
-              {marketCompact ? (
+              {/* Deck pile — position controlled by deckPosition setting */}
+              {deckPosition === 'right' && (marketCompact ? (
                 <button
                   type="button"
                   data-deck-tier={row.tier}
@@ -4163,7 +4221,7 @@ export default function GameBoard() {
                     {row.deck > 0 ? row.deck : 'Empty'}
                   </div>
                 </button>
-              )}
+              ))}
             </div>
           </div>
           );
@@ -6928,6 +6986,27 @@ export default function GameBoard() {
                       className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${hintsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
                     />
                   </button>
+                </div>
+                {/* Deck position toggle */}
+                <div className="mt-2 pt-4 border-t border-border/50 flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm">Deck pile position</div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Show the draw deck at the {deckPosition === 'left' ? 'left (current)' : 'right (current)'} of each tier row in The Forge.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 rounded-full border border-border/50 p-0.5 shrink-0">
+                    {(['left', 'right'] as const).map(pos => (
+                      <button
+                        key={pos}
+                        type="button"
+                        onClick={() => { if (deckPosition !== pos) toggleDeckPosition(); }}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize transition-colors ${deckPosition === pos ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {/* Keyboard shortcut legend */}
                 <div className="mt-2 pt-4 border-t border-border/50">
