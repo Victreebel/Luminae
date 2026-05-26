@@ -17,8 +17,8 @@ import { motion } from "framer-motion";
 // Aesthetic: obsidian glass + prismatic white + subtle cyan/violet edge glow.
 // No padlocks, no binary rain, no fire, no dominant purple/blue/gold, no WebGL.
 //
-// mode="game"     faster / snappy  ~1.36 s total
-// mode="tutorial" slower / readable ~1.87 s total
+// mode="game"     measured / readable ~3.21 s total
+// mode="tutorial" slower / readable  ~3.10 s total
 
 export type CipherApertureMode = "tutorial" | "game";
 
@@ -49,8 +49,8 @@ const PHASE_ORDER: Phase[] = [
 ];
 
 const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
-  game:     { lift: 200, circuit: 760, compress: 380, sigil: 185, travel: 510, arrive: 265 },
-  tutorial: { lift: 300, circuit: 960, compress: 500, sigil: 250, travel: 680, arrive: 410 },
+  game:     { lift: 280, circuit: 1060, compress: 530, sigil: 260, travel: 710, arrive: 370 },
+  tutorial: { lift: 300, circuit: 960,  compress: 500, sigil: 250, travel: 680, arrive: 410 },
 };
 
 /**

@@ -1368,7 +1368,7 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
-              setAnimEndTime(5400); // cipher animation + deal-from-deck + buffer
+              setAnimEndTime(6500); // cipher animation + deal-from-deck + buffer
               setHiddenSlots(new Set([slotKey]));
               // Deal replacement card from deck after the cipher aperture animation clears.
               const cipherSeq = cipherBurstKeyRef.current;
