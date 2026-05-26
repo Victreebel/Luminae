@@ -2252,14 +2252,14 @@ export default function GameBoard() {
                       });
                       gameAudio.playCardDraw();
                     } else {
-                      setAnimEndTime(1150);
+                      setAnimEndTime(1500);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
                       const t2 = setTimeout(() => {
                         if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
                         setFlippingCards(new Set());
                         setHiddenSlots(new Set());
-                      }, 1050);
+                      }, 1350);
                       cardAnimTimersRef.current.push(t2);
                     }
                   } else {
@@ -2330,14 +2330,14 @@ export default function GameBoard() {
                       // Fallback: flip in place if DOM elements not found.
                       // Keep the slot hidden until the flip completes — do NOT clear
                       // hiddenSlots immediately or the new card pops in before the flip.
-                      setAnimEndTime(1150);
+                      setAnimEndTime(1500);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
                       const t2 = setTimeout(() => {
                         if (cardActionBurstKeyRef.current !== seq) return;
                         setFlippingCards(new Set());
                         setHiddenSlots(new Set());
-                      }, 1050);
+                      }, 1350);
                       cardAnimTimersRef.current.push(t2);
                     }
                   } else {
@@ -2416,14 +2416,14 @@ export default function GameBoard() {
                     });
                     gameAudio.playCardDraw();
                   } else {
-                    setAnimEndTime(1150);
+                    setAnimEndTime(1500);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
                     const t2 = setTimeout(() => {
                       if (cipherBurstKeyRef.current !== cipherSeq) return;
                       setFlippingCards(new Set());
                       setHiddenSlots(new Set());
-                    }, 1050);
+                    }, 1350);
                     cardAnimTimersRef.current.push(t2);
                   }
                 } else {
@@ -4087,9 +4087,9 @@ export default function GameBoard() {
                         key={c.id}
                         data-card-id={c.id}
                         className="relative shrink-0 overflow-hidden rounded-lg"
-                        initial={{ scale: 1.25, opacity: 0, y: -6, filter: 'blur(5px)' }}
-                        animate={{ scale: 1, opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+                        initial={{ opacity: 0, y: 8, filter: 'blur(8px)' }}
+                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }}
                         style={{ width: 56, height: 78 }}
                         {...(cardFocusProps ?? {})}
                       >
