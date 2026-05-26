@@ -31,7 +31,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
-  Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
+  Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
   Hammer, Droplets, MoreVertical
 } from 'lucide-react';
@@ -4966,7 +4966,7 @@ export default function GameBoard() {
                               className="absolute bottom-full mb-1.5 left-0 max-w-[calc(100vw-3rem)] whitespace-normal flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                               title="Dismiss hint"
                             >
-                              <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                              <span className="h-2.5 w-2.5 inline-flex items-center justify-center shrink-0 opacity-60"><CipherSigil affinityHex="#e2e8f0" id={9003} /></span>
                               <span>Encrypting holds this card — tap again to confirm</span>
                               <span className="text-white/40 ml-0.5">✕</span>
                             </motion.button>
@@ -5367,7 +5367,7 @@ export default function GameBoard() {
                             className="absolute bottom-full mb-1.5 left-0 max-w-[calc(100vw-3rem)] whitespace-normal flex items-center gap-1 bg-black/80 border border-white/20 rounded-md px-2 py-1 text-[10px] text-white/80 shadow-lg backdrop-blur-sm z-10"
                             title="Dismiss hint"
                           >
-                            <Bookmark className="h-2.5 w-2.5 text-white/60 shrink-0" />
+                            <span className="h-2.5 w-2.5 inline-flex items-center justify-center shrink-0 opacity-60"><CipherSigil affinityHex="#e2e8f0" id={9004} /></span>
                             <span>Tap twice to confirm — you'll receive a random hidden card</span>
                             <span className="text-white/40 ml-0.5">✕</span>
                           </motion.button>
@@ -5395,7 +5395,7 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        <Bookmark className="h-5 w-5 mr-2" />
+                        <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9005} /></span>
                         <AnimatePresence mode="wait" initial={false}>
                           {sentFlashBtn === 'deck_reserve' ? (
                             <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
@@ -5441,7 +5441,7 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        <Bookmark className="h-5 w-5 mr-2" />
+                        <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9006} /></span>
                         {pendingDeckConfirm ? 'Confirm: Plan Encrypt' : 'Plan: Encrypt Hidden Card'}
                       </Button>
                     </motion.div>
@@ -6188,7 +6188,7 @@ export default function GameBoard() {
               {/* Compact peek header — identifiable while sheet is in 40 % peek position */}
               <div className="px-5 pb-2 flex items-center justify-between border-b border-border/40 mb-1">
                 <h2 className="text-base font-semibold flex items-center gap-2">
-                  <Bookmark className="h-4 w-4 text-muted-foreground" />
+                  <span className="h-4 w-4 inline-flex items-center justify-center shrink-0 opacity-70"><CipherSigil affinityHex="#e2e8f0" id={9007} /></span>
                   Encrypted Artifacts ({me.reservedCards.length}/3)
                 </h2>
                 <div className="flex items-center gap-1.5">
