@@ -31,8 +31,15 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Bookmark, Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Hammer, Droplets
+  Hammer, Droplets, MoreVertical
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import cardTier1Bg from '@assets/generated_images/card_tier1.png';
@@ -4611,20 +4618,32 @@ export default function GameBoard() {
           <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>
 
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setShowRules(true)} title="Rules">
-            <HelpCircle className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={handleReturnToMenu} title="Return to menu (game stays active)">
-            <DoorOpen className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={handleSurrender} title="Surrender">
-            <Flag className="h-4 w-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setShowRules(true)}>
+              <HelpCircle className="h-4 w-4" />
+              Rules
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleMute}>
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              {muted ? 'Unmute' : 'Mute'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleReturnToMenu}>
+              <DoorOpen className="h-4 w-4" />
+              Return to Menu
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSurrender} className="text-red-500 focus:text-red-500">
+              <Flag className="h-4 w-4" />
+              Surrender
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       {/* ── Tab Content ── */}
