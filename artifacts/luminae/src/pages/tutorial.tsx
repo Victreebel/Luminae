@@ -6,11 +6,14 @@ import { loadTutorialProgress, loadTutorialProgressId, clearTutorialProgress } f
 import { TutorialDirector } from "@/components/tutorial/TutorialDirector";
 import { TutorialStartModal } from "@/components/tutorial/TutorialStartModal";
 import { TUTORIAL_BEATS, BEAT_INDEX } from "@/lib/tutorialData";
+import { useAccount } from "@/contexts/AccountContext";
+import { AccountLoadingScreen } from "@/components/AccountLoadingScreen";
 
 type Phase = "prompt" | "playing";
 
 export default function Tutorial() {
   const [, navigate] = useLocation();
+  const { isLoading } = useAccount();
 
   // Consume any programmatically-set beat (e.g. from a deep-link or dev tool).
   // This runs once per mount; if set it skips the resume prompt entirely.
@@ -68,6 +71,8 @@ export default function Tutorial() {
       navigate("/");
     }
   }
+
+  if (isLoading) return <AccountLoadingScreen />;
 
   if (phase === "prompt") {
     return (
