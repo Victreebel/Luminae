@@ -4616,7 +4616,6 @@ export default function GameBoard() {
               />
             ))}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
-          <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>
 
         <DropdownMenu open={headerMenuOpen} onOpenChange={setHeaderMenuOpen}>
@@ -4626,6 +4625,10 @@ export default function GameBoard() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <div className="px-2 py-1.5 text-xs text-muted-foreground font-mono select-none">
+              Round {state.roundNumber}
+            </div>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(() => setShowRules(true), 0); }}>
               <HelpCircle className="h-4 w-4" />
               Rules
