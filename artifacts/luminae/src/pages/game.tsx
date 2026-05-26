@@ -52,6 +52,7 @@ import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
+import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
 
@@ -1618,6 +1619,32 @@ export default function GameBoard() {
     showForgedOverlay,
     () => { setShowForgedOverlay(false); setForgedFilter(null); },
   );
+
+  // Keyboard shortcuts — suppressed while any modal/sheet is open or a text input is focused.
+  // Covers panels not in overlayStates (rules, eminence breakdown, deck sheet) so that
+  // focus-trapped dialogs are never interrupted by a shortcut.
+  const isAnyPanelOpen =
+    isAnyOverlayOpen ||
+    showRules ||
+    showEminenceBreakdown ||
+    selectedDeckTier !== null;
+
+  useGameKeyboardShortcuts({
+    isAnyOverlayOpen: isAnyPanelOpen,
+    onBoard: () => setActiveTab('board'),
+    onHand: () => setActiveTab('hand'),
+    onLog: () => setActiveTab('log'),
+    onToggleReserved: () => setShowReservedOverlay((v) => !v),
+    onToggleForged: () => {
+      if (showForgedOverlay) {
+        setShowForgedOverlay(false);
+        setForgedFilter(null);
+      } else {
+        setShowForgedOverlay(true);
+      }
+    },
+    onToggleRules: () => setShowRules((v) => !v),
+  });
 
   // Swipe-to-dismiss: drag handle → swipe down ≥30% height dismisses the sheet.
   // scrollableAreaProps can be spread on any overflow-y-auto child so that a
@@ -6572,6 +6599,28 @@ export default function GameBoard() {
                       className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${hintsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
                     />
                   </button>
+                </div>
+                {/* Keyboard shortcut legend */}
+                <div className="mt-2 pt-4 border-t border-border/50">
+                  <div className="font-semibold text-sm mb-2">Keyboard shortcuts</div>
+                  <p className="text-xs text-muted-foreground mb-3">Active when no panel is open and focus is not in a text field.</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    {([
+                      ['B', 'Board view'],
+                      ['H', 'Hand view'],
+                      ['L', 'Log view'],
+                      ['R', 'Encrypted cards'],
+                      ['F', 'Forged cards'],
+                      ['?', 'This rules sheet'],
+                    ] as const).map(([key, label]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <kbd className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-1.5 rounded border border-border bg-muted text-[11px] font-mono font-semibold text-foreground/80 leading-none shrink-0">
+                          {key}
+                        </kbd>
+                        <span className="text-xs text-muted-foreground">{label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </motion.div>
