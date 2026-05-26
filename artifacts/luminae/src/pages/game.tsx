@@ -4910,16 +4910,8 @@ export default function GameBoard() {
 
               {/* Action buttons */}
               <div
-                className="flex flex-col gap-2.5 rounded-xl transition-all duration-300 overflow-visible"
-                style={{
-                  border: (['forge','reserve','plan_forge','plan_reserve'].includes(sentFlashBtn ?? ''))
-                    ? '1.5px solid #6ee7b7'
-                    : '1.5px solid transparent',
-                  boxShadow: (['forge','reserve','plan_forge','plan_reserve'].includes(sentFlashBtn ?? ''))
-                    ? '0 0 0 2px #6ee7b733, 0 0 14px 2px #34d39922'
-                    : 'none',
-                  overflow: 'visible',
-                }}
+                className="flex flex-col gap-2.5 rounded-xl overflow-visible"
+                style={{ border: '1.5px solid transparent', overflow: 'visible' }}
               >
 
                 {/* ── Immediate actions (your active turn only) ── */}
@@ -4963,8 +4955,7 @@ export default function GameBoard() {
                           if (pendingSheetAction === 'forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('forge', 'confirm');
                             handleBuy(selectedCard.card, selectedCard.fromReserve);
-                            flashSent('forge');
-                            setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
+                            setSelectedCard(null); setPendingSheetAction(null);
                           } else {
                             gameAudio.playButtonSelect(); triggerBtnAnim('forge', 'select');
                             setPendingSheetAction('forge');
@@ -5024,8 +5015,7 @@ export default function GameBoard() {
                             if (pendingSheetAction === 'reserve') {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('reserve', 'confirm');
                               handleReserveCard(selectedCard.card);
-                              flashSent('reserve');
-                              setTimeout(() => { setSelectedCard(null); setPendingSheetAction(null); }, 750);
+                              setSelectedCard(null); setPendingSheetAction(null);
                             } else {
                               gameAudio.playButtonSelect(); triggerBtnAnim('reserve', 'select');
                               setPendingSheetAction('reserve');
