@@ -2252,14 +2252,14 @@ export default function GameBoard() {
                       });
                       gameAudio.playCardDraw();
                     } else {
-                      setAnimEndTime(900);
+                      setAnimEndTime(1150);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
                       const t2 = setTimeout(() => {
                         if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
                         setFlippingCards(new Set());
                         setHiddenSlots(new Set());
-                      }, 800);
+                      }, 1050);
                       cardAnimTimersRef.current.push(t2);
                     }
                   } else {
@@ -2330,14 +2330,14 @@ export default function GameBoard() {
                       // Fallback: flip in place if DOM elements not found.
                       // Keep the slot hidden until the flip completes — do NOT clear
                       // hiddenSlots immediately or the new card pops in before the flip.
-                      setAnimEndTime(900);
+                      setAnimEndTime(1150);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
                       const t2 = setTimeout(() => {
                         if (cardActionBurstKeyRef.current !== seq) return;
                         setFlippingCards(new Set());
                         setHiddenSlots(new Set());
-                      }, 800);
+                      }, 1050);
                       cardAnimTimersRef.current.push(t2);
                     }
                   } else {
@@ -2416,14 +2416,14 @@ export default function GameBoard() {
                     });
                     gameAudio.playCardDraw();
                   } else {
-                    setAnimEndTime(900);
+                    setAnimEndTime(1150);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
                     const t2 = setTimeout(() => {
                       if (cipherBurstKeyRef.current !== cipherSeq) return;
                       setFlippingCards(new Set());
                       setHiddenSlots(new Set());
-                    }, 800);
+                    }, 1050);
                     cardAnimTimersRef.current.push(t2);
                   }
                 } else {
