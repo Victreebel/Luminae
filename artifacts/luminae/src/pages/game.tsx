@@ -5210,9 +5210,9 @@ export default function GameBoard() {
           }}
         >
           {/* ── Zone header row ── */}
-          <div className={`flex items-center justify-between px-3 pt-2 pb-1${compactView ? ' hidden' : ''}`}>
+          <div className="flex items-center justify-between px-3 pt-2 pb-1">
             {/* Left: zone name */}
-            <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-2${compactView ? ' hidden' : ''}`}>
               <Droplets className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
               <div className="flex flex-col leading-none">
                 <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(168,197,255,0.5)' }}>The</span>
