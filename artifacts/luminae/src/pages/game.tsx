@@ -1217,16 +1217,12 @@ function CompactCardGhost({ cardViewProps }: { cardViewProps: React.ComponentPro
             transformOrigin: 'top left',
             zIndex: 9999,
           }}
-          animate={{
-            // y travels +170 so the top-left lands exactly on the chip's top-left
-            scale:   [1,    1,    0.47],
-            y:       [0,    0,    170 ],
-            opacity: [1,    1,    0   ],
-          }}
+          initial={{ scale: 1, y: 0, opacity: 1 }}
+          animate={{ scale: 0.47, y: 170, opacity: 0 }}
           transition={{
-            duration: 5.5,
-            times: [0, 0.09, 1],
-            ease: 'easeInOut',
+            duration: 5,
+            delay: 0.5,
+            ease: 'linear',
           }}
         >
           <ArtifactCardView {...cardViewProps} />
