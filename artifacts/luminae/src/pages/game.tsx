@@ -4409,9 +4409,10 @@ export default function GameBoard() {
                               }).join(', ')})`;
                           return (
                             <motion.div
+                              role="button"
                               whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                               className={`relative h-7 px-3 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 ${!queueLegality.ok ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-                              style={{ background: 'rgba(255,255,255,0.03)', borderColor, boxShadow: hasColors ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[selKeys[0]].hex}44` : 'inset 0 1px 0 rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+                              style={{ background: 'rgba(255,255,255,0.03)', borderColor, boxShadow: hasColors ? `inset 0 1px 0 rgba(255,255,255,0.18), 0 0 14px ${GEM_META[selKeys[0]].hex}44` : 'inset 0 1px 0 rgba(255,255,255,0.08)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', touchAction: 'manipulation' }}
                               onClick={queueLegality.ok ? () => { setHarnessPulseKey(k => k + 1); confirmCrystals(); } : undefined}
                             >
                               {selKeys.length > 0 && (
@@ -4442,9 +4443,10 @@ export default function GameBoard() {
                           const planHasColors = planSelKeys.length > 0;
                           return (
                             <motion.div
+                              role="button"
                               whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
                               className="relative h-7 px-2.5 rounded-lg overflow-hidden flex items-center justify-center border transition-all duration-500 shrink-0 cursor-pointer"
-                              style={{ background: planHasColors ? 'rgba(120,70,0,0.18)' : 'rgba(120,70,0,0.08)', borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)', boxShadow: planHasColors ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px rgba(251,191,36,0.25)' : 'inset 0 1px 0 rgba(255,255,255,0.06)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }}
+                              style={{ background: planHasColors ? 'rgba(120,70,0,0.18)' : 'rgba(120,70,0,0.08)', borderColor: planHasColors ? 'rgba(251,191,36,0.55)' : 'rgba(251,191,36,0.28)', boxShadow: planHasColors ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 10px rgba(251,191,36,0.25)' : 'inset 0 1px 0 rgba(255,255,255,0.06)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', touchAction: 'manipulation' }}
                               onClick={() => {
                                 if (queueLegality.actionType === 'take3') {
                                   handlePlanAction({ type: 'take_three_crystals', crystals: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0, ...selectedCrystals } });

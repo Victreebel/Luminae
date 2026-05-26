@@ -57,6 +57,13 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Eliminate the 300 ms double-tap-zoom delay on all tappable elements so
+   click / tap handlers fire immediately on touch devices (iOS Safari, Android). */
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
 :root {
   /* Enforce dark mode by default for Luminae */
   --button-outline: rgba(255,255,255, .10);
