@@ -6110,6 +6110,7 @@ export default function GameBoard() {
                     Tier {deckTier} Deck
                   </span>
                   <span className="text-xs text-muted-foreground shrink-0">{deckCount} remaining</span>
+                  <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
                   <Button
                     variant="ghost"
                     size="icon"
