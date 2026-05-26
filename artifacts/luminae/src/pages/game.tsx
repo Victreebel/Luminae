@@ -4389,23 +4389,42 @@ export default function GameBoard() {
                         <ArtifactCardView card={c} tier={row.tier} tapped={false} artOnly />
                       </div>
                       {/* Native-resolution info overlay — sized for the 56×80 chip */}
-                      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)' }}>
-                        {/* Top row: lumen + bonus gem */}
+                      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1">
+                        {/* Top row: lumen badge (left) + bonus gem badge (right) */}
                         <div className="flex items-start justify-between">
-                          <span className="text-[11px] font-bold font-serif text-amber-100 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
-                            {(c.lumens ?? 0) > 0 ? c.lumens : ''}
-                          </span>
-                          {c.bonusColor && <MiniGem color={c.bonusColor as GemKey} size={14} />}
+                          {(c.lumens ?? 0) > 0 ? (
+                            <span
+                              className="text-[11px] font-bold font-serif text-amber-100 leading-none px-1 py-0.5 rounded"
+                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                            >
+                              {c.lumens}
+                            </span>
+                          ) : <span />}
+                          {c.bonusColor && (
+                            <span className="rounded p-0.5" style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}>
+                              <MiniGem color={c.bonusColor as GemKey} size={13} />
+                            </span>
+                          )}
                         </div>
-                        {/* Bottom row: cost pips or free check */}
-                        <div className="flex flex-wrap justify-center gap-0.5">
-                          {costEntries.length > 0 ? costEntries.map(k => (
-                            <div key={k} className="flex items-center gap-px">
-                              <MiniGem color={k as GemKey} size={10} />
-                              <span className="text-[8px] font-bold text-white/80 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">{effCosts[k as keyof CrystalCounts]}</span>
+                        {/* Bottom row: cost pips in a dark pill, or ✓ */}
+                        <div className="flex justify-center">
+                          {costEntries.length > 0 ? (
+                            <div
+                              className="flex flex-wrap items-center justify-center gap-0.5 px-1 py-0.5 rounded"
+                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                            >
+                              {costEntries.map(k => (
+                                <div key={k} className="flex items-center gap-px">
+                                  <MiniGem color={k as GemKey} size={10} />
+                                  <span className="text-[8px] font-bold text-white/90 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
+                                </div>
+                              ))}
                             </div>
-                          )) : (
-                            <span className="text-[10px] font-bold text-green-400 leading-none">✓</span>
+                          ) : (
+                            <span
+                              className="text-[10px] font-bold text-green-400 leading-none px-1 py-0.5 rounded"
+                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                            >✓</span>
                           )}
                         </div>
                       </div>
