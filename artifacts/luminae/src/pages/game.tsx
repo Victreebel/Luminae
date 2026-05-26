@@ -3184,6 +3184,8 @@ export default function GameBoard() {
                       >
                         <ArtifactCardView card={c} tier={row.tier} tapped={false} artOnly />
                       </div>
+                      {/* Subtle dark scrim to ease card art brightness in compact view */}
+                      <div className="pointer-events-none absolute inset-0" style={{ background: 'rgba(0,0,0,0.28)' }} />
                       {/* Native-resolution info overlay — sized for the 56×80 chip */}
                       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1">
                         {/* Top row: lumen badge (left) + bonus gem badge (right) */}
