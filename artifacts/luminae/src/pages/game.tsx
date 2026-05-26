@@ -4360,6 +4360,7 @@ export default function GameBoard() {
                 // ── Compact chip ───────────────────────────────────────────
                 if (marketCompact) {
                   const effCosts = computeCosts(c, costMode) ?? c.cost;
+                  const costEntries = CRYSTALS.filter(k => (effCosts[k as keyof CrystalCounts] ?? 0) > 0);
                   const bonusOnlyCosts = computeCosts(c, 'after_bonuses') ?? c.cost;
                   const isTrulyFree = CRYSTALS.every(k => (bonusOnlyCosts[k as keyof CrystalCounts] ?? 0) === 0);
                   const canAfford = !isTrulyFree && !!me && canAffordCard(c, me);
@@ -4380,21 +4381,36 @@ export default function GameBoard() {
                       {...(cardFocusProps ?? {})}
                       title={c.name}
                     >
-                      {/* Scaled-down full card — 0.5× fits 112→56 px (max card-w) */}
+                      {/* Full card art at 0.5× — artOnly strips the text/gradient overlay */}
                       <div
                         className="pointer-events-none origin-top-left"
                         style={{ transform: 'scale(0.5)', width: 'var(--card-w)', height: 'var(--card-h)' }}
                       >
-                        <ArtifactCardView
-                          card={c}
-                          tier={row.tier}
-                          tapped={false}
-                          effectiveCosts={effCosts}
-                          bonusCosts={computeCosts(c, 'after_bonuses') ?? undefined}
-                        />
+                        <ArtifactCardView card={c} tier={row.tier} tapped={false} artOnly />
+                      </div>
+                      {/* Native-resolution info overlay — sized for the 56×80 chip */}
+                      <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)' }}>
+                        {/* Top row: lumen + bonus gem */}
+                        <div className="flex items-start justify-between">
+                          <span className="text-[11px] font-bold font-serif text-amber-100 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                            {(c.lumens ?? 0) > 0 ? c.lumens : ''}
+                          </span>
+                          {c.bonusColor && <MiniGem color={c.bonusColor as GemKey} size={14} />}
+                        </div>
+                        {/* Bottom row: cost pips or free check */}
+                        <div className="flex flex-wrap justify-center gap-0.5">
+                          {costEntries.length > 0 ? costEntries.map(k => (
+                            <div key={k} className="flex items-center gap-px">
+                              <MiniGem color={k as GemKey} size={10} />
+                              <span className="text-[8px] font-bold text-white/80 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">{effCosts[k as keyof CrystalCounts]}</span>
+                            </div>
+                          )) : (
+                            <span className="text-[10px] font-bold text-green-400 leading-none">✓</span>
+                          )}
+                        </div>
                       </div>
                       {/* Affordability badge */}
-                      {(isTrulyFree || canAfford) && (
+                      {!isTrulyFree && canAfford && (
                         <div
                           className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center leading-none"
                           style={{ background: 'rgba(34,197,94,0.85)', boxShadow: '0 0 6px rgba(34,197,94,0.6)' }}
