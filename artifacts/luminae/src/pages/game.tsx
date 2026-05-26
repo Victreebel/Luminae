@@ -1288,6 +1288,10 @@ export default function GameBoard() {
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [compactView, setCompactView] = useState(() =>
+    localStorage.getItem('luminae_compact_view') === '1'
+  );
+  const [boardCompactScale, setBoardCompactScale] = useState(1);
   const [showAllLog, setShowAllLog] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -1433,6 +1437,7 @@ export default function GameBoard() {
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
+  const boardCompactWrapperRef = useRef<HTMLDivElement>(null);
   const overlayOpenRef = useRef(false);
   // Tracks how many AI affinity-change log entries have already triggered the
   // switch sound, so that we only fire for genuinely new entries.
@@ -1442,6 +1447,41 @@ export default function GameBoard() {
   const aiAffinityLogInitializedRef = useRef(false);
 
   const toggleMute = () => setMuted(gameAudio.toggleMute());
+
+  const toggleCompactView = () => {
+    const next = !compactView;
+    setCompactView(next);
+    localStorage.setItem('luminae_compact_view', next ? '1' : '0');
+    if (!next) setBoardCompactScale(1);
+  };
+
+  useEffect(() => {
+    if (!compactView || activeTab !== 'board') {
+      setBoardCompactScale(1);
+      return;
+    }
+    const computeScale = () => {
+      const wrapper = boardCompactWrapperRef.current;
+      const main = mainScrollRef.current;
+      if (!wrapper || !main) return;
+      const naturalH = wrapper.scrollHeight;
+      const viewH = main.clientHeight;
+      if (naturalH <= viewH) {
+        setBoardCompactScale(1);
+      } else {
+        setBoardCompactScale(Math.max(0.45, viewH / naturalH));
+      }
+    };
+    const raf = requestAnimationFrame(computeScale);
+    const main = mainScrollRef.current;
+    if (!main) return () => cancelAnimationFrame(raf);
+    const observer = new ResizeObserver(computeScale);
+    observer.observe(main);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [compactView, activeTab]);
 
   // Start ambient music when the game board mounts (user has already
   // interacted via buttons to get here, so AudioContext is allowed).
@@ -4653,6 +4693,17 @@ export default function GameBoard() {
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               {muted ? 'Unmute' : 'Mute'}
             </DropdownMenuItem>
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors outline-none"
+              onClick={(e) => { e.preventDefault(); toggleCompactView(); }}
+            >
+              <LayoutGrid className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">Compact View</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${compactView ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                {compactView ? 'ON' : 'OFF'}
+              </span>
+            </button>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
@@ -4672,6 +4723,7 @@ export default function GameBoard() {
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         tabIndex={-1}
         className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none"
+        style={compactView && activeTab === 'board' ? { overflowY: 'hidden' } : undefined}
         onPointerDown={() => {
           // Fallback for non-iOS (Android Chrome, desktop): blur any focused
           // panel element as soon as a pointer gesture starts in the board.
@@ -4681,7 +4733,18 @@ export default function GameBoard() {
           }
         }}
       >
-        {activeTab === 'board' && BoardTab()}
+        {activeTab === 'board' && (
+          <div
+            ref={boardCompactWrapperRef}
+            style={compactView && boardCompactScale < 1 ? {
+              transform: `scale(${boardCompactScale})`,
+              transformOrigin: 'top center',
+              overflow: 'hidden',
+            } : undefined}
+          >
+            {BoardTab()}
+          </div>
+        )}
         {activeTab === 'hand' && HandTab()}
         {activeTab === 'log' && LogTab()}
       </main>
