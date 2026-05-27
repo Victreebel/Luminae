@@ -275,6 +275,7 @@ export function ForgeAnimation({
         {/* Sibling to ArtifactCardView → not clipped by ArtifactCardView's  */}
         {/* overflow-hidden. Card motion.div has no overflow-hidden itself.   */}
         <motion.div
+          initial={{ opacity: 0 }}
           style={{
             position: 'absolute',
             left: tattooLeft,
@@ -345,6 +346,7 @@ export function ForgeAnimation({
           This IS the stamp (not a generic hammer). It descends over the card,
           squishes on impact, then fades to 0 — leaving only the tattoo behind. */}
       <motion.div
+        initial={{ opacity: 0 }}
         style={{
           position: 'fixed',
           left: stampLeft,
