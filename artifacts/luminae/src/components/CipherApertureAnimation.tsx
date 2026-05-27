@@ -152,9 +152,12 @@ export function CipherApertureAnimation({
       {showSigilDraw && (
         <motion.div
           style={{ position: "fixed", width: 80, height: 80, left: cx - 40, top: cy - 64 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.12 }}
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{ opacity: 1, rotate: at("compress") ? 8 : 0 }}
+          transition={{
+            opacity: { duration: 0.12 },
+            rotate:  { duration: at("compress") ? dur.compress / 1000 : 0.12, ease: "linear" },
+          }}
         >
           <CipherSigilDrawing
             affinityHex={affinityHex}
@@ -170,7 +173,7 @@ export function CipherApertureAnimation({
       {showSigil && (
         <motion.div
           style={{ position: "fixed", width: 80, height: 80 }}
-          initial={{ x: cx - 40, y: cy - 64, scale: 1, opacity: 1, rotate: 0 }}
+          initial={{ x: cx - 40, y: cy - 64, scale: 1, opacity: 1, rotate: 8 }}
           animate={{
             x:       dest.x - 40,
             y:       dest.y - 40,
