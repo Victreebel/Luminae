@@ -659,24 +659,19 @@ export function OpponentForgeAnimation({
         ? [card.bonusColor as GemKey]
         : [];
 
-  const [streams, setStreams] = useState<StreamData[]>([]);
-  useEffect(() => {
+  // Streams originate from the opponent's chip/avatar, not the local affinity wells.
+  const streams: StreamData[] = (() => {
     const seen = new Set<GemKey>();
     const result: StreamData[] = [];
     let sign = 1;
     for (const color of effectiveSpent) {
       if (seen.has(color)) continue;
       seen.add(color);
-      const el = document.querySelector(`[data-affinity-well="${color}"]`);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        result.push({ color, d: arcPath(r.left + r.width / 2, r.top + r.height / 2, midX, midY, sign) });
-        sign *= -1;
-      }
+      result.push({ color, d: arcPath(chipCenter.x, chipCenter.y, midX, midY, sign) });
+      sign *= -1;
     }
-    setStreams(result);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return result;
+  })();
 
   const lumens = card.lumens ?? 0;
 
