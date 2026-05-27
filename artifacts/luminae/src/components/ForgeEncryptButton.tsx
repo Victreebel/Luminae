@@ -4,7 +4,7 @@ import { Gavel, Check } from 'lucide-react';
 import { CipherSigil } from '@/components/CipherApertureAnimation';
 
 // ── Shared geometry ───────────────────────────────────────────────────────────
-const CHAMFER = 10; // px — diagonal corner cut size
+const CHAMFER = 12;
 const CLIP = `polygon(
   ${CHAMFER}px 0%, calc(100% - ${CHAMFER}px) 0%,
   100% ${CHAMFER}px, 100% calc(100% - ${CHAMFER}px),
@@ -12,68 +12,64 @@ const CLIP = `polygon(
   0% calc(100% - ${CHAMFER}px), 0% ${CHAMFER}px
 )`;
 
-// ── Corner nub — sits at a clip corner; diagonal cut creates a triangle nub ──
+// ── Corner nub — clipped diagonally = triangle accent at each chamfer ─────────
 function CornerNub({ style, color }: { style: React.CSSProperties; color: string }) {
   return (
-    <span
-      aria-hidden
-      style={{
-        position: 'absolute',
-        width: 12,
-        height: 12,
-        transform: 'rotate(45deg)',
-        background: color,
-        pointerEvents: 'none',
-        zIndex: 3,
-        ...style,
-      }}
-    />
+    <span aria-hidden style={{
+      position: 'absolute', width: 13, height: 13,
+      transform: 'rotate(45deg)', background: color,
+      pointerEvents: 'none', zIndex: 4, ...style,
+    }} />
   );
 }
 
-// ── Centre-edge diamond — embedded in the frame band at top/bottom ───────────
+// ── Centre-edge diamond — embedded in the frame band ─────────────────────────
 function EdgeDiamond({ style, color }: { style: React.CSSProperties; color: string }) {
   return (
-    <span
-      aria-hidden
-      style={{
-        position: 'absolute',
-        left: '50%',
-        width: 7,
-        height: 7,
-        transform: 'translateX(-50%) rotate(45deg)',
-        background: color,
-        pointerEvents: 'none',
-        zIndex: 3,
-        ...style,
-      }}
-    />
+    <span aria-hidden style={{
+      position: 'absolute', left: '50%', width: 8, height: 8,
+      transform: 'translateX(-50%) rotate(45deg)', background: color,
+      pointerEvents: 'none', zIndex: 4, ...style,
+    }} />
   );
 }
 
-// ── Forge Button ─────────────────────────────────────────────────────────────
-// Solar-gold / forged-metal — "Outward Manifestation"
+// ── Forge constants ───────────────────────────────────────────────────────────
+// 8 layers — must match count between IDLE / HOVER for framer-motion interpolation
 
 const FORGE_BG = [
-  'radial-gradient(ellipse at 28% 0%,   rgba(180,110,15,0.32) 0%, transparent 52%)',
-  'radial-gradient(ellipse at 78% 100%, rgba(90,55,4,0.22)   0%, transparent 48%)',
-  'linear-gradient(158deg, #1d1912 0%, #27231b 48%, #1b1710 100%)',
+  'radial-gradient(ellipse at 30% 0%,   rgba(210,124,16,0.38) 0%, transparent 50%)',
+  'radial-gradient(ellipse at 60% 58%,  rgba(155,88,5,0.20)   0%, transparent 45%)',
+  'radial-gradient(ellipse at 88% 100%, rgba(80,46,3,0.22)    0%, transparent 46%)',
+  'linear-gradient(158deg, #171410 0%, #222018 48%, #151210 100%)',
 ].join(', ');
 
-// Inset rings: outer-dark → gold band → inner-dark, plus bevel edges + inner warmth
 const FORGE_INSET = [
-  'inset 0 0 0 1px   rgba(55,38,5,0.99)',       // 1 outermost dark edge
-  'inset 0 0 0 2.5px rgba(190,142,28,0.97)',     // 2 gold band
-  'inset 0 0 0 4px   rgba(36,24,3,0.98)',         // 3 inner dark separator
-  'inset 0 1px 0     rgba(255,250,205,0.26)',     // 4 top bright catchlight
-  'inset 0 -1px 0    rgba(0,0,0,0.72)',           // 5 bottom shadow
-  'inset 0 3px 10px  rgba(255,238,150,0.07)',     // 6 inner top warmth
-  'inset 0 -3px 10px rgba(0,0,0,0.30)',           // 7 inner bottom shadow
+  'inset 0 0 0 0.75px rgba(255,248,210,0.52)',   // inner bright catchlight
+  'inset 0 0 0 2px    rgba(32,22,2,0.99)',         // dark gap
+  'inset 0 0 0 4px    rgba(208,158,35,0.98)',      // main gold band
+  'inset 0 0 0 5.5px  rgba(38,26,2,0.96)',         // dark separator
+  'inset 0 0 0 6.5px  rgba(172,126,20,0.82)',      // outer gold line
+  'inset 0 1px 0 0px  rgba(255,252,215,0.28)',     // top bevel catchlight
+  'inset 0 -1px 0 0px rgba(0,0,0,0.82)',           // bottom bevel shadow
+  'inset 0 0 30px 0px rgba(120,72,3,0.12)',        // ambient interior warmth
 ].join(', ');
 
-const FORGE_FILTER_IDLE  = 'drop-shadow(0 0 4px rgba(170,110,8,0.28)) drop-shadow(0 0 8px rgba(150,85,0,0.14))';
-const FORGE_FILTER_HOVER = 'drop-shadow(0 0 10px rgba(225,162,18,0.62)) drop-shadow(0 0 22px rgba(205,120,0,0.32))';
+const FORGE_INSET_HOVER = [
+  'inset 0 0 0 0.75px rgba(255,252,225,0.88)',    // bright inner catchlight
+  'inset 0 0 0 2px    rgba(28,18,1,0.99)',
+  'inset 0 0 0 4px    rgba(245,192,50,0.99)',      // very bright gold
+  'inset 0 0 0 5.5px  rgba(34,22,1,0.96)',
+  'inset 0 0 0 6.5px  rgba(222,172,40,0.96)',      // bright outer gold
+  'inset 0 1px 0 0px  rgba(255,255,238,0.50)',     // bright top catchlight
+  'inset 0 -1px 0 0px rgba(0,0,0,0.82)',
+  'inset 0 0 30px 0px rgba(190,118,8,0.32)',       // strong ambient warmth
+].join(', ');
 
+const FORGE_FILTER_IDLE  = 'drop-shadow(0 0 5px rgba(185,118,8,0.34)) drop-shadow(0 0 12px rgba(155,90,0,0.18)) drop-shadow(0 0 22px rgba(130,68,0,0.09))';
+const FORGE_FILTER_HOVER = 'drop-shadow(0 0 18px rgba(248,182,22,0.82)) drop-shadow(0 0 36px rgba(228,142,0,0.52)) drop-shadow(0 0 65px rgba(200,100,0,0.26))';
+
+// ── Forge Button ──────────────────────────────────────────────────────────────
 export interface ForgeButtonProps {
   onClick: () => void;
   disabled?: boolean;
@@ -87,29 +83,28 @@ export interface ForgeButtonProps {
 }
 
 export function ForgeButton({
-  onClick,
-  disabled,
-  isPending,
-  isSent,
-  label,
-  subtitle = 'Manifest Artifact',
-  confirmHex = '#d97706',
-  confirmGlow = '#f59e0b',
-  darkText,
+  onClick, disabled, isPending, isSent,
+  label, subtitle = 'Manifest Artifact',
+  confirmHex = '#d97706', confirmGlow = '#f59e0b', darkText,
 }: ForgeButtonProps) {
-  const pendingFilter = `drop-shadow(0 0 10px ${confirmGlow}99) drop-shadow(0 0 20px ${confirmGlow}55)`;
   const pendingInset = [
-    `inset 0 0 0 1px   ${confirmGlow}bb`,
-    `inset 0 0 0 2.5px ${confirmGlow}`,
-    `inset 0 0 0 4px   rgba(30,20,2,0.92)`,
-    'inset 0 1px 0     rgba(255,255,220,0.30)',
-    'inset 0 -1px 0    rgba(0,0,0,0.65)',
-    'inset 0 3px 10px  rgba(255,240,160,0.10)',
-    'inset 0 -3px 10px rgba(0,0,0,0.28)',
+    `inset 0 0 0 0.75px ${confirmGlow}cc`,
+    `inset 0 0 0 2px    rgba(28,18,1,0.99)`,
+    `inset 0 0 0 4px    ${confirmGlow}ff`,
+    `inset 0 0 0 5.5px  rgba(32,20,1,0.96)`,
+    `inset 0 0 0 6.5px  ${confirmGlow}cc`,
+    `inset 0 1px 0 0px  rgba(255,255,220,0.48)`,
+    `inset 0 -1px 0 0px rgba(0,0,0,0.80)`,
+    `inset 0 0 30px 0px rgba(200,130,10,0.28)`,
   ].join(', ');
+  const pendingFilter = `drop-shadow(0 0 12px ${confirmGlow}bb) drop-shadow(0 0 26px ${confirmGlow}66) drop-shadow(0 0 50px ${confirmGlow}33)`;
 
-  const nubColor = isPending ? `${confirmGlow}dd` : 'rgba(200,152,32,0.90)';
-  const edgeDiaColor = isPending ? `${confirmGlow}ff` : 'rgba(220,172,38,0.95)';
+  const activeInset  = isPending ? pendingInset        : FORGE_INSET;
+  const hoverInset   = isPending ? pendingInset        : FORGE_INSET_HOVER;
+  const activeFilter = isPending ? pendingFilter       : FORGE_FILTER_IDLE;
+  const hoverFilter  = isPending ? pendingFilter       : FORGE_FILTER_HOVER;
+  const nubColor     = isPending ? `${confirmGlow}ee`  : 'rgba(208,160,34,0.92)';
+  const diaColor     = isPending ? `${confirmGlow}ff`  : 'rgba(228,180,42,0.97)';
 
   return (
     <motion.button
@@ -118,128 +113,97 @@ export function ForgeButton({
       disabled={disabled}
       className="relative w-full flex items-center overflow-hidden btn-forge-idle"
       style={{
-        height: 64,
+        height: 72,
         clipPath: CLIP,
         background: isPending ? confirmHex : FORGE_BG,
-        boxShadow: isPending ? pendingInset : FORGE_INSET,
-        filter: isPending ? pendingFilter : FORGE_FILTER_IDLE,
-        opacity: disabled ? 0.40 : 1,
+        opacity: disabled ? 0.38 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        outline: 'none',
-        border: 'none',
-        padding: 0,
-        color: isPending ? (darkText ? '#1a1a1a' : '#fff') : '#F5E8C8',
+        outline: 'none', border: 'none', padding: 0,
+        color: isPending ? (darkText ? '#1a1a1a' : '#fff') : '#F6ECD0',
         WebkitTapHighlightColor: 'transparent',
       }}
-      whileHover={disabled ? {} : {
-        filter: isPending ? pendingFilter : FORGE_FILTER_HOVER,
-      }}
+      animate={{ boxShadow: activeInset, filter: activeFilter }}
+      whileHover={disabled ? {} : { boxShadow: hoverInset, filter: hoverFilter }}
       whileTap={disabled ? {} : { scale: 0.96, transition: { duration: 0.07 } }}
-      transition={{ filter: { duration: 0.22 } }}
+      transition={{ boxShadow: { duration: 0.20 }, filter: { duration: 0.20 } }}
     >
-      {/* Corner nubs — clipped diagonally into triangle accent shapes */}
-      <CornerNub style={{ top: -5, left: -5 }}  color={nubColor} />
-      <CornerNub style={{ top: -5, right: -5 }} color={nubColor} />
-      <CornerNub style={{ bottom: -5, left: -5 }}  color={nubColor} />
-      <CornerNub style={{ bottom: -5, right: -5 }} color={nubColor} />
+      {/* Ambient interior glow — pulses via CSS animation */}
+      <div aria-hidden className="forge-ambient" style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: 'radial-gradient(ellipse at 38% 52%, rgba(210,128,10,0.30) 0%, rgba(140,80,4,0.14) 42%, transparent 68%)',
+      }} />
 
-      {/* Top/bottom centre edge diamond — sits inside the gold frame band */}
-      <EdgeDiamond style={{ top: 2 }}    color={edgeDiaColor} />
-      <EdgeDiamond style={{ bottom: 2 }} color={edgeDiaColor} />
+      {/* Corner nubs */}
+      <CornerNub style={{ top: -5.5,  left: -5.5  }} color={nubColor} />
+      <CornerNub style={{ top: -5.5,  right: -5.5 }} color={nubColor} />
+      <CornerNub style={{ bottom: -5.5, left: -5.5  }} color={nubColor} />
+      <CornerNub style={{ bottom: -5.5, right: -5.5 }} color={nubColor} />
 
-      {/* Left medallion section */}
-      <div
-        aria-hidden
-        className="flex-shrink-0 flex items-center justify-center"
-        style={{
-          width: 62,
-          height: '100%',
-          background: [
-            'radial-gradient(circle at 55% 45%, rgba(160,100,10,0.50) 0%, rgba(70,44,3,0.32) 55%, transparent 80%)',
-            'linear-gradient(180deg, rgba(100,65,5,0.22) 0%, rgba(40,24,2,0.15) 100%)',
-          ].join(', '),
-          borderRight: '1px solid rgba(160,120,25,0.28)',
-          position: 'relative',
-        }}
-      >
-        {/* Separator highlight + shadow pair for depth */}
+      {/* Centre edge diamonds in the gold band */}
+      <EdgeDiamond style={{ top: 2.5 }}    color={diaColor} />
+      <EdgeDiamond style={{ bottom: 2.5 }} color={diaColor} />
+
+      {/* Medallion section */}
+      <div aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{
+        width: 66, height: '100%', position: 'relative', zIndex: 1,
+        background: [
+          'radial-gradient(circle at 54% 44%, rgba(175,108,12,0.56) 0%, rgba(80,48,4,0.36) 52%, transparent 78%)',
+          'linear-gradient(180deg, rgba(110,68,6,0.24) 0%, rgba(44,26,2,0.18) 100%)',
+        ].join(', '),
+        borderRight: '1px solid rgba(165,125,28,0.22)',
+      }}>
+        {/* Separator — highlight */}
         <div aria-hidden style={{
-          position: 'absolute', right: 0, top: 4, bottom: 4, width: 1,
-          background: 'linear-gradient(180deg, transparent 0%, rgba(255,230,130,0.35) 30%, rgba(255,210,80,0.25) 70%, transparent 100%)',
+          position: 'absolute', right: 0, top: 6, bottom: 6, width: 1,
+          background: 'linear-gradient(180deg, transparent, rgba(255,228,120,0.40) 30%, rgba(255,208,75,0.28) 70%, transparent)',
         }} />
+        {/* Separator — shadow */}
         <div aria-hidden style={{
-          position: 'absolute', right: -1, top: 4, bottom: 4, width: 1,
-          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.50) 30%, rgba(0,0,0,0.40) 70%, transparent 100%)',
+          position: 'absolute', right: -1, top: 6, bottom: 6, width: 1,
+          background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.44) 70%, transparent)',
         }} />
-
-        {/* Medallion ring */}
-        <div
-          className="flex items-center justify-center rounded-full"
-          style={{
-            width: 40, height: 40,
-            background: 'radial-gradient(circle at 40% 36%, #c4861e 0%, #7a5010 52%, #3e2804 100%)',
-            boxShadow: [
-              '0 0 0 1.5px rgba(40,24,2,0.95)',   // outer dark ring
-              '0 0 0 3px rgba(160,114,22,0.80)',    // bronze ring
-              '0 0 0 4px rgba(28,18,2,0.90)',       // gap
-              '0 0 10px rgba(210,148,16,0.55)',      // glow
-              'inset 0 1px 0 rgba(255,228,120,0.38)', // top shine
-            ].join(', '),
-          }}
-        >
-          <Gavel
-            className="h-[19px] w-[19px]"
-            style={{
-              color: '#FFE498',
-              filter: 'drop-shadow(0 0 4px rgba(255,200,60,0.70)) drop-shadow(0 1px 2px rgba(0,0,0,0.60))',
-            }}
-          />
+        {/* Medallion — pulsing via CSS class */}
+        <div className="forge-medallion-glow flex items-center justify-center rounded-full" style={{
+          width: 44, height: 44,
+          background: 'radial-gradient(circle at 38% 34%, #d4941e 0%, #8a5c12 50%, #422e04 100%)',
+          flexShrink: 0,
+        }}>
+          <Gavel className="h-[21px] w-[21px]" style={{
+            color: '#FFE89A',
+            filter: 'drop-shadow(0 0 6px rgba(255,208,60,0.82)) drop-shadow(0 1px 3px rgba(0,0,0,0.70))',
+          }} />
         </div>
       </div>
 
-      {/* Text column */}
-      <div className="flex flex-col items-start justify-center flex-1 px-4 gap-0" style={{ position: 'relative', zIndex: 1 }}>
+      {/* Text */}
+      <div className="flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
         <AnimatePresence mode="wait" initial={false}>
           {isSent ? (
-            <motion.span
-              key="sent"
-              className="flex items-center gap-1.5 text-emerald-300 font-bold"
+            <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
               style={{ fontSize: 14, letterSpacing: '0.06em' }}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
-              exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}
-            >
+              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
               <Check className="h-4 w-4" />Sent!
             </motion.span>
           ) : (
-            <motion.span
-              key="label"
-              className="flex flex-col items-start"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { duration: 0.10 } }}
-              exit={{ opacity: 0, transition: { duration: 0.12 } }}
-            >
-              <span
-                className="font-bold uppercase leading-none"
-                style={{
-                  fontSize: 15,
-                  letterSpacing: '0.14em',
-                  textShadow: isPending ? 'none' : '0 0 12px rgba(255,220,100,0.30), 0 1px 2px rgba(0,0,0,0.70)',
-                }}
-              >
+            <motion.span key="label" className="flex flex-col items-start"
+              initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+              <span className="font-bold uppercase leading-none" style={{
+                fontSize: 17, letterSpacing: '0.15em',
+                textShadow: isPending
+                  ? `0 0 16px ${confirmGlow}99, 0 1px 2px rgba(0,0,0,0.70)`
+                  : '0 0 20px rgba(255,228,110,0.45), 0 0 8px rgba(255,200,60,0.28), 0 1px 3px rgba(0,0,0,0.80)',
+              }}>
                 {label}
               </span>
-              <span
-                className="leading-none"
-                style={{
-                  fontSize: 10,
-                  marginTop: 4,
-                  opacity: isPending ? 0.65 : 0.50,
-                  letterSpacing: '0.07em',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.60)',
-                }}
-              >
-                {subtitle}
+              <span className="leading-none" style={{
+                fontSize: 10.5, marginTop: 5,
+                opacity: isPending ? 0.70 : 0.52,
+                letterSpacing: '0.09em',
+                textShadow: '0 1px 2px rgba(0,0,0,0.65)',
+              }}>
+                — {subtitle} —
               </span>
             </motion.span>
           )}
@@ -249,39 +213,53 @@ export function ForgeButton({
   );
 }
 
-// ── Encrypt Button ────────────────────────────────────────────────────────────
-// Obsidian glass + prismatic edge — "Inward Preservation"
+// ── Encrypt constants ─────────────────────────────────────────────────────────
 
 const ENCRYPT_BG = [
-  'radial-gradient(ellipse at 28% 0%,   rgba(80,60,130,0.34) 0%, transparent 55%)',
-  'radial-gradient(ellipse at 78% 100%, rgba(30,22,65,0.25)  0%, transparent 50%)',
-  'linear-gradient(158deg, #0e0e15 0%, #131322 48%, #0b0b12 100%)',
+  'radial-gradient(ellipse at 28% 0%,   rgba(92,70,152,0.42) 0%, transparent 52%)',
+  'radial-gradient(ellipse at 62% 58%,  rgba(58,42,108,0.26) 0%, transparent 45%)',
+  'radial-gradient(ellipse at 85% 100%, rgba(26,16,58,0.30)  0%, transparent 46%)',
+  'linear-gradient(158deg, #08080e 0%, #0d0d18 48%, #070710 100%)',
 ].join(', ');
 
 const ENCRYPT_INSET = [
-  'inset 0 0 0 1px   rgba(20,15,38,0.99)',        // 1 outer dark edge
-  'inset 0 0 0 2.5px rgba(175,162,228,0.88)',      // 2 violet-white band
-  'inset 0 0 0 4px   rgba(10,8,22,0.98)',           // 3 inner dark
-  'inset 0 1px 0     rgba(235,228,255,0.28)',       // 4 top bright edge
-  'inset 0 -1px 0    rgba(0,0,0,0.78)',             // 5 bottom shadow
-  'inset 0 3px 10px  rgba(200,188,255,0.06)',       // 6 inner top violet
-  'inset 0 -3px 10px rgba(0,0,0,0.34)',             // 7 inner bottom shadow
+  'inset 0 0 0 0.75px rgba(235,228,255,0.50)',    // inner bright
+  'inset 0 0 0 2px    rgba(12,8,24,0.99)',          // dark gap
+  'inset 0 0 0 4px    rgba(180,168,238,0.92)',      // violet band
+  'inset 0 0 0 5.5px  rgba(9,6,20,0.97)',           // dark separator
+  'inset 0 0 0 6.5px  rgba(142,130,200,0.76)',      // outer violet line
+  'inset 0 1px 0 0px  rgba(238,232,255,0.24)',      // top catchlight
+  'inset 0 -1px 0 0px rgba(0,0,0,0.86)',            // bottom shadow
+  'inset 0 0 30px 0px rgba(68,52,120,0.14)',        // ambient violet
+].join(', ');
+
+const ENCRYPT_INSET_HOVER = [
+  'inset 0 0 0 0.75px rgba(248,244,255,0.90)',     // bright inner
+  'inset 0 0 0 2px    rgba(10,6,22,0.99)',
+  'inset 0 0 0 4px    rgba(215,205,255,0.99)',      // bright white-violet
+  'inset 0 0 0 5.5px  rgba(7,4,18,0.97)',
+  'inset 0 0 0 6.5px  rgba(192,180,248,0.94)',      // bright outer
+  'inset 0 1px 0 0px  rgba(255,252,255,0.52)',      // bright top
+  'inset 0 -1px 0 0px rgba(0,0,0,0.86)',
+  'inset 0 0 30px 0px rgba(105,88,172,0.30)',       // strong violet ambient
 ].join(', ');
 
 const ENCRYPT_PENDING_INSET = [
-  'inset 0 0 0 1px   rgba(160,145,220,0.85)',
-  'inset 0 0 0 2.5px rgba(210,200,255,0.96)',
-  'inset 0 0 0 4px   rgba(10,8,22,0.96)',
-  'inset 0 1px 0     rgba(245,240,255,0.32)',
-  'inset 0 -1px 0    rgba(0,0,0,0.78)',
-  'inset 0 3px 10px  rgba(210,200,255,0.10)',
-  'inset 0 -3px 10px rgba(0,0,0,0.34)',
+  'inset 0 0 0 0.75px rgba(215,208,255,0.82)',
+  'inset 0 0 0 2px    rgba(10,6,22,0.99)',
+  'inset 0 0 0 4px    rgba(215,205,255,0.99)',
+  'inset 0 0 0 5.5px  rgba(8,5,20,0.97)',
+  'inset 0 0 0 6.5px  rgba(195,185,255,0.90)',
+  'inset 0 1px 0 0px  rgba(250,248,255,0.48)',
+  'inset 0 -1px 0 0px rgba(0,0,0,0.86)',
+  'inset 0 0 30px 0px rgba(110,95,180,0.32)',
 ].join(', ');
 
-const ENCRYPT_FILTER_IDLE  = 'drop-shadow(0 0 4px rgba(140,120,220,0.28)) drop-shadow(0 0 8px rgba(100,80,180,0.14))';
-const ENCRYPT_FILTER_HOVER = 'drop-shadow(0 0 10px rgba(190,175,255,0.55)) drop-shadow(0 0 22px rgba(150,120,240,0.30))';
-const ENCRYPT_FILTER_PEND  = 'drop-shadow(0 0 12px rgba(210,200,255,0.62)) drop-shadow(0 0 24px rgba(170,150,255,0.35))';
+const ENCRYPT_FILTER_IDLE  = 'drop-shadow(0 0 5px rgba(145,125,228,0.32)) drop-shadow(0 0 12px rgba(105,85,188,0.18)) drop-shadow(0 0 22px rgba(80,60,155,0.09))';
+const ENCRYPT_FILTER_HOVER = 'drop-shadow(0 0 18px rgba(198,185,255,0.80)) drop-shadow(0 0 36px rgba(158,138,248,0.50)) drop-shadow(0 0 65px rgba(125,100,225,0.25))';
+const ENCRYPT_FILTER_PEND  = 'drop-shadow(0 0 14px rgba(210,200,255,0.72)) drop-shadow(0 0 30px rgba(175,160,255,0.44)) drop-shadow(0 0 55px rgba(148,130,238,0.24))';
 
+// ── Encrypt Button ────────────────────────────────────────────────────────────
 export interface EncryptButtonProps {
   onClick: () => void;
   disabled?: boolean;
@@ -293,14 +271,14 @@ export interface EncryptButtonProps {
 }
 
 export function EncryptButton({
-  onClick,
-  disabled,
-  isPending,
-  isSent,
-  label,
-  subtitle = 'Reserve Pattern',
-  sigilId = 9001,
+  onClick, disabled, isPending, isSent,
+  label, subtitle = 'Reserve Pattern', sigilId = 9001,
 }: EncryptButtonProps) {
+  const activeInset  = isPending ? ENCRYPT_PENDING_INSET : ENCRYPT_INSET;
+  const hoverInset   = isPending ? ENCRYPT_PENDING_INSET : ENCRYPT_INSET_HOVER;
+  const activeFilter = isPending ? ENCRYPT_FILTER_PEND  : ENCRYPT_FILTER_IDLE;
+  const hoverFilter  = isPending ? ENCRYPT_FILTER_PEND  : ENCRYPT_FILTER_HOVER;
+
   return (
     <motion.button
       type="button"
@@ -308,146 +286,111 @@ export function EncryptButton({
       disabled={disabled}
       className="relative w-full flex items-center overflow-hidden btn-encrypt-idle"
       style={{
-        height: 64,
+        height: 72,
         clipPath: CLIP,
         background: isPending
-          ? 'linear-gradient(158deg, #111128 0%, #181838 48%, #0f0f22 100%)'
+          ? 'linear-gradient(158deg, #0e0e1c 0%, #161635 48%, #0c0c18 100%)'
           : ENCRYPT_BG,
-        boxShadow: isPending ? ENCRYPT_PENDING_INSET : ENCRYPT_INSET,
-        filter: isPending ? ENCRYPT_FILTER_PEND : ENCRYPT_FILTER_IDLE,
-        opacity: disabled ? 0.40 : 1,
+        opacity: disabled ? 0.38 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        outline: 'none',
-        border: 'none',
-        padding: 0,
-        color: '#D8D4FF',
+        outline: 'none', border: 'none', padding: 0,
+        color: '#DBD6FF',
         WebkitTapHighlightColor: 'transparent',
       }}
-      whileHover={disabled ? {} : {
-        filter: isPending ? ENCRYPT_FILTER_PEND : ENCRYPT_FILTER_HOVER,
-      }}
+      animate={{ boxShadow: activeInset, filter: activeFilter }}
+      whileHover={disabled ? {} : { boxShadow: hoverInset, filter: hoverFilter }}
       whileTap={disabled ? {} : { scale: 0.96, transition: { duration: 0.07 } }}
-      transition={{ filter: { duration: 0.22 } }}
+      transition={{ boxShadow: { duration: 0.20 }, filter: { duration: 0.20 } }}
     >
+      {/* Ambient interior glow — pulses via CSS */}
+      <div aria-hidden className="encrypt-ambient" style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: 'radial-gradient(ellipse at 38% 52%, rgba(105,85,185,0.32) 0%, rgba(65,48,118,0.16) 40%, transparent 68%)',
+      }} />
+
       {/* Corner nubs */}
-      <CornerNub style={{ top: -5, left: -5 }}     color="rgba(200,192,248,0.72)" />
-      <CornerNub style={{ top: -5, right: -5 }}    color="rgba(200,192,248,0.72)" />
-      <CornerNub style={{ bottom: -5, left: -5 }}  color="rgba(200,192,248,0.72)" />
-      <CornerNub style={{ bottom: -5, right: -5 }} color="rgba(200,192,248,0.72)" />
+      <CornerNub style={{ top: -5.5,  left: -5.5  }} color="rgba(205,198,252,0.76)" />
+      <CornerNub style={{ top: -5.5,  right: -5.5 }} color="rgba(205,198,252,0.76)" />
+      <CornerNub style={{ bottom: -5.5, left: -5.5  }} color="rgba(205,198,252,0.76)" />
+      <CornerNub style={{ bottom: -5.5, right: -5.5 }} color="rgba(205,198,252,0.76)" />
 
-      {/* Top/bottom centre edge diamond */}
-      <EdgeDiamond style={{ top: 2 }}    color="rgba(220,215,255,0.95)" />
-      <EdgeDiamond style={{ bottom: 2 }} color="rgba(220,215,255,0.95)" />
+      {/* Centre edge diamonds */}
+      <EdgeDiamond style={{ top: 2.5 }}    color="rgba(228,222,255,0.97)" />
+      <EdgeDiamond style={{ bottom: 2.5 }} color="rgba(228,222,255,0.97)" />
 
-      {/* Prismatic left edge stripe (fire side) */}
+      {/* Prismatic side stripes — fire/ice */}
       <div aria-hidden style={{
-        position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, zIndex: 1,
-        background: 'linear-gradient(180deg, rgba(255,110,55,0.55) 0%, rgba(210,170,255,0.30) 50%, rgba(55,110,255,0.55) 100%)',
-        pointerEvents: 'none',
+        position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, zIndex: 1, pointerEvents: 'none',
+        background: 'linear-gradient(180deg, rgba(255,115,55,0.62) 0%, rgba(210,175,255,0.32) 50%, rgba(55,115,255,0.62) 100%)',
       }} />
-      {/* Prismatic right edge stripe (ice side) */}
       <div aria-hidden style={{
-        position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, zIndex: 1,
-        background: 'linear-gradient(180deg, rgba(55,110,255,0.55) 0%, rgba(210,170,255,0.30) 50%, rgba(255,110,55,0.55) 100%)',
-        pointerEvents: 'none',
+        position: 'absolute', right: 0, top: 0, bottom: 0, width: 2, zIndex: 1, pointerEvents: 'none',
+        background: 'linear-gradient(180deg, rgba(55,115,255,0.62) 0%, rgba(210,175,255,0.32) 50%, rgba(255,115,55,0.62) 100%)',
       }} />
 
-      {/* Left medallion section */}
-      <div
-        aria-hidden
-        className="flex-shrink-0 flex items-center justify-center"
-        style={{
-          width: 62,
-          height: '100%',
-          background: [
-            'radial-gradient(circle at 55% 42%, rgba(80,60,130,0.48) 0%, rgba(25,18,55,0.32) 55%, transparent 80%)',
-            'linear-gradient(180deg, rgba(50,38,90,0.22) 0%, rgba(15,10,32,0.18) 100%)',
-          ].join(', '),
-          borderRight: '1px solid rgba(160,148,220,0.20)',
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        {/* Separator pair */}
+      {/* Medallion section */}
+      <div aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{
+        width: 66, height: '100%', position: 'relative', zIndex: 1,
+        background: [
+          'radial-gradient(circle at 54% 42%, rgba(88,68,148,0.56) 0%, rgba(28,20,62,0.36) 52%, transparent 78%)',
+          'linear-gradient(180deg, rgba(55,42,100,0.26) 0%, rgba(16,11,35,0.20) 100%)',
+        ].join(', '),
+        borderRight: '1px solid rgba(162,150,228,0.18)',
+      }}>
+        {/* Separator — highlight */}
         <div aria-hidden style={{
-          position: 'absolute', right: 0, top: 4, bottom: 4, width: 1,
-          background: 'linear-gradient(180deg, transparent 0%, rgba(200,190,255,0.35) 30%, rgba(180,168,235,0.28) 70%, transparent 100%)',
+          position: 'absolute', right: 0, top: 6, bottom: 6, width: 1,
+          background: 'linear-gradient(180deg, transparent, rgba(205,195,255,0.38) 30%, rgba(185,172,240,0.28) 70%, transparent)',
         }} />
+        {/* Separator — shadow */}
         <div aria-hidden style={{
-          position: 'absolute', right: -1, top: 4, bottom: 4, width: 1,
-          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 30%, rgba(0,0,0,0.45) 70%, transparent 100%)',
+          position: 'absolute', right: -1, top: 6, bottom: 6, width: 1,
+          background: 'linear-gradient(180deg, transparent, rgba(0,0,0,0.60) 30%, rgba(0,0,0,0.48) 70%, transparent)',
         }} />
-
-        {/* Medallion ring */}
-        <div
-          className="flex items-center justify-center rounded-full"
-          style={{
-            width: 40, height: 40,
-            background: 'radial-gradient(circle at 40% 36%, #302858 0%, #1a1438 52%, #0d0a20 100%)',
-            boxShadow: [
-              '0 0 0 1.5px rgba(10,8,22,0.95)',
-              '0 0 0 3px rgba(140,128,210,0.72)',
-              '0 0 0 4px rgba(10,8,22,0.90)',
-              '0 0 10px rgba(170,155,240,0.45)',
-              'inset 0 1px 0 rgba(210,204,255,0.32)',
-            ].join(', '),
-          }}
-        >
-          <span
-            className="flex items-center justify-center"
-            style={{
-              width: 22, height: 22,
-              filter: 'drop-shadow(0 0 5px rgba(200,185,255,0.78)) drop-shadow(0 1px 2px rgba(0,0,0,0.70))',
-            }}
-          >
-            <CipherSigil affinityHex="#cac4ff" id={sigilId} />
+        {/* Medallion — pulsing via CSS class */}
+        <div className="encrypt-medallion-glow flex items-center justify-center rounded-full" style={{
+          width: 44, height: 44,
+          background: 'radial-gradient(circle at 38% 34%, #342a5c 0%, #1c1540 52%, #0e0a22 100%)',
+          flexShrink: 0,
+        }}>
+          <span className="flex items-center justify-center" style={{
+            width: 24, height: 24,
+            filter: 'drop-shadow(0 0 7px rgba(210,195,255,0.85)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))',
+          }}>
+            <CipherSigil affinityHex="#d4cfff" id={sigilId} />
           </span>
         </div>
       </div>
 
-      {/* Text column */}
-      <div className="flex flex-col items-start justify-center flex-1 px-4 gap-0" style={{ position: 'relative', zIndex: 1 }}>
+      {/* Text */}
+      <div className="flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
         <AnimatePresence mode="wait" initial={false}>
           {isSent ? (
-            <motion.span
-              key="sent"
-              className="flex items-center gap-1.5 text-emerald-300 font-bold"
+            <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
               style={{ fontSize: 14, letterSpacing: '0.06em' }}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
-              exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}
-            >
+              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
               <Check className="h-4 w-4" />Sent!
             </motion.span>
           ) : (
-            <motion.span
-              key="label"
-              className="flex flex-col items-start"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { duration: 0.10 } }}
-              exit={{ opacity: 0, transition: { duration: 0.12 } }}
-            >
-              <span
-                className="font-bold uppercase leading-none"
-                style={{
-                  fontSize: 15,
-                  letterSpacing: '0.14em',
-                  textShadow: '0 0 12px rgba(200,185,255,0.28), 0 1px 2px rgba(0,0,0,0.80)',
-                }}
-              >
+            <motion.span key="label" className="flex flex-col items-start"
+              initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+              <span className="font-bold uppercase leading-none" style={{
+                fontSize: 17, letterSpacing: '0.15em',
+                textShadow: isPending
+                  ? '0 0 16px rgba(210,200,255,0.55), 0 1px 2px rgba(0,0,0,0.80)'
+                  : '0 0 20px rgba(195,182,255,0.42), 0 0 8px rgba(165,148,238,0.28), 0 1px 3px rgba(0,0,0,0.85)',
+              }}>
                 {label}
               </span>
-              <span
-                className="leading-none"
-                style={{
-                  fontSize: 10,
-                  marginTop: 4,
-                  opacity: isPending ? 0.65 : 0.46,
-                  letterSpacing: '0.07em',
-                  textShadow: '0 1px 2px rgba(0,0,0,0.70)',
-                }}
-              >
-                {subtitle}
+              <span className="leading-none" style={{
+                fontSize: 10.5, marginTop: 5,
+                opacity: isPending ? 0.70 : 0.48,
+                letterSpacing: '0.09em',
+                textShadow: '0 1px 2px rgba(0,0,0,0.75)',
+              }}>
+                — {subtitle} —
               </span>
             </motion.span>
           )}

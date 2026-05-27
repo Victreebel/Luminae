@@ -402,7 +402,7 @@ button,
   }
 }
 
-/* ── Forge button — dark cosmic metal sweep ─────────────────────────────── */
+/* ── Forge button — solar gold sweep + ambient pulse + medallion glow ────── */
 @keyframes forge-strike-sweep {
   0%   { opacity: 0; left: -70%; }
   8%   { opacity: 1; }
@@ -418,15 +418,45 @@ button,
   position: absolute;
   top: 0;
   left: -70%;
-  width: 45%;
+  width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 248, 200, 0.07), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 248, 200, 0.16), rgba(255, 220, 120, 0.08), transparent);
   animation: forge-strike-sweep 5s ease-in-out infinite;
   pointer-events: none;
-  z-index: 0;
+  z-index: 5;
 }
 
-/* ── Encrypt / Reserve button — prismatic shimmer sweep ─────────────────── */
+@keyframes forge-ambient-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 1.0; }
+}
+.forge-ambient {
+  animation: forge-ambient-pulse 3.6s ease-in-out infinite;
+}
+
+@keyframes forge-medallion-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(38,22,2,0.95),
+      0 0 0 3.5px rgba(158,112,18,0.76),
+      0 0 0 5px   rgba(28,16,1,0.90),
+      0 0 14px    rgba(210,145,14,0.42),
+      inset 0 1px 0 rgba(255,228,120,0.32);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(38,22,2,0.95),
+      0 0 0 3.5px rgba(208,162,28,0.95),
+      0 0 0 5px   rgba(26,14,1,0.88),
+      0 0 22px    rgba(255,178,18,0.72),
+      inset 0 1px 0 rgba(255,252,165,0.55);
+  }
+}
+.forge-medallion-glow {
+  animation: forge-medallion-pulse 3.0s ease-in-out infinite;
+}
+
+/* ── Encrypt button — prismatic shimmer + ambient pulse + medallion glow ──── */
 @keyframes encrypt-sweep {
   0%   { opacity: 0; left: -70%; }
   8%   { opacity: 1; }
@@ -442,12 +472,42 @@ button,
   position: absolute;
   top: 0;
   left: -70%;
-  width: 45%;
+  width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(200, 185, 255, 0.055), transparent);
+  background: linear-gradient(90deg, transparent, rgba(200, 185, 255, 0.13), rgba(180, 165, 255, 0.06), transparent);
   animation: encrypt-sweep 7s ease-in-out infinite;
   pointer-events: none;
-  z-index: 0;
+  z-index: 5;
+}
+
+@keyframes encrypt-ambient-pulse {
+  0%, 100% { opacity: 0.50; }
+  50%       { opacity: 1.0; }
+}
+.encrypt-ambient {
+  animation: encrypt-ambient-pulse 4.4s ease-in-out infinite;
+}
+
+@keyframes encrypt-medallion-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1.5px rgba(10,6,22,0.95),
+      0 0 0 3.5px rgba(132,120,206,0.68),
+      0 0 0 5px   rgba(8,4,18,0.90),
+      0 0 14px    rgba(162,148,235,0.40),
+      inset 0 1px 0 rgba(210,204,255,0.28);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.5px rgba(10,6,22,0.95),
+      0 0 0 3.5px rgba(195,182,252,0.92),
+      0 0 0 5px   rgba(7,3,16,0.88),
+      0 0 24px    rgba(208,195,255,0.65),
+      inset 0 1px 0 rgba(238,232,255,0.52);
+  }
+}
+.encrypt-medallion-glow {
+  animation: encrypt-medallion-pulse 4.0s ease-in-out infinite;
 }
 
 /* ── Affinity crystal — queued pulse ────────────────────────────────────── */
