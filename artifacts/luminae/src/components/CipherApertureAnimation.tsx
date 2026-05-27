@@ -500,6 +500,37 @@ function CipherSigilDrawing({ affinityHex, id, circuitDurMs, compressDurMs, isCo
         </React.Fragment>
       ))}
 
+      {/* Midpoint arrival flash — fires when the two opposing segments converge at the edge midpoints */}
+      {/* Top midpoint (48,14.5): OTL and OTR meet; OTR (fOTR) is the later arrival */}
+      {/* Bottom midpoint (48,81.5): OBR and OBL meet; OBL (fOBL) is the later arrival */}
+      {([
+        { cx: 48, cy: 14.5, meetDl: fOTR },
+        { cx: 48, cy: 81.5, meetDl: fOBL },
+      ] as { cx: number; cy: number; meetDl: number }[]).map((mp, i) => {
+        const fireAt = outerStart + mp.meetDl * ds + edgeDur;
+        return (
+          <React.Fragment key={`mpf-${i}`}>
+            {/* Spark */}
+            <motion.circle
+              cx={mp.cx} cy={mp.cy}
+              fill="white"
+              initial={{ r: 2.6, opacity: 0 }}
+              animate={{ r: [2.6, 5.2, 5.2], opacity: [0, 1.0, 0] }}
+              transition={{ delay: fireAt, duration: 0.28, times: [0, 0.22, 1], ease: "easeOut" }}
+            />
+            {/* Bloom */}
+            <motion.circle
+              cx={mp.cx} cy={mp.cy}
+              fill="rgba(210,238,255,0.36)"
+              filter={`url(#${glowId})`}
+              initial={{ r: 3.5, opacity: 0 }}
+              animate={{ r: [3.5, 10, 11], opacity: [0, 0.48, 0] }}
+              transition={{ delay: fireAt + 0.02, duration: 0.32, times: [0, 0.28, 1], ease: "easeOut" }}
+            />
+          </React.Fragment>
+        );
+      })}
+
       {/* Corner dots — pop in when each feeder corner begins drawing */}
       {cornerDots.map((dot, i) => (
         <motion.circle
