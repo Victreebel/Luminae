@@ -1217,7 +1217,7 @@ export default function GameBoard() {
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
                 const purchaseActorName = player?.playerName;
-                setAnimEndTime(abridgedAnims ? 550 : 1600); // abridged: 450ms shrink + buffer | full: 1250ms stamp+fly + buffer
+                setAnimEndTime(abridgedAnims ? 450 + DEAL_ANIM_MS + 270 : 3000); // abridged: 450ms shrink + deal + buffer | full: 1250ms stamp+fly + deal + buffer
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
@@ -1255,7 +1255,7 @@ export default function GameBoard() {
                     const deckR = deckEl?.getBoundingClientRect();
                     const slotR = slotEl?.getBoundingClientRect();
                     if (deckR && slotR) {
-                      setAnimEndTime(1700); // extend lock for 1500ms deal animation
+                      setAnimEndTime(DEAL_ANIM_MS); // extend lock for deal animation
                       const _rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
                       const _faceScale = slotR.width / _rawCardW;
                       const _startX = deckR.left + (deckR.width  - slotR.width)  / 2;
@@ -1302,7 +1302,7 @@ export default function GameBoard() {
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(abridgedAnims ? 550 : 3000); // abridged: 450ms shrink + buffer | full: 1300ms forge + 1500ms deal + buffer
+                setAnimEndTime(abridgedAnims ? 450 + DEAL_ANIM_MS + 270 : 3000); // abridged: 450ms shrink + deal + buffer | full: 1300ms forge + deal + buffer
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();
                 const burstDestPos: { x: number; y: number } | undefined = handTabR
@@ -1347,7 +1347,7 @@ export default function GameBoard() {
                     const deckR = deckEl?.getBoundingClientRect();
                     const slotR = slotEl?.getBoundingClientRect();
                     if (deckR && slotR) {
-                      setAnimEndTime(1700); // extend lock to cover the 1500ms deal animation
+                      setAnimEndTime(DEAL_ANIM_MS); // extend lock for deal animation
                       const _rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
                       const _faceScale = slotR.width / _rawCardW;
                       const _startX = deckR.left + (deckR.width  - slotR.width)  / 2;
