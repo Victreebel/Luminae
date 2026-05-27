@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getAvatarForPlayer } from '@/lib/avatars';
 import { opponentTurnVariants } from './game-constants';
 
-export function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null; name: string; size?: number }) {
+export const PlayerAvatar = React.memo(function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null; name: string; size?: number }) {
   const avatar = getAvatarForPlayer(avatarId);
   return (
     <div
@@ -19,7 +19,7 @@ export function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string 
       />
     </div>
   );
-}
+});
 
 export function OpponentChip({
   player,

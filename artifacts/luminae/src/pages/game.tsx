@@ -57,7 +57,7 @@ import { useSwipeToDismiss } from '@/hooks/use-swipe-to-dismiss';
 import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
-import { getKardashevTier, getDominantAffinityPalette, getCivilizationName } from '@/lib/kardashev';
+import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
 import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
@@ -1064,6 +1064,23 @@ export default function GameBoard() {
     [myPurchasedCards, myDiscountedForgeIds],
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
+
+  const opponentData = useMemo(() => {
+    const players = state?.players;
+    if (!players) return {} as Record<string, { totalAffinity: number; cardCount: number; reservedCount: number; civPalette: AffinityPalette; civName: string }>;
+    return Object.fromEntries(
+      players.map(p => {
+        const civPalette = getDominantAffinityPalette(p.purchasedCards);
+        return [p.playerId, {
+          totalAffinity: Object.values(p.crystals).reduce<number>((a, b) => a + b, 0),
+          cardCount: p.purchasedCards.length,
+          reservedCount: p.reservedCards.length,
+          civPalette,
+          civName: p.civName || getCivilizationName(civPalette, getKardashevTier(p.purchasedCards, p.discountedForgeIds)),
+        }];
+      })
+    );
+  }, [state?.players]);
 
   const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
     const luminaryAffinities: LuminaryActiveState[] = state?.luminaryAffinities ?? [];
@@ -3568,14 +3585,13 @@ export default function GameBoard() {
             {state.players.map((p, i) => {
               if (p.playerId === session?.playerId) return null;
               const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
-              const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
-              const cardCount = p.purchasedCards.length;
-              const reservedCount = p.reservedCards.length;
+              const oppD = opponentData[p.playerId];
+              const totalAffinity = oppD?.totalAffinity ?? 0;
+              const cardCount = oppD?.cardCount ?? 0;
+              const reservedCount = oppD?.reservedCount ?? 0;
               const isExpanded = expandedOpponents.has(p.playerId);
-              const oppCards = p.purchasedCards;
-              const oppDiscounted = p.discountedForgeIds;
-              const oppCivPalette = getDominantAffinityPalette(oppCards);
-              const oppCivName = p.civName || getCivilizationName(oppCivPalette, getKardashevTier(oppCards, oppDiscounted));
+              const oppCivPalette = oppD?.civPalette ?? getDominantAffinityPalette(p.purchasedCards);
+              const oppCivName = oppD?.civName ?? p.civName ?? p.playerName;
               const toggleExpanded = () => {
                 setExpandedOpponents((prev) => {
                   const next = new Set(prev);
@@ -3587,7 +3603,7 @@ export default function GameBoard() {
               return (
                 <div
                   key={p.playerId}
-                  className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                  className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-[border-color,box-shadow] ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
                 >
                   {/* Header: identity + inline stats + lumens */}
                   <div className="flex items-center gap-2 mb-2">
@@ -3986,14 +4002,13 @@ export default function GameBoard() {
           {state.players.map((p, i) => {
             if (p.playerId === session?.playerId) return null;
             const isCurrent = state.status === 'playing' && state.currentPlayerIndex === i;
-            const totalAffinity = Object.values(p.crystals).reduce((a, b) => a + b, 0);
-            const cardCount = p.purchasedCards.length;
-            const reservedCount = p.reservedCards.length;
+            const oppD = opponentData[p.playerId];
+            const totalAffinity = oppD?.totalAffinity ?? 0;
+            const cardCount = oppD?.cardCount ?? 0;
+            const reservedCount = oppD?.reservedCount ?? 0;
             const isExpanded = expandedOpponents.has(p.playerId);
-            const logOppCards = p.purchasedCards;
-            const logOppDiscounted = p.discountedForgeIds;
-            const logOppCivPalette = getDominantAffinityPalette(logOppCards);
-            const logOppCivName = p.civName || getCivilizationName(logOppCivPalette, getKardashevTier(logOppCards, logOppDiscounted));
+            const logOppCivPalette = oppD?.civPalette ?? getDominantAffinityPalette(p.purchasedCards);
+            const logOppCivName = oppD?.civName ?? p.civName ?? p.playerName;
             const toggleExpanded = () => {
               setExpandedOpponents((prev) => {
                 const next = new Set(prev);
@@ -4005,7 +4020,7 @@ export default function GameBoard() {
             return (
               <div
                 key={p.playerId}
-                className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-all ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
+                className={`rounded-2xl border p-3 bg-card/70 backdrop-blur transition-[border-color,box-shadow] ${isCurrent ? 'border-primary/50 shadow-[0_0_12px_rgba(99,102,241,0.2)]' : 'border-border/40'}`}
               >
                 {/* Header: identity + inline stats + lumens */}
                 <div className="flex items-center gap-2 mb-2">
