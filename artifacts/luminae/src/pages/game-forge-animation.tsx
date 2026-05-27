@@ -197,8 +197,21 @@ export function ForgeAnimation({
   const cardTimes  = [0, t1, t2, t3, t4, t5, t6, 1.0];
   // Descending stamp: appears at t_se, hits at t2, squishes, then gone at t5
   const dsTimes    = [0, t_se, t2, t3, t5];
-  // Tattoo: invisible until impact, springs in with squish, rides card to dest
-  const tatTimes   = [0, t2, t3, t6, 1.0];
+  // Gate: tattoo is not rendered at all until the stamp physically hits.
+  // Using a timer instead of framer-motion initial/animate because framer-motion
+  // can flash the element for one frame before the animation clock engages.
+  const [stamped, setStamped] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setStamped(true), STAMP_HIT * 1000);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tattoo sub-animation timing (relative to its own mount, which is at STAMP_HIT)
+  const subDur    = ARC_END - STAMP_HIT;          // 0.55 s remaining
+  const tSpring   = 0.040 / subDur;               // ~0.073 — squish releases
+  const tHold     = (STAMP_HOLD - STAMP_HIT) / subDur; // ~0.364 — card settles
+  // tEnd = 1.0 — card+tattoo have finished flying
 
   // Measure affinity-well positions on mount
   const [streams, setStreams] = useState<StreamData[]>([]);
@@ -271,30 +284,32 @@ export function ForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t2, t3, t6, 1.0] }}
         />
 
-        {/* ── TATTOOED IMPRESSION — always inside card, inherits card scale ── */}
-        {/* Sibling to ArtifactCardView → not clipped by ArtifactCardView's  */}
-        {/* overflow-hidden. Card motion.div has no overflow-hidden itself.   */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          style={{
-            position: 'absolute',
-            left: tattooLeft,
-            top: tattooTop,
-            width: tattooW,
-            height: tattooH,
-            transformOrigin: 'center center',
-          }}
-          animate={{
-            // Appears at impact squished (press mark), springs to normal, shrinks on arc
-            opacity: [0,    1,    1,    1,    0   ],
-            scaleY:  [0.82, 0.82, 1.0,  1.0,  0.06],
-            scaleX:  [1.08, 1.08, 1.0,  1.0,  0.06],
-            rotate:  [-10,  -10,  -10,  -10,  -10 ],
-          }}
-          transition={{ duration: ARC_END, times: tatTimes }}
-        >
-          <StampSVG width={tattooW} height={tattooH} />
-        </motion.div>
+        {/* ── TATTOOED IMPRESSION ─────────────────────────────────────────── */}
+        {/* Conditionally rendered only after STAMP_HIT ms — guarantees it    */}
+        {/* is never in the DOM (let alone visible) before the stamp hits.    */}
+        {/* Sibling to ArtifactCardView → not clipped by its overflow-hidden. */}
+        {stamped && (
+          <motion.div
+            style={{
+              position: 'absolute',
+              left: tattooLeft,
+              top: tattooTop,
+              width: tattooW,
+              height: tattooH,
+              transformOrigin: 'center center',
+            }}
+            initial={{ opacity: 1, scaleY: 0.82, scaleX: 1.08, rotate: -10 }}
+            animate={{
+              opacity: [1,    1,     1,    0   ],
+              scaleY:  [0.82, 1.0,   1.0,  0.06],
+              scaleX:  [1.08, 1.0,   1.0,  0.06],
+              rotate:  [-10,  -10,   -10,  -10 ],
+            }}
+            transition={{ duration: subDur, times: [0, tSpring, tHold, 1.0] }}
+          >
+            <StampSVG width={tattooW} height={tattooH} />
+          </motion.div>
+        )}
       </motion.div>
 
       {/* ══ PHASE 2: Affinity energy streams ════════════════════════════════ */}
