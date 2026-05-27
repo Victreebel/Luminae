@@ -45,6 +45,7 @@ function TrapContainer({
           ref={(el) => { ref.current = el; }}
           role="dialog"
           aria-modal="true"
+          aria-label="Test dialog"
           data-testid="trap-root"
         >
           {Array.from({ length: buttonCount }, (_, i) => (
@@ -76,6 +77,7 @@ function EmptyTrapContainer({
       ref={(el) => { ref.current = el; }}
       role="dialog"
       aria-modal="true"
+      aria-label="Test dialog"
       data-testid="empty-trap"
     >
       <span>No focusable children</span>

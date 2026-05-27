@@ -150,13 +150,32 @@ If you receive this error, add the attribute directly:
 <div role="dialog" aria-modal="true">
 ```
 
-If either constraint is satisfied externally (e.g. a Radix UI primitive that
-manages focus and sets aria-modal internally), suppress the relevant rule
-inline and explain why:
+**`luminae/dialog-needs-label`** — every `role="dialog"` element must have
+either `aria-labelledby` or `aria-label` so screen readers can announce what
+the dialog is when focus enters it.
+
+- Prefer `aria-labelledby` pointing at the visible heading element inside the
+  dialog when one is present:
+
+  ```tsx
+  <h2 id="my-dialog-title">Confirm action</h2>
+  <div role="dialog" aria-modal="true" aria-labelledby="my-dialog-title">
+  ```
+
+- Use `aria-label` when the dialog has no visible title:
+
+  ```tsx
+  <div role="dialog" aria-modal="true" aria-label="Card actions">
+  ```
+
+If any constraint is satisfied externally (e.g. a Radix UI primitive that
+manages focus, aria-modal, or the accessible name internally), suppress the
+relevant rule inline and explain why:
 
 ```tsx
 // eslint-disable-next-line luminae/dialog-needs-focus-trap
 // eslint-disable-next-line luminae/dialog-needs-aria-modal
-// Reason: Radix Dialog manages focus and aria-modal internally via its own FocusScope
+// eslint-disable-next-line luminae/dialog-needs-label
+// Reason: Radix Dialog manages focus, aria-modal, and accessible name internally
 <div role="dialog">
 ```

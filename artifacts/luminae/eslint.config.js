@@ -175,6 +175,66 @@ const dialogNeedsAriaModalRule = {
 };
 
 /**
+ * Local ESLint rule: luminae/dialog-needs-label
+ *
+ * Every JSX element with `role="dialog"` must also have either `aria-labelledby`
+ * or `aria-label` so that screen readers can announce what the dialog is when
+ * it receives focus.
+ *
+ * Prefer `aria-labelledby` pointing at an existing visible heading element when
+ * one is present; use `aria-label` for dialogs that have no visible title.
+ *
+ * To opt out for a specific element (e.g. a Radix UI primitive that manages
+ * the label internally), add an inline disable comment:
+ *   // eslint-disable-next-line luminae/dialog-needs-label
+ */
+const dialogNeedsLabelRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Every role="dialog" element must have aria-labelledby or aria-label',
+      recommended: true,
+    },
+    messages: {
+      missingLabel:
+        'Elements with role="dialog" must include either aria-labelledby (pointing at a visible ' +
+        'heading element) or aria-label (for dialogs with no visible title) so that screen ' +
+        'readers announce the dialog when it receives focus. ' +
+        'See artifacts/luminae/CONVENTIONS.md (Dialog Focus-Trap Pattern) for examples. ' +
+        'If the label is managed externally (e.g. by a Radix UI primitive), suppress with an ' +
+        'eslint-disable-next-line comment and explain why.',
+    },
+    schema: [],
+  },
+
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        const hasDialogRole = node.attributes.some(
+          (attr) =>
+            attr.type === 'JSXAttribute' &&
+            attr.name?.name === 'role' &&
+            attr.value?.type === 'Literal' &&
+            attr.value.value === 'dialog',
+        );
+        if (!hasDialogRole) return;
+
+        const hasLabel = node.attributes.some(
+          (attr) =>
+            attr.type === 'JSXAttribute' &&
+            (attr.name?.name === 'aria-labelledby' ||
+              attr.name?.name === 'aria-label'),
+        );
+        if (!hasLabel) {
+          context.report({ node, messageId: 'missingLabel' });
+        }
+      },
+    };
+  },
+};
+
+/**
  * Local ESLint rule: luminae/no-dropdown-checkbox-item
  *
  * The settings menu communicates toggle state exclusively through icon
@@ -252,6 +312,7 @@ export default [
         rules: {
           'dialog-needs-focus-trap': dialogNeedsFocusTrapRule,
           'dialog-needs-aria-modal': dialogNeedsAriaModalRule,
+          'dialog-needs-label': dialogNeedsLabelRule,
           'no-dropdown-checkbox-item': noDropdownCheckboxItemRule,
         },
       },
@@ -307,6 +368,12 @@ export default [
       // Without it, assistive technologies may allow screen-reader users to navigate
       // outside the dialog into background content.
       'luminae/dialog-needs-aria-modal': 'error',
+      // Enforce an accessible name on all role="dialog" elements.
+      // Screen readers announce the dialog label when focus moves into it; without
+      // aria-labelledby or aria-label the announcement is silent or confusing.
+      // Prefer aria-labelledby pointing at a visible heading; use aria-label for
+      // dialogs with no visible title.
+      'luminae/dialog-needs-label': 'error',
       // Enforce the settings menu toggle convention: boolean settings communicate
       // their state via icon swapping or icon color changes, never via a built-in
       // checkbox indicator.  DropdownMenuCheckboxItem adds a redundant checkbox
