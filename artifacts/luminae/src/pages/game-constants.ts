@@ -119,7 +119,8 @@ export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_L
 
 /** Total duration of the CipherApertureAnimation in "game" mode (ms).
  *  Phase breakdown: forefront(180) + circuit(950) + compress(600) + travel(620) + arrive(330) = 2680.
- *  Must stay in sync with PHASE_DUR.game inside CipherApertureAnimation.tsx. */
+ *  Kept in sync with PHASE_DUR.game via a module-level assertion in CipherApertureAnimation.tsx
+ *  that throws at load time if the sum of phase durations ever diverges from this value. */
 export const CIPHER_GAME_TOTAL_MS = 2680;
 
 /** Delay before firing post-cipher deal/absorb callbacks (ms).

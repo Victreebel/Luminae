@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ARRIVAL_LABEL_LINGER_MS } from '../pages/game-constants';
+import { ARRIVAL_LABEL_LINGER_MS, CIPHER_GAME_TOTAL_MS } from '../pages/game-constants';
 
 // ─── Cipher Aperture Animation ────────────────────────────────────────────────
 // Encrypt/Reserve animation for reserve_card-with-cardId actions.
@@ -47,6 +47,17 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
   game:     { forefront: 180, circuit: 950, compress: 600, sigil: 0, travel: 620, arrive: 330 },
   tutorial: { forefront: 180, circuit: 900, compress: 580, sigil: 0, travel: 600, arrive: 350 },
 };
+
+// Self-validating guard — throws at module load time if PHASE_DUR.game drifts from the
+// exported constant. Update CIPHER_GAME_TOTAL_MS in game-constants.ts whenever you change
+// any phase duration above.
+const _gamePhasesSum = Object.values(PHASE_DUR.game).reduce((a, b) => a + b, 0);
+if (_gamePhasesSum !== CIPHER_GAME_TOTAL_MS) {
+  throw new Error(
+    `[CipherApertureAnimation] PHASE_DUR.game sum (${_gamePhasesSum} ms) does not match ` +
+    `CIPHER_GAME_TOTAL_MS (${CIPHER_GAME_TOTAL_MS} ms) — update game-constants.ts.`
+  );
+}
 
 
 export function CipherApertureAnimation({
