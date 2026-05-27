@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ARRIVAL_LABEL_LINGER_MS, CIPHER_GAME_TOTAL_MS, CIPHER_TUTORIAL_TOTAL_MS } from '../pages/game-constants';
+import { ARRIVAL_LABEL_LINGER_MS, CIPHER_MODE_TOTAL_MS, type CipherApertureMode } from '../pages/game-constants';
 
 // ─── Cipher Aperture Animation ────────────────────────────────────────────────
 // Encrypt/Reserve animation for reserve_card-with-cardId actions.
@@ -21,8 +21,6 @@ import { ARRIVAL_LABEL_LINGER_MS, CIPHER_GAME_TOTAL_MS, CIPHER_TUTORIAL_TOTAL_MS
 //  5. arrive    (~330ms) — prismatic pulse ring; sigil fades; onComplete fires
 //
 // mode="game"     ~2.68 s  |  mode="tutorial" ~2.61 s
-
-export type CipherApertureMode = "tutorial" | "game";
 
 export interface CipherApertureProps {
   animKey: number;
@@ -48,23 +46,20 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
   tutorial: { forefront: 180, circuit: 900, compress: 580, sigil: 0, travel: 600, arrive: 350 },
 };
 
-// Self-validating guards — throw at module load time if any PHASE_DUR mode drifts from its
-// exported constant. Update the relevant constant in game-constants.ts whenever you change
-// any phase duration above.
-const _gamePhasesSum = Object.values(PHASE_DUR.game).reduce((a, b) => a + b, 0);
-if (_gamePhasesSum !== CIPHER_GAME_TOTAL_MS) {
-  throw new Error(
-    `[CipherApertureAnimation] PHASE_DUR.game sum (${_gamePhasesSum} ms) does not match ` +
-    `CIPHER_GAME_TOTAL_MS (${CIPHER_GAME_TOTAL_MS} ms) — update game-constants.ts.`
-  );
-}
-const _tutorialPhasesSum = Object.values(PHASE_DUR.tutorial).reduce((a, b) => a + b, 0);
-if (_tutorialPhasesSum !== CIPHER_TUTORIAL_TOTAL_MS) {
-  throw new Error(
-    `[CipherApertureAnimation] PHASE_DUR.tutorial sum (${_tutorialPhasesSum} ms) does not match ` +
-    `CIPHER_TUTORIAL_TOTAL_MS (${CIPHER_TUTORIAL_TOTAL_MS} ms) — update game-constants.ts.`
-  );
-}
+// Self-validating drift guards — throw at module load time if any PHASE_DUR mode's phase
+// sum diverges from its entry in CIPHER_MODE_TOTAL_MS (defined in game-constants.ts).
+// The loop covers every key in PHASE_DUR automatically, so adding a new CipherApertureMode
+// only requires adding one entry to CIPHER_MODE_TOTAL_MS — no new assertion block needed.
+(Object.keys(PHASE_DUR) as CipherApertureMode[]).forEach((m) => {
+  const sum = Object.values(PHASE_DUR[m]).reduce((a, b) => a + b, 0);
+  const expected = CIPHER_MODE_TOTAL_MS[m];
+  if (sum !== expected) {
+    throw new Error(
+      `[CipherApertureAnimation] PHASE_DUR.${m} sum (${sum} ms) does not match ` +
+      `CIPHER_MODE_TOTAL_MS[${m}] (${expected} ms) — update game-constants.ts.`,
+    );
+  }
+});
 
 
 export function CipherApertureAnimation({

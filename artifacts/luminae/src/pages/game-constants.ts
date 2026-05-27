@@ -117,17 +117,29 @@ export const GEM_BURST_SETTLE_MS = 550;
  *  = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS */
 export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS;
 
+/** All valid animation modes for CipherApertureAnimation.
+ *  Adding a new mode here (and a matching entry in CIPHER_MODE_TOTAL_MS) is the only
+ *  change required outside of CipherApertureAnimation.tsx itself — the module-level
+ *  drift guard loop will automatically cover the new mode. */
+export type CipherApertureMode = "tutorial" | "game";
+
 /** Total duration of the CipherApertureAnimation in "game" mode (ms).
- *  Phase breakdown: forefront(180) + circuit(950) + compress(600) + travel(620) + arrive(330) = 2680.
- *  Kept in sync with PHASE_DUR.game via a module-level assertion in CipherApertureAnimation.tsx
- *  that throws at load time if the sum of phase durations ever diverges from this value. */
+ *  Phase breakdown: forefront(180) + circuit(950) + compress(600) + travel(620) + arrive(330) = 2680. */
 export const CIPHER_GAME_TOTAL_MS = 2680;
 
 /** Total duration of the CipherApertureAnimation in "tutorial" mode (ms).
- *  Phase breakdown: forefront(180) + circuit(900) + compress(580) + travel(600) + arrive(350) = 2610.
- *  Kept in sync with PHASE_DUR.tutorial via a module-level assertion in CipherApertureAnimation.tsx
- *  that throws at load time if the sum of phase durations ever diverges from this value. */
+ *  Phase breakdown: forefront(180) + circuit(900) + compress(580) + travel(600) + arrive(350) = 2610. */
 export const CIPHER_TUTORIAL_TOTAL_MS = 2610;
+
+/** Expected phase-sum totals for every CipherApertureMode.
+ *  Typed as Record<CipherApertureMode, number> so TypeScript enforces full coverage —
+ *  adding a new mode to CipherApertureMode without adding an entry here is a compile error.
+ *  The module-level drift guard in CipherApertureAnimation.tsx loops over this map so
+ *  every mode is automatically protected without hand-writing a new assertion block. */
+export const CIPHER_MODE_TOTAL_MS: Record<CipherApertureMode, number> = {
+  game:     CIPHER_GAME_TOTAL_MS,
+  tutorial: CIPHER_TUTORIAL_TOTAL_MS,
+};
 
 /** Delay before firing post-cipher deal/absorb callbacks (ms).
  *  Adds a 70 ms lead-in so the replacement slot appears just as the cipher animation fully
