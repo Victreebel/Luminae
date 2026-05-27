@@ -26,6 +26,7 @@ import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil, ARRIVAL_LABEL_LINGER_MS } from '@/components/CipherApertureAnimation';
+import { ForgeButton, EncryptButton } from '@/components/ForgeEncryptButton';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -5075,11 +5076,9 @@ export default function GameBoard() {
                 {/* ── Immediate actions (your active turn only) ── */}
                 {!selectedCard.readOnly && isMyTurnForCoreAction && (
                   <>
-                    <motion.div
+                    <div
                       key={btnAnimTarget === 'forge' ? `forge-${btnAnimKey}` : 'forge'}
                       className={`relative w-full${btnAnimTarget === 'forge' ? ` btn-${btnAnimType}-flash` : ''}`}
-                      whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                      style={{ borderRadius: '0.75rem' }}
                     >
                       <AnimatePresence>
                         {showForgeHint && (
@@ -5099,16 +5098,15 @@ export default function GameBoard() {
                           </motion.button>
                         )}
                       </AnimatePresence>
-                      <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0
-                          ${pendingSheetAction === 'forge'
-                            ? `${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background`
-                            : 'btn-forge-idle text-[#F5E8C8] hover:brightness-[1.15]'
-                          }`}
-                        style={pendingSheetAction === 'forge'
-                          ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
-                          : { background: 'linear-gradient(160deg, #1c1810 0%, #26221a 50%, #1a1610 100%)', boxShadow: '0 0 0 1px #5c4e38, inset 0 1px 0 rgba(255,240,180,0.08), inset 0 -1px 0 rgba(0,0,0,0.45)' }}
+                      <ForgeButton
                         disabled={!me || !canAffordCard(selectedCard.card, me)}
+                        isPending={pendingSheetAction === 'forge'}
+                        isSent={sentFlashBtn === 'forge'}
+                        confirmHex={forgeConfirmHex}
+                        confirmGlow={forgeConfirmGlow}
+                        darkText={forgeDarkText}
+                        label={pendingSheetAction === 'forge' ? 'CONFIRM' : 'FORGE'}
+                        subtitle={pendingSheetAction === 'forge' ? 'Tap to manifest' : (me && canAffordCard(selectedCard.card, me) ? 'Manifest Artifact' : 'Cannot afford yet')}
                         onClick={() => {
                           if (pendingSheetAction === 'forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('forge', 'confirm');
@@ -5119,27 +5117,12 @@ export default function GameBoard() {
                             setPendingSheetAction('forge');
                           }
                         }}
-                      >
-                        <Gavel className="h-5 w-5 mr-2" />
-                        <AnimatePresence mode="wait" initial={false}>
-                          {sentFlashBtn === 'forge' ? (
-                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                              <Check className="h-4 w-4" />Sent!
-                            </motion.span>
-                          ) : (
-                            <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                              {pendingSheetAction === 'forge' ? 'Confirm: Forge' : (me && canAffordCard(selectedCard.card, me) ? 'Forge Artifact' : 'Cannot afford yet')}
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </Button>
-                    </motion.div>
+                      />
+                    </div>
                     {!selectedCard.fromReserve && (
-                      <motion.div
+                      <div
                         key={btnAnimTarget === 'reserve' ? `reserve-${btnAnimKey}` : 'reserve'}
                         className={`relative w-full${btnAnimTarget === 'reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
-                        whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                        style={{ borderRadius: '0.75rem' }}
                       >
                         <AnimatePresence>
                           {showReserveHint && !showForgeHint && (
@@ -5159,16 +5142,13 @@ export default function GameBoard() {
                             </motion.button>
                           )}
                         </AnimatePresence>
-                        <Button
-                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
-                            ${pendingSheetAction === 'reserve'
-                              ? ''
-                              : 'hover:brightness-110'
-                            }`}
-                          style={pendingSheetAction === 'reserve'
-                            ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
-                            : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
+                        <EncryptButton
                           disabled={!me || !canReserveMore(me)}
+                          isPending={pendingSheetAction === 'reserve'}
+                          isSent={sentFlashBtn === 'reserve'}
+                          sigilId={9001}
+                          label={pendingSheetAction === 'reserve' ? 'CONFIRM' : 'ENCRYPT'}
+                          subtitle={pendingSheetAction === 'reserve' ? 'Tap to reserve' : (me && canReserveMore(me) ? 'Reserve Pattern' : 'Encrypted pile full')}
                           onClick={() => {
                             if (pendingSheetAction === 'reserve') {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('reserve', 'confirm');
@@ -5179,21 +5159,8 @@ export default function GameBoard() {
                               setPendingSheetAction('reserve');
                             }
                           }}
-                        >
-                          <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9001} /></span>
-                          <AnimatePresence mode="wait" initial={false}>
-                            {sentFlashBtn === 'reserve' ? (
-                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                                <Check className="h-4 w-4" />Sent!
-                              </motion.span>
-                            ) : (
-                              <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                {pendingSheetAction === 'reserve' ? 'Confirm: Encrypt' : (me && canReserveMore(me) ? 'Encrypt for later' : 'Encrypted pile full (3 max)')}
-                              </motion.span>
-                            )}
-                          </AnimatePresence>
-                        </Button>
-                      </motion.div>
+                        />
+                      </div>
                     )}
                   </>
                 )}
@@ -5202,21 +5169,18 @@ export default function GameBoard() {
                 {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && !coreActionSubmitted && (
                   <>
                     {me && canAffordCard(selectedCard.card, me) && (
-                    <motion.div
+                    <div
                       key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
                       className={`relative w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
-                      whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                      style={{ borderRadius: '0.75rem' }}
                     >
-                      <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150
-                          ${pendingSheetAction === 'plan_forge'
-                            ? `border-0 ${forgeDarkText ? 'text-zinc-900' : 'text-white'} ring-2 ring-offset-1 ring-offset-background`
-                            : 'bg-amber-950/50 hover:bg-amber-900/60 text-amber-200 border border-amber-500/50'
-                          }`}
-                        style={pendingSheetAction === 'plan_forge'
-                          ? { backgroundColor: forgeConfirmHex, boxShadow: `0 0 14px ${forgeConfirmGlow}99`, '--tw-ring-color': forgeConfirmGlow } as React.CSSProperties
-                          : { boxShadow: '0 0 8px rgba(251,191,36,0.12)' }}
+                      <ForgeButton
+                        isPending={pendingSheetAction === 'plan_forge'}
+                        isSent={sentFlashBtn === 'plan_forge'}
+                        confirmHex={forgeConfirmHex}
+                        confirmGlow={forgeConfirmGlow}
+                        darkText={forgeDarkText}
+                        label={pendingSheetAction === 'plan_forge' ? 'CONFIRM' : 'FORGE'}
+                        subtitle={pendingSheetAction === 'plan_forge' ? 'Confirm to queue' : 'Plan to Manifest'}
                         onClick={() => {
                           if (pendingSheetAction === 'plan_forge') {
                             gameAudio.playButtonConfirm(); triggerBtnAnim('plan_forge', 'confirm');
@@ -5228,43 +5192,21 @@ export default function GameBoard() {
                             setPendingSheetAction('plan_forge');
                           }
                         }}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Gavel className="h-5 w-5 shrink-0" />
-                          <AnimatePresence mode="wait" initial={false}>
-                            {sentFlashBtn === 'plan_forge' ? (
-                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                                <Check className="h-4 w-4" />Sent!
-                              </motion.span>
-                            ) : (
-                              <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                {pendingSheetAction === 'plan_forge'
-                                  ? 'Confirm: Plan: Forge'
-                                  : <><span className="text-[8px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/60 rounded px-[5px] py-[1px] leading-none">PLAN</span> Forge this Artifact</>}
-                              </motion.span>
-                            )}
-                          </AnimatePresence>
-                        </span>
-                      </Button>
-                    </motion.div>
+                      />
+                    </div>
                     )}
                     {!selectedCard.fromReserve && (
-                      <motion.div
+                      <div
                         key={btnAnimTarget === 'plan_reserve' ? `plan_reserve-${btnAnimKey}` : 'plan_reserve'}
                         className={`w-full${btnAnimTarget === 'plan_reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
-                        whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                        style={{ borderRadius: '0.75rem' }}
                       >
-                        <Button
-                          className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
-                            ${pendingSheetAction === 'plan_reserve'
-                              ? ''
-                              : 'hover:brightness-110'
-                            }`}
-                          style={pendingSheetAction === 'plan_reserve'
-                            ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
-                            : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
+                        <EncryptButton
                           disabled={!me || !canReserveMore(me)}
+                          isPending={pendingSheetAction === 'plan_reserve'}
+                          isSent={sentFlashBtn === 'plan_reserve'}
+                          sigilId={9002}
+                          label={pendingSheetAction === 'plan_reserve' ? 'CONFIRM' : 'ENCRYPT'}
+                          subtitle={pendingSheetAction === 'plan_reserve' ? 'Confirm to queue' : (me && canReserveMore(me) ? 'Plan to Reserve' : 'Encrypted pile full')}
                           onClick={() => {
                             if (pendingSheetAction === 'plan_reserve') {
                               gameAudio.playButtonConfirm(); triggerBtnAnim('plan_reserve', 'confirm');
@@ -5276,21 +5218,8 @@ export default function GameBoard() {
                               setPendingSheetAction('plan_reserve');
                             }
                           }}
-                        >
-                          <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9002} /></span>
-                          <AnimatePresence mode="wait" initial={false}>
-                            {sentFlashBtn === 'plan_reserve' ? (
-                              <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                                <Check className="h-4 w-4" />Sent!
-                              </motion.span>
-                            ) : (
-                              <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                                {pendingSheetAction === 'plan_reserve' ? 'Confirm: Plan: Encrypt' : (me && canReserveMore(me) ? 'Plan: Encrypt for later' : 'Encrypted pile full (3 max)')}
-                              </motion.span>
-                            )}
-                          </AnimatePresence>
-                        </Button>
-                      </motion.div>
+                        />
+                      </div>
                     )}
                     <p className="text-[10px] text-muted-foreground text-center">
                       {myPlannedAction ? 'Selecting a new plan replaces the current one' : 'Planned moves auto-execute when your turn starts'}
@@ -5536,11 +5465,7 @@ export default function GameBoard() {
 
                   {/* ── Reserve now (active turn) ── */}
                   {isMyTurnForCoreAction && (
-                    <motion.div
-                      whileTap={{ scale: 0.93, transition: { duration: 0.07 } }}
-                      style={{ borderRadius: '0.75rem' }}
-                      className="relative"
-                    >
+                    <div className="relative">
                       <AnimatePresence>
                         {showDeckReserveHint && (
                           <motion.button
@@ -5559,16 +5484,13 @@ export default function GameBoard() {
                           </motion.button>
                         )}
                       </AnimatePresence>
-                      <Button
-                        className={`w-full h-12 text-base font-bold transition-all duration-150 border-0 text-[#D8D4FF]
-                          ${pendingDeckConfirm
-                            ? ''
-                            : 'hover:brightness-110'
-                          }`}
-                        style={pendingDeckConfirm
-                          ? { background: '#131322', boxShadow: '0 0 0 2px rgba(210,200,255,0.85), 0 0 18px rgba(200,180,255,0.50)' } as React.CSSProperties
-                          : { background: 'linear-gradient(160deg, #0d0d12 0%, #121220 55%, #0a0a10 100%)', boxShadow: '0 0 0 1px rgba(200,190,255,0.22), 1px 0 0 0 rgba(255,100,60,0.18), -1px 0 0 0 rgba(60,100,255,0.18), inset 0 1px 0 rgba(220,210,255,0.08)' }}
+                      <EncryptButton
                         disabled={!canReserve}
+                        isPending={pendingDeckConfirm}
+                        isSent={sentFlashBtn === 'deck_reserve'}
+                        sigilId={9005}
+                        label={pendingDeckConfirm ? 'CONFIRM' : 'ENCRYPT'}
+                        subtitle={pendingDeckConfirm ? 'Tap to reserve hidden' : (canReserve ? 'Hidden Card' : 'Encrypted pile full')}
                         onClick={() => {
                           if (pendingDeckConfirm) {
                             gameAudio.playButtonConfirm();
@@ -5580,25 +5502,8 @@ export default function GameBoard() {
                             setPendingDeckConfirm(true);
                           }
                         }}
-                      >
-                        <span className="h-5 w-5 mr-2 inline-flex items-center justify-center shrink-0"><CipherSigil affinityHex="#e2e8f0" id={9005} /></span>
-                        <AnimatePresence mode="wait" initial={false}>
-                          {sentFlashBtn === 'deck_reserve' ? (
-                            <motion.span key="sent" className="flex items-center gap-1 text-emerald-300" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.1 } }} exit={{ opacity: 0, y: -4, transition: { duration: 0.2 } }}>
-                              <Check className="h-4 w-4" />Sent!
-                            </motion.span>
-                          ) : (
-                            <motion.span key="label" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.1 } }} exit={{ opacity: 0, transition: { duration: 0.2 } }}>
-                              {pendingDeckConfirm
-                                ? 'Confirm: Encrypt Hidden Card'
-                                : canReserve
-                                ? 'Encrypt Hidden Card'
-                                : 'Encrypted pile full (3 max)'}
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-                      </Button>
-                    </motion.div>
+                      />
+                    </div>
                   )}
 
                   {/* ── Plan: reserve from deck (off-turn) ── */}

@@ -423,6 +423,31 @@ button,
   background: linear-gradient(90deg, transparent, rgba(255, 248, 200, 0.07), transparent);
   animation: forge-strike-sweep 5s ease-in-out infinite;
   pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Encrypt / Reserve button — prismatic shimmer sweep ─────────────────── */
+@keyframes encrypt-sweep {
+  0%   { opacity: 0; left: -70%; }
+  8%   { opacity: 1; }
+  42%  { opacity: 0; left: 115%; }
+  100% { opacity: 0; left: 115%; }
+}
+.btn-encrypt-idle {
+  position: relative;
+  overflow: hidden;
+}
+.btn-encrypt-idle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(200, 185, 255, 0.055), transparent);
+  animation: encrypt-sweep 7s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ── Affinity crystal — queued pulse ────────────────────────────────────── */
