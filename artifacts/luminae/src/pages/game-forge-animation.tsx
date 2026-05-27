@@ -118,7 +118,11 @@ export function ForgeAnimation({
   }, []);
 
   const HAMMER_SZ  = Math.max(76, Math.round(vmin(0.13)));
-  const STAMP_FONT = Math.max(52, Math.round(w * 0.50));
+  // Cinzel Decorative: ~4.7× char-width per em for "FORGED" + letterSpacing.
+  // Target: text fills ~85% of the visually scaled card width (w × 1.28).
+  // 4.7 × F ≈ w × 1.28 × 0.85  →  F ≈ w × 0.23
+  // Clamp to minimum so it's always readable at small card sizes.
+  const STAMP_FONT = Math.max(28, Math.round(w * 0.23));
 
   return (
     <motion.div
@@ -166,30 +170,37 @@ export function ForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
         />
 
-        {/* FORGED stamp — stamps down at impact, rides card to destination */}
+        {/* FORGED stamp — drops in at impact, rides card to destination.
+            NO overflow-hidden so text is never clipped.
+            Scale goes 1→0.93→1 to simulate physical stamp press (no overflow). */}
         <motion.div
-          className="absolute inset-0 flex items-center justify-center rounded-[6px] overflow-hidden"
-          animate={{ opacity: [0, 0, 1, 1], scale: [1, 1, 1, 1] }}
+          className="absolute inset-0 flex items-center justify-center rounded-[6px]"
+          animate={{ opacity: [0, 0, 1, 1] }}
           transition={{ duration: ARC_END, times: stampTimes }}
         >
-          {/* Dark vignette underneath so text pops on any card art */}
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />
+          {/* Dark vignette so text pops on any card art */}
+          <div className="absolute inset-0 rounded-[6px]" style={{ background: 'rgba(0,0,0,0.50)' }} />
           <motion.span
             className="relative select-none"
             style={{
               fontSize: STAMP_FONT,
-              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontFamily: '"Cinzel Decorative", "Cinzel", Georgia, serif',
               fontWeight: 900,
-              letterSpacing: '0.04em',
+              letterSpacing: '0.06em',
               color: '#FF8C20',
-              WebkitTextStroke: `${Math.max(2, Math.round(STAMP_FONT / 22))}px #FF4800`,
-              textShadow: '0 0 32px #FF8000EE, 0 4px 0 #6A2800',
+              WebkitTextStroke: `${Math.max(1, Math.round(STAMP_FONT / 28))}px #FF4800`,
+              textShadow: '0 0 28px #FF8000EE, 0 3px 0 #6A2800',
               transform: 'rotate(-9deg)',
               lineHeight: 1,
+              textAlign: 'center',
             }}
-            initial={{ scale: 3.8, opacity: 0 }}
-            animate={{ scale: [3.8, 3.8, 1, 1], opacity: [0, 0, 1, 1] }}
-            transition={{ duration: ARC_END, times: stampTimes }}
+            initial={{ scaleY: 1.0, opacity: 0, y: -8 }}
+            animate={{
+              scaleY: [1.0, 1.0, 0.88, 1.0, 1.0],
+              opacity: [0,   0,   1,    1,   1  ],
+              y:       [-8, -8,   0,    0,   0  ],
+            }}
+            transition={{ duration: ARC_END, times: [0, t2, t3, t4, 1.0] }}
           >
             FORGED
           </motion.span>
