@@ -3023,7 +3023,7 @@ export default function GameBoard() {
             tap to change affinity ↻
           </span>
         </div>
-        <div className="relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar">
+        <div data-luminary-scroll className="relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar">
           {safeLuminaries.map(l => {
             const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];

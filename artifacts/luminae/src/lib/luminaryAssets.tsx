@@ -2345,7 +2345,9 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
     const t = setTimeout(measure, 60); // re-check after render flush
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
-    document.querySelectorAll('[data-game-board], main').forEach(el => {
+    // Also watch the horizontal Luminary row scroller ([data-luminary-scroll])
+    // so entities track their panel cards when the row scrolls sideways.
+    document.querySelectorAll('[data-game-board], main, [data-luminary-scroll]').forEach(el => {
       el.addEventListener('scroll', onScroll, { passive: true });
       scrollTargets.push(el);
     });
