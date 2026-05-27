@@ -6580,36 +6580,87 @@ export default function GameBoard() {
 
               {/* Final scores — staggered in */}
               <div className="flex flex-col gap-2 pt-1">
-                {[...state.players].sort((a, b) => b.lumens - a.lumens).map((p, i) => {
-                  const isMe = p.playerId === session.playerId;
-                  const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
-                  const playerCards = (p.purchasedCards ?? []) as Array<{ id: string; tier: number; bonusColor: string }>;
-                  const playerDiscountedIds = (p.discountedForgeIds ?? []) as string[];
-                  const civPalette = getDominantAffinityPalette(playerCards);
-                  const civTier = getKardashevTier(playerCards, playerDiscountedIds);
-                  const civName = getCivilizationName(civPalette, civTier);
-                  return (
-                  <motion.div
-                    key={p.playerId}
-                    initial={{ opacity: 0, x: -16 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.55 + i * 0.1 }}
-                    className={`flex justify-between items-center px-3 py-2 rounded-xl ${p.playerId === state.winnerId ? 'bg-primary/20 border border-primary/40' : 'bg-secondary/50'}`}
-                  >
-                    <span className="font-medium text-sm flex items-center gap-2">
-                      {p.playerId === state.winnerId && <span className="text-xs">🏆</span>}
-                      <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={24} />
-                      <span className="flex flex-col items-start">
-                        <span>{p.playerName}</span>
-                        <span className="text-[10px] font-normal tracking-wide" style={{ color: civPalette.primary, opacity: 0.85 }}>{isMe ? civLabel : civName}</span>
-                      </span>
-                    </span>
-                    <span className="font-bold text-primary flex items-center gap-1">
-                      {p.lumens} <Sparkles className="h-3.5 w-3.5" />
-                    </span>
-                  </motion.div>
-                  );
-                })}
+                {(() => {
+                  const sorted = [...state.players].sort((a, b) => {
+                    const lumensDiff = b.lumens - a.lumens;
+                    if (lumensDiff !== 0) return lumensDiff;
+                    return (a.purchasedCards?.length ?? 0) - (b.purchasedCards?.length ?? 0);
+                  });
+                  const maxLumens = sorted[0]?.lumens ?? 0;
+                  const tiedOnLumens = sorted.filter(p => p.lumens === maxLumens).length > 1;
+                  return sorted.map((p, i) => {
+                    const isMe = p.playerId === session.playerId;
+                    const avatarIdForPlayer = p.avatarId ?? (isMe ? session.avatarId : null);
+                    const playerCards = (p.purchasedCards ?? []) as Array<{ id: string; tier: number; bonusColor: string }>;
+                    const playerDiscountedIds = (p.discountedForgeIds ?? []) as string[];
+                    const civPalette = getDominantAffinityPalette(playerCards);
+                    const civTier = getKardashevTier(playerCards, playerDiscountedIds);
+                    const civName = getCivilizationName(civPalette, civTier);
+                    const forgedCount = playerCards.length;
+                    const claimedIds = (p.claimedLuminaryIds ?? []) as string[];
+                    const claimedLums = (state.luminaries ?? []).filter(l => claimedIds.includes(l.id));
+                    const isWinner = p.playerId === state.winnerId;
+                    const showTieBreak = isWinner && tiedOnLumens;
+                    return (
+                      <motion.div
+                        key={p.playerId}
+                        initial={{ opacity: 0, x: -16 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.55 + i * 0.1 }}
+                        className={`flex flex-col px-3 py-2.5 rounded-xl gap-1 ${isWinner ? 'bg-primary/20 border border-primary/40' : 'bg-secondary/50'}`}
+                      >
+                        {/* Name row */}
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-sm flex items-center gap-2">
+                            {isWinner && <span className="text-xs">🏆</span>}
+                            <PlayerAvatar avatarId={avatarIdForPlayer} name={p.playerName} size={24} />
+                            <span className="flex flex-col items-start">
+                              <span>{p.playerName}</span>
+                              <span className="text-[10px] font-normal tracking-wide" style={{ color: civPalette.primary, opacity: 0.85 }}>{isMe ? civLabel : civName}</span>
+                            </span>
+                          </span>
+                          <span className="font-bold text-primary flex items-center gap-1">
+                            {p.lumens} <Sparkles className="h-3.5 w-3.5" />
+                          </span>
+                        </div>
+                        {/* Breakdown row */}
+                        <div className="flex items-center justify-between gap-2 pl-1 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <span className="tabular-nums font-semibold text-foreground/70">{forgedCount}</span>
+                              <span>forged</span>
+                            </span>
+                            {claimedLums.length > 0 && (
+                              <>
+                                <span className="text-[11px] text-muted-foreground/50">·</span>
+                                <span className="flex items-center gap-1 flex-wrap min-w-0">
+                                  {claimedLums.map(lum => (
+                                    <span
+                                      key={lum.id}
+                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full truncate max-w-[96px]"
+                                      style={{
+                                        background: (lum.summonColor ?? '#888') + '22',
+                                        color: lum.summonColor ?? '#aaa',
+                                        border: `1px solid ${(lum.summonColor ?? '#888')}44`,
+                                      }}
+                                    >
+                                      {lum.name}
+                                    </span>
+                                  ))}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {showTieBreak && (
+                            <span className="text-[10px] font-semibold text-amber-400 border border-amber-400/30 bg-amber-400/10 rounded-full px-2 py-0.5 shrink-0">
+                              tie-break
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  });
+                })()}
               </div>
 
               {/* ── Session Record (appears after first vote) ───────────────── */}
