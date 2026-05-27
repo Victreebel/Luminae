@@ -5,14 +5,15 @@ import { motion } from "framer-motion";
 // Encrypt/Reserve animation for reserve_card-with-cardId actions.
 //
 // Visual sequence:
-//  1. lift    (~120ms) — card rises from market slot; board dims (obsidian glass)
-//  2. circuit (~450ms) — 10 prismatic-white circuit branches from all four card
-//                         edges converge toward the card centre; white light beads
-//                         travel each branch at staggered speeds
-//  3. compress (~220ms) — card face fades + scales down to centre; circuit fades
-//  4. sigil    (~110ms) — cipher sigil materialises at screen centre
-//  5. travel   (~300ms) — sigil arcs toward the reserved-hand destination
-//  6. arrive   (~160ms) — prismatic pulse ring; sigil fades; onComplete fires
+//  1. forefront (~180ms) — card lifts from its market slot to viewport centre;
+//                          board dims begin (obsidian glass)
+//  2. circuit   (~450ms) — 10 prismatic-white circuit branches from all four card
+//                           edges converge toward the card centre (already centred);
+//                           white light beads travel each branch at staggered speeds
+//  3. compress  (~220ms) — card face fades + scales down in place; circuit fades
+//  4. sigil     (~110ms) — cipher sigil materialises at screen centre
+//  5. travel    (~300ms) — sigil arcs toward the reserved-hand destination
+//  6. arrive    (~160ms) — prismatic pulse ring; sigil fades; onComplete fires
 //
 // Aesthetic: obsidian glass + prismatic white + subtle cyan/violet edge glow.
 // No padlocks, no binary rain, no fire, no dominant purple/blue/gold, no WebGL.
@@ -42,15 +43,15 @@ export interface CipherApertureProps {
   onComplete?: () => void;
 }
 
-type Phase = "lift" | "circuit" | "compress" | "sigil" | "travel" | "arrive";
+type Phase = "forefront" | "circuit" | "compress" | "sigil" | "travel" | "arrive";
 
 const PHASE_ORDER: Phase[] = [
-  "lift", "circuit", "compress", "sigil", "travel", "arrive",
+  "forefront", "circuit", "compress", "sigil", "travel", "arrive",
 ];
 
 const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
-  game:     { lift: 280, circuit: 1060, compress: 530, sigil: 260, travel: 710, arrive: 370 },
-  tutorial: { lift: 300, circuit: 960,  compress: 500, sigil: 250, travel: 680, arrive: 410 },
+  game:     { forefront: 180, circuit: 1060, compress: 530, sigil: 260, travel: 710, arrive: 370 },
+  tutorial: { forefront: 180, circuit: 960,  compress: 500, sigil: 250, travel: 680, arrive: 410 },
 };
 
 /**
@@ -63,7 +64,7 @@ export function CipherApertureAnimation({
   animKey, mode, sourceRect, affinityHex, cardName, cardFace,
   destPos, gotFlux, onComplete,
 }: CipherApertureProps) {
-  const [phase, setPhase] = useState<Phase>("lift");
+  const [phase, setPhase] = useState<Phase>("forefront");
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const dur = PHASE_DUR[mode];
 
@@ -74,11 +75,11 @@ export function CipherApertureAnimation({
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
-    setPhase("lift");
+    setPhase("forefront");
 
     let acc = 0;
     const transitions: Phase[] = ["circuit", "compress", "sigil", "travel", "arrive"];
-    const from: Phase[]        = ["lift",    "circuit",  "compress", "sigil", "travel"];
+    const from: Phase[]        = ["forefront", "circuit", "compress", "sigil", "travel"];
     transitions.forEach((p, i) => {
       acc += dur[from[i]];
       const t = setTimeout(() => setPhase(p), acc);
@@ -98,16 +99,17 @@ export function CipherApertureAnimation({
   const showPulse   = at("arrive");
   const showLabel   = pi >= PHASE_ORDER.indexOf("sigil");
 
-  // Vector from card's current fixed position to screen centre
-  const compressX = cx - sourceRect.x - sourceRect.w / 2;
-  const compressY = cy - sourceRect.y - sourceRect.h / 2;
+  // Translation to move the card from its sourceRect to viewport centre.
+  // Matches ForgeAnimation Step 1: cx = innerWidth/2 - w/2, cy = innerHeight/2 - h/2 - 24.
+  const forefrontX = cx - sourceRect.x - sourceRect.w / 2;
+  const forefrontY = cy - sourceRect.y - sourceRect.h / 2 - 24;
 
   const dimOpacity =
-    at("lift")     ? 0.30 :
-    at("circuit")  ? 0.55 :
-    at("compress") ? 0.65 :
-    at("sigil")    ? 0.65 :
-    at("travel")   ? 0.48 : 0;
+    at("forefront") ? 0.30 :
+    at("circuit")   ? 0.55 :
+    at("compress")  ? 0.65 :
+    at("sigil")     ? 0.65 :
+    at("travel")    ? 0.48 : 0;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-[70]">
@@ -120,7 +122,7 @@ export function CipherApertureAnimation({
         transition={{ duration: 0.2 }}
       />
 
-      {/* ── Card: lift → circuit overlay → compress to centre ─────────── */}
+      {/* ── Card: forefront (lift to centre) → circuit overlay → compress ─ */}
       {showCard && (
         <motion.div
           style={{
@@ -132,22 +134,24 @@ export function CipherApertureAnimation({
           }}
           initial={{ x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 }}
           animate={{
-            x:       at("compress") ? compressX : 0,
-            y:       (at("lift") || at("circuit")) ? -14 : at("compress") ? compressY : 0,
-            scale:   at("lift") ? 1.08 : at("circuit") ? 1.12 : 0.10,
+            // forefront + circuit + compress all share the same translated position
+            // (card is already centred when circuit begins; compress scales in place).
+            x:       (at("forefront") || at("circuit") || at("compress")) ? forefrontX : 0,
+            y:       (at("forefront") || at("circuit") || at("compress")) ? forefrontY : 0,
+            scale:   at("forefront") ? 1.08 : at("circuit") ? 1.12 : 0.10,
             rotate:  at("compress") ? 45 : 0,
             opacity: at("compress") ? [1, 0.55, 0] : 1,
           }}
           transition={{
             x: {
-              duration: at("compress") ? dur.compress / 1000 : dur.lift / 1000,
-              ease: at("compress") ? [0.60, 0.0, 0.85, 0.5] : [0.22, 1, 0.36, 1],
-            },
-            y: {
-              duration: at("compress") ? dur.compress / 1000 : dur.lift / 1000,
+              duration: at("forefront") ? dur.forefront / 1000 : 0.08,
               ease: [0.22, 1, 0.36, 1],
             },
-            scale:   { duration: at("compress") ? dur.compress / 1000 : dur.lift / 1000 },
+            y: {
+              duration: at("forefront") ? dur.forefront / 1000 : 0.08,
+              ease: [0.22, 1, 0.36, 1],
+            },
+            scale:   { duration: at("forefront") ? dur.forefront / 1000 : at("compress") ? dur.compress / 1000 : 0.08 },
             rotate:  { duration: at("compress") ? dur.compress / 1000 : 0.06 },
             opacity: at("compress")
               ? { duration: dur.compress / 1000, times: [0, 0.5, 1] }
