@@ -134,15 +134,29 @@ useFocusTrap(containerRef, isOpen, onClose, { handleEscape: false });
 
 ### ESLint enforcement
 
-The `luminae/dialog-needs-focus-trap` rule (defined in `eslint.config.js`)
-enforces this convention across the entire `src/` tree.  If you receive the
-lint error, add the standard pattern above.
+Two rules in `eslint.config.js` enforce dialog accessibility requirements
+across the entire `src/` tree — both are set to `'error'`.
 
-If a dialog's focus is managed externally (e.g. a Radix UI primitive that
-traps focus internally), suppress the rule inline and explain why:
+**`luminae/dialog-needs-focus-trap`** — every component that renders
+`role="dialog"` must call `useFocusTrap()`.  If you receive this error, add
+the standard pattern above.
+
+**`luminae/dialog-needs-aria-modal`** — every `role="dialog"` element must
+also have `aria-modal="true"`.  Without it, assistive technologies may allow
+screen-reader users to navigate outside the dialog into background content.
+If you receive this error, add the attribute directly:
+
+```tsx
+<div role="dialog" aria-modal="true">
+```
+
+If either constraint is satisfied externally (e.g. a Radix UI primitive that
+manages focus and sets aria-modal internally), suppress the relevant rule
+inline and explain why:
 
 ```tsx
 // eslint-disable-next-line luminae/dialog-needs-focus-trap
-// Reason: Radix Dialog manages focus internally via its own FocusScope
-<div role="dialog" aria-modal="true">
+// eslint-disable-next-line luminae/dialog-needs-aria-modal
+// Reason: Radix Dialog manages focus and aria-modal internally via its own FocusScope
+<div role="dialog">
 ```

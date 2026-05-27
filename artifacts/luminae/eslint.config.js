@@ -113,6 +113,68 @@ const dialogNeedsFocusTrapRule = {
 };
 
 /**
+ * Local ESLint rule: luminae/dialog-needs-aria-modal
+ *
+ * Every JSX element with `role="dialog"` must also have `aria-modal="true"`.
+ * Without it, assistive technologies do not know the rest of the page is inert
+ * and may allow screen-reader users to navigate behind the dialog.
+ *
+ * To opt out for a specific element (e.g. a Radix UI primitive that sets
+ * aria-modal internally via the DOM), add an inline disable comment:
+ *   // eslint-disable-next-line luminae/dialog-needs-aria-modal
+ */
+const dialogNeedsAriaModalRule = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description:
+        'Every role="dialog" element must also have aria-modal="true"',
+      recommended: true,
+    },
+    messages: {
+      missingAriaModal:
+        'Elements with role="dialog" must include aria-modal="true" so assistive technologies ' +
+        'treat the rest of the page as inert. ' +
+        'See artifacts/luminae/CONVENTIONS.md (Dialog Focus-Trap Pattern) for the standard pattern. ' +
+        'If aria-modal is set externally (e.g. by a Radix UI primitive), suppress with an ' +
+        'eslint-disable-next-line comment and explain why.',
+    },
+    schema: [],
+  },
+
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        const hasDialogRole = node.attributes.some(
+          (attr) =>
+            attr.type === 'JSXAttribute' &&
+            attr.name?.name === 'role' &&
+            attr.value?.type === 'Literal' &&
+            attr.value.value === 'dialog',
+        );
+        if (!hasDialogRole) return;
+
+        const hasAriaModal = node.attributes.some((attr) => {
+          if (attr.type !== 'JSXAttribute' || attr.name?.name !== 'aria-modal') return false;
+          // aria-modal="true"  → JSXAttribute value is a Literal with string value "true"
+          if (attr.value?.type === 'Literal' && attr.value.value === 'true') return true;
+          // aria-modal={true}  → JSXAttribute value is a JSXExpressionContainer wrapping a boolean Literal
+          if (
+            attr.value?.type === 'JSXExpressionContainer' &&
+            attr.value.expression?.type === 'Literal' &&
+            attr.value.expression.value === true
+          ) return true;
+          return false;
+        });
+        if (!hasAriaModal) {
+          context.report({ node, messageId: 'missingAriaModal' });
+        }
+      },
+    };
+  },
+};
+
+/**
  * Local ESLint rule: luminae/no-dropdown-checkbox-item
  *
  * The settings menu communicates toggle state exclusively through icon
@@ -189,6 +251,7 @@ export default [
       luminae: {
         rules: {
           'dialog-needs-focus-trap': dialogNeedsFocusTrapRule,
+          'dialog-needs-aria-modal': dialogNeedsAriaModalRule,
           'no-dropdown-checkbox-item': noDropdownCheckboxItemRule,
         },
       },
@@ -240,6 +303,10 @@ export default [
       // Every component that renders role="dialog" must call useFocusTrap() so that
       // keyboard focus cannot escape into the background while the dialog is open.
       'luminae/dialog-needs-focus-trap': 'error',
+      // Enforce aria-modal="true" on all role="dialog" elements.
+      // Without it, assistive technologies may allow screen-reader users to navigate
+      // outside the dialog into background content.
+      'luminae/dialog-needs-aria-modal': 'error',
       // Enforce the settings menu toggle convention: boolean settings communicate
       // their state via icon swapping or icon color changes, never via a built-in
       // checkbox indicator.  DropdownMenuCheckboxItem adds a redundant checkbox
