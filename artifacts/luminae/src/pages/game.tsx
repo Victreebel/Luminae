@@ -2956,31 +2956,39 @@ export default function GameBoard() {
         : undefined}
     >
 
-      {/* ── Planned action announcement box ── (fixed overlay — does not affect document flow) */}
+      {/* ── Planned action banner — slides down from the header ── */}
       <AnimatePresence>
         {myPlannedAction && (
           <motion.div
             key="planned-action-box"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.92 }}
-            transition={{ duration: 0.18, ease: 'easeInOut' }}
-            className="fixed top-1/2 left-1/2 z-50 w-[min(92vw,400px)] -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+            initial={{ opacity: 0, y: '-100%' }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: '-100%' }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed left-0 right-0 z-[19] pointer-events-auto"
+            style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
           >
-            <div className="flex flex-col gap-3 px-5 py-4 rounded-xl bg-amber-950/95 border border-amber-500/50 backdrop-blur-sm shadow-[0_4px_32px_rgba(251,191,36,0.25)]">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/80">Action Queued</span>
-                <span className="text-sm text-amber-200/90 leading-snug">
+            <div
+              className="flex items-center gap-3 px-4 py-2.5 border-b"
+              style={{
+                background: 'rgba(4, 12, 36, 0.92)',
+                borderColor: 'rgba(59, 130, 246, 0.25)',
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
+              }}
+            >
+              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(147, 197, 253, 0.65)' }}>Planned</span>
+                <span className="text-xs font-medium text-blue-100/90 truncate leading-snug">
                   {getPlannedActionSummary(myPlannedAction)}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleCancelPlan}
-                className="flex items-center justify-center gap-2 w-full text-sm font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 rounded-lg px-4 py-2.5 transition-colors"
+                className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 rounded-lg px-3 py-1.5 transition-colors"
               >
-                <CalendarX className="h-4 w-4" />
-                Cancel Plan
+                <CalendarX className="h-3.5 w-3.5" />
+                Cancel
               </button>
             </div>
           </motion.div>
