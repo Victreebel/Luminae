@@ -389,31 +389,57 @@ export function ForgeAnimation({
                 <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
             ))}
+            <filter id="sfx-wipe" x="-120%" y="-120%" width="340%" height="340%">
+              <feGaussianBlur stdDeviation="9" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
           {streams.map(({ color, d }, idx) => {
-            const m   = GEM_META[color];
-            const del = LIFT_END + idx * 0.04;
-            const dur = STREAMS_END - LIFT_END + 0.12;
+            const m    = GEM_META[color];
+            const del  = LIFT_END + idx * 0.04;
+            const dur  = STREAMS_END - LIFT_END + 0.12;
+            // Wipe head travels independently: short bright segment races source→target.
+            const WIPE = 0.17;
+            // pathLength of the wipe segment (12% of path); offset animates 0→0.88 so
+            // the segment ends exactly at the target (0.88 + 0.12 = 1.0).
             return (
               <g key={color}>
+                {/* Outer glow bloom — fast draw */}
                 <motion.path
                   d={d} stroke={m.hex} strokeWidth={14} strokeLinecap="round" fill="none"
                   filter={`url(#sfx-${color})`}
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.85, 0.75, 0] }}
-                  transition={{ delay: del, duration: dur, times: [0, 0.40, 0.70, 1] }}
+                  transition={{ delay: del, duration: dur, times: [0, 0.12, 0.70, 1] }}
                 />
+                {/* Bright core — fast draw */}
                 <motion.path
                   d={d} stroke={m.glowHex ?? m.hex} strokeWidth={6} strokeLinecap="round" fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.85, 0] }}
-                  transition={{ delay: del + 0.01, duration: dur * 0.92, times: [0, 0.38, 0.68, 1] }}
+                  transition={{ delay: del + 0.01, duration: dur * 0.92, times: [0, 0.10, 0.68, 1] }}
                 />
+                {/* White hot center — fast draw */}
                 <motion.path
                   d={d} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.9, 0] }}
-                  transition={{ delay: del + 0.02, duration: dur * 0.86, times: [0, 0.36, 0.65, 1] }}
+                  transition={{ delay: del + 0.02, duration: dur * 0.86, times: [0, 0.09, 0.65, 1] }}
+                />
+                {/* Wipe head — glowing leading segment, sweeps source→target fast */}
+                <motion.path
+                  d={d} stroke={m.glowHex ?? m.hex} strokeWidth={20} strokeLinecap="round" fill="none"
+                  filter="url(#sfx-wipe)"
+                  initial={{ pathLength: 0.12, pathOffset: 0, opacity: 0 }}
+                  animate={{ pathLength: 0.12, pathOffset: [0, 0.88], opacity: [0, 1, 0.85, 0] }}
+                  transition={{ delay: del, duration: WIPE, ease: 'easeIn', times: [0, 0.06, 0.82, 1] }}
+                />
+                {/* Wipe head — white inner streak */}
+                <motion.path
+                  d={d} stroke="#FFFFFF" strokeWidth={7} strokeLinecap="round" fill="none"
+                  initial={{ pathLength: 0.10, pathOffset: 0, opacity: 0 }}
+                  animate={{ pathLength: 0.10, pathOffset: [0, 0.90], opacity: [0, 1, 0.80, 0] }}
+                  transition={{ delay: del + 0.01, duration: WIPE * 0.88, ease: 'easeIn', times: [0, 0.05, 0.80, 1] }}
                 />
               </g>
             );
@@ -832,31 +858,54 @@ export function OpponentForgeAnimation({
                 <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
             ))}
+            <filter id={`opsfx-wipe-${animKey}`} x="-120%" y="-120%" width="340%" height="340%">
+              <feGaussianBlur stdDeviation="9" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
           {streams.map(({ color, d }, idx) => {
-            const m   = GEM_META[color];
-            const del = LIFT_END + idx * 0.04;
-            const dur = STREAMS_END - LIFT_END + 0.12;
+            const m    = GEM_META[color];
+            const del  = LIFT_END + idx * 0.04;
+            const dur  = STREAMS_END - LIFT_END + 0.12;
+            const WIPE = 0.17;
             return (
               <g key={color}>
+                {/* Outer glow bloom — fast draw */}
                 <motion.path
                   d={d} stroke={m.hex} strokeWidth={14} strokeLinecap="round" fill="none"
                   filter={`url(#opsfx-${animKey}-${color})`}
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.85, 0.75, 0] }}
-                  transition={{ delay: del, duration: dur, times: [0, 0.40, 0.70, 1] }}
+                  transition={{ delay: del, duration: dur, times: [0, 0.12, 0.70, 1] }}
                 />
+                {/* Bright core — fast draw */}
                 <motion.path
                   d={d} stroke={m.glowHex ?? m.hex} strokeWidth={6} strokeLinecap="round" fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.85, 0] }}
-                  transition={{ delay: del + 0.01, duration: dur * 0.92, times: [0, 0.38, 0.68, 1] }}
+                  transition={{ delay: del + 0.01, duration: dur * 0.92, times: [0, 0.10, 0.68, 1] }}
                 />
+                {/* White hot center — fast draw */}
                 <motion.path
                   d={d} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.9, 0] }}
-                  transition={{ delay: del + 0.02, duration: dur * 0.86, times: [0, 0.36, 0.65, 1] }}
+                  transition={{ delay: del + 0.02, duration: dur * 0.86, times: [0, 0.09, 0.65, 1] }}
+                />
+                {/* Wipe head — glowing leading segment, sweeps source→target fast */}
+                <motion.path
+                  d={d} stroke={m.glowHex ?? m.hex} strokeWidth={20} strokeLinecap="round" fill="none"
+                  filter={`url(#opsfx-wipe-${animKey})`}
+                  initial={{ pathLength: 0.12, pathOffset: 0, opacity: 0 }}
+                  animate={{ pathLength: 0.12, pathOffset: [0, 0.88], opacity: [0, 1, 0.85, 0] }}
+                  transition={{ delay: del, duration: WIPE, ease: 'easeIn', times: [0, 0.06, 0.82, 1] }}
+                />
+                {/* Wipe head — white inner streak */}
+                <motion.path
+                  d={d} stroke="#FFFFFF" strokeWidth={7} strokeLinecap="round" fill="none"
+                  initial={{ pathLength: 0.10, pathOffset: 0, opacity: 0 }}
+                  animate={{ pathLength: 0.10, pathOffset: [0, 0.90], opacity: [0, 1, 0.80, 0] }}
+                  transition={{ delay: del + 0.01, duration: WIPE * 0.88, ease: 'easeIn', times: [0, 0.05, 0.80, 1] }}
                 />
               </g>
             );
