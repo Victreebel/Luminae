@@ -123,6 +123,12 @@ export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_L
  *  that throws at load time if the sum of phase durations ever diverges from this value. */
 export const CIPHER_GAME_TOTAL_MS = 2680;
 
+/** Total duration of the CipherApertureAnimation in "tutorial" mode (ms).
+ *  Phase breakdown: forefront(180) + circuit(900) + compress(580) + travel(600) + arrive(350) = 2610.
+ *  Kept in sync with PHASE_DUR.tutorial via a module-level assertion in CipherApertureAnimation.tsx
+ *  that throws at load time if the sum of phase durations ever diverges from this value. */
+export const CIPHER_TUTORIAL_TOTAL_MS = 2610;
+
 /** Delay before firing post-cipher deal/absorb callbacks (ms).
  *  Adds a 70 ms lead-in so the replacement slot appears just as the cipher animation fully
  *  clears, rather than at the exact moment the final phase completes.
