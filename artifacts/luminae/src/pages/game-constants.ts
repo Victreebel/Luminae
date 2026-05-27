@@ -86,14 +86,17 @@ export const FORGE_FULL_MS = 3000;
 /** Full reserved-card forge animation duration — no replacement deal needed (ms). */
 export const RESERVED_FORGE_FULL_MS = 1600;
 
-/** Animation lock used when the DOM rect lookup fails and the card flips in place (ms).
- *  The in-place flip cleanup timer fires at FALLBACK_FLIP_ANIM_MS - 150 ms. */
+/** Animation lock used when the DOM rect lookup fails and the card flips in place (ms). */
 export const FALLBACK_FLIP_ANIM_MS = 5800;
 
 /** Delay from the start of a fallback in-place flip before firing the compact-ghost
  *  chip-absorb ripple (ms). Expressed relative to FALLBACK_FLIP_ANIM_MS so both
  *  values stay in sync if the flip duration is ever adjusted. */
 export const FALLBACK_FLIP_RIPPLE_DELAY_MS = 3000;
+
+/** Cleanup timer for the in-place fallback flip — fires 150 ms before the lock expires
+ *  so the DOM state is cleared just before the lock releases. */
+export const FALLBACK_FLIP_CLEANUP_MS = FALLBACK_FLIP_ANIM_MS - 150;
 
 /** Small tail buffer added to CIPHER_GAME_TOTAL_MS for the deck-reserve lock
  *  (no deal phase, so a tighter margin is acceptable) (ms). */
