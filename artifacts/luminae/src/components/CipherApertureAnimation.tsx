@@ -61,6 +61,13 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
 };
 
 /**
+ * How long (ms) the arrival label stays visible after onComplete fires before
+ * fading.  game.tsx delays setCipherBurst(null) by this same amount so the
+ * component stays mounted long enough for the fade to complete.
+ */
+export const ARRIVAL_LABEL_LINGER_MS = 250;
+
+/**
  * Intentionally inert overlay — `pointer-events-none` on the root div means no
  * keyboard or pointer events reach this layer from outside.  There are zero
  * focusable elements inside the animation; a focus trap would have nothing to
@@ -71,6 +78,7 @@ export function CipherApertureAnimation({
   destPos, gotFlux, ownerName, onComplete,
 }: CipherApertureProps) {
   const [phase, setPhase] = useState<Phase>("forefront");
+  const [arrivalLabelFading, setArrivalLabelFading] = useState(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const dur = PHASE_DUR[mode];
 
@@ -82,6 +90,7 @@ export function CipherApertureAnimation({
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
     setPhase("forefront");
+    setArrivalLabelFading(false);
 
     let acc = 0;
     const transitions: Phase[] = ["circuit", "compress", "sigil", "travel", "arrive"];
@@ -93,6 +102,11 @@ export function CipherApertureAnimation({
     });
     acc += dur.arrive;
     timersRef.current.push(setTimeout(() => onComplete?.(), acc));
+    // Begin fading the arrival label ARRIVAL_LABEL_LINGER_MS after onComplete fires,
+    // so the label stays readable through the pulse ring and lingers briefly after.
+    timersRef.current.push(
+      setTimeout(() => setArrivalLabelFading(true), acc + ARRIVAL_LABEL_LINGER_MS),
+    );
     return () => { timersRef.current.forEach(clearTimeout); };
   }, [animKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -240,7 +254,7 @@ export function CipherApertureAnimation({
             whiteSpace: "nowrap",
           }}
           initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: at("arrive") ? 0 : 1, y: 0 }}
+          animate={{ opacity: arrivalLabelFading ? 0 : 1, y: 0 }}
           transition={{ duration: 0.22 }}
         >
           <span

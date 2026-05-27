@@ -25,7 +25,7 @@ import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
-import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
+import { CipherApertureAnimation, CipherSigil, ARRIVAL_LABEL_LINGER_MS } from '@/components/CipherApertureAnimation';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -5639,7 +5639,9 @@ export default function GameBoard() {
               setSingularityAbsorbKey(k => k + 1);
               cipherBurstIsDeckRef.current = false;
             }
-            setCipherBurst(null);
+            // Delay unmount so the arrival label can linger and fade after the
+            // pulse ring completes (ARRIVAL_LABEL_LINGER_MS + 220ms fade).
+            setTimeout(() => setCipherBurst(null), ARRIVAL_LABEL_LINGER_MS + 220);
           }}
         />
       )}
