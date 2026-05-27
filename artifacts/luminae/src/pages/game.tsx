@@ -390,6 +390,10 @@ export default function GameBoard() {
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processUpdateRef = useRef<(s: GameState) => void>(() => {});
   const drainQueueFnRef = useRef<() => void>(() => {});
+  // Tracks WS health so the REST poll can back off to 30 s when the socket is
+  // live. Updated inline on each render (safe — refs are always current inside
+  // the refetchInterval callback which runs outside the render cycle).
+  const wsConnectedRef = useRef(false);
 
   const [cardActionBurst, setCardActionBurst] = useState<{
     key: number;
@@ -810,7 +814,11 @@ export default function GameBoard() {
         // ensures AI turns and opponent moves are never missed.
         refetchInterval: (query) => {
           const data = query.state.data as { status?: string } | undefined;
-          return data?.status !== 'finished' ? 4000 : false;
+          if (data?.status === 'finished') return false;
+          // Back off to 30 s when WebSocket is healthy — WS state_update
+          // messages keep the cache current, so polling is just a safety net.
+          // Drop to 4 s when WS is down to catch missed AI turns quickly.
+          return wsConnectedRef.current ? 30_000 : 4_000;
         },
         refetchIntervalInBackground: false,
       },
@@ -1955,6 +1963,10 @@ export default function GameBoard() {
       if (activeTab !== 'log') setUnreadChat(prev => prev + 1);
     },
   });
+  // Inline sync — runs on every render, keeps the ref current so the
+  // refetchInterval callback always sees the latest WS health without
+  // needing to be inside this render's closure.
+  wsConnectedRef.current = isConnected;
 
   const submitAction = useSubmitAction();
 

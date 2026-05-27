@@ -95,7 +95,7 @@ export function useGameWebsocket({
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'ping' }));
         }
-      }, 20_000);
+      }, 10_000);
       ws.addEventListener('close', () => clearInterval(pingInterval), { once: true });
     };
 
