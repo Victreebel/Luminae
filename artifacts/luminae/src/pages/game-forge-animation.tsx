@@ -1,37 +1,58 @@
 /**
  * ForgeAnimation — 6-step forge card animation sequence.
  *
- * Step 1  (0–150ms)  : Card lifts from market slot → screen centre, solar aura builds.
- * Step 2  (150–380ms): Coloured energy streams flow from Affinity Wells into the card.
- * Step 3  (380–580ms): Peak flash — gold-white light erupts.
- * Step 4  (580–850ms): Hammer sigil descends; "FORGED" stamps onto the card; card shakes.
- * Step 5  (850–1050ms): Card compresses → golden medallion seal forms.
- * Step 6  (1050–1250ms): Seal arcs to the owner (Hand tab); destination absorbs it.
+ * Step 1  (0–150ms)   : Card Lifts & Forge Awakens — lifts to centre, solar aura builds.
+ * Step 2  (150–400ms) : Affinity Cost Burns In — curved coloured streams flow from wells.
+ * Step 3  (400–650ms) : Forge Manifestation Peak — gold-white radial burst, outward rays.
+ * Step 4  (650–950ms) : Hammer Stamp — hammer descends, FORGED stamps on card, card shakes.
+ * Step 5  (950–1150ms): Compression Into Seal — card compresses into golden medallion.
+ * Step 6  (1150–1400ms): Arc to Owner & Absorb — seal arcs to dest, destination pulses.
+ *
+ * Total: ~1.4 s   Visual language: solar gold, white-hot, affinity colours, antique brass.
  */
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import type { ArtifactCard } from '@workspace/api-client-react';
 import { ArtifactCardView } from './game-card';
 import { GEM_META, type GemKey } from '@/lib/gemMeta';
 import { Sparkles } from 'lucide-react';
 
-// ── Timing constants (seconds) ──────────────────────────────────────────────
-const P1_END   = 0.15;
-const P2_END   = 0.38;
-const P3_END   = 0.58;
-const P4_STAMP = 0.70;
-const P4_END   = 0.85;
-const P5_END   = 1.05;
-const P6_END   = 1.25;
+// ── Timing (seconds) ────────────────────────────────────────────────────────
+const LIFT_END    = 0.15;   // card arrives at centre
+const STREAMS_END = 0.40;   // affinity streams done
+// PEAK_END = 0.65 s (baked into delay offsets below, not a named constant)
+const STAMP_HIT   = 0.77;   // hammer impact
+const STAMP_END   = 0.95;   // stamp phase ends
+const SEAL_END    = 1.15;   // card compressed → seal visible
+const ARC_END     = 1.40;   // seal lands at destination
 
-interface StreamData {
-  color: GemKey;
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Quadratic bezier SVG path that curves perpendicular to the travel direction. */
+function arcPath(fx: number, fy: number, tx: number, ty: number, curveSign = 1): string {
+  const dx = tx - fx, dy = ty - fy;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return `M ${fx},${fy}`;
+  const mx = (fx + tx) / 2, my = (fy + ty) / 2;
+  const cpX = mx + (-dy / len) * len * 0.38 * curveSign;
+  const cpY = my + ( dx / len) * len * 0.38 * curveSign;
+  return `M ${fx},${fy} Q ${cpX},${cpY} ${tx},${ty}`;
 }
+
+/** 8-pointed starburst polygon points in a size×size viewBox. */
+function starPoints(size: number): string {
+  const c = size / 2;
+  return Array.from({ length: 16 }, (_, i) => {
+    const r = i % 2 === 0 ? c * 0.92 : c * 0.42;
+    const a = (i * Math.PI) / 8 - Math.PI / 2;
+    return `${(c + r * Math.cos(a)).toFixed(2)},${(c + r * Math.sin(a)).toFixed(2)}`;
+  }).join(' ');
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface StreamData { color: GemKey; d: string; }
 
 export interface ForgeAnimationProps {
   animKey: number;
@@ -44,6 +65,8 @@ export interface ForgeAnimationProps {
   gotFlux: boolean;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function ForgeAnimation({
   animKey,
   card,
@@ -53,31 +76,30 @@ export function ForgeAnimation({
   spentColors,
   lumens,
 }: ForgeAnimationProps) {
-  const w  = startRect.w;
-  const h  = startRect.h;
-  const sx = startRect.x;
-  const sy = startRect.y;
+  const { x: sx, y: sy, w, h } = startRect;
 
-  // Centre of the screen where the card lands.
+  // Card centre position on screen
   const cx = window.innerWidth  / 2 - w / 2;
   const cy = window.innerHeight / 2 - h / 2 - 20;
-
-  // Centre pixel of the card when held at screen centre.
   const cardMidX = cx + w / 2;
   const cardMidY = cy + h / 2;
 
-  // Seal size = ~55 % of card width, clamped.
-  const SEAL = Math.round(Math.min(w * 0.55, 72));
+  // Seal diameter ≈ 60 % of card width
+  const SEAL = Math.round(Math.min(w * 0.6, 80));
 
-  // Final destination for the seal (centre of hand-tab or screen centre).
+  // Arc destination (centre of hand tab, or card centre as fallback)
   const finalX = destPos?.x ?? cardMidX;
   const finalY = destPos?.y ?? cardMidY;
+  // Arc midpoint curves upward between card and destination
+  const arcMidX = (cardMidX + finalX) / 2 - SEAL / 2;
+  const arcMidY = Math.min(cardMidY, finalY) - 90;
 
-  // ── Affinity stream positions (measured after mount) ──────────────────────
+  // ── Measure affinity-well DOM positions after first render ──────────────────
   const [streams, setStreams] = useState<StreamData[]>([]);
   useEffect(() => {
-    const measured: StreamData[] = [];
     const seen = new Set<GemKey>();
+    const measured: StreamData[] = [];
+    let sign = 1;
     for (const color of spentColors) {
       if (seen.has(color) || color === 'flux') continue;
       seen.add(color);
@@ -86,32 +108,35 @@ export function ForgeAnimation({
         const r = el.getBoundingClientRect();
         measured.push({
           color,
-          fromX: r.left + r.width  / 2,
-          fromY: r.top  + r.height / 2,
-          toX: cardMidX,
-          toY: cardMidY,
+          d: arcPath(r.left + r.width / 2, r.top + r.height / 2, cardMidX, cardMidY, sign),
         });
+        sign *= -1; // alternate curve direction for variety
       }
     }
     setStreams(measured);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Card keyframes (phases 1–5, duration = P5_END) ───────────────────────
-  // We bake the shake into x during phase 4 so it stays inside a single motion element.
-  const CARD_DUR = P5_END; // 1.05s
-  const t = (s: number) => s / CARD_DUR;
+  // ── Card keyframes: lift → hold → shake → compress away ──────────────────
+  // 9 keyframes over SEAL_END (1.15 s)
+  const CARD_DUR = SEAL_END;
+  const cardT = [0, LIFT_END/CARD_DUR, 0.140, 0.670, 0.696, 0.722, 0.748, 0.774, 1.0];
 
-  const cardX = [sx,  cx,  cx,  cx+7, cx-7, cx+5, cx-3, cx];
-  const cardY = [sy,  cy,  cy,  cy,   cy,   cy,   cy,   cy];
-  const cardS = [1, 1.15, 1.15, 1.15, 1.15, 1.15, 1.15, 0];
-  const cardO = [1,    1,    1,    1,    1,    1,    1,   0];
-  const cardT = [0, t(P1_END), t(P1_END + 0.01), t(P4_END - 0.27), t(P4_END - 0.22), t(P4_END - 0.17), t(P4_END - 0.12), 1.0];
+  // ── Seal-arc displacement offsets (relative to seal's initial fixed position)
+  const sealStartX = cardMidX - SEAL / 2;
+  const sealStartY = cardMidY - SEAL / 2;
+  const dArcX = arcMidX - sealStartX;
+  const dArcY = arcMidY - sealStartY;
+  const dFinalX = finalX - SEAL / 2 - sealStartX;
+  const dFinalY = finalY - SEAL / 2 - sealStartY;
 
-  // ── Seal arc arc ──────────────────────────────────────────────────────────
-  const SEAL_DUR = P6_END - P5_END; // 0.20s
-  const arcMidX  = (cardMidX + finalX) / 2 - SEAL / 2;
-  const arcMidY  = Math.min(cardMidY, finalY) - 80;
+  // ── Rays: 12 lines radiating from card centre (appear at STREAMS_END) ──────
+  const RAY_LEN = w * 0.82;
+  const RAYS = Array.from({ length: 12 }, (_, i) => i * 30);
+
+  // ── Impact sparks: 8 dots that fly outward at STAMP_HIT ──────────────────
+  const SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+  const SPARK_DIST = w * 0.65;
 
   return (
     <motion.div
@@ -119,94 +144,77 @@ export function ForgeAnimation({
       className="pointer-events-none fixed inset-0 z-50"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25, delay: P6_END }}
+      transition={{ duration: 0.25, delay: ARC_END }}
     >
-      {/* Dark backdrop */}
+      {/* ── Dark backdrop ─────────────────────────────────────────────────── */}
       <motion.div
-        className="absolute inset-0 bg-black/55"
+        className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 1, 1, 0] }}
-        transition={{ duration: P6_END, times: [0, 0.1, 0.85, 1] }}
+        animate={{ opacity: [0, 0.52, 0.52, 0] }}
+        transition={{ duration: ARC_END, times: [0, LIFT_END / ARC_END, SEAL_END / ARC_END, 1] }}
       />
 
-      {/* ── Phase 1–4+5: card travelling + holding + stamping + compressing ── */}
+      {/* ══ PHASE 1–4+5: Card element (lift → hold → shake → vanish) ═══════ */}
       <motion.div
         style={{ position: 'fixed', left: 0, top: 0, width: w, height: h }}
-        animate={{ x: cardX, y: cardY, scale: cardS, opacity: cardO }}
+        animate={{
+          x:       [sx,  cx,  cx,  cx+8, cx-7, cx+4, cx-2, cx,  cx ],
+          y:       [sy,  cy,  cy,  cy,   cy,   cy,   cy,   cy,  cy ],
+          scale:   [1, 1.18, 1.18, 1.18, 1.18, 1.18, 1.18, 1.18, 0 ],
+          opacity: [1,  1,    1,    1,    1,    1,    1,    1,   0 ],
+        }}
         transition={{ duration: CARD_DUR, times: cardT, ease: 'easeOut' }}
       >
         <ArtifactCardView card={card} tier={tier} />
 
-        {/* Golden solar aura — grows through phase 3, fades in phase 4 */}
+        {/* Solar aura glow around the card */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           animate={{
             boxShadow: [
               '0 0  0px  0px #FBB83800',
-              '0 0 24px  8px #FBB83860',
-              '0 0 44px 16px #FFF4C2A0',
-              '0 0 60px 22px #FFF4C2FF',
-              '0 0 30px 10px #FBB83860',
+              '0 0 20px  8px #FBB83855',
+              '0 0 36px 14px #FBB83888',
+              '0 0 60px 24px #FFF4C2FF',
+              '0 0 28px 10px #FF901060',
               '0 0  0px  0px #FBB83800',
             ],
           }}
-          transition={{
-            duration: CARD_DUR,
-            times: [0, t(P1_END), t(P2_END), t(P3_END), t(P4_END), 1],
-          }}
+          transition={{ duration: CARD_DUR, times: [0, 0.130, 0.348, 0.565, 0.826, 1.0] }}
         />
 
-        {/* FORGED stamp — scales in from large → 1 at P4_STAMP */}
+        {/* FORGED stamp overlay — stamps down at STAMP_HIT */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center rounded-[6px] overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: [0, 0, 1, 1, 0] }}
-          transition={{ duration: CARD_DUR, times: [0, t(P4_STAMP - 0.01), t(P4_STAMP + 0.04), t(P4_END), 1] }}
+          transition={{ duration: CARD_DUR, times: [0, 0.620, 0.696, 0.826, 1.0] }}
         >
-          <motion.div
-            className="absolute inset-0"
-            style={{ background: 'rgba(0,0,0,0.35)' }}
-          />
+          {/* Dark vignette so text pops */}
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.42)' }} />
           <motion.span
-            className="relative font-black tracking-widest select-none"
+            className="relative select-none"
             style={{
-              fontSize: Math.round(w * 0.24),
-              color: '#FF9030',
-              textShadow: '0 0 18px #FF7000CC, 0 2px 0 #7A3000',
-              transform: 'rotate(-8deg)',
+              fontSize: Math.round(w * 0.38),
               fontFamily: 'Georgia, "Times New Roman", serif',
-              WebkitTextStroke: '1px #FF6000',
+              fontWeight: 900,
               letterSpacing: '0.04em',
+              color: '#FF8020',
+              WebkitTextStroke: '2px #FF5000',
+              textShadow: '0 0 24px #FF8000CC, 0 3px 0 #6A2800',
+              transform: 'rotate(-9deg)',
+              lineHeight: 1,
             }}
-            initial={{ scale: 3.5, opacity: 0 }}
-            animate={{ scale: [3.5, 3.5, 1, 1], opacity: [0, 0, 1, 0] }}
-            transition={{ duration: CARD_DUR, times: [0, t(P4_STAMP - 0.02), t(P4_STAMP + 0.06), 1] }}
+            initial={{ scale: 3.2, opacity: 0 }}
+            animate={{ scale: [3.2, 3.2, 1, 1], opacity: [0, 0, 1, 0] }}
+            transition={{ duration: CARD_DUR, times: [0, 0.620, 0.700, 1.0] }}
           >
             FORGED
           </motion.span>
         </motion.div>
       </motion.div>
 
-      {/* ── Phase 3: White-gold peak flash ring ───────────────────────────── */}
-      <motion.div
-        className="pointer-events-none fixed rounded-full"
-        style={{
-          left: cardMidX,
-          top:  cardMidY,
-          translateX: '-50%',
-          translateY: '-50%',
-          background: 'radial-gradient(circle, #FFFFFFD0 0%, #FFF4C280 40%, transparent 70%)',
-        }}
-        initial={{ width: 0, height: 0, opacity: 0 }}
-        animate={{
-          width:   [0, 0, w * 2.2, w * 3.0, 0],
-          height:  [0, 0, w * 2.2, w * 3.0, 0],
-          opacity: [0, 0, 0.85, 0.3, 0],
-        }}
-        transition={{ duration: P3_END + 0.05, times: [0, 0.62, 0.80, 0.92, 1] }}
-      />
-
-      {/* ── Phase 2: Affinity energy streams (SVG) ───────────────────────── */}
+      {/* ══ PHASE 2: Curved affinity energy streams (SVG) ════════════════════ */}
       {streams.length > 0 && (
         <svg
           className="pointer-events-none fixed inset-0"
@@ -214,54 +222,42 @@ export function ForgeAnimation({
         >
           <defs>
             {streams.map(({ color }) => {
-              const meta = GEM_META[color];
               return (
-                <filter key={`glow-${color}`} id={`stream-glow-${color}`} x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3.5" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                  <feColorMatrix type="matrix" values={`1 0 0 0 ${parseInt(meta.glowHex.slice(1,3),16)/255} 0 1 0 0 ${parseInt(meta.glowHex.slice(3,5),16)/255} 0 0 1 0 ${parseInt(meta.glowHex.slice(5,7),16)/255} 0 0 0 1 0`} />
+                <filter key={color} id={`sfx-${color}`} x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="4" result="b" />
+                  <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                 </filter>
               );
             })}
           </defs>
-          {streams.map(({ color, fromX, fromY, toX, toY }) => {
-            const meta = GEM_META[color];
-            const dur = P2_END - P2_END * 0 + 0.15; // stream draw + brief hold + fade
+          {streams.map(({ color, d }, idx) => {
+            const m = GEM_META[color];
+            const streamDelay = LIFT_END + idx * 0.04;
+            const streamDur   = STREAMS_END - LIFT_END + 0.12;
             return (
               <g key={color}>
-                {/* Core stream line */}
+                {/* Wide glow trail */}
                 <motion.path
-                  d={`M ${fromX},${fromY} L ${toX},${toY}`}
-                  stroke={meta.glowHex}
-                  strokeWidth={3}
+                  d={d}
+                  stroke={m.hex}
+                  strokeWidth={6}
                   strokeLinecap="round"
                   fill="none"
-                  filter={`url(#stream-glow-${color})`}
+                  filter={`url(#sfx-${color})`}
                   initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.95, 0.9, 0] }}
-                  transition={{
-                    delay: P2_END - (P2_END - P1_END),
-                    duration: dur,
-                    times: [0, 0.45, 0.72, 1],
-                  }}
+                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.7, 0.65, 0] }}
+                  transition={{ delay: streamDelay, duration: streamDur, times: [0, 0.42, 0.72, 1] }}
                 />
-                {/* Bright highlight streak alongside */}
+                {/* Bright core line */}
                 <motion.path
-                  d={`M ${fromX},${fromY} L ${toX},${toY}`}
+                  d={d}
                   stroke="#FFFFFF"
-                  strokeWidth={1.2}
+                  strokeWidth={2.2}
                   strokeLinecap="round"
                   fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: [0, 0.6, 1, 0], opacity: [0, 0.7, 0.4, 0] }}
-                  transition={{
-                    delay: P2_END - (P2_END - P1_END) + 0.02,
-                    duration: dur * 0.85,
-                    times: [0, 0.3, 0.6, 1],
-                  }}
+                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.9, 0.7, 0] }}
+                  transition={{ delay: streamDelay + 0.02, duration: streamDur * 0.88, times: [0, 0.38, 0.68, 1] }}
                 />
               </g>
             );
@@ -269,174 +265,227 @@ export function ForgeAnimation({
         </svg>
       )}
 
-      {/* ── Phase 4: Hammer sigil descending ─────────────────────────────── */}
+      {/* ══ PHASE 3: Radial burst — outward rays from card centre ════════════ */}
+      {RAYS.map((deg) => (
+        <motion.div
+          key={deg}
+          style={{
+            position: 'fixed',
+            left: cardMidX - 1.5,
+            top:  cardMidY - RAY_LEN,
+            width: 3,
+            height: RAY_LEN,
+            background: 'linear-gradient(to bottom, rgba(255,220,80,0) 0%, rgba(255,220,80,0.8) 55%, rgba(255,248,200,1) 100%)',
+            transformOrigin: 'center 100%',
+            rotate: `${deg}deg`,
+          }}
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: [0, 1, 0], opacity: [0, 0.95, 0] }}
+          transition={{ delay: STREAMS_END, duration: 0.42, times: [0, 0.38, 1] }}
+        />
+      ))}
+
+      {/* Peak flash ring — expands out from card centre */}
       <motion.div
-        className="pointer-events-none fixed flex items-center justify-center"
-        style={{ left: cardMidX, top: cy - 10, translateX: '-50%', translateY: '-100%' }}
-        initial={{ y: -50, opacity: 0, scale: 1.4 }}
+        className="pointer-events-none fixed rounded-full"
+        style={{
+          left: cardMidX,
+          top:  cardMidY,
+          translateX: '-50%',
+          translateY: '-50%',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,240,160,0.7) 35%, transparent 68%)',
+        }}
+        initial={{ width: 0, height: 0, opacity: 0 }}
         animate={{
-          y:       [-50, -50, h * 0.28, h * 0.28],
-          opacity: [0,    0,   1,        0       ],
-          scale:   [1.4, 1.4, 1,        1       ],
+          width:   [0, w * 1.8, w * 3.2, 0],
+          height:  [0, w * 1.8, w * 3.2, 0],
+          opacity: [0, 0.85,    0.15,     0],
+        }}
+        transition={{ delay: STREAMS_END, duration: 0.38, times: [0, 0.28, 0.75, 1] }}
+      />
+
+      {/* ══ PHASE 4: Hammer sigil descends onto card ════════════════════════ */}
+      <motion.div
+        className="pointer-events-none fixed"
+        style={{ left: cardMidX, top: cy + h * 0.15, translateX: '-50%', translateY: '-100%' }}
+        animate={{
+          y:       [-h * 0.9, -h * 0.9, h * 0.18, h * 0.18],
+          opacity: [0,         1,         1,         0        ],
+          scale:   [1.4,       1.4,       1.0,       1.0      ],
         }}
         transition={{
-          duration: P4_END,
-          times: [0, P4_END * 0.68, P4_END * 0.88, 1],
-          ease: [[0.3, 0, 0.6, 1], 'linear', 'linear'],
+          duration: STAMP_END,
+          times:    [0, 0.684, 0.811, 1.0],
+          ease:     ['linear', 'linear', [0.2, 0, 0.5, 1]],
         }}
       >
-        <svg viewBox="0 0 56 56" width={52} height={52}>
+        <svg viewBox="0 0 64 64" width={60} height={60}>
           <defs>
-            <filter id="hammer-glow-filter">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
+            <filter id="hglow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           </defs>
-          <g filter="url(#hammer-glow-filter)">
+          <g filter="url(#hglow)">
             {/* Hammer head */}
-            <rect x="10" y="6" width="36" height="20" rx="4" fill="#B87028" stroke="#FFD060" strokeWidth="1.5" />
-            {/* Hammer head face shine */}
-            <rect x="12" y="8"  width="13" height="7"  rx="2" fill="#FFE090" opacity="0.55" />
-            {/* Hammer handle */}
-            <rect x="24" y="24" width="8"  height="26" rx="3" fill="#7A4E2A" stroke="#B07840" strokeWidth="1" />
+            <rect x="8"  y="6"  width="48" height="22" rx="5" fill="#B87028" stroke="#FFD060" strokeWidth="2" />
+            {/* Head highlight */}
+            <rect x="11" y="9"  width="18" height="8"  rx="3" fill="#FFE090" opacity="0.6" />
+            {/* Handle */}
+            <rect x="28" y="26" width="9"  height="32" rx="4" fill="#7A4E2A" stroke="#B07840" strokeWidth="1.2" />
             {/* Handle highlight */}
-            <rect x="25" y="26" width="3"  height="16" rx="1.5" fill="#C09060" opacity="0.4" />
+            <rect x="30" y="28" width="3.5" height="20" rx="1.5" fill="#C09060" opacity="0.45" />
           </g>
         </svg>
       </motion.div>
 
-      {/* Impact spark burst at P4_STAMP */}
-      <motion.div
-        className="pointer-events-none fixed"
-        style={{ left: cardMidX, top: cardMidY, translateX: '-50%', translateY: '-50%' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0, 1, 0] }}
-        transition={{ duration: P4_END, times: [0, P4_STAMP / P4_END - 0.02, P4_STAMP / P4_END + 0.04, 1] }}
-      >
-        {/* Radial sparks */}
-        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-          <motion.div
-            key={deg}
-            className="absolute rounded-full"
-            style={{
-              width: 3,
-              height: 3,
-              background: deg % 90 === 0 ? '#FFE070' : '#FF9030',
-              left: '50%',
-              top: '50%',
-              transformOrigin: '50% 50%',
-              rotate: `${deg}deg`,
-            }}
-            initial={{ x: 0, y: 0, opacity: 1 }}
-            animate={{ x: Math.cos((deg * Math.PI) / 180) * 36, y: Math.sin((deg * Math.PI) / 180) * 36, opacity: 0 }}
-            transition={{ delay: P4_STAMP, duration: 0.22, ease: 'easeOut' }}
-          />
-        ))}
-      </motion.div>
-
-      {/* ── Phase 5: Golden seal forms (replaces card) ─────────────────────── */}
-      <AnimatePresence>
-        <motion.div
-          key="seal"
-          className="pointer-events-none fixed flex items-center justify-center rounded-full"
-          style={{
-            left: cardMidX - SEAL / 2,
-            top:  cardMidY - SEAL / 2,
-            width:  SEAL,
-            height: SEAL,
-            background: 'radial-gradient(circle at 38% 32%, #FFE888 0%, #D4881A 55%, #7A4400 100%)',
-            border: '2px solid #FFD060',
-            boxShadow: '0 0 28px 8px #FFA83080, inset 0 0 12px #FFE07040',
-          }}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: [0, 0, 1.1, 1, 1, 0.15], opacity: [0, 0, 1, 1, 1, 0] }}
-          transition={{
-            duration: P6_END - P4_END, // 0.40s, delay P4_END; t=0.5 = P5_END boundary
-            delay: P4_END,
-            times: [0, 0.38, 0.50, 0.62, 0.78, 1.0],
-          }}
-        >
-          {/* Hammer on seal */}
-          <svg viewBox="0 0 30 30" width={SEAL * 0.5} height={SEAL * 0.5}>
-            <rect x="5"  y="3" width="20" height="11" rx="2.5" fill="#7A3800" stroke="#FFD060" strokeWidth="1.2" />
-            <rect x="13" y="13" width="4" height="14"  rx="1.5"  fill="#5A2800" stroke="#B06030" strokeWidth="0.8" />
-            <rect x="6"  y="4" width="8"  height="5"   rx="1.5" fill="#FFE090" opacity="0.45" />
-          </svg>
-        </motion.div>
-      </AnimatePresence>
-
-      {/* ── Phase 6: Seal arc flight ──────────────────────────────────────── */}
+      {/* Impact flash at stamp hit */}
       <motion.div
         className="pointer-events-none fixed rounded-full"
         style={{
-          left: cardMidX - SEAL / 2,
-          top:  cardMidY - SEAL / 2,
-          width:  SEAL,
-          height: SEAL,
-          background: 'radial-gradient(circle at 38% 32%, #FFE888 0%, #D4881A 55%, #7A4400 100%)',
-          border: '2px solid #FFD060',
-          boxShadow: '0 0 24px 6px #FFA83080',
+          left: cardMidX, top: cardMidY,
+          translateX: '-50%', translateY: '-50%',
+          background: 'radial-gradient(circle, rgba(255,200,80,0.95) 0%, rgba(255,120,0,0.5) 40%, transparent 70%)',
         }}
-        initial={{ opacity: 0, scale: 0 }}
+        initial={{ width: 0, height: 0, opacity: 0 }}
         animate={{
-          x: [0, arcMidX - (cardMidX - SEAL / 2), finalX - SEAL / 2 - (cardMidX - SEAL / 2)],
-          y: [0, arcMidY - (cardMidY - SEAL / 2), finalY - SEAL / 2 - (cardMidY - SEAL / 2)],
-          scale: [1, 0.85, 0.25],
-          opacity: [1, 1, 0],
+          width:   [0, 0, w * 1.4, 0],
+          height:  [0, 0, w * 1.4, 0],
+          opacity: [0, 0, 0.9,     0],
         }}
-        transition={{ delay: P5_END, duration: SEAL_DUR, times: [0, 0.5, 1], ease: 'easeIn' }}
+        transition={{ duration: STAMP_END, times: [0, 0.800, 0.840, 1.0] }}
       />
 
-      {/* ── Absorption pulse rings at destPos (fires ~at P6_END) ─────────── */}
-      {destPos && (
-        <motion.div
-          className="pointer-events-none fixed"
-          style={{ left: destPos.x, top: destPos.y, translateX: '-50%', translateY: '-50%' }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0, 1, 0] }}
-          transition={{ duration: P6_END + 0.1, times: [0, 0.88, 0.94, 1] }}
-        >
+      {/* Impact sparks — fly outward at STAMP_HIT */}
+      {SPARK_ANGLES.map((deg) => {
+        const rad = (deg * Math.PI) / 180;
+        return (
           <motion.div
-            className="absolute rounded-full border-2 border-amber-300"
-            style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
-            initial={{ width: 10, height: 10, opacity: 1 }}
-            animate={{ width: 80, height: 80, opacity: 0 }}
-            transition={{ delay: P6_END - 0.15, duration: 0.55, ease: 'easeOut' }}
+            key={deg}
+            className="pointer-events-none fixed rounded-full"
+            style={{
+              left: cardMidX - 3, top: cardMidY - 3,
+              width: 6, height: 6,
+              background: deg % 90 === 0 ? '#FFE870' : '#FF9030',
+            }}
+            initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+            animate={{
+              x: Math.cos(rad) * SPARK_DIST,
+              y: Math.sin(rad) * SPARK_DIST,
+              scale: [1, 0.2],
+              opacity: [1, 0],
+            }}
+            transition={{ delay: STAMP_HIT, duration: 0.28, ease: 'easeOut' }}
           />
-          <motion.div
-            className="absolute rounded-full border border-amber-400/70"
-            style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
-            initial={{ width: 6, height: 6, opacity: 0.9 }}
-            animate={{ width: 50, height: 50, opacity: 0 }}
-            transition={{ delay: P6_END - 0.10, duration: 0.45, ease: 'easeOut' }}
-          />
-          <motion.div
-            className="absolute rounded-full bg-amber-200"
-            style={{ left: '50%', top: '50%', translateX: '-50%', translateY: '-50%' }}
-            initial={{ width: 8, height: 8, opacity: 0.9 }}
-            animate={{ width: 0, height: 0, opacity: 0 }}
-            transition={{ delay: P6_END - 0.15, duration: 0.28, ease: 'easeIn' }}
-          />
-        </motion.div>
-      )}
+        );
+      })}
 
-      {/* ── Eminence floater (if card awards lumens) ──────────────────────── */}
+      {/* ══ PHASE 5: Golden compass/medallion seal forms ══════════════════════ */}
+      <motion.div
+        className="pointer-events-none fixed"
+        style={{ left: sealStartX, top: sealStartY, width: SEAL, height: SEAL }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 0, 1.2, 1, 1, 0], opacity: [0, 0, 1, 1, 1, 0] }}
+        transition={{ duration: ARC_END - STAMP_END, delay: STAMP_END, times: [0, 0.08, 0.30, 0.50, 0.76, 1.0] }}
+      >
+        <svg width={SEAL} height={SEAL} viewBox={`0 0 ${SEAL} ${SEAL}`} style={{ overflow: 'visible' }}>
+          <defs>
+            <radialGradient id="sgOuter" cx="38%" cy="32%">
+              <stop offset="0%"   stopColor="#FFE888" />
+              <stop offset="50%"  stopColor="#D4881A" />
+              <stop offset="100%" stopColor="#7A4400" />
+            </radialGradient>
+            <radialGradient id="sgInner" cx="38%" cy="32%">
+              <stop offset="0%"   stopColor="#FFF8D0" />
+              <stop offset="60%"  stopColor="#FFB830" />
+              <stop offset="100%" stopColor="#A05800" />
+            </radialGradient>
+            <filter id="sglow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="3.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          <g filter="url(#sglow)">
+            {/* 8-pointed star body */}
+            <polygon points={starPoints(SEAL)} fill="url(#sgOuter)" stroke="#FFD060" strokeWidth="1" />
+            {/* Central disc */}
+            <circle cx={SEAL/2} cy={SEAL/2} r={SEAL * 0.3} fill="url(#sgInner)" stroke="#FFD060" strokeWidth="1.5" />
+            {/* Mini hammer icon on disc */}
+            {(() => {
+              const c = SEAL / 2;
+              return (
+                <g>
+                  <rect x={c-9} y={c-10} width={18} height={9}  rx="2" fill="#7A3800" stroke="#FFD060" strokeWidth="0.8" />
+                  <rect x={c-2} y={c-2}  width={4}  height={12} rx="1.5" fill="#5A2800" stroke="#A06030" strokeWidth="0.6" />
+                  <rect x={c-7} y={c-8}  width={7}  height={4}  rx="1"   fill="#FFE090" opacity="0.5" />
+                </g>
+              );
+            })()}
+          </g>
+        </svg>
+        {/* Seal glow ring */}
+        <motion.div
+          className="absolute inset-0 rounded-full"
+          animate={{ boxShadow: ['0 0 18px 6px #FFA83099', '0 0 32px 12px #FFD04066', '0 0 18px 6px #FFA83099'] }}
+          transition={{ duration: 0.45, repeat: Infinity, repeatType: 'mirror' }}
+        />
+      </motion.div>
+
+      {/* ══ PHASE 6: Seal arc flight to destination ═══════════════════════════ */}
+      <motion.div
+        className="pointer-events-none fixed"
+        style={{ left: sealStartX, top: sealStartY, width: SEAL, height: SEAL }}
+        initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+        animate={{
+          x: [0, dArcX, dFinalX],
+          y: [0, dArcY, dFinalY],
+          scale:   [1,  0.85, 0.18],
+          opacity: [1,  1,    0   ],
+        }}
+        transition={{ delay: SEAL_END, duration: ARC_END - SEAL_END, times: [0, 0.5, 1], ease: 'easeIn' }}
+      >
+        <svg width={SEAL} height={SEAL} viewBox={`0 0 ${SEAL} ${SEAL}`} style={{ overflow: 'visible' }}>
+          <defs>
+            <radialGradient id="sgOuter2" cx="38%" cy="32%">
+              <stop offset="0%"   stopColor="#FFE888" />
+              <stop offset="50%"  stopColor="#D4881A" />
+              <stop offset="100%" stopColor="#7A4400" />
+            </radialGradient>
+          </defs>
+          <polygon points={starPoints(SEAL)} fill="url(#sgOuter2)" stroke="#FFD060" strokeWidth="1" />
+          <circle cx={SEAL/2} cy={SEAL/2} r={SEAL * 0.3} fill="#FFB830" stroke="#FFD060" strokeWidth="1.5" />
+        </svg>
+      </motion.div>
+
+      {/* ── Absorption pulse rings at destination ────────────────────────── */}
+      {destPos && [0, 0.08, 0.16].map((extraDelay) => (
+        <motion.div
+          key={extraDelay}
+          className="pointer-events-none fixed rounded-full border-2 border-amber-300"
+          style={{
+            left: destPos.x, top: destPos.y,
+            translateX: '-50%', translateY: '-50%',
+          }}
+          initial={{ width: 8, height: 8, opacity: 0.9 }}
+          animate={{ width: 88, height: 88, opacity: 0 }}
+          transition={{ delay: ARC_END - 0.15 + extraDelay, duration: 0.55, ease: 'easeOut' }}
+        />
+      ))}
+
+      {/* ══ Eminence floater (if card awards lumens) ══════════════════════════ */}
       {lumens > 0 && (
         <motion.div
-          className="pointer-events-none fixed flex items-center gap-1.5 font-bold"
+          className="pointer-events-none fixed flex items-center gap-1.5 font-bold select-none"
           style={{
-            left: cardMidX + w * 0.6,
-            top:  cardMidY - h * 0.2,
+            left: cardMidX + w * 0.58,
+            top:  cardMidY - h * 0.18,
             color: '#FFF0A0',
-            fontSize: 16,
-            textShadow: '0 0 12px #FFD04099',
+            fontSize: 17,
+            textShadow: '0 0 14px #FFD04099',
           }}
           initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: [0, 0, 1, 1, 0], y: [0, 0, 0, -24, -36] }}
-          transition={{ duration: P6_END, times: [0, 0.42, 0.54, 0.85, 1] }}
+          animate={{ opacity: [0, 0, 1, 1, 0], y: [0, 0, 0, -22, -38] }}
+          transition={{ duration: ARC_END, times: [0, 0.28, 0.44, 0.85, 1] }}
         >
           <Sparkles className="h-4 w-4" />
           +{lumens}
