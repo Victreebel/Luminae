@@ -5216,6 +5216,7 @@ export default function GameBoard() {
                         confirmHex={forgeConfirmHex}
                         confirmGlow={forgeConfirmGlow}
                         darkText={forgeDarkText}
+                        isPlan
                         label={pendingSheetAction === 'plan_forge' ? 'CONFIRM' : 'FORGE'}
                         subtitle={pendingSheetAction === 'plan_forge' ? 'Confirm to queue' : 'Plan to Manifest'}
                         onClick={() => {
@@ -5242,6 +5243,7 @@ export default function GameBoard() {
                           isPending={pendingSheetAction === 'plan_reserve'}
                           isSent={sentFlashBtn === 'plan_reserve'}
                           sigilId={9002}
+                          isPlan
                           label={pendingSheetAction === 'plan_reserve' ? 'CONFIRM' : 'ENCRYPT'}
                           subtitle={pendingSheetAction === 'plan_reserve' ? 'Confirm to queue' : (me && canReserveMore(me) ? 'Plan to Reserve' : 'Encrypted pile full')}
                           onClick={() => {

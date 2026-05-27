@@ -135,12 +135,14 @@ export interface ForgeButtonProps {
   confirmHex?: string;
   confirmGlow?: string;
   darkText?: boolean;
+  /** Show the amber PLAN badge — use when the button queues an action for a future turn. */
+  isPlan?: boolean;
 }
 
 export function ForgeButton({
   onClick, disabled, isPending, isSent,
   label, subtitle = 'Manifest Artifact',
-  confirmGlow = '#f59e0b', darkText,
+  confirmGlow = '#f59e0b', darkText, isPlan,
 }: ForgeButtonProps) {
   const nubColor  = isPending ? `${confirmGlow}ee` : 'rgba(208,160,34,0.92)';
   const diaColor  = isPending ? `${confirmGlow}ff` : 'rgba(228,180,42,0.97)';
@@ -265,6 +267,9 @@ export function ForgeButton({
             <motion.span key="label" className="flex flex-col items-start"
               initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+              {isPlan && !isPending && (
+                <span style={{ marginBottom: 4 }} className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
+              )}
               <span className="font-bold uppercase leading-none" style={{
                 fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
@@ -369,11 +374,13 @@ export interface EncryptButtonProps {
   label: string;
   subtitle?: string;
   sigilId?: number;
+  /** Show the amber PLAN badge — use when the button queues an action for a future turn. */
+  isPlan?: boolean;
 }
 
 export function EncryptButton({
   onClick, disabled, isPending, isSent,
-  label, subtitle = 'Reserve Pattern', sigilId = 9001,
+  label, subtitle = 'Reserve Pattern', sigilId = 9001, isPlan,
 }: EncryptButtonProps) {
   return (
     <motion.button
@@ -501,6 +508,9 @@ export function EncryptButton({
             <motion.span key="label" className="flex flex-col items-start"
               initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+              {isPlan && !isPending && (
+                <span style={{ marginBottom: 4 }} className="text-[7.5px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/70 border border-amber-500/50 rounded px-[5px] py-[1px] leading-none self-start">PLAN</span>
+              )}
               <span className="font-bold uppercase leading-none" style={{
                 fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
