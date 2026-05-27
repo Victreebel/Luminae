@@ -283,7 +283,7 @@ export function ForgeAnimation({
       <motion.div
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.65, 0.65, 0] }}
+        animate={{ opacity: isCompact ? [0, 0.35, 0.35, 0] : [0, 0.65, 0.65, 0] }}
         transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
       />
 
@@ -292,7 +292,10 @@ export function ForgeAnimation({
         animate={{
           x:       [sx,   cx,    cx+SK, cx-SK, cx+SK/2, cx-SK/3, cx,   dX  ],
           y:       [sy,   cy,    cy,    cy,    cy,      cy,      cy,   dY  ],
-          scale:   [1,  1.28,  1.28,  1.28,  1.28,   1.28,   1.28, 0.06],
+          // In compact view: no scale-up (card stays at chip size, stamp descends to it).
+          scale:   isCompact
+            ? [1,   1,     1,     1,     1,       1,      1,    0.06]
+            : [1,  1.28,  1.28,  1.28,  1.28,   1.28,   1.28, 0.06],
           opacity: [1,    1,     1,     1,     1,       1,      1,    0   ],
         }}
         transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
