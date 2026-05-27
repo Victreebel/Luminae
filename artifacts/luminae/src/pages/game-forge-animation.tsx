@@ -196,6 +196,16 @@ export function ForgeAnimation({
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
 
+  // Full card dimensions from CSS variables (clamp-based, must read at runtime).
+  const fullCardW = isCompact
+    ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112)
+    : w;
+  const fullCardH = isCompact
+    ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h')) || 160)
+    : h;
+  // Scale factor to shrink ArtifactCardView (always --card-w × --card-h) to chip size.
+  const chipScale = isCompact ? w / fullCardW : 1;
+
   // In compact view skip the lift-to-centre; stamp descends directly onto the chip.
   const cx = isCompact ? sx : (window.innerWidth  / 2 - w / 2);
   const cy = isCompact ? sy : (window.innerHeight / 2 - h / 2 - 24);
@@ -300,7 +310,23 @@ export function ForgeAnimation({
         }}
         transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
       >
-        <ArtifactCardView card={card} tier={tier} />
+        {/* In compact mode: clip to chip size then scale ArtifactCardView down to match.
+            ArtifactCardView always self-sizes to var(--card-w) × var(--card-h);
+            without this wrapper it overflows the 56×80 chip container. */}
+        {isCompact ? (
+          <div style={{ width: w, height: h, overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              width: fullCardW,
+              height: fullCardH,
+              transform: `scale(${chipScale})`,
+              transformOrigin: 'top left',
+            }}>
+              <ArtifactCardView card={card} tier={tier} />
+            </div>
+          </div>
+        ) : (
+          <ArtifactCardView card={card} tier={tier} />
+        )}
 
         <motion.div
           className="absolute inset-0 rounded-[6px]"
