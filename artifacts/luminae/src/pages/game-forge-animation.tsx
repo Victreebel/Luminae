@@ -1,18 +1,16 @@
 /**
  * ForgeAnimation — local player stamp-and-fly sequence.
- * OpponentForgeAnimation — two-phase opponent forge: stamp in place, then fly to chip.
+ * OpponentForgeAnimation — full-view opponent forge, structurally identical to
+ *   ForgeAnimation; only the arc destination differs (chip pill vs Civ tab).
  *
- * ForgeAnimation steps:
+ * Both follow the same four steps:
  *   Step 1  (0–180ms)   : Card lifts to viewport centre.
  *   Step 2  (180–440ms) : Affinity streams flow from wells into card.
  *   Step 3  (440–800ms) : Stamp SVG descends, slams card, explodes into sparks.
  *                         Tattooed impression (−10°, inside card) is left behind.
  *   Step 4  (800–1150ms): Card + tattoo arc to destination and shrink away.
- *
- * OpponentForgeAnimation steps:
- *   Phase 1 (0–600ms)   : Card stays in its market/hand slot; stamp descends, slams,
- *                         affinity aura pulses, tattoo appears then fades.
- *   Phase 2 (600–1200ms): Card flies to opponent chip and shrinks away.
+ *                         ForgeAnimation → Civilization tab (destPos).
+ *                         OpponentForgeAnimation → opponent avatar pill (chipCenter).
  *
  * StampSVG and resolveAccent are shared by both.
  */
@@ -32,12 +30,7 @@ const STAMP_HIT   = 0.60;
 const STAMP_HOLD  = 0.80;
 const ARC_END     = 1.15;
 
-// ── Timing (seconds) — OpponentForgeAnimation ────────────────────────────────
-const OP_STAMP_SHOW = 0.05;   // stamp starts descending (becomes visible)
-const OP_STAMP_HIT  = 0.28;   // slam
-const OP_STAMP_GONE = 0.50;   // stamp fully gone
-const OP_FLY_START  = 0.60;   // card lifts off
-const OP_TOTAL      = 1.20;   // animation complete
+// OpponentForgeAnimation shares all timing constants with ForgeAnimation — no separate OP_* needed.
 
 // ── Viewport-relative sizing ─────────────────────────────────────────────────
 function vmin(f: number) {
@@ -181,6 +174,8 @@ export interface OpponentForgeAnimationProps {
   startRect: { x: number; y: number; w: number; h: number };
   chipCenter: { x: number; y: number };
   ownerName?: string;
+  /** Affinity colors spent by the opponent. Falls back to card.bonusColor if omitted. */
+  spentColors?: GemKey[];
 }
 
 // ── ForgeAnimation (local player) ─────────────────────────────────────────────
@@ -596,53 +591,100 @@ export function AbridgedForgeAnimation({
 }
 
 // ── OpponentForgeAnimation ────────────────────────────────────────────────────
-// Phase 1 (0 → OP_FLY_START): card stays in startRect, stamp descends and slams.
-// Phase 2 (OP_FLY_START → OP_TOTAL): card flies to chipCenter and shrinks away.
+// Full-view (non-abridged) opponent forge.  Structurally identical to
+// ForgeAnimation — same four steps, same timing constants.  Only the arc
+// destination differs: chipCenter (opponent avatar pill) instead of destPos.
 
 export function OpponentForgeAnimation({
-  animKey, card, tier, startRect, chipCenter, ownerName,
+  animKey, card, tier, startRect, chipCenter, ownerName, spentColors: spentColorsProp,
 }: OpponentForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
 
-  const cardCX = sx + w / 2;
-  const cardCY = sy + h / 2;
+  // Centre of viewport (where the card lifts to)
+  const cx   = window.innerWidth  / 2 - w / 2;
+  const cy   = window.innerHeight / 2 - h / 2 - 24;
+  const midX = cx + w / 2;
+  const midY = cy + h / 2;
 
-  const stampW    = Math.max(55, Math.round(w * 0.90));
-  const stampH    = Math.round(stampW * VBOX_H / VBOX_W);
-  const stampLeft = cardCX - stampW / 2;
-  const stampTop  = cardCY - stampH / 2;
+  // Arc destination: opponent chip pill
+  const dX = chipCenter.x - w / 2;
+  const dY = chipCenter.y - h / 2;
 
-  const tattooW    = Math.max(48, Math.round(w * 0.74));
+  const tattooW    = Math.max(55, Math.round(w * 0.75));
   const tattooH    = Math.round(tattooW * VBOX_H / VBOX_W);
   const tattooLeft = (w - tattooW) / 2;
   const tattooTop  = h / 2 - tattooH / 2;
 
-  const flyDX = chipCenter.x - sx - w / 2;
-  const flyDY = chipCenter.y - sy - h / 2;
+  const stampW    = Math.max(70, Math.round(w * 1.28 * 0.78));
+  const stampH    = Math.round(stampW * VBOX_H / VBOX_W);
+  const stampLeft = midX - stampW / 2;
+  const stampTop  = midY - stampH / 2;
 
-  // Normalised times relative to OP_TOTAL
-  const T     = OP_TOTAL;
-  const tShow = OP_STAMP_SHOW / T;   // ~0.042
-  const tHit  = OP_STAMP_HIT  / T;  // ~0.233
-  const tGone = OP_STAMP_GONE / T;  // ~0.417
-  const tFly  = OP_FLY_START  / T;  // ~0.500
+  const SK = Math.round(w * 0.07);
 
-  // Tattoo sub-animation: mounted at OP_STAMP_HIT, runs for the remaining duration
-  const subDur  = OP_TOTAL - OP_STAMP_HIT;  // 0.92 s
-  const tSpring = 0.04 / subDur;            // spring-release fraction
-  const tFlyL   = (OP_FLY_START - OP_STAMP_HIT) / subDur;  // ~0.348 — when fly starts in tattoo-local time
+  const T    = ARC_END;
+  const t1   = LIFT_END    / T;
+  const t2   = STAMP_HIT   / T;
+  const t3   = (STAMP_HIT + 0.040) / T;
+  const t4   = (STAMP_HIT + 0.080) / T;
+  const t5   = (STAMP_HIT + 0.120) / T;
+  const t6   = STAMP_HOLD  / T;
+  const t_se = STREAMS_END / T;
+
+  const cardTimes = [0, t1, t2, t3, t4, t5, t6, 1.0];
+  const dsTimes   = [0, t_se, t2, t3, t5];
+
+  useEffect(() => {
+    gameAudio.playForgeAnimation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
-    const id = setTimeout(() => setStamped(true), OP_STAMP_HIT * 1000);
+    const id = setTimeout(() => setStamped(true), STAMP_HIT * 1000);
     return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const accentA0  = accent + '00';
-  const accentAA  = accent + 'AA';
+  const subDur  = ARC_END - STAMP_HIT;
+  const tSpring = 0.040 / subDur;
+  const tHold   = (STAMP_HOLD - STAMP_HIT) / subDur;
+
+  // spentColors: use prop if provided, else fall back to card's bonusColor
+  const effectiveSpent: GemKey[] =
+    spentColorsProp && spentColorsProp.length > 0
+      ? spentColorsProp
+      : card.bonusColor
+        ? [card.bonusColor as GemKey]
+        : [];
+
+  const [streams, setStreams] = useState<StreamData[]>([]);
+  useEffect(() => {
+    const seen = new Set<GemKey>();
+    const result: StreamData[] = [];
+    let sign = 1;
+    for (const color of effectiveSpent) {
+      if (seen.has(color)) continue;
+      seen.add(color);
+      const el = document.querySelector(`[data-affinity-well="${color}"]`);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        result.push({ color, d: arcPath(r.left + r.width / 2, r.top + r.height / 2, midX, midY, sign) });
+        sign *= -1;
+      }
+    }
+    setStreams(result);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const lumens = card.lumens ?? 0;
+
+  const accentA0  = accent  + '00';
+  const accentAA  = accent  + 'AA';
+  const accentA66 = accent  + '66';
   const accentG88 = accentGlow + '88';
-  const accent88  = accent + '88';
+  const accent88  = accent  + '88';
 
   return (
     <motion.div
@@ -650,99 +692,127 @@ export function OpponentForgeAnimation({
       className="pointer-events-none fixed inset-0 z-[52]"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.12, delay: OP_TOTAL }}
+      transition={{ duration: 0.20, delay: ARC_END }}
     >
-      {/* ── Card: stays in place during stamp phase, then flies ─────────── */}
+      {/* ── Background dim ──────────────────────────────────────────────── */}
       <motion.div
-        style={{ position: 'fixed', left: sx, top: sy, width: w, height: h }}
+        className="absolute inset-0 bg-black"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.65, 0.65, 0] }}
+        transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
+      />
+
+      {/* ── Card: lifts from slot to viewport centre, then arcs to chip ─── */}
+      <motion.div
+        style={{ position: 'fixed', left: 0, top: 0, width: w, height: h }}
         animate={{
-          x:       [0, 0,    flyDX],
-          y:       [0, 0,    flyDY],
-          scale:   [1, 1,    0.12 ],
-          opacity: [1, 1,    1,   0],
+          x:       [sx,   cx,    cx+SK, cx-SK, cx+SK/2, cx-SK/3, cx,   dX  ],
+          y:       [sy,   cy,    cy,    cy,    cy,      cy,      cy,   dY  ],
+          scale:   [1,  1.28,  1.28,  1.28,  1.28,   1.28,   1.28, 0.06],
+          opacity: [1,    1,     1,     1,     1,       1,      1,    0   ],
         }}
-        transition={{
-          duration: T,
-          x:       { duration: T, times: [0, tFly, 1.0], ease: [0.4, 0, 1, 1] },
-          y:       { duration: T, times: [0, tFly, 1.0], ease: [0.4, 0, 1, 1] },
-          scale:   { duration: T, times: [0, tFly, 1.0], ease: [0.4, 0, 1, 1] },
-          opacity: { duration: T, times: [0, 0.78, 1.0], ease: 'linear' },
-        }}
+        transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
       >
         <ArtifactCardView card={card} tier={tier} />
 
-        {/* Affinity aura pulse on impact */}
+        {/* Affinity aura glow */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           animate={{
             boxShadow: [
-              `0 0  0px  0px ${accentA0}`,
-              `0 0  0px  0px ${accentA0}`,
-              `0 0 24px 10px ${accentAA}`,
-              `0 0  6px  2px ${accent}33`,
-              `0 0  0px  0px ${accentA0}`,
+              `0 0   0px  0px ${accentA0}`,
+              `0 0  32px 14px ${accentAA}`,
+              `0 0  20px  8px ${accentA66}`,
+              `0 0   0px  0px ${accentA0}`,
             ],
           }}
-          transition={{ duration: T, times: [0, tHit - 0.02, tHit + 0.08, tGone, tFly] }}
+          transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
         />
 
-        {/* Dark vignette during impact */}
+        {/* Dark vignette on stamp impact */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           style={{ background: 'rgba(0,0,0,1)' }}
-          animate={{ opacity: [0, 0, 0.55, 0.55, 0, 0] }}
-          transition={{ duration: T, times: [0, tHit, tHit + 0.06, tGone, tFly, 1.0] }}
+          animate={{ opacity: [0, 0, 0.55, 0.55, 0] }}
+          transition={{ duration: ARC_END, times: [0, t2, t3, t6, 1.0] }}
         />
 
+        {/* Tattoo — position:absolute inside card div (same as ForgeAnimation) */}
+        {stamped && (
+          <motion.div
+            style={{
+              position: 'absolute',
+              left: tattooLeft,
+              top: tattooTop,
+              width: tattooW,
+              height: tattooH,
+              transformOrigin: 'center center',
+            }}
+            initial={{ opacity: 1, scaleY: 0.82, scaleX: 1.08, rotate: -10 }}
+            animate={{
+              opacity: [1,    1,     1,    0   ],
+              scaleY:  [0.82, 1.0,   1.0,  0.06],
+              scaleX:  [1.08, 1.0,   1.0,  0.06],
+              rotate:  [-10,  -10,   -10,  -10 ],
+            }}
+            transition={{ duration: subDur, times: [0, tSpring, tHold, 1.0] }}
+          >
+            <StampSVG
+              width={tattooW} height={tattooH}
+              accent={accent} accentGlow={accentGlow} accentDark={accentDark}
+            />
+          </motion.div>
+        )}
       </motion.div>
 
-      {/* ── Tattoo — sibling of card div so GPU compositing cannot detach it ─
-           Explicitly tracks the card's x/y/scale rather than relying on CSS
-           transform inheritance, which breaks when the child has its own
-           Framer Motion animation and gets promoted to a separate layer.    */}
-      {stamped && (
-        <motion.div
-          style={{
-            position: 'fixed',
-            left: sx + tattooLeft,
-            top: sy + tattooTop,
-            width: tattooW,
-            height: tattooH,
-            transformOrigin: 'center center',
-          }}
-          initial={{ opacity: 1, scaleX: 1.10, scaleY: 0.80, rotate: -10 }}
-          animate={{
-            // 3-keyframe properties (times: [0, tFlyL, 1.0])
-            opacity: [1,    1,       0      ],
-            x:       [0,    0,       flyDX  ],
-            y:       [0,    0,       flyDY  ],
-            // 4-keyframe properties (times: [0, tSpring, tFlyL, 1.0])
-            scaleX:  [1.10, 1.0,     1.0,     0.12   ],
-            scaleY:  [0.80, 1.0,     1.0,     0.12   ],
-            rotate:  [-10,  -10,     -10,     -10    ],
-          }}
-          transition={{
-            duration: subDur,
-            // Each property has its own explicit times to avoid Framer Motion
-            // falling back to evenly-distributed times when times.length ≠
-            // keyframes.length (the root cause of the previous lingering bug).
-            opacity: { times: [0, tFlyL, 1.0],          ease: 'linear' },
-            x:       { times: [0, tFlyL, 1.0],          ease: [0.4, 0, 1, 1] },
-            y:       { times: [0, tFlyL, 1.0],          ease: [0.4, 0, 1, 1] },
-            scaleX:  { times: [0, tSpring, tFlyL, 1.0], ease: [0.4, 0, 1, 1] },
-            scaleY:  { times: [0, tSpring, tFlyL, 1.0], ease: [0.4, 0, 1, 1] },
-            rotate:  { times: [0, tSpring, tFlyL, 1.0], ease: 'linear' },
-          }}
+      {/* ── Affinity streams ─────────────────────────────────────────────── */}
+      {streams.length > 0 && (
+        <svg
+          className="pointer-events-none fixed inset-0"
+          style={{ width: '100vw', height: '100vh', overflow: 'visible' }}
         >
-          <StampSVG
-            width={tattooW} height={tattooH}
-            accent={accent} accentGlow={accentGlow} accentDark={accentDark}
-          />
-        </motion.div>
+          <defs>
+            {streams.map(({ color }) => (
+              <filter key={color} id={`opsfx-${animKey}-${color}`} x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="7" result="b" />
+                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            ))}
+          </defs>
+          {streams.map(({ color, d }, idx) => {
+            const m   = GEM_META[color];
+            const del = LIFT_END + idx * 0.04;
+            const dur = STREAMS_END - LIFT_END + 0.12;
+            return (
+              <g key={color}>
+                <motion.path
+                  d={d} stroke={m.hex} strokeWidth={14} strokeLinecap="round" fill="none"
+                  filter={`url(#opsfx-${animKey}-${color})`}
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.85, 0.75, 0] }}
+                  transition={{ delay: del, duration: dur, times: [0, 0.40, 0.70, 1] }}
+                />
+                <motion.path
+                  d={d} stroke={m.glowHex ?? m.hex} strokeWidth={6} strokeLinecap="round" fill="none"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.85, 0] }}
+                  transition={{ delay: del + 0.01, duration: dur * 0.92, times: [0, 0.38, 0.68, 1] }}
+                />
+                <motion.path
+                  d={d} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" fill="none"
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.9, 0] }}
+                  transition={{ delay: del + 0.02, duration: dur * 0.86, times: [0, 0.36, 0.65, 1] }}
+                />
+              </g>
+            );
+          })}
+        </svg>
       )}
 
       {/* ── Descending stamp ─────────────────────────────────────────────── */}
       <motion.div
+        initial={{ opacity: 0 }}
         style={{
           position: 'fixed',
           left: stampLeft,
@@ -752,17 +822,13 @@ export function OpponentForgeAnimation({
           transformOrigin: 'center center',
         }}
         animate={{
-          y:       [-h * 1.8, -h * 1.8,  0,              0,              0    ],
-          opacity: [0,         1,         1,              0.45,           0    ],
-          scaleY:  [1,         1,         0.72,           0.72,           0.72 ],
-          scaleX:  [1,         1,         1.10,           1.10,           1.10 ],
-          rotate:  [-10,       -10,       -10,            -10,            -10  ],
+          y:       [-h * 2.5, -h * 2.5,  0,    0,    0   ],
+          opacity: [0,         1,         1,    0.55, 0   ],
+          scaleY:  [1,         1,         0.70, 0.70, 0.70],
+          scaleX:  [1,         1,         1.12, 1.12, 1.12],
+          rotate:  [-10,       -10,       -10,  -10,  -10 ],
         }}
-        transition={{
-          duration: T,
-          times: [0, tShow, tHit, tHit + 0.05 / T, tGone],
-          ease: 'easeInOut',
-        }}
+        transition={{ duration: ARC_END, times: dsTimes, ease: 'easeInOut' }}
       >
         <StampSVG
           width={stampW} height={stampH}
@@ -770,77 +836,103 @@ export function OpponentForgeAnimation({
         />
       </motion.div>
 
-      {/* ── Impact flash ─────────────────────────────────────────────────── */}
+      {/* ── Impact flash at viewport centre ──────────────────────────────── */}
       <motion.div
         className="pointer-events-none fixed rounded-full"
         style={{
-          left: cardCX, top: cardCY,
-          translateX: '-50%', translateY: '-50%',
+          left: midX, top: midY, translateX: '-50%', translateY: '-50%',
           background: `radial-gradient(circle, ${accentGlow}FF 0%, ${accent}99 38%, transparent 68%)`,
         }}
         initial={{ width: 0, height: 0, opacity: 0 }}
         animate={{
-          width:   [0, 0, vmin(0.32), 0  ],
-          height:  [0, 0, vmin(0.32), 0  ],
-          opacity: [0, 0, 0.85,       0  ],
+          width:   [0, 0, vmin(0.50), 0],
+          height:  [0, 0, vmin(0.50), 0],
+          opacity: [0, 0, 1,           0],
         }}
         transition={{
-          duration: OP_STAMP_GONE,
-          times: [0, tHit - 0.01, tHit + 0.08, 1.0],
+          duration: STAMP_HOLD,
+          times: [0, STAMP_HIT / STAMP_HOLD - 0.01, STAMP_HIT / STAMP_HOLD + 0.04, 1.0],
         }}
       />
 
-      {/* ── Impact sparks ────────────────────────────────────────────────── */}
-      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
-        const rad    = (deg * Math.PI) / 180;
-        const dist   = vmin(0.10 + (deg % 90 === 0 ? 0.02 : 0));
-        const sz     = Math.max(4, vmin(0.011));
+      {/* ── Impact sparks at viewport centre ─────────────────────────────── */}
+      {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+        const rad  = (deg * Math.PI) / 180;
+        const dist = vmin(0.20 + (deg % 60 === 0 ? 0.04 : 0));
+        const sz   = Math.max(6, vmin(0.016));
         const bright = deg % 90 === 0;
         return (
           <motion.div
             key={deg}
             className="pointer-events-none fixed rounded-full"
             style={{
-              left: cardCX - sz / 2, top: cardCY - sz / 2,
+              left: midX - sz / 2, top: midY - sz / 2,
               width: sz, height: sz,
               background: bright ? accentGlow : accent,
               boxShadow: `0 0 ${sz * 0.9}px ${sz * 0.4}px ${bright ? accentG88 : accent88}`,
             }}
-            initial={{ x: 0, y: 0, scale: 1.2, opacity: 0 }}
-            animate={{
-              x: Math.cos(rad) * dist,
-              y: Math.sin(rad) * dist,
-              scale: 0,
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              delay: OP_STAMP_HIT,
-              duration: 0.26,
-              ease: 'easeOut',
-              opacity: { times: [0, 0.08, 1] },
-            }}
+            initial={{ x: 0, y: 0, scale: 1.4, opacity: 1 }}
+            animate={{ x: Math.cos(rad) * dist, y: Math.sin(rad) * dist, scale: 0, opacity: 0 }}
+            transition={{ delay: STAMP_HIT, duration: 0.32, ease: 'easeOut' }}
           />
         );
       })}
+
+      {/* ── Arrival rings at chip ─────────────────────────────────────────── */}
+      {[0, 0.10, 0.20].map((extra) => (
+        <motion.div
+          key={extra}
+          className="pointer-events-none fixed rounded-full border-[3px]"
+          style={{
+            left: chipCenter.x, top: chipCenter.y,
+            translateX: '-50%', translateY: '-50%',
+            borderColor: accentGlow,
+          }}
+          initial={{ width: 10, height: 10, opacity: 1 }}
+          animate={{ width: 100, height: 100, opacity: 0 }}
+          transition={{ delay: ARC_END - 0.12 + extra, duration: 0.55, ease: 'easeOut' }}
+        />
+      ))}
+
+      {/* ── Eminence counter ─────────────────────────────────────────────── */}
+      {lumens > 0 && (
+        <motion.div
+          className="pointer-events-none fixed flex items-center gap-2 font-bold select-none"
+          style={{
+            left: midX + w * 0.58,
+            top:  midY - h * 0.20,
+            color: accentGlow,
+            fontSize: Math.max(20, Math.round(vmin(0.040))),
+            textShadow: `0 0 20px ${accent}BB, 0 2px 0 ${accentDark}`,
+          }}
+          initial={{ opacity: 0, y: 0 }}
+          animate={{ opacity: [0, 0, 1, 1, 0], y: [0, 0, 0, -28, -48] }}
+          transition={{ duration: ARC_END, times: [0, 0.24, 0.40, 0.84, 1] }}
+        >
+          <Sparkles className="h-5 w-5" />
+          +{lumens}
+        </motion.div>
+      )}
 
       {/* ── Owner name label ─────────────────────────────────────────────── */}
       {ownerName && (
         <motion.div
           className="pointer-events-none fixed"
-          style={{ left: cardCX, top: sy - 26, translateX: '-50%' }}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{
-            opacity: [0, 1, 1, 0],
-            y:       [4, 0, 0, -6],
+          style={{
+            left: stampLeft + stampW / 2,
+            top:  stampTop - 30,
+            translateX: '-50%',
           }}
-          transition={{ duration: T, times: [0, tHit + 0.05 / T, tFly, 1.0] }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: [0, 0, 1, 1, 0], y: [4, 4, 0, 0, -4] }}
+          transition={{ duration: ARC_END, times: [0, t1, t_se, t6, 1.0] }}
         >
           <span
             className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
             style={{
-              color:          'rgba(200,238,255,0.90)',
-              background:     'rgba(20,40,80,0.72)',
-              border:         '1px solid rgba(120,200,255,0.25)',
+              color: 'rgba(200,238,255,0.90)',
+              background: 'rgba(20,40,80,0.72)',
+              border: '1px solid rgba(120,200,255,0.25)',
               backdropFilter: 'blur(4px)',
             }}
           >

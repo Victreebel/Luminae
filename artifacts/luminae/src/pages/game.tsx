@@ -264,6 +264,7 @@ export default function GameBoard() {
     startRect: { x: number; y: number; w: number; h: number };
     chipCenter: { x: number; y: number };
     ownerName?: string;
+    spentColors?: GemKey[];
   } | null>(null);
   const opponentForgeAbsorbKeyRef = useRef(0);
   /** Per-opponent chip absorption pulse key — increment to flash the chip ring. */
@@ -1212,6 +1213,10 @@ export default function GameBoard() {
                     : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
                   chipCenter,
                   ownerName: purchaseActorName,
+                  // Use the card's bonus color as a single affinity stream hint.
+                  spentColors: exitCard.bonusColor
+                    ? [exitCard.bonusColor as GemKey]
+                    : [],
                 });
                 setHiddenSlots(new Set([slotKey]));
                 gameAudio.playCardPurchased();
@@ -5708,6 +5713,7 @@ export default function GameBoard() {
             startRect={opponentForgeAbsorb.startRect}
             chipCenter={opponentForgeAbsorb.chipCenter}
             ownerName={opponentForgeAbsorb.ownerName}
+            spentColors={opponentForgeAbsorb.spentColors}
           />
         ))}
       </AnimatePresence>
