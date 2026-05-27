@@ -111,6 +111,56 @@ const dialogNeedsFocusTrapRule = {
   },
 };
 
+/**
+ * Local ESLint rule: luminae/no-dropdown-checkbox-item
+ *
+ * The settings menu communicates toggle state exclusively through icon
+ * swapping or icon color changes (see the JSX comment around the header
+ * settings menu in game.tsx).  Using DropdownMenuCheckboxItem adds a
+ * redundant built-in checkbox indicator alongside the icon, creating a
+ * double-indicator and breaking the established convention.
+ *
+ * If you genuinely need a checkbox-style item outside the settings menu
+ * for a different purpose, suppress with an eslint-disable comment and
+ * explain why.
+ */
+const noDropdownCheckboxItemRule = {
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description:
+        'Disallow DropdownMenuCheckboxItem — use icon-swap or icon-color conventions instead',
+      recommended: true,
+    },
+    messages: {
+      noCheckboxItem:
+        'Do not use <DropdownMenuCheckboxItem>. Communicate toggle state through icon ' +
+        'swapping (e.g. VolumeX/Volume2) or icon color changes (e.g. text-yellow-400 vs ' +
+        'text-muted-foreground) inside a plain <DropdownMenuItem>. ' +
+        'If this use is intentional and outside the settings menu, suppress with an ' +
+        'eslint-disable-next-line comment and explain why.',
+    },
+    schema: [],
+  },
+
+  create(context) {
+    return {
+      JSXOpeningElement(node) {
+        const name = node.name;
+        const elementName =
+          name.type === 'JSXIdentifier'
+            ? name.name
+            : name.type === 'JSXMemberExpression'
+              ? `${name.object.name}.${name.property.name}`
+              : null;
+        if (elementName === 'DropdownMenuCheckboxItem') {
+          context.report({ node, messageId: 'noCheckboxItem' });
+        }
+      },
+    };
+  },
+};
+
 export default [
   {
     plugins: {
@@ -119,6 +169,7 @@ export default [
       luminae: {
         rules: {
           'dialog-needs-focus-trap': dialogNeedsFocusTrapRule,
+          'no-dropdown-checkbox-item': noDropdownCheckboxItemRule,
         },
       },
     },
@@ -169,6 +220,12 @@ export default [
       // Every component that renders role="dialog" must call useFocusTrap() so that
       // keyboard focus cannot escape into the background while the dialog is open.
       'luminae/dialog-needs-focus-trap': 'error',
+      // Enforce the settings menu toggle convention: boolean settings communicate
+      // their state via icon swapping or icon color changes, never via a built-in
+      // checkbox indicator.  DropdownMenuCheckboxItem adds a redundant checkbox
+      // alongside the icon, creating a double-indicator.  Use a plain
+      // DropdownMenuItem with an icon that visually reflects state instead.
+      'luminae/no-dropdown-checkbox-item': 'error',
     },
   },
   {
