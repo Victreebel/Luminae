@@ -284,6 +284,10 @@ export default function GameBoard() {
   const gemBurstKeyRef = useRef(0);
   const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTakeBurstActionRef = useRef<string | null>(null);
+  // True when the optimistic token-flip already fired from a click-path harvest.
+  // Lets the WS handler skip re-firing for normal harvests while still firing
+  // for planned harvests (which skip the click path entirely).
+  const optimisticHarvestFiredRef = useRef(false);
   const reserveBurstActionRef = useRef<string | null>(null);
   const lastMarketBurstActionRef = useRef<string | null>(null);
   const cardSheetContainerRef = useRef<HTMLElement | null>(null);
@@ -1719,10 +1723,8 @@ export default function GameBoard() {
         if (takeKey !== lastTakeBurstActionRef.current) {
           lastTakeBurstActionRef.current = takeKey;
           const actorId = action.playerId as string | undefined;
-          // Only animate for opponents — local player's burst fires optimistically
-          // from the button-click path. Planned harness actions are intentionally
-          // silent: they execute at turn start and the board update speaks for itself.
           if (actorId && actorId !== session?.playerId) {
+            // Opponent harvest — always animate
             const player = (newState.players as GamePlayerState[]).find((p) => p.playerId === actorId);
             if (player) {
               let crystals: Partial<CrystalCounts> = {};
@@ -1734,6 +1736,29 @@ export default function GameBoard() {
               }
               playGemBurst(crystals, player.playerName, player.avatarId ?? null);
             }
+          } else if (actorId && actorId === session?.playerId) {
+            // Local player harvest — fire token flip only if the optimistic burst
+            // did NOT already fire (planned harvests skip the click path entirely).
+            if (!optimisticHarvestFiredRef.current) {
+              let crystals: Partial<CrystalCounts> = {};
+              if (action.type === 'take_three_crystals') {
+                crystals = (action.crystals as Partial<CrystalCounts>) ?? {};
+              } else {
+                const color = action.crystal as string;
+                if (color) crystals = { [color]: 2 };
+              }
+              setHarvestBurstKeys((prev) => {
+                const next = { ...prev };
+                for (const key of Object.keys(crystals) as GemKey[]) {
+                  if ((crystals[key as keyof CrystalCounts] ?? 0) > 0) {
+                    next[key] = (next[key] ?? 0) + 1;
+                  }
+                }
+                return next;
+              });
+            }
+            // Reset for next harvest regardless
+            optimisticHarvestFiredRef.current = false;
           }
         }
       }
@@ -2551,6 +2576,7 @@ export default function GameBoard() {
       return;
     }
     if (queueLegality.actionType === 'take3') {
+      optimisticHarvestFiredRef.current = true;
       triggerHarvestBurst(selectedCrystals);
       pendingHarvestCheckRef.current = {
         gems: Object.keys(selectedCrystals) as GemKey[],
@@ -2568,6 +2594,7 @@ export default function GameBoard() {
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
+      optimisticHarvestFiredRef.current = true;
       triggerHarvestBurst(selectedCrystals);
       pendingHarvestCheckRef.current = {
         gems: Object.keys(selectedCrystals) as GemKey[],
@@ -2597,6 +2624,7 @@ export default function GameBoard() {
     if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
+    optimisticHarvestFiredRef.current = true;
     triggerHarvestBurst(returnPhase.pendingTake);
     pendingHarvestCheckRef.current = {
       gems: Object.keys(returnPhase.pendingTake) as GemKey[],
