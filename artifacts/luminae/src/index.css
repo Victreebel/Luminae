@@ -626,3 +626,29 @@ button,
   .gem-pearl { color: var(--color-gem-pearl); }
   .gem-flux  { color: var(--color-gem-flux); }
 }
+
+/* ── Luminary idle overlay — CSS-compositor animations ───────────────────
+   These replace framer-motion repeat:Infinity loops in LuminaryIdleOverlay.
+   Running on the compositor thread costs zero JS frame budget, which matters
+   when multiple claimed Luminaries are all animating simultaneously.        */
+@keyframes lum-idle-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+@keyframes lum-idle-float-scaled {
+  0%, 100% { transform: translateY(0px) scale(var(--lum-ent-scale, 1)); }
+  50%       { transform: translateY(-5px) scale(calc(var(--lum-ent-scale, 1) * 1.022)); }
+}
+@keyframes lum-idle-aura {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 0.92; transform: scale(1.12); }
+}
+.lum-idle-float {
+  animation: lum-idle-float 3.3s ease-in-out 0.3s infinite;
+}
+.lum-idle-float-scaled {
+  animation: lum-idle-float-scaled 3.3s ease-in-out 0.3s infinite;
+}
+.lum-idle-aura {
+  animation: lum-idle-aura 3.8s ease-in-out infinite;
+}

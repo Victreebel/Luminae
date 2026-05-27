@@ -2305,6 +2305,11 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
     let animFrame = 0;
     const scrollTargets: Element[] = [];
 
+    // Track last measured values so we can skip setState when nothing moved.
+    // Even a 1px threshold prevents cascading React renders on every scroll tick
+    // when multiple overlay instances are all listening to the same scroll events.
+    const lastMeasuredRef = { x: -9999, y: -9999, within: true };
+
     const measure = () => {
       // While a cutscene is playing for another luminary, do not re-measure.
       // A position update would recalculate initX/initY and re-trigger the
@@ -2324,7 +2329,18 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       const withinScroller = mainRect
         ? r.bottom > mainRect.top && r.top < mainRect.bottom
         : true;
-      setIsWithinScroller(withinScroller);
+      const newX = r.left + r.width / 2;
+      const newY = r.top  + r.height / 2;
+      // Skip setState entirely if position and visibility haven't changed by
+      // more than 1px. This eliminates most re-renders on mobile scroll events
+      // where all active idle overlays would otherwise each trigger a render.
+      const moved = Math.abs(newX - lastMeasuredRef.x) > 1 || Math.abs(newY - lastMeasuredRef.y) > 1;
+      const visChanged = withinScroller !== lastMeasuredRef.within;
+      if (!moved && !visChanged) return;
+      lastMeasuredRef.x = newX;
+      lastMeasuredRef.y = newY;
+      lastMeasuredRef.within = withinScroller;
+      if (visChanged) setIsWithinScroller(withinScroller);
       setCardPos(prev => {
         if (!prev && !startViewRef.current) {
           startViewRef.current = {
@@ -2332,7 +2348,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             y: window.innerHeight / 2,
           };
         }
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        return { x: newX, y: newY };
       });
     };
 
@@ -2402,7 +2418,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           opacity: { duration: 0.40, ease: 'easeOut' },
         }}
       >
-        {/* Colored aura — pulses once idle */}
+        {/* Colored aura — pulses once idle via CSS animation (compositor thread) */}
         <motion.div
           style={{
             position: 'absolute',
@@ -2411,36 +2427,37 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             background: `radial-gradient(ellipse at 50% 38%, ${glowColor}55 0%, ${primaryColor}28 55%, transparent 80%)`,
             filter: 'blur(12px)',
           }}
-          animate={isIdle
-            ? { opacity: [0.55, 0.92, 0.55], scale: [1, 1.12, 1] }
-            : { opacity: 0.75 }
-          }
-          transition={isIdle ? {
-            opacity: { repeat: Infinity, duration: 3.8, ease: 'easeInOut' },
-            scale:   { repeat: Infinity, duration: 4.6, ease: 'easeInOut' },
-          } : {}}
+          className={isIdle ? 'lum-idle-aura' : undefined}
+          animate={!isIdle ? { opacity: 0.75 } : {}}
+          transition={!isIdle ? { duration: 0.4 } : {}}
         />
 
-        {/* Entity art — floats and breathes once idle */}
+        {/* Entity art — floats and breathes once idle via CSS animation (compositor thread) */}
         {(() => {
           const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
           const entScale = ov.scale ?? 1;
           const objPos   = ov.objectPosition ?? 'center top';
           const cyFactor = ov.idleCyFactor;
+          // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
+          // factor via CSS custom property) so CSS transform and scale never conflict.
+          const idleClass = isIdle
+            ? (entScale !== 1 ? 'lum-idle-float-scaled' : 'lum-idle-float')
+            : undefined;
           return (
             <motion.div
               style={{
                 position: 'relative', width: IDLE_W, height: IDLE_H,
-                ...(entScale !== 1 ? { transform: `scale(${entScale})`, transformOrigin: 'center top' } : {}),
+                // Base static scale for non-1 entities — CSS animation keyframes also
+                // include scale so there's no fight between framer-motion and CSS.
+                ...(entScale !== 1 && !isIdle
+                  ? { transform: `scale(${entScale})`, transformOrigin: 'center top' }
+                  : entScale !== 1 && isIdle
+                  ? { transformOrigin: 'center top', ['--lum-ent-scale' as string]: entScale }
+                  : {}),
               }}
-              animate={isIdle
-                ? { y: [0, -5, 0], scale: [entScale, entScale * 1.022, entScale] }
-                : entScale !== 1 ? { scale: entScale } : {}
-              }
-              transition={isIdle ? {
-                y:     { repeat: Infinity, duration: 3.3, ease: 'easeInOut', delay: 0.3 },
-                scale: { repeat: Infinity, duration: 3.9, ease: 'easeInOut', delay: 0.1 },
-              } : {}}
+              className={idleClass}
+              animate={!isIdle && entScale !== 1 ? { scale: entScale } : {}}
+              transition={!isIdle ? { duration: 0 } : {}}
             >
               {entityCutout ? (
                 <>

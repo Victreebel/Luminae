@@ -2016,6 +2016,15 @@ export default function GameBoard() {
     const polledVersion = state.version;
     const prevVersion = prevStateRef.current.version;
     if (typeof polledVersion !== 'number' || polledVersion <= prevVersion) return;
+    // Guard: the WS onStateUpdate handler eagerly calls queryClient.setQueryData,
+    // which flips `state` and triggers this effect BEFORE prevStateRef has been
+    // advanced by processUpdate. Without this check the same state version gets
+    // pushed into stateQueueRef twice — once from the WS path and once here.
+    // Both calls would eventually process the same pendingSummonEvent, and while
+    // the inner dedup guards (version guard + handledSummonEventIdsRef) catch the
+    // duplicate, the double-queued entry still creates unnecessary work during the
+    // 12-second summon cutscene gate and can cause queue confusion under load.
+    if (stateQueueRef.current.some(s => s.version === polledVersion)) return;
     // WS missed this version — feed it through the animation queue.
     const remaining = animationEndTimeRef.current - Date.now();
     const queueBusy = stateQueueRef.current.length > 0 || !!queueTimerRef.current;
