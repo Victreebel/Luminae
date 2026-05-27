@@ -1,12 +1,16 @@
 /**
- * ForgeAnimation — simplified stamp-and-fly sequence.
+ * ForgeAnimation — stamp-and-fly sequence.
  *
  * Step 1  (0–180ms)   : Card lifts to viewport centre.
  * Step 2  (180–440ms) : Affinity streams flow from wells into card.
- * Step 3  (440–800ms) : Hammer descends and stamps FORGED on card; card shakes.
- * Step 4  (800–1150ms): Stamped card arcs to destination and shrinks away.
+ * Step 3  (440–800ms) : Hammer descends and stamps FORGED; card shakes.
+ * Step 4  (800–1150ms): Stamped card + stamp SVG arc to destination.
  *
  * Total: ~1.15 s
+ *
+ * The FORGED stamp is a SEPARATE fixed element (not a card child) so it is
+ * never clipped by the card's own overflow-hidden. It animates in sync with
+ * the card using the same x/y/scale keyframes.
  */
 
 import { motion } from 'framer-motion';
@@ -17,25 +21,130 @@ import { GEM_META, type GemKey } from '@/lib/gemMeta';
 import { Sparkles } from 'lucide-react';
 
 // ── Timing (seconds) ────────────────────────────────────────────────────────
-const LIFT_END    = 0.18;   // card arrives at centre
-const STREAMS_END = 0.44;   // affinity streams done
-const STAMP_HIT   = 0.60;   // hammer makes contact
-const STAMP_HOLD  = 0.80;   // hammer leaves, card settled
-const ARC_END     = 1.15;   // card arrives at destination
+const LIFT_END    = 0.18;
+const STREAMS_END = 0.44;
+const STAMP_HIT   = 0.60;
+const STAMP_HOLD  = 0.80;
+const ARC_END     = 1.15;
 
 // ── Viewport-relative sizing ─────────────────────────────────────────────────
 function vmin(f: number) {
   return Math.min(window.innerWidth, window.innerHeight) * f;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
+// ── Arc-path helper (quadratic bezier) ───────────────────────────────────────
 function arcPath(fx: number, fy: number, tx: number, ty: number, sign = 1): string {
   const dx = tx - fx, dy = ty - fy;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 1) return `M ${fx},${fy}`;
   const mx = (fx + tx) / 2, my = (fy + ty) / 2;
   return `M ${fx},${fy} Q ${mx + (-dy / len) * len * 0.42 * sign},${my + (dx / len) * len * 0.42 * sign} ${tx},${ty}`;
+}
+
+// ── Stamp SVG ─────────────────────────────────────────────────────────────────
+// All geometry is in a fixed 220×104 viewBox.
+// Rendered at stampW×stampH with preserveAspectRatio="xMidYMid meet".
+const VBOX_W = 220;
+const VBOX_H = 104;
+
+function StampSVG({ width, height }: { width: number; height: number }) {
+  const cx = VBOX_W / 2;   // 110
+  const hammerY = 34;       // vertical centre of crossed hammers
+  const textY   = 86;       // baseline of FORGED text
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${VBOX_W} ${VBOX_H}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ overflow: 'visible' }}
+    >
+      <defs>
+        {/* Warm amber glow applied to most elements */}
+        <filter id="stGlow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3.5" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        {/* Stronger glow for text */}
+        <filter id="stTextGlow" x="-20%" y="-40%" width="140%" height="180%">
+          <feGaussianBlur stdDeviation="5" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+
+      {/* ── Dark fill so stamp is readable over any card art ── */}
+      <rect x="5" y="5" width={VBOX_W - 10} height={VBOX_H - 10} rx="5" fill="rgba(0,0,0,0.60)" />
+
+      {/* ── Outer border (thick amber) ── */}
+      <rect
+        x="5" y="5" width={VBOX_W - 10} height={VBOX_H - 10} rx="5"
+        fill="none" stroke="#D4880A" strokeWidth="4"
+        filter="url(#stGlow)"
+      />
+      {/* Inner border (thin accent line) */}
+      <rect
+        x="10" y="10" width={VBOX_W - 20} height={VBOX_H - 20} rx="3"
+        fill="none" stroke="#D4880A" strokeWidth="1" opacity="0.45"
+      />
+
+      {/* ── Horizontal separator between icon and text ── */}
+      <line x1="22" y1="52" x2={VBOX_W - 22} y2="52"
+            stroke="#D4880A" strokeWidth="1.4" opacity="0.55" />
+
+      {/* ── Crossed hammers ── */}
+      {/* Each hammer: head rectangle + handle rectangle, rotated ±45° around (cx, hammerY) */}
+      <g filter="url(#stGlow)">
+        {/* Hammer 1 — rotated -45° */}
+        <g transform={`translate(${cx},${hammerY}) rotate(-45)`}>
+          {/* Head */}
+          <rect x="-13" y="-26" width="26" height="14" rx="3" fill="#D4880A" />
+          {/* Head highlight */}
+          <rect x="-10" y="-23" width="10" height="6" rx="1.5" fill="#FFD080" opacity="0.4" />
+          {/* Handle */}
+          <rect x="-4"  y="-12" width="8"  height="28" rx="2.5" fill="#B86808" />
+          {/* Handle highlight */}
+          <rect x="-2"  y="-10" width="2.5" height="16" rx="1" fill="#FFD080" opacity="0.30" />
+        </g>
+        {/* Hammer 2 — rotated +45° */}
+        <g transform={`translate(${cx},${hammerY}) rotate(45)`}>
+          <rect x="-13" y="-26" width="26" height="14" rx="3" fill="#D4880A" />
+          <rect x="-10" y="-23" width="10" height="6" rx="1.5" fill="#FFD080" opacity="0.4" />
+          <rect x="-4"  y="-12" width="8"  height="28" rx="2.5" fill="#B86808" />
+          <rect x="-2"  y="-10" width="2.5" height="16" rx="1" fill="#FFD080" opacity="0.30" />
+        </g>
+      </g>
+
+      {/* ── FORGED text — Cinzel Decorative, amber, glowing ── */}
+      <text
+        x={cx}
+        y={textY}
+        fontFamily='"Cinzel Decorative", "Cinzel", Georgia, serif'
+        fontWeight="900"
+        fontSize="30"
+        fill="#D4880A"
+        textAnchor="middle"
+        letterSpacing="4"
+        filter="url(#stTextGlow)"
+      >
+        FORGED
+      </text>
+      {/* Subtle second pass for brightness */}
+      <text
+        x={cx}
+        y={textY}
+        fontFamily='"Cinzel Decorative", "Cinzel", Georgia, serif'
+        fontWeight="900"
+        fontSize="30"
+        fill="#FFB030"
+        fillOpacity="0.35"
+        textAnchor="middle"
+        letterSpacing="4"
+      >
+        FORGED
+      </text>
+    </svg>
+  );
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -69,35 +178,41 @@ export function ForgeAnimation({
   // Card lifts to viewport centre
   const cx = window.innerWidth  / 2 - w / 2;
   const cy = window.innerHeight / 2 - h / 2 - 24;
-  const midX = cx + w / 2;
-  const midY = cy + h / 2;
+  const midX = cx + w / 2;   // card visual centre X
+  const midY = cy + h / 2;   // card visual centre Y
 
-  // Destination (hand tab centre, or fallback to card centre)
+  // Destination
   const finalX = destPos?.x ?? midX;
   const finalY = destPos?.y ?? midY;
-  // Final card top-left in the motion-div's coordinate space
   const dX = finalX - w / 2;
   const dY = finalY - h / 2;
+
+  // Stamp dimensions — slightly wider than the card for visual presence
+  const stampW = Math.max(180, Math.round(w * 1.22));
+  const stampH = Math.round(stampW * (VBOX_H / VBOX_W));  // maintain aspect
+  const stampLeft = midX - stampW / 2;
+  const stampTop  = midY - stampH / 2;
+
+  // During the arc, the stamp's centre must follow finalX,finalY
+  const stampDX = finalX - midX;
+  const stampDY = finalY - midY;
 
   // Shake amplitude
   const SK = Math.round(w * 0.07);
 
-  // All card keyframes happen over ARC_END (the card is the thing that flies)
+  // Normalised time fractions
   const T  = ARC_END;
-  const t1 = LIFT_END    / T;   // 0.157 — arrives at centre
-  const t2 = STAMP_HIT   / T;   // 0.522 — impact: shake +
-  const t3 = (STAMP_HIT + 0.040) / T;  // shake -
-  const t4 = (STAMP_HIT + 0.080) / T;  // shake +/2
-  const t5 = (STAMP_HIT + 0.120) / T;  // shake -/3
-  const t6 = STAMP_HOLD  / T;   // 0.696 — settled
-  // t7 = 1.0 — at destination
+  const t1 = LIFT_END  / T;
+  const t2 = STAMP_HIT / T;
+  const t3 = (STAMP_HIT + 0.040) / T;
+  const t4 = (STAMP_HIT + 0.080) / T;
+  const t5 = (STAMP_HIT + 0.120) / T;
+  const t6 = STAMP_HOLD / T;
 
-  const cardTimes = [0, t1, t2, t3, t4, t5, t6, 1.0];
+  const cardTimes  = [0, t1, t2, t3, t4, t5, t6, 1.0];
+  const stampTimes = [0, t2, t3, t6, 1.0];
 
-  // FORGED stamp: appears at STAMP_HIT, stays until card vanishes
-  const stampTimes = [0, t2, t3, 1.0];
-
-  // Measure affinity-well positions on first render
+  // Measure affinity-well positions on mount
   const [streams, setStreams] = useState<StreamData[]>([]);
   useEffect(() => {
     const seen = new Set<GemKey>();
@@ -117,12 +232,7 @@ export function ForgeAnimation({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const HAMMER_SZ  = Math.max(76, Math.round(vmin(0.13)));
-  // Cinzel Decorative: ~4.7× char-width per em for "FORGED" + letterSpacing.
-  // Target: text fills ~85% of the visually scaled card width (w × 1.28).
-  // 4.7 × F ≈ w × 1.28 × 0.85  →  F ≈ w × 0.23
-  // Clamp to minimum so it's always readable at small card sizes.
-  const STAMP_FONT = Math.max(28, Math.round(w * 0.23));
+  const HAMMER_SZ = Math.max(76, Math.round(vmin(0.13)));
 
   return (
     <motion.div
@@ -137,13 +247,10 @@ export function ForgeAnimation({
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.65, 0.65, 0] }}
-        transition={{
-          duration: ARC_END,
-          times: [0, LIFT_END / ARC_END, STAMP_HOLD / ARC_END, 1],
-        }}
+        transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
       />
 
-      {/* ══ THE CARD — lifts, shakes, then flies to destination ════════════ */}
+      {/* ══ CARD — lifts, shakes, then flies to destination ════════════════ */}
       <motion.div
         style={{ position: 'fixed', left: 0, top: 0, width: w, height: h }}
         animate={{
@@ -156,7 +263,7 @@ export function ForgeAnimation({
       >
         <ArtifactCardView card={card} tier={tier} />
 
-        {/* Warm gold aura — builds on lift, fades at stamp */}
+        {/* Warm gold aura around card */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           animate={{
@@ -170,44 +277,39 @@ export function ForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
         />
 
-        {/* FORGED stamp — drops in at impact, rides card to destination.
-            NO overflow-hidden so text is never clipped.
-            Scale goes 1→0.93→1 to simulate physical stamp press (no overflow). */}
+        {/* Dark vignette on the card at stamp moment (behind stamp SVG) */}
         <motion.div
-          className="absolute inset-0 flex items-center justify-center rounded-[6px]"
-          animate={{ opacity: [0, 0, 1, 1] }}
-          transition={{ duration: ARC_END, times: stampTimes }}
-        >
-          {/* Dark vignette so text pops on any card art */}
-          <div className="absolute inset-0 rounded-[6px]" style={{ background: 'rgba(0,0,0,0.50)' }} />
-          <motion.span
-            className="relative select-none"
-            style={{
-              fontSize: STAMP_FONT,
-              fontFamily: '"Cinzel Decorative", "Cinzel", Georgia, serif',
-              fontWeight: 900,
-              letterSpacing: '0.06em',
-              color: '#FF8C20',
-              WebkitTextStroke: `${Math.max(1, Math.round(STAMP_FONT / 28))}px #FF4800`,
-              textShadow: '0 0 28px #FF8000EE, 0 3px 0 #6A2800',
-              transform: 'rotate(-9deg)',
-              lineHeight: 1,
-              textAlign: 'center',
-            }}
-            initial={{ scaleY: 1.0, opacity: 0, y: -8 }}
-            animate={{
-              scaleY: [1.0, 1.0, 0.88, 1.0, 1.0],
-              opacity: [0,   0,   1,    1,   1  ],
-              y:       [-8, -8,   0,    0,   0  ],
-            }}
-            transition={{ duration: ARC_END, times: [0, t2, t3, t4, 1.0] }}
-          >
-            FORGED
-          </motion.span>
-        </motion.div>
+          className="absolute inset-0 rounded-[6px]"
+          animate={{ opacity: [0, 0, 0.50, 0.50, 0] }}
+          transition={{ duration: ARC_END, times: [0, t2, t3, t6, 1.0] }}
+          style={{ background: 'rgba(0,0,0,1)' }}
+        />
       </motion.div>
 
-      {/* ══ PHASE 2: Affinity streams ════════════════════════════════════════ */}
+      {/* ══ FORGED STAMP SVG — separate fixed element, never clipped ══════════
+          Positioned at the card's visual centre, follows the same arc.       */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          left: stampLeft,
+          top: stampTop,
+          width: stampW,
+          height: stampH,
+          transformOrigin: 'center center',
+        }}
+        animate={{
+          opacity: [0,    0,    1,    1,    0   ],
+          scaleY:  [1,    1,  0.88,   1,  0.06 ],
+          scaleX:  [1,    1,    1,    1,  0.06 ],
+          x:       [0,    0,    0,    0,  stampDX],
+          y:       [-12, -12,   0,    0,  stampDY],
+        }}
+        transition={{ duration: ARC_END, times: stampTimes }}
+      >
+        <StampSVG width={stampW} height={stampH} />
+      </motion.div>
+
+      {/* ══ PHASE 2: Affinity energy streams ════════════════════════════════ */}
       {streams.length > 0 && (
         <svg
           className="pointer-events-none fixed inset-0"
@@ -252,7 +354,7 @@ export function ForgeAnimation({
         </svg>
       )}
 
-      {/* ══ PHASE 3: Hammer descends ════════════════════════════════════════ */}
+      {/* ══ Hammer descends ═════════════════════════════════════════════════ */}
       <motion.div
         className="pointer-events-none fixed"
         style={{ left: midX, top: cy + h * 0.1, translateX: '-50%', translateY: '-100%' }}
@@ -263,7 +365,7 @@ export function ForgeAnimation({
         }}
         transition={{
           duration: STAMP_HOLD,
-          times:    [0, (STREAMS_END / STAMP_HOLD), (STAMP_HIT / STAMP_HOLD), 1.0],
+          times:    [0, STREAMS_END / STAMP_HOLD, STAMP_HIT / STAMP_HOLD, 1.0],
           ease:     ['linear', 'linear', [0.1, 0, 0.4, 1]],
         }}
       >
@@ -283,17 +385,19 @@ export function ForgeAnimation({
         </svg>
       </motion.div>
 
-      {/* Impact flash at stamp moment */}
+      {/* Impact flash */}
       <motion.div
         className="pointer-events-none fixed rounded-full"
         style={{
-          left: midX, top: midY,
-          translateX: '-50%', translateY: '-50%',
+          left: midX, top: midY, translateX: '-50%', translateY: '-50%',
           background: 'radial-gradient(circle, rgba(255,210,80,1) 0%, rgba(255,130,0,0.6) 38%, transparent 68%)',
         }}
         initial={{ width: 0, height: 0, opacity: 0 }}
         animate={{ width: [0, 0, vmin(0.50), 0], height: [0, 0, vmin(0.50), 0], opacity: [0, 0, 1, 0] }}
-        transition={{ duration: STAMP_HOLD, times: [0, STAMP_HIT / STAMP_HOLD - 0.01, STAMP_HIT / STAMP_HOLD + 0.04, 1.0] }}
+        transition={{
+          duration: STAMP_HOLD,
+          times: [0, STAMP_HIT / STAMP_HOLD - 0.01, STAMP_HIT / STAMP_HOLD + 0.04, 1.0],
+        }}
       />
 
       {/* Impact sparks */}
@@ -318,7 +422,7 @@ export function ForgeAnimation({
         );
       })}
 
-      {/* Pulse ring at destination on arrival */}
+      {/* Pulse rings at destination on arrival */}
       {destPos && [0, 0.10, 0.20].map((extra) => (
         <motion.div
           key={extra}
