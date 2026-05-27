@@ -62,8 +62,9 @@ const dialogNeedsFocusTrapRule = {
     messages: {
       missingFocusTrap:
         'Elements with role="dialog" require a useFocusTrap() call in the same component. ' +
-        'Import the hook and call `useFocusTrap(containerRef, isOpen, onClose)`. ' +
-        'If focus is managed externally (e.g. Radix UI), suppress with an eslint-disable comment.',
+        'See artifacts/luminae/CONVENTIONS.md (Dialog Focus-Trap Pattern) for the standard ' +
+        'containerRef / useFocusTrap snippet and opt-out instructions. ' +
+        'If focus is managed externally (e.g. Radix UI), suppress with an eslint-disable-next-line comment and explain why.',
     },
     schema: [],
   },

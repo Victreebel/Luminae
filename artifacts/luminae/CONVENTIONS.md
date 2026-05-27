@@ -63,3 +63,86 @@ If you genuinely need a checkbox-style indicator for a *different* purpose
 // Reason: <explain why a checkbox indicator is appropriate here>
 <DropdownMenuCheckboxItem ...>
 ```
+
+---
+
+## Dialog Focus-Trap Pattern
+
+### Rule: every `role="dialog"` element must call `useFocusTrap()`
+
+Any component that renders an element with `role="dialog"` must call the
+`useFocusTrap` hook (from `src/hooks/use-focus-trap.ts`).  Without it,
+keyboard focus leaks into the background while the dialog is open, breaking
+accessibility for keyboard and screen-reader users.
+
+The hook handles three things automatically:
+
+- **Focus on open** — moves focus to the first focusable element inside the
+  container as soon as the dialog becomes visible.
+- **Tab cycling** — Tab / Shift+Tab wrap within the container's focusable
+  descendants; focus cannot escape to background content.
+- **Escape to close** — pressing Escape calls `onClose` (can be disabled via
+  `options.handleEscape: false` when a higher-level handler already owns
+  Escape for this overlay).
+
+---
+
+### Standard pattern
+
+```tsx
+import { useRef } from 'react';
+import { useFocusTrap } from '@/hooks/use-focus-trap';
+
+function MyDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const containerRef = useRef<HTMLElement | null>(null);
+  useFocusTrap(containerRef, isOpen, onClose);
+
+  return (
+    <div
+      ref={(el) => { containerRef.current = el; }}
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* dialog content */}
+    </div>
+  );
+}
+```
+
+Key points:
+
+- `containerRef` must be a `React.RefObject<HTMLElement | null>` (a `useRef`
+  call in the same component).
+- Pass the same `isOpen` boolean that gates the dialog's visibility.
+- Use a ref-callback (`ref={(el) => { containerRef.current = el; }}`) on the
+  dialog root so the ref works correctly inside conditional renders.
+- Always add `aria-modal="true"` alongside `role="dialog"` so assistive
+  technologies know the rest of the page is inert.
+
+---
+
+### Optional: disabling Escape handling
+
+If a higher-level handler (e.g. `useEscapeToClose`) already owns Escape for
+this overlay, pass `{ handleEscape: false }` to avoid double-closing:
+
+```tsx
+useFocusTrap(containerRef, isOpen, onClose, { handleEscape: false });
+```
+
+---
+
+### ESLint enforcement
+
+The `luminae/dialog-needs-focus-trap` rule (defined in `eslint.config.js`)
+enforces this convention across the entire `src/` tree.  If you receive the
+lint error, add the standard pattern above.
+
+If a dialog's focus is managed externally (e.g. a Radix UI primitive that
+traps focus internally), suppress the rule inline and explain why:
+
+```tsx
+// eslint-disable-next-line luminae/dialog-needs-focus-trap
+// Reason: Radix Dialog manages focus internally via its own FocusScope
+<div role="dialog" aria-modal="true">
+```
