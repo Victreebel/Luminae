@@ -133,6 +133,7 @@ function useScrollLock(
   }, [isAnyOpen]);
 }
 
+
 export default function GameBoard() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
@@ -379,7 +380,6 @@ export default function GameBoard() {
     turnStartedAt: number;
     timerSeconds: number | null;
   } | null>(null);
-  const [overlayCountdown, setOverlayCountdown] = useState<number | null>(null);
   const turnAnnounceKeyRef = useRef(0);
   const turnAnnounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAnnouncedTurnRef = useRef<string | null>(null);
@@ -768,21 +768,6 @@ export default function GameBoard() {
     setBurstGhostCards({});
   };
 
-  useEffect(() => {
-    if (!turnAnnouncement?.timerSeconds) {
-      setOverlayCountdown(null);
-      return;
-    }
-    const { timerSeconds, turnStartedAt } = turnAnnouncement;
-    const tick = () => {
-      const elapsed = Math.floor((Date.now() - turnStartedAt) / 1000);
-      setOverlayCountdown(Math.max(0, timerSeconds - elapsed));
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turnAnnouncement?.key]);
 
   useEffect(() => {
     return () => {
@@ -4368,7 +4353,7 @@ export default function GameBoard() {
       />
 
       {/* ── Header ── */}
-      <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/70 backdrop-blur border-b border-border z-20">
+      <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
         {/* Balancing spacer — same width as the menu button so chips stay centred */}
         <div className="w-8 shrink-0" />
 
@@ -4847,7 +4832,7 @@ export default function GameBoard() {
       )}
 
       {/* ── Bottom Navigation ── */}
-      <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card/90 backdrop-blur z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
+      <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
@@ -5977,15 +5962,14 @@ export default function GameBoard() {
               >
                 {turnAnnouncement.isYou ? 'Your Turn' : `${turnAnnouncement.playerName}'s Turn`}
               </motion.span>
-              {overlayCountdown !== null && (
+              {state?.turnDeadline != null && (
                 <motion.div
                   className="flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white/70 backdrop-blur-sm"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.3, duration: 0.2 }}
                 >
-                  <Clock className="h-3 w-3 shrink-0" />
-                  <span>{overlayCountdown}s</span>
+                  <TurnCountdown deadline={state.turnDeadline} active={turnAnnouncement.isYou} />
                 </motion.div>
               )}
             </motion.div>
