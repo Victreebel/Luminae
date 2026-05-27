@@ -6704,6 +6704,7 @@ export default function GameBoard() {
                 onFlash={() => setCutscenePostFlash(true)}
                 onSkip={() => {
                   console.log(`[Luminae] Summon view skipped locally for eventId="${entry.eventId}"`);
+                  gameAudio.stopSummonCutscene();
                   setLocalSummonSkipped(true);
                 }}
                 onComplete={(() => {

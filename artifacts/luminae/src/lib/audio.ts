@@ -57,6 +57,10 @@ class GameAudio {
   private shimmerTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly MUSIC_GAIN = 0.32;
 
+  // ── Summon cutscene mute state ───────────────────────────────────────────
+  private _summonMasterGain: GainNode | null = null;
+  private _summonCtx: AudioContext | null = null;
+
   constructor() {
     this.muted = localStorage.getItem('luminae_muted') === 'true';
   }
@@ -650,6 +654,7 @@ class GameAudio {
     scheduledTime: number,
     volume: number,
     fadeOut?: { afterSeconds: number; durationSeconds: number },
+    dest?: AudioNode,
   ): Promise<void> {
     if (this.muted) return;
     try {
@@ -671,7 +676,10 @@ class GameAudio {
         gain.gain.linearRampToValueAtTime(0, fadeStart + fadeOut.durationSeconds);
       }
       src.connect(gain);
-      gain.connect(ctx.destination);
+      // When a bus node is provided (e.g. _summonMasterGain), route through it
+      // so a gain ramp on the bus silences this source even if decode finishes
+      // after the ramp was scheduled (race-free skip behaviour).
+      gain.connect(dest ?? ctx.destination);
       src.start(startAt);
     } catch (e) {
       console.warn('[Luminae] MP3 schedule failed', e);
@@ -710,7 +718,17 @@ class GameAudio {
       comp.ratio.value     = 8;
       comp.attack.value    = 0.002;
       comp.release.value   = 0.18;
-      comp.connect(ctx.destination);
+
+      // Master gain for the entire procedural synthesis chain — routed between
+      // the compressor and ctx.destination so stopSummonCutscene() can ramp
+      // all oscillator/noise layers to silence in one operation.
+      const masterGain = ctx.createGain();
+      masterGain.gain.value = 1;
+      comp.connect(masterGain);
+      masterGain.connect(ctx.destination);
+      this._summonMasterGain = masterGain;
+      this._summonCtx        = ctx;
+
       const D = comp;
 
       // Convenience: AudioContext seconds from a ms offset.
@@ -844,15 +862,38 @@ class GameAudio {
       // Each file is fetched+decoded async and scheduled precisely on the
       // AudioContext timeline. Decode typically completes well within the
       // ~3.0 s gap before the first beat (CRACK1).
-      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,        0.80);
-      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,        0.76);
-      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,        0.90);
-      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,  0.82);
-      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,        0.88);
+      // Route all MP3 SFX through _summonMasterGain (same bus as the procedural
+      // synthesis chain).  If stopSummonCutscene() has already ramped the master
+      // to 0 by the time a decode completes, the newly connected gain feeds into
+      // a zero-output bus and stays silent — no separate per-source tracking needed.
+      const mp3Bus = masterGain;
+      void this.scheduleMp3(LUMINARY_SFX.firstCrack,       t + CRACK1 / 1000,        0.80, undefined, mp3Bus);
+      void this.scheduleMp3(LUMINARY_SFX.secondCrack,      t + CRACK2 / 1000,        0.76, undefined, mp3Bus);
+      void this.scheduleMp3(LUMINARY_SFX.deepImpact,       t + SHATT  / 1000,        0.90, undefined, mp3Bus);
+      void this.scheduleMp3(LUMINARY_SFX.glassShatter,     t + (SHATT + 80) / 1000,  0.82, undefined, mp3Bus);
+      void this.scheduleMp3(LUMINARY_SFX.cosmicPortalBoom, t + FLASH  / 1000,        0.88, undefined, mp3Bus);
 
     } catch (e) {
       console.warn('[Luminae] Summon cutscene audio failed', e);
     }
+  }
+
+  /**
+   * Fade out all summon cutscene audio (~250 ms ramp) when the player skips
+   * the visual overlay.  Ramps the shared master gain to 0, silencing both
+   * the procedural synthesis chain (oscillators/noise) and all MP3 SFX —
+   * including any whose async decode completes after this call, since those
+   * sources connect to the same master gain bus which is already at 0.
+   * The timer chain still runs to completion; only the audio is silenced.
+   * Safe to call if no cutscene is playing.
+   */
+  stopSummonCutscene() {
+    const ctx  = this._summonCtx;
+    const gain = this._summonMasterGain;
+    if (!ctx || !gain) return;
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(gain.gain.value, now);
+    gain.gain.linearRampToValueAtTime(0, now + 0.25);
   }
 
   /**
