@@ -144,7 +144,25 @@ const noDropdownCheckboxItemRule = {
   },
 
   create(context) {
+    // Tracks local binding names that resolve to DropdownMenuCheckboxItem,
+    // including aliased imports such as:
+    //   import { DropdownMenuCheckboxItem as CheckItem } from '@/components/ui/dropdown-menu'
+    const checkboxItemLocalNames = new Set(['DropdownMenuCheckboxItem']);
+
     return {
+      ImportDeclaration(node) {
+        if (node.source.value !== '@/components/ui/dropdown-menu') return;
+        for (const specifier of node.specifiers) {
+          if (
+            specifier.type === 'ImportSpecifier' &&
+            specifier.imported.name === 'DropdownMenuCheckboxItem' &&
+            specifier.local.name !== 'DropdownMenuCheckboxItem'
+          ) {
+            checkboxItemLocalNames.add(specifier.local.name);
+          }
+        }
+      },
+
       JSXOpeningElement(node) {
         const name = node.name;
         const elementName =
@@ -153,7 +171,7 @@ const noDropdownCheckboxItemRule = {
             : name.type === 'JSXMemberExpression'
               ? `${name.object.name}.${name.property.name}`
               : null;
-        if (elementName === 'DropdownMenuCheckboxItem') {
+        if (elementName !== null && checkboxItemLocalNames.has(elementName)) {
           context.report({ node, messageId: 'noCheckboxItem' });
         }
       },
