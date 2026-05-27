@@ -171,6 +171,7 @@ export interface ForgeAnimationProps {
   spentColors: GemKey[];
   lumens: number;
   gotFlux: boolean;
+  playerName?: string;
 }
 
 export interface OpponentForgeAnimationProps {
@@ -192,6 +193,7 @@ export function ForgeAnimation({
   destPos,
   spentColors,
   lumens,
+  playerName,
 }: ForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
@@ -485,6 +487,32 @@ export function ForgeAnimation({
         >
           <Sparkles className="h-5 w-5" />
           +{lumens}
+        </motion.div>
+      )}
+
+      {playerName && (
+        <motion.div
+          className="pointer-events-none fixed"
+          style={{
+            left: stampLeft + stampW / 2,
+            top:  stampTop - 30,
+            translateX: '-50%',
+          }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: [0, 0, 1, 1, 0], y: [4, 4, 0, 0, -4] }}
+          transition={{ duration: ARC_END, times: [0, t1, t_se, t6, 1.0] }}
+        >
+          <span
+            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
+            style={{
+              color: 'rgba(200,238,255,0.90)',
+              background: 'rgba(20,40,80,0.72)',
+              border: '1px solid rgba(120,200,255,0.25)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {playerName}
+          </span>
         </motion.div>
       )}
     </motion.div>

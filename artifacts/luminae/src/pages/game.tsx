@@ -5599,6 +5599,7 @@ export default function GameBoard() {
             spentColors={cardActionBurst.spentColors}
             lumens={cardActionBurst.lumens}
             gotFlux={cardActionBurst.gotFlux}
+            playerName={cardActionBurst.playerName}
           />
         ))}
       </AnimatePresence>
