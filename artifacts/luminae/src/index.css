@@ -652,3 +652,57 @@ button,
 .lum-idle-aura {
   animation: lum-idle-aura 3.8s ease-in-out infinite;
 }
+
+/* ── Luminary claimed portal — CSS-compositor animations ─────────────────
+   Replaces framer-motion repeat:Infinity loops in LuminaryClaimedPortal.
+   Up to 5 portals visible simultaneously; each had ~12 JS animation loops.
+   Switching to CSS cuts ~60 permanent JS loops to 0.                      */
+@keyframes lum-portal-spin-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes lum-portal-spin-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes lum-portal-aura-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.07); }
+}
+@keyframes lum-portal-mote-center {
+  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.7); }
+  50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.5); }
+}
+@keyframes lum-portal-drift {
+  0%, 100% { opacity: 0.2; transform: translateY(-5px); }
+  50%       { opacity: 0.85; transform: translateY(5px); }
+}
+@keyframes lum-portal-gem-float {
+  0%, 100% { transform: translateY(-2px); }
+  50%       { transform: translateY(2px); }
+}
+@keyframes lum-portal-badge-pulse {
+  0%, 100% { opacity: 0.75; }
+  50%       { opacity: 1; }
+}
+.lum-portal-ring-cw {
+  animation: lum-portal-spin-cw 14s linear infinite;
+}
+.lum-portal-ring-ccw {
+  animation: lum-portal-spin-ccw 9s linear infinite;
+}
+.lum-portal-aura-pulse {
+  animation: lum-portal-aura-pulse 3.8s ease-in-out infinite;
+}
+.lum-portal-mote-center {
+  animation: lum-portal-mote-center 2.4s ease-in-out infinite;
+}
+.lum-portal-drift {
+  animation: lum-portal-drift 2.4s ease-in-out infinite;
+}
+.lum-portal-gem-float {
+  animation: lum-portal-gem-float 3s ease-in-out infinite;
+}
+.lum-portal-badge-pulse {
+  animation: lum-portal-badge-pulse 2.6s ease-in-out infinite;
+}

@@ -211,18 +211,14 @@ export function LuminaryClaimedPortal({
       )}
 
       {/* Outer rotating ring — conicActive: active ~55%, others visible at ~45% */}
-      <motion.div
-        className="absolute"
+      <div
+        className="absolute lum-portal-ring-cw"
         style={{ inset: -16, background: conicActive, filter: 'blur(16px)', opacity: 0.45 }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 14, repeat: Infinity, ease: 'linear' }}
       />
       {/* Inner counter-rotating swirl — conicAll: all req colours equal weight */}
-      <motion.div
-        className="absolute"
+      <div
+        className="absolute lum-portal-ring-ccw"
         style={{ inset: 18, borderRadius: '50%', background: conicAll, filter: 'blur(10px)', opacity: 0.3 }}
-        animate={{ rotate: -360 }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'linear' }}
       />
       {/* Deep void centre */}
       <div
@@ -230,36 +226,32 @@ export function LuminaryClaimedPortal({
         style={{ background: 'radial-gradient(ellipse 62% 62% at 50% 44%, #030308 0%, #030308 32%, transparent 68%)' }}
       />
       {/* Pulsing depth aura — active affinity colour */}
-      <motion.div
-        className="absolute inset-0"
+      <div
+        className="absolute inset-0 lum-portal-aura-pulse"
         style={{ background: `radial-gradient(ellipse 75% 65% at 50% 44%, transparent 28%, ${g1}1a 62%, ${g2}14 80%, transparent 90%)` }}
-        animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.07, 1] }}
-        transition={{ duration: 3.8, repeat: Infinity, ease: 'easeInOut' }}
       />
       {/* Centre singularity mote */}
-      <motion.div
-        className="absolute"
+      <div
+        className="absolute lum-portal-mote-center"
         style={{
           left: '50%', top: '42%', width: 5, height: 5, borderRadius: '50%',
           background: `radial-gradient(circle, #fff 0%, ${g1} 60%, transparent 100%)`,
-          transform: 'translate(-50%, -50%)', filter: 'blur(0.5px)',
+          filter: 'blur(0.5px)',
         }}
-        animate={{ opacity: [0.5, 1, 0.5], scale: [0.7, 1.5, 0.7] }}
-        transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
       />
       {/* Drifting motes — 4/7 active colour, 3/7 secondary requirement colours */}
       {particlePositions.map((p, i) => (
-        <motion.div
+        <div
           key={i}
-          className="absolute rounded-full"
+          className="absolute rounded-full lum-portal-drift"
           style={{
             left: p.left, top: p.top,
             width: particleColors[i].size, height: particleColors[i].size,
             background: particleColors[i].color,
             boxShadow: `0 0 ${particleColors[i].size + 2}px ${particleColors[i].color}`,
+            animationDuration: `${p.dur}s`,
+            animationDelay: `${p.delay + (fresh ? 0.46 : 0)}s`,
           }}
-          animate={{ y: [-5, 5, -5], opacity: [0.2, 0.85, 0.2] }}
-          transition={{ duration: p.dur, repeat: Infinity, ease: 'easeInOut', delay: p.delay + (fresh ? 0.46 : 0) }}
         />
       ))}
 
@@ -270,14 +262,13 @@ export function LuminaryClaimedPortal({
           {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
         </span>
         {activeKey && (
-          <motion.div
-            animate={{ y: [-2, 2, -2] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          <div
+            className="lum-portal-gem-float"
             style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
             title={activeAffinityMeta ? `${isOwnedByMe ? 'Active affinity' : 'Opponent boosting'}: ${activeAffinityMeta.name}` : undefined}
           >
             <MiniGem color={activeKey} size={16} />
-          </motion.div>
+          </div>
         )}
       </div>
 
@@ -324,10 +315,7 @@ export function LuminaryClaimedPortal({
             </>
           )}
           {/* Badge pill */}
-          <motion.div
-            animate={{ opacity: [0.75, 1, 0.75] }}
-            transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-          >
+          <div className="lum-portal-badge-pulse">
             <div
               className="flex items-center gap-0.5 rounded-full px-1 py-0.5"
               style={{
@@ -341,7 +329,7 @@ export function LuminaryClaimedPortal({
               </span>
               <MiniGem color={activeKey} size={7} />
             </div>
-          </motion.div>
+          </div>
         </div>
       )}
 
