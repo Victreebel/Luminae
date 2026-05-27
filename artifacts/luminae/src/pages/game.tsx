@@ -4039,17 +4039,29 @@ export default function GameBoard() {
                           })}
                         </div>
 
-                        {/* Reserved card backs */}
-                        {reservedCount > 0 && (
-                          <div className="flex items-center gap-2">
+                        {/* Reserved card backs — section always mounted when expanded so
+                            AnimatePresence can complete child exit animations even when
+                            the last reserved card is forged (count drops to 0). */}
+                        <div className="flex items-center gap-2">
+                          {reservedCount > 0 && (
                             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Encrypted:</span>
-                            <div className="flex gap-1 items-center">
-                              {p.reservedCards.map((card, idx) => (
-                                <CardBack key={idx} size="sm" tier={card.tier as 1 | 2 | 3} />
+                          )}
+                          <div className="flex gap-1 items-center">
+                            <AnimatePresence initial={false}>
+                              {p.reservedCards.map((card) => (
+                                <motion.div
+                                  key={card.id}
+                                  data-reserved-card-id={card.id}
+                                  initial={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.55, transition: { duration: 0.26, ease: 'easeIn' } }}
+                                  style={{ transformOrigin: 'center center' }}
+                                >
+                                  <CardBack size="sm" tier={card.tier as 1 | 2 | 3} />
+                                </motion.div>
                               ))}
-                            </div>
+                            </AnimatePresence>
                           </div>
-                        )}
+                        </div>
 
                         {/* Forged artifacts */}
                         {p.purchasedCards.length > 0 ? (
