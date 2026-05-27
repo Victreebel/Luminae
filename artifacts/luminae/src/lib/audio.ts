@@ -1006,6 +1006,76 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /**
+   * Forge animation sound sequence — schedules all four phases at once using
+   * the Web Audio clock so timing never drifts from the visual animation.
+   *
+   * Phase 1 (0 s)       Card lifts — soft upward whoosh + rising hum.
+   * Phase 2 (0.18 s)    Streams arc in — crystalline energy build.
+   * Phase 3 (0.60 s)    Stamp SLAMS — heavy metallic thud, the main hit.
+   * Phase 4 (0.62 s)    Sparks explode — sizzle burst + multiple pops.
+   * Phase 5 (0.80 s)    Card arcs away — descending whoosh + landing thud.
+   *
+   * Mirror the ForgeAnimation timing constants from game-forge-animation.tsx:
+   *   LIFT_END=0.18, STREAMS_END=0.44, STAMP_HIT=0.60, STAMP_HOLD=0.80, ARC_END=1.15
+   */
+  playForgeAnimation() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      // ── Phase 1: Card lift (0 → 0.18 s) ────────────────────────────────
+      // Soft upward air displacement — card detaching from board
+      this.noiseSweep(ctx, t, 0.20, 0.050, 160, 480);
+      // Subtle rising drone hum — anticipation
+      this.osc(ctx, 196, 'sine', t + 0.02, t + 0.44, 0.030, 0.040);
+
+      // ── Phase 2: Energy streams arc in (0.18 → 0.60 s) ─────────────────
+      // Crystalline energy building — narrow bandpass sweep upward
+      this.noiseSweep(ctx, t + 0.18, 0.36, 0.048, 320, 1100);
+      // Two harmonic shimmer tones that swell toward impact
+      this.osc(ctx, 440, 'sine', t + 0.22, t + 0.58, 0.028, 0.055);
+      this.osc(ctx, 660, 'sine', t + 0.32, t + 0.58, 0.020, 0.040);
+      // High sparkle at stream peak
+      this.osc(ctx, 1320, 'sine', t + 0.50, t + 0.60, 0.022, 0.006);
+
+      // ── Phase 3: Stamp IMPACT (0.60 s) — the main hit ───────────────────
+      const hit = t + 0.60;
+      // Sub-bass thud layers — the physical mass of the stamp
+      this.osc(ctx, 52,  'sine', hit, hit + 0.60, 0.24, 0.004);
+      this.osc(ctx, 38,  'sine', hit, hit + 0.75, 0.12, 0.007);
+      this.osc(ctx, 105, 'sine', hit, hit + 0.32, 0.10, 0.003);
+      // Metallic ring — the bronze stamp head resonating
+      this.osc(ctx, 370, 'sine', hit, hit + 0.48, 0.07, 0.003);
+      this.osc(ctx, 740, 'sine', hit, hit + 0.28, 0.04, 0.002);
+      // Dense impact noise — wax impression, weight on paper
+      this.noiseBlip(ctx, hit, 0.09, 0.20, 850, 3.5);
+      this.noiseBlip(ctx, hit, 0.05, 0.15, 2400, 7);
+
+      // ── Phase 4: Spark explosion (0.62 → 0.80 s) ────────────────────────
+      // Broad high-freq sizzle burst — the stamp energy releasing
+      this.noiseSweep(ctx, hit + 0.02, 0.16, 0.11, 2800, 4800);
+      // Six individual spark pops staggered outward
+      for (let i = 0; i < 6; i++) {
+        const at  = hit + 0.04 + i * 0.027;
+        const vol = Math.max(0.016, 0.075 - i * 0.009);
+        const frq = 1700 + i * 350;
+        this.noiseBlip(ctx, at, 0.030, vol, frq, 8 + i);
+      }
+      // Trailing crackle (amber glow lingers)
+      this.noiseBlip(ctx, hit + 0.15, 0.14, 0.055, 3400, 5);
+
+      // ── Phase 5: Card arcs to destination (0.80 → 1.15 s) ───────────────
+      const fly = t + 0.80;
+      // Descending whoosh — card cutting through air
+      this.noiseSweep(ctx, fly, 0.28, 0.060, 750, 180);
+      // Soft landing thud
+      this.osc(ctx, 88, 'sine', t + 1.12, t + 1.36, 0.055, 0.004);
+      this.noiseBlip(ctx, t + 1.12, 0.07, 0.042, 580, 4);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   // ── Ambient music ─────────────────────────────────────────────────────
 
   startMusic() {

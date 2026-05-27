@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import type { ArtifactCard } from '@workspace/api-client-react';
 import { ArtifactCardView } from './game-card';
 import { GEM_META, type GemKey } from '@/lib/gemMeta';
+import { gameAudio } from '@/lib/audio';
 import { Sparkles } from 'lucide-react';
 
 // ── Timing (seconds) ────────────────────────────────────────────────────────
@@ -197,6 +198,13 @@ export function ForgeAnimation({
   const cardTimes  = [0, t1, t2, t3, t4, t5, t6, 1.0];
   // Descending stamp: appears at t_se, hits at t2, squishes, then gone at t5
   const dsTimes    = [0, t_se, t2, t3, t5];
+  // Fire the full sound sequence on mount — all phases scheduled via Web Audio
+  // clock in one shot so timing never drifts from the visual animation.
+  useEffect(() => {
+    gameAudio.playForgeAnimation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Gate: tattoo is not rendered at all until the stamp physically hits.
   // Using a timer instead of framer-motion initial/animate because framer-motion
   // can flash the element for one frame before the animation clock engages.
