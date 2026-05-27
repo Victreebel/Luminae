@@ -405,6 +405,7 @@ export default function GameBoard() {
     card: ArtifactCard;
     tier: number;
     destPos?: { x: number; y: number };
+    ownerName?: string;
   } | null>(null);
   const cipherBurstKeyRef = useRef(0);
   const cipherBurstIsDeckRef = useRef(false);
@@ -1358,6 +1359,9 @@ export default function GameBoard() {
                 ? document.querySelector('[data-singularity-well]')
                 : document.querySelector(`[data-opponent-chip="${reserveActorId}"]`);
               const destElRect = destEl?.getBoundingClientRect();
+              const reserveOwnerName = isLocalReserve
+                ? undefined
+                : ((newState.players as GamePlayerState[]).find(p => p.playerId === reserveActorId))?.playerName;
               setCipherBurst({
                 key: cipherBurstKeyRef.current,
                 sourceRect: rect
@@ -1373,6 +1377,7 @@ export default function GameBoard() {
                 destPos: destElRect
                   ? { x: destElRect.left + destElRect.width / 2, y: destElRect.top + destElRect.height / 2 }
                   : undefined,
+                ownerName: reserveOwnerName,
               });
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
@@ -5618,6 +5623,7 @@ export default function GameBoard() {
           cardFace={<ArtifactCardView card={cipherBurst.card} tier={cipherBurst.tier} />}
           gotFlux={cipherBurst.gotFlux}
           destPos={cipherBurst.destPos}
+          ownerName={cipherBurst.ownerName}
           onComplete={() => {
             if (cipherBurstIsDeckRef.current) {
               setSingularityAbsorbKey(k => k + 1);

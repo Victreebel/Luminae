@@ -39,6 +39,12 @@ export interface CipherApertureProps {
   destPos?: { x: number; y: number };
   /** Show +1 Singularity indicator when player earned a Flux crystal. */
   gotFlux?: boolean;
+  /**
+   * Opponent's display name — when set, a transient "card · owner" label
+   * floats near the destination chip starting from the travel phase and
+   * fades out as the sigil arrives.
+   */
+  ownerName?: string;
   /** Called once the full sequence completes. */
   onComplete?: () => void;
 }
@@ -62,7 +68,7 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
  */
 export function CipherApertureAnimation({
   animKey, mode, sourceRect, affinityHex, cardName, cardFace,
-  destPos, gotFlux, onComplete,
+  destPos, gotFlux, ownerName, onComplete,
 }: CipherApertureProps) {
   const [phase, setPhase] = useState<Phase>("forefront");
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -93,11 +99,12 @@ export function CipherApertureAnimation({
   const pi        = PHASE_ORDER.indexOf(phase);
   const at        = (p: Phase) => phase === p;
 
-  const showCard    = pi <= PHASE_ORDER.indexOf("compress");
-  const showCircuit = pi >= PHASE_ORDER.indexOf("circuit") && pi <= PHASE_ORDER.indexOf("compress");
-  const showSigil   = pi >= PHASE_ORDER.indexOf("sigil");
-  const showPulse   = at("arrive");
-  const showLabel   = pi >= PHASE_ORDER.indexOf("sigil");
+  const showCard         = pi <= PHASE_ORDER.indexOf("compress");
+  const showCircuit      = pi >= PHASE_ORDER.indexOf("circuit") && pi <= PHASE_ORDER.indexOf("compress");
+  const showSigil        = pi >= PHASE_ORDER.indexOf("sigil");
+  const showPulse        = at("arrive");
+  const showLabel        = pi >= PHASE_ORDER.indexOf("sigil");
+  const showArrivalLabel = !!ownerName && !!destPos && pi >= PHASE_ORDER.indexOf("travel");
 
   // Translation to move the card from its sourceRect to viewport centre.
   // Matches ForgeAnimation Step 1: cx = innerWidth/2 - w/2, cy = innerHeight/2 - h/2 - 24.
@@ -220,6 +227,38 @@ export function CipherApertureAnimation({
           animate={{ scale: 3.2,  opacity: 0 }}
           transition={{ duration: dur.arrive / 1000, ease: "easeOut" }}
         />
+      )}
+
+      {/* ── Arrival name label — floats near opponent chip during travel/arrive ── */}
+      {showArrivalLabel && destPos && (
+        <motion.div
+          style={{
+            position: "fixed",
+            left: destPos.x,
+            top:  destPos.y - 46,
+            transform: "translateX(-50%)",
+            whiteSpace: "nowrap",
+          }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: at("arrive") ? 0 : 1, y: 0 }}
+          transition={{ duration: 0.22 }}
+        >
+          <span
+            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide"
+            style={{
+              color:      "rgba(200,238,255,0.90)",
+              background: "rgba(20,40,80,0.72)",
+              border:     "1px solid rgba(120,200,255,0.25)",
+              backdropFilter: "blur(4px)",
+            }}
+          >
+            {cardName && <span className="text-white/70">{cardName}</span>}
+            {cardName && ownerName && (
+              <span style={{ color: "rgba(160,210,255,0.55)", margin: "0 4px" }}>·</span>
+            )}
+            {ownerName && <span style={{ color: "rgba(180,230,255,0.85)" }}>{ownerName}</span>}
+          </span>
+        </motion.div>
       )}
 
       {/* ── "Encrypted" label ─────────────────────────────────────────── */}
