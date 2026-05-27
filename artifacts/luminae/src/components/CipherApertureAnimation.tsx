@@ -41,7 +41,7 @@ type Phase = "forefront" | "circuit" | "compress" | "sigil" | "travel" | "arrive
 
 const PHASE_ORDER: Phase[] = ["forefront", "circuit", "compress", "travel", "arrive"];
 
-const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
+export const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
   game:     { forefront: 180, circuit: 950, compress: 600, sigil: 0, travel: 620, arrive: 330 },
   tutorial: { forefront: 180, circuit: 900, compress: 580, sigil: 0, travel: 600, arrive: 350 },
 };
