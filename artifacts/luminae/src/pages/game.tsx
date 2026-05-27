@@ -1817,6 +1817,16 @@ export default function GameBoard() {
             });
             if (gotFlux) gameAudio.playFluxCoin();
             gameAudio.playCipherSeal();
+            // Fire the opponent chip-absorb pulse after the cipher aperture animation clears,
+            // using the same timing as the market-card reserve path.
+            const deckCipherSeq = cipherBurstKeyRef.current;
+            const tCipherDeal = setTimeout(() => {
+              if (cipherBurstKeyRef.current !== deckCipherSeq) return;
+              if (!isLocalReserve) {
+                setChipAbsorbPulse(prev => ({ ...prev, [playerId as string]: (prev[playerId as string] ?? 0) + 1 }));
+              }
+            }, abridgedAnims ? 450 : CIPHER_GAME_TOTAL_MS + 70);
+            cardAnimTimersRef.current.push(tCipherDeal);
           }
         }
       }
