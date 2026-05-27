@@ -1725,6 +1725,7 @@ export default function GameBoard() {
               destPos: destRect
                 ? { x: destRect.left + destRect.width / 2, y: destRect.top + destRect.height / 2 }
                 : undefined,
+              ownerName: isLocalReserve ? undefined : player.playerName,
             });
             if (gotFlux) gameAudio.playFluxCoin();
             gameAudio.playCipherSeal();
@@ -2399,6 +2400,9 @@ export default function GameBoard() {
           const isLocalPurchase = (payload.playerId as string | undefined) !== undefined
             ? (payload.playerId as string) === session?.playerId
             : true; // executeAction always fires for the local session player
+          const forgeOwnerName = isLocalPurchase
+            ? undefined
+            : (state?.players as GamePlayerState[] | undefined)?.find(p => p.playerId === (payload.playerId as string))?.playerName;
           const destTabEl = document.querySelector(isLocalPurchase ? '[data-nav-hand]' : '[data-nav-log]');
           const handTabRect = destTabEl?.getBoundingClientRect();
           cipherBurstKeyRef.current += 1;
@@ -2417,6 +2421,7 @@ export default function GameBoard() {
             destPos: handTabRect
               ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
               : undefined,
+            ownerName: forgeOwnerName,
           });
         }
       }
