@@ -354,6 +354,9 @@ export default function GameBoard() {
   // Guard that prevents the initial-load win fanfare from firing more than once
   // per component lifetime (covers page reloads, spectators, latecomers).
   const winFanfareOnLoadFiredRef = useRef(false);
+  // True once status transitions to 'finished' — prevents doEnqueue from pushing
+  // new summons after the game ends (only the already-active cutscene is allowed to finish).
+  const gameFinishedRef = useRef(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // True once the active cutscene's flash has fired; resets to false on each new cutscene.
@@ -735,6 +738,26 @@ export default function GameBoard() {
     setTurnAnnouncement(null);
   };
 
+  // Immediately cancel all pending pre-win visual animations so the win overlay
+  // can appear without waiting for queued card/summon animations to drain.
+  // Does NOT affect audio — win fanfare and playWin() still fire normally.
+  // Should be called at the moment game-over is detected.
+  const cancelPendingAnimations = () => {
+    // Reset the animation barrier so drainQueue stops waiting.
+    animationEndTimeRef.current = 0;
+    // Cancel every tracked card-animation timer (burst, deal, flip watchdogs, etc.).
+    for (const t of cardAnimTimersRef.current) clearTimeout(t);
+    cardAnimTimersRef.current = [];
+    // Cancel the pending queue-drain timer and discard all queued state updates.
+    if (queueTimerRef.current) {
+      clearTimeout(queueTimerRef.current);
+      queueTimerRef.current = null;
+    }
+    stateQueueRef.current = [];
+    // Clear ghost cards that were waiting for burst animations to start.
+    setBurstGhostCards({});
+  };
+
   useEffect(() => {
     if (!turnAnnouncement?.timerSeconds) {
       setOverlayCountdown(null);
@@ -1102,6 +1125,7 @@ export default function GameBoard() {
       handledSummonEventIdsRef.current = new Set();
       pendingSuppressLumIdsRef.current = new Set();
       stateQueueRef.current = [];
+      gameFinishedRef.current = false;
       setClaimedThisSession([]);
     }
       const action = newState.lastAction;
@@ -1571,7 +1595,20 @@ export default function GameBoard() {
           // Defer: the flush useEffect below will fire win audio and clear the
           // hold once enqueuingCount reaches zero AND the queue drains.
           setPendingGameOver(true);
+          // Cancel all pre-win visual animations immediately so they do not
+          // block the win overlay after the active summon cutscene finishes.
+          // enqueuingCountRef is reset to 0 so that RAF-chain items that have
+          // not yet landed in summonQueue are silently dropped by doEnqueue
+          // (which checks gameFinishedRef before pushing). The slice(0,1) keeps
+          // only the currently-active cutscene; all queued-but-not-started
+          // summons are discarded.
+          gameFinishedRef.current = true;
+          enqueuingCountRef.current = 0;
+          cancelPendingAnimations();
+          setSummonQueue(q => q.slice(0, 1));
         } else {
+          gameFinishedRef.current = true;
+          cancelPendingAnimations();
           cancelTurnAnnouncement();
           const winnerPlayer = (newState.players as GamePlayerState[]).find(
             p => p.playerId === newState.winnerId
@@ -2003,6 +2040,13 @@ export default function GameBoard() {
     console.log(`[Luminae] enqueueSummon: queueing lumId="${lumId}" eventId="${eventId}" isDevTest=${isDevTest}`);
 
     const doEnqueue = () => {
+      // If the game has already ended, do not push this summon into the queue.
+      // The currently-active cutscene (summonQueue[0]) is allowed to finish via
+      // the pendingGameOver mechanism; everything else is silently discarded.
+      if (gameFinishedRef.current) {
+        pendingSuppressLumIdsRef.current.delete(lumId);
+        return;
+      }
       setActiveTab('board');                         // 3. ensure board tab mounts
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {                // 4. React commit + layout
