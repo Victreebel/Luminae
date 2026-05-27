@@ -111,3 +111,8 @@ export const GEM_BURST_BASE_MS = 1250;
 /** Settling tail added after the final gem animation in a harvest burst (ms).
  *  Total burst lock = (gems.length - 1) * GEM_BURST_STAGGER_MS + GEM_BURST_BASE_MS + GEM_BURST_SETTLE_MS. */
 export const GEM_BURST_SETTLE_MS = 550;
+
+/** Abridged forge animation lock when a replacement card is dealt from the deck (ms).
+ *  Covers the card shrink, the deal-from-deck fly/flip, and the trailing settle buffer.
+ *  = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS */
+export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS;

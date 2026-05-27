@@ -25,7 +25,7 @@ import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
-import { CipherApertureAnimation, CipherSigil, ARRIVAL_LABEL_LINGER_MS, CIPHER_GAME_TOTAL_MS } from '@/components/CipherApertureAnimation';
+import { CipherApertureAnimation, CipherSigil, ARRIVAL_LABEL_LINGER_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS } from '@/components/CipherApertureAnimation';
 import { ForgeButton, EncryptButton } from '@/components/ForgeEncryptButton';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,7 +58,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_RIPPLE_DELAY_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_RIPPLE_DELAY_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -1217,7 +1217,7 @@ export default function GameBoard() {
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
                 const purchaseActorName = player?.playerName;
-                setAnimEndTime(abridgedAnims ? ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS : FORGE_FULL_MS); // abridged: shrink + deal + buffer | full: stamp+fly + deal + buffer
+                setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
@@ -1302,7 +1302,7 @@ export default function GameBoard() {
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(abridgedAnims ? ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS : FORGE_FULL_MS); // abridged: shrink + deal + buffer | full: forge + deal + buffer
+                setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : FORGE_FULL_MS);
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();
                 const burstDestPos: { x: number; y: number } | undefined = handTabR
@@ -1434,7 +1434,7 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
-              setAnimEndTime(abridgedAnims ? ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS); // cipher + deal-from-deck + buffer
+              setAnimEndTime(abridgedAnims ? ABRIDGED_FORGE_LOCK_MS : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS); // full: cipher + deal-from-deck + buffer
               setHiddenSlots(new Set([slotKey]));
               // Deal replacement card from deck after the cipher aperture animation clears.
               const cipherSeq = cipherBurstKeyRef.current;
@@ -1492,7 +1492,7 @@ export default function GameBoard() {
                 } else {
                   setHiddenSlots(new Set());
                 }
-              }, abridgedAnims ? 450 : CIPHER_GAME_TOTAL_MS + 70);
+              }, abridgedAnims ? ABRIDGED_SHRINK_MS : CIPHER_DEAL_FIRE_DELAY_MS);
               cardAnimTimersRef.current.push(tCipherDeal);
             }
             break;
@@ -1825,7 +1825,7 @@ export default function GameBoard() {
               if (!isLocalReserve) {
                 setChipAbsorbPulse(prev => ({ ...prev, [playerId as string]: (prev[playerId as string] ?? 0) + 1 }));
               }
-            }, abridgedAnims ? 450 : CIPHER_GAME_TOTAL_MS + 70);
+            }, abridgedAnims ? ABRIDGED_SHRINK_MS : CIPHER_DEAL_FIRE_DELAY_MS);
             cardAnimTimersRef.current.push(tCipherDeal);
           }
         }
