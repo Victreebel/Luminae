@@ -179,6 +179,7 @@ export interface OpponentForgeAnimationProps {
   tier: number;
   startRect: { x: number; y: number; w: number; h: number };
   chipCenter: { x: number; y: number };
+  ownerName?: string;
 }
 
 // ── ForgeAnimation (local player) ─────────────────────────────────────────────
@@ -501,10 +502,11 @@ export interface AbridgedForgeAnimationProps {
   startRect: { x: number; y: number; w: number; h: number };
   /** Center of the destination pill (hand tab or opponent chip). */
   destPos?: { x: number; y: number };
+  ownerName?: string;
 }
 
 export function AbridgedForgeAnimation({
-  animKey, card, tier, startRect, destPos,
+  animKey, card, tier, startRect, destPos, ownerName,
 }: AbridgedForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const dx = destPos ? destPos.x - sx - w / 2 : 0;
@@ -514,22 +516,50 @@ export function AbridgedForgeAnimation({
     <motion.div
       key={animKey}
       className="pointer-events-none fixed z-[52]"
-      style={{ left: sx, top: sy, width: w, height: h }}
-      initial={{ scale: 1, opacity: 1, x: 0, y: 0 }}
-      animate={{
-        scale: 0.12,
-        opacity: [1, 1, 0],
-        x: dx,
-        y: dy,
-      }}
-      transition={{
-        duration: 0.38,
-        ease: [0.4, 0, 1, 1],
-        opacity: { duration: 0.38, times: [0, 0.70, 1], ease: 'linear' },
-        scale: { duration: 0.38, ease: [0.4, 0, 1, 1] },
-      }}
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.08, delay: 0.38 }}
     >
-      <ArtifactCardView card={card} tier={tier} />
+      <motion.div
+        style={{ position: 'fixed', left: sx, top: sy, width: w, height: h }}
+        initial={{ scale: 1, opacity: 1, x: 0, y: 0 }}
+        animate={{
+          scale: 0.12,
+          opacity: [1, 1, 0],
+          x: dx,
+          y: dy,
+        }}
+        transition={{
+          duration: 0.38,
+          ease: [0.4, 0, 1, 1],
+          opacity: { duration: 0.38, times: [0, 0.70, 1], ease: 'linear' },
+          scale: { duration: 0.38, ease: [0.4, 0, 1, 1] },
+        }}
+      >
+        <ArtifactCardView card={card} tier={tier} />
+      </motion.div>
+
+      {ownerName && (
+        <motion.div
+          className="pointer-events-none fixed"
+          style={{ left: sx + w / 2, top: sy - 26, translateX: '-50%' }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: [0, 1, 1, 0], y: [4, 0, 0, -4] }}
+          transition={{ duration: 0.38, times: [0, 0.12, 0.65, 1.0] }}
+        >
+          <span
+            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
+            style={{
+              color: 'rgba(200,238,255,0.90)',
+              background: 'rgba(20,40,80,0.72)',
+              border: '1px solid rgba(120,200,255,0.25)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {ownerName}
+          </span>
+        </motion.div>
+      )}
     </motion.div>
   );
 }
@@ -539,7 +569,7 @@ export function AbridgedForgeAnimation({
 // Phase 2 (OP_FLY_START → OP_TOTAL): card flies to chipCenter and shrinks away.
 
 export function OpponentForgeAnimation({
-  animKey, card, tier, startRect, chipCenter,
+  animKey, card, tier, startRect, chipCenter, ownerName,
 }: OpponentForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
@@ -741,6 +771,32 @@ export function OpponentForgeAnimation({
           />
         );
       })}
+
+      {/* ── Owner name label ─────────────────────────────────────────────── */}
+      {ownerName && (
+        <motion.div
+          className="pointer-events-none fixed"
+          style={{ left: cardCX, top: sy - 26, translateX: '-50%' }}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{
+            opacity: [0, 1, 1, 0],
+            y:       [4, 0, 0, -6],
+          }}
+          transition={{ duration: T, times: [0, tHit + 0.05 / T, tFly, 1.0] }}
+        >
+          <span
+            className="px-2.5 py-0.5 rounded-full text-[9px] font-semibold tracking-wide whitespace-nowrap"
+            style={{
+              color:          'rgba(200,238,255,0.90)',
+              background:     'rgba(20,40,80,0.72)',
+              border:         '1px solid rgba(120,200,255,0.25)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            {ownerName}
+          </span>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

@@ -264,6 +264,7 @@ export default function GameBoard() {
     tier: number;
     startRect: { x: number; y: number; w: number; h: number };
     chipCenter: { x: number; y: number };
+    ownerName?: string;
   } | null>(null);
   const opponentForgeAbsorbKeyRef = useRef(0);
   /** Per-opponent chip absorption pulse key — increment to flash the chip ring. */
@@ -1172,6 +1173,7 @@ export default function GameBoard() {
 
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
+                const purchaseActorName = player?.playerName;
                 setAnimEndTime(abridgedAnims ? 550 : 1600); // abridged: 450ms shrink + buffer | full: 1250ms stamp+fly + buffer
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
@@ -1182,6 +1184,7 @@ export default function GameBoard() {
                     ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
                     : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
                   chipCenter,
+                  ownerName: purchaseActorName,
                 });
                 setHiddenSlots(new Set([slotKey]));
                 gameAudio.playCardPurchased();
@@ -1488,6 +1491,7 @@ export default function GameBoard() {
           const cardRect = cardEl?.getBoundingClientRect();
           opponentForgeAbsorbKeyRef.current += 1;
           const absorbSeq = opponentForgeAbsorbKeyRef.current;
+          const reservedForgeActorName = prevActingPlayer?.playerName;
           for (const t of cardAnimTimersRef.current) clearTimeout(t);
           cardAnimTimersRef.current = [];
           setAnimEndTime(abridgedAnims ? 550 : 1600);
@@ -1499,6 +1503,7 @@ export default function GameBoard() {
               ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
               : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
             chipCenter,
+            ownerName: reservedForgeActorName,
           });
           gameAudio.playCardPurchased();
           const tAbsorb = setTimeout(() => {
@@ -5609,6 +5614,7 @@ export default function GameBoard() {
             tier={opponentForgeAbsorb.tier}
             startRect={opponentForgeAbsorb.startRect}
             destPos={opponentForgeAbsorb.chipCenter}
+            ownerName={opponentForgeAbsorb.ownerName}
           />
         ) : (
           <OpponentForgeAnimation
@@ -5618,6 +5624,7 @@ export default function GameBoard() {
             tier={opponentForgeAbsorb.tier}
             startRect={opponentForgeAbsorb.startRect}
             chipCenter={opponentForgeAbsorb.chipCenter}
+            ownerName={opponentForgeAbsorb.ownerName}
           />
         ))}
       </AnimatePresence>
