@@ -531,10 +531,12 @@ export interface AbridgedForgeAnimationProps {
   /** Center of the destination pill (hand tab or opponent chip). */
   destPos?: { x: number; y: number };
   ownerName?: string;
+  /** Called when the card finishes shrinking into the destination. */
+  onComplete?: () => void;
 }
 
 export function AbridgedForgeAnimation({
-  animKey, card, tier, startRect, destPos, ownerName,
+  animKey, card, tier, startRect, destPos, ownerName, onComplete,
 }: AbridgedForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const dx = destPos ? destPos.x - sx - w / 2 : 0;
@@ -563,6 +565,7 @@ export function AbridgedForgeAnimation({
           opacity: { duration: 0.38, times: [0, 0.70, 1], ease: 'linear' },
           scale: { duration: 0.38, ease: [0.4, 0, 1, 1] },
         }}
+        onAnimationComplete={() => onComplete?.()}
       >
         <ArtifactCardView card={card} tier={tier} />
       </motion.div>

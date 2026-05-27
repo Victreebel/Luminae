@@ -269,6 +269,10 @@ export default function GameBoard() {
   const opponentForgeAbsorbKeyRef = useRef(0);
   /** Per-opponent chip absorption pulse key — increment to flash the chip ring. */
   const [chipAbsorbPulse, setChipAbsorbPulse] = useState<Record<string, number>>({});
+  /** Hand-tab absorb flash — fires when an abridged-mode local forge card arrives at the Civilization tab. */
+  const [handTabAbsorbFlash, setHandTabAbsorbFlash] = useState<{
+    key: number; pos: { x: number; y: number }; color: string;
+  } | null>(null);
   const planSubmitInFlight = useRef(false);
   const [gemBurst, setGemBurst] = useState<{
     key: number;
@@ -5587,6 +5591,19 @@ export default function GameBoard() {
             tier={cardActionBurst.tier}
             startRect={cardActionBurst.startRect}
             destPos={cardActionBurst.destPos}
+            onComplete={() => {
+              const el = document.querySelector('[data-nav-hand]');
+              const r = el?.getBoundingClientRect();
+              if (r) {
+                const glowColor = GEM_META[cardActionBurst.card.bonusColor as GemKey]?.glowHex ?? '#C0A472';
+                setHandTabAbsorbFlash({
+                  key: Date.now(),
+                  pos: { x: r.left + r.width / 2, y: r.top + r.height / 2 },
+                  color: glowColor,
+                });
+                setTimeout(() => setHandTabAbsorbFlash(null), 700);
+              }
+            }}
           />
         ) : (
           <ForgeAnimation
@@ -6734,6 +6751,29 @@ export default function GameBoard() {
           onDone={() => setChipAbsorbRipple(null)}
         />
       )}
+      {/* Hand-tab absorb flash — abridged forge card absorbed by Civilization tab */}
+      <AnimatePresence>
+        {handTabAbsorbFlash && (
+          <motion.div
+            key={handTabAbsorbFlash.key}
+            className="pointer-events-none fixed z-[60]"
+            style={{
+              left: handTabAbsorbFlash.pos.x,
+              top: handTabAbsorbFlash.pos.y,
+              translateX: '-50%',
+              translateY: '-50%',
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              border: `2px solid ${handTabAbsorbFlash.color}`,
+            }}
+            initial={{ scale: 0.3, opacity: 0.9 }}
+            animate={{ scale: 2.2, opacity: 0 }}
+            exit={{}}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
