@@ -1219,10 +1219,12 @@ export default function GameBoard() {
                     : [],
                 });
                 setHiddenSlots(new Set([slotKey]));
-                gameAudio.playCardPurchased();
+                // Abridged: no internal audio in AbridgedForgeAnimation, so fire here.
+                // Full-view: OpponentForgeAnimation calls playForgeAnimation() internally.
+                if (abridgedAnims) gameAudio.playCardPurchased();
                 const bonusColor = exitCard.bonusColor as GemKey;
                 if (bonusColor && bonusColor !== 'flux') {
-                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 750);
+                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), abridgedAnims ? 380 : 750);
                   cardAnimTimersRef.current.push(tBonus);
                 }
                 const newCard = marketsNew[tier][idx];
