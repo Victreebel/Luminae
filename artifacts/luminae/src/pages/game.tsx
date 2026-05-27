@@ -5168,6 +5168,15 @@ export default function GameBoard() {
                 {/* ── Plan actions (any time game is active, no cutscene) ── */}
                 {!selectedCard.readOnly && canPlan && !isMyTurnForCoreAction && !coreActionSubmitted && (
                   <>
+                    {/* Queue header — makes it clear these fire on the next turn */}
+                    <div className="flex items-center gap-1.5 px-0.5 mt-0.5">
+                      <Clock className="h-3 w-3 text-amber-400/80 shrink-0" />
+                      <span className="text-[9.5px] font-semibold uppercase tracking-widest text-amber-400/80">
+                        Queue for your next turn
+                      </span>
+                      <div className="flex-1 h-px bg-amber-400/20" />
+                    </div>
+                    <div className="pl-2.5 border-l-2 border-amber-400/25 flex flex-col gap-2.5">
                     {me && canAffordCard(selectedCard.card, me) && (
                     <div
                       key={btnAnimTarget === 'plan_forge' ? `plan_forge-${btnAnimKey}` : 'plan_forge'}
@@ -5221,6 +5230,7 @@ export default function GameBoard() {
                         />
                       </div>
                     )}
+                    </div>{/* end border-l queue wrapper */}
                     <p className="text-[10px] text-muted-foreground text-center">
                       {myPlannedAction ? 'Selecting a new plan replaces the current one' : 'Planned moves auto-execute when your turn starts'}
                     </p>
