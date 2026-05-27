@@ -37,7 +37,6 @@ import {
 } from 'lucide-react';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -4313,10 +4312,10 @@ export default function GameBoard() {
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               {muted ? 'Unmute' : 'Mute'}
             </DropdownMenuItem>
-            <DropdownMenuCheckboxItem checked={abridgedAnims} onCheckedChange={toggleAbridgedAnims}>
-              <Zap className="h-4 w-4" />
+            <DropdownMenuItem onClick={toggleAbridgedAnims}>
+              <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
               Abridged animations
-            </DropdownMenuCheckboxItem>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
