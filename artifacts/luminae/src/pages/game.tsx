@@ -3420,13 +3420,13 @@ export default function GameBoard() {
                           {(c.lumens ?? 0) > 0 ? (
                             <span
                               className="text-[11px] font-bold font-serif text-amber-100 leading-none px-1 py-0.5 rounded"
-                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                              style={{ background: 'rgba(0,0,0,0.82)' }}
                             >
                               {c.lumens}
                             </span>
                           ) : <span />}
                           {c.bonusColor && (
-                            <span className="rounded p-0.5" style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}>
+                            <span className="rounded p-0.5" style={{ background: 'rgba(0,0,0,0.82)' }}>
                               <MiniGem color={c.bonusColor as GemKey} size={13} />
                             </span>
                           )}
@@ -3439,7 +3439,7 @@ export default function GameBoard() {
                                 <div
                                   key={k}
                                   className="flex items-center gap-px px-1 py-0.5 rounded"
-                                  style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                                  style={{ background: 'rgba(0,0,0,0.82)' }}
                                 >
                                   <MiniGem color={k as GemKey} size={10} />
                                   <span className="text-[8px] font-bold text-white/90 leading-none">{effCosts[k as keyof CrystalCounts]}</span>
@@ -3449,7 +3449,7 @@ export default function GameBoard() {
                           ) : (
                             <span
                               className="text-[10px] font-bold text-green-400 leading-none px-1 py-0.5 rounded"
-                              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(2px)' }}
+                              style={{ background: 'rgba(0,0,0,0.82)' }}
                             >✓</span>
                           )}
                         </div>
