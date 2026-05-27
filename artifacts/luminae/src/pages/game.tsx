@@ -2384,45 +2384,50 @@ export default function GameBoard() {
         gameAudio.playCardPurchased();
         const bonusColor = payload.cardRef?.bonusColor as GemKey | undefined;
         if (bonusColor && bonusColor !== 'flux') {
-          const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 800);
+          const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), abridgedAnims ? 380 : 1000);
           cardAnimTimersRef.current.push(tBonus);
         }
         const lumens = payload.cardRef?.lumens ?? 0;
         const name = payload.cardRef?.name ?? 'Artifact';
         burstKeyRef.current += 1;
-        setAnimEndTime(1400);
         setPurchaseBurst({ key: burstKeyRef.current, lumens, name });
         setTimeout(() => setPurchaseBurst(null), 1400);
-        // Fly-to-hand animation — mirrors the cipher aperture used for reserve_card
+        // Forge animation — same path as market forge, card flies from reserved slot to hand tab
         if (payload.cardRef) {
           const cardEl = document.querySelector(`[data-reserved-card-id="${payload.cardId}"]`);
           const cardRect = cardEl?.getBoundingClientRect();
-          const isLocalPurchase = (payload.playerId as string | undefined) !== undefined
-            ? (payload.playerId as string) === session?.playerId
-            : true; // executeAction always fires for the local session player
-          const forgeOwnerName = isLocalPurchase
-            ? undefined
-            : (state?.players as GamePlayerState[] | undefined)?.find(p => p.playerId === (payload.playerId as string))?.playerName;
-          const destTabEl = document.querySelector(isLocalPurchase ? '[data-nav-hand]' : '[data-nav-log]');
-          const handTabRect = destTabEl?.getBoundingClientRect();
-          cipherBurstKeyRef.current += 1;
-          setCipherBurst({
-            key: cipherBurstKeyRef.current,
-            sourceRect: cardRect
-              ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
-              : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
-            affinityHex: bonusColor
-              ? (GEM_META[bonusColor]?.glowHex ?? '#7090FF')
-              : '#7090FF',
-            cardName: name,
-            gotFlux: false,
+          const handTabEl = document.querySelector('[data-nav-hand]');
+          const handTabR = handTabEl?.getBoundingClientRect();
+          const burstDestPos = handTabR
+            ? { x: handTabR.left + handTabR.width / 2, y: handTabR.top + handTabR.height / 2 }
+            : undefined;
+          const _spentCost = me ? effectiveCost(payload.cardRef as ArtifactCard, me as GamePlayerState) as Record<string, number> : {};
+          const _spentColors = Object.entries(_spentCost)
+            .filter(([, v]) => v > 0)
+            .map(([c]) => c as GemKey);
+          cardActionBurstKeyRef.current += 1;
+          setAnimEndTime(abridgedAnims ? 550 : 3000);
+          setCardActionBurst({
+            key: cardActionBurstKeyRef.current,
             card: payload.cardRef as ArtifactCard,
             tier: (payload.cardRef as ArtifactCard).tier,
-            destPos: handTabRect
-              ? { x: handTabRect.left + handTabRect.width / 2, y: handTabRect.top + handTabRect.height / 2 }
-              : undefined,
-            ownerName: forgeOwnerName,
+            actionType: 'purchase',
+            playerName: me?.playerName ?? 'You',
+            avatarId: (me as GamePlayerState | undefined)?.avatarId ?? null,
+            lumens,
+            gotFlux: false,
+            startRect: cardRect
+              ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
+              : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+            destPos: burstDestPos,
+            spentColors: _spentColors,
           });
+          const seq = cardActionBurstKeyRef.current;
+          const tClear = setTimeout(() => {
+            if (cardActionBurstKeyRef.current !== seq) return;
+            setCardActionBurst(null);
+          }, abridgedAnims ? 500 : 3100);
+          cardAnimTimersRef.current.push(tClear);
         }
       }
     } catch (err: unknown) {
