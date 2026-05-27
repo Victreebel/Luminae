@@ -6,20 +6,20 @@ import { motion } from "framer-motion";
 //
 // Visual sequence:
 //  1. forefront (~180ms) — card lifts from market slot to viewport centre
-//  2. circuit  (~1180ms) — 8 feeder branches terminate at the 6 outer-hex corners;
+//  2. circuit   (~950ms) — 8 feeder branches terminate at the 6 outer-hex corners;
 //                           2 thin branches feed inner-hex / diamond at centre.
 //                           Simultaneously a fixed SVG at screen centre draws the
 //                           sigil in prismatic white — outer hex edges draw from
 //                           BOTH endpoints and meet at midpoints; inner hex draws
 //                           as two opposing half-loops; diamond draws as 4 arms
 //                           from top+bottom meeting at left+right vertices.
-//  3. compress  (~670ms) — card face fades; feeder branches fade with card; sigil
+//  3. compress  (~600ms) — card face fades; feeder branches fade with card; sigil
 //                           geometry transitions from prismatic white → affinity
 //                           colour as the card collapses — the sigil solidifies.
-//  4. travel    (~710ms) — fully-formed affinity-coloured sigil arcs to destination
-//  5. arrive    (~370ms) — prismatic pulse ring; sigil fades; onComplete fires
+//  4. travel    (~620ms) — fully-formed affinity-coloured sigil arcs to destination
+//  5. arrive    (~330ms) — prismatic pulse ring; sigil fades; onComplete fires
 //
-// mode="game"     ~3.11 s  |  mode="tutorial" ~3.00 s
+// mode="game"     ~2.68 s  |  mode="tutorial" ~2.61 s
 
 export type CipherApertureMode = "tutorial" | "game";
 
@@ -43,8 +43,8 @@ type Phase = "forefront" | "circuit" | "compress" | "sigil" | "travel" | "arrive
 const PHASE_ORDER: Phase[] = ["forefront", "circuit", "compress", "travel", "arrive"];
 
 const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
-  game:     { forefront: 180, circuit: 1600, compress: 900, sigil: 0, travel: 920, arrive: 420 },
-  tutorial: { forefront: 180, circuit: 1500, compress: 860, sigil: 0, travel: 880, arrive: 440 },
+  game:     { forefront: 180, circuit: 950, compress: 600, sigil: 0, travel: 620, arrive: 330 },
+  tutorial: { forefront: 180, circuit: 900, compress: 580, sigil: 0, travel: 600, arrive: 350 },
 };
 
 export const ARRIVAL_LABEL_LINGER_MS = 250;
