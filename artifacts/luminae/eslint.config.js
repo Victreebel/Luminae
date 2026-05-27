@@ -137,7 +137,8 @@ const noDropdownCheckboxItemRule = {
         'Do not use <DropdownMenuCheckboxItem>. Communicate toggle state through icon ' +
         'swapping (e.g. VolumeX/Volume2) or icon color changes (e.g. text-yellow-400 vs ' +
         'text-muted-foreground) inside a plain <DropdownMenuItem>. ' +
-        'If this use is intentional and outside the settings menu, suppress with an ' +
+        'See artifacts/luminae/CONVENTIONS.md for the full pattern guide and examples. ' +
+        'If this use is intentional and a checkbox indicator is genuinely needed, suppress with an ' +
         'eslint-disable-next-line comment and explain why.',
     },
     schema: [],
