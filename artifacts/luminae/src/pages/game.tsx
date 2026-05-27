@@ -33,10 +33,11 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Hammer, Droplets, MoreVertical
+  Hammer, Droplets, MoreVertical, Zap
 } from 'lucide-react';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -62,7 +63,7 @@ import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
-import { ForgeAnimation, OpponentForgeAnimation } from './game-forge-animation';
+import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 
 type ActiveTab = 'board' | 'hand' | 'log';
 
@@ -158,6 +159,15 @@ export default function GameBoard() {
     const next = !hintsEnabled;
     setHintsEnabled(next);
     localStorage.setItem('luminae_hints_enabled', next ? '1' : '0');
+  };
+
+  const [abridgedAnims, setAbridgedAnims] = useState<boolean>(
+    () => localStorage.getItem('luminae_abridged_anims') === '1'
+  );
+  const toggleAbridgedAnims = () => {
+    const next = !abridgedAnims;
+    setAbridgedAnims(next);
+    localStorage.setItem('luminae_abridged_anims', next ? '1' : '0');
   };
 
   const [muted, setMuted] = useState(gameAudio.isMuted());
@@ -1162,7 +1172,7 @@ export default function GameBoard() {
 
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
-                setAnimEndTime(1600); // 1250ms stamp+fly + 350ms pulse buffer
+                setAnimEndTime(abridgedAnims ? 550 : 1600); // abridged: 450ms shrink + buffer | full: 1250ms stamp+fly + buffer
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
@@ -1235,12 +1245,12 @@ export default function GameBoard() {
                   } else {
                     setHiddenSlots(new Set());
                   }
-                }, 1250);
+                }, abridgedAnims ? 450 : 1250);
                 cardAnimTimersRef.current.push(tOpponent);
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(3000); // 1300ms forge anim + 1500ms deal-from-deck + 200ms buffer
+                setAnimEndTime(abridgedAnims ? 550 : 3000); // abridged: 450ms shrink + buffer | full: 1300ms forge + 1500ms deal + buffer
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();
                 const burstDestPos: { x: number; y: number } | undefined = handTabR
@@ -1270,7 +1280,7 @@ export default function GameBoard() {
                 gameAudio.playCardPurchased();
                 const bonusColor = exitCard.bonusColor as GemKey;
                 if (bonusColor && bonusColor !== 'flux') {
-                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), 1000);
+                  const tBonus = setTimeout(() => gameAudio.playBonusSound(bonusColor), abridgedAnims ? 380 : 1000);
                   cardAnimTimersRef.current.push(tBonus);
                 }
                 setHiddenSlots(new Set([slotKey]));
@@ -1332,7 +1342,7 @@ export default function GameBoard() {
                   } else {
                     setHiddenSlots(new Set());
                   }
-                }, 1300); // 1150ms forge anim + 150ms buffer
+                }, abridgedAnims ? 450 : 1300); // abridged: direct shrink | full: 1150ms forge + 150ms buffer
                 cardAnimTimersRef.current.push(t1);
                 // Hand-panel absorption pulse — fires as the card reaches the tab.
                 // Timed 300ms before the burst clears so the rings are visually
@@ -1472,7 +1482,7 @@ export default function GameBoard() {
           const absorbSeq = opponentForgeAbsorbKeyRef.current;
           for (const t of cardAnimTimersRef.current) clearTimeout(t);
           cardAnimTimersRef.current = [];
-          setAnimEndTime(1600);
+          setAnimEndTime(abridgedAnims ? 550 : 1600);
           setOpponentForgeAbsorb({
             key: absorbSeq,
             card: reservedCard,
@@ -1487,7 +1497,7 @@ export default function GameBoard() {
             if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
             setOpponentForgeAbsorb(null);
             setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
-          }, 1250);
+          }, abridgedAnims ? 450 : 1250);
           cardAnimTimersRef.current.push(tAbsorb);
         }
       }
@@ -4264,6 +4274,10 @@ export default function GameBoard() {
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               {muted ? 'Unmute' : 'Mute'}
             </DropdownMenuItem>
+            <DropdownMenuCheckboxItem checked={abridgedAnims} onCheckedChange={toggleAbridgedAnims}>
+              <Zap className="h-4 w-4" />
+              Abridged animations
+            </DropdownMenuCheckboxItem>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
@@ -5540,10 +5554,20 @@ export default function GameBoard() {
         })()}
       </AnimatePresence>
 
-      {/* ── Card Action Burst — 6-step Forge Animation ── */}
+      {/* ── Card Action Burst — full or abridged Forge Animation ── */}
       <AnimatePresence>
-        {cardActionBurst && (
+        {cardActionBurst && (abridgedAnims ? (
+          <AbridgedForgeAnimation
+            key={cardActionBurst.key}
+            animKey={cardActionBurst.key}
+            card={cardActionBurst.card}
+            tier={cardActionBurst.tier}
+            startRect={cardActionBurst.startRect}
+            destPos={cardActionBurst.destPos}
+          />
+        ) : (
           <ForgeAnimation
+            key={cardActionBurst.key}
             animKey={cardActionBurst.key}
             card={cardActionBurst.card}
             tier={cardActionBurst.tier}
@@ -5553,13 +5577,22 @@ export default function GameBoard() {
             lumens={cardActionBurst.lumens}
             gotFlux={cardActionBurst.gotFlux}
           />
-        )}
+        ))}
       </AnimatePresence>
 
 
-      {/* ── Opponent Forge — stamp in place then fly to chip ── */}
+      {/* ── Opponent Forge — stamp+fly or abridged direct shrink ── */}
       <AnimatePresence>
-        {opponentForgeAbsorb && (
+        {opponentForgeAbsorb && (abridgedAnims ? (
+          <AbridgedForgeAnimation
+            key={opponentForgeAbsorb.key}
+            animKey={opponentForgeAbsorb.key}
+            card={opponentForgeAbsorb.card}
+            tier={opponentForgeAbsorb.tier}
+            startRect={opponentForgeAbsorb.startRect}
+            destPos={opponentForgeAbsorb.chipCenter}
+          />
+        ) : (
           <OpponentForgeAnimation
             key={opponentForgeAbsorb.key}
             animKey={opponentForgeAbsorb.key}
@@ -5568,7 +5601,7 @@ export default function GameBoard() {
             startRect={opponentForgeAbsorb.startRect}
             chipCenter={opponentForgeAbsorb.chipCenter}
           />
-        )}
+        ))}
       </AnimatePresence>
 
       {/* ── Cipher Aperture Burst — Encrypt / Reserve from market ── */}

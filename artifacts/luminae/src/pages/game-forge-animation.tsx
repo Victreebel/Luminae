@@ -490,6 +490,50 @@ export function ForgeAnimation({
   );
 }
 
+// ── AbridgedForgeAnimation ────────────────────────────────────────────────────
+// Fast path: card shrinks directly from startRect to destPos — no stamp, no streams.
+// Used when the player has enabled "Abridged animations" in the header menu.
+
+export interface AbridgedForgeAnimationProps {
+  animKey: number;
+  card: ArtifactCard;
+  tier: number;
+  startRect: { x: number; y: number; w: number; h: number };
+  /** Center of the destination pill (hand tab or opponent chip). */
+  destPos?: { x: number; y: number };
+}
+
+export function AbridgedForgeAnimation({
+  animKey, card, tier, startRect, destPos,
+}: AbridgedForgeAnimationProps) {
+  const { x: sx, y: sy, w, h } = startRect;
+  const dx = destPos ? destPos.x - sx - w / 2 : 0;
+  const dy = destPos ? destPos.y - sy - h / 2 : 0;
+
+  return (
+    <motion.div
+      key={animKey}
+      className="pointer-events-none fixed z-[52]"
+      style={{ left: sx, top: sy, width: w, height: h }}
+      initial={{ scale: 1, opacity: 1, x: 0, y: 0 }}
+      animate={{
+        scale: 0.12,
+        opacity: [1, 1, 0],
+        x: dx,
+        y: dy,
+      }}
+      transition={{
+        duration: 0.38,
+        ease: [0.4, 0, 1, 1],
+        opacity: { duration: 0.38, times: [0, 0.70, 1], ease: 'linear' },
+        scale: { duration: 0.38, ease: [0.4, 0, 1, 1] },
+      }}
+    >
+      <ArtifactCardView card={card} tier={tier} />
+    </motion.div>
+  );
+}
+
 // ── OpponentForgeAnimation ────────────────────────────────────────────────────
 // Phase 1 (0 → OP_FLY_START): card stays in startRect, stamp descends and slams.
 // Phase 2 (OP_FLY_START → OP_TOTAL): card flies to chipCenter and shrinks away.
