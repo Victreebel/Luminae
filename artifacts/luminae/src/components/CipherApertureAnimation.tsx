@@ -477,6 +477,29 @@ function CipherSigilDrawing({ affinityHex, id, circuitDurMs, compressDurMs, isCo
         transition={{ delay: outerStart + 0.08, duration: edgeDur * 1.1, ease: "easeInOut" }}
       />
 
+      {/* Corner arrival flash — spark + soft bloom fires when the branch reaches the waypoint */}
+      {cornerDots.map((dot, i) => (
+        <React.Fragment key={`cf-${i}`}>
+          {/* Spark: bright white circle that flares as the branch arrives */}
+          <motion.circle
+            cx={dot.cx} cy={dot.cy}
+            fill="white"
+            initial={{ r: 2.6, opacity: 0 }}
+            animate={{ r: [2.6, 5.2, 5.2], opacity: [0, 1.0, 0] }}
+            transition={{ delay: outerStart + dot.dl * ds, duration: 0.28, times: [0, 0.22, 1], ease: "easeOut" }}
+          />
+          {/* Bloom: soft prismatic halo that expands and fades */}
+          <motion.circle
+            cx={dot.cx} cy={dot.cy}
+            fill="rgba(210,238,255,0.36)"
+            filter={`url(#${glowId})`}
+            initial={{ r: 3.5, opacity: 0 }}
+            animate={{ r: [3.5, 10, 11], opacity: [0, 0.48, 0] }}
+            transition={{ delay: outerStart + dot.dl * ds + 0.02, duration: 0.32, times: [0, 0.28, 1], ease: "easeOut" }}
+          />
+        </React.Fragment>
+      ))}
+
       {/* Corner dots — pop in when each feeder corner begins drawing */}
       {cornerDots.map((dot, i) => (
         <motion.circle
