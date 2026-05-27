@@ -58,7 +58,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_RIPPLE_DELAY_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -1284,7 +1284,7 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 3000);
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -1381,7 +1381,7 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 3000);
+                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -1479,7 +1479,7 @@ export default function GameBoard() {
                       const slotR = slotEl?.getBoundingClientRect();
                       if (slotR) {
                         setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
-                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), 3000);
+                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
                       }
                     }
                     const t2 = setTimeout(() => {
