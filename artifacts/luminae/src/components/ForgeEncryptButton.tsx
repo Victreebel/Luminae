@@ -294,71 +294,71 @@ export function ForgeButton({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ENCRYPT_BG_IDLE = [
-  'radial-gradient(ellipse at 28% 0%,   rgba(92,70,152,0.42) 0%, transparent 52%)',
-  'radial-gradient(ellipse at 62% 58%,  rgba(55,40,105,0.25) 0%, transparent 45%)',
-  'radial-gradient(ellipse at 85% 100%, rgba(25,14,55,0.28)  0%, transparent 46%)',
-  'linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(30,22,58,0.10) 20%, rgba(40,30,70,0.05) 50%, rgba(12,6,28,0.16) 80%, rgba(0,0,0,0.36) 100%)',
-  'linear-gradient(158deg, #08080e 0%, #0d0d18 48%, #070710 100%)',
+  'radial-gradient(ellipse at 28% 0%,   rgba(195,210,240,0.22) 0%, transparent 52%)',
+  'radial-gradient(ellipse at 62% 58%,  rgba(155,175,220,0.12) 0%, transparent 45%)',
+  'radial-gradient(ellipse at 85% 100%, rgba(110,135,195,0.15) 0%, transparent 46%)',
+  'linear-gradient(180deg, rgba(0,0,0,0.32) 0%, rgba(20,22,30,0.10) 20%, rgba(26,28,38,0.05) 50%, rgba(10,10,18,0.16) 80%, rgba(0,0,0,0.38) 100%)',
+  'linear-gradient(158deg, #080810 0%, #0c0c16 48%, #07070e 100%)',
 ].join(', ');
 
 const ENCRYPT_BG_PENDING = [
-  'radial-gradient(ellipse at 50% 50%, rgba(115,95,198,0.44) 0%, rgba(65,48,125,0.26) 38%, transparent 70%)',
-  'radial-gradient(ellipse at 25% 85%, rgba(30,18,68,0.32)   0%, transparent 48%)',
-  'linear-gradient(180deg, rgba(0,0,0,0.46) 0%, rgba(40,28,80,0.12) 25%, rgba(50,35,90,0.08) 50%, rgba(15,8,34,0.22) 78%, rgba(0,0,0,0.48) 100%)',
-  'linear-gradient(158deg, #060610 0%, #0e0e1e 48%, #050510 100%)',
+  'radial-gradient(ellipse at 50% 50%, rgba(230,238,255,0.36) 0%, rgba(185,200,245,0.18) 38%, transparent 70%)',
+  'radial-gradient(ellipse at 25% 85%, rgba(18,20,35,0.30)    0%, transparent 48%)',
+  'linear-gradient(180deg, rgba(0,0,0,0.48) 0%, rgba(26,28,45,0.12) 25%, rgba(32,35,52,0.08) 50%, rgba(10,10,20,0.22) 78%, rgba(0,0,0,0.52) 100%)',
+  'linear-gradient(158deg, #05050e 0%, #09091a 48%, #04040c 100%)',
 ].join(', ');
 
-// 8-layer shadow stack — same structure as Forge for consistent interpolation
+// 8-layer shadow stack — prismatic-white crystal frame
 
 const ENCRYPT_INSET_IDLE = [
-  'inset 0 0 0 0.75px rgba(235,228,255,0.50)',
-  'inset 0 0 0 2px    rgba(12,8,24,0.99)',
-  'inset 0 0 0 4px    rgba(180,168,238,0.92)',
-  'inset 0 0 0 5.5px  rgba(9,6,20,0.97)',
-  'inset 0 0 0 6.5px  rgba(142,130,200,0.76)',
-  'inset 0 1px 0 0px  rgba(238,232,255,0.24)',    // top bright (normal bevel)
-  'inset 0 -1px 0 0px rgba(0,0,0,0.86)',
-  'inset 0 0 30px 0px rgba(68,52,120,0.14)',
+  'inset 0 0 0 0.75px rgba(255,255,255,0.62)',
+  'inset 0 0 0 2px    rgba(8,8,14,0.99)',
+  'inset 0 0 0 4px    rgba(232,236,252,0.94)',
+  'inset 0 0 0 5.5px  rgba(6,6,12,0.98)',
+  'inset 0 0 0 6.5px  rgba(195,202,228,0.78)',
+  'inset 0 1px 0 0px  rgba(255,255,255,0.28)',     // top bright (normal bevel)
+  'inset 0 -1px 0 0px rgba(0,0,0,0.90)',
+  'inset 0 0 30px 0px rgba(165,188,255,0.08)',
 ].join(', ');
 
 const ENCRYPT_INSET_HOVER = [
-  'inset 0 0 0 0.75px rgba(248,244,255,0.90)',
-  'inset 0 0 0 2px    rgba(10,6,22,0.99)',
-  'inset 0 0 0 4px    rgba(215,205,255,0.99)',
-  'inset 0 0 0 5.5px  rgba(7,4,18,0.97)',
-  'inset 0 0 0 6.5px  rgba(192,180,248,0.94)',
-  'inset 0 1px 0 0px  rgba(255,252,255,0.52)',
-  'inset 0 -1px 0 0px rgba(0,0,0,0.86)',
-  'inset 0 0 30px 0px rgba(105,88,172,0.30)',
+  'inset 0 0 0 0.75px rgba(255,255,255,0.96)',
+  'inset 0 0 0 2px    rgba(6,6,12,0.99)',
+  'inset 0 0 0 4px    rgba(255,255,255,0.99)',
+  'inset 0 0 0 5.5px  rgba(5,5,10,0.98)',
+  'inset 0 0 0 6.5px  rgba(228,232,252,0.96)',
+  'inset 0 1px 0 0px  rgba(255,255,255,0.56)',
+  'inset 0 -1px 0 0px rgba(0,0,0,0.90)',
+  'inset 0 0 30px 0px rgba(185,205,255,0.28)',
 ].join(', ');
 
-// PENDING — inverted bevel + violet bloom
+// PENDING — inverted bevel + ice-white bloom
 const ENCRYPT_PENDING_DIM = [
-  'inset 0 0 0 0.75px rgba(228,222,255,0.68)',
-  'inset 0 0 0 2px    rgba(10,6,22,0.99)',
-  'inset 0 0 0 4px    rgba(185,172,240,0.96)',
-  'inset 0 0 0 5.5px  rgba(8,4,20,0.97)',
-  'inset 0 0 0 6.5px  rgba(152,140,212,0.88)',
-  'inset 0 1px 0 0px  rgba(0,0,0,0.68)',           // top dark (pressed-in)
-  'inset 0 -1px 0 0px rgba(225,218,255,0.30)',     // bottom bright (pressed-in)
-  'inset 0 0 30px 0px rgba(90,72,158,0.32)',
+  'inset 0 0 0 0.75px rgba(255,255,255,0.72)',
+  'inset 0 0 0 2px    rgba(8,8,14,0.99)',
+  'inset 0 0 0 4px    rgba(225,230,252,0.96)',
+  'inset 0 0 0 5.5px  rgba(6,6,12,0.98)',
+  'inset 0 0 0 6.5px  rgba(188,196,232,0.90)',
+  'inset 0 1px 0 0px  rgba(0,0,0,0.65)',           // top dark (pressed-in)
+  'inset 0 -1px 0 0px rgba(240,244,255,0.34)',     // bottom bright (pressed-in)
+  'inset 0 0 30px 0px rgba(185,205,255,0.28)',
 ].join(', ');
 
 const ENCRYPT_PENDING_BRIGHT = [
-  'inset 0 0 0 0.75px rgba(252,248,255,0.96)',
-  'inset 0 0 0 2px    rgba(8,4,20,0.99)',
-  'inset 0 0 0 4px    rgba(225,218,255,1.00)',
-  'inset 0 0 0 5.5px  rgba(6,3,16,0.97)',
-  'inset 0 0 0 6.5px  rgba(205,195,255,0.99)',
-  'inset 0 1px 0 0px  rgba(0,0,0,0.74)',           // top dark (stays pressed)
-  'inset 0 -1px 0 0px rgba(238,232,255,0.52)',     // bottom bright (stays pressed)
-  'inset 0 0 30px 0px rgba(115,95,195,0.62)',      // strong violet bloom at peak
+  'inset 0 0 0 0.75px rgba(255,255,255,0.99)',
+  'inset 0 0 0 2px    rgba(6,6,12,0.99)',
+  'inset 0 0 0 4px    rgba(255,255,255,1.00)',
+  'inset 0 0 0 5.5px  rgba(4,4,8,0.98)',
+  'inset 0 0 0 6.5px  rgba(245,248,255,0.99)',
+  'inset 0 1px 0 0px  rgba(0,0,0,0.72)',           // top dark (stays pressed)
+  'inset 0 -1px 0 0px rgba(248,250,255,0.58)',     // bottom bright (stays pressed)
+  'inset 0 0 30px 0px rgba(205,220,255,0.62)',     // strong ice bloom at peak
 ].join(', ');
 
-const ENCRYPT_FILTER_IDLE  = 'drop-shadow(0 0 5px rgba(145,125,228,0.32)) drop-shadow(0 0 12px rgba(105,85,188,0.18)) drop-shadow(0 0 22px rgba(80,60,155,0.09))';
-const ENCRYPT_FILTER_HOVER = 'drop-shadow(0 0 18px rgba(198,185,255,0.80)) drop-shadow(0 0 36px rgba(158,138,248,0.50)) drop-shadow(0 0 65px rgba(125,100,225,0.25))';
-const ENCRYPT_FILTER_PEND_DIM    = 'drop-shadow(0 0 8px  rgba(175,160,248,0.58)) drop-shadow(0 0 18px rgba(135,115,215,0.30)) drop-shadow(0 0 38px rgba(105,85,185,0.15))';
-const ENCRYPT_FILTER_PEND_BRIGHT = 'drop-shadow(0 0 16px rgba(215,205,255,0.88)) drop-shadow(0 0 32px rgba(178,162,252,0.58)) drop-shadow(0 0 62px rgba(148,128,235,0.28))';
+const ENCRYPT_FILTER_IDLE  = 'drop-shadow(0 0 5px rgba(195,212,255,0.36)) drop-shadow(0 0 12px rgba(165,190,255,0.20)) drop-shadow(0 0 22px rgba(138,165,245,0.10))';
+const ENCRYPT_FILTER_HOVER = 'drop-shadow(0 0 18px rgba(240,246,255,0.90)) drop-shadow(0 0 36px rgba(210,228,255,0.58)) drop-shadow(0 0 65px rgba(185,208,255,0.28))';
+const ENCRYPT_FILTER_PEND_DIM    = 'drop-shadow(0 0 8px  rgba(215,228,255,0.62)) drop-shadow(0 0 18px rgba(185,205,255,0.34)) drop-shadow(0 0 38px rgba(158,182,255,0.16))';
+const ENCRYPT_FILTER_PEND_BRIGHT = 'drop-shadow(0 0 16px rgba(248,252,255,0.94)) drop-shadow(0 0 32px rgba(222,236,255,0.64)) drop-shadow(0 0 62px rgba(198,218,255,0.30))';
 
 // ── Encrypt Button ────────────────────────────────────────────────────────────
 export interface EncryptButtonProps {
@@ -388,7 +388,7 @@ export function EncryptButton({
         opacity: disabled ? 0.38 : 1,
         cursor: disabled ? 'not-allowed' : 'pointer',
         outline: 'none', border: 'none', padding: 0,
-        color: '#DBD6FF',
+        color: '#FFFFFF',
         WebkitTapHighlightColor: 'transparent',
       }}
       animate={isPending ? {
@@ -420,25 +420,25 @@ export function EncryptButton({
       }}
     >
       {/* Interior top cap highlight */}
-      <TopCapStripe color={isPending ? 'rgba(215,208,255,0.16)' : 'rgba(218,212,255,0.14)'} />
+      <TopCapStripe color={isPending ? 'rgba(255,255,255,0.26)' : 'rgba(255,255,255,0.20)'} />
 
       {/* Ambient glow */}
       <div aria-hidden className={isPending ? 'encrypt-ambient-pending' : 'encrypt-ambient'} style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: isPending
-          ? 'radial-gradient(ellipse at 50% 55%, rgba(115,95,200,0.42) 0%, rgba(68,50,128,0.22) 40%, transparent 68%)'
-          : 'radial-gradient(ellipse at 38% 52%, rgba(105,85,185,0.32) 0%, rgba(65,48,118,0.16) 40%, transparent 68%)',
+          ? 'radial-gradient(ellipse at 50% 55%, rgba(215,228,255,0.30) 0%, rgba(175,198,255,0.14) 40%, transparent 68%)'
+          : 'radial-gradient(ellipse at 38% 52%, rgba(190,210,255,0.18) 0%, rgba(155,182,255,0.09) 40%, transparent 68%)',
       }} />
 
       {/* Corner nubs */}
-      <CornerNub style={{ top: -5.5,    left: -5.5   }} color={isPending ? 'rgba(225,218,255,0.90)' : 'rgba(205,198,252,0.76)'} glow={isPending ? '0 0 8px rgba(200,190,255,0.80)' : '0 0 5px rgba(185,175,245,0.45)'} />
-      <CornerNub style={{ top: -5.5,    right: -5.5  }} color={isPending ? 'rgba(225,218,255,0.90)' : 'rgba(205,198,252,0.76)'} glow={isPending ? '0 0 8px rgba(200,190,255,0.80)' : '0 0 5px rgba(185,175,245,0.45)'} />
-      <CornerNub style={{ bottom: -5.5, left: -5.5   }} color={isPending ? 'rgba(225,218,255,0.90)' : 'rgba(205,198,252,0.76)'} glow={isPending ? '0 0 8px rgba(200,190,255,0.80)' : '0 0 5px rgba(185,175,245,0.45)'} />
-      <CornerNub style={{ bottom: -5.5, right: -5.5  }} color={isPending ? 'rgba(225,218,255,0.90)' : 'rgba(205,198,252,0.76)'} glow={isPending ? '0 0 8px rgba(200,190,255,0.80)' : '0 0 5px rgba(185,175,245,0.45)'} />
+      <CornerNub style={{ top: -5.5,    left: -5.5   }} color={isPending ? 'rgba(255,255,255,0.95)' : 'rgba(220,228,248,0.82)'} glow={isPending ? '0 0 8px rgba(255,255,255,0.75)' : '0 0 5px rgba(210,224,255,0.50)'} />
+      <CornerNub style={{ top: -5.5,    right: -5.5  }} color={isPending ? 'rgba(255,255,255,0.95)' : 'rgba(220,228,248,0.82)'} glow={isPending ? '0 0 8px rgba(255,255,255,0.75)' : '0 0 5px rgba(210,224,255,0.50)'} />
+      <CornerNub style={{ bottom: -5.5, left: -5.5   }} color={isPending ? 'rgba(255,255,255,0.95)' : 'rgba(220,228,248,0.82)'} glow={isPending ? '0 0 8px rgba(255,255,255,0.75)' : '0 0 5px rgba(210,224,255,0.50)'} />
+      <CornerNub style={{ bottom: -5.5, right: -5.5  }} color={isPending ? 'rgba(255,255,255,0.95)' : 'rgba(220,228,248,0.82)'} glow={isPending ? '0 0 8px rgba(255,255,255,0.75)' : '0 0 5px rgba(210,224,255,0.50)'} />
 
       {/* Centre edge diamonds */}
-      <EdgeDiamond style={{ top: 2.5 }}    color={isPending ? 'rgba(242,238,255,0.99)' : 'rgba(228,222,255,0.97)'} glow={isPending ? '0 0 10px rgba(210,200,255,0.90), 0 0 20px rgba(190,180,255,0.55)' : '0 0 6px rgba(210,205,255,0.55)'} />
-      <EdgeDiamond style={{ bottom: 2.5 }} color={isPending ? 'rgba(242,238,255,0.99)' : 'rgba(228,222,255,0.97)'} glow={isPending ? '0 0 10px rgba(210,200,255,0.90), 0 0 20px rgba(190,180,255,0.55)' : '0 0 6px rgba(210,205,255,0.55)'} />
+      <EdgeDiamond style={{ top: 2.5 }}    color={isPending ? 'rgba(255,255,255,1.00)' : 'rgba(238,242,255,0.97)'} glow={isPending ? '0 0 10px rgba(255,255,255,0.88), 0 0 20px rgba(210,225,255,0.55)' : '0 0 6px rgba(220,232,255,0.58)'} />
+      <EdgeDiamond style={{ bottom: 2.5 }} color={isPending ? 'rgba(255,255,255,1.00)' : 'rgba(238,242,255,0.97)'} glow={isPending ? '0 0 10px rgba(255,255,255,0.88), 0 0 20px rgba(210,225,255,0.55)' : '0 0 6px rgba(220,232,255,0.58)'} />
 
       {/* Prismatic side stripes */}
       <div aria-hidden style={{
@@ -454,14 +454,14 @@ export function EncryptButton({
       <div aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{
         width: 66, height: '100%', position: 'relative', zIndex: 1,
         background: [
-          'radial-gradient(circle at 54% 42%, rgba(95,72,158,0.58) 0%, rgba(30,22,65,0.38) 52%, transparent 78%)',
-          'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(55,42,100,0.22) 30%, rgba(16,11,35,0.20) 70%, rgba(0,0,0,0.30) 100%)',
+          'radial-gradient(circle at 54% 42%, rgba(185,205,245,0.42) 0%, rgba(22,24,38,0.30) 52%, transparent 78%)',
+          'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(22,24,40,0.22) 30%, rgba(10,10,20,0.20) 70%, rgba(0,0,0,0.30) 100%)',
         ].join(', '),
-        borderRight: '1px solid rgba(162,150,228,0.18)',
+        borderRight: '1px solid rgba(210,220,248,0.18)',
       }}>
         <div aria-hidden style={{
           position: 'absolute', right: 0, top: 6, bottom: 6, width: 1,
-          background: 'linear-gradient(180deg, transparent, rgba(205,195,255,0.40) 30%, rgba(185,172,240,0.30) 70%, transparent)',
+          background: 'linear-gradient(180deg, transparent, rgba(230,238,255,0.42) 30%, rgba(210,222,255,0.30) 70%, transparent)',
         }} />
         <div aria-hidden style={{
           position: 'absolute', right: -1, top: 6, bottom: 6, width: 1,
@@ -472,17 +472,17 @@ export function EncryptButton({
           style={{
             width: 44, height: 44, flexShrink: 0,
             background: isPending
-              ? 'radial-gradient(circle at 38% 34%, #3e3468 0%, #221a50 52%, #100d28 100%)'
-              : 'radial-gradient(circle at 38% 34%, #342a5c 0%, #1c1540 52%, #0e0a22 100%)',
+              ? 'radial-gradient(circle at 38% 34%, #1e2035 0%, #0e1020 52%, #060810 100%)'
+              : 'radial-gradient(circle at 38% 34%, #181a2e 0%, #0c0e1c 52%, #050610 100%)',
           }}
         >
           <span className="flex items-center justify-center" style={{
             width: 24, height: 24,
             filter: isPending
-              ? 'drop-shadow(0 0 9px rgba(225,215,255,0.95)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))'
-              : 'drop-shadow(0 0 7px rgba(210,195,255,0.85)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))',
+              ? 'drop-shadow(0 0 9px rgba(245,250,255,0.95)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))'
+              : 'drop-shadow(0 0 7px rgba(220,234,255,0.85)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))',
           }}>
-            <CipherSigil affinityHex={isPending ? '#e8e4ff' : '#d4cfff'} id={sigilId} />
+            <CipherSigil affinityHex={isPending ? '#ffffff' : '#e8f0ff'} id={sigilId} />
           </span>
         </div>
       </div>
@@ -504,8 +504,8 @@ export function EncryptButton({
               <span className="font-bold uppercase leading-none" style={{
                 fontSize: 17, letterSpacing: '0.15em',
                 textShadow: isPending
-                  ? '0 0 24px rgba(215,205,255,0.70), 0 0 10px rgba(185,172,252,0.45), 0 1px 3px rgba(0,0,0,0.85)'
-                  : '0 0 20px rgba(195,182,255,0.42), 0 0 8px rgba(165,148,238,0.28), 0 1px 3px rgba(0,0,0,0.85)',
+                  ? '0 0 24px rgba(255,255,255,0.72), 0 0 10px rgba(210,228,255,0.50), 0 1px 3px rgba(0,0,0,0.85)'
+                  : '0 0 20px rgba(220,234,255,0.40), 0 0 8px rgba(190,212,255,0.25), 0 1px 3px rgba(0,0,0,0.85)',
               }}>
                 {label}
               </span>

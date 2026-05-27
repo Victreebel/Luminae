@@ -504,7 +504,7 @@ button,
   left: -70%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(200, 185, 255, 0.13), rgba(180, 165, 255, 0.06), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 252, 255, 0.24), rgba(235, 242, 255, 0.14), rgba(218, 232, 255, 0.07), transparent);
   animation: encrypt-sweep 1.4s ease-in-out infinite;
   pointer-events: none;
   z-index: 5;
@@ -556,8 +556,8 @@ button,
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(218, 212, 255, 0.18) 22%,
-    rgba(210, 205, 255, 0.11) 78%,
+    rgba(255, 255, 255, 0.26) 22%,
+    rgba(240, 246, 255, 0.16) 78%,
     transparent 100%
   );
   pointer-events: none;
@@ -568,19 +568,19 @@ button,
 @keyframes encrypt-medallion-pulse {
   0%, 100% {
     box-shadow:
-      0 0 0 1.5px rgba(10,6,22,0.95),
-      0 0 0 3.5px rgba(132,120,206,0.68),
-      0 0 0 5px   rgba(8,4,18,0.90),
-      0 0 14px    rgba(162,148,235,0.40),
-      inset 0 1px 0 rgba(210,204,255,0.28);
+      0 0 0 1.5px rgba(8,8,14,0.96),
+      0 0 0 3.5px rgba(195,206,238,0.70),
+      0 0 0 5px   rgba(6,6,12,0.92),
+      0 0 14px    rgba(205,220,255,0.38),
+      inset 0 1px 0 rgba(255,255,255,0.28);
   }
   50% {
     box-shadow:
-      0 0 0 1.5px rgba(10,6,22,0.95),
-      0 0 0 3.5px rgba(195,182,252,0.92),
-      0 0 0 5px   rgba(7,3,16,0.88),
-      0 0 24px    rgba(208,195,255,0.65),
-      inset 0 1px 0 rgba(238,232,255,0.52);
+      0 0 0 1.5px rgba(8,8,14,0.96),
+      0 0 0 3.5px rgba(240,245,255,0.96),
+      0 0 0 5px   rgba(5,5,10,0.90),
+      0 0 24px    rgba(222,234,255,0.70),
+      inset 0 1px 0 rgba(255,255,255,0.58);
   }
 }
 .encrypt-medallion-glow {
@@ -590,19 +590,19 @@ button,
 @keyframes encrypt-medallion-pending-pulse {
   0%, 100% {
     box-shadow:
-      0 0 0 1.5px rgba(10,6,22,0.95),
-      0 0 0 3.5px rgba(175,162,245,0.82),
-      0 0 0 5px   rgba(8,4,18,0.90),
-      0 0 18px    rgba(195,182,252,0.55),
-      inset 0 1px 0 rgba(220,215,255,0.38);
+      0 0 0 1.5px rgba(8,8,14,0.96),
+      0 0 0 3.5px rgba(215,224,252,0.86),
+      0 0 0 5px   rgba(6,6,12,0.92),
+      0 0 18px    rgba(215,228,255,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.40);
   }
   50% {
     box-shadow:
-      0 0 0 1.5px rgba(10,6,22,0.95),
-      0 0 0 3.5px rgba(218,210,255,1.00),
-      0 0 0 5px   rgba(6,3,16,0.88),
-      0 0 28px    rgba(225,218,255,0.88),
-      inset 0 1px 0 rgba(248,245,255,0.70);
+      0 0 0 1.5px rgba(8,8,14,0.96),
+      0 0 0 3.5px rgba(255,255,255,1.00),
+      0 0 0 5px   rgba(4,4,8,0.90),
+      0 0 28px    rgba(238,246,255,0.92),
+      inset 0 1px 0 rgba(255,255,255,0.74);
   }
 }
 .encrypt-medallion-pending {
