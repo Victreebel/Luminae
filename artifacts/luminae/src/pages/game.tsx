@@ -58,7 +58,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -852,7 +852,7 @@ export default function GameBoard() {
   useEffect(() => {
     if (!initialTurnFiredRef.current && state && state.status === 'playing' && session) {
       initialTurnFiredRef.current = true;
-      setAnimEndTime(1200);
+      setAnimEndTime(INITIAL_TURN_GUARD_MS);
       const cp = state.players[state.currentPlayerIndex];
       if (!cp) return;
       const key = `init-${state.currentPlayerIndex}-${state.version}`;
@@ -1217,7 +1217,7 @@ export default function GameBoard() {
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
                 const purchaseActorName = player?.playerName;
-                setAnimEndTime(abridgedAnims ? 450 + DEAL_ANIM_MS + 270 : 3000); // abridged: 450ms shrink + deal + buffer | full: 1250ms stamp+fly + deal + buffer
+                setAnimEndTime(abridgedAnims ? ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS : FORGE_FULL_MS); // abridged: shrink + deal + buffer | full: stamp+fly + deal + buffer
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
@@ -1276,7 +1276,7 @@ export default function GameBoard() {
                       });
                       gameAudio.playCardDraw();
                     } else {
-                      setAnimEndTime(5800);
+                      setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
                       if (marketCompact) {
@@ -1291,7 +1291,7 @@ export default function GameBoard() {
                         if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
                         setFlippingCards(new Set());
                         setHiddenSlots(new Set());
-                      }, 5650);
+                      }, FALLBACK_FLIP_ANIM_MS - 150);
                       cardAnimTimersRef.current.push(t2);
                     }
                   } else {
@@ -1302,7 +1302,7 @@ export default function GameBoard() {
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
                 cardActionBurstKeyRef.current += 1;
-                setAnimEndTime(abridgedAnims ? 450 + DEAL_ANIM_MS + 270 : 3000); // abridged: 450ms shrink + deal + buffer | full: 1300ms forge + deal + buffer
+                setAnimEndTime(abridgedAnims ? ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS : FORGE_FULL_MS); // abridged: shrink + deal + buffer | full: forge + deal + buffer
                 const handTabEl = document.querySelector('[data-nav-hand]');
                 const handTabR = handTabEl?.getBoundingClientRect();
                 const burstDestPos: { x: number; y: number } | undefined = handTabR
@@ -1373,7 +1373,7 @@ export default function GameBoard() {
                       // Fallback: flip in place if DOM elements not found.
                       // Keep the slot hidden until the flip completes — do NOT clear
                       // hiddenSlots immediately or the new card pops in before the flip.
-                      setAnimEndTime(5800);
+                      setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
                       if (marketCompact) {
@@ -1388,7 +1388,7 @@ export default function GameBoard() {
                         if (cardActionBurstKeyRef.current !== seq) return;
                         setFlippingCards(new Set());
                         setHiddenSlots(new Set());
-                      }, 5650);
+                      }, FALLBACK_FLIP_ANIM_MS - 150);
                       cardAnimTimersRef.current.push(t2);
                     }
                   } else {
@@ -1434,7 +1434,7 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
-              setAnimEndTime(abridgedAnims ? 450 + DEAL_ANIM_MS + 270 : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + 270); // cipher + deal-from-deck + buffer
+              setAnimEndTime(abridgedAnims ? ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS); // cipher + deal-from-deck + buffer
               setHiddenSlots(new Set([slotKey]));
               // Deal replacement card from deck after the cipher aperture animation clears.
               const cipherSeq = cipherBurstKeyRef.current;
@@ -1471,7 +1471,7 @@ export default function GameBoard() {
                     });
                     gameAudio.playCardDraw();
                   } else {
-                    setAnimEndTime(5700);
+                    setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
                     if (marketCompact) {
@@ -1486,7 +1486,7 @@ export default function GameBoard() {
                       if (cipherBurstKeyRef.current !== cipherSeq) return;
                       setFlippingCards(new Set());
                       setHiddenSlots(new Set());
-                    }, 5650);
+                    }, FALLBACK_FLIP_ANIM_MS - 150);
                     cardAnimTimersRef.current.push(t2);
                   }
                 } else {
@@ -1543,7 +1543,7 @@ export default function GameBoard() {
           const reservedForgeActorName = prevActingPlayer?.playerName;
           for (const t of cardAnimTimersRef.current) clearTimeout(t);
           cardAnimTimersRef.current = [];
-          setAnimEndTime(abridgedAnims ? 550 : 1600);
+          setAnimEndTime(abridgedAnims ? ABRIDGED_ACTION_MS : RESERVED_FORGE_FULL_MS);
           setOpponentForgeAbsorb({
             key: absorbSeq,
             card: reservedCard,
@@ -1796,7 +1796,7 @@ export default function GameBoard() {
             const destRect = destEl?.getBoundingClientRect();
             cipherBurstKeyRef.current += 1;
             cipherBurstIsDeckRef.current = isLocalReserve;
-            setAnimEndTime(abridgedAnims ? 550 : CIPHER_GAME_TOTAL_MS + 100);
+            setAnimEndTime(abridgedAnims ? ABRIDGED_ACTION_MS : CIPHER_GAME_TOTAL_MS + CIPHER_TAIL_BUFFER_MS);
             setCipherBurst({
               key: cipherBurstKeyRef.current,
               sourceRect: deckRect
@@ -2250,7 +2250,7 @@ export default function GameBoard() {
     const seq = gemBurstKeyRef.current;
     setGemBurst({ key: seq, gems, playerName, avatarId });
     gameAudio.playChipsCollected();
-    const totalDuration = (gems.length - 1) * 780 + 1250 + 500 + 50;
+    const totalDuration = (gems.length - 1) * GEM_BURST_STAGGER_MS + GEM_BURST_BASE_MS + GEM_BURST_SETTLE_MS;
     setAnimEndTime(totalDuration);
     gemBurstTimerRef.current = setTimeout(() => {
       if (gemBurstKeyRef.current === seq) setGemBurst(null);
@@ -2515,7 +2515,7 @@ export default function GameBoard() {
             .filter(([, v]) => v > 0)
             .map(([c]) => c as GemKey);
           cardActionBurstKeyRef.current += 1;
-          setAnimEndTime(abridgedAnims ? 550 : 3000);
+          setAnimEndTime(abridgedAnims ? ABRIDGED_ACTION_MS : FORGE_FULL_MS);
           setCardActionBurst({
             key: cardActionBurstKeyRef.current,
             card: payload.cardRef as ArtifactCard,

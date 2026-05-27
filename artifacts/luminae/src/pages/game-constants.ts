@@ -64,3 +64,42 @@ export const localTurnVariants = {
  *  Used by setAnimEndTime in both the initial guard and the deck-found branch
  *  so both call sites derive from the same source. */
 export const DEAL_ANIM_MS = 1700;
+
+/** Brief animation lock fired on the initial turn announcement (ms). */
+export const INITIAL_TURN_GUARD_MS = 1200;
+
+/** Duration of the abridged forge shrink animation (ms).
+ *  Abridged forge lock = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS. */
+export const ABRIDGED_SHRINK_MS = 450;
+
+/** Trailing buffer added after a deal animation in the abridged forge lock (ms). */
+export const ANIM_LOCK_BUFFER_MS = 270;
+
+/** Animation lock duration for simple abridged actions with no deal phase
+ *  (reserved-card forge, deck reserve, local forge from hand) (ms). */
+export const ABRIDGED_ACTION_MS = 550;
+
+/** Full forge animation duration for market purchases
+ *  (stamp + fly + deal + settling buffer) (ms). */
+export const FORGE_FULL_MS = 3000;
+
+/** Full reserved-card forge animation duration — no replacement deal needed (ms). */
+export const RESERVED_FORGE_FULL_MS = 1600;
+
+/** Animation lock used when the DOM rect lookup fails and the card flips in place (ms).
+ *  The in-place flip cleanup timer fires at FALLBACK_FLIP_ANIM_MS - 150 ms. */
+export const FALLBACK_FLIP_ANIM_MS = 5800;
+
+/** Small tail buffer added to CIPHER_GAME_TOTAL_MS for the deck-reserve lock
+ *  (no deal phase, so a tighter margin is acceptable) (ms). */
+export const CIPHER_TAIL_BUFFER_MS = 100;
+
+/** Per-gem stagger interval in the gem harvest burst animation (ms). */
+export const GEM_BURST_STAGGER_MS = 780;
+
+/** Base animation duration for the final gem in a harvest burst (ms). */
+export const GEM_BURST_BASE_MS = 1250;
+
+/** Settling tail added after the final gem animation in a harvest burst (ms).
+ *  Total burst lock = (gems.length - 1) * GEM_BURST_STAGGER_MS + GEM_BURST_BASE_MS + GEM_BURST_SETTLE_MS. */
+export const GEM_BURST_SETTLE_MS = 550;
