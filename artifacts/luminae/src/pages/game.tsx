@@ -5662,6 +5662,7 @@ export default function GameBoard() {
             chipCenter={opponentForgeAbsorb.chipCenter}
             ownerName={opponentForgeAbsorb.ownerName}
             spentColors={opponentForgeAbsorb.spentColors}
+            isCompact={marketCompact}
           />
         ))}
       </AnimatePresence>

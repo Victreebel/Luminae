@@ -178,6 +178,8 @@ export interface OpponentForgeAnimationProps {
   ownerName?: string;
   /** Affinity colors spent by the opponent. Falls back to card.bonusColor if omitted. */
   spentColors?: GemKey[];
+  /** When true, skip the lift-to-centre; stamp lands directly on the chip. */
+  isCompact?: boolean;
 }
 
 // ── ForgeAnimation (local player) ─────────────────────────────────────────────
@@ -629,14 +631,23 @@ export function AbridgedForgeAnimation({
 // destination differs: chipCenter (opponent avatar pill) instead of destPos.
 
 export function OpponentForgeAnimation({
-  animKey, card, tier, startRect, chipCenter, ownerName, spentColors: spentColorsProp,
+  animKey, card, tier, startRect, chipCenter, ownerName, spentColors: spentColorsProp, isCompact,
 }: OpponentForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
 
-  // Centre of viewport (where the card lifts to)
-  const cx   = window.innerWidth  / 2 - w / 2;
-  const cy   = window.innerHeight / 2 - h / 2 - 24;
+  // Full card dimensions from CSS variables (clamp-based, must read at runtime).
+  const fullCardW = isCompact
+    ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112)
+    : w;
+  const fullCardH = isCompact
+    ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-h')) || 160)
+    : h;
+  const chipScale = isCompact ? w / fullCardW : 1;
+
+  // In compact view skip the lift-to-centre; stamp descends directly onto the chip.
+  const cx   = isCompact ? sx : (window.innerWidth  / 2 - w / 2);
+  const cy   = isCompact ? sy : (window.innerHeight / 2 - h / 2 - 24);
   const midX = cx + w / 2;
   const midY = cy + h / 2;
 
@@ -726,7 +737,7 @@ export function OpponentForgeAnimation({
       <motion.div
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.65, 0.65, 0] }}
+        animate={{ opacity: isCompact ? [0, 0.35, 0.35, 0] : [0, 0.65, 0.65, 0] }}
         transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
       />
 
@@ -736,12 +747,27 @@ export function OpponentForgeAnimation({
         animate={{
           x:       [sx,   cx,    cx+SK, cx-SK, cx+SK/2, cx-SK/3, cx,   dX  ],
           y:       [sy,   cy,    cy,    cy,    cy,      cy,      cy,   dY  ],
-          scale:   [1,  1.28,  1.28,  1.28,  1.28,   1.28,   1.28, 0.06],
+          scale:   isCompact
+            ? [1,   1,     1,     1,     1,       1,      1,    0.06]
+            : [1,  1.28,  1.28,  1.28,  1.28,   1.28,   1.28, 0.06],
           opacity: [1,    1,     1,     1,     1,       1,      1,    0   ],
         }}
         transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
       >
-        <ArtifactCardView card={card} tier={tier} />
+        {isCompact ? (
+          <div style={{ width: w, height: h, overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              width: fullCardW,
+              height: fullCardH,
+              transform: `scale(${chipScale})`,
+              transformOrigin: 'top left',
+            }}>
+              <ArtifactCardView card={card} tier={tier} />
+            </div>
+          </div>
+        ) : (
+          <ArtifactCardView card={card} tier={tier} />
+        )}
 
         {/* Affinity aura glow */}
         <motion.div
