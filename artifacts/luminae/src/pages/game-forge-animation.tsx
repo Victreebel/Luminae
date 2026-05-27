@@ -165,6 +165,8 @@ export interface ForgeAnimationProps {
   lumens: number;
   gotFlux: boolean;
   playerName?: string;
+  /** When true (compact market view) skip the lift-to-centre step; stamp descends directly onto the card at its current position. */
+  isCompact?: boolean;
 }
 
 export interface OpponentForgeAnimationProps {
@@ -189,12 +191,14 @@ export function ForgeAnimation({
   spentColors,
   lumens,
   playerName,
+  isCompact,
 }: ForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
 
-  const cx = window.innerWidth  / 2 - w / 2;
-  const cy = window.innerHeight / 2 - h / 2 - 24;
+  // In compact view skip the lift-to-centre; stamp descends directly onto the chip.
+  const cx = isCompact ? sx : (window.innerWidth  / 2 - w / 2);
+  const cy = isCompact ? sy : (window.innerHeight / 2 - h / 2 - 24);
   const midX = cx + w / 2;
   const midY = cy + h / 2;
 

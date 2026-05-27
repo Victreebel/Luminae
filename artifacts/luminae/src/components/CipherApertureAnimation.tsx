@@ -34,6 +34,8 @@ export interface CipherApertureProps {
   gotFlux?: boolean;
   ownerName?: string;
   onComplete?: () => void;
+  /** When true (compact market view) skip the forefront lift-to-centre step; circuit starts immediately at the card's current position. */
+  skipForefront?: boolean;
 }
 
 type Phase = "forefront" | "circuit" | "compress" | "sigil" | "travel" | "arrive";
@@ -49,9 +51,9 @@ export const ARRIVAL_LABEL_LINGER_MS = 250;
 
 export function CipherApertureAnimation({
   animKey, mode, sourceRect, affinityHex, cardName, cardFace,
-  destPos, gotFlux, ownerName, onComplete,
+  destPos, gotFlux, ownerName, onComplete, skipForefront,
 }: CipherApertureProps) {
-  const [phase, setPhase] = useState<Phase>("forefront");
+  const [phase, setPhase] = useState<Phase>(skipForefront ? "circuit" : "forefront");
   const [arrivalLabelFading, setArrivalLabelFading] = useState(false);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const dur = PHASE_DUR[mode];
@@ -63,14 +65,17 @@ export function CipherApertureAnimation({
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
-    setPhase("forefront");
+    // In compact view skip the forefront phase (no lift to centre).
+    setPhase(skipForefront ? "circuit" : "forefront");
     setArrivalLabelFading(false);
 
-    let acc = 0;
+    let acc = skipForefront ? 0 : 0;
     const transitions: Phase[] = ["circuit", "compress", "travel", "arrive"];
     const from: Phase[]        = ["forefront", "circuit", "compress", "travel"];
     transitions.forEach((p, i) => {
-      acc += dur[from[i]];
+      // When skipForefront: first from="forefront" contributes 0ms (already skipped).
+      const stepDur = (i === 0 && skipForefront) ? 0 : dur[from[i]];
+      acc += stepDur;
       timersRef.current.push(setTimeout(() => setPhase(p), acc));
     });
     acc += dur.arrive;
@@ -93,8 +98,9 @@ export function CipherApertureAnimation({
   const showLabel     = pi >= PHASE_ORDER.indexOf("compress");
   const showArrivalLabel = !!ownerName && !!destPos && pi >= PHASE_ORDER.indexOf("travel");
 
-  const forefrontX = cx - sourceRect.x - sourceRect.w / 2;
-  const forefrontY = cy - sourceRect.y - sourceRect.h / 2 - 24;
+  // When skipForefront: card stays in its slot (no translation to centre).
+  const forefrontX = skipForefront ? 0 : (cx - sourceRect.x - sourceRect.w / 2);
+  const forefrontY = skipForefront ? 0 : (cy - sourceRect.y - sourceRect.h / 2 - 24);
 
   const dimOpacity =
     at("forefront") ? 0.30 :

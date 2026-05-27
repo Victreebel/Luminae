@@ -5632,6 +5632,7 @@ export default function GameBoard() {
             lumens={cardActionBurst.lumens}
             gotFlux={cardActionBurst.gotFlux}
             playerName={cardActionBurst.playerName}
+            isCompact={marketCompact}
           />
         ))}
       </AnimatePresence>
@@ -5675,6 +5676,7 @@ export default function GameBoard() {
           gotFlux={cipherBurst.gotFlux}
           destPos={cipherBurst.destPos}
           ownerName={cipherBurst.ownerName}
+          skipForefront={marketCompact}
           onComplete={() => {
             if (cipherBurstIsDeckRef.current) {
               setSingularityAbsorbKey(k => k + 1);
