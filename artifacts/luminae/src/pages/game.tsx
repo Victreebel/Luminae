@@ -995,17 +995,16 @@ export default function GameBoard() {
   }, [activeTab]);
 
   // ── Pre-early-return derived state ────────────────────────────────────────
-  // actionsLocked / isMyTurn / me / effectiveCost / canAffordCard are all
-  // computed here — before the early returns — so the hint useEffects below
+  // isMyTurn / me / effectiveCost / canAffordCard are all computed here —
+  // before the early returns — so the hint useEffects below
   // have stable closure references on every render regardless of whether
   // state has loaded yet.  When state is null the null-safe forms produce
   // safe false / undefined values, and the early returns below still fire.
-  const actionsLocked = !!turnAnnouncement;
   const summonGateActive = summonQueue.length > 0;
   summonQueueLenRef.current = summonQueue.length;
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
-  const isMyTurn = isActivePlayer && !actionsLocked && !summonGateActive;
+  const isMyTurn = isActivePlayer && !summonGateActive;
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
@@ -5829,9 +5828,8 @@ export default function GameBoard() {
         {turnAnnouncement && (
           <motion.div
             key={turnAnnouncement.key}
-            className="fixed inset-0 z-50 flex items-center justify-center cursor-pointer"
-            style={{ pointerEvents: 'auto' }}
-            onClick={cancelTurnAnnouncement}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ pointerEvents: 'none' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
