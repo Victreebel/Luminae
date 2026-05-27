@@ -187,8 +187,10 @@ export function ForgeAnimation({
   const dX = finalX - w / 2;
   const dY = finalY - h / 2;
 
-  // Stamp dimensions — slightly wider than the card for visual presence
-  const stampW = Math.max(180, Math.round(w * 1.22));
+  // Stamp dimensions — must fit WITHIN the card's visual area.
+  // Card is lifted to scale 1.28, so its visual width = w * 1.28.
+  // Use 82% of that so the stamp sits clearly inside the card borders.
+  const stampW = Math.max(80, Math.round(w * 1.28 * 0.82));
   const stampH = Math.round(stampW * (VBOX_H / VBOX_W));  // maintain aspect
   const stampLeft = midX - stampW / 2;
   const stampTop  = midY - stampH / 2;
