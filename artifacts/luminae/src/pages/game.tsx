@@ -2462,7 +2462,6 @@ export default function GameBoard() {
       return;
     }
     if (queueLegality.actionType === 'take3') {
-      gameAudio.playChipsCollected();
       triggerHarvestBurst(selectedCrystals);
       pendingHarvestCheckRef.current = {
         gems: Object.keys(selectedCrystals) as GemKey[],
@@ -2480,7 +2479,6 @@ export default function GameBoard() {
       executeAction({ type: 'take_three_crystals', crystals: selectedCrystals });
       flashSent('harness');
     } else if (queueLegality.actionType === 'take2') {
-      gameAudio.playChipsCollected();
       triggerHarvestBurst(selectedCrystals);
       pendingHarvestCheckRef.current = {
         gems: Object.keys(selectedCrystals) as GemKey[],
@@ -2510,7 +2508,6 @@ export default function GameBoard() {
     if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
-    gameAudio.playChipsCollected();
     triggerHarvestBurst(returnPhase.pendingTake);
     pendingHarvestCheckRef.current = {
       gems: Object.keys(returnPhase.pendingTake) as GemKey[],
