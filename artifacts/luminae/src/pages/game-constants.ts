@@ -116,3 +116,17 @@ export const GEM_BURST_SETTLE_MS = 550;
  *  Covers the card shrink, the deal-from-deck fly/flip, and the trailing settle buffer.
  *  = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS */
 export const ABRIDGED_FORGE_LOCK_MS = ABRIDGED_SHRINK_MS + DEAL_ANIM_MS + ANIM_LOCK_BUFFER_MS;
+
+/** Total duration of the CipherApertureAnimation in "game" mode (ms).
+ *  Phase breakdown: forefront(180) + circuit(950) + compress(600) + travel(620) + arrive(330) = 2680.
+ *  Must stay in sync with PHASE_DUR.game inside CipherApertureAnimation.tsx. */
+export const CIPHER_GAME_TOTAL_MS = 2680;
+
+/** Delay before firing post-cipher deal/absorb callbacks (ms).
+ *  Adds a 70 ms lead-in so the replacement slot appears just as the cipher animation fully
+ *  clears, rather than at the exact moment the final phase completes.
+ *  = CIPHER_GAME_TOTAL_MS + 70 */
+export const CIPHER_DEAL_FIRE_DELAY_MS = CIPHER_GAME_TOTAL_MS + 70;
+
+/** How long the arrival label lingers after the cipher animation completes before fading (ms). */
+export const ARRIVAL_LABEL_LINGER_MS = 250;

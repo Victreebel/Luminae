@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { ARRIVAL_LABEL_LINGER_MS } from '../pages/game-constants';
 
 // ─── Cipher Aperture Animation ────────────────────────────────────────────────
 // Encrypt/Reserve animation for reserve_card-with-cardId actions.
@@ -47,19 +48,6 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
   tutorial: { forefront: 180, circuit: 900, compress: 580, sigil: 0, travel: 600, arrive: 350 },
 };
 
-export const ARRIVAL_LABEL_LINGER_MS = 250;
-
-/** Total duration of the CipherApertureAnimation in "game" mode (ms).
- *  Derived from PHASE_DUR.game so future speed tweaks automatically propagate. */
-export const CIPHER_GAME_TOTAL_MS: number =
-  PHASE_DUR.game.forefront + PHASE_DUR.game.circuit + PHASE_DUR.game.compress +
-  PHASE_DUR.game.travel   + PHASE_DUR.game.arrive; // 180+950+600+620+330 = 2680
-
-/** Delay before firing post-cipher deal/absorb callbacks (ms).
- *  Adds a 70 ms lead-in so the slot appears just as the cipher animation fully clears,
- *  rather than at the exact moment the final phase completes.
- *  = CIPHER_GAME_TOTAL_MS + 70 */
-export const CIPHER_DEAL_FIRE_DELAY_MS = CIPHER_GAME_TOTAL_MS + 70;
 
 export function CipherApertureAnimation({
   animKey, mode, sourceRect, affinityHex, cardName, cardFace,
