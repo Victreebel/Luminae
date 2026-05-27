@@ -25,7 +25,7 @@ import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
-import { CipherApertureAnimation, CipherSigil, ARRIVAL_LABEL_LINGER_MS } from '@/components/CipherApertureAnimation';
+import { CipherApertureAnimation, CipherSigil, ARRIVAL_LABEL_LINGER_MS, CIPHER_GAME_TOTAL_MS } from '@/components/CipherApertureAnimation';
 import { ForgeButton, EncryptButton } from '@/components/ForgeEncryptButton';
 
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1434,7 +1434,7 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
-              setAnimEndTime(6500); // cipher animation + deal-from-deck + buffer
+              setAnimEndTime(abridgedAnims ? 550 : CIPHER_GAME_TOTAL_MS + 1700 + 270); // cipher + deal-from-deck + buffer
               setHiddenSlots(new Set([slotKey]));
               // Deal replacement card from deck after the cipher aperture animation clears.
               const cipherSeq = cipherBurstKeyRef.current;
@@ -1471,7 +1471,7 @@ export default function GameBoard() {
                     });
                     gameAudio.playCardDraw();
                   } else {
-                    setAnimEndTime(5800);
+                    setAnimEndTime(5700);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
                     if (marketCompact) {
@@ -1492,7 +1492,7 @@ export default function GameBoard() {
                 } else {
                   setHiddenSlots(new Set());
                 }
-              }, 3500);
+              }, abridgedAnims ? 450 : CIPHER_GAME_TOTAL_MS + 70);
               cardAnimTimersRef.current.push(tCipherDeal);
             }
             break;
@@ -1796,7 +1796,7 @@ export default function GameBoard() {
             const destRect = destEl?.getBoundingClientRect();
             cipherBurstKeyRef.current += 1;
             cipherBurstIsDeckRef.current = isLocalReserve;
-            setAnimEndTime(3500);
+            setAnimEndTime(abridgedAnims ? 550 : CIPHER_GAME_TOTAL_MS + 100);
             setCipherBurst({
               key: cipherBurstKeyRef.current,
               sourceRect: deckRect
@@ -5682,7 +5682,24 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Cipher Aperture Burst — Encrypt / Reserve from market ── */}
-      {cipherBurst && (
+      {cipherBurst && (abridgedAnims ? (
+        <AbridgedForgeAnimation
+          key={cipherBurst.key}
+          animKey={cipherBurst.key}
+          card={cipherBurst.card}
+          tier={cipherBurst.tier}
+          startRect={cipherBurst.sourceRect}
+          destPos={cipherBurst.destPos}
+          ownerName={cipherBurst.ownerName}
+          onComplete={() => {
+            if (cipherBurstIsDeckRef.current) {
+              setSingularityAbsorbKey(k => k + 1);
+              cipherBurstIsDeckRef.current = false;
+            }
+            setCipherBurst(null);
+          }}
+        />
+      ) : (
         <CipherApertureAnimation
           animKey={cipherBurst.key}
           mode="game"
@@ -5704,7 +5721,7 @@ export default function GameBoard() {
             setTimeout(() => setCipherBurst(null), ARRIVAL_LABEL_LINGER_MS + 220);
           }}
         />
-      )}
+      ))}
 
       {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
       {dealingCard && (() => {

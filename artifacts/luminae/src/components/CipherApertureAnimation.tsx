@@ -49,6 +49,12 @@ const PHASE_DUR: Record<CipherApertureMode, Record<Phase, number>> = {
 
 export const ARRIVAL_LABEL_LINGER_MS = 250;
 
+/** Total duration of the CipherApertureAnimation in "game" mode (ms).
+ *  Derived from PHASE_DUR.game so future speed tweaks automatically propagate. */
+export const CIPHER_GAME_TOTAL_MS: number =
+  PHASE_DUR.game.forefront + PHASE_DUR.game.circuit + PHASE_DUR.game.compress +
+  PHASE_DUR.game.travel   + PHASE_DUR.game.arrive; // 180+950+600+620+330 = 2680
+
 export function CipherApertureAnimation({
   animKey, mode, sourceRect, affinityHex, cardName, cardFace,
   destPos, gotFlux, ownerName, onComplete, skipForefront,
