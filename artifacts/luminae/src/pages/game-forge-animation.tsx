@@ -712,21 +712,26 @@ export function OpponentForgeAnimation({
           }}
           initial={{ opacity: 1, scaleX: 1.10, scaleY: 0.80, rotate: -10 }}
           animate={{
-            opacity: [1,    1,       1,       0      ],
+            // 3-keyframe properties (times: [0, tFlyL, 1.0])
+            opacity: [1,    1,       0      ],
+            x:       [0,    0,       flyDX  ],
+            y:       [0,    0,       flyDY  ],
+            // 4-keyframe properties (times: [0, tSpring, tFlyL, 1.0])
             scaleX:  [1.10, 1.0,     1.0,     0.12   ],
             scaleY:  [0.80, 1.0,     1.0,     0.12   ],
             rotate:  [-10,  -10,     -10,     -10    ],
-            x:       [0,    0,       0,       flyDX  ],
-            y:       [0,    0,       0,       flyDY  ],
           }}
           transition={{
             duration: subDur,
-            times:  [0, tSpring, tFlyL, 1.0],
-            x:      { ease: [0.4, 0, 1, 1] },
-            y:      { ease: [0.4, 0, 1, 1] },
-            scaleX: { ease: [0.4, 0, 1, 1] },
-            scaleY: { ease: [0.4, 0, 1, 1] },
-            opacity:{ ease: 'linear' },
+            // Each property has its own explicit times to avoid Framer Motion
+            // falling back to evenly-distributed times when times.length ≠
+            // keyframes.length (the root cause of the previous lingering bug).
+            opacity: { times: [0, tFlyL, 1.0],          ease: 'linear' },
+            x:       { times: [0, tFlyL, 1.0],          ease: [0.4, 0, 1, 1] },
+            y:       { times: [0, tFlyL, 1.0],          ease: [0.4, 0, 1, 1] },
+            scaleX:  { times: [0, tSpring, tFlyL, 1.0], ease: [0.4, 0, 1, 1] },
+            scaleY:  { times: [0, tSpring, tFlyL, 1.0], ease: [0.4, 0, 1, 1] },
+            rotate:  { times: [0, tSpring, tFlyL, 1.0], ease: 'linear' },
           }}
         >
           <StampSVG
