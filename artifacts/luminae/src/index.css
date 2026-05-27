@@ -505,7 +505,7 @@ button,
   width: 50%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(200, 185, 255, 0.13), rgba(180, 165, 255, 0.06), transparent);
-  animation: encrypt-sweep 7s ease-in-out infinite;
+  animation: encrypt-sweep 4.5s ease-in-out infinite;
   pointer-events: none;
   z-index: 5;
 }
@@ -515,7 +515,7 @@ button,
   50%       { opacity: 1.0; }
 }
 .encrypt-ambient {
-  animation: encrypt-ambient-pulse 4.4s ease-in-out infinite;
+  animation: encrypt-ambient-pulse 2.8s ease-in-out infinite;
 }
 
 @keyframes encrypt-ambient-pending-pulse {
@@ -584,7 +584,7 @@ button,
   }
 }
 .encrypt-medallion-glow {
-  animation: encrypt-medallion-pulse 4.0s ease-in-out infinite;
+  animation: encrypt-medallion-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes encrypt-medallion-pending-pulse {
