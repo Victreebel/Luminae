@@ -2971,14 +2971,14 @@ export default function GameBoard() {
             <div
               className="flex items-center gap-3 px-4 py-2.5 border-b"
               style={{
-                background: 'rgba(4, 12, 36, 0.92)',
-                borderColor: 'rgba(59, 130, 246, 0.25)',
+                background: 'rgba(45, 24, 4, 0.93)',
+                borderColor: 'rgba(251, 191, 36, 0.28)',
                 boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
               }}
             >
               <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(147, 197, 253, 0.65)' }}>Planned</span>
-                <span className="text-xs font-medium text-blue-100/90 truncate leading-snug">
+                <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'rgba(251, 191, 36, 0.6)' }}>Planned</span>
+                <span className="text-xs font-medium text-amber-100/90 truncate leading-snug">
                   {getPlannedActionSummary(myPlannedAction)}
                 </span>
               </div>
