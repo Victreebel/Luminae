@@ -5602,6 +5602,7 @@ export default function GameBoard() {
             tier={cardActionBurst.tier}
             startRect={cardActionBurst.startRect}
             destPos={cardActionBurst.destPos}
+            ownerName={cardActionBurst.playerName}
             onComplete={() => {
               const el = document.querySelector('[data-nav-hand]');
               const r = el?.getBoundingClientRect();
