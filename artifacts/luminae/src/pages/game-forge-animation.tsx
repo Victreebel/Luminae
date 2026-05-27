@@ -1,19 +1,20 @@
 /**
- * ForgeAnimation — stamp-and-fly sequence.
+ * ForgeAnimation — local player stamp-and-fly sequence.
+ * OpponentForgeAnimation — two-phase opponent forge: stamp in place, then fly to chip.
  *
- * Step 1  (0–180ms)   : Card lifts to viewport centre.
- * Step 2  (180–440ms) : Affinity streams flow from wells into card.
- * Step 3  (440–800ms) : Stamp SVG descends, slams card, explodes into sparks.
- *                       Tattooed impression (−10°, inside card) is left behind.
- * Step 4  (800–1150ms): Card + tattoo arc to destination and shrink away.
+ * ForgeAnimation steps:
+ *   Step 1  (0–180ms)   : Card lifts to viewport centre.
+ *   Step 2  (180–440ms) : Affinity streams flow from wells into card.
+ *   Step 3  (440–800ms) : Stamp SVG descends, slams card, explodes into sparks.
+ *                         Tattooed impression (−10°, inside card) is left behind.
+ *   Step 4  (800–1150ms): Card + tattoo arc to destination and shrink away.
  *
- * Total: ~1.15 s
+ * OpponentForgeAnimation steps:
+ *   Phase 1 (0–600ms)   : Card stays in its market/hand slot; stamp descends, slams,
+ *                         affinity aura pulses, tattoo appears then fades.
+ *   Phase 2 (600–1200ms): Card flies to opponent chip and shrinks away.
  *
- * Tattoo is a CHILD of the card motion.div (no overflow-hidden on card motion.div)
- * so it inherits scale/translate automatically and is always within the card.
- *
- * Descending stamp is a separate fixed element — it drops, squishes, then fades
- * to 0 opacity (the "explosion"), after which only the tattoo remains.
+ * StampSVG and resolveAccent are shared by both.
  */
 
 import { motion } from 'framer-motion';
@@ -24,12 +25,19 @@ import { GEM_META, type GemKey } from '@/lib/gemMeta';
 import { gameAudio } from '@/lib/audio';
 import { Sparkles } from 'lucide-react';
 
-// ── Timing (seconds) ────────────────────────────────────────────────────────
+// ── Timing (seconds) — ForgeAnimation ────────────────────────────────────────
 const LIFT_END    = 0.18;
 const STREAMS_END = 0.44;
 const STAMP_HIT   = 0.60;
 const STAMP_HOLD  = 0.80;
 const ARC_END     = 1.15;
+
+// ── Timing (seconds) — OpponentForgeAnimation ────────────────────────────────
+const OP_STAMP_SHOW = 0.05;   // stamp starts descending (becomes visible)
+const OP_STAMP_HIT  = 0.28;   // slam
+const OP_STAMP_GONE = 0.50;   // stamp fully gone
+const OP_FLY_START  = 0.60;   // card lifts off
+const OP_TOTAL      = 1.20;   // animation complete
 
 // ── Viewport-relative sizing ─────────────────────────────────────────────────
 function vmin(f: number) {
@@ -55,11 +63,9 @@ function darkenHex(hex: string, factor: number): string {
 }
 
 // ── Accent triple ─────────────────────────────────────────────────────────────
-// Derived from the card's bonusColor. Falls back to amber/gold for flux or
-// cards with no bonusColor.
-const AMBER_ACCENT  = '#CC7C08';
-const AMBER_GLOW    = '#FFD080';
-const AMBER_DARK    = '#A06010';
+const AMBER_ACCENT = '#CC7C08';
+const AMBER_GLOW   = '#FFD080';
+const AMBER_DARK   = '#A06010';
 
 function resolveAccent(bonusColor?: string | null): {
   accent: string; accentGlow: string; accentDark: string;
@@ -79,8 +85,6 @@ function resolveAccent(bonusColor?: string | null): {
 }
 
 // ── StampSVG ──────────────────────────────────────────────────────────────────
-// Rectangular border + crossed hammers + FORGED.
-// Reused for both the descending stamp and the card tattoo.
 const VBOX_W = 220;
 const VBOX_H = 100;
 
@@ -91,7 +95,7 @@ function StampSVG({
   width: number; height: number;
   accent: string; accentGlow: string; accentDark: string;
 }) {
-  const cx = VBOX_W / 2;   // 110
+  const cx = VBOX_W / 2;
   const hammerY = 32;
   const textY   = 83;
 
@@ -114,30 +118,21 @@ function StampSVG({
         </filter>
       </defs>
 
-      {/* Dark fill */}
       <rect x="4" y="4" width={VBOX_W - 8} height={VBOX_H - 8} rx="4" fill="rgba(0,0,0,0.62)" />
-
-      {/* Outer border */}
       <rect x="4" y="4" width={VBOX_W - 8} height={VBOX_H - 8} rx="4"
             fill="none" stroke={accent} strokeWidth="4.5" filter="url(#stGlow)" />
-      {/* Inner accent line */}
       <rect x="9" y="9" width={VBOX_W - 18} height={VBOX_H - 18} rx="2.5"
             fill="none" stroke={accent} strokeWidth="1.2" opacity="0.45" />
-
-      {/* Horizontal separator */}
       <line x1="20" y1="50" x2={VBOX_W - 20} y2="50"
             stroke={accent} strokeWidth="1.5" opacity="0.5" />
 
-      {/* Crossed hammers — each hammer = head rect + handle rect, rotated ±45° */}
       <g filter="url(#stGlow)">
-        {/* Hammer 1: −45° */}
         <g transform={`translate(${cx},${hammerY}) rotate(-45)`}>
           <rect x="-14" y="-26" width="28" height="15" rx="3" fill={accent} />
           <rect x="-11" y="-22" width="10" height="7"  rx="1.5" fill={accentGlow} opacity="0.38" />
           <rect x="-4.5" y="-11" width="9" height="29" rx="2.5" fill={accentDark} />
           <rect x="-2"   y="-9"  width="3" height="18" rx="1"   fill={accentGlow} opacity="0.28" />
         </g>
-        {/* Hammer 2: +45° */}
         <g transform={`translate(${cx},${hammerY}) rotate(45)`}>
           <rect x="-14" y="-26" width="28" height="15" rx="3" fill={accent} />
           <rect x="-11" y="-22" width="10" height="7"  rx="1.5" fill={accentGlow} opacity="0.38" />
@@ -146,7 +141,6 @@ function StampSVG({
         </g>
       </g>
 
-      {/* FORGED — base pass */}
       <text x={cx} y={textY}
             fontFamily='"Cinzel Decorative", "Cinzel", Georgia, serif'
             fontWeight="900" fontSize="30" fill={accent}
@@ -154,7 +148,6 @@ function StampSVG({
             filter="url(#stTextGlow)">
         FORGED
       </text>
-      {/* FORGED — bright overlay */}
       <text x={cx} y={textY}
             fontFamily='"Cinzel Decorative", "Cinzel", Georgia, serif'
             fontWeight="900" fontSize="30" fill={accentGlow} fillOpacity="0.40"
@@ -180,7 +173,15 @@ export interface ForgeAnimationProps {
   gotFlux: boolean;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+export interface OpponentForgeAnimationProps {
+  animKey: number;
+  card: ArtifactCard;
+  tier: number;
+  startRect: { x: number; y: number; w: number; h: number };
+  chipCenter: { x: number; y: number };
+}
+
+// ── ForgeAnimation (local player) ─────────────────────────────────────────────
 
 export function ForgeAnimation({
   animKey,
@@ -192,38 +193,30 @@ export function ForgeAnimation({
   lumens,
 }: ForgeAnimationProps) {
   const { x: sx, y: sy, w, h } = startRect;
-
-  // ── Accent color derived from the card's bonusColor ────────────────────────
   const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
 
-  // Card lifts to viewport centre
   const cx = window.innerWidth  / 2 - w / 2;
   const cy = window.innerHeight / 2 - h / 2 - 24;
   const midX = cx + w / 2;
   const midY = cy + h / 2;
 
-  // Destination
   const finalX = destPos?.x ?? midX;
   const finalY = destPos?.y ?? midY;
   const dX = finalX - w / 2;
   const dY = finalY - h / 2;
 
-  // ── Tattoo dimensions (inside card motion.div — inherits card scale) ──────
   const tattooW    = Math.max(55, Math.round(w * 0.75));
   const tattooH    = Math.round(tattooW * VBOX_H / VBOX_W);
   const tattooLeft = (w - tattooW) / 2;
   const tattooTop  = h / 2 - tattooH / 2;
 
-  // ── Descending stamp dimensions (separate fixed element) ──────────────────
   const stampW    = Math.max(70, Math.round(w * 1.28 * 0.78));
   const stampH    = Math.round(stampW * VBOX_H / VBOX_W);
   const stampLeft = midX - stampW / 2;
   const stampTop  = midY - stampH / 2;
 
-  // Shake amplitude
   const SK = Math.round(w * 0.07);
 
-  // Normalised time fractions (all relative to ARC_END)
   const T    = ARC_END;
   const t1   = LIFT_END    / T;
   const t2   = STAMP_HIT   / T;
@@ -233,8 +226,8 @@ export function ForgeAnimation({
   const t6   = STAMP_HOLD  / T;
   const t_se = STREAMS_END / T;
 
-  const cardTimes  = [0, t1, t2, t3, t4, t5, t6, 1.0];
-  const dsTimes    = [0, t_se, t2, t3, t5];
+  const cardTimes = [0, t1, t2, t3, t4, t5, t6, 1.0];
+  const dsTimes   = [0, t_se, t2, t3, t5];
 
   useEffect(() => {
     gameAudio.playForgeAnimation();
@@ -252,7 +245,6 @@ export function ForgeAnimation({
   const tSpring = 0.040 / subDur;
   const tHold   = (STAMP_HOLD - STAMP_HIT) / subDur;
 
-  // Measure affinity-well positions on mount
   const [streams, setStreams] = useState<StreamData[]>([]);
   useEffect(() => {
     const seen = new Set<GemKey>();
@@ -272,7 +264,6 @@ export function ForgeAnimation({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pre-compute color strings used multiple times
   const accentA0  = accent  + '00';
   const accentAA  = accent  + 'AA';
   const accentA66 = accent  + '66';
@@ -287,7 +278,6 @@ export function ForgeAnimation({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.20, delay: ARC_END }}
     >
-      {/* ── Dark backdrop ──────────────────────────────────────────────────── */}
       <motion.div
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
@@ -295,7 +285,6 @@ export function ForgeAnimation({
         transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
       />
 
-      {/* ══ THE CARD — lifts, shakes, then flies to destination ════════════ */}
       <motion.div
         style={{ position: 'fixed', left: 0, top: 0, width: w, height: h }}
         animate={{
@@ -308,7 +297,6 @@ export function ForgeAnimation({
       >
         <ArtifactCardView card={card} tier={tier} />
 
-        {/* Affinity-colored aura */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           animate={{
@@ -322,7 +310,6 @@ export function ForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
         />
 
-        {/* Dark vignette during impact so tattoo pops over card art */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           style={{ background: 'rgba(0,0,0,1)' }}
@@ -330,7 +317,6 @@ export function ForgeAnimation({
           transition={{ duration: ARC_END, times: [0, t2, t3, t6, 1.0] }}
         />
 
-        {/* ── TATTOOED IMPRESSION ─────────────────────────────────────────── */}
         {stamped && (
           <motion.div
             style={{
@@ -358,7 +344,6 @@ export function ForgeAnimation({
         )}
       </motion.div>
 
-      {/* ══ PHASE 2: Affinity energy streams ════════════════════════════════ */}
       {streams.length > 0 && (
         <svg
           className="pointer-events-none fixed inset-0"
@@ -403,7 +388,6 @@ export function ForgeAnimation({
         </svg>
       )}
 
-      {/* ══ PHASE 3: DESCENDING STAMP ════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
         style={{
@@ -429,7 +413,6 @@ export function ForgeAnimation({
         />
       </motion.div>
 
-      {/* Impact flash */}
       <motion.div
         className="pointer-events-none fixed rounded-full"
         style={{
@@ -448,7 +431,6 @@ export function ForgeAnimation({
         }}
       />
 
-      {/* Impact sparks — radial burst from stamp hit point */}
       {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
         const rad  = (deg * Math.PI) / 180;
         const dist = vmin(0.20 + (deg % 60 === 0 ? 0.04 : 0));
@@ -471,7 +453,6 @@ export function ForgeAnimation({
         );
       })}
 
-      {/* Pulse rings at destination on arrival */}
       {destPos && [0, 0.10, 0.20].map((extra) => (
         <motion.div
           key={extra}
@@ -487,7 +468,6 @@ export function ForgeAnimation({
         />
       ))}
 
-      {/* Eminence floater */}
       {lumens > 0 && (
         <motion.div
           className="pointer-events-none fixed flex items-center gap-2 font-bold select-none"
@@ -506,6 +486,217 @@ export function ForgeAnimation({
           +{lumens}
         </motion.div>
       )}
+    </motion.div>
+  );
+}
+
+// ── OpponentForgeAnimation ────────────────────────────────────────────────────
+// Phase 1 (0 → OP_FLY_START): card stays in startRect, stamp descends and slams.
+// Phase 2 (OP_FLY_START → OP_TOTAL): card flies to chipCenter and shrinks away.
+
+export function OpponentForgeAnimation({
+  animKey, card, tier, startRect, chipCenter,
+}: OpponentForgeAnimationProps) {
+  const { x: sx, y: sy, w, h } = startRect;
+  const { accent, accentGlow, accentDark } = resolveAccent(card.bonusColor);
+
+  const cardCX = sx + w / 2;
+  const cardCY = sy + h / 2;
+
+  const stampW    = Math.max(55, Math.round(w * 0.90));
+  const stampH    = Math.round(stampW * VBOX_H / VBOX_W);
+  const stampLeft = cardCX - stampW / 2;
+  const stampTop  = cardCY - stampH / 2;
+
+  const tattooW    = Math.max(48, Math.round(w * 0.74));
+  const tattooH    = Math.round(tattooW * VBOX_H / VBOX_W);
+  const tattooLeft = (w - tattooW) / 2;
+  const tattooTop  = h / 2 - tattooH / 2;
+
+  const flyDX = chipCenter.x - sx - w / 2;
+  const flyDY = chipCenter.y - sy - h / 2;
+
+  // Normalised times relative to OP_TOTAL
+  const T     = OP_TOTAL;
+  const tShow = OP_STAMP_SHOW / T;   // ~0.042
+  const tHit  = OP_STAMP_HIT  / T;  // ~0.233
+  const tGone = OP_STAMP_GONE / T;  // ~0.417
+  const tFly  = OP_FLY_START  / T;  // ~0.500
+
+  // Tattoo sub-animation: mounted at OP_STAMP_HIT, runs for the remaining duration
+  const subDur  = OP_TOTAL - OP_STAMP_HIT;  // 0.92 s
+  const tSpring = 0.04 / subDur;            // spring-release fraction
+
+  const [stamped, setStamped] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setStamped(true), OP_STAMP_HIT * 1000);
+    return () => clearTimeout(id);
+  }, []);
+
+  const accentA0  = accent + '00';
+  const accentAA  = accent + 'AA';
+  const accentG88 = accentGlow + '88';
+  const accent88  = accent + '88';
+
+  return (
+    <motion.div
+      key={animKey}
+      className="pointer-events-none fixed inset-0 z-[52]"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.12, delay: OP_TOTAL }}
+    >
+      {/* ── Card: stays in place during stamp phase, then flies ─────────── */}
+      <motion.div
+        style={{ position: 'fixed', left: sx, top: sy, width: w, height: h }}
+        animate={{
+          x:       [0, 0,    flyDX],
+          y:       [0, 0,    flyDY],
+          scale:   [1, 1,    0.12 ],
+          opacity: [1, 1,    1,   0],
+        }}
+        transition={{
+          duration: T,
+          x:       { duration: T, times: [0, tFly, 1.0], ease: [0.4, 0, 1, 1] },
+          y:       { duration: T, times: [0, tFly, 1.0], ease: [0.4, 0, 1, 1] },
+          scale:   { duration: T, times: [0, tFly, 1.0], ease: [0.4, 0, 1, 1] },
+          opacity: { duration: T, times: [0, 0.78, 1.0], ease: 'linear' },
+        }}
+      >
+        <ArtifactCardView card={card} tier={tier} />
+
+        {/* Affinity aura pulse on impact */}
+        <motion.div
+          className="absolute inset-0 rounded-[6px]"
+          animate={{
+            boxShadow: [
+              `0 0  0px  0px ${accentA0}`,
+              `0 0  0px  0px ${accentA0}`,
+              `0 0 24px 10px ${accentAA}`,
+              `0 0  6px  2px ${accent}33`,
+              `0 0  0px  0px ${accentA0}`,
+            ],
+          }}
+          transition={{ duration: T, times: [0, tHit - 0.02, tHit + 0.08, tGone, tFly] }}
+        />
+
+        {/* Dark vignette during impact */}
+        <motion.div
+          className="absolute inset-0 rounded-[6px]"
+          style={{ background: 'rgba(0,0,0,1)' }}
+          animate={{ opacity: [0, 0, 0.55, 0.55, 0, 0] }}
+          transition={{ duration: T, times: [0, tHit, tHit + 0.06, tGone, tFly, 1.0] }}
+        />
+
+        {/* Tattoo — born at stamp impact, fades during fly */}
+        {stamped && (
+          <motion.div
+            style={{
+              position: 'absolute',
+              left: tattooLeft,
+              top: tattooTop,
+              width: tattooW,
+              height: tattooH,
+              transformOrigin: 'center center',
+            }}
+            initial={{ opacity: 1, scaleY: 0.80, scaleX: 1.10, rotate: -10 }}
+            animate={{
+              opacity: [1,    1,        0   ],
+              scaleY:  [0.80, 1.0,      1.0 ],
+              scaleX:  [1.10, 1.0,      1.0 ],
+              rotate:  [-10,  -10,      -10 ],
+            }}
+            transition={{ duration: subDur, times: [0, tSpring, 1.0] }}
+          >
+            <StampSVG
+              width={tattooW} height={tattooH}
+              accent={accent} accentGlow={accentGlow} accentDark={accentDark}
+            />
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* ── Descending stamp ─────────────────────────────────────────────── */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          left: stampLeft,
+          top: stampTop,
+          width: stampW,
+          height: stampH,
+          transformOrigin: 'center center',
+        }}
+        animate={{
+          y:       [-h * 1.8, -h * 1.8,  0,              0,              0    ],
+          opacity: [0,         1,         1,              0.45,           0    ],
+          scaleY:  [1,         1,         0.72,           0.72,           0.72 ],
+          scaleX:  [1,         1,         1.10,           1.10,           1.10 ],
+          rotate:  [-10,       -10,       -10,            -10,            -10  ],
+        }}
+        transition={{
+          duration: T,
+          times: [0, tShow, tHit, tHit + 0.05 / T, tGone],
+          ease: 'easeInOut',
+        }}
+      >
+        <StampSVG
+          width={stampW} height={stampH}
+          accent={accent} accentGlow={accentGlow} accentDark={accentDark}
+        />
+      </motion.div>
+
+      {/* ── Impact flash ─────────────────────────────────────────────────── */}
+      <motion.div
+        className="pointer-events-none fixed rounded-full"
+        style={{
+          left: cardCX, top: cardCY,
+          translateX: '-50%', translateY: '-50%',
+          background: `radial-gradient(circle, ${accentGlow}FF 0%, ${accent}99 38%, transparent 68%)`,
+        }}
+        initial={{ width: 0, height: 0, opacity: 0 }}
+        animate={{
+          width:   [0, 0, vmin(0.32), 0  ],
+          height:  [0, 0, vmin(0.32), 0  ],
+          opacity: [0, 0, 0.85,       0  ],
+        }}
+        transition={{
+          duration: OP_STAMP_GONE,
+          times: [0, tHit - 0.01, tHit + 0.08, 1.0],
+        }}
+      />
+
+      {/* ── Impact sparks ────────────────────────────────────────────────── */}
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+        const rad    = (deg * Math.PI) / 180;
+        const dist   = vmin(0.10 + (deg % 90 === 0 ? 0.02 : 0));
+        const sz     = Math.max(4, vmin(0.011));
+        const bright = deg % 90 === 0;
+        return (
+          <motion.div
+            key={deg}
+            className="pointer-events-none fixed rounded-full"
+            style={{
+              left: cardCX - sz / 2, top: cardCY - sz / 2,
+              width: sz, height: sz,
+              background: bright ? accentGlow : accent,
+              boxShadow: `0 0 ${sz * 0.9}px ${sz * 0.4}px ${bright ? accentG88 : accent88}`,
+            }}
+            initial={{ x: 0, y: 0, scale: 1.2, opacity: 0 }}
+            animate={{
+              x: Math.cos(rad) * dist,
+              y: Math.sin(rad) * dist,
+              scale: 0,
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              delay: OP_STAMP_HIT,
+              duration: 0.26,
+              ease: 'easeOut',
+              opacity: { times: [0, 0.08, 1] },
+            }}
+          />
+        );
+      })}
     </motion.div>
   );
 }

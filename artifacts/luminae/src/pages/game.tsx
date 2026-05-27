@@ -62,7 +62,7 @@ import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
-import { ForgeAnimation } from './game-forge-animation';
+import { ForgeAnimation, OpponentForgeAnimation } from './game-forge-animation';
 
 type ActiveTab = 'board' | 'hand' | 'log';
 
@@ -1162,7 +1162,7 @@ export default function GameBoard() {
 
                 opponentForgeAbsorbKeyRef.current += 1;
                 const absorbSeq = opponentForgeAbsorbKeyRef.current;
-                setAnimEndTime(900); // 650ms fly + 250ms pulse buffer
+                setAnimEndTime(1600); // 1250ms stamp+fly + 350ms pulse buffer
                 setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; });
                 setOpponentForgeAbsorb({
                   key: absorbSeq,
@@ -1186,6 +1186,7 @@ export default function GameBoard() {
                   setOpponentForgeAbsorb(null);
                   // Flash the chip with an absorption pulse ring.
                   setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
+
                   if (newCard) {
                     const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
                     const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
@@ -1234,7 +1235,7 @@ export default function GameBoard() {
                   } else {
                     setHiddenSlots(new Set());
                   }
-                }, 650);
+                }, 1250);
                 cardAnimTimersRef.current.push(tOpponent);
               } else {
                 // ── Local player forge: full celebration burst ──────────────────
@@ -1471,7 +1472,7 @@ export default function GameBoard() {
           const absorbSeq = opponentForgeAbsorbKeyRef.current;
           for (const t of cardAnimTimersRef.current) clearTimeout(t);
           cardAnimTimersRef.current = [];
-          setAnimEndTime(900);
+          setAnimEndTime(1600);
           setOpponentForgeAbsorb({
             key: absorbSeq,
             card: reservedCard,
@@ -1486,7 +1487,7 @@ export default function GameBoard() {
             if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
             setOpponentForgeAbsorb(null);
             setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
-          }, 650);
+          }, 1250);
           cardAnimTimersRef.current.push(tAbsorb);
         }
       }
@@ -5556,42 +5557,18 @@ export default function GameBoard() {
       </AnimatePresence>
 
 
-      {/* ── Opponent Forge Absorb — card shrinks and flies into opponent's chip ── */}
+      {/* ── Opponent Forge — stamp in place then fly to chip ── */}
       <AnimatePresence>
-        {opponentForgeAbsorb && (() => {
-          const { startRect, chipCenter } = opponentForgeAbsorb;
-          const w = startRect.w;
-          const h = startRect.h;
-          return (
-            <motion.div
-              key={opponentForgeAbsorb.key}
-              className="pointer-events-none fixed z-[52]"
-              style={{
-                left: startRect.x,
-                top: startRect.y,
-                width: w,
-                height: h,
-              }}
-              initial={{ scale: 1, opacity: 1, x: 0, y: 0 }}
-              animate={{
-                scale: 0.12,
-                opacity: [1, 1, 0],
-                x: chipCenter.x - startRect.x - w / 2,
-                y: chipCenter.y - startRect.y - h / 2,
-              }}
-              transition={{
-                duration: 0.6,
-                ease: [0.4, 0, 1, 1],
-                opacity: { duration: 0.6, times: [0, 0.72, 1], ease: 'linear' },
-                scale: { duration: 0.6, ease: [0.4, 0, 1, 1] },
-                x: { duration: 0.6, ease: [0.4, 0, 1, 1] },
-                y: { duration: 0.6, ease: [0.4, 0, 1, 1] },
-              }}
-            >
-              <ArtifactCardView card={opponentForgeAbsorb.card} tier={opponentForgeAbsorb.tier} />
-            </motion.div>
-          );
-        })()}
+        {opponentForgeAbsorb && (
+          <OpponentForgeAnimation
+            key={opponentForgeAbsorb.key}
+            animKey={opponentForgeAbsorb.key}
+            card={opponentForgeAbsorb.card}
+            tier={opponentForgeAbsorb.tier}
+            startRect={opponentForgeAbsorb.startRect}
+            chipCenter={opponentForgeAbsorb.chipCenter}
+          />
+        )}
       </AnimatePresence>
 
       {/* ── Cipher Aperture Burst — Encrypt / Reserve from market ── */}
