@@ -3,7 +3,14 @@
 // regardless of whether the writer is a human action handler or the AI turn
 // runner.
 
+import { logger } from './logger';
+
 const queues = new Map<string, Promise<unknown>>();
+
+// Safety net: if a task passed to withRoomLock hangs indefinitely (e.g. an
+// unhandled DB promise that never settles), release the lock after this many
+// milliseconds so subsequent actions are not permanently blocked.
+const LOCK_TIMEOUT_MS = 30_000;
 
 export async function withRoomLock<T>(
   roomId: string,
@@ -15,12 +22,26 @@ export async function withRoomLock<T>(
     release = resolve;
   });
   // Chain the new task after the previous one finishes (success or failure)
-  const task = prev.then(() => fn()).finally(() => {
-    release();
-    // Clean up if we're the tail of the queue
-    if (queues.get(roomId) === current) {
-      queues.delete(roomId);
-    }
+  const task = prev.then(() => {
+    let released = false;
+    const doRelease = () => {
+      if (released) return;
+      released = true;
+      release();
+      // Clean up if we're the tail of the queue
+      if (queues.get(roomId) === current) {
+        queues.delete(roomId);
+      }
+    };
+    // Watchdog: forcibly release the lock if fn() never settles.
+    const timeout = setTimeout(() => {
+      logger.error({ roomId }, 'Room lock held >30 s — releasing to prevent deadlock');
+      doRelease();
+    }, LOCK_TIMEOUT_MS);
+    return fn().finally(() => {
+      clearTimeout(timeout);
+      doRelease();
+    });
   });
   const current = prev.then(() => next);
   queues.set(roomId, current);

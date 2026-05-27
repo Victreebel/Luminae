@@ -283,7 +283,7 @@ export function LuminaryClaimedPortal({
 
       {/* AI affinity indicator — shown for medium/hard AI players only */}
       {isAIPortal && activeKey && (
-        <div className="absolute z-20 pointer-events-none" style={{ top: 28, right: 6 }}>
+        <div className="absolute z-20 pointer-events-none" style={{ top: '22%', right: 6 }}>
           {/* Affinity-switch burst rings — key increment remounts so animation replays on every toggle */}
           {affinityFlashColor && (
             <>

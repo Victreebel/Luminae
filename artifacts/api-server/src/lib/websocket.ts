@@ -179,6 +179,17 @@ async function handleClose(ws: WebSocket, roomId: string, playerId: string, play
   room.delete(playerId);
   if (room.size === 0) connections.delete(roomId);
 
+  // Yield one event-loop tick so a near-simultaneous reconnect (rapid refresh)
+  // has a chance to register its new WS in the connections map before we decide
+  // to mark the player offline. Without this yield, a late-firing close handler
+  // from the old socket can overwrite the isConnected:true set by the new socket.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+  // If the player already reconnected during that tick their new socket is now
+  // in the map and wrote isConnected:true — skip our stale disconnect update.
+  const freshRoom = connections.get(roomId);
+  if (freshRoom?.has(playerId)) return;
+
   try {
     await db
       .update(playersTable)
