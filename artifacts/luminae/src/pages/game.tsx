@@ -1353,9 +1353,10 @@ export default function GameBoard() {
               cipherBurstKeyRef.current += 1;
               const isLocalReserve = (action.playerId as string | undefined) === session?.playerId;
               cipherBurstIsDeckRef.current = isLocalReserve;
+              const reserveActorId = action.playerId as string;
               const destEl = isLocalReserve
                 ? document.querySelector('[data-singularity-well]')
-                : document.querySelector('[data-nav-log]');
+                : document.querySelector(`[data-opponent-chip="${reserveActorId}"]`);
               const destElRect = destEl?.getBoundingClientRect();
               setCipherBurst({
                 key: cipherBurstKeyRef.current,
@@ -1383,6 +1384,9 @@ export default function GameBoard() {
               const cipherNewCard = marketsNew[tier][idx];
               const tCipherDeal = setTimeout(() => {
                 if (cipherBurstKeyRef.current !== cipherSeq) return;
+                if (!isLocalReserve) {
+                  setChipAbsorbPulse(prev => ({ ...prev, [reserveActorId]: (prev[reserveActorId] ?? 0) + 1 }));
+                }
                 if (cipherNewCard) {
                   const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
                   const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
