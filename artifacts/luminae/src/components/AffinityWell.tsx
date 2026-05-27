@@ -504,12 +504,13 @@ export function AffinityWellCells({
                       if (isFlux) {
                         onOpenReserved();
                       } else if (showForgedLink && !selectable) {
+                        // Off-turn: tapping a cell with a forged bonus shows the forged list
                         onOpenForged(c);
                       } else if (selectable && !bankEmpty) {
+                        // On-turn, bank available: harvest crystal
                         onCrystalClick(c as keyof CrystalCounts);
-                      } else if (showForgedLink) {
-                        onOpenForged(c);
                       }
+                      // On-turn + bankEmpty → do nothing (well is dry)
                     }}
                     style={{
                       width: CELL_W,
