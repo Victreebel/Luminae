@@ -2951,24 +2951,26 @@ export default function GameBoard() {
         {myPlannedAction && (
           <motion.div
             key="planned-action-box"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
-            className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-50 w-[min(92vw,420px)] -translate-x-1/2 pointer-events-auto"
+            className="fixed top-1/2 left-1/2 z-50 w-[min(92vw,400px)] -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
           >
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/90 border border-amber-500/40 backdrop-blur-sm shadow-[0_2px_20px_rgba(251,191,36,0.18)]">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-400/80 shrink-0">Queued</span>
-              <span className="text-[10px] text-amber-200/70 flex-1 truncate">
-                {getPlannedActionSummary(myPlannedAction)}
-              </span>
+            <div className="flex flex-col gap-3 px-5 py-4 rounded-xl bg-amber-950/95 border border-amber-500/50 backdrop-blur-sm shadow-[0_4px_32px_rgba(251,191,36,0.25)]">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/80">Action Queued</span>
+                <span className="text-sm text-amber-200/90 leading-snug">
+                  {getPlannedActionSummary(myPlannedAction)}
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleCancelPlan}
-                className="flex items-center gap-1 text-[10px] font-semibold text-amber-300/80 hover:text-amber-200 bg-amber-900/30 hover:bg-amber-800/40 border border-amber-500/30 rounded-md px-2 py-0.5 shrink-0 transition-colors"
+                className="flex items-center justify-center gap-2 w-full text-sm font-bold text-amber-950 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 rounded-lg px-4 py-2.5 transition-colors"
               >
-                <CalendarX className="h-3 w-3" />
-                Cancel
+                <CalendarX className="h-4 w-4" />
+                Cancel Plan
               </button>
             </div>
           </motion.div>
