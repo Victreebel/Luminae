@@ -59,3 +59,8 @@ export const localTurnVariants = {
   idle:   { scale: 1 },
   active: { scale: [1, 1.07, 1], transition: { duration: 0.4,  ease: [0.34, 1.56, 0.64, 1] as const } },
 };
+
+/** Duration of the deal-from-deck (card fly + flip) animation in ms.
+ *  Used by setAnimEndTime in both the initial guard and the deck-found branch
+ *  so both call sites derive from the same source. */
+export const DEAL_ANIM_MS = 1700;

@@ -58,7 +58,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -1434,7 +1434,7 @@ export default function GameBoard() {
               setBurstGhostCards(prev => { const n = { ...prev }; delete n[slotKey]; return n; }); // cipher burst now owns the card
               if (gotFlux) gameAudio.playFluxCoin();
               gameAudio.playCipherSeal();
-              setAnimEndTime(abridgedAnims ? 550 : CIPHER_GAME_TOTAL_MS + 1700 + 270); // cipher + deal-from-deck + buffer
+              setAnimEndTime(abridgedAnims ? 450 + DEAL_ANIM_MS + 270 : CIPHER_GAME_TOTAL_MS + DEAL_ANIM_MS + 270); // cipher + deal-from-deck + buffer
               setHiddenSlots(new Set([slotKey]));
               // Deal replacement card from deck after the cipher aperture animation clears.
               const cipherSeq = cipherBurstKeyRef.current;
@@ -1450,7 +1450,7 @@ export default function GameBoard() {
                   const deckR = deckEl?.getBoundingClientRect();
                   const slotR = slotEl?.getBoundingClientRect();
                   if (deckR && slotR) {
-                    setAnimEndTime(1700);
+                    setAnimEndTime(DEAL_ANIM_MS);
                     const _rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
                     const _faceScale = slotR.width / _rawCardW;
                     const _startX = deckR.left + (deckR.width  - slotR.width)  / 2;
