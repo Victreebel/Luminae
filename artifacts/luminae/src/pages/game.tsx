@@ -1331,7 +1331,7 @@ export default function GameBoard() {
                   } else {
                     setHiddenSlots(new Set());
                   }
-                }, 1500); // 1400ms forge anim + 100ms buffer
+                }, 1300); // 1150ms forge anim + 150ms buffer
                 cardAnimTimersRef.current.push(t1);
                 // Hand-panel absorption pulse — fires as the card reaches the tab.
                 // Timed 300ms before the burst clears so the rings are visually

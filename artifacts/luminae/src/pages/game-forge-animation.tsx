@@ -1,17 +1,12 @@
 /**
- * ForgeAnimation — 6-step forge card animation sequence.
+ * ForgeAnimation — simplified stamp-and-fly sequence.
  *
- * Step 1  (0–150ms)   : Card Lifts & Forge Awakens — lifts to centre, solar aura builds.
- * Step 2  (150–400ms) : Affinity Cost Burns In — curved coloured streams flow from wells.
- * Step 3  (400–650ms) : Forge Manifestation Peak — gold-white radial burst, outward rays.
- * Step 4  (650–950ms) : Hammer Stamp — hammer descends, FORGED stamps on card, card shakes.
- * Step 5  (950–1150ms): Compression Into Seal — card compresses into golden medallion.
- * Step 6  (1150–1400ms): Arc to Owner & Absorb — seal arcs to dest, destination pulses.
+ * Step 1  (0–180ms)   : Card lifts to viewport centre.
+ * Step 2  (180–440ms) : Affinity streams flow from wells into card.
+ * Step 3  (440–800ms) : Hammer descends and stamps FORGED on card; card shakes.
+ * Step 4  (800–1150ms): Stamped card arcs to destination and shrinks away.
  *
- * Total: ~1.4 s   Visual language: solar gold, white-hot, affinity colours, antique brass.
- *
- * IMPORTANT: Burst-effect sizes are viewport-relative (vmin), NOT card-pixel-relative.
- * The card is ~130px wide; sizing rays/sparks off that made them invisible.
+ * Total: ~1.15 s
  */
 
 import { motion } from 'framer-motion';
@@ -22,41 +17,25 @@ import { GEM_META, type GemKey } from '@/lib/gemMeta';
 import { Sparkles } from 'lucide-react';
 
 // ── Timing (seconds) ────────────────────────────────────────────────────────
-const LIFT_END    = 0.15;
-const STREAMS_END = 0.40;
-// PEAK_END = 0.65 s — baked into delay offsets, not a named constant
-const STAMP_HIT   = 0.77;
-const STAMP_END   = 0.95;
-const SEAL_END    = 1.15;
-const ARC_END     = 1.40;
+const LIFT_END    = 0.18;   // card arrives at centre
+const STREAMS_END = 0.44;   // affinity streams done
+const STAMP_HIT   = 0.60;   // hammer makes contact
+const STAMP_HOLD  = 0.80;   // hammer leaves, card settled
+const ARC_END     = 1.15;   // card arrives at destination
 
-// ── Viewport-relative sizes (computed once at render) ────────────────────────
-// Using Math.min(innerWidth, innerHeight) as "vmin" so the burst fills small viewports.
-function vmin(fraction: number): number {
-  return Math.min(window.innerWidth, window.innerHeight) * fraction;
+// ── Viewport-relative sizing ─────────────────────────────────────────────────
+function vmin(f: number) {
+  return Math.min(window.innerWidth, window.innerHeight) * f;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Quadratic bezier SVG path that curves perpendicular to the travel direction. */
 function arcPath(fx: number, fy: number, tx: number, ty: number, sign = 1): string {
   const dx = tx - fx, dy = ty - fy;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 1) return `M ${fx},${fy}`;
   const mx = (fx + tx) / 2, my = (fy + ty) / 2;
-  const cpX = mx + (-dy / len) * len * 0.42 * sign;
-  const cpY = my + ( dx / len) * len * 0.42 * sign;
-  return `M ${fx},${fy} Q ${cpX},${cpY} ${tx},${ty}`;
-}
-
-/** 8-pointed starburst polygon points in a sz×sz viewBox. */
-function starPoints(sz: number): string {
-  const c = sz / 2;
-  return Array.from({ length: 16 }, (_, i) => {
-    const r = i % 2 === 0 ? c * 0.92 : c * 0.42;
-    const a = (i * Math.PI) / 8 - Math.PI / 2;
-    return `${(c + r * Math.cos(a)).toFixed(2)},${(c + r * Math.sin(a)).toFixed(2)}`;
-  }).join(' ');
+  return `M ${fx},${fy} Q ${mx + (-dy / len) * len * 0.42 * sign},${my + (dx / len) * len * 0.42 * sign} ${tx},${ty}`;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -90,40 +69,35 @@ export function ForgeAnimation({
   // Card lifts to viewport centre
   const cx = window.innerWidth  / 2 - w / 2;
   const cy = window.innerHeight / 2 - h / 2 - 24;
-  const midX = cx + w / 2;   // horizontal centre of the card
-  const midY = cy + h / 2;   // vertical centre of the card
+  const midX = cx + w / 2;
+  const midY = cy + h / 2;
 
-  // ── Viewport-relative effect sizes ─────────────────────────────────────────
-  const RAY_LEN    = vmin(0.46);          // ~230px on a 500px-tall phone
-  const RAY_W      = Math.max(4, vmin(0.008));
-  const FLASH_MAX  = vmin(0.72);          // big enough to engulf card
-  const SPARK_DIST = vmin(0.28);
-  const SPARK_SZ   = Math.max(10, vmin(0.020));
-  const SEAL       = Math.max(100, Math.round(vmin(0.18)));  // medallion diameter
-  const HAMMER_SZ  = Math.max(80, Math.round(vmin(0.14)));
-  const STAMP_FONT = Math.max(52, Math.round(w * 0.50));
-
-  // ── Seal positions ────────────────────────────────────────────────────────
-  const sealX = midX - SEAL / 2;
-  const sealY = midY - SEAL / 2;
-
-  // Seal arc destination
+  // Destination (hand tab centre, or fallback to card centre)
   const finalX = destPos?.x ?? midX;
   const finalY = destPos?.y ?? midY;
-  const arcMidX = (midX + finalX) / 2 - SEAL / 2;
-  const arcMidY = Math.min(midY, finalY) - vmin(0.14);
-  const dArcX   = arcMidX - sealX;
-  const dArcY   = arcMidY - sealY;
-  const dFinalX = finalX - SEAL / 2 - sealX;
-  const dFinalY = finalY - SEAL / 2 - sealY;
+  // Final card top-left in the motion-div's coordinate space
+  const dX = finalX - w / 2;
+  const dY = finalY - h / 2;
 
-  // ── Card keyframe timings ─────────────────────────────────────────────────
-  const CARD_DUR = SEAL_END;  // card exists for phases 1–5
-  const cardT = [0, LIFT_END / CARD_DUR, 0.14, 0.670, 0.696, 0.722, 0.748, 0.774, 1.0];
-  // Shake offsets — scaled to card width so they feel proportional
+  // Shake amplitude
   const SK = Math.round(w * 0.07);
 
-  // ── Measure affinity-well positions on mount ──────────────────────────────
+  // All card keyframes happen over ARC_END (the card is the thing that flies)
+  const T  = ARC_END;
+  const t1 = LIFT_END    / T;   // 0.157 — arrives at centre
+  const t2 = STAMP_HIT   / T;   // 0.522 — impact: shake +
+  const t3 = (STAMP_HIT + 0.040) / T;  // shake -
+  const t4 = (STAMP_HIT + 0.080) / T;  // shake +/2
+  const t5 = (STAMP_HIT + 0.120) / T;  // shake -/3
+  const t6 = STAMP_HOLD  / T;   // 0.696 — settled
+  // t7 = 1.0 — at destination
+
+  const cardTimes = [0, t1, t2, t3, t4, t5, t6, 1.0];
+
+  // FORGED stamp: appears at STAMP_HIT, stays until card vanishes
+  const stampTimes = [0, t2, t3, 1.0];
+
+  // Measure affinity-well positions on first render
   const [streams, setStreams] = useState<StreamData[]>([]);
   useEffect(() => {
     const seen = new Set<GemKey>();
@@ -143,11 +117,8 @@ export function ForgeAnimation({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Ray angles (12 evenly spaced) ────────────────────────────────────────
-  const RAYS = Array.from({ length: 12 }, (_, i) => i * 30);
-
-  // ── Impact sparks (8 directions) ─────────────────────────────────────────
-  const SPARKS = [0, 45, 90, 135, 180, 225, 270, 315];
+  const HAMMER_SZ  = Math.max(76, Math.round(vmin(0.13)));
+  const STAMP_FONT = Math.max(52, Math.round(w * 0.50));
 
   return (
     <motion.div
@@ -155,53 +126,54 @@ export function ForgeAnimation({
       className="pointer-events-none fixed inset-0 z-50"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25, delay: ARC_END }}
+      transition={{ duration: 0.20, delay: ARC_END }}
     >
       {/* ── Dark backdrop ──────────────────────────────────────────────────── */}
       <motion.div
         className="absolute inset-0 bg-black"
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.68, 0.68, 0] }}
-        transition={{ duration: ARC_END, times: [0, LIFT_END / ARC_END, SEAL_END / ARC_END, 1] }}
+        animate={{ opacity: [0, 0.65, 0.65, 0] }}
+        transition={{
+          duration: ARC_END,
+          times: [0, LIFT_END / ARC_END, STAMP_HOLD / ARC_END, 1],
+        }}
       />
 
-      {/* ══ PHASES 1–5: Lifted card (lift → hold → shake → vanish) ═════════ */}
+      {/* ══ THE CARD — lifts, shakes, then flies to destination ════════════ */}
       <motion.div
         style={{ position: 'fixed', left: 0, top: 0, width: w, height: h }}
         animate={{
-          x:       [sx,   cx,   cx,   cx+SK, cx-SK, cx+SK*0.5, cx-SK*0.3, cx, cx],
-          y:       [sy,   cy,   cy,   cy,    cy,    cy,         cy,        cy, cy],
-          scale:   [1,  1.28, 1.28, 1.28, 1.28,  1.28,       1.28,     1.28,  0],
-          opacity: [1,    1,    1,    1,    1,     1,          1,         1,    0],
+          x:       [sx,   cx,    cx+SK, cx-SK, cx+SK/2, cx-SK/3, cx,   dX  ],
+          y:       [sy,   cy,    cy,    cy,    cy,      cy,      cy,   dY  ],
+          scale:   [1,  1.28,  1.28,  1.28,  1.28,   1.28,   1.28, 0.06],
+          opacity: [1,    1,     1,     1,     1,       1,      1,    0   ],
         }}
-        transition={{ duration: CARD_DUR, times: cardT, ease: 'easeOut' }}
+        transition={{ duration: ARC_END, times: cardTimes, ease: 'easeInOut' }}
       >
         <ArtifactCardView card={card} tier={tier} />
 
-        {/* Solar aura — peaks to bright white-gold at step 3 */}
+        {/* Warm gold aura — builds on lift, fades at stamp */}
         <motion.div
           className="absolute inset-0 rounded-[6px]"
           animate={{
             boxShadow: [
-              '0 0   0px   0px #FBB83800',
-              '0 0  28px  12px #FBB83866',
-              '0 0  56px  22px #FBB838AA',
-              '0 0  96px  40px #FFF4C2FF',
-              '0 0  44px  18px #FF901070',
-              '0 0   0px   0px #FBB83800',
+              '0 0   0px  0px #FBB83800',
+              '0 0  32px 14px #FBB838AA',
+              '0 0  20px  8px #FF901066',
+              '0 0   0px  0px #FBB83800',
             ],
           }}
-          transition={{ duration: CARD_DUR, times: [0, 0.130, 0.348, 0.565, 0.826, 1.0] }}
+          transition={{ duration: ARC_END, times: [0, t1, t6, 1.0] }}
         />
 
-        {/* FORGED stamp overlay */}
+        {/* FORGED stamp — stamps down at impact, rides card to destination */}
         <motion.div
           className="absolute inset-0 flex items-center justify-center rounded-[6px] overflow-hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0, 1, 1, 0] }}
-          transition={{ duration: CARD_DUR, times: [0, 0.620, 0.696, 0.826, 1.0] }}
+          animate={{ opacity: [0, 0, 1, 1], scale: [1, 1, 1, 1] }}
+          transition={{ duration: ARC_END, times: stampTimes }}
         >
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.50)' }} />
+          {/* Dark vignette underneath so text pops on any card art */}
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />
           <motion.span
             className="relative select-none"
             style={{
@@ -215,16 +187,16 @@ export function ForgeAnimation({
               transform: 'rotate(-9deg)',
               lineHeight: 1,
             }}
-            initial={{ scale: 3.5, opacity: 0 }}
-            animate={{ scale: [3.5, 3.5, 1, 1], opacity: [0, 0, 1, 0] }}
-            transition={{ duration: CARD_DUR, times: [0, 0.620, 0.700, 1.0] }}
+            initial={{ scale: 3.8, opacity: 0 }}
+            animate={{ scale: [3.8, 3.8, 1, 1], opacity: [0, 0, 1, 1] }}
+            transition={{ duration: ARC_END, times: stampTimes }}
           >
             FORGED
           </motion.span>
         </motion.div>
       </motion.div>
 
-      {/* ══ PHASE 2: Curved affinity streams (SVG) ═══════════════════════════ */}
+      {/* ══ PHASE 2: Affinity streams ════════════════════════════════════════ */}
       {streams.length > 0 && (
         <svg
           className="pointer-events-none fixed inset-0"
@@ -233,50 +205,35 @@ export function ForgeAnimation({
           <defs>
             {streams.map(({ color }) => (
               <filter key={color} id={`sfx-${color}`} x="-80%" y="-80%" width="260%" height="260%">
-                <feGaussianBlur stdDeviation="8" result="b" />
+                <feGaussianBlur stdDeviation="7" result="b" />
                 <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
             ))}
           </defs>
           {streams.map(({ color, d }, idx) => {
-            const m = GEM_META[color];
-            const delay = LIFT_END + idx * 0.04;
-            const dur   = STREAMS_END - LIFT_END + 0.14;
+            const m   = GEM_META[color];
+            const del = LIFT_END + idx * 0.04;
+            const dur = STREAMS_END - LIFT_END + 0.12;
             return (
               <g key={color}>
-                {/* Outer glow trail */}
                 <motion.path
-                  d={d}
-                  stroke={m.hex}
-                  strokeWidth={14}
-                  strokeLinecap="round"
-                  fill="none"
+                  d={d} stroke={m.hex} strokeWidth={14} strokeLinecap="round" fill="none"
                   filter={`url(#sfx-${color})`}
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 0.85, 0.75, 0] }}
-                  transition={{ delay, duration: dur, times: [0, 0.40, 0.70, 1] }}
+                  transition={{ delay: del, duration: dur, times: [0, 0.40, 0.70, 1] }}
                 />
-                {/* Mid glow */}
                 <motion.path
-                  d={d}
-                  stroke={m.glowHex ?? m.hex}
-                  strokeWidth={6}
-                  strokeLinecap="round"
-                  fill="none"
+                  d={d} stroke={m.glowHex ?? m.hex} strokeWidth={6} strokeLinecap="round" fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.85, 0] }}
-                  transition={{ delay: delay + 0.01, duration: dur * 0.92, times: [0, 0.38, 0.68, 1] }}
+                  transition={{ delay: del + 0.01, duration: dur * 0.92, times: [0, 0.38, 0.68, 1] }}
                 />
-                {/* Bright white core */}
                 <motion.path
-                  d={d}
-                  stroke="#FFFFFF"
-                  strokeWidth={2.5}
-                  strokeLinecap="round"
-                  fill="none"
+                  d={d} stroke="#FFFFFF" strokeWidth={2.5} strokeLinecap="round" fill="none"
                   initial={{ pathLength: 0, opacity: 0 }}
                   animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 0.9, 0] }}
-                  transition={{ delay: delay + 0.02, duration: dur * 0.86, times: [0, 0.36, 0.65, 1] }}
+                  transition={{ delay: del + 0.02, duration: dur * 0.86, times: [0, 0.36, 0.65, 1] }}
                 />
               </g>
             );
@@ -284,65 +241,25 @@ export function ForgeAnimation({
         </svg>
       )}
 
-      {/* ══ PHASE 3: Outward rays ═════════════════════════════════════════════ */}
-      {RAYS.map((deg) => (
-        <motion.div
-          key={deg}
-          style={{
-            position: 'fixed',
-            left:  midX - RAY_W / 2,
-            top:   midY - RAY_LEN,
-            width: RAY_W,
-            height: RAY_LEN,
-            background: `linear-gradient(to bottom,
-              rgba(255,230,80,0) 0%,
-              rgba(255,230,80,0.75) 50%,
-              rgba(255,255,210,1) 100%)`,
-            transformOrigin: `${RAY_W / 2}px ${RAY_LEN}px`,
-            rotate: `${deg}deg`,
-          }}
-          initial={{ scaleY: 0, opacity: 0 }}
-          animate={{ scaleY: [0, 1, 0], opacity: [0, 1, 0] }}
-          transition={{ delay: STREAMS_END, duration: 0.40, times: [0, 0.36, 1] }}
-        />
-      ))}
-
-      {/* Peak white-gold flash ring */}
-      <motion.div
-        className="pointer-events-none fixed rounded-full"
-        style={{
-          left: midX, top: midY,
-          translateX: '-50%', translateY: '-50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,245,160,0.8) 30%, rgba(255,200,60,0.4) 58%, transparent 72%)',
-        }}
-        initial={{ width: 0, height: 0, opacity: 0 }}
-        animate={{
-          width:   [0, FLASH_MAX * 0.55, FLASH_MAX, 0],
-          height:  [0, FLASH_MAX * 0.55, FLASH_MAX, 0],
-          opacity: [0, 0.95,             0.25,       0],
-        }}
-        transition={{ delay: STREAMS_END, duration: 0.36, times: [0, 0.24, 0.72, 1] }}
-      />
-
-      {/* ══ PHASE 4: Hammer descends ══════════════════════════════════════════ */}
+      {/* ══ PHASE 3: Hammer descends ════════════════════════════════════════ */}
       <motion.div
         className="pointer-events-none fixed"
         style={{ left: midX, top: cy + h * 0.1, translateX: '-50%', translateY: '-100%' }}
         animate={{
-          y:       [-HAMMER_SZ * 2.2, -HAMMER_SZ * 2.2, HAMMER_SZ * 0.2, HAMMER_SZ * 0.2],
-          opacity: [0,                 1,                 1,                0               ],
-          scale:   [1.6,               1.6,               1.0,              1.0             ],
+          y:       [-HAMMER_SZ * 2.0, -HAMMER_SZ * 2.0, HAMMER_SZ * 0.15, HAMMER_SZ * 0.15],
+          opacity: [0,                 1,                 1,                 0                ],
+          scale:   [1.5,               1.5,               1.0,               1.0              ],
         }}
         transition={{
-          duration: STAMP_END,
-          times:    [0, 0.684, 0.811, 1.0],
-          ease:     ['linear', 'linear', [0.15, 0, 0.45, 1]],
+          duration: STAMP_HOLD,
+          times:    [0, (STREAMS_END / STAMP_HOLD), (STAMP_HIT / STAMP_HOLD), 1.0],
+          ease:     ['linear', 'linear', [0.1, 0, 0.4, 1]],
         }}
       >
         <svg viewBox="0 0 64 64" width={HAMMER_SZ} height={HAMMER_SZ}>
           <defs>
             <filter id="hglow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="6" result="b" />
+              <feGaussianBlur stdDeviation="5" result="b" />
               <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           </defs>
@@ -355,159 +272,67 @@ export function ForgeAnimation({
         </svg>
       </motion.div>
 
-      {/* Impact flash — viewport-relative */}
+      {/* Impact flash at stamp moment */}
       <motion.div
         className="pointer-events-none fixed rounded-full"
         style={{
           left: midX, top: midY,
           translateX: '-50%', translateY: '-50%',
-          background: 'radial-gradient(circle, rgba(255,210,80,1) 0%, rgba(255,130,0,0.65) 38%, transparent 68%)',
+          background: 'radial-gradient(circle, rgba(255,210,80,1) 0%, rgba(255,130,0,0.6) 38%, transparent 68%)',
         }}
         initial={{ width: 0, height: 0, opacity: 0 }}
-        animate={{
-          width:   [0, 0, vmin(0.55), 0],
-          height:  [0, 0, vmin(0.55), 0],
-          opacity: [0, 0, 1,          0],
-        }}
-        transition={{ duration: STAMP_END, times: [0, 0.795, 0.840, 1.0] }}
+        animate={{ width: [0, 0, vmin(0.50), 0], height: [0, 0, vmin(0.50), 0], opacity: [0, 0, 1, 0] }}
+        transition={{ duration: STAMP_HOLD, times: [0, STAMP_HIT / STAMP_HOLD - 0.01, STAMP_HIT / STAMP_HOLD + 0.04, 1.0] }}
       />
 
-      {/* Impact sparks — fly out at STAMP_HIT */}
-      {SPARKS.map((deg) => {
-        const rad = (deg * Math.PI) / 180;
+      {/* Impact sparks */}
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+        const rad  = (deg * Math.PI) / 180;
+        const dist = vmin(0.22);
+        const sz   = Math.max(8, vmin(0.018));
         return (
           <motion.div
             key={deg}
             className="pointer-events-none fixed rounded-full"
             style={{
-              left: midX - SPARK_SZ / 2,
-              top:  midY - SPARK_SZ / 2,
-              width: SPARK_SZ, height: SPARK_SZ,
+              left: midX - sz / 2, top: midY - sz / 2,
+              width: sz, height: sz,
               background: deg % 90 === 0 ? '#FFE860' : '#FF8820',
-              boxShadow: `0 0 ${SPARK_SZ * 0.8}px ${SPARK_SZ * 0.4}px ${deg % 90 === 0 ? '#FFD02088' : '#FF601088'}`,
+              boxShadow: `0 0 ${sz * 0.8}px ${sz * 0.35}px ${deg % 90 === 0 ? '#FFD02088' : '#FF601088'}`,
             }}
             initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-            animate={{
-              x:       Math.cos(rad) * SPARK_DIST,
-              y:       Math.sin(rad) * SPARK_DIST,
-              scale:   [1, 1, 0.15],
-              opacity: [1, 0.9, 0],
-            }}
-            transition={{ delay: STAMP_HIT, duration: 0.32, ease: 'easeOut', times: [0, 0.3, 1] }}
+            animate={{ x: Math.cos(rad) * dist, y: Math.sin(rad) * dist, scale: [1, 1, 0.1], opacity: [1, 0.9, 0] }}
+            transition={{ delay: STAMP_HIT, duration: 0.30, ease: 'easeOut', times: [0, 0.28, 1] }}
           />
         );
       })}
 
-      {/* ══ PHASE 5: Golden medallion seal forms ══════════════════════════════ */}
-      <motion.div
-        className="pointer-events-none fixed"
-        style={{ left: sealX, top: sealY, width: SEAL, height: SEAL }}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: [0, 0, 1.25, 1, 1, 0], opacity: [0, 0, 1, 1, 1, 0] }}
-        transition={{ duration: ARC_END - STAMP_END, delay: STAMP_END, times: [0, 0.08, 0.28, 0.46, 0.74, 1.0] }}
-      >
-        <svg width={SEAL} height={SEAL} viewBox={`0 0 ${SEAL} ${SEAL}`} style={{ overflow: 'visible' }}>
-          <defs>
-            <radialGradient id="sg1" cx="38%" cy="30%">
-              <stop offset="0%"   stopColor="#FFE888" />
-              <stop offset="50%"  stopColor="#D48818" />
-              <stop offset="100%" stopColor="#7A4200" />
-            </radialGradient>
-            <radialGradient id="sg2" cx="38%" cy="30%">
-              <stop offset="0%"   stopColor="#FFF8D0" />
-              <stop offset="55%"  stopColor="#FFB830" />
-              <stop offset="100%" stopColor="#9A5400" />
-            </radialGradient>
-            <filter id="sglw" x="-40%" y="-40%" width="180%" height="180%">
-              <feGaussianBlur stdDeviation="5" result="b" />
-              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-          </defs>
-          <g filter="url(#sglw)">
-            <polygon points={starPoints(SEAL)} fill="url(#sg1)" stroke="#FFD060" strokeWidth="1.5" />
-            <circle cx={SEAL/2} cy={SEAL/2} r={SEAL * 0.3} fill="url(#sg2)" stroke="#FFE060" strokeWidth="2" />
-            {/* Hammer icon on centre disc */}
-            {(() => {
-              const c = SEAL / 2, s = SEAL * 0.12;
-              return (
-                <g>
-                  <rect x={c-s*1.1} y={c-s*1.2} width={s*2.2} height={s} rx={s*0.25} fill="#7A3800" stroke="#FFD060" strokeWidth={s*0.1} />
-                  <rect x={c-s*0.25} y={c-s*0.25} width={s*0.5} height={s*1.4} rx={s*0.18} fill="#5A2800" stroke="#A06030" strokeWidth={s*0.08} />
-                  <rect x={c-s*0.85} y={c-s*0.95} width={s*0.85} height={s*0.48} rx={s*0.12} fill="#FFE090" opacity="0.5" />
-                </g>
-              );
-            })()}
-          </g>
-        </svg>
-        {/* Pulsing glow ring around seal */}
-        <motion.div
-          className="absolute inset-0 rounded-full"
-          animate={{
-            boxShadow: [
-              '0 0 22px  8px #FFA83099',
-              '0 0 48px 20px #FFD04077',
-              '0 0 22px  8px #FFA83099',
-            ],
-          }}
-          transition={{ duration: 0.42, repeat: Infinity, repeatType: 'mirror' }}
-        />
-      </motion.div>
-
-      {/* ══ PHASE 6: Seal arcs to destination ════════════════════════════════ */}
-      <motion.div
-        className="pointer-events-none fixed"
-        style={{ left: sealX, top: sealY, width: SEAL, height: SEAL }}
-        initial={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-        animate={{
-          x:       [0,      dArcX,  dFinalX],
-          y:       [0,      dArcY,  dFinalY],
-          scale:   [1,      0.80,   0.14   ],
-          opacity: [1,      1,      0      ],
-        }}
-        transition={{ delay: SEAL_END, duration: ARC_END - SEAL_END, times: [0, 0.48, 1], ease: 'easeIn' }}
-      >
-        <svg width={SEAL} height={SEAL} viewBox={`0 0 ${SEAL} ${SEAL}`} style={{ overflow: 'visible' }}>
-          <defs>
-            <radialGradient id="sg3" cx="38%" cy="30%">
-              <stop offset="0%"   stopColor="#FFE888" />
-              <stop offset="50%"  stopColor="#D48818" />
-              <stop offset="100%" stopColor="#7A4200" />
-            </radialGradient>
-          </defs>
-          <polygon points={starPoints(SEAL)} fill="url(#sg3)" stroke="#FFD060" strokeWidth="1.5" />
-          <circle cx={SEAL/2} cy={SEAL/2} r={SEAL * 0.3} fill="#FFB830" stroke="#FFE060" strokeWidth="2" />
-        </svg>
-      </motion.div>
-
-      {/* Absorption pulse rings at destination */}
-      {destPos && [0, 0.09, 0.18].map((extra) => (
+      {/* Pulse ring at destination on arrival */}
+      {destPos && [0, 0.10, 0.20].map((extra) => (
         <motion.div
           key={extra}
           className="pointer-events-none fixed rounded-full border-[3px] border-amber-300"
-          style={{
-            left: destPos.x, top: destPos.y,
-            translateX: '-50%', translateY: '-50%',
-          }}
+          style={{ left: destPos.x, top: destPos.y, translateX: '-50%', translateY: '-50%' }}
           initial={{ width: 10, height: 10, opacity: 1 }}
-          animate={{ width: 120, height: 120, opacity: 0 }}
-          transition={{ delay: ARC_END - 0.14 + extra, duration: 0.60, ease: 'easeOut' }}
+          animate={{ width: 100, height: 100, opacity: 0 }}
+          transition={{ delay: ARC_END - 0.12 + extra, duration: 0.55, ease: 'easeOut' }}
         />
       ))}
 
-      {/* ══ Eminence floater ══════════════════════════════════════════════════ */}
+      {/* Eminence floater */}
       {lumens > 0 && (
         <motion.div
           className="pointer-events-none fixed flex items-center gap-2 font-bold select-none"
           style={{
-            left: midX + w * 0.60,
+            left: midX + w * 0.58,
             top:  midY - h * 0.20,
             color: '#FFF0A0',
-            fontSize: Math.max(20, Math.round(vmin(0.042))),
+            fontSize: Math.max(20, Math.round(vmin(0.040))),
             textShadow: '0 0 20px #FFD040BB, 0 2px 0 #7A5000',
           }}
           initial={{ opacity: 0, y: 0 }}
           animate={{ opacity: [0, 0, 1, 1, 0], y: [0, 0, 0, -28, -48] }}
-          transition={{ duration: ARC_END, times: [0, 0.26, 0.42, 0.84, 1] }}
+          transition={{ duration: ARC_END, times: [0, 0.24, 0.40, 0.84, 1] }}
         >
           <Sparkles className="h-5 w-5" />
           +{lumens}
