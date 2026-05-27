@@ -631,6 +631,7 @@ export function OpponentForgeAnimation({
   // Tattoo sub-animation: mounted at OP_STAMP_HIT, runs for the remaining duration
   const subDur  = OP_TOTAL - OP_STAMP_HIT;  // 0.92 s
   const tSpring = 0.04 / subDur;            // spring-release fraction
+  const tFlyL   = (OP_FLY_START - OP_STAMP_HIT) / subDur;  // ~0.348 — when fly starts in tattoo-local time
 
   const [stamped, setStamped] = useState(false);
   useEffect(() => {
@@ -693,33 +694,47 @@ export function OpponentForgeAnimation({
           transition={{ duration: T, times: [0, tHit, tHit + 0.06, tGone, tFly, 1.0] }}
         />
 
-        {/* Tattoo — born at stamp impact, fades during fly */}
-        {stamped && (
-          <motion.div
-            style={{
-              position: 'absolute',
-              left: tattooLeft,
-              top: tattooTop,
-              width: tattooW,
-              height: tattooH,
-              transformOrigin: 'center center',
-            }}
-            initial={{ opacity: 1, scaleY: 0.80, scaleX: 1.10, rotate: -10 }}
-            animate={{
-              opacity: [1,    1,        0   ],
-              scaleY:  [0.80, 1.0,      1.0 ],
-              scaleX:  [1.10, 1.0,      1.0 ],
-              rotate:  [-10,  -10,      -10 ],
-            }}
-            transition={{ duration: subDur, times: [0, tSpring, 1.0] }}
-          >
-            <StampSVG
-              width={tattooW} height={tattooH}
-              accent={accent} accentGlow={accentGlow} accentDark={accentDark}
-            />
-          </motion.div>
-        )}
       </motion.div>
+
+      {/* ── Tattoo — sibling of card div so GPU compositing cannot detach it ─
+           Explicitly tracks the card's x/y/scale rather than relying on CSS
+           transform inheritance, which breaks when the child has its own
+           Framer Motion animation and gets promoted to a separate layer.    */}
+      {stamped && (
+        <motion.div
+          style={{
+            position: 'fixed',
+            left: sx + tattooLeft,
+            top: sy + tattooTop,
+            width: tattooW,
+            height: tattooH,
+            transformOrigin: 'center center',
+          }}
+          initial={{ opacity: 1, scaleX: 1.10, scaleY: 0.80, rotate: -10 }}
+          animate={{
+            opacity: [1,    1,       1,       0      ],
+            scaleX:  [1.10, 1.0,     1.0,     0.12   ],
+            scaleY:  [0.80, 1.0,     1.0,     0.12   ],
+            rotate:  [-10,  -10,     -10,     -10    ],
+            x:       [0,    0,       0,       flyDX  ],
+            y:       [0,    0,       0,       flyDY  ],
+          }}
+          transition={{
+            duration: subDur,
+            times:  [0, tSpring, tFlyL, 1.0],
+            x:      { ease: [0.4, 0, 1, 1] },
+            y:      { ease: [0.4, 0, 1, 1] },
+            scaleX: { ease: [0.4, 0, 1, 1] },
+            scaleY: { ease: [0.4, 0, 1, 1] },
+            opacity:{ ease: 'linear' },
+          }}
+        >
+          <StampSVG
+            width={tattooW} height={tattooH}
+            accent={accent} accentGlow={accentGlow} accentDark={accentDark}
+          />
+        </motion.div>
+      )}
 
       {/* ── Descending stamp ─────────────────────────────────────────────── */}
       <motion.div
