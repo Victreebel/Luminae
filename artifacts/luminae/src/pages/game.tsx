@@ -4308,6 +4308,15 @@ export default function GameBoard() {
               <HelpCircle className="h-4 w-4" />
               Rules
             </DropdownMenuItem>
+            {/*
+              Toggle convention — icon-only state, no DropdownMenuCheckboxItem:
+              All boolean settings in this menu communicate their on/off state exclusively
+              through the icon (swap icons for binary toggles, or change icon color/opacity
+              for non-binary toggles). Do NOT use DropdownMenuCheckboxItem — it adds a
+              redundant checkbox indicator alongside the icon, creating a double-indicator.
+              Pattern A (swap): muted → VolumeX/Volume2, label changes too.
+              Pattern B (color): abridgedAnims → Zap always shown, yellow = on, muted = off.
+            */}
             <DropdownMenuItem onClick={toggleMute}>
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               {muted ? 'Unmute' : 'Mute'}
