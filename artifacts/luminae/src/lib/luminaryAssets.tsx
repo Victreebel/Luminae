@@ -745,23 +745,13 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
   const h = Math.round(size * (3 / 2));
 
   return (
-    <div
-      className={`lum-pale-seesaw${className ? ` ${className}` : ''}`}
-      style={{
-        width: w,
-        height: h,
-        transformOrigin: '50% 62%', // pivot at the balance-beam center
-        display: 'inline-block',
-        flexShrink: 0,
-      }}
-    >
-      <img
-        src={src}
-        alt=""
-        draggable={false}
-        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-      />
-    </div>
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className={className}
+      style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+    />
   );
 }
 
