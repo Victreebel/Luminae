@@ -26,7 +26,7 @@ import { LoginRegisterForm } from "@/components/LoginRegisterForm";
 import { useAccount } from "@/contexts/AccountContext";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen } from "lucide-react";
+import { Users, Plus, ArrowRight, Clock, ChevronDown, ChevronUp, LogIn, UserPlus, LayoutDashboard, LogOut, X, BookOpen, RefreshCw } from "lucide-react";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 
 type Mode = "home" | "create" | "join" | "auth";
@@ -424,6 +424,16 @@ export default function Home() {
                 >
                   <div className="pt-3">
                     <AvatarPicker selectedId={avatarId} onSelect={(id) => { handleAvatarSelect(id); setShowAvatarPicker(false); }} />
+                  </div>
+                  <div className="pt-2 pb-1 border-t border-border/30 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                      Refresh page
+                    </button>
                   </div>
                 </motion.div>
               )}
