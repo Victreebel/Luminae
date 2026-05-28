@@ -6801,6 +6801,26 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
+      {/* ── Dev: Luminary Summon Test Panel ── */}
+      {import.meta.env.DEV && summonQueue.length === 0 && state?.status === 'playing' && (
+        <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1">
+          <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
+          {(state.luminaries ?? []).map(l => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => enqueueSummon(
+                l.id, l.name, l.domain ?? '', l.lumens, l.flavor ?? '',
+                `dev-test-${l.id}`, true,
+              )}
+              className="text-[9px] bg-black/70 text-amber-300/80 border border-amber-500/30 rounded px-2 py-0.5 hover:bg-amber-900/40 transition-colors text-left"
+            >
+              ✦ {l.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Luminary summoning cutscene queue — plays one cutscene at a time.
           When the user presses "Skip view", the cutscene overlay is hidden via
           CSS (visibility:hidden) but the component stays mounted so its internal
