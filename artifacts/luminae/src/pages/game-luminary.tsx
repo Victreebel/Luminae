@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Info } from 'lucide-react';
 import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { LuminaryPanelArt } from '@/lib/luminaryAssets';
@@ -419,8 +420,14 @@ export function LuminaryCard({
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
-      onClick={!isClaimed && !isHidden && onOpenSheet ? onOpenSheet : undefined}
+      onClick={!isHidden && onOpenSheet ? onOpenSheet : undefined}
     >
+      {/* Info badge — shown on claimed cards so players know they can tap for details */}
+      {isClaimed && onOpenSheet && (
+        <div className="absolute top-1 right-1 z-20 rounded-full bg-black/55 p-0.5 pointer-events-none">
+          <Info className="h-2.5 w-2.5 text-white/35" />
+        </div>
+      )}
       {isClaimed ? (
         <LuminaryClaimedPortal
           luminary={luminary}

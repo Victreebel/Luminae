@@ -3131,6 +3131,7 @@ export default function GameBoard() {
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
                 isMyTurn={isMyTurn}
+                onOpenSheet={() => setSelectedLuminary(l)}
               />
             );
           })}
@@ -5399,6 +5400,18 @@ export default function GameBoard() {
                       <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
+                    {(() => {
+                      const claimer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(selectedLuminary.id));
+                      return claimer ? (
+                        <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/60">
+                          Claimed · {claimer.playerName}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-amber-950/40 text-amber-400/70 border border-amber-500/15">
+                          Unclaimed
+                        </span>
+                      );
+                    })()}
                   </div>
                   {/* Right column: flavor + requirements */}
                   <div className="flex-1 flex flex-col gap-3">
