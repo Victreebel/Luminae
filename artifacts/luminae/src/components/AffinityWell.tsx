@@ -652,7 +652,8 @@ export function AffinityWellCells({
                       />
                       {/* Forge-cost deduction badge */}
                       {forgeDed > 0 && (
-                        <motion.span
+                        <span
+                          className="lum-aw-forge-pulse"
                           style={{
                             position: 'absolute', top: -2, right: -2, zIndex: 10,
                             fontSize: 8, fontWeight: 900, lineHeight: 1,
@@ -661,11 +662,9 @@ export function AffinityWellCells({
                             border: '1px solid #ef444455',
                             boxShadow: '0 0 5px #ef4444aa',
                           }}
-                          animate={{ opacity: [1, 0.55, 1] }}
-                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                         >
                           −{forgeDed}
-                        </motion.span>
+                        </span>
                       )}
                     </motion.div>
                     </div>
@@ -687,30 +686,28 @@ export function AffinityWellCells({
                         </span>
                       ) : forgeDed > 0 ? (
                         /* Forge-cost preview: projected post-spend count, amber pulse */
-                        <motion.span
+                        <span
+                          className="lum-aw-forge-pulse"
                           style={{
                             fontSize: 16, fontWeight: 900, lineHeight: 1,
                             color: '#f59e0b',
                             textShadow: '0 0 10px #f59e0bcc',
                           }}
-                          animate={{ opacity: [1, 0.55, 1] }}
-                          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
                         >
                           {gems - forgeDed}
-                        </motion.span>
+                        </span>
                       ) : pending > 0 ? (
                         /* Selected: tentative post-harness count with glow pulse */
-                        <motion.span
+                        <span
+                          className="lum-aw-pending-pulse"
                           style={{
                             fontSize: 16, fontWeight: 900, lineHeight: 1,
                             color: meta.glowHex,
                             textShadow: `0 0 10px ${meta.glowHex}cc, 0 0 22px ${meta.glowHex}44`,
                           }}
-                          animate={{ opacity: [1, 0.68, 1] }}
-                          transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
                         >
                           {tentativeCount}
-                        </motion.span>
+                        </span>
                       ) : (
                         /* Normal owned count */
                         <span

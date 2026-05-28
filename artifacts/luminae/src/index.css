@@ -763,3 +763,23 @@ button,
   animation: lum-cs-hover 3.7s ease-in-out 1.9s infinite;
   animation-fill-mode: backwards;
 }
+
+/* ── AffinityWell — CSS pulse animations ─────────────────────────────────
+   Replaces framer-motion repeat:Infinity on the forge-deduction badge,
+   forge-count span, and pending-harvest count span. These three loops
+   fire whenever gems are selected or a card is being previewed for forge,
+   so at endgame they can be active across all six wells simultaneously.  */
+@keyframes lum-aw-forge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+@keyframes lum-aw-pending-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.68; }
+}
+.lum-aw-forge-pulse {
+  animation: lum-aw-forge-pulse 1.4s ease-in-out infinite;
+}
+.lum-aw-pending-pulse {
+  animation: lum-aw-pending-pulse 0.9s ease-in-out infinite;
+}

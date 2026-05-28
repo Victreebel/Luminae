@@ -2389,14 +2389,15 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           opacity: { duration: 0.40, ease: 'easeOut' },
         }}
       >
-        {/* Colored aura — pulses once idle via CSS animation (compositor thread) */}
+        {/* Colored aura — pulses once idle via CSS animation (compositor thread).
+            Gradient-only (no filter:blur) so the browser does NOT force a
+            separate GPU compositing layer for each of the 5 possible overlays. */}
         <motion.div
           style={{
             position: 'absolute',
-            inset: -10,
-            borderRadius: 14,
-            background: `radial-gradient(ellipse at 50% 38%, ${glowColor}55 0%, ${primaryColor}28 55%, transparent 80%)`,
-            filter: 'blur(12px)',
+            inset: -20,
+            borderRadius: 22,
+            background: `radial-gradient(ellipse at 50% 42%, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
           }}
           className={isIdle ? 'lum-idle-aura' : undefined}
           animate={!isIdle ? { opacity: 0.75 } : {}}
