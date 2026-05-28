@@ -5396,7 +5396,7 @@ export default function GameBoard() {
                 <div className="flex flex-col sm:flex-row gap-4 mb-5">
                   {/* Panel art column */}
                   <div className="flex flex-col items-center gap-2 sm:shrink-0">
-                    <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="rounded-xl overflow-hidden shadow-xl">
+                    <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="relative rounded-xl overflow-hidden shadow-xl">
                       <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
