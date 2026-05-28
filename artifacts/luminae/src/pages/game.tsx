@@ -34,7 +34,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Hammer, Droplets, MoreVertical, Zap
+  Hammer, Droplets, MoreVertical, Zap, RefreshCw
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -4473,6 +4473,11 @@ export default function GameBoard() {
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => window.location.reload()}>
+              <RefreshCw className="h-4 w-4" />
+              Refresh page
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleSurrender, 0); }} className="text-red-500 focus:text-red-500">
