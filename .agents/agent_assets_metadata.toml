@@ -1686,6 +1686,12 @@ uri = "file://attached_assets/generated_images/panel_pale_regen.png"
 type = "image"
 title = "pale_merchant_panel_regen"
 
+[[generated]]
+id = "q30O5ig5tluMp4pUy7cb7"
+uri = "file://attached_assets/generated_images/panel_pale_v2.png"
+type = "image"
+title = "pale_merchant_panel_v2"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
@@ -1769,3 +1775,9 @@ id = "msz-C7JH4qTKUPl5sgRAO"
 uri = "file://attached_assets/generated_images/panel_pale_regen.png"
 type = "image"
 title = "Pale Merchant — Panel Regeneration"
+
+[[outputs]]
+id = "ntcvzTyEZdcMK6e3NfSpC"
+uri = "file://attached_assets/generated_images/panel_pale_v2.png"
+type = "image"
+title = "Pale Merchant — Panel v2"
