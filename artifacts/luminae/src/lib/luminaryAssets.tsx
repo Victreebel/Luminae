@@ -740,9 +740,9 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
   const src = _getLuminaryImage('lum_pale', 'entity');
   if (!src) return <PaleEntityFallback size={size} className={className} />;
 
-  // The entity PNG is 3:4 portrait — height is 4/3 × width.
+  // The entity PNG is 2:3 portrait — height is 3/2 × width.
   const w = size;
-  const h = Math.round(size * (4 / 3));
+  const h = Math.round(size * (3 / 2));
 
   return (
     <div
