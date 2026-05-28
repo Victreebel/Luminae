@@ -1680,6 +1680,12 @@ uri = "file://artifacts/luminae/src/assets/cards/t1p08.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "eEUux44F3A0Qq0eL0KjRE"
+uri = "file://attached_assets/generated_images/panel_pale_regen.png"
+type = "image"
+title = "pale_merchant_panel_regen"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
@@ -1757,3 +1763,9 @@ id = "nDKzPmn4awH_DwdAgzylE"
 uri = "file://docs/luminae_card_art_manifest.csv"
 type = "table"
 title = "Luminae Card Art Manifest — All 90 Cards"
+
+[[outputs]]
+id = "msz-C7JH4qTKUPl5sgRAO"
+uri = "file://attached_assets/generated_images/panel_pale_regen.png"
+type = "image"
+title = "Pale Merchant — Panel Regeneration"
