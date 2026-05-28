@@ -1050,30 +1050,6 @@ export default function GameBoard() {
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 
-  // Derived forge-deduction map — how many of each affinity the selected card
-  // would spend from the player's current inventory. Placed here (before any
-  // early returns) so React's rules-of-hooks are never violated. canPlan is
-  // inlined via optional-chaining because `state` may still be null at this
-  // point; the callback short-circuits safely when any dep is missing.
-  const forgeDeductions = useMemo<Partial<Record<GemKey, number>> | undefined>(() => {
-    if (!selectedCard || !me) return undefined;
-    const myCanPlan = state?.status === 'playing' && !summonGateActive || localSummonSkipped;
-    if (!isMyTurn && !myCanPlan) return undefined;
-    const effCost = effectiveCost(selectedCard.card, me) as Record<string, number>;
-    const result: Partial<Record<GemKey, number>> = {};
-    let fluxNeeded = 0;
-    for (const k of GEM_KEYS) {
-      if (k === 'flux') continue;
-      const need = effCost[k] ?? 0;
-      const have = me.crystals[k as keyof CrystalCounts] ?? 0;
-      const spend = Math.min(have, need);
-      if (spend > 0) result[k as GemKey] = spend;
-      fluxNeeded += Math.max(0, need - have);
-    }
-    if (fluxNeeded > 0) result.flux = fluxNeeded;
-    return Object.keys(result).length > 0 ? result : undefined;
-  }, [selectedCard, me, isMyTurn, state?.status, summonGateActive, localSummonSkipped]);
-
   const opponentData = useMemo(() => {
     const players = state?.players;
     if (!players) return {} as Record<string, { totalAffinity: number; cardCount: number; reservedCount: number; civPalette: AffinityPalette; civName: string }>;
@@ -1116,6 +1092,30 @@ export default function GameBoard() {
     }
     return fluxNeeded <= (p.crystals.flux ?? 0);
   };
+
+  // Derived forge-deduction map — how many of each affinity the selected card
+  // would spend from the player's current inventory. Placed here (after
+  // effectiveCost is declared, before any early returns) so both the TDZ and
+  // react-hooks/rules-of-hooks constraints are satisfied. canPlan is inlined
+  // via optional chaining because state may still be null at this point.
+  const forgeDeductions = useMemo<Partial<Record<GemKey, number>> | undefined>(() => {
+    if (!selectedCard || !me) return undefined;
+    const myCanPlan = state?.status === 'playing' && (!summonGateActive || localSummonSkipped);
+    if (!isMyTurn && !myCanPlan) return undefined;
+    const effCost = effectiveCost(selectedCard.card, me) as Record<string, number>;
+    const result: Partial<Record<GemKey, number>> = {};
+    let fluxNeeded = 0;
+    for (const k of GEM_KEYS) {
+      if (k === 'flux') continue;
+      const need = effCost[k] ?? 0;
+      const have = me.crystals[k as keyof CrystalCounts] ?? 0;
+      const spend = Math.min(have, need);
+      if (spend > 0) result[k as GemKey] = spend;
+      fluxNeeded += Math.max(0, need - have);
+    }
+    if (fluxNeeded > 0) result.flux = fluxNeeded;
+    return Object.keys(result).length > 0 ? result : undefined;
+  }, [selectedCard, me, isMyTurn, state?.status, summonGateActive, localSummonSkipped]);
 
   // ── Reserve hint ──────────────────────────────────────────────────────────
   useEffect(() => {
