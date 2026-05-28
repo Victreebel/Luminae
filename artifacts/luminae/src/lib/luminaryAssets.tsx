@@ -745,21 +745,14 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
   const h = Math.round(size * (4 / 3));
 
   return (
-    <motion.div
-      className={className}
+    <div
+      className={`lum-pale-seesaw${className ? ` ${className}` : ''}`}
       style={{
         width: w,
         height: h,
         transformOrigin: '50% 62%', // pivot at the balance-beam center
         display: 'inline-block',
         flexShrink: 0,
-      }}
-      animate={{ rotate: [-3.5, 3.5] }}
-      transition={{
-        duration: 5.2,
-        repeat: Infinity,
-        repeatType: 'mirror',
-        ease: [0.45, 0, 0.55, 1], // smooth sinusoidal seesaw
       }}
     >
       <img
@@ -768,7 +761,7 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
         draggable={false}
         style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
       />
-    </motion.div>
+    </div>
   );
 }
 
@@ -1627,41 +1620,34 @@ export function LuminarySummonCutscene({
                   {(isLeaking || isSecondCrack || isCracking) && (
                     <>
                       {/* Diffuse light pool at P — primary junction */}
-                      <motion.circle cx={PX} cy={PY} r="20" fill={primaryColor}
+                      <circle cx={PX} cy={PY} r="20" fill={primaryColor}
                         filter="url(#cgw)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.24, 0.12, 0.30, 0.14, 0.26] }}
-                        transition={{ duration: 3.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror' }}
+                        className="lum-cs-pool"
+                        style={{ animationDuration: '3.8s' }}
                       />
                       {/* Mote 1 — near TA, along main crack */}
-                      <motion.circle cx={TAX} cy={8} r="1.1" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.72, 0.14, 0.86, 0.20, 0.62, 0] }}
-                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.00 }}
+                      <circle cx={TAX} cy={8} r="1.1" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
                       />
                       {/* Mote 2 — at K1 kink */}
-                      <motion.circle cx={K1X} cy={K1Y} r="0.9" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.50, 0.80, 0.12, 0.70, 0.28, 0] }}
-                        transition={{ duration: 3.2, ease: 'easeInOut', repeat: Infinity, delay: 0.38 }}
+                      <circle cx={K1X} cy={K1Y} r="0.9" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
+                        style={{ animationDuration: '3.2s', animationDelay: '0.38s' }}
                       />
                       {/* Mote 3 — at P junction */}
-                      <motion.circle cx={PX} cy={PY} r="1.5" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.90, 0.32, 0.66, 0.10, 0.82, 0] }}
-                        transition={{ duration: 2.6, ease: 'easeInOut', repeat: Infinity, delay: 0.65 }}
+                      <circle cx={PX} cy={PY} r="1.5" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
+                        style={{ animationDuration: '2.6s', animationDelay: '0.65s' }}
                       />
                       {/* Mote 4 — on P→RA branch near K2 */}
-                      <motion.circle cx={K2X} cy={K2Y} r="0.9" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.44, 0.86, 0.16, 0.68, 0.10, 0] }}
-                        transition={{ duration: 3.6, ease: 'easeInOut', repeat: Infinity, delay: 0.20 }}
+                      <circle cx={K2X} cy={K2Y} r="0.9" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
+                        style={{ animationDuration: '3.6s', animationDelay: '0.20s' }}
                       />
                       {/* Mote 5 — on P→LA2 branch near K3b */}
-                      <motion.circle cx={K3bX} cy={K3bY} r="0.9" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.60, 0.10, 0.80, 0.32, 0.50, 0] }}
-                        transition={{ duration: 2.9, ease: 'easeInOut', repeat: Infinity, delay: 0.80 }}
+                      <circle cx={K3bX} cy={K3bY} r="0.9" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
+                        style={{ animationDuration: '2.9s', animationDelay: '0.80s' }}
                       />
                     </>
                   )}
@@ -1780,52 +1766,46 @@ export function LuminarySummonCutscene({
                       />
 
                       {/* ── Light pools and motes along second crack ─────── */}
-                      <motion.circle cx={QX} cy={QY} r="16" fill={primaryColor}
+                      <circle cx={QX} cy={QY} r="16" fill={primaryColor}
                         filter="url(#cgw)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.18, 0.09, 0.22, 0.10, 0.20] }}
-                        transition={{ duration: 3.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.4 }}
+                        className="lum-cs-pool"
+                        style={{ animationDelay: '0.4s' }}
                       />
-                      <motion.circle cx={K4X} cy={K4Y} r="1.0" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.56, 0.10, 0.76, 0.24, 0.48, 0] }}
-                        transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
+                      <circle cx={K4X} cy={K4Y} r="1.0" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
+                        style={{ animationDelay: '0.25s' }}
                       />
-                      <motion.circle cx={K5X} cy={K5Y} r="0.9" fill="white" filter="url(#cgb)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.40, 0.82, 0.14, 0.64, 0.10, 0] }}
-                        transition={{ duration: 3.0, ease: 'easeInOut', repeat: Infinity, delay: 0.55 }}
+                      <circle cx={K5X} cy={K5Y} r="0.9" fill="white" filter="url(#cgb)"
+                        className="lum-cs-mote"
+                        style={{ animationDuration: '3.0s', animationDelay: '0.55s' }}
                       />
 
-                      {/* Energy rays from P (primary junction) */}
-                      <motion.line x1={PX} y1={PY} x2={PX} y2={0}
+                      {/* Energy rays from P (primary junction) — opacity-only CSS, scaleY dropped */}
+                      <line x1={PX} y1={PY} x2={PX} y2={0}
                         stroke="url(#rayUp)" strokeWidth="2.4"
-                        animate={{ opacity: [0, 0.68, 0.36, 0.74, 0.22], scaleY: [0, 1, 0.88, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.52, ease: 'easeOut' }}
-                        style={{ transformOrigin: `${PX}px ${PY}px` }}
+                        className="lum-cs-ray"
+                        style={{ animationDuration: '0.52s' }}
                       />
-                      <motion.line x1={PX} y1={PY} x2={PX} y2={BOARD_CARD_H}
+                      <line x1={PX} y1={PY} x2={PX} y2={BOARD_CARD_H}
                         stroke="url(#rayDown)" strokeWidth="2.4"
-                        animate={{ opacity: [0, 0.56, 0.28, 0.64, 0.20], scaleY: [0, 1, 0.88, 1] }}
-                        transition={{ repeat: Infinity, duration: 0.58, ease: 'easeOut', delay: 0.14 }}
-                        style={{ transformOrigin: `${PX}px ${PY}px` }}
+                        className="lum-cs-ray"
+                        style={{ animationDuration: '0.58s', animationDelay: '0.14s' }}
                       />
-                      <motion.line x1={PX} y1={PY} x2={0} y2={PY}
+                      <line x1={PX} y1={PY} x2={0} y2={PY}
                         stroke="url(#rayLeft)" strokeWidth="1.6"
-                        animate={{ opacity: [0, 0.42, 0.14, 0.50, 0.12] }}
-                        transition={{ repeat: Infinity, duration: 0.64, ease: 'easeInOut', delay: 0.24 }}
+                        className="lum-cs-ray"
+                        style={{ animationDuration: '0.64s', animationDelay: '0.24s' }}
                       />
-                      <motion.line x1={PX} y1={PY} x2={BOARD_CARD_W} y2={PY}
+                      <line x1={PX} y1={PY} x2={BOARD_CARD_W} y2={PY}
                         stroke="url(#rayRight)" strokeWidth="1.6"
-                        animate={{ opacity: [0, 0.34, 0.12, 0.46, 0.10] }}
-                        transition={{ repeat: Infinity, duration: 0.60, ease: 'easeInOut', delay: 0.38 }}
+                        className="lum-cs-ray"
+                        style={{ animationDuration: '0.60s', animationDelay: '0.38s' }}
                       />
                       {/* Secondary light pool at K2 (right branch kink) */}
-                      <motion.circle cx={K2X} cy={K2Y} r="10" fill={primaryColor}
+                      <circle cx={K2X} cy={K2Y} r="10" fill={primaryColor}
                         filter="url(#cgw)"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.16, 0.08, 0.22, 0.10] }}
-                        transition={{ duration: 2.8, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.5 }}
+                        className="lum-cs-pool"
+                        style={{ animationDelay: '0.5s' }}
                       />
                     </>
                   )}
@@ -2089,15 +2069,10 @@ export function LuminarySummonCutscene({
                   }
               }
             >
-              {/* Breathing hover — unchanged */}
-              <motion.div
-                className="relative flex flex-col items-center gap-4"
+              {/* Breathing hover — CSS animation replaces framer-motion repeat:Infinity y+scale */}
+              <div
+                className={`relative flex flex-col items-center gap-4${isFading ? '' : ' lum-cs-hover'}`}
                 style={{ overflow: 'visible' }}
-                animate={isFading ? {} : { y: [0, -10, 0], scale: [1, 1.018, 1] }}
-                transition={isFading ? {} : {
-                  y:     { repeat: Infinity, duration: 3.4, ease: 'easeInOut', delay: 1.9 },
-                  scale: { repeat: Infinity, duration: 4.0, ease: 'easeInOut', delay: 1.9 },
-                }}
               >
 
                 {/* ── Portal composition — relative anchor sized to entity frame ── */}
@@ -2179,15 +2154,8 @@ export function LuminarySummonCutscene({
                     pointerEvents: 'none',
                   }}
                 />
-                  <motion.div
-                    animate={isFading ? {} : {
-                      filter: isFlashing ? 'none' : [
-                        `drop-shadow(0 0 16px ${glowColor}99) drop-shadow(0 0 6px ${primaryColor}66)`,
-                        `drop-shadow(0 0 38px ${glowColor}ff) drop-shadow(0 0 16px ${primaryColor}cc)`,
-                        `drop-shadow(0 0 16px ${glowColor}99) drop-shadow(0 0 6px ${primaryColor}66)`,
-                      ],
-                    }}
-                    transition={{ repeat: Infinity, duration: 3.6, ease: 'easeInOut', delay: 1.9 }}
+                  {/* Entity glow — static midpoint filter; portal bloom provides ambient pulse */}
+                  <div
                     style={{
                       position: 'absolute',
                       inset: 0,
@@ -2195,6 +2163,9 @@ export function LuminarySummonCutscene({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      filter: (!isFading && !isFlashing)
+                        ? `drop-shadow(0 0 22px ${glowColor}cc) drop-shadow(0 0 10px ${primaryColor}88)`
+                        : 'none',
                     }}
                   >
                     <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}>
@@ -2219,7 +2190,7 @@ export function LuminarySummonCutscene({
                       )}
                       {luminaryId === 'lum_tide' && <TideEyeOverlay width={ENT_W} height={ENT_H} />}
                     </div>
-                  </motion.div>
+                  </div>
 
                 </div>
                 {/* ── end portal composition ── */}
@@ -2249,7 +2220,7 @@ export function LuminarySummonCutscene({
                   )}
                 </motion.div>
 
-              </motion.div>
+              </div>
             </motion.div>
 
           </motion.div>

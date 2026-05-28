@@ -706,3 +706,60 @@ button,
 .lum-portal-badge-pulse {
   animation: lum-portal-badge-pulse 2.6s ease-in-out infinite;
 }
+
+/* ── Pale entity seesaw ───────────────────────────────────────────────────
+   Replaces framer-motion repeat:Infinity / repeatType:'mirror' rotate loop.
+   CSS alternate direction + cubic-bezier gives identical sinusoidal seesaw. */
+@keyframes lum-pale-seesaw {
+  from { transform: rotate(-3.5deg); }
+  to   { transform: rotate(3.5deg); }
+}
+.lum-pale-seesaw {
+  animation: lum-pale-seesaw 5.2s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+/* ── Summon cutscene — CSS-compositor animations ─────────────────────────
+   Replaces framer-motion repeat:Infinity loops in LuminarySummonCutscene.
+   Converts: light-leak motes, second-crack motes/pools, energy rays,
+   breathing hover. Eliminates ~17 JS animation loops per summon event.
+   Energy rays simplified to opacity-only (scaleY dropped) for SVG compat. */
+@keyframes lum-cs-mote {
+  0%, 100% { opacity: 0; }
+  10%       { opacity: 0.72; }
+  35%       { opacity: 0.14; }
+  60%       { opacity: 0.82; }
+  80%       { opacity: 0.20; }
+}
+@keyframes lum-cs-pool {
+  0%, 100% { opacity: 0; }
+  25%       { opacity: 0.18; }
+  50%       { opacity: 0.09; }
+  75%       { opacity: 0.22; }
+}
+@keyframes lum-cs-ray {
+  0%, 45%, 100% { opacity: 0; }
+  15%           { opacity: 0.68; }
+  30%           { opacity: 0.36; }
+  65%           { opacity: 0.74; }
+  82%           { opacity: 0.22; }
+}
+@keyframes lum-cs-hover {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%       { transform: translateY(-10px) scale(1.018); }
+}
+.lum-cs-mote {
+  animation: lum-cs-mote 2.8s ease-in-out infinite;
+  animation-fill-mode: backwards;
+}
+.lum-cs-pool {
+  animation: lum-cs-pool 3.2s ease-in-out infinite;
+  animation-fill-mode: backwards;
+}
+.lum-cs-ray {
+  animation: lum-cs-ray 0.56s ease-out infinite;
+  animation-fill-mode: backwards;
+}
+.lum-cs-hover {
+  animation: lum-cs-hover 3.7s ease-in-out 1.9s infinite;
+  animation-fill-mode: backwards;
+}
