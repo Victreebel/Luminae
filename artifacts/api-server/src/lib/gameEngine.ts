@@ -330,7 +330,7 @@ export const LUMINARIES: LuminaryDef[] = [
     name: "The Void Warden",
     domain: "Void",
     lumens: 0,
-    oblivion: 2,
+    oblivion: 4,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 6, pearl: 0, flux: 0 },
     flavor: "In the space between stars, something watches without eyes.",
     summonColor: "#4c1d95",
