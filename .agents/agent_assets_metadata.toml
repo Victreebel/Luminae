@@ -1811,3 +1811,9 @@ id = "ntcvzTyEZdcMK6e3NfSpC"
 uri = "file://attached_assets/generated_images/panel_pale_v2.png"
 type = "image"
 title = "Pale Merchant — Panel v2"
+
+[[outputs]]
+id = "L-0w0aLg6DEpmplndcNbu"
+uri = "file://attached_assets/luminaries_reference.md"
+type = "text"
+title = "Luminae — Luminary Reference Guide"
