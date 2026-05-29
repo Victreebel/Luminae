@@ -721,9 +721,9 @@ function NullEntity({ size = 140, className = '' }: { size?: number; className?:
   const src = _getLuminaryImage('lum_null', 'entity');
   if (!src) return <NullEntityFallback size={size} className={className} />;
 
-  // The entity PNG is 3:4 portrait — height is 4/3 × width.
+  // The entity PNG is 1024×1461 — height is ~1.427 × width.
   const w = size;
-  const h = Math.round(size * (4 / 3));
+  const h = Math.round(size * (1461 / 1024));
 
   return (
     <img
