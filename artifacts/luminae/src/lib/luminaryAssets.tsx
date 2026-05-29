@@ -671,68 +671,6 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
   );
 }
 
-// ── Oracle Vortex Overlay ──────────────────────────────────────────────────────
-// Spinning cyan conic-gradient rings + pulsing core positioned over the vortex
-// in the entity image. All layers use mix-blend-mode:screen so they add light
-// to the underlying PNG without covering it.
-function OracleVortexOverlay({ width, height }: { width: number; height: number }) {
-  // Vortex eye centre in the entity image: ~50% x, ~38% y
-  const cx = width * 0.50;
-  const cy = height * 0.38;
-  const R  = width * 0.37; // outer ring radius
-
-  return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 4 }}>
-      {/* Outer ring — slow clockwise */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
-        style={{
-          position: 'absolute',
-          left: cx - R,
-          top: cy - R,
-          width: R * 2,
-          height: R * 2,
-          borderRadius: '50%',
-          background: 'conic-gradient(from 0deg, rgba(0,200,255,0) 0%, rgba(0,200,255,0.22) 18%, rgba(0,200,255,0.05) 42%, rgba(0,220,255,0.24) 68%, rgba(0,200,255,0) 100%)',
-          mixBlendMode: 'screen',
-        }}
-      />
-      {/* Inner ring — faster counter-clockwise */}
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear' }}
-        style={{
-          position: 'absolute',
-          left: cx - R * 0.58,
-          top: cy - R * 0.58,
-          width: R * 1.16,
-          height: R * 1.16,
-          borderRadius: '50%',
-          background: 'conic-gradient(from 90deg, rgba(0,200,255,0) 0%, rgba(0,200,255,0.16) 28%, rgba(0,200,255,0) 55%, rgba(0,200,255,0.14) 80%, rgba(0,200,255,0) 100%)',
-          mixBlendMode: 'screen',
-        }}
-      />
-      {/* Pulsing vortex core */}
-      <motion.div
-        animate={{ opacity: [0.45, 1.0, 0.45], scale: [0.8, 1.25, 0.8] }}
-        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          position: 'absolute',
-          left: cx - R * 0.19,
-          top: cy - R * 0.19,
-          width: R * 0.38,
-          height: R * 0.38,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0,230,255,0.9) 0%, rgba(0,200,255,0.35) 50%, transparent 75%)',
-          mixBlendMode: 'screen',
-          transformOrigin: 'center',
-        }}
-      />
-    </div>
-  );
-}
-
 // ── Null Sovereign ────────────────────────────────────────────────────────────
 // Null sovereign: tall figure with crown of null-rune fragments, disintegrating body.
 function NullEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
@@ -2266,7 +2204,6 @@ export function LuminarySummonCutscene({
                         <EntityArt size={ENT_W} />
                       )}
                       {luminaryId === 'lum_tide' && <TideEyeOverlay width={ENT_W} height={ENT_H} />}
-                      {luminaryId === 'lum_oracle' && <OracleVortexOverlay width={ENT_W} height={ENT_H} />}
                     </div>
                   </div>
 
@@ -2535,7 +2472,6 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       {...(cyFactor !== undefined ? { cyFactor } : {})}
                     />
                   )}
-                  {luminaryId === 'lum_oracle' && <OracleVortexOverlay width={IDLE_W} height={IDLE_H} />}
                 </>
               ) : (
                 <EntityArt size={IDLE_W} />
