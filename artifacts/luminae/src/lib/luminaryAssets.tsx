@@ -1097,6 +1097,7 @@ export function LuminarySummonCutscene({
   domain,
   lumens,
   flavor,
+  claimedBy,
   cardRect,
   onComplete,
   onFlash,
@@ -1108,6 +1109,7 @@ export function LuminarySummonCutscene({
   domain: string;
   lumens: number;
   flavor: string;
+  claimedBy?: string;
   cardRect?: { cx: number; cy: number; w: number };
   onComplete: () => void;
   onFlash?: () => void;
@@ -2224,6 +2226,12 @@ export function LuminarySummonCutscene({
                   <div className="text-xl font-serif font-bold text-white drop-shadow-lg">
                     {luminaryName}
                   </div>
+                  {claimedBy && (
+                    <div className="text-[11px] font-semibold px-3 py-0.5 rounded-full mt-0.5"
+                      style={{ background: `${primaryColor}22`, color: primaryColor, border: `1px solid ${primaryColor}44` }}>
+                      Allied with {claimedBy}
+                    </div>
+                  )}
                   <div className="text-base font-bold px-3 py-0.5 rounded-full"
                     style={{ background: `${primaryColor}28`, color: primaryColor, border: `1px solid ${primaryColor}55` }}>
                     {lumens < 0 ? `\u2212${Math.abs(lumens)} Eminence \u2014 all players` : `+${lumens} Eminence`}

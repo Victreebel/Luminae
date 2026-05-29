@@ -313,6 +313,7 @@ export default function GameBoard() {
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [summonQueue, setSummonQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
+    claimedBy?: string; // player name who claimed this Luminary
     cardRect?: { cx: number; cy: number; w: number };
     eventId: string;    // stable server event ID (or 'dev-test-<id>' for dev panel)
     isDevTest: boolean; // dev tests skip the server resolve_summon call
@@ -337,6 +338,7 @@ export default function GameBoard() {
     eventId: string,
     isDevTest: boolean,
     winSealingColor?: string,
+    claimedBy?: string,
   ) => void>(() => {});
   // Luminary IDs that have been detected as newly summoned in processUpdate but
   // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to
@@ -888,9 +890,12 @@ export default function GameBoard() {
       if (lum) {
         const isSealing = initialWinTrigId && evt.luminaryId === initialWinTrigId;
         const wsc: string | undefined = isSealing ? (lum.summonColor ?? '') || undefined : undefined;
+        const claimer = (state?.players ?? []).find((p: { claimedLuminaryIds?: string[] }) =>
+          (p.claimedLuminaryIds ?? []).includes(evt.luminaryId));
         enqueueSummonRef.current(
           evt.luminaryId, lum.name, lum.domain ?? '',
           lum.oblivion ? -lum.oblivion : lum.lumens, lum.flavor ?? '', evt.eventId, false, wsc,
+          (claimer as { playerName?: string })?.playerName,
         );
       }
     }
@@ -1732,6 +1737,10 @@ export default function GameBoard() {
               // cutscene burst visuals match the Luminary's summonColor.
               const wsc = (sealingEventId && evt.eventId === sealingEventId)
                 ? sealingLumSummonColor : undefined;
+              const claimedByPlayer = (newState.players ?? []).find(
+                (p: { claimedLuminaryIds?: string[] }) =>
+                  (p.claimedLuminaryIds ?? []).includes(evt.luminaryId)
+              ) as { playerName?: string } | undefined;
               enqueueSummon(
                 evt.luminaryId,
                 lum.name,
@@ -1741,6 +1750,7 @@ export default function GameBoard() {
                 evt.eventId,
                 false,
                 wsc,
+                claimedByPlayer?.playerName,
               );
             }
           }
@@ -2117,6 +2127,7 @@ export default function GameBoard() {
     eventId: string,
     isDevTest: boolean,
     winSealingColor?: string,
+    claimedBy?: string,
   ) => {
     // 1. Dedup guard (skip for dev tests which intentionally replay)
     if (!isDevTest) {
@@ -2153,7 +2164,7 @@ export default function GameBoard() {
             setSummonQueue(q => [
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
-                lumens: lumLumens, flavor: lumFlavor, cardRect: undefined, eventId, isDevTest, winSealingColor },
+                lumens: lumLumens, flavor: lumFlavor, claimedBy, cardRect: undefined, eventId, isDevTest, winSealingColor },
             ]);
             // Signal that this event has landed in the queue.
             enqueuingCountRef.current = Math.max(0, enqueuingCountRef.current - 1);
@@ -2183,7 +2194,7 @@ export default function GameBoard() {
             setSummonQueue(q => [                   // 7. start the cutscene
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
-                lumens: lumLumens, flavor: lumFlavor, cardRect: cardRectVal, eventId, isDevTest, winSealingColor },
+                lumens: lumLumens, flavor: lumFlavor, claimedBy, cardRect: cardRectVal, eventId, isDevTest, winSealingColor },
             ]);
             // Signal that this event has landed in the queue.
             enqueuingCountRef.current = Math.max(0, enqueuingCountRef.current - 1);
@@ -6846,6 +6857,7 @@ export default function GameBoard() {
                 domain={entry.domain}
                 lumens={entry.lumens}
                 flavor={entry.flavor}
+                claimedBy={entry.claimedBy}
                 cardRect={entry.cardRect}
                 overrideColor={entry.winSealingColor}
                 onFlash={() => setCutscenePostFlash(true)}
