@@ -1817,3 +1817,9 @@ id = "L-0w0aLg6DEpmplndcNbu"
 uri = "file://attached_assets/luminaries_reference.md"
 type = "text"
 title = "Luminae — Luminary Reference Guide"
+
+[[outputs]]
+id = "40j1sDyYfvl4LpMyigEpo"
+uri = "file://attached_assets/luminaries_chatgpt_handoff.md"
+type = "text"
+title = "Luminae — Luminary Handoff for ChatGPT"
