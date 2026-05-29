@@ -4426,17 +4426,30 @@ export default function GameBoard() {
         <div className="flex-1 flex items-center justify-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar">
           {state.players
             .filter(p => p.playerId !== session.playerId)
-            .map(opponent => (
-              <OpponentChip
-                key={opponent.playerId}
-                player={opponent}
-                isActive={
-                  state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
-                }
-                isLocalTurn={isMyTurn}
-                absorbPulse={chipAbsorbPulse[opponent.playerId] ?? 0}
-              />
-            ))}
+            .map(opponent => {
+              const lumAffs: LuminaryActiveState[] = state.luminaryAffinities ?? [];
+              const tc: number = state.turnCount ?? 0;
+              const affinityTotals: Partial<Record<GemKey, number>> = {};
+              for (const k of CRYSTALS) {
+                if (k === 'flux') continue;
+                const lumBonus = lumAffs.filter(
+                  la => la.ownerId === opponent.playerId && la.activeAffinity === k && tc > la.summonedAtTurnCount,
+                ).length;
+                affinityTotals[k] = (opponent.crystals[k as keyof CrystalCounts] ?? 0) + (opponent.bonuses[k as keyof CrystalCounts] ?? 0) + lumBonus;
+              }
+              return (
+                <OpponentChip
+                  key={opponent.playerId}
+                  player={opponent}
+                  isActive={
+                    state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
+                  }
+                  isLocalTurn={isMyTurn}
+                  absorbPulse={chipAbsorbPulse[opponent.playerId] ?? 0}
+                  affinityTotals={affinityTotals}
+                />
+              );
+            })}
           <TurnCountdown deadline={state.turnDeadline ?? null} active={isMyTurn} />
           <span className="text-xs text-muted-foreground font-mono shrink-0">R{state.roundNumber}</span>
         </div>

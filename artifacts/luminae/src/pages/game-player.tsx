@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAvatarForPlayer } from '@/lib/avatars';
 import { opponentTurnVariants } from './game-constants';
+import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
+
+const NON_FLUX_KEYS = GEM_KEYS.filter(k => k !== 'flux');
 
 export const PlayerAvatar = React.memo(function PlayerAvatar({ avatarId, name, size = 28 }: { avatarId?: string | null; name: string; size?: number }) {
   const avatar = getAvatarForPlayer(avatarId);
@@ -26,53 +29,94 @@ export function OpponentChip({
   isActive,
   isLocalTurn,
   absorbPulse = 0,
+  affinityTotals,
 }: {
   player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
   isActive: boolean;
   isLocalTurn: boolean;
   absorbPulse?: number;
+  affinityTotals?: Partial<Record<GemKey, number>>;
 }) {
   const dimmed = !isActive && !isLocalTurn;
   return (
-    <motion.div
-      data-opponent-chip={player.playerId}
-      initial={false}
-      animate={isActive ? 'active' : 'idle'}
-      variants={opponentTurnVariants}
-      className={`relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold shrink-0 transition-all duration-300 ${
-        isActive
-          ? 'ring-1 ring-primary bg-primary/10 text-foreground'
-          : dimmed
-          ? 'bg-secondary/40 text-muted-foreground/50'
-          : 'bg-secondary/60 text-muted-foreground'
-      }`}
-    >
-      <AnimatePresence>
-        {absorbPulse > 0 && (
-          <motion.span
-            key={absorbPulse}
-            className="pointer-events-none absolute inset-[-2px] rounded-full"
-            initial={{ boxShadow: '0 0 0 2px rgba(99,102,241,0.75), 0 0 14px 5px rgba(99,102,241,0.45)' }}
-            animate={{ boxShadow: '0 0 0 5px rgba(99,102,241,0), 0 0 20px 10px rgba(99,102,241,0)' }}
-            exit={{}}
-            transition={{ duration: 0.45, ease: 'easeOut' }}
-          />
-        )}
-      </AnimatePresence>
-      <PlayerAvatar avatarId={player.avatarId} name={player.playerName} size={20} />
-      {isActive && player.isAi ? (
-        <svg className="h-2.5 w-2.5 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      ) : isActive ? (
-        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-      ) : null}
-      <span className="truncate max-w-[60px]">{player.playerName}</span>
-      <span className={`shrink-0 text-[10px] font-bold tabular-nums leading-none ${isActive ? 'text-amber-300/90' : dimmed ? 'text-amber-400/35' : 'text-amber-400/60'}`}>
-        {player.lumens}✦
-      </span>
-    </motion.div>
+    <div className="flex flex-col items-center gap-0 shrink-0">
+      <motion.div
+        data-opponent-chip={player.playerId}
+        initial={false}
+        animate={isActive ? 'active' : 'idle'}
+        variants={opponentTurnVariants}
+        className={`relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold transition-all duration-300 ${
+          isActive
+            ? 'ring-1 ring-primary bg-primary/10 text-foreground'
+            : dimmed
+            ? 'bg-secondary/40 text-muted-foreground/50'
+            : 'bg-secondary/60 text-muted-foreground'
+        }`}
+      >
+        <AnimatePresence>
+          {absorbPulse > 0 && (
+            <motion.span
+              key={absorbPulse}
+              className="pointer-events-none absolute inset-[-2px] rounded-full"
+              initial={{ boxShadow: '0 0 0 2px rgba(99,102,241,0.75), 0 0 14px 5px rgba(99,102,241,0.45)' }}
+              animate={{ boxShadow: '0 0 0 5px rgba(99,102,241,0), 0 0 20px 10px rgba(99,102,241,0)' }}
+              exit={{}}
+              transition={{ duration: 0.45, ease: 'easeOut' }}
+            />
+          )}
+        </AnimatePresence>
+        <PlayerAvatar avatarId={player.avatarId} name={player.playerName} size={20} />
+        {isActive && player.isAi ? (
+          <svg className="h-2.5 w-2.5 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        ) : isActive ? (
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
+        ) : null}
+        <span className="truncate max-w-[60px]">{player.playerName}</span>
+        <span className={`shrink-0 text-[10px] font-bold tabular-nums leading-none ${isActive ? 'text-amber-300/90' : dimmed ? 'text-amber-400/35' : 'text-amber-400/60'}`}>
+          {player.lumens}✦
+        </span>
+      </motion.div>
+
+      {affinityTotals && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            marginTop: 3,
+            padding: '2px 7px',
+            borderRadius: 5,
+            background: 'rgba(0,0,0,0.40)',
+            border: '1px solid rgba(255,255,255,0.07)',
+          }}
+        >
+          {NON_FLUX_KEYS.map(key => {
+            const meta = GEM_META[key];
+            const val = affinityTotals[key] ?? 0;
+            return (
+              <span
+                key={key}
+                title={`${meta.name}: ${val}`}
+                style={{
+                  color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  minWidth: 9,
+                  textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {val}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
