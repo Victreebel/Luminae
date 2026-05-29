@@ -1716,6 +1716,12 @@ uri = "file://attached_assets/generated_images/lum_radiant_entity_v2.png"
 type = "image"
 title = "radiant keeper entity v2"
 
+[[generated]]
+id = "QXN3oEp0iTqFSSbt_W4Q-"
+uri = "file://attached_assets/generated_images/lum_null_panel_v2.png"
+type = "image"
+title = "null sovereign panel v2 crystal wall"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
