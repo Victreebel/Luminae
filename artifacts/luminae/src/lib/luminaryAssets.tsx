@@ -660,14 +660,27 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
   const w = size;
   const h = Math.round(size * (3 / 2));
 
+  // Outer wrapper keeps the original footprint for layout purposes.
+  // Inner layer rotates continuously — the coiled form looks like a cosmic swirl.
+  // overflow: visible so the rotating corners aren't clipped by this element;
+  // parent contexts (portal radial mask, idle overlay) provide their own clipping.
   return (
-    <img
-      src={src}
-      alt=""
-      draggable={false}
+    <div
       className={className}
-      style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
-    />
+      style={{ width: w, height: h, flexShrink: 0, overflow: 'visible', position: 'relative' }}
+    >
+      <div
+        className="oracle-swirl"
+        style={{ width: w, height: h, position: 'absolute', top: 0, left: 0 }}
+      >
+        <img
+          src={src}
+          alt=""
+          draggable={false}
+          style={{ width: w, height: h, objectFit: 'contain', display: 'block' }}
+        />
+      </div>
+    </div>
   );
 }
 

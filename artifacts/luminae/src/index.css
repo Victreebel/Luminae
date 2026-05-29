@@ -653,6 +653,17 @@ button,
   animation: lum-idle-aura 3.8s ease-in-out infinite;
 }
 
+/* ── Oracle swirl — slow continuous rotation for the Cosmic Oracle entity */
+@keyframes oracle-swirl {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.oracle-swirl {
+  animation: oracle-swirl 16s linear infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
 /* ── Luminary claimed portal — CSS-compositor animations ─────────────────
    Replaces framer-motion repeat:Infinity loops in LuminaryClaimedPortal.
    Up to 5 portals visible simultaneously; each had ~12 JS animation loops.
