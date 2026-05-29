@@ -605,7 +605,7 @@ function CompassEntity({ size = 140, className = '' }: { size?: number; classNam
 
 // ── Cosmic Oracle ─────────────────────────────────────────────────────────────
 // Cosmic oracle: seated floating figure inside three orbital rings, three eyes.
-function OracleEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+function OracleEntityFallback({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
       <defs>
@@ -644,6 +644,28 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
       <line x1="36" y1="79" x2="24" y2="90" stroke="#ef4444" strokeWidth="0.45" opacity="0.2" />
       <line x1="64" y1="79" x2="76" y2="90" stroke="#3d6bff" strokeWidth="0.45" opacity="0.2" />
     </svg>
+  );
+}
+
+// ── Cosmic Oracle Entity (illustrated) ────────────────────────────────────────
+// Renders the illustrated entity.png (cosmic dragon/serpent form).
+// Falls back to OracleEntityFallback if the PNG is unavailable at build time.
+function OracleEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const src = _getLuminaryImage('lum_oracle', 'entity');
+  if (!src) return <OracleEntityFallback size={size} className={className} />;
+
+  // The entity PNG is 2:3 portrait — height is 3/2 × width.
+  const w = size;
+  const h = Math.round(size * (3 / 2));
+
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className={className}
+      style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+    />
   );
 }
 
