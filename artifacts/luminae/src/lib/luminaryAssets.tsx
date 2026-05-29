@@ -371,8 +371,8 @@ function VerdantEntity({ size = 140, className = '' }: { size?: number; classNam
 }
 
 // ── Void Warden ───────────────────────────────────────────────────────────────
-// Minimal procedural fallback shown only when entity.png is unavailable.
-function VoidEntityFallback({ size = 140, className = '' }: { size?: number; className?: string }) {
+// Void warden: tall hooded cloak, absolute void face, orbital containment ring.
+function VoidEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
       <defs>
@@ -398,23 +398,6 @@ function VoidEntityFallback({ size = 140, className = '' }: { size?: number; cla
       <path d="M 20,54 Q 22,70 22,105" stroke="#312e81" strokeWidth="1.5" fill="none" opacity="0.7" />
       <path d="M 80,54 Q 78,70 78,105" stroke="#312e81" strokeWidth="1.5" fill="none" opacity="0.7" />
     </svg>
-  );
-}
-
-// Illustrated static entity PNG (1254×1254 RGBA square, transparent background).
-// Falls back to VoidEntityFallback if the PNG is unavailable at build time.
-function VoidEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
-  const src = _getLuminaryImage('lum_void', 'entity');
-  if (!src) return <VoidEntityFallback size={size} className={className} />;
-
-  return (
-    <img
-      src={src}
-      alt=""
-      draggable={false}
-      className={className}
-      style={{ width: size, height: size, objectFit: 'contain', display: 'block', flexShrink: 0 }}
-    />
   );
 }
 
