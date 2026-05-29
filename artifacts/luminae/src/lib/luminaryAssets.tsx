@@ -656,9 +656,9 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
   const src = _getLuminaryImage('lum_oracle', 'entity');
   if (!src) return <OracleEntityFallback size={size} className={className} />;
 
-  // The entity PNG is 2:3 portrait — height is 3/2 × width.
+  // The entity PNG is ~4:5 portrait (1122×1402) — height is ~1.25 × width.
   const w = size;
-  const h = Math.round(size * (3 / 2));
+  const h = Math.round(size * (1402 / 1122));
 
   return (
     <img
@@ -794,7 +794,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity },
   lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity   },
   lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity },
-  lum_oracle:  { id: 'lum_oracle',  primaryColor: '#fbbf24', secondaryColor: '#ef4444', glowColor: 'rgba(251,191,36,0.65)',  EntityArt: OracleEntity, entityBlendMode: 'screen' },
+  lum_oracle:  { id: 'lum_oracle',  primaryColor: '#fbbf24', secondaryColor: '#ef4444', glowColor: 'rgba(251,191,36,0.65)',  EntityArt: OracleEntity  },
   lum_null:    { id: 'lum_null',    primaryColor: '#ffffff', secondaryColor: '#0a0a14', glowColor: 'rgba(255,255,255,0.5)',  EntityArt: NullEntity    },
 };
 
