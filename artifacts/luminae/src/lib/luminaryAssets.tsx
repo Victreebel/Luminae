@@ -672,8 +672,8 @@ function OracleEntity({ size = 140, className = '' }: { size?: number; className
 }
 
 // ── Null Sovereign ────────────────────────────────────────────────────────────
-// Null sovereign: tall figure with crown of null-rune fragments, disintegrating body.
-function NullEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+// Procedural SVG fallback — only shown when entity.png is unavailable at build time.
+function NullEntityFallback({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
       <defs>
@@ -713,6 +713,26 @@ function NullEntity({ size = 140, className = '' }: { size?: number; className?:
       <polygon points="14,68 16,64 18,68 16,72" fill="#e2e8f0" opacity="0.32" />
       <polygon points="86,68 84,64 82,68 84,72" fill="#e2e8f0" opacity="0.32" />
     </svg>
+  );
+}
+
+// Falls back to NullEntityFallback if the PNG is unavailable at build time.
+function NullEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const src = _getLuminaryImage('lum_null', 'entity');
+  if (!src) return <NullEntityFallback size={size} className={className} />;
+
+  // The entity PNG is 3:4 portrait — height is 4/3 × width.
+  const w = size;
+  const h = Math.round(size * (4 / 3));
+
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className={className}
+      style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+    />
   );
 }
 

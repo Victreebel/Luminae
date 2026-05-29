@@ -1692,6 +1692,12 @@ uri = "file://attached_assets/generated_images/panel_pale_v2.png"
 type = "image"
 title = "pale_merchant_panel_v2"
 
+[[generated]]
+id = "_FCKbeX7mfT2ljYEyX9Pq"
+uri = "file://attached_assets/null_entity_v1_gen.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"
