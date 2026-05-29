@@ -106,11 +106,12 @@ If a generation pass produces a humanoid figure for a Luminary that should be no
 - **lum_oracle notes (entity replaced May 2026):** Cosmic serpent/dragon — swirling dark feathered form with teal/cyan bioluminescence and amber glowing nodes, coiled against a deep space field. 1024×1536 RGBA PNG (2:3 portrait), background removed. `OracleEntity` renders as a static image; SVG fallback retained as `OracleEntityFallback`.
 - **lum_null notes (entity replaced May 2026):** Headless void-black humanoid seated on an ornate gothic throne. Glossy obsidian-like body with white/silver specular highlights on shoulders, chest, arms, knees. Crystal gothic arch and white light shaft in background, full scene including feet and throne base. User-provided background-removed PNG (`7AC0A86F-151B-4D56-BFC6-CF5396EB53A5_1780026391944.png`). 1024×1461 RGBA PNG (≈2:3 portrait), transparent background. `NullEntity` renders as a static image; SVG fallback retained as `NullEntityFallback`.
 - **Panels needing regeneration:** None — all 12 panels accepted.
+- **lum_void notes (entity replaced May 2026):** Dark hooded figure with orbital ring halo, swirling void-spiral head, tentacle appendages at the base. User-provided image, background removed via service. 1254×1254 RGBA PNG (square 1:1), transparent background. `VoidEntity` renders as static PNG; SVG fallback retained as `VoidEntityFallback`.
 - **lum_radiant notes (entity replaced May 2026):** Sensual luminous goddess — strapless crystalline pearl/gold breastplate baring midriff, flowing split silk skirt, sun crown, golden staff with star gem, soft internal pearl glow. 896×1280 RGBA PNG (≈7:10 portrait), background removed. `RadiantEntity` renders as static PNG; SVG fallback retained as `RadiantEntityFallback`.
 - **Entities needing regeneration:** None — all 12 entities accepted.
 - **Auras regenerated (transparent background):** lum_void (soft radial purple void glow, alpha=0 at corners), lum_pale (soft silver/pearl starburst glow, alpha=0 at corners) — both pass screen-blend check, no opaque rectangle visible.
 - **Open concept questions:** None.
-- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` contains all 12 IDs. lum_pale, lum_oracle, lum_null, and lum_radiant use fully illustrated entity PNGs (SVG fallbacks retained). All 12 Luminaries use illustrated assets; no Luminary falls back to procedural SVG art.
+- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` contains all 12 IDs. lum_pale, lum_oracle, lum_null, lum_radiant, and lum_void use fully illustrated entity PNGs (SVG fallbacks retained). All 12 Luminaries use illustrated assets; no Luminary falls back to procedural SVG art.
 
 ## System Architecture
 
