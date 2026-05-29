@@ -12,6 +12,8 @@ interface LuminaryVisuals {
   secondaryColor: string;
   glowColor: string;
   EntityArt: React.FC<{ size?: number; className?: string }>;
+  /** CSS mix-blend-mode applied to the entityCutout img. Use 'screen' for dark-bg entities where bg-removal is imperfect. */
+  entityBlendMode?: string;
 }
 
 // ─── Illustrated Asset Discovery ──────────────────────────────────────────────
@@ -792,7 +794,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity },
   lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity   },
   lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity },
-  lum_oracle:  { id: 'lum_oracle',  primaryColor: '#fbbf24', secondaryColor: '#ef4444', glowColor: 'rgba(251,191,36,0.65)',  EntityArt: OracleEntity  },
+  lum_oracle:  { id: 'lum_oracle',  primaryColor: '#fbbf24', secondaryColor: '#ef4444', glowColor: 'rgba(251,191,36,0.65)',  EntityArt: OracleEntity, entityBlendMode: 'screen' },
   lum_null:    { id: 'lum_null',    primaryColor: '#ffffff', secondaryColor: '#0a0a14', glowColor: 'rgba(255,255,255,0.5)',  EntityArt: NullEntity    },
 };
 
@@ -1114,7 +1116,7 @@ export function LuminarySummonCutscene({
 }) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
-  const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor } = vis;
+  const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode } = vis;
   // When overrideColor is provided (win-sealing summon), use it for all burst/particle
   // visuals so they match the sealing Luminary's summonColor rather than the generic
   // LUMINARY_VISUALS primaryColor.
@@ -2187,6 +2189,7 @@ export function LuminarySummonCutscene({
                             width: ENT_W, height: ENT_H,
                             objectFit: 'contain', objectPosition: 'center',
                             display: 'block',
+                            ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             // Aggressive radial mask: opaque centre, fading to transparent
                             // well before the image edges. Background pixels and rectangular
                             // glow/fringe are dissolved into the portal field behind, reading
@@ -2260,7 +2263,7 @@ export function LuminarySummonCutscene({
 // of the card (name, claim tag) stays legible underneath the transparent edge.
 export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false }: { luminaryId: string; frozen?: boolean; hidden?: boolean }) {
   const vis = getLuminaryVisuals(luminaryId);
-  const { EntityArt, primaryColor, glowColor } = vis;
+  const { EntityArt, primaryColor, glowColor, entityBlendMode } = vis;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
 
   const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
@@ -2455,6 +2458,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       objectFit: 'contain',
                       objectPosition: objPos,
                       display: 'block',
+                      ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
                       maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
