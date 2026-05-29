@@ -402,8 +402,8 @@ function VoidEntity({ size = 140, className = '' }: { size?: number; className?:
 }
 
 // ── Radiant Keeper ────────────────────────────────────────────────────────────
-// Radiant keeper: saint figure with massive 8-point starburst halo, glowing sphere.
-function RadiantEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+// Minimal procedural fallback shown only when entity.png is unavailable.
+function RadiantEntityFallback({ size = 140, className = '' }: { size?: number; className?: string }) {
   const haloCenter = { x: 50, y: 44 };
   const rays = [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
     const r = (deg * Math.PI) / 180;
@@ -446,6 +446,27 @@ function RadiantEntity({ size = 140, className = '' }: { size?: number; classNam
       <path d="M 26,90 L 74,90 L 68,130 L 32,130 Z" fill="url(#rad-g1)" />
       <line x1="50" y1="90" x2="50" y2="130" stroke="#e2e8f0" strokeWidth="0.6" opacity="0.4" />
     </svg>
+  );
+}
+
+// Illustrated static entity PNG (896×1280 RGBA, transparent background).
+// Falls back to RadiantEntityFallback if the PNG is unavailable at build time.
+function RadiantEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const src = _getLuminaryImage('lum_radiant', 'entity');
+  if (!src) return <RadiantEntityFallback size={size} className={className} />;
+
+  // The entity PNG is 896×1280 — height is ~1.429 × width.
+  const w = size;
+  const h = Math.round(size * (1280 / 896));
+
+  return (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className={className}
+      style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+    />
   );
 }
 
