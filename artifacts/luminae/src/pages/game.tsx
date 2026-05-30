@@ -60,7 +60,7 @@ import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
 import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_RIPPLE_DELAY_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
-import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack } from './game-card';
+import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
@@ -285,6 +285,11 @@ export default function GameBoard() {
   const gemBurstKeyRef = useRef(0);
   const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTakeBurstActionRef = useRef<string | null>(null);
+  const lumensBurstKeyRef = useRef(0);
+  const prevLumensRef = useRef<Record<string, number>>({});
+  const [lumensBursts, setLumensBursts] = useState<Array<{
+    key: number; playerName: string; delta: number;
+  }>>([]);
   // True when the optimistic token-flip already fired from a click-path harvest.
   // Lets the WS handler skip re-firing for normal harvests while still firing
   // for planned harvests (which skip the click path entirely).
@@ -831,6 +836,28 @@ export default function GameBoard() {
   useEffect(() => {
     setCoreActionSubmitted(false);
   }, [state?.currentPlayerIndex]);
+
+  // ── Eminence gain burst — fires whenever any player's lumens increases ──
+  useEffect(() => {
+    if (!state?.players) return;
+    const prev = prevLumensRef.current;
+    const isInit = Object.keys(prev).length === 0;
+    if (!isInit) {
+      for (const p of state.players) {
+        const prevVal = prev[p.playerId] ?? p.lumens;
+        const delta = p.lumens - prevVal;
+        if (delta > 0) {
+          const key = ++lumensBurstKeyRef.current;
+          setLumensBursts(bs => [...bs, { key, playerName: p.playerName, delta }]);
+          setTimeout(() => setLumensBursts(bs => bs.filter(b => b.key !== key)), 2400);
+        }
+      }
+    }
+    for (const p of state.players) {
+      prev[p.playerId] = p.lumens;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.players]);
 
   // Market keyboard navigation — roving tabindex for the 3×N card Forge grid.
   // Counts how many keyboard-navigable (non-ghost, non-hidden, non-null) cards
@@ -3472,10 +3499,10 @@ export default function GameBoard() {
                         <div className="flex items-start justify-between">
                           {(c.lumens ?? 0) > 0 ? (
                             <span
-                              className="text-[11px] font-bold font-serif text-amber-100 leading-none px-1 py-0.5 rounded"
+                              className="flex items-center gap-0.5 text-[11px] font-bold font-serif text-amber-100 leading-none px-1 py-0.5 rounded"
                               style={{ background: 'rgba(0,0,0,0.82)' }}
                             >
-                              {c.lumens}
+                              {c.lumens}<EminenceDiamond size={8} />
                             </span>
                           ) : <span />}
                           {c.bonusColor && (
@@ -3706,7 +3733,7 @@ export default function GameBoard() {
                     </button>
                     <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-white leading-none">
                       <span>{p.lumens}</span>
-                      <Sparkles className="h-3 w-3 text-white" />
+                      <EminenceDiamond size={12} />
                     </div>
                   </div>
 
@@ -3860,10 +3887,11 @@ export default function GameBoard() {
           )}
         </div>
         <div className="text-center">
-          <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
-          <div className="text-xs text-white/70 flex items-center gap-0.5 justify-center">
-            <Sparkles className="h-3 w-3" /> eminence
+          <div className="flex items-center justify-center gap-1.5">
+            <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
+            <EminenceDiamond size={22} />
           </div>
+          <div className="text-xs text-white/50 mt-0.5">eminence</div>
         </div>
       </div>
 
@@ -4123,7 +4151,7 @@ export default function GameBoard() {
                   </button>
                   <div className="flex items-center gap-1 shrink-0 font-serif font-black text-lg text-white leading-none">
                     <span>{p.lumens}</span>
-                    <Sparkles className="h-3 w-3 text-white" />
+                    <EminenceDiamond size={12} />
                   </div>
                 </div>
 
@@ -4618,7 +4646,7 @@ export default function GameBoard() {
                 } : undefined}
               >
                 <span className="font-serif font-black text-lg text-white leading-none">{me.lumens}</span>
-                <Sparkles className="h-3 w-3 text-white" />
+                <EminenceDiamond size={12} />
               </button>
             </div>
           </div>
@@ -5397,10 +5425,10 @@ export default function GameBoard() {
               </div>
               {/* Header row: name + lumen reward + close */}
               <div className="flex items-center gap-2 pb-2 border-b border-border/40 mb-3">
-                <Sparkles className="h-4 w-4 shrink-0 text-amber-400" />
+                <EminenceDiamond size={14} />
                 <span className="font-semibold text-sm leading-tight flex-1 truncate">{selectedLuminary.name}</span>
-                <span className="flex items-center gap-0.5 text-xs font-bold text-amber-300 shrink-0">
-                  +{selectedLuminary.lumens} Eminence
+                <span className="flex items-center gap-1 text-xs font-bold text-amber-300 shrink-0">
+                  +{selectedLuminary.lumens}<EminenceDiamond size={9} />
                 </span>
                 <Button
                   variant="ghost"
@@ -5473,10 +5501,10 @@ export default function GameBoard() {
                     </div>
                     {/* Eminence reward */}
                     <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-amber-950/30 border border-amber-500/20">
-                      <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
+                      <EminenceDiamond size={16} />
                       <div className="flex flex-col">
                         <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400/60">Eminence Reward</span>
-                        <span className="text-sm font-bold text-amber-200">+{selectedLuminary.lumens} Eminence</span>
+                        <span className="flex items-center gap-1 text-sm font-bold text-amber-200">+{selectedLuminary.lumens}<EminenceDiamond size={10} /></span>
                       </div>
                     </div>
                   </div>
@@ -5908,7 +5936,7 @@ export default function GameBoard() {
               </span>
               {purchaseBurst.lumens > 0 && (
                 <span className="flex items-center gap-1.5 text-lg font-bold" style={{ color: GEM_META.flux.hex }}>
-                  <Sparkles className="h-4 w-4" /> +{purchaseBurst.lumens} eminence
+                  <EminenceDiamond size={16} /> +{purchaseBurst.lumens} eminence
                 </span>
               )}
             </motion.div>
@@ -6104,7 +6132,7 @@ export default function GameBoard() {
           )}
           <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
             <span className="text-primary/80">Total</span>
-            <span className="font-bold text-primary">{me?.lumens ?? 0}</span>
+            <span className="flex items-center gap-1 font-bold text-primary">{me?.lumens ?? 0}<EminenceDiamond size={11} /></span>
           </div>
         </div>
       </BaseDialog>
@@ -6334,8 +6362,7 @@ export default function GameBoard() {
                               {(c.lumens ?? 0) > 0 && (
                                 <>
                                   <span className="text-muted-foreground/40">·</span>
-                                  <Sparkles className="h-3 w-3 text-white" />
-                                  <span className="text-xs font-bold text-white">{c.lumens}</span>
+                                  <span className="flex items-center gap-0.5 text-xs font-bold text-white">{c.lumens}<EminenceDiamond size={9} /></span>
                                 </>
                               )}
                             </div>
@@ -6684,7 +6711,7 @@ export default function GameBoard() {
                             </span>
                           </span>
                           <span className="font-bold text-primary flex items-center gap-1">
-                            {p.lumens} <Sparkles className="h-3.5 w-3.5" />
+                            {p.lumens}<EminenceDiamond size={13} />
                           </span>
                         </div>
                         {/* Breakdown row */}
@@ -6953,6 +6980,58 @@ export default function GameBoard() {
           onDone={() => setChipAbsorbRipple(null)}
         />
       )}
+      {/* ── Eminence Gain Burst — fires when any player's lumens increases ── */}
+      <AnimatePresence>
+        {lumensBursts.map((burst) => (
+          <motion.div
+            key={burst.key}
+            className="pointer-events-none fixed inset-0 z-[54] flex items-start justify-center"
+            style={{ paddingTop: '20%' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              className="relative flex flex-col items-center gap-2"
+              initial={{ scale: 0.35, y: 36 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: -72, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 22 }}
+            >
+              {/* Expanding ring burst */}
+              <motion.div
+                className="pointer-events-none absolute rounded-full"
+                style={{ border: '1.5px solid rgba(255,255,255,0.22)', top: '50%', left: '50%', translateX: '-50%', translateY: '-50%' }}
+                initial={{ width: 56, height: 56, opacity: 0.85 }}
+                animate={{ width: 300, height: 300, opacity: 0 }}
+                transition={{ duration: 0.75, ease: 'easeOut', delay: 0.06 }}
+              />
+              {/* Score pill */}
+              <div
+                className="flex items-center gap-3 px-7 py-4 rounded-2xl"
+                style={{
+                  background: 'rgba(8,8,8,0.90)',
+                  boxShadow: '0 0 64px rgba(255,255,255,0.08), 0 8px 40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.07)',
+                }}
+              >
+                <span
+                  className="font-serif font-black text-5xl text-white leading-none tabular-nums"
+                  style={{ textShadow: '0 0 28px rgba(255,255,255,0.40)' }}
+                >
+                  +{burst.delta}
+                </span>
+                <EminenceDiamond size={34} />
+              </div>
+              {/* Player name label */}
+              <span className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                {burst.playerName}
+              </span>
+            </motion.div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       {/* Hand-tab absorb flash — abridged forge card absorbed by Civilization tab */}
       <AnimatePresence>
         {handTabAbsorbFlash && (

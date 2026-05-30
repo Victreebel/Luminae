@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getAvatarForPlayer } from '@/lib/avatars';
 import { opponentTurnVariants } from './game-constants';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
+import { EminenceDiamond } from './game-card';
 
 const NON_FLUX_KEYS = GEM_KEYS.filter(k => k !== 'flux');
 
@@ -75,8 +76,8 @@ export function OpponentChip({
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
         ) : null}
         <span className="truncate max-w-[60px]">{player.playerName}</span>
-        <span className={`shrink-0 text-[10px] font-bold tabular-nums leading-none ${isActive ? 'text-amber-300/90' : dimmed ? 'text-amber-400/35' : 'text-amber-400/60'}`}>
-          {player.lumens}✦
+        <span className={`shrink-0 flex items-center gap-0.5 text-[10px] font-bold tabular-nums leading-none ${isActive ? 'text-amber-300/90' : dimmed ? 'text-amber-400/35' : 'text-amber-400/60'}`}>
+          {player.lumens}<EminenceDiamond size={7} />
         </span>
       </motion.div>
 

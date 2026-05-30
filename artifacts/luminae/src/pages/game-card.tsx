@@ -13,6 +13,20 @@ export function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) 
   return <AffinityEmblem color={color} size={size} />;
 }
 
+export function EminenceDiamond({ size = 10 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      style={{ display: 'inline-block', flexShrink: 0, verticalAlign: 'middle' }}
+      aria-hidden="true"
+    >
+      <polygon points="5,0.5 9.5,5 5,9.5 0.5,5" fill="white" />
+    </svg>
+  );
+}
+
 export type EminenceBreakdown = {
   artifacts: number;
   luminaries: number;

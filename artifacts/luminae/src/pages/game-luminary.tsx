@@ -5,7 +5,7 @@ import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } fr
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { LuminaryPanelArt } from '@/lib/luminaryAssets';
 import { CRYSTALS } from './game-constants';
-import { MiniGem } from './game-card';
+import { MiniGem, EminenceDiamond } from './game-card';
 import { PlayerAvatar } from './game-player';
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
@@ -259,8 +259,8 @@ export function LuminaryClaimedPortal({
       {/* ── UI Overlay ── */}
       {/* Top row: eminence value (left) + floating active affinity gem (right) */}
       <div className="absolute top-2 left-0 right-0 z-10 pointer-events-none flex justify-between items-start px-2">
-        <span className="text-lg font-serif font-black leading-none select-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-          {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
+        <span className="flex items-center gap-0.5 text-lg font-serif font-black leading-none select-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+          {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}<EminenceDiamond size={10} />
         </span>
         {activeKey && (
           <div
@@ -452,8 +452,8 @@ export function LuminaryCard({
           <div className="relative z-10 h-full p-2 flex flex-col justify-between">
             {/* Top row — lumens/oblivion (left) + can-afford badge (right), mirroring ArtifactCardView */}
             <div className="flex justify-between items-start">
-              <span className={`bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,1)] ${luminary.oblivion ? 'text-red-300' : 'text-amber-100'}`}>
-                {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
+              <span className={`bg-black/60 backdrop-blur-sm rounded px-1.5 py-0.5 text-sm font-serif font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,1)] flex items-center gap-0.5 ${luminary.oblivion ? 'text-red-300' : 'text-amber-100'}`}>
+                {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}<EminenceDiamond size={9} />
               </span>
               <AnimatePresence>
                 {canAffordLuminary && (
