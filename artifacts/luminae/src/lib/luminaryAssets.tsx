@@ -2517,8 +2517,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                   >
                     {/* Body — static within group */}
                     <img src={body} draggable={false} alt="" style={layerImg} />
-                    {/* Core — wrapper pulses scale; img rotates CW */}
-                    <div className="lum-radiant-core-pulse" style={absfill}>
+                    {/* Core — wrapper holds fixed small size + glow pulse; img rotates CW */}
+                    <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'scale(0.24)', transformOrigin: 'center center' }}>
                       <img src={core} draggable={false} alt=""
                         className="lum-radiant-core"
                         style={layerImg}
