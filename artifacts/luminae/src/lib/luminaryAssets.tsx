@@ -2554,11 +2554,11 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     style={absfill}
                   >
                     {/* Body — scaled up */}
-                    <div style={{ ...absfill, transform: 'scale(1.22)', transformOrigin: 'center center' }}>
+                    <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
                       <img src={body} draggable={false} alt="" style={layerImg} />
                     </div>
                     {/* Core — wrapper holds fixed small size + glow pulse; img rotates CW */}
-                    <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'scale(0.24)', transformOrigin: 'center center' }}>
+                    <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'scale(0.20)', transformOrigin: 'center center' }}>
                       <img src={core} draggable={false} alt=""
                         className="lum-radiant-core"
                         style={layerImg}
