@@ -2516,7 +2516,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     style={absfill}
                   >
                     {/* Body — scaled up */}
-                    <div style={{ ...absfill, transform: 'scale(1.40)', transformOrigin: 'center center' }}>
+                    <div style={{ ...absfill, transform: 'scale(1.22)', transformOrigin: 'center center' }}>
                       <img src={body} draggable={false} alt="" style={layerImg} />
                     </div>
                     {/* Core — wrapper holds fixed small size + glow pulse; img rotates CW */}
