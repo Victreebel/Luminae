@@ -2479,6 +2479,48 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           const idleClass = isIdle
             ? (entScale !== 1 ? 'lum-idle-float-scaled' : 'lum-idle-float')
             : undefined;
+
+          // ── lum_radiant: three-layer ring / body / core animation ──────────
+          // Structure: RingLayer (CCW rotation, no bounce)
+          //            BouncingEntityGroup → BodyLayer + CoreLayer (CW rotation)
+          // The ring stays fixed in space while the body+core float together.
+          // The core spins clockwise relative to the bouncing group center.
+          if (luminaryId === 'lum_radiant') {
+            const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
+            const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
+            const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+            if (ring && body && core) {
+              const mask = 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)';
+              const layerImg: React.CSSProperties = {
+                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                objectFit: 'contain', display: 'block',
+                maskImage: mask, WebkitMaskImage: mask,
+              };
+              return (
+                <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+                  {/* Outer ring — CCW rotation only, no bounce */}
+                  <img src={ring} draggable={false} alt=""
+                    className="lum-radiant-ring"
+                    style={layerImg}
+                  />
+                  {/* Bouncing group: body + core travel together */}
+                  <div
+                    className={isIdle ? 'lum-idle-float' : undefined}
+                    style={{ position: 'absolute', inset: 0 }}
+                  >
+                    {/* Body — static within group */}
+                    <img src={body} draggable={false} alt="" style={layerImg} />
+                    {/* Core — CW rotation inside the bouncing group */}
+                    <img src={core} draggable={false} alt=""
+                      className="lum-radiant-core"
+                      style={layerImg}
+                    />
+                  </div>
+                </div>
+              );
+            }
+          }
+
           return (
             <motion.div
               style={{

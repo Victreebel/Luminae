@@ -653,6 +653,27 @@ button,
   animation: lum-idle-aura 3.8s ease-in-out infinite;
 }
 
+/* ── Radiant Keeper idle — layered ring/core rotation ────────────────────
+   Ring (radiant1) rotates counterclockwise only — no bounce, no drift.
+   Core (radiant3) rotates clockwise inside the shared bouncing group.
+   Both run on the compositor thread alongside lum-idle-float.           */
+@keyframes lum-radiant-spin-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes lum-radiant-spin-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.lum-radiant-ring {
+  animation: lum-radiant-spin-ccw 30s linear infinite;
+  transform-origin: center center;
+}
+.lum-radiant-core {
+  animation: lum-radiant-spin-cw 22s linear infinite;
+  transform-origin: center center;
+}
+
 /* ── Luminary claimed portal — CSS-compositor animations ─────────────────
    Replaces framer-motion repeat:Infinity loops in LuminaryClaimedPortal.
    Up to 5 portals visible simultaneously; each had ~12 JS animation loops.
