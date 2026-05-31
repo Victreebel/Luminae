@@ -2541,7 +2541,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
                   {/* Outer ring — float wrapper syncs bounce; inner div handles scale + glow */}
                   <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
-                    <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+                    <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25) translateY(-6px)', transformOrigin: 'center center' }}>
                       <img src={ring} draggable={false} alt=""
                         className="lum-radiant-ring"
                         style={layerImg}
