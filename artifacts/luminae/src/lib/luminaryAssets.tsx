@@ -2226,17 +2226,47 @@ export function LuminarySummonCutscene({
                     }}
                   >
                     <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}>
-                      {entityCutout ? (
+                      {luminaryId === 'lum_radiant' ? (() => {
+                        // Three-layer animated composite — same form as the idle overlay,
+                        // scaled to the larger ENT_W container.
+                        const r1 = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
+                        const r2 = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
+                        const r3 = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+                        const lyr: React.CSSProperties = {
+                          position: 'absolute', inset: 0, width: '100%', height: '100%',
+                          objectFit: 'contain', display: 'block', mixBlendMode: 'screen',
+                        };
+                        const af: React.CSSProperties = { position: 'absolute', inset: 0 };
+                        return (
+                          <>
+                            {r1 && (
+                              <div className="lum-radiant-ring-pulse"
+                                style={{ ...af, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+                                <img src={r1} draggable={false} alt=""
+                                  className="lum-radiant-ring" style={lyr} />
+                              </div>
+                            )}
+                            {r2 && (
+                              <div style={{ ...af, transform: 'scale(1.22)', transformOrigin: 'center center' }}>
+                                <img src={r2} draggable={false} alt="" style={lyr} />
+                              </div>
+                            )}
+                            {r3 && (
+                              <div className="lum-radiant-core-pulse"
+                                style={{ ...af, transform: 'scale(0.24)', transformOrigin: 'center center' }}>
+                                <img src={r3} draggable={false} alt=""
+                                  className="lum-radiant-core" style={lyr} />
+                              </div>
+                            )}
+                          </>
+                        );
+                      })() : entityCutout ? (
                         <img src={entityCutout} alt={luminaryName}
                           style={{
                             width: ENT_W, height: ENT_H,
                             objectFit: 'contain', objectPosition: 'center',
                             display: 'block',
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                            // Aggressive radial mask: opaque centre, fading to transparent
-                            // well before the image edges. Background pixels and rectangular
-                            // glow/fringe are dissolved into the portal field behind, reading
-                            // as designed rim-light rather than asset artifacts.
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                           }}
