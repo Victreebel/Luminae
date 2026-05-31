@@ -2503,8 +2503,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-                  {/* Outer ring — wrapper keeps ring within card borders; img rotates CCW */}
-                  <div style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+                  {/* Outer ring — wrapper keeps ring within card borders + glow pulse; img rotates CCW */}
+                  <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
                     <img src={ring} draggable={false} alt=""
                       className="lum-radiant-ring"
                       style={layerImg}

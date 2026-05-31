@@ -690,6 +690,21 @@ button,
   animation: lum-radiant-core-pulse 2.4s ease-in-out infinite;
   transform-origin: center center;
 }
+@keyframes lum-radiant-ring-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(255, 235, 160, 0.20))
+            drop-shadow(0 0 5px rgba(255, 215, 120, 0.12));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgba(255, 235, 160, 0.80))
+            drop-shadow(0 0 16px rgba(255, 215, 120, 0.55))
+            drop-shadow(0 0 26px rgba(255, 195, 80, 0.35));
+  }
+}
+/* Glow pulse for the outer ring wrapper; transform (scale) is set via inline style */
+.lum-radiant-ring-pulse {
+  animation: lum-radiant-ring-pulse 3.6s ease-in-out infinite;
+}
 
 /* ── Luminary claimed portal — CSS-compositor animations ─────────────────
    Replaces framer-motion repeat:Infinity loops in LuminaryClaimedPortal.
