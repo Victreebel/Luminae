@@ -2516,10 +2516,11 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             : undefined;
 
           // ── lum_radiant: three-layer ring / body / core animation ──────────
-          // Structure: RingLayer (CCW rotation, no bounce)
-          //            BouncingEntityGroup → BodyLayer + CoreLayer (CW rotation)
-          // The ring stays fixed in space while the body+core float together.
-          // The core spins clockwise relative to the bouncing group center.
+          // Structure: RingFloatGroup (bounce) → RingLayer (scale + glow + CCW rotation)
+          //            BouncingEntityGroup (bounce) → BodyLayer + CoreLayer (CW rotation)
+          // All three layers bounce together via the same lum-idle-float class.
+          // Scale and rotation are on inner divs/imgs so they don't conflict with the
+          // float transform.
           if (luminaryId === 'lum_radiant') {
             const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
             const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
@@ -2538,12 +2539,14 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-                  {/* Outer ring — wrapper keeps ring within card borders + glow pulse; img rotates CCW */}
-                  <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
-                    <img src={ring} draggable={false} alt=""
-                      className="lum-radiant-ring"
-                      style={layerImg}
-                    />
+                  {/* Outer ring — float wrapper syncs bounce; inner div handles scale + glow */}
+                  <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
+                    <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+                      <img src={ring} draggable={false} alt=""
+                        className="lum-radiant-ring"
+                        style={layerImg}
+                      />
+                    </div>
                   </div>
                   {/* Bouncing group: body + core travel together */}
                   <div
