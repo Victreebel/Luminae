@@ -2503,8 +2503,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-                  {/* Outer ring — wrapper scales it up; img rotates CCW */}
-                  <div style={{ ...absfill, transform: 'scale(1.55)', transformOrigin: 'center center' }}>
+                  {/* Outer ring — wrapper keeps ring within card borders; img rotates CCW */}
+                  <div style={{ ...absfill, transform: 'scale(0.88)', transformOrigin: 'center center' }}>
                     <img src={ring} draggable={false} alt=""
                       className="lum-radiant-ring"
                       style={layerImg}
@@ -2515,8 +2515,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     className={isIdle ? 'lum-idle-float' : undefined}
                     style={absfill}
                   >
-                    {/* Body — static within group */}
-                    <img src={body} draggable={false} alt="" style={layerImg} />
+                    {/* Body — scaled up */}
+                    <div style={{ ...absfill, transform: 'scale(1.40)', transformOrigin: 'center center' }}>
+                      <img src={body} draggable={false} alt="" style={layerImg} />
+                    </div>
                     {/* Core — wrapper holds fixed small size + glow pulse; img rotates CW */}
                     <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'scale(0.24)', transformOrigin: 'center center' }}>
                       <img src={core} draggable={false} alt=""
