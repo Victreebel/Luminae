@@ -690,6 +690,21 @@ button,
   animation: lum-radiant-core-pulse 2.4s ease-in-out infinite;
   transform-origin: center center;
 }
+@keyframes lum-radiant-body-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(255, 245, 210, 0.20))
+            drop-shadow(0 0 10px rgba(255, 225, 160, 0.10));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px rgba(255, 245, 210, 0.80))
+            drop-shadow(0 0 28px rgba(255, 225, 160, 0.55))
+            drop-shadow(0 0 44px rgba(255, 200, 110, 0.30));
+  }
+}
+.lum-radiant-body-pulse {
+  animation: lum-radiant-body-pulse 2.4s ease-in-out infinite;
+  transform-origin: center center;
+}
 /* Permanent glow on the outer ring wrapper; transform (scale) is set via inline style */
 .lum-radiant-ring-pulse {
   filter: drop-shadow(0 0 6px rgba(255, 235, 160, 0.75))
