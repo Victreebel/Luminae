@@ -2533,18 +2533,18 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-                  {/* All three layers bounce together in the same idle-float group */}
+                  {/* Outer ring — wrapper keeps ring within card borders + glow pulse; img rotates CCW */}
+                  <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+                    <img src={ring} draggable={false} alt=""
+                      className="lum-radiant-ring"
+                      style={layerImg}
+                    />
+                  </div>
+                  {/* Bouncing group: body + core travel together */}
                   <div
                     className={isIdle ? 'lum-idle-float' : undefined}
                     style={absfill}
                   >
-                    {/* Ring — behind body/core, scaled out, permanent glow, rotates CCW */}
-                    <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
-                      <img src={ring} draggable={false} alt=""
-                        className="lum-radiant-ring"
-                        style={layerImg}
-                      />
-                    </div>
                     {/* Body — scaled up */}
                     <div style={{ ...absfill, transform: 'scale(1.22)', transformOrigin: 'center center' }}>
                       <img src={body} draggable={false} alt="" style={layerImg} />
