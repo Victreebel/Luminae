@@ -2500,25 +2500,30 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 objectFit: 'contain', display: 'block',
                 mixBlendMode: 'screen',
               };
+              const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-                  {/* Outer ring — CCW rotation only, no bounce */}
-                  <img src={ring} draggable={false} alt=""
-                    className="lum-radiant-ring"
-                    style={layerImg}
-                  />
+                  {/* Outer ring — wrapper scales it up; img rotates CCW */}
+                  <div style={{ ...absfill, transform: 'scale(1.55)', transformOrigin: 'center center' }}>
+                    <img src={ring} draggable={false} alt=""
+                      className="lum-radiant-ring"
+                      style={layerImg}
+                    />
+                  </div>
                   {/* Bouncing group: body + core travel together */}
                   <div
                     className={isIdle ? 'lum-idle-float' : undefined}
-                    style={{ position: 'absolute', inset: 0 }}
+                    style={absfill}
                   >
                     {/* Body — static within group */}
                     <img src={body} draggable={false} alt="" style={layerImg} />
-                    {/* Core — CW rotation inside the bouncing group */}
-                    <img src={core} draggable={false} alt=""
-                      className="lum-radiant-core"
-                      style={layerImg}
-                    />
+                    {/* Core — wrapper pulses scale; img rotates CW */}
+                    <div className="lum-radiant-core-pulse" style={absfill}>
+                      <img src={core} draggable={false} alt=""
+                        className="lum-radiant-core"
+                        style={layerImg}
+                      />
+                    </div>
                   </div>
                 </div>
               );

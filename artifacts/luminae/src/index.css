@@ -653,10 +653,11 @@ button,
   animation: lum-idle-aura 3.8s ease-in-out infinite;
 }
 
-/* ── Radiant Keeper idle — layered ring/core rotation ────────────────────
-   Ring (radiant1) rotates counterclockwise only — no bounce, no drift.
-   Core (radiant3) rotates clockwise inside the shared bouncing group.
-   Both run on the compositor thread alongside lum-idle-float.           */
+/* ── Radiant Keeper idle — layered ring/core rotation + pulse ────────────
+   Ring (radiant1): CCW rotation applied to img; scale-up via wrapper div.
+   Core (radiant3): CW rotation on img; scale-down + pulse on wrapper div.
+   Separation of concerns — rotation and scale live on different elements
+   so their transforms never overwrite each other.                        */
 @keyframes lum-radiant-spin-ccw {
   from { transform: rotate(0deg); }
   to   { transform: rotate(-360deg); }
@@ -665,12 +666,21 @@ button,
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+@keyframes lum-radiant-core-pulse {
+  0%, 100% { transform: scale(0.38); }
+  50%       { transform: scale(0.50); }
+}
 .lum-radiant-ring {
   animation: lum-radiant-spin-ccw 30s linear infinite;
   transform-origin: center center;
 }
 .lum-radiant-core {
   animation: lum-radiant-spin-cw 22s linear infinite;
+  transform-origin: center center;
+}
+/* Wrapper that owns the scale+pulse for the core; rotation stays on img */
+.lum-radiant-core-pulse {
+  animation: lum-radiant-core-pulse 2.2s ease-in-out infinite;
   transform-origin: center center;
 }
 
