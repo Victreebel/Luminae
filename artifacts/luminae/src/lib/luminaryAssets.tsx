@@ -2490,11 +2490,15 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
             const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
             if (ring && body && core) {
-              const mask = 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)';
+              // The three Radiant layers have dark/black backgrounds — they are
+              // compositing layers, not RGBA cutouts. screen blend mode treats
+              // black as fully transparent and additively composites the bright
+              // pixels of each layer. No mask needed (and a mask would clip the
+              // outer ring which extends to the image edges).
               const layerImg: React.CSSProperties = {
                 position: 'absolute', inset: 0, width: '100%', height: '100%',
                 objectFit: 'contain', display: 'block',
-                maskImage: mask, WebkitMaskImage: mask,
+                mixBlendMode: 'screen',
               };
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
