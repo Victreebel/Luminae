@@ -2252,8 +2252,7 @@ export function LuminarySummonCutscene({
                               </div>
                             )}
                             {r2 && (
-                              <div className="lum-radiant-body-pulse"
-                                style={{ ...af, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
+                              <div style={{ ...af, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
                                 <img src={r2} draggable={false} alt="" style={lyr} />
                               </div>
                             )}
@@ -2554,8 +2553,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     className={isIdle ? 'lum-idle-float' : undefined}
                     style={absfill}
                   >
-                    {/* Body — scaled up + glow pulse */}
-                    <div className="lum-radiant-body-pulse" style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
+                    {/* Body — scaled up */}
+                    <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
                       <img src={body} draggable={false} alt="" style={layerImg} />
                     </div>
                     {/* Core — wrapper holds fixed small size + glow pulse; img rotates CW */}
