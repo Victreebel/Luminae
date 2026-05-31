@@ -2504,7 +2504,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               return (
                 <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
                   {/* Outer ring — wrapper keeps ring within card borders; img rotates CCW */}
-                  <div style={{ ...absfill, transform: 'scale(0.88)', transformOrigin: 'center center' }}>
+                  <div style={{ ...absfill, transform: 'scale(1.00)', transformOrigin: 'center center' }}>
                     <img src={ring} draggable={false} alt=""
                       className="lum-radiant-ring"
                       style={layerImg}
