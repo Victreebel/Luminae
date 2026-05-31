@@ -2220,9 +2220,14 @@ export function LuminarySummonCutscene({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      filter: (!isFading && !isFlashing)
-                        ? `drop-shadow(0 0 22px ${glowColor}cc) drop-shadow(0 0 10px ${primaryColor}88)`
-                        : 'none',
+                      // lum_radiant: skip the filter — a CSS filter creates an isolated
+                      // compositing group, which prevents mix-blend-mode:screen on the
+                      // inner layers from blending against the dark portal behind them.
+                      // The radiant composite supplies its own glow via lum-radiant-*
+                      // CSS animation classes instead.
+                      filter: (luminaryId === 'lum_radiant' || isFading || isFlashing)
+                        ? 'none'
+                        : `drop-shadow(0 0 22px ${glowColor}cc) drop-shadow(0 0 10px ${primaryColor}88)`,
                     }}
                   >
                     <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}>
