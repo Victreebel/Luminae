@@ -2246,19 +2246,20 @@ export function LuminarySummonCutscene({
                           <>
                             {r1 && (
                               <div className="lum-radiant-ring-pulse"
-                                style={{ ...af, transform: 'scale(1.25)', transformOrigin: 'center center' }}>
+                                style={{ ...af, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}>
                                 <img src={r1} draggable={false} alt=""
                                   className="lum-radiant-ring" style={lyr} />
                               </div>
                             )}
                             {r2 && (
-                              <div style={{ ...af, transform: 'scale(1.22)', transformOrigin: 'center center' }}>
+                              <div className="lum-radiant-body-pulse"
+                                style={{ ...af, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
                                 <img src={r2} draggable={false} alt="" style={lyr} />
                               </div>
                             )}
                             {r3 && (
                               <div className="lum-radiant-core-pulse"
-                                style={{ ...af, transform: 'scale(0.24)', transformOrigin: 'center center' }}>
+                                style={{ ...af, transform: 'scale(0.20)', transformOrigin: 'center center' }}>
                                 <img src={r3} draggable={false} alt=""
                                   className="lum-radiant-core" style={lyr} />
                               </div>
