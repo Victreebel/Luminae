@@ -30,10 +30,13 @@ import {
   TrendingUp,
   ListOrdered,
   Settings,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
+import { getAvatarForPlayer } from "@/lib/avatars";
 
 function formatRelative(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -51,6 +54,146 @@ function formatDate(dateStr: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function GameCard({
+  game,
+  index,
+  resumingId,
+  quittingId,
+  onResume,
+  onQuit,
+}: {
+  game: ActiveGame;
+  index: number;
+  resumingId: string | null;
+  quittingId: string | null;
+  onResume: (g: ActiveGame) => void;
+  onQuit: (g: ActiveGame) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const otherPlayers = game.humanPlayers.filter((p) => p.name !== game.playerName);
+  const allPlayers = game.humanPlayers;
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(game.inviteCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 + 0.1 }}
+      className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {/* Status + role row */}
+          <div className="flex items-center gap-2 mb-2">
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                game.status === "playing"
+                  ? "bg-green-500/20 text-green-400"
+                  : "bg-primary/20 text-primary"
+              }`}
+            >
+              {game.status === "playing" ? "In Progress" : "Lobby"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {game.isHost ? "Host" : "Player"}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              className="ml-auto flex items-center gap-1 font-mono text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+              title="Copy invite code"
+            >
+              {copied
+                ? <Check className="h-3 w-3 text-green-400" />
+                : <Copy className="h-3 w-3" />}
+              {game.inviteCode}
+            </button>
+          </div>
+
+          {/* Player roster */}
+          {allPlayers.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {allPlayers.map((p) => {
+                const av = getAvatarForPlayer(p.avatarId);
+                const isMe = p.name === game.playerName;
+                return (
+                  <div
+                    key={p.name}
+                    className={`flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs ${
+                      isMe
+                        ? "bg-primary/20 text-primary border border-primary/30"
+                        : "bg-muted/40 text-muted-foreground border border-border/40"
+                    }`}
+                  >
+                    <span
+                      className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold text-white/90 shrink-0"
+                      style={{ background: av.accent }}
+                    >
+                      {p.name[0]?.toUpperCase()}
+                    </span>
+                    <span className="font-medium">{p.name}</span>
+                    {isMe && <span className="opacity-60 text-[10px]">you</span>}
+                  </div>
+                );
+              })}
+              {otherPlayers.length === 0 && game.status === "lobby" && (
+                <span className="text-xs text-muted-foreground/50 italic">
+                  Waiting for others…
+                </span>
+              )}
+            </div>
+          ) : null}
+
+          {/* Footer: slot count + time */}
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {game.currentPlayers}/{game.maxPlayers}
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {formatRelative(game.updatedAt)}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 shrink-0">
+          <Button
+            size="sm"
+            className="h-8 px-3 text-xs rounded-xl gap-1 whitespace-nowrap"
+            onClick={() => onResume(game)}
+            disabled={resumingId === game.roomId}
+          >
+            {resumingId === game.roomId
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <ArrowRight className="h-3 w-3" />}
+            Resume
+          </Button>
+          <button
+            type="button"
+            onClick={() => onQuit(game)}
+            disabled={quittingId === game.roomId}
+            className="h-8 px-3 text-xs rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1 justify-center transition-colors"
+          >
+            {quittingId === game.roomId
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <RotateCcw className="h-3 w-3" />}
+            Quit
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 function ResultBadge({ result }: { result: GameHistoryEntry["result"] }) {
@@ -499,61 +642,15 @@ function DashboardContent() {
               </motion.div>
             ) : (
               games.map((game, i) => (
-                <motion.div
+                <GameCard
                   key={game.roomId}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 + 0.1 }}
-                  className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                            game.status === "playing"
-                              ? "bg-green-500/20 text-green-400"
-                              : "bg-primary/20 text-primary"
-                          }`}
-                        >
-                          {game.status === "playing" ? "In Progress" : "Lobby"}
-                        </span>
-                        <span className="font-mono text-xs text-muted-foreground">{game.inviteCode}</span>
-                      </div>
-                      <div className="text-sm font-semibold">
-                        {game.isHost ? "Host" : "Player"} · Up to {game.maxPlayers} players
-                      </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Clock className="h-3 w-3" />
-                        {formatRelative(game.updatedAt)}
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        size="sm"
-                        className="h-8 px-3 text-xs rounded-xl gap-1 whitespace-nowrap"
-                        onClick={() => handleResume(game)}
-                        disabled={resumingId === game.roomId}
-                      >
-                        {resumingId === game.roomId
-                          ? <Loader2 className="h-3 w-3 animate-spin" />
-                          : <ArrowRight className="h-3 w-3" />}
-                        Resume
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => handleQuit(game)}
-                        disabled={quittingId === game.roomId}
-                        className="h-8 px-3 text-xs rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 flex items-center gap-1 justify-center transition-colors"
-                      >
-                        {quittingId === game.roomId
-                          ? <Loader2 className="h-3 w-3 animate-spin" />
-                          : <RotateCcw className="h-3 w-3" />}
-                        Quit
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
+                  game={game}
+                  index={i}
+                  resumingId={resumingId}
+                  quittingId={quittingId}
+                  onResume={handleResume}
+                  onQuit={handleQuit}
+                />
               ))
             )}
           </div>

@@ -274,6 +274,8 @@ export interface ActiveGame {
   inviteCode: string;
   status: string;
   maxPlayers: number;
+  currentPlayers: number;
+  humanPlayers: { name: string; avatarId: string | null }[];
   updatedAt: string;
   sessionToken: string;
   playerId: string;

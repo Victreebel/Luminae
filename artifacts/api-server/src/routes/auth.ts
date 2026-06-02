@@ -201,18 +201,35 @@ router.get("/auth/me/games", accountAuth, async (req: Request, res): Promise<voi
       ),
     );
 
-  const activePlayers = await db
-    .select({ roomId: playersTable.roomId, count: count() })
-    .from(playersTable)
-    .where(
-      and(
-        eq(playersTable.isAi, false),
-        isNull(playersTable.quitAt),
-      ),
-    )
-    .groupBy(playersTable.roomId);
+  const activeRoomIds = playerRows
+    .filter((r) => r.room.status !== "finished")
+    .map((r) => r.room.id);
 
-  const playerCountByRoom = new Map(activePlayers.map((r) => [r.roomId, Number(r.count)]));
+  // Fetch all human players for these rooms in one query (names + avatars for the roster)
+  const roomPlayerRows = activeRoomIds.length > 0
+    ? await db
+        .select({
+          roomId: playersTable.roomId,
+          name: playersTable.name,
+          avatarId: playersTable.avatarId,
+        })
+        .from(playersTable)
+        .where(
+          and(
+            inArray(playersTable.roomId, activeRoomIds),
+            eq(playersTable.isAi, false),
+            isNull(playersTable.quitAt),
+          ),
+        )
+    : [];
+
+  // Group by roomId
+  const playersByRoom = new Map<string, { name: string; avatarId: string | null }[]>();
+  for (const p of roomPlayerRows) {
+    const arr = playersByRoom.get(p.roomId) ?? [];
+    arr.push({ name: p.name, avatarId: p.avatarId });
+    playersByRoom.set(p.roomId, arr);
+  }
 
   const activeGames = playerRows
     .filter((r) => r.room.status !== "finished")
@@ -221,7 +238,8 @@ router.get("/auth/me/games", accountAuth, async (req: Request, res): Promise<voi
       inviteCode: r.room.inviteCode,
       status: r.room.status,
       maxPlayers: r.room.maxPlayers,
-      currentPlayers: playerCountByRoom.get(r.room.id) ?? 1,
+      currentPlayers: playersByRoom.get(r.room.id)?.length ?? 1,
+      humanPlayers: playersByRoom.get(r.room.id) ?? [],
       updatedAt: r.room.updatedAt,
       sessionToken: r.player.sessionToken,
       playerId: r.player.id,
