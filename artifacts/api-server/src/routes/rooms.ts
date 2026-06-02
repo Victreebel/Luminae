@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, ne } from "drizzle-orm";
 import { db, roomsTable, playersTable, gameStatesTable } from "@workspace/db";
 import {
   CreateRoomBody,
@@ -83,6 +83,24 @@ function pickAiAvatar(existing: string[]): string {
   return AI_AVATAR_POOL[Math.floor(Math.random() * AI_AVATAR_POOL.length)];
 }
 
+const MAX_ACTIVE_GAMES = 5;
+
+async function countActiveGames(accountId: string): Promise<number> {
+  const rows = await db
+    .select({ roomId: playersTable.roomId })
+    .from(playersTable)
+    .innerJoin(roomsTable, eq(playersTable.roomId, roomsTable.id))
+    .where(
+      and(
+        eq(playersTable.accountId, accountId),
+        eq(playersTable.isAi, false),
+        isNull(playersTable.quitAt),
+        ne(roomsTable.status, "finished"),
+      ),
+    );
+  return rows.length;
+}
+
 // POST /api/rooms — create room
 router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
   const parsed = CreateRoomBody.safeParse(req.body);
@@ -91,6 +109,14 @@ router.post("/rooms", optionalAccountAuth, async (req, res): Promise<void> => {
     return;
   }
   const { hostName, maxPlayers, turnTimerSeconds, avatarId: hostAvatarId } = parsed.data;
+
+  if (req.account) {
+    const active = await countActiveGames(req.account.id);
+    if (active >= MAX_ACTIVE_GAMES) {
+      res.status(409).json({ error: `You already have ${MAX_ACTIVE_GAMES} active games. Finish or leave one before creating a new one.` });
+      return;
+    }
+  }
 
   const inviteCode = generateInviteCode();
   const sessionToken = generateSessionToken();
@@ -224,6 +250,14 @@ router.post("/rooms/:roomId/join", optionalAccountAuth, async (req, res): Promis
   if (players.length >= room.maxPlayers) {
     res.status(400).json({ error: "Room is full" });
     return;
+  }
+
+  if (req.account) {
+    const active = await countActiveGames(req.account.id);
+    if (active >= MAX_ACTIVE_GAMES) {
+      res.status(409).json({ error: `You already have ${MAX_ACTIVE_GAMES} active games. Finish or leave one before joining a new one.` });
+      return;
+    }
   }
 
   const sessionToken = generateSessionToken();

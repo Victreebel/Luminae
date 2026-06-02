@@ -12,6 +12,7 @@ import {
   useJoinRoom,
   useRejoinRoom,
   getGetRoomByInviteCodeQueryKey,
+  ApiError,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,7 +204,10 @@ export default function Home() {
       });
       setLocation(`/lobby/${res.room.id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An error occurred";
+      const msg =
+        err instanceof ApiError
+          ? (err.data as { error?: string } | null)?.error ?? err.message
+          : err instanceof Error ? err.message : "An error occurred";
       toast({ variant: "destructive", title: "Error creating room", description: msg });
     }
   };
@@ -234,7 +238,10 @@ export default function Home() {
       if (res.room.status !== "lobby") setLocation(`/game/${res.room.id}`);
       else setLocation(`/lobby/${res.room.id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "An error occurred";
+      const msg =
+        err instanceof ApiError
+          ? (err.data as { error?: string } | null)?.error ?? err.message
+          : err instanceof Error ? err.message : "An error occurred";
       toast({ variant: "destructive", title: "Error joining room", description: msg });
     }
   };
