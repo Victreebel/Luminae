@@ -57,7 +57,7 @@ interface LuminaryVisuals {
 // Update this list when a new panel passes the panel hard-rules review and is
 // accepted for publication. Panels pending regeneration must NOT be added here.
 //
-// Accepted panels (12):
+// Accepted panels (14):
 //   lum_ember   — accepted (gold standard)
 //   lum_forge   — accepted (gold standard)
 //   lum_verdant — accepted (gold standard)
@@ -71,6 +71,8 @@ interface LuminaryVisuals {
 //   lum_pale    — accepted (panel, entity, aura — static illustrated assets; animated SVG retired)
 //   lum_astral  — accepted (cosmic arachnid embedded in dark crystal facets, constellation
 //                  line overlay, dual ruby/sapphire corner gems, fire medallion)
+//   lum_hunger  — accepted
+//   lum_moth    — accepted (Red Moth; panel + entity on disk; no aura, falls back gracefully)
 // ─────────────────────────────────────────────────────────────────────────────
 const ILLUSTRATED_IDS = new Set<string>([
   'lum_ember',
@@ -86,6 +88,7 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_pale',
   'lum_astral',
   'lum_hunger',
+  'lum_moth',
 ]);
 
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
