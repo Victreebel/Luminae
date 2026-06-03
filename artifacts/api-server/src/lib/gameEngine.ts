@@ -768,6 +768,20 @@ function defaultActiveAffinity(
  * prior turn).  Used in place of player.bonuses wherever permanent card bonuses
  * are normally counted: effectiveCost, canAfford, checkLuminaries.
  */
+/**
+ * Merge card-purchased bonuses with the "Fixed Bond" living-affinity bonus for
+ * every Luminary the player has claimed.
+ *
+ * Fixed Bond — universal v0.8 rule:
+ *   Starting the turn AFTER a Luminary is summoned, the owner gains +1 to the
+ *   Luminary's active affinity on every card purchase / cost calculation.
+ *   For mono-color Luminaries (Verdant Oracle, Void Warden, Concordance Mandala)
+ *   there is exactly one eligible affinity; for dual/triple Luminaries the owner
+ *   can toggle which affinity is active (defaults to first eligible).
+ *   This mechanism is identical for ALL 15 Luminaries — there is no separate
+ *   "Fixed Bond" flag; the eligibleAffinities length determines whether toggling
+ *   is meaningful, not whether the bonus applies.
+ */
 export function effectiveBonuses(
   state: GameStateData,
   player: PlayerGameState,
@@ -1013,12 +1027,17 @@ function burnAllInTier(state: GameStateData, tier: 1 | 2 | 3): number {
 /**
  * Phoenix Paradox — Ash-Seeking Recurrence cascade for one tier:
  * 1. Find lowest-cost face-up card without Flare (ruby) or Continuum (sapphire).
- * 2. Burn it and draw a replacement.
+ * 2. Burn it and publicly log the reveal of the replacement.
  * 3. If the replacement also lacks Flare/Continuum, burn it too — repeat until a
  *    replacement with the right affinity arrives or the deck empties.
+ * Each checked replacement is logged as a public reveal event per v0.8 spec.
  * Returns true if at least one card was burned (i.e., one burn effect occurred).
  */
-function phoenixParadoxCascade(state: GameStateData, tier: 1 | 2 | 3): boolean {
+function phoenixParadoxCascade(
+  state: GameStateData,
+  tier: 1 | 2 | 3,
+  player: PlayerGameState,
+): boolean {
   const market = getMarketForTier(state, tier);
   const deck = getDeckForTier(state, tier);
 
@@ -1041,13 +1060,18 @@ function phoenixParadoxCascade(state: GameStateData, tier: 1 | 2 | 3): boolean {
 
     if (deck.length === 0) {
       market.splice(targetIdx, 1);
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Phoenix Paradox — T${tier} reveal: ${cardId} burned (deck empty — no replacement)`,
+        turn: state.roundNumber,
+      });
       break;
     }
     const replacement = deck.shift()!;
     market[targetIdx] = replacement;
 
     // Transfer Avatar Seed if needed.
-    if (state.avatarSeedState) {
+    if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
       const si = state.avatarSeedState.deckSeeds.indexOf(replacement);
       if (si !== -1) {
         state.avatarSeedState.deckSeeds.splice(si, 1);
@@ -1061,7 +1085,15 @@ function phoenixParadoxCascade(state: GameStateData, tier: 1 | 2 | 3): boolean {
     }
 
     const replCard = CARD_MAP.get(replacement);
-    if (!replCard || replCard.cost.ruby > 0 || replCard.cost.sapphire > 0) break;
+    const replQualifies = !!replCard && (replCard.cost.ruby > 0 || replCard.cost.sapphire > 0);
+    pushLog(state, {
+      playerId: player.playerId, playerName: player.playerName,
+      summary: replQualifies
+        ? `Phoenix Paradox — T${tier} reveal: ${cardId} burned → ${replacement} revealed (Flare/Continuum ✓ — cascade ends)`
+        : `Phoenix Paradox — T${tier} reveal: ${cardId} burned → ${replacement} revealed (no Flare/Continuum — cascade continues)`,
+      turn: state.roundNumber,
+    });
+    if (replQualifies) break;
     // Replacement also lacks required affinity → continue cascade.
   }
 
@@ -1286,8 +1318,9 @@ function applySummonEffect(
     }
     case "lum_astral": {
       // Ash-Seeking Recurrence: cascade burn T3, then T2.
-      const did3 = phoenixParadoxCascade(state, 3);
-      const did2 = phoenixParadoxCascade(state, 2);
+      // Per-card reveal logs are pushed inside phoenixParadoxCascade.
+      const did3 = phoenixParadoxCascade(state, 3, player);
+      const did2 = phoenixParadoxCascade(state, 2, player);
       if (did3 || did2) {
         incrementBloomCount(state);
         pushLog(state, {
@@ -1402,6 +1435,19 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
       });
     }
     state.avatarSeedState.payoutDone = true;
+    // Remove ALL remaining Avatar Seed tokens from deck tops, market, and
+    // reserved cards (all tracked via deckSeeds + marketMarkers).
+    state.avatarSeedState.deckSeeds = [];
+    if (state.marketMarkers) {
+      for (const [id, marker] of Object.entries(state.marketMarkers)) {
+        if (marker.type === "avatar_seed") delete state.marketMarkers[id];
+      }
+    }
+    pushLog(state, {
+      playerId: player.playerId, playerName: player.playerName,
+      summary: `Seed Beyond Seasons — Avatar Seed tokens expired and cleared`,
+      turn: state.roundNumber,
+    });
   }
 
   // ── Forgotten Hour (lum_compass): clear Forgotten markers at end of owner's next turn ──
@@ -1760,6 +1806,20 @@ export function applyAction(
         if (deck.length === 0)
           return { success: false, error: "Deck is empty" };
         const blindId = deck.shift()!;
+        // Avatar Seed: if the drawn card was seeded in the deck, transfer the token
+        // to marketMarkers so it follows the card into the reserved pile.
+        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
+          const si = state.avatarSeedState.deckSeeds.indexOf(blindId);
+          if (si !== -1) {
+            state.avatarSeedState.deckSeeds.splice(si, 1);
+            if (!state.marketMarkers) state.marketMarkers = {};
+            state.marketMarkers[blindId] = {
+              type: "avatar_seed",
+              ownerId: state.avatarSeedState.ownerId,
+              summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
+            };
+          }
+        }
         player.reservedCardIds.push(blindId);
         if (state.crystalBank.flux > 0) {
           player.crystals.flux++;
@@ -1775,11 +1835,20 @@ export function applyAction(
       if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
 
-      // Reserve from market. drawIntoMarket removes any marker from the card as it
-      // leaves the market; the Avatar Seed pending trigger only fires when an opponent
-      // forges the seeded card directly from the market (spec: "forged from market").
+      // Reserve from market. drawIntoMarket removes all markers; save the Avatar Seed
+      // marker first so it follows the card into the reserved pile (v0.8 spec).
+      const mktReserveMarker = (state.marketMarkers ?? {})[action.cardId];
       player.reservedCardIds.push(action.cardId);
       drawIntoMarket(state, market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
+      // Re-apply avatar_seed marker if the card was seeded and the effect is still active.
+      if (
+        mktReserveMarker?.type === "avatar_seed" &&
+        state.avatarSeedState &&
+        !state.avatarSeedState.payoutDone
+      ) {
+        if (!state.marketMarkers) state.marketMarkers = {};
+        state.marketMarkers[action.cardId] = mktReserveMarker;
+      }
       if (state.crystalBank.flux > 0) {
         player.crystals.flux++;
         state.crystalBank.flux--;
@@ -1863,10 +1932,21 @@ export function applyAction(
         return { success: false, error: "Cannot afford this card" };
       const kardashevBeforeReserved = computeKardashevTier(player.purchasedCardIds, player.discountedForgeIds);
 
-      // Avatar Seed markers are removed from marketMarkers when a card is reserved from
-      // market (via drawIntoMarket). The pending trigger only fires on direct market
-      // purchase; forging from reserved pile does not re-check avatar_seed markers.
-      // Clean up any residual marker (e.g. Forgotten/Condemned/Nullified carried to reserve).
+      // Avatar Seed: the token follows the card into the reserved pile (v0.8 spec).
+      // If forged by an opponent, accumulate +1 pending Eminence on The Seed Beyond Seasons.
+      // If forged by the owner, just remove the token — no pending.
+      const reservedMarker = (state.marketMarkers ?? {})[action.cardId];
+      if (
+        reservedMarker?.type === "avatar_seed" &&
+        state.avatarSeedState &&
+        !state.avatarSeedState.payoutDone
+      ) {
+        if (reservedMarker.ownerId !== playerId) {
+          state.avatarSeedState.pendingLumens++;
+        }
+        // Token is consumed on forge regardless of who forges.
+      }
+      // Clean up any marker (Forgotten/Condemned/Nullified/AvatarSeed) now that the card is forged.
       if (state.marketMarkers) delete state.marketMarkers[action.cardId];
 
       payForCard(card, player, state.crystalBank, liveBonusesReserved);

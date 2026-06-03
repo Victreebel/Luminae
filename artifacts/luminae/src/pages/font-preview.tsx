@@ -194,7 +194,7 @@ function VariantC() {
           position: relative; z-index: 1;
         }
       `}</style>
-      <Label>C · Void Sovereign</Label>
+      <Label>C · Void Warden</Label>
 
       <div style={{
         position: "absolute", width: 500, height: 200, borderRadius: "50%",

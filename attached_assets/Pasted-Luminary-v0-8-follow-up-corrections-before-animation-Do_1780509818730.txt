@@ -1,0 +1,27 @@
+Luminary v0.8 follow-up corrections before animation:
+
+Do not start animation work yet. Apply these final mechanics/spec corrections.
+
+1. Phoenix Paradox — Reveal semantics
+    For Ash-Seeking Recurrence, “reveal replacements until one has Flare or Continuum” should be treated as a public cascade reveal.
+    Each checked replacement should be visible/logged as part of the effect before it either burns or remains as the replacement.
+    If current implementation only causes final market state changes, add public log/event records for each revealed replacement card.
+2. Avatar Seeds — encrypted/reserved cards
+    Avatar Seed tokens must follow the card if the seeded card is encrypted/reserved.
+    If an Avatar-Seeded card is moved from deck top into a player’s encrypted/reserved area, preserve the Avatar Seed marker on that card.
+
+When an opponent forges an Avatar-Seeded Artifact from any valid zone, including reserved/encrypted, remove the Avatar Seed token and place +1 pending Eminence on The Seed Beyond Seasons.
+
+When the Seed owner forges an Avatar-Seeded Artifact from any valid zone, including reserved/encrypted, remove the Avatar Seed token. The owner gains only that Artifact’s normal Eminence.
+
+3. Avatar Seed expiration
+    At the end of The Seed Beyond Seasons owner’s next turn:
+
+* First resolve all pending Eminence from The Seed Beyond Seasons.
+* Then remove all remaining Avatar Seed tokens from deck tops, market cards, and reserved/encrypted cards.
+* After this cleanup, later forging those former seeded cards should not trigger The Seed Beyond Seasons.
+
+4. Naming cleanup
+    The active Abyss mono Luminary should display/log as Void Warden, not Void Sovereign, unless the internal ID is intentionally legacy-only.
+5. Confirm Fixed Bond behavior
+    Confirm that Fixed Bond means the same behavior across all mono Luminaries. If Verdant Oracle is receiving +1 Verdance/turn because of Fixed Bond, ensure this is consistent with Red Moth, Tide Architect, Void Warden, and Concordance Mandala.
