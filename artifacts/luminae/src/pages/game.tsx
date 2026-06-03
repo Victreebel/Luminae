@@ -63,7 +63,7 @@ import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
-import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 
 type ActiveTab = 'board' | 'hand' | 'log';
@@ -457,6 +457,10 @@ export default function GameBoard() {
   const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect }>>([]);
   const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
   const [boardDimKey, setBoardDimKey] = useState(0);
+  const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
+  const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
+  const orchardPortalRectRef = useRef<DOMRect | null>(null);
+  const [summonOverlays, setSummonOverlays] = useState<Array<{ id: string; lumId: string }>>([]);
   const prevStateForAnimRef = useRef<typeof state>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -1145,6 +1149,57 @@ export default function GameBoard() {
     const newVoid  = state.pendingSummonEvents?.some(e => e.luminaryId === 'lum_void') ?? false;
     if (!prevVoid && newVoid) {
       setBoardDimKey(k => k + 1);
+    }
+
+    // ── Per-summon market overlays (Red Moth, Iron Harbinger, Null, Ember, etc.) ──
+    // Fires concurrently with the summon cutscene for each Luminary that has
+    // a specific board-state visual treatment.
+    const SUMMON_OVERLAY_IDS = [
+      'lum_moth', 'lum_forge', 'lum_null', 'lum_ember',
+      'lum_compass', 'lum_verdant', 'lum_pale',
+    ] as const;
+    for (const lumId of SUMMON_OVERLAY_IDS) {
+      const prevHas = prev.pendingSummonEvents?.some(e => e.luminaryId === lumId) ?? false;
+      const newHas  = state.pendingSummonEvents?.some(e => e.luminaryId === lumId) ?? false;
+      if (!prevHas && newHas) {
+        setSummonOverlays(pf => [...pf, { id: `${lumId}-${Date.now()}`, lumId }]);
+      }
+    }
+
+    // ── Catalyst Bloom seed particles (per burn while Bloom is claimed) ────
+    const bloomClaimed = state.players.some(p => p.claimedLuminaryIds?.includes('lum_bloom'));
+    if (bloomClaimed && !isPurchaseOrReserve) {
+      const bloomEl  = document.querySelector('[data-luminary-id="lum_bloom"]');
+      const bloomRect = bloomEl?.getBoundingClientRect() ?? null;
+      if (bloomRect) {
+        const tiers2 = [
+          { tier: 1 as const, oldCards: prev.marketTier1, newCards: state.marketTier1 },
+          { tier: 2 as const, oldCards: prev.marketTier2, newCards: state.marketTier2 },
+          { tier: 3 as const, oldCards: prev.marketTier3, newCards: state.marketTier3 },
+        ] as const;
+        for (const { tier, oldCards, newCards } of tiers2) {
+          const len2 = Math.min(oldCards.length, newCards.length);
+          for (let i = 0; i < len2; i++) {
+            const o = oldCards[i], n = newCards[i];
+            if (o && n && o.id !== n.id) {
+              const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
+              if (slotEl) {
+                const fromR = slotEl.getBoundingClientRect();
+                setBloomSeedParticles(pf => [
+                  ...pf, { id: `bseed-${tier}-${i}-${Date.now()}`, from: fromR, to: bloomRect },
+                ]);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // ── Glass Orchard copy pulse (on trigger) ─────────────────────────────
+    if (!prev.glassOrchardTriggered && state.glassOrchardTriggered) {
+      const orchardEl = document.querySelector('[data-luminary-id="lum_orchard"]');
+      orchardPortalRectRef.current = orchardEl?.getBoundingClientRect() ?? null;
+      setOrchardCopyPulseKey(k => k + 1);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -7131,6 +7186,28 @@ export default function GameBoard() {
       ))}
       {/* ── v0.8 Board dim (Void Warden Oblivion) ── */}
       <BoardDimOverlay dimKey={boardDimKey} />
+      {/* ── v0.8 Bloom seed particles (per burn while Bloom is claimed) ── */}
+      {bloomSeedParticles.map(p => (
+        <BloomSeedParticle
+          key={p.id}
+          from={p.from}
+          to={p.to}
+          onDone={() => setBloomSeedParticles(pf => pf.filter(x => x.id !== p.id))}
+        />
+      ))}
+      {/* ── v0.8 Glass Orchard copy pulse ── */}
+      <OrchardCopyPulse
+        originRect={orchardPortalRectRef.current}
+        pulseKey={orchardCopyPulseKey}
+      />
+      {/* ── v0.8 Per-Luminary summon market overlays ── */}
+      {summonOverlays.map(o => (
+        <SummonMarketOverlay
+          key={o.id}
+          lumId={o.lumId}
+          onDone={() => setSummonOverlays(pf => pf.filter(x => x.id !== o.id))}
+        />
+      ))}
       {/* ── Eminence Gain Burst — fires when any player's lumens increases ── */}
       <AnimatePresence>
         {lumensBursts.map((burst) => (

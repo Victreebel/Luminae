@@ -1,0 +1,133 @@
+LUMINAe — Luminary Animation Update v0.8
+
+Goal:
+Add animation/UI feedback for the already-implemented Luminary mechanics.
+
+Do not change gameplay logic.
+Do not change Luminary effects, timing, costs, bonds, Eminence, markers, or tests unless required to expose existing state to the UI.
+Do not refactor unrelated systems.
+
+Use the current passing mechanics state as source of truth.
+
+GLOBAL ANIMATION RULES
+
+1. Burn animation
+    “Burn” means refresh.
+    Animation should show the affected Artifact being destroyed/ignited/erased, then the replacement card entering the same market slot.
+    Use burn animation for all burn effects:
+
+* Red Moth
+* Phoenix Paradox
+* Catalyst Bloom triggers indirectly from burns
+* Iron Harbinger
+* Ember Sovereign cleanup
+* The First Hunger / Assimilation
+
+2. Scry animation
+    Scry is private.
+    Only the acting player should see the Scry animation/cards.
+    Other players should see only a subtle deck ripple/glow, not card identities.
+3. Reveal animation
+    Reveal is public.
+    Phoenix Paradox cascade reveals should be visible/logged as a public sequence:
+    reveal → unsuitable card burns → next replacement appears/reveals → repeat until valid.
+4. Delayed-effect animation
+    Create a shared delayed Luminary animation language:
+
+* On summon, the Luminary gains an “armed” sigil/aura if it has a delayed effect.
+* When the delayed effect resolves, pulse the Luminary panel and animate Eminence traveling to the owner.
+    Use this for:
+* Concordance Mandala
+* Catalyst Bloom
+* The Seed Beyond Seasons
+* Glass Orchard
+
+5. Marker animations
+    Forgotten, Condemned, Nullified, and Avatar Seed must be visibly distinct.
+
+Markers:
+
+* Forgotten: blue-black memory glitch / erased Eminence glow
+* Condemned: red-black-white decree/seal
+* Nullified: black-blue-white domain marker, cold and official
+* Avatar Seed: blue-green seed/avatar sigil
+
+LUMINARY-SPECIFIC ANIMATIONS
+
+1. Red Moth — Rupture of the Still
+    On summon, red moth wing-flare crosses Tier III, then Tier II.
+    Each affected card burns and refreshes.
+    Art status: Red Moth art is done.
+2. Tide Architect — The Observer Effect
+    Private Scry animation for owner only.
+    Decks lift or ripple in blue Continuum light.
+    No public reveal.
+3. Verdant Oracle — Early Bloom
+    Minimal animation.
+    Green early-bloom pulse from Luminary to owner’s affinity/bond indicator.
+4. Void Warden — Oblivion
+    Board dims.
+    All players’ Eminence counters drain by 4 with a black pull effect.
+5. Concordance Mandala — Perfect Coherence
+    On summon, delayed sigil arms.
+    At end of owner’s turn, if condition succeeds, mandala aligns into white-gold symmetry and grants +2 Eminence.
+    If condition fails, keep feedback subtle or no-op.
+6. Phoenix Paradox — Ash-Seeking Recurrence
+    Public cascade:
+    burn target → reveal replacement → if invalid, burn and continue → if valid, settle.
+    Use red/blue recurrence loop visuals.
+7. Catalyst Bloom — Aftergrowth
+    On summon, delayed sigil arms.
+    Whenever a burn effect happens, ash-seeds drift toward Catalyst Bloom.
+    At end of owner’s turn, Bloom opens and releases +1 Eminence per burn effect counted.
+8. Iron Harbinger — Impact Extinction
+    Hammer/impact shock across Tier III.
+    All face-up Tier III Artifacts burn/refill.
+9. ??? — The Forgotten Hour
+    On summon, current market flickers/glitches.
+    Forgotten marker appears on current face-up Artifacts.
+    Their Eminence glow disappears.
+    At end of summoner’s next turn, markers clear with a memory-return flicker.
+10. The Seed Beyond Seasons — Avatar Seeds
+    On summon, reveal top 2 cards of each Artifact deck publicly.
+    Place Avatar Seed token on each revealed card.
+    Seed tokens should visibly travel with the card if it enters market or reserved/encrypted area.
+    When opponent forges seeded card, seed pulse travels to Luminary as pending Eminence.
+    At payout, pending Eminence travels to owner before victory check.
+11. Glass Orchard — Perfect Replication
+    On summon, delayed sigil arms.
+    On first qualifying forge, create a mirrored-copy pulse over the Artifact’s bonus affinity icon.
+    Then disable the armed visual.
+12. Pale Merchant — Balance Due
+    Contract/seal opens.
+    Any returned crystals glow, lift away, and return to supply.
+13. Ember Sovereign — Cinder Mandate
+    On summon, decree sigil flashes.
+    Condemned marker appears on affected cards.
+    At cleanup, remaining Condemned cards burn/refill.
+14. The First Hunger — Assimilation
+    When Assimilation is used, nanoswarm consumes the chosen Artifact.
+    Card burns instead of entering tableau.
+    Printed Eminence +2 travels to owner.
+    Do not show artifact acquisition or affinity bonus animation.
+15. Null Sovereign — Black Domain
+    Black-blue-white domain descends over Tier III.
+    Nullified marker appears on affected cards.
+    Their Eminence glow collapses and remains suppressed while marked.
+
+REQUIREMENTS
+
+After implementation, report:
+
+* files changed
+* animations added
+* any state fields exposed to UI
+* any mechanics touched
+* test results
+* any skipped or stubbed animations
+
+Run:
+
+* api-server tests
+* luminae tests
+* typecheck
