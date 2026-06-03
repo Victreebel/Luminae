@@ -4104,6 +4104,9 @@ export default function GameBoard() {
                       hideStrike={costMode === 'needed_now'}
                     />
                     {isQueued && <QueuedOverlay />}
+                    {state?.marketMarkers?.[c.id] && (
+                      <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                    )}
                     <div
                       className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/55 backdrop-blur-sm px-1 py-0.5 transition-opacity duration-500"
                       style={{ opacity: cardDetailDiscovered ? 0 : 1 }}
@@ -6532,14 +6535,19 @@ export default function GameBoard() {
                             openCardSheet(c, true);
                           }}
                         >
-                          <ArtifactCardView
-                            card={c}
-                            tier={c.tier}
-                            effectiveCosts={ec}
-                            bonusCosts={ecBonus}
-                            tapped={false}
-                            hideStrike={costMode === 'needed_now'}
-                          />
+                          <div className="relative shrink-0">
+                            <ArtifactCardView
+                              card={c}
+                              tier={c.tier}
+                              effectiveCosts={ec}
+                              bonusCosts={ecBonus}
+                              tapped={false}
+                              hideStrike={costMode === 'needed_now'}
+                            />
+                            {state?.marketMarkers?.[c.id] && (
+                              <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                            )}
+                          </div>
                           <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                             <div className="font-bold text-sm leading-tight">{c.name}</div>
                             <div className="flex items-center gap-1.5">
