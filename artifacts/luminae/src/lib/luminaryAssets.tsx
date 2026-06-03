@@ -867,6 +867,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_oracle:  { id: 'lum_oracle',  primaryColor: '#f59e0b', secondaryColor: '#2dd4bf', glowColor: 'rgba(245,158,11,0.65)', EntityArt: OracleEntity  },
   lum_null:    { id: 'lum_null',    primaryColor: '#ffffff', secondaryColor: '#0a0a14', glowColor: 'rgba(255,255,255,0.5)',  EntityArt: NullEntity    },
   lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity  },
+  lum_moth:    { id: 'lum_moth',    primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.55)',  EntityArt: BloomEntity,   entityBlendMode: 'screen' },
 };
 
 const FALLBACK_VISUALS: LuminaryVisuals = {
