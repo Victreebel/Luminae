@@ -30,6 +30,27 @@ interface PendingSummonEvent {
 
 export type CrystalCounts = Record<CrystalColorWithFlux, number>;
 
+export type CardMarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
+
+export interface CardMarker {
+  type: CardMarkerType;
+  /** Player ID of the Luminary owner who placed the marker. */
+  ownerId: string;
+  /** turnCount when the Luminary was summoned (used for timing checks). */
+  summonedAtTurnCount: number;
+}
+
+export interface AvatarSeedState {
+  ownerId: string;
+  summonedAtTurnCount: number;
+  /** Pending eminence accumulated from opponents forging seeded cards. */
+  pendingLumens: number;
+  /** Card IDs with Avatar Seed tokens still sitting at the top of their source deck. */
+  deckSeeds: string[];
+  /** True once the end-of-next-turn payout has fired (prevents double-pay). */
+  payoutDone: boolean;
+}
+
 export const CRYSTAL_COLORS: CrystalColor[] = [
   "ruby",
   "pearl",
@@ -60,6 +81,8 @@ export interface LuminaryDef {
   summonColor: string;
   summonSecondaryColor: string;
   auraStyle: string;
+  /** Display name for this Luminary's special effect (v0.8+). */
+  effectName?: string;
 }
 
 export interface PlayerGameState {
@@ -123,6 +146,18 @@ export interface GameStateData {
   turnDeadline: number | null;
   version: number;
   pendingSummonEvents: PendingSummonEvent[];
+  /** Card markers: Forgotten / Condemned / Nullified / Avatar Seed (v0.8+). */
+  marketMarkers?: Record<string, CardMarker>;
+  /** State for Seed Beyond Seasons Avatar Seeds (v0.8+). */
+  avatarSeedState?: AvatarSeedState;
+  /** Count of distinct burn effects since end of Catalyst Bloom owner's last turn (v0.8+). */
+  catalystBloomBurnCount?: number;
+  /** True once Concordance Mandala's Perfect Coherence has fired (one per game, v0.8+). */
+  concordanceMandalaTriggered?: boolean;
+  /** True once Glass Orchard's Perfect Replication has fired (one per game, v0.8+). */
+  glassOrchardTriggered?: boolean;
+  /** PlayerId if First Hunger Assimilation is available this turn (cleared on use or turn end, v0.8+). */
+  firstHungerAvailable?: string | null;
 }
 
 const ACTION_LOG_MAX = 100;
@@ -268,62 +303,42 @@ const CARD_CATALOG: ArtifactCard[] = [
 ];
 
 export const LUMINARIES: LuminaryDef[] = [
+  // ── Mono-color Luminaries (2 Eminence) ──────────────────────────────────────
   {
-    id: "lum_forge",
-    name: "The Iron Harbinger",
-    domain: "Ruin",
-    lumens: 3,
-    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 4, pearl: 0, flux: 0 },
-    flavor: "What he builds he eventually unmakes. Creation and ruin are the same song played in different keys.",
-    summonColor: "#2ecc71",
-    summonSecondaryColor: "#7b1fa2",
-    auraStyle: "storm",
-  },
-  {
-    id: "lum_ember",
-    name: "The Ember Sovereign",
-    domain: "Flame",
-    lumens: 4,
-    requirements: { ruby: 3, sapphire: 0, emerald: 3, onyx: 3, pearl: 0, flux: 0 },
-    flavor: "Born of the first stellar ignition, she feeds on the light of dying suns and leaves only cinders where empires once stood.",
-    summonColor: "#ff5a3c",
-    summonSecondaryColor: "#7b1fa2",
+    id: "lum_moth",
+    name: "Red Moth",
+    domain: "Rupture",
+    lumens: 2,
+    requirements: { ruby: 6, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Where it passes, the universe is divided into before and after.",
+    summonColor: "#ef4444",
+    summonSecondaryColor: "#7f1d1d",
     auraStyle: "fire",
+    effectName: "Rupture of the Still",
   },
-  {
-    id: "lum_null",
-    name: "The Null Sovereign",
-    domain: "Transcendence",
-    lumens: 0,
-    oblivion: 4,
-    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
-    flavor: "Beyond the final star, past the edge of the last dark, something waits that was never born and cannot die.",
-    summonColor: "#0f172a",
-    summonSecondaryColor: "#a8b8e8",
-    auraStyle: "null",
-  },
-  // ── Mono-color Luminaries (1–2 Eminence) ────────────────────────────────────
   {
     id: "lum_tide",
     name: "The Tide Architect",
     domain: "Tides",
     lumens: 2,
     requirements: { ruby: 0, sapphire: 6, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "The sea does not rage. It simply rises.",
+    flavor: "Possibility collapses to its bias.",
     summonColor: "#60a5fa",
     summonSecondaryColor: "#e2e8f0",
     auraStyle: "tide",
+    effectName: "The Observer Effect",
   },
   {
     id: "lum_verdant",
     name: "The Verdant Oracle",
     domain: "Verdance",
     lumens: 2,
-    requirements: { ruby: 0, sapphire: 0, emerald: 6, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "She reads the future in the rings of trees that have not yet been planted.",
+    requirements: { ruby: 0, sapphire: 0, emerald: 5, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "It answers only after the question has taken root.",
     summonColor: "#4ade80",
     summonSecondaryColor: "#166534",
     auraStyle: "verdant",
+    effectName: "Early Bloom",
   },
   {
     id: "lum_void",
@@ -336,64 +351,143 @@ export const LUMINARIES: LuminaryDef[] = [
     summonColor: "#4c1d95",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "void",
+    effectName: "Oblivion",
   },
   {
     id: "lum_radiant",
-    name: "The Radiant Keeper",
-    domain: "Light",
+    name: "Concordance Mandala",
+    domain: "Coherence",
     lumens: 2,
     requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 6, flux: 0 },
-    flavor: "She holds back the dark not with fire, but with patience.",
+    flavor: "Truth is not revealed. It is aligned.",
     summonColor: "#fef9c3",
     summonSecondaryColor: "#2ecc71",
     auraStyle: "radiant",
+    effectName: "Perfect Coherence",
   },
   // ── Dual-color Luminaries (3 Eminence) ──────────────────────────────────────
   {
     id: "lum_astral",
-    name: "The Astral Weaver",
-    domain: "Stars",
+    name: "Phoenix Paradox",
+    domain: "Recurrence",
     lumens: 3,
-    requirements: { ruby: 3, sapphire: 3, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "Where stellar fire meets the deep cold, the astral web is woven.",
+    requirements: { ruby: 4, sapphire: 4, emerald: 0, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "Every ending becomes fuel. Every return comes back less innocent.",
     summonColor: "#f43f5e",
     summonSecondaryColor: "#3d6bff",
     auraStyle: "astral",
+    effectName: "Ash-Seeking Recurrence",
+  },
+  {
+    id: "lum_bloom",
+    name: "Catalyst Bloom",
+    domain: "Aftergrowth",
+    lumens: 3,
+    requirements: { ruby: 4, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "It waits for the nova to wound the world, then flowers in the scar.",
+    summonColor: "#86efac",
+    summonSecondaryColor: "#7f1d1d",
+    auraStyle: "bloom",
+    effectName: "Aftergrowth",
+  },
+  {
+    id: "lum_forge",
+    name: "The Iron Harbinger",
+    domain: "Ruin",
+    lumens: 3,
+    requirements: { ruby: 4, sapphire: 0, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
+    flavor: "The hammer falls only after the future has already broken.",
+    summonColor: "#2ecc71",
+    summonSecondaryColor: "#7b1fa2",
+    auraStyle: "storm",
+    effectName: "Impact Extinction",
+  },
+  {
+    id: "lum_compass",
+    name: "???",
+    domain: "Erasure",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
+    flavor: "Everyone remembered something happened, but no one can recall what was lost.",
+    summonColor: "#38bdf8",
+    summonSecondaryColor: "#0a0a14",
+    auraStyle: "compass",
+    effectName: "The Forgotten Hour",
+  },
+  {
+    id: "lum_seed",
+    name: "The Seed Beyond Seasons",
+    domain: "Propagation",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 4, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
+    flavor: "It leaves its avatars where tomorrow has already begun to remember.",
+    summonColor: "#38bdf8",
+    summonSecondaryColor: "#4ade80",
+    auraStyle: "compass",
+    effectName: "Avatar Seeds",
+  },
+  {
+    id: "lum_orchard",
+    name: "Glass Orchard",
+    domain: "Replication",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 0, pearl: 4, flux: 0 },
+    flavor: "It learned to copy itself perfectly, and called the absence of error peace.",
+    summonColor: "#4ade80",
+    summonSecondaryColor: "#fef9c3",
+    auraStyle: "verdant",
+    effectName: "Perfect Replication",
   },
   {
     id: "lum_pale",
     name: "The Pale Merchant",
     domain: "Balance",
     lumens: 3,
-    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
-    flavor: "Every transaction is a small death. Every debt, a small birth.",
+    requirements: { ruby: 0, sapphire: 0, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
+    flavor: "Every bargain reveals one truth and buries another.",
     summonColor: "#cbd5e1",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
+    effectName: "Balance Due",
+  },
+  // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
+  {
+    id: "lum_ember",
+    name: "The Ember Sovereign",
+    domain: "Flame",
+    lumens: 4,
+    requirements: { ruby: 3, sapphire: 0, emerald: 0, onyx: 3, pearl: 3, flux: 0 },
+    flavor: "What cannot survive the fire is granted the mercy of disappearance.",
+    summonColor: "#ff5a3c",
+    summonSecondaryColor: "#7b1fa2",
+    auraStyle: "fire",
+    effectName: "Cinder Mandate",
   },
   {
-    id: "lum_bloom",
-    name: "The Bloom Tyrant",
-    domain: "Wildgrowth",
-    lumens: 3,
-    requirements: { ruby: 4, sapphire: 0, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "She tends the garden of conflict and harvests its strange flowers.",
-    summonColor: "#86efac",
-    summonSecondaryColor: "#7f1d1d",
-    auraStyle: "bloom",
+    id: "lum_hunger",
+    name: "The First Hunger",
+    domain: "Assimilation",
+    lumens: 2,
+    requirements: { ruby: 3, sapphire: 0, emerald: 3, onyx: 0, pearl: 3, flux: 0 },
+    flavor: "Its first act is consumption. Its second is perfect repetition.",
+    summonColor: "#fbbf24",
+    summonSecondaryColor: "#4ade80",
+    auraStyle: "oracle",
+    effectName: "Assimilation",
   },
   {
-    id: "lum_compass",
-    name: "The Stellar Guide",
-    domain: "Navigation",
-    lumens: 3,
-    requirements: { ruby: 0, sapphire: 4, emerald: 4, onyx: 0, pearl: 0, flux: 0 },
-    flavor: "The shortest path between two stars is a story.",
-    summonColor: "#38bdf8",
-    summonSecondaryColor: "#2ecc71",
-    auraStyle: "compass",
+    id: "lum_null",
+    name: "The Null Sovereign",
+    domain: "Transcendence",
+    lumens: 0,
+    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
+    flavor: "Past the last observable star, entire futures fall silent without being destroyed.",
+    summonColor: "#0f172a",
+    summonSecondaryColor: "#a8b8e8",
+    auraStyle: "null",
+    effectName: "Black Domain",
   },
-  // ── Triple-color Luminary (4 Eminence) ──────────────────────────────────────
+  // ── Deferred / Inactive Luminaries (not in active summon pool) ────────────
   {
     id: "lum_oracle",
     name: "The Cosmic Oracle",
@@ -483,17 +577,17 @@ function checkKardashevAdvance(
   });
 }
 
-// Luminaries with complete illustrated assets — only these enter the active
-// pool until the remaining entries have their art finalised.
-// All 12 Luminaries are accessible during iteration. Accepted reference art:
-// lum_forge, lum_ember, lum_verdant. Remaining 9 have batch-generated assets
-// (commit 4d38f3ef) that need a panel/entity/aura regeneration pass before
-// publication — see replit.md Luminary Art Direction for the approved brief.
+// Luminaries in the active summon pool for v0.8.
+// lum_oracle (Cosmic Oracle) is deferred per the v0.8 spec.
+// lum_moth, lum_seed, lum_orchard, lum_hunger are new active Luminaries;
+// they use procedural SVG art until illustrated assets are finalised.
 const ILLUSTRATED_IDS = new Set([
   "lum_forge", "lum_ember", "lum_verdant",
-  "lum_null", "lum_oracle",
+  "lum_null",
   "lum_astral", "lum_bloom", "lum_compass",
   "lum_pale", "lum_radiant", "lum_tide", "lum_void",
+  // v0.8 additions (procedural art until panels/entities are approved):
+  "lum_moth", "lum_seed", "lum_orchard", "lum_hunger",
 ]);
 const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
   ILLUSTRATED_IDS.has(l.id),
@@ -608,6 +702,7 @@ type ActionType =
   | "reserve_card"
   | "purchase_card"
   | "purchase_reserved"
+  | "assimilate"
   | "pass"
   | "surrender"
   | "toggle_luminary_affinity"
@@ -805,6 +900,8 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
           createdAt: Date.now(),
         });
       }
+      // Apply the v0.8 on-summon mechanical effect for this Luminary.
+      applySummonEffect(state, player, lumId, state.turnCount);
     }
   }
 }
@@ -815,17 +912,555 @@ function isLuminaryAlreadyClaimed(state: GameStateData, luminaryId: string): boo
 
 // ─── Draw Card ───────────────────────────────────────────────────────────────
 
+/**
+ * Remove a card from the market and refill the slot from the deck.
+ * Handles marker cleanup (removes marker from the removed card) and
+ * Avatar Seed token transfer (if the incoming deck card was seeded).
+ * Returns the ID of the card that now occupies the slot, or null if the slot
+ * was collapsed (deck empty).
+ */
 function drawIntoMarket(
+  state: GameStateData,
   market: string[],
   deck: string[],
   removedId: string,
-): void {
+): string | null {
   const idx = market.indexOf(removedId);
-  if (idx !== -1) {
-    if (deck.length > 0) {
-      market[idx] = deck.shift()!;
-    } else {
-      market.splice(idx, 1);
+  if (idx === -1) return null;
+
+  // Remove any marker on the leaving card.
+  if (state.marketMarkers) delete state.marketMarkers[removedId];
+
+  if (deck.length > 0) {
+    const newId = deck.shift()!;
+    market[idx] = newId;
+    // Transfer Avatar Seed token if the incoming card was seeded in the deck.
+    if (state.avatarSeedState) {
+      const si = state.avatarSeedState.deckSeeds.indexOf(newId);
+      if (si !== -1) {
+        state.avatarSeedState.deckSeeds.splice(si, 1);
+        if (!state.marketMarkers) state.marketMarkers = {};
+        state.marketMarkers[newId] = {
+          type: "avatar_seed",
+          ownerId: state.avatarSeedState.ownerId,
+          summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
+        };
+      }
+    }
+    return newId;
+  } else {
+    market.splice(idx, 1);
+    return null;
+  }
+}
+
+// ─── v0.8 Burn / Scry Helpers ─────────────────────────────────────────────────
+
+/** Sum of all crystal costs on a card (used for "lowest-cost" comparisons). */
+function totalCost(card: ArtifactCard): number {
+  return CRYSTAL_COLORS.reduce((s, c) => s + (card.cost[c] ?? 0), 0);
+}
+
+/** True if the card has at least one of the given colors in its crystal cost. */
+function cardHasAffinityIn(card: ArtifactCard, colors: CrystalColor[]): boolean {
+  return colors.some((c) => (card.cost[c] ?? 0) > 0);
+}
+
+/**
+ * Burn (refresh) the single lowest-cost face-up card in `tier`'s market that
+ * has NONE of the `excludeColors` in its cost.  Returns the burned card ID, or
+ * null if no valid target exists.
+ */
+function burnLowestCostWithout(
+  state: GameStateData,
+  tier: 1 | 2 | 3,
+  excludeColors: CrystalColor[],
+): string | null {
+  const market = getMarketForTier(state, tier);
+  let bestId: string | null = null;
+  let bestCost = Infinity;
+  for (const id of market) {
+    const card = CARD_MAP.get(id);
+    if (!card) continue;
+    if (cardHasAffinityIn(card, excludeColors)) continue;
+    const tc = totalCost(card);
+    if (tc < bestCost) { bestCost = tc; bestId = id; }
+  }
+  if (!bestId) return null;
+  drawIntoMarket(state, getMarketForTier(state, tier), getDeckForTier(state, tier), bestId);
+  return bestId;
+}
+
+/**
+ * Burn (refresh) all face-up cards currently in `tier`'s market.
+ * Only the cards present at the moment this function is called are burned;
+ * replacement cards drawn from the deck are NOT re-burned.
+ * Returns the count of cards that were burned.
+ */
+function burnAllInTier(state: GameStateData, tier: 1 | 2 | 3): number {
+  const snapshot = [...getMarketForTier(state, tier)];
+  let count = 0;
+  for (const id of snapshot) {
+    const market = getMarketForTier(state, tier);
+    if (market.includes(id)) {
+      drawIntoMarket(state, market, getDeckForTier(state, tier), id);
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Phoenix Paradox — Ash-Seeking Recurrence cascade for one tier:
+ * 1. Find lowest-cost face-up card without Flare (ruby) or Continuum (sapphire).
+ * 2. Burn it and draw a replacement.
+ * 3. If the replacement also lacks Flare/Continuum, burn it too — repeat until a
+ *    replacement with the right affinity arrives or the deck empties.
+ * Returns true if at least one card was burned (i.e., one burn effect occurred).
+ */
+function phoenixParadoxCascade(state: GameStateData, tier: 1 | 2 | 3): boolean {
+  const market = getMarketForTier(state, tier);
+  const deck = getDeckForTier(state, tier);
+
+  let targetIdx = -1;
+  let minCost = Infinity;
+  for (let i = 0; i < market.length; i++) {
+    const card = CARD_MAP.get(market[i]);
+    if (!card) continue;
+    if (card.cost.ruby > 0 || card.cost.sapphire > 0) continue;
+    const tc = totalCost(card);
+    if (tc < minCost) { minCost = tc; targetIdx = i; }
+  }
+  if (targetIdx === -1) return false;
+
+  // Cascade: keep burning the slot until a qualifying card lands or deck runs out.
+  while (true) {
+    const cardId = market[targetIdx];
+    if (!cardId) break;
+    if (state.marketMarkers) delete state.marketMarkers[cardId];
+
+    if (deck.length === 0) {
+      market.splice(targetIdx, 1);
+      break;
+    }
+    const replacement = deck.shift()!;
+    market[targetIdx] = replacement;
+
+    // Transfer Avatar Seed if needed.
+    if (state.avatarSeedState) {
+      const si = state.avatarSeedState.deckSeeds.indexOf(replacement);
+      if (si !== -1) {
+        state.avatarSeedState.deckSeeds.splice(si, 1);
+        if (!state.marketMarkers) state.marketMarkers = {};
+        state.marketMarkers[replacement] = {
+          type: "avatar_seed",
+          ownerId: state.avatarSeedState.ownerId,
+          summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
+        };
+      }
+    }
+
+    const replCard = CARD_MAP.get(replacement);
+    if (!replCard || replCard.cost.ruby > 0 || replCard.cost.sapphire > 0) break;
+    // Replacement also lacks required affinity → continue cascade.
+  }
+
+  return true;
+}
+
+/**
+ * Scry top `count` cards of the given tier's deck and reorder:
+ * cards with `keepColor` in their cost stay on top (original order),
+ * cards without `keepColor` go to the bottom (original order).
+ */
+function scryAndReorder(
+  state: GameStateData,
+  tier: 1 | 2 | 3,
+  keepColor: CrystalColor,
+): void {
+  const deck = getDeckForTier(state, tier);
+  if (deck.length === 0) return;
+  const scryCount = Math.min(3, deck.length);
+  const scried = deck.splice(0, scryCount);
+  const keep = scried.filter((id) => {
+    const card = CARD_MAP.get(id);
+    return card && (card.cost[keepColor] ?? 0) > 0;
+  });
+  const bottom = scried.filter((id) => !keep.includes(id));
+  deck.unshift(...keep);
+  deck.push(...bottom);
+}
+
+/**
+ * Increment the Catalyst Bloom burn-effect counter if lum_bloom has been claimed.
+ * A single call counts as ONE burn effect, regardless of how many individual
+ * cards were burned in that effect.
+ */
+function incrementBloomCount(state: GameStateData): void {
+  const bloomClaimed = state.players.some((p) => p.luminaries.includes("lum_bloom"));
+  if (bloomClaimed) {
+    state.catalystBloomBurnCount = (state.catalystBloomBurnCount ?? 0) + 1;
+  }
+}
+
+// ─── v0.8 On-Summon Effect Helpers ────────────────────────────────────────────
+
+function applySummonEffect_forgottenHour(
+  state: GameStateData,
+  player: PlayerGameState,
+  summonedAtTurnCount: number,
+): void {
+  if (!state.marketMarkers) state.marketMarkers = {};
+  let count = 0;
+  for (const tier of [1, 2, 3] as const) {
+    for (const id of getMarketForTier(state, tier)) {
+      if (!state.marketMarkers[id]) {
+        state.marketMarkers[id] = { type: "forgotten", ownerId: player.playerId, summonedAtTurnCount };
+        count++;
+      }
+    }
+  }
+  if (count > 0) {
+    pushLog(state, {
+      playerId: player.playerId, playerName: player.playerName,
+      summary: `??? — The Forgotten Hour: ${count} Artifact(s) marked Forgotten (0 Eminence until end of next turn)`,
+      turn: state.roundNumber,
+    });
+  }
+}
+
+function applySummonEffect_avatarSeeds(
+  state: GameStateData,
+  player: PlayerGameState,
+  summonedAtTurnCount: number,
+): void {
+  const deckSeeds: string[] = [];
+  for (const tier of [1, 2, 3] as const) {
+    const deck = getDeckForTier(state, tier);
+    for (const id of deck.slice(0, 2)) {
+      if (!deckSeeds.includes(id)) deckSeeds.push(id);
+    }
+  }
+  state.avatarSeedState = {
+    ownerId: player.playerId,
+    summonedAtTurnCount,
+    pendingLumens: 0,
+    deckSeeds,
+    payoutDone: false,
+  };
+  pushLog(state, {
+    playerId: player.playerId, playerName: player.playerName,
+    summary: `Seed Beyond Seasons — Avatar Seeds: ${deckSeeds.length} card(s) seeded on deck tops`,
+    turn: state.roundNumber,
+  });
+}
+
+function applySummonEffect_balanceDue(
+  state: GameStateData,
+  player: PlayerGameState,
+): void {
+  // "More than half that affinity's starting supply" per player count.
+  const n = state.players.length === 2 ? 4 : state.players.length === 3 ? 5 : 7;
+  const halfSupply = n / 2; // e.g. 2 for 4-start, 2.5 for 5-start
+
+  let totalReturned = 0;
+  for (const p of state.players) {
+    for (const c of CRYSTAL_COLORS) {
+      if ((p.crystals[c] ?? 0) > halfSupply) {
+        p.crystals[c]--;
+        state.crystalBank[c]++;
+        totalReturned++;
+      }
+    }
+  }
+  if (totalReturned > 0) {
+    pushLog(state, {
+      playerId: player.playerId, playerName: player.playerName,
+      summary: `Pale Merchant — Balance Due: ${totalReturned} crystal(s) returned`,
+      turn: state.roundNumber,
+    });
+  }
+}
+
+function applySummonEffect_cinderMandate(
+  state: GameStateData,
+  player: PlayerGameState,
+  summonedAtTurnCount: number,
+): void {
+  if (!state.marketMarkers) state.marketMarkers = {};
+  let count = 0;
+  for (const tier of [1, 2, 3] as const) {
+    for (const id of getMarketForTier(state, tier)) {
+      const card = CARD_MAP.get(id);
+      if (!card) continue;
+      // Condemned if lacks ALL of: Flare (ruby), Abyss (onyx), Radiance (pearl)
+      if (card.cost.ruby === 0 && card.cost.onyx === 0 && card.cost.pearl === 0) {
+        state.marketMarkers[id] = { type: "condemned", ownerId: player.playerId, summonedAtTurnCount };
+        count++;
+      }
+    }
+  }
+  if (count > 0) {
+    pushLog(state, {
+      playerId: player.playerId, playerName: player.playerName,
+      summary: `Ember Sovereign — Cinder Mandate: ${count} Artifact(s) marked Condemned (burns at start of next turn)`,
+      turn: state.roundNumber,
+    });
+  }
+}
+
+function applySummonEffect_blackDomain(
+  state: GameStateData,
+  player: PlayerGameState,
+  summonedAtTurnCount: number,
+): void {
+  if (!state.marketMarkers) state.marketMarkers = {};
+  let count = 0;
+  // Only Tier III per spec.
+  for (const id of state.marketTier3) {
+    const card = CARD_MAP.get(id);
+    if (!card) continue;
+    // Nullified if lacks ALL of: Continuum (sapphire), Abyss (onyx), Radiance (pearl)
+    if (card.cost.sapphire === 0 && card.cost.onyx === 0 && card.cost.pearl === 0) {
+      state.marketMarkers[id] = { type: "nullified", ownerId: player.playerId, summonedAtTurnCount };
+      count++;
+    }
+  }
+  if (count > 0) {
+    pushLog(state, {
+      playerId: player.playerId, playerName: player.playerName,
+      summary: `Null Sovereign — Black Domain: ${count} Tier III Artifact(s) marked Nullified`,
+      turn: state.roundNumber,
+    });
+  }
+}
+
+/**
+ * Dispatch the on-summon effect for the given Luminary (v0.8).
+ * Called from checkLuminaries immediately after the eminence award.
+ */
+function applySummonEffect(
+  state: GameStateData,
+  player: PlayerGameState,
+  lumId: string,
+  summonedAtTurnCount: number,
+): void {
+  switch (lumId) {
+    case "lum_moth": {
+      // Rupture of the Still: burn lowest-cost T3 without Flare, then T2 without Flare.
+      const b3 = burnLowestCostWithout(state, 3, ["ruby"]);
+      const b2 = burnLowestCostWithout(state, 2, ["ruby"]);
+      if (b3 || b2) {
+        incrementBloomCount(state);
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Red Moth — Rupture of the Still: burned lowest-cost Artifacts without Flare`,
+          turn: state.roundNumber,
+        });
+      }
+      break;
+    }
+    case "lum_tide": {
+      // The Observer Effect: scry+reorder top 3 of T2 and T3 decks by Continuum.
+      scryAndReorder(state, 2, "sapphire");
+      scryAndReorder(state, 3, "sapphire");
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Tide Architect — The Observer Effect: deck reordered (Continuum cards promoted)`,
+        turn: state.roundNumber,
+      });
+      break;
+    }
+    case "lum_forge": {
+      // Impact Extinction: burn all face-up T3 Artifacts.
+      const count = burnAllInTier(state, 3);
+      if (count > 0) {
+        incrementBloomCount(state);
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Iron Harbinger — Impact Extinction: burned all ${count} Tier III Artifact(s)`,
+          turn: state.roundNumber,
+        });
+      }
+      break;
+    }
+    case "lum_astral": {
+      // Ash-Seeking Recurrence: cascade burn T3, then T2.
+      const did3 = phoenixParadoxCascade(state, 3);
+      const did2 = phoenixParadoxCascade(state, 2);
+      if (did3 || did2) {
+        incrementBloomCount(state);
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Phoenix Paradox — Ash-Seeking Recurrence: burned and revealed until Flare/Continuum`,
+          turn: state.roundNumber,
+        });
+      }
+      break;
+    }
+    case "lum_compass": {
+      // The Forgotten Hour: mark all face-up market cards as Forgotten.
+      applySummonEffect_forgottenHour(state, player, summonedAtTurnCount);
+      break;
+    }
+    case "lum_seed": {
+      // Avatar Seeds: reveal and mark top 2 cards of each deck.
+      applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
+      break;
+    }
+    case "lum_pale": {
+      // Balance Due: each player holding more than half starting supply returns 1.
+      applySummonEffect_balanceDue(state, player);
+      break;
+    }
+    case "lum_ember": {
+      // Cinder Mandate: mark face-up cards without Flare/Abyss/Radiance as Condemned.
+      applySummonEffect_cinderMandate(state, player, summonedAtTurnCount);
+      break;
+    }
+    case "lum_null": {
+      // Black Domain: mark face-up T3 without Continuum/Abyss/Radiance as Nullified.
+      applySummonEffect_blackDomain(state, player, summonedAtTurnCount);
+      break;
+    }
+    case "lum_hunger": {
+      // Assimilation: enable this turn's Assimilation action for the summoner.
+      state.firstHungerAvailable = player.playerId;
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `First Hunger — Assimilation available: replace forge action this turn`,
+        turn: state.roundNumber,
+      });
+      break;
+    }
+    // Passive / delayed effects — nothing on summon:
+    // lum_verdant: cheaper cost, no arrival effect.
+    // lum_void: oblivion handled before this call.
+    // lum_radiant (Concordance Mandala): delayed end-of-turn check.
+    // lum_bloom (Catalyst Bloom): delayed end-of-turn check.
+    // lum_orchard (Glass Orchard): first-forge trigger handled in purchase_card.
+    default:
+      break;
+  }
+}
+
+// ─── v0.8 End-of-Turn / Start-of-Turn Hooks ───────────────────────────────────
+
+/**
+ * Apply delayed effects for the player whose turn is about to end.
+ * Called at the START of advanceTurn, BEFORE turnCount is incremented.
+ * This means state.turnCount equals the ending turn's count at call time.
+ */
+function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
+  // ── Concordance Mandala (lum_radiant): +2 Eminence if ≥8 Radiance Artifacts ──
+  if (player.luminaries.includes("lum_radiant") && !state.concordanceMandalaTriggered) {
+    const radianceArtifacts = player.purchasedCardIds.filter(
+      (id) => CARD_MAP.get(id)?.bonusColor === "pearl",
+    ).length;
+    if (radianceArtifacts >= 8) {
+      player.lumens += 2;
+      state.concordanceMandalaTriggered = true;
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Concordance Mandala — Perfect Coherence: 8+ Radiance Artifacts → +2 Eminence`,
+        turn: state.roundNumber,
+      });
+    }
+  }
+
+  // ── Catalyst Bloom (lum_bloom): +1 Eminence per burn effect since last turn ──
+  if (player.luminaries.includes("lum_bloom")) {
+    const burnEffects = state.catalystBloomBurnCount ?? 0;
+    if (burnEffects > 0) {
+      player.lumens += burnEffects;
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Catalyst Bloom — Aftergrowth: +${burnEffects} Eminence (${burnEffects} burn effect(s))`,
+        turn: state.roundNumber,
+      });
+    }
+    state.catalystBloomBurnCount = 0; // Reset for next period.
+  }
+
+  // ── Seed Beyond Seasons (lum_seed): payout pending Eminence at end of next turn ──
+  const seedLa = state.luminaryAffinities.find(
+    (x) => x.luminaryId === "lum_seed" && x.ownerId === player.playerId,
+  );
+  if (
+    seedLa &&
+    state.avatarSeedState?.ownerId === player.playerId &&
+    !state.avatarSeedState.payoutDone &&
+    state.turnCount > seedLa.summonedAtTurnCount
+  ) {
+    const pending = state.avatarSeedState.pendingLumens;
+    if (pending > 0) {
+      player.lumens += pending;
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Seed Beyond Seasons — Avatar Seeds: +${pending} pending Eminence paid out`,
+        turn: state.roundNumber,
+      });
+    }
+    state.avatarSeedState.payoutDone = true;
+  }
+
+  // ── Forgotten Hour (lum_compass): clear Forgotten markers at end of owner's next turn ──
+  const forgottenLa = state.luminaryAffinities.find(
+    (x) => x.luminaryId === "lum_compass" && x.ownerId === player.playerId,
+  );
+  if (forgottenLa && state.turnCount > forgottenLa.summonedAtTurnCount && state.marketMarkers) {
+    for (const [id, marker] of Object.entries(state.marketMarkers)) {
+      if (marker.type === "forgotten" && marker.ownerId === player.playerId) {
+        delete state.marketMarkers[id];
+      }
+    }
+  }
+}
+
+/**
+ * Apply start-of-turn effects for the player whose turn is about to begin.
+ * Called at the END of advanceTurn, AFTER turnCount has been incremented and
+ * the currentPlayerIndex has advanced.
+ */
+function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
+  // ── Clear Assimilation if it belongs to a different player ──
+  if (state.firstHungerAvailable && state.firstHungerAvailable !== player.playerId) {
+    state.firstHungerAvailable = null;
+  }
+
+  // ── Ember Sovereign (lum_ember): burn remaining Condemned cards at start of summoner's next turn ──
+  const emberLa = state.luminaryAffinities.find(
+    (x) => x.luminaryId === "lum_ember" && x.ownerId === player.playerId,
+  );
+  if (
+    emberLa &&
+    state.turnCount > emberLa.summonedAtTurnCount &&
+    state.marketMarkers
+  ) {
+    const condemned = Object.entries(state.marketMarkers).filter(
+      ([, m]) => m.type === "condemned" && m.ownerId === player.playerId,
+    );
+    if (condemned.length > 0) {
+      let burnCount = 0;
+      for (const [cardId] of condemned) {
+        for (const tier of [1, 2, 3] as const) {
+          const market = getMarketForTier(state, tier);
+          if (market.includes(cardId)) {
+            drawIntoMarket(state, market, getDeckForTier(state, tier), cardId);
+            burnCount++;
+            break;
+          }
+        }
+        // Marker already removed by drawIntoMarket.
+      }
+      if (burnCount > 0) {
+        incrementBloomCount(state);
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
+          turn: state.roundNumber,
+        });
+      }
     }
   }
 }
@@ -841,6 +1476,13 @@ function checkWin(state: GameStateData): boolean {
 // ─── Advance Turn ─────────────────────────────────────────────────────────────
 
 function advanceTurn(state: GameStateData): void {
+  // Apply end-of-turn effects for the current player BEFORE incrementing the
+  // turn counter.  Many timing conditions (Avatar Seeds, Forgotten Hour) check
+  // state.turnCount > summonedAtTurnCount; doing this pre-increment means
+  // "same turn as summon" equals false correctly.
+  const endingPlayer = state.players[state.currentPlayerIndex];
+  if (endingPlayer) applyEndOfTurnEffects(state, endingPlayer);
+
   state.turnCount = (state.turnCount ?? 0) + 1;
   const playerCount = state.players.length;
   const nextIndex = (state.currentPlayerIndex + 1) % playerCount;
@@ -888,6 +1530,10 @@ function advanceTurn(state: GameStateData): void {
     if (nextIndex === 0) {
       state.roundNumber++;
     }
+    // Apply start-of-turn effects for the incoming player AFTER the index
+    // has advanced and turnCount has been incremented.
+    const startingPlayer = state.players[state.currentPlayerIndex];
+    if (startingPlayer) applyStartOfTurnEffects(state, startingPlayer);
   }
 }
 
@@ -1120,9 +1766,9 @@ export function applyAction(
       if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
 
-      // Reserve from market
+      // Reserve from market (Avatar Seed stays on the card in marketMarkers)
       player.reservedCardIds.push(action.cardId);
-      drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
+      drawIntoMarket(state, market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       if (state.crystalBank.flux > 0) {
         player.crystals.flux++;
         state.crystalBank.flux--;
@@ -1142,6 +1788,22 @@ export function applyAction(
       if (!canAfford(eff, player.crystals))
         return { success: false, error: "Cannot afford this card" };
       const kardashevBefore = computeKardashevTier(player.purchasedCardIds, player.discountedForgeIds);
+
+      // Read the market marker BEFORE drawIntoMarket removes it.
+      const purchaseMarker = (state.marketMarkers ?? {})[action.cardId];
+      const markerZerosLumens =
+        purchaseMarker &&
+        (purchaseMarker.type === "forgotten" ||
+          purchaseMarker.type === "condemned" ||
+          purchaseMarker.type === "nullified");
+
+      // Avatar Seed: if forged by an opponent, increment pending.
+      if (purchaseMarker?.type === "avatar_seed" && purchaseMarker.ownerId !== playerId) {
+        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
+          state.avatarSeedState.pendingLumens++;
+        }
+      }
+
       payForCard(card, player, state.crystalBank, liveBonusesPurchase);
       player.purchasedCardIds.push(action.cardId);
       const isDiscountPurchase = Object.values(eff).every((v) => v === 0);
@@ -1151,8 +1813,27 @@ export function applyAction(
       if (!player.purchasedCardBonusSnapshots) player.purchasedCardBonusSnapshots = {};
       player.purchasedCardBonusSnapshots[action.cardId] = { ...liveBonusesPurchase };
       player.bonuses[card.bonusColor]++;
-      player.lumens += card.lumens;
-      drawIntoMarket(market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
+
+      // Marked cards grant 0 Eminence; unmarked/avatar-seeded grant normal printed value.
+      player.lumens += markerZerosLumens ? 0 : card.lumens;
+
+      // Glass Orchard — Perfect Replication: first forge with Verdance or Radiance cost.
+      if (
+        !markerZerosLumens &&
+        !state.glassOrchardTriggered &&
+        player.luminaries.includes("lum_orchard") &&
+        (card.cost.emerald > 0 || card.cost.pearl > 0)
+      ) {
+        player.bonuses[card.bonusColor]++;
+        state.glassOrchardTriggered = true;
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Glass Orchard — Perfect Replication: +1 extra ${COLOR_LABEL[card.bonusColor]} bonus`,
+          turn: state.roundNumber,
+        });
+      }
+
+      drawIntoMarket(state, market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       checkLuminaries(state, player);
       checkKardashevAdvance(state, player, kardashevBefore, isDiscountPurchase, card.tier);
       break;
@@ -1170,6 +1851,17 @@ export function applyAction(
       if (!canAfford(eff, player.crystals))
         return { success: false, error: "Cannot afford this card" };
       const kardashevBeforeReserved = computeKardashevTier(player.purchasedCardIds, player.discountedForgeIds);
+
+      // Avatar Seed on a reserved card: if forged by an opponent, accumulate pending.
+      const reservedMarker = (state.marketMarkers ?? {})[action.cardId];
+      if (reservedMarker?.type === "avatar_seed" && reservedMarker.ownerId !== playerId) {
+        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
+          state.avatarSeedState.pendingLumens++;
+        }
+      }
+      // Clean up the marker now that the card is leaving the tracked pool.
+      if (state.marketMarkers) delete state.marketMarkers[action.cardId];
+
       payForCard(card, player, state.crystalBank, liveBonusesReserved);
       player.reservedCardIds.splice(idx, 1);
       player.purchasedCardIds.push(action.cardId);
@@ -1181,8 +1873,81 @@ export function applyAction(
       player.purchasedCardBonusSnapshots[action.cardId] = { ...liveBonusesReserved };
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
+
+      // Glass Orchard — Perfect Replication (reserved forge path).
+      if (
+        !state.glassOrchardTriggered &&
+        player.luminaries.includes("lum_orchard") &&
+        (card.cost.emerald > 0 || card.cost.pearl > 0)
+      ) {
+        player.bonuses[card.bonusColor]++;
+        state.glassOrchardTriggered = true;
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Glass Orchard — Perfect Replication: +1 extra ${COLOR_LABEL[card.bonusColor]} bonus`,
+          turn: state.roundNumber,
+        });
+      }
+
       checkLuminaries(state, player);
       checkKardashevAdvance(state, player, kardashevBeforeReserved, isDiscountReserved, card.tier);
+      break;
+    }
+
+    case "assimilate": {
+      // First Hunger — Assimilation: one-time action replacing the forge on the summon turn.
+      if (!state.firstHungerAvailable || state.firstHungerAvailable !== playerId) {
+        return { success: false, error: "Assimilation is not available this turn" };
+      }
+      if (!action.cardId) return { success: false, error: "cardId required" };
+      const assimCard = CARD_MAP.get(action.cardId);
+      if (!assimCard) return { success: false, error: "Card not found" };
+      const assimMarket = getMarketForTier(state, assimCard.tier as 1 | 2 | 3);
+      if (!assimMarket.includes(action.cardId))
+        return { success: false, error: "Card not in market" };
+      if (assimCard.cost.ruby === 0 && assimCard.cost.emerald === 0 && assimCard.cost.pearl === 0)
+        return { success: false, error: "Target must have Flare, Verdance, or Radiance in its cost" };
+
+      // Cost: normal effective cost with -1 each in Flare, Verdance, Radiance (min 0 per color).
+      const assimBonuses = effectiveBonuses(state, player);
+      const assimBase = effectiveCost(assimCard, player, assimBonuses);
+      const assimCost: CrystalCounts = { ...assimBase } as CrystalCounts;
+      assimCost.ruby = Math.max(0, (assimCost.ruby ?? 0) - 1);
+      assimCost.emerald = Math.max(0, (assimCost.emerald ?? 0) - 1);
+      assimCost.pearl = Math.max(0, (assimCost.pearl ?? 0) - 1);
+      if (!canAfford(assimCost, player.crystals))
+        return { success: false, error: "Cannot afford Assimilation" };
+
+      // Pay manually with the reduced cost (payForCard uses normal effective cost).
+      let fluxUsed = 0;
+      for (const c of CRYSTAL_COLORS) {
+        const needed = assimCost[c] ?? 0;
+        const avail = player.crystals[c] ?? 0;
+        const fromOwn = Math.min(needed, avail);
+        player.crystals[c] -= fromOwn;
+        state.crystalBank[c] += fromOwn;
+        fluxUsed += needed - fromOwn;
+      }
+      player.crystals.flux -= fluxUsed;
+      state.crystalBank.flux += fluxUsed;
+
+      // Burn the card (not forged; no artifact bonus, no permanent card).
+      drawIntoMarket(state, assimMarket, getDeckForTier(state, assimCard.tier as 1 | 2 | 3), action.cardId);
+      incrementBloomCount(state);
+
+      // Grant printed Eminence + 2 bonus.
+      const assimLumens = assimCard.lumens + 2;
+      player.lumens += assimLumens;
+
+      // Assimilation is consumed.
+      state.firstHungerAvailable = null;
+
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `First Hunger — Assimilation: consumed ${action.cardId} for +${assimLumens} Eminence`,
+        turn: state.roundNumber,
+      });
+      checkLuminaries(state, player);
       break;
     }
 
@@ -1558,6 +2323,24 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!("winTriggerLuminaryId" in state)) {
     state.winTriggerLuminaryId = null;
   }
+  // ensure v0.8 fields exist (optional fields default to absent; guard avoids runtime errors)
+  if (typeof state.marketMarkers !== "object" || state.marketMarkers === null || Array.isArray(state.marketMarkers)) {
+    state.marketMarkers = {};
+  }
+  if (typeof state.catalystBloomBurnCount !== "number") {
+    state.catalystBloomBurnCount = 0;
+  }
+  if (typeof state.concordanceMandalaTriggered !== "boolean") {
+    state.concordanceMandalaTriggered = false;
+  }
+  if (typeof state.glassOrchardTriggered !== "boolean") {
+    state.glassOrchardTriggered = false;
+  }
+  if (!("firstHungerAvailable" in state)) {
+    state.firstHungerAvailable = null;
+  }
+  // avatarSeedState: leave undefined if not set (it's truly optional)
+
   // filter activeLuminaries to only known IDs (backward compat for old saves)
   if (Array.isArray(state.activeLuminaries)) {
     const original = state.activeLuminaries as string[];
@@ -1685,5 +2468,10 @@ export function formatGameState(
     turnDeadline: stateData.turnDeadline,
     version: stateData.version,
     pendingSummonEvents: stateData.pendingSummonEvents ?? [],
+    // v0.8 marker / effect state exposed to clients
+    marketMarkers: stateData.marketMarkers ?? {},
+    avatarSeedDeckSeeds: stateData.avatarSeedState?.deckSeeds ?? [],
+    avatarSeedOwnerId: stateData.avatarSeedState?.ownerId ?? null,
+    firstHungerAvailable: stateData.firstHungerAvailable ?? null,
   };
 }

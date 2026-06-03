@@ -1,0 +1,236 @@
+LUMINAe — Luminary Mechanics Update v0.8
+
+Goal:
+Update the Luminary roster, Luminary timing rules, and Luminary effect logic exactly as specified below.
+
+Do not infer additional mechanics.
+Do not change Artifact IDs, Artifact costs, Artifact Eminence values, Artifact bonus affinities, Blueprint behavior, turn structure, UI layout, tutorial flow, or unrelated systems.
+Do not rename anything not listed here.
+Use “burn” in card text, but implement burn as refresh: remove the affected face-up market card and refill that market slot from the same deck.
+
+GLOBAL RULES
+
+1. Burn
+
+* “Burn” means refresh the affected face-up Artifact.
+* Animation should show destruction/ignition/erasure, then replacement/refill.
+* A burn effect counts as one burn effect even if it burns multiple cards.
+
+2. Scry
+
+* “Scry X” means the player privately looks at the top X cards of the specified deck.
+* Scry is not public reveal.
+* Other players should not see the cards.
+
+3. Reveal
+
+* “Reveal” means public reveal.
+* Use reveal only when specified.
+
+4. Delayed Luminary Eminence
+
+* Resolve all delayed Luminary Eminence before checking victory conditions.
+* Delayed effects check at the end of the owning player’s turn unless otherwise specified.
+
+5. Marked Cards
+
+* Forgotten, Condemned, Nullified, and Avatar Seed are visible markers.
+* If a marked card is forged while its marker applies, use the marked rule.
+* If a marked card is burned/removed/refreshed before being forged, remove its marker unless otherwise specified.
+
+ACTIVE LUMINARY ROSTER
+
+1. Red Moth
+    Affinity: Flare
+    Cost: Flare x6
+    Eminence: +2
+    Bond: Fixed Flare
+    Effect Name: Rupture of the Still
+    Timing: On summon
+    Effect:
+    Burn the lowest-cost face-up Tier III Artifact without Flare in its cost. Then burn the lowest-cost face-up Tier II Artifact without Flare in its cost. Skip a tier if no valid Artifact exists.
+    Lore:
+    “Where it passes, the universe is divided into before and after.”
+2. Tide Architect
+    Affinity: Continuum
+    Cost: Continuum x6
+    Eminence: +2
+    Bond: Fixed Continuum
+    Effect Name: The Observer Effect
+    Timing: On summon
+    Effect:
+    Scry 3 cards from the Tier II deck and Scry 3 cards from the Tier III deck. In each deck, move cards without Continuum in their cost to the bottom, then return the remaining cards to the top in their original order.
+    Lore:
+    “Possibility collapses to its bias.”
+3. Verdant Oracle
+    Affinity: Verdance
+    Cost: Verdance x5
+    Eminence: +2
+    Bond: Fixed Verdance
+    Effect Name: Early Bloom
+    Timing: Passive / summon identity
+    Effect:
+    No arrival effect. This Luminary is cheaper to summon than other mono-affinity Luminaries.
+    Lore:
+    “It answers only after the question has taken root.”
+4. Void Warden
+    Affinity: Abyss
+    Cost: Abyss x6
+    Eminence: -4 to all players
+    Bond: Fixed Abyss
+    Effect Name: Oblivion
+    Timing: On summon
+    Effect:
+    All players lose 4 Eminence.
+    Lore:
+    “In the space between stars, something watches without eyes.”
+5. Concordance Mandala
+    Affinity: Radiance
+    Cost: Radiance x6
+    Eminence: +2 base, possible +2 delayed
+    Bond: Fixed Radiance
+    Effect Name: Perfect Coherence
+    Timing: Delayed; check at end of owner’s turn
+    Effect:
+    At the end of your turn, if you own 8 or more Radiance Artifacts, gain +2 Eminence. This can happen once per game. The Concordance Mandala’s fixed Radiance Bond does not count toward this requirement.
+    Lore:
+    “Truth is not revealed. It is aligned.”
+6. Phoenix Paradox
+    Affinity: Flare + Continuum
+    Cost: Flare x4 + Continuum x4
+    Eminence: +3
+    Bond: None
+    Effect Name: Ash-Seeking Recurrence
+    Timing: On summon
+    Effect:
+    Burn the lowest-cost face-up Tier III Artifact without Flare or Continuum in its cost. Reveal replacements from that tier until the replacement has Flare or Continuum in its cost. Then repeat this process for Tier II.
+    Lore:
+    “Every ending becomes fuel. Every return comes back less innocent.”
+7. Catalyst Bloom
+    Affinity: Flare + Verdance
+    Cost: Flare x4 + Verdance x4
+    Eminence: +3
+    Bond: Adaptive Flare/Verdance
+    Effect Name: Aftergrowth
+    Timing: Delayed; check at end of owner’s turn
+    Effect:
+    At the end of your turn, gain +1 Eminence for each effect that burned one or more Artifacts since the end of your last turn. Count each burn effect once, regardless of how many Artifacts it burned. Then reset this count.
+    Lore:
+    “It waits for the nova to wound the world, then flowers in the scar.”
+8. Iron Harbinger
+    Affinity: Flare + Abyss
+    Cost: Flare x4 + Abyss x4
+    Eminence: +3
+    Bond: None
+    Effect Name: Impact Extinction
+    Timing: On summon
+    Effect:
+    Burn all face-up Tier III Artifacts.
+    Lore:
+    “The hammer falls only after the future has already broken.”
+9. ???
+    Affinity: Continuum + Abyss
+    Cost: Continuum x4 + Abyss x4
+    Eminence: +3
+    Bond: None
+    Effect Name: The Forgotten Hour
+    Timing: On summon; expires at end of summoner’s next turn
+    Effect:
+    Mark all currently face-up market Artifacts as Forgotten. Forgotten Artifacts have 0 Eminence. If a Forgotten Artifact is forged while marked, it grants 0 Eminence permanently for that purchase. Replacement Artifacts are unaffected.
+    Lore:
+    “Everyone remembered something happened, but no one can recall what was lost.”
+10. The Seed Beyond Seasons
+    Affinity: Continuum + Verdance
+    Cost: Continuum x4 + Verdance x4
+    Eminence: +3
+    Bond: Adaptive Continuum/Verdance
+    Effect Name: Avatar Seeds
+    Timing: On summon + delayed payout
+    Effect:
+    Reveal the top 2 cards of each Artifact deck. Mark each revealed card with an Avatar Seed token. Keep those cards revealed on top of their original decks.
+    Avatar-Seeded cards are not forgeable from the top of the deck, but they are still encryptable normally.
+    If an Avatar-Seeded card enters the market or is encrypted, the Avatar Seed token stays with it.
+    When an opponent forges an Avatar-Seeded Artifact, remove the Avatar Seed token and place +1 pending Eminence on The Seed Beyond Seasons.
+    When the owner forges an Avatar-Seeded Artifact, remove the Avatar Seed token. The owner gains only that Artifact’s normal Eminence.
+    At the end of the owner’s next turn, the owner gains all pending Eminence from this Luminary.
+    If an Avatar-Seeded card is burned, bottomed, or otherwise removed without being forged, remove the token with no Eminence gained.
+    Lore:
+    “It leaves its avatars where tomorrow has already begun to remember.”
+11. Glass Orchard
+    Affinity: Verdance + Radiance
+    Cost: Verdance x4 + Radiance x4
+    Eminence: +3
+    Bond: Adaptive Verdance/Radiance
+    Effect Name: Perfect Replication
+    Timing: One-time delayed trigger
+    Effect:
+    The first time you forge an Artifact with Verdance or Radiance in its cost, that Artifact produces +1 additional permanent affinity of its bonus type, even if that bonus type is not Verdance or Radiance.
+    Lore:
+    “It learned to copy itself perfectly, and called the absence of error peace.”
+12. Pale Merchant
+    Affinity: Abyss + Radiance
+    Cost: Abyss x4 + Radiance x4
+    Eminence: +3
+    Bond: Adaptive Abyss/Radiance
+    Effect Name: Balance Due
+    Timing: On summon
+    Effect:
+    For each affinity, each player holding more than half that affinity’s starting supply returns 1 crystal of that affinity.
+    Lore:
+    “Every bargain reveals one truth and buries another.”
+13. Ember Sovereign
+    Affinity: Flare + Abyss + Radiance
+    Cost: Flare x3 + Abyss x3 + Radiance x3
+    Eminence: +4
+    Bond: None
+    Effect Name: Cinder Mandate
+    Timing: On summon; cleanup at start of summoner’s next turn
+    Effect:
+    Mark all face-up Artifacts without Flare, Abyss, or Radiance in their cost as Condemned. Condemned Artifacts have 0 Eminence. If forged while Condemned, they grant 0 Eminence permanently. At the start of the summoner’s next turn, burn all remaining Condemned Artifacts.
+    Lore:
+    “What cannot survive the fire is granted the mercy of disappearance.”
+14. The First Hunger
+    Affinity: Flare + Verdance + Radiance
+    Cost: Flare x3 + Verdance x3 + Radiance x3
+    Eminence: +2
+    Bond: None
+    Effect Name: Assimilation
+    Timing: Same turn only; replaces forge action
+    Effect:
+    On the turn you summon The First Hunger, you may replace your forge action with Assimilation. Choose a face-up Artifact with Flare, Verdance, or Radiance in its cost. Pay that Artifact’s forge cost reduced by 1 Flare, 1 Verdance, and 1 Radiance if present. Cost reductions cannot reduce any affinity below 0. Burn that Artifact instead of forging it. Gain its printed Eminence +2. You do not gain the Artifact, its affinity bonus, or any forge effects.
+    Lore:
+    “Its first act is consumption. Its second is perfect repetition.”
+15. Null Sovereign
+    Affinity: Continuum + Abyss + Radiance
+    Cost: Continuum x4 + Abyss x4 + Radiance x4
+    Eminence: 0
+    Bond: None
+    Effect Name: Black Domain
+    Timing: On summon
+    Effect:
+    Mark all face-up Tier III Artifacts without Continuum, Abyss, or Radiance in their cost as Nullified. Nullified Artifacts have 0 Eminence while they remain in the market. If forged while Nullified, they grant 0 Eminence permanently.
+    Lore:
+    “Past the last observable star, entire futures fall silent without being destroyed.”
+
+DEFERRED / INACTIVE LUMINARIES
+
+Do not include these in the active summon pool for this update:
+
+* Oathfire Judge
+* Timeglass Witness
+* Dormant Below
+* Living Route
+* Cosmic Oracle
+
+TESTING REQUIREMENTS
+
+Add or update tests/logging for:
+
+1. Burn counts as refresh.
+2. Burn effects count once for Catalyst Bloom even if multiple Artifacts burn.
+3. Scry is private; reveal is public.
+4. Delayed Eminence resolves before victory check.
+5. Forgotten, Condemned, Nullified, and Avatar Seed markers persist and clear correctly.
+6. The First Hunger replaces forge action and does not grant Artifact, affinity bonus, or forge effects.
+7. Concordance Mandala checks owned Radiance Artifacts at end of turn and does not count its fixed Bond.
+8. Avatar-Seeded cards are not forgeable from deck top but remain encryptable.

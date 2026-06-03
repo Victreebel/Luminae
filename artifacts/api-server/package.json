@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "pnpm run lint && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src --ext .ts",
-    "simulate": "tsx ./src/scripts/simulate.ts"
+    "simulate": "tsx ./src/scripts/simulate.ts",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@types/ws": "^8.18.1",
@@ -28,7 +29,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "globals": "^16.0.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
@@ -38,8 +38,10 @@
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "eslint": "^9.39.4",
+    "globals": "^16.0.0",
     "pino-pretty": "^13",
     "thread-stream": "3.1.0",
-    "tsx": "catalog:"
+    "tsx": "catalog:",
+    "vitest": "^4.1.6"
   }
 }
