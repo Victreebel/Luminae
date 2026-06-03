@@ -253,7 +253,7 @@ importers:
         version: 4.21.0
       vitest:
         specifier: ^4.1.6
-        version: 4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jiti@2.6.1)(jsdom@29.1.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2)
+        version: 4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2))
 
   artifacts/luminae:
     devDependencies:
@@ -478,7 +478,7 @@ importers:
         version: 1.2.0(@types/babel__core@7.20.5)(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2))(workbox-window@7.4.0)
       vitest:
         specifier: ^4.1.6
-        version: 4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jiti@2.6.1)(jsdom@29.1.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2)
+        version: 4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2))
       workbox-window:
         specifier: ^7.4.0
         version: 7.4.0
@@ -5187,6 +5187,7 @@ packages:
       '@vitest/ui': 4.1.6
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -7623,7 +7624,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jiti@2.6.1)(jsdom@29.1.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2))
 
   '@vitest/expect@4.1.6':
     dependencies:
@@ -10100,7 +10101,7 @@ snapshots:
       tsx: 4.21.0
       yaml: 2.8.2
 
-  vitest@4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jiti@2.6.1)(jsdom@29.1.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2):
+  vitest@4.1.6(@types/node@25.3.5)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       '@vitest/expect': 4.1.6
       '@vitest/mocker': 4.1.6(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.2))
@@ -10127,17 +10128,7 @@ snapshots:
       '@vitest/coverage-v8': 4.1.6(vitest@4.1.6)
       jsdom: 29.1.1
     transitivePeerDependencies:
-      - jiti
-      - less
-      - lightningcss
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   w3c-xmlserializer@5.0.0:
     dependencies:
