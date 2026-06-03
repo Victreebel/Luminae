@@ -833,3 +833,21 @@ button,
 .lum-aw-pending-pulse {
   animation: lum-aw-pending-pulse 0.9s ease-in-out infinite;
 }
+
+/* ── First Hunger (lum_hunger) — nanite background crossfade ─────────────
+   bg1 and bg2 alternate in opposition: as one fades out the other fades in,
+   creating the illusion of slowly shifting nanite swarm movement.           */
+@keyframes lum-hunger-bg1 {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+@keyframes lum-hunger-bg2 {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+.lum-hunger-bg1 {
+  animation: lum-hunger-bg1 5s ease-in-out infinite;
+}
+.lum-hunger-bg2 {
+  animation: lum-hunger-bg2 5s ease-in-out infinite;
+}

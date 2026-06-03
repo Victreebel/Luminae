@@ -85,6 +85,7 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_tide',
   'lum_pale',
   'lum_astral',
+  'lum_hunger',
 ]);
 
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
@@ -820,6 +821,31 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
   );
 }
 
+// ── The First Hunger (lum_hunger) ─────────────────────────────────────────────
+// Nanite swarm intelligence — Abyss + Flare.
+// Entity.png sits over a crossfading pair of background images (background1/2)
+// that alternate opacity to simulate nanite movement. Used as the EntityArt
+// prop; the portal + cutscene renders have dedicated lum_hunger branches
+// that composite all three layers at their correct display sizes.
+function HungerEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const entity = _getLuminaryImage('lum_hunger', 'entity');
+  const bg1    = _luminaryImageMap['lum_hunger/background1'] ?? null;
+  const bg2    = _luminaryImageMap['lum_hunger/background2'] ?? null;
+  const w = size;
+  const h = Math.round(size * 1.5);
+  const fill: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' };
+  return (
+    <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
+      {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
+      {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
+      {entity && (
+        <img src={entity} alt="" draggable={false}
+          style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+      )}
+    </div>
+  );
+}
+
 // ─── Luminary Visuals Map ─────────────────────────────────────────────────────
 // Colors derived from each Luminary's requirement gem palette.
 // Synced with backend summonColor/summonSecondaryColor in gameEngine.ts.
@@ -837,6 +863,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity },
   lum_oracle:  { id: 'lum_oracle',  primaryColor: '#f59e0b', secondaryColor: '#2dd4bf', glowColor: 'rgba(245,158,11,0.65)', EntityArt: OracleEntity  },
   lum_null:    { id: 'lum_null',    primaryColor: '#ffffff', secondaryColor: '#0a0a14', glowColor: 'rgba(255,255,255,0.5)',  EntityArt: NullEntity    },
+  lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity  },
 };
 
 const FALLBACK_VISUALS: LuminaryVisuals = {
@@ -2265,6 +2292,25 @@ export function LuminarySummonCutscene({
                             )}
                           </>
                         );
+                      })() : luminaryId === 'lum_hunger' ? (() => {
+                        // Nanite background crossfade: bg1/bg2 alternate behind entity cutout.
+                        const hBg1   = _luminaryImageMap['lum_hunger/background1'] ?? null;
+                        const hBg2   = _luminaryImageMap['lum_hunger/background2'] ?? null;
+                        const hEnt   = _getLuminaryImage('lum_hunger', 'entity');
+                        const fill: React.CSSProperties = {
+                          position: 'absolute', inset: 0, width: '100%', height: '100%',
+                          objectFit: 'cover', display: 'block',
+                        };
+                        return (
+                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
+                            {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
+                            {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
+                            {hEnt && (
+                              <img src={hEnt} alt={luminaryName} draggable={false}
+                                style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+                            )}
+                          </div>
+                        );
                       })() : entityCutout ? (
                         <img src={entityCutout} alt={luminaryName}
                           style={{
@@ -2568,6 +2614,30 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 </div>
               );
             }
+          }
+
+          // ── lum_hunger: nanite background crossfade behind entity cutout ──────
+          if (luminaryId === 'lum_hunger') {
+            const hBg1 = _luminaryImageMap['lum_hunger/background1'] ?? null;
+            const hBg2 = _luminaryImageMap['lum_hunger/background2'] ?? null;
+            const hEnt = _getLuminaryImage('lum_hunger', 'entity');
+            const fill: React.CSSProperties = {
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', display: 'block',
+            };
+            return (
+              <div
+                className={isIdle ? 'lum-idle-float' : undefined}
+                style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'hidden', borderRadius: 4 }}
+              >
+                {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
+                {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
+                {hEnt && (
+                  <img src={hEnt} alt="" draggable={false}
+                    style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+                )}
+              </div>
+            );
           }
 
           return (
