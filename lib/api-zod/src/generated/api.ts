@@ -600,6 +600,58 @@ export const StartGameResponse = zod.object({
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
     ),
+  marketMarkers: zod
+    .record(
+      zod.string(),
+      zod
+        .object({
+          type: zod.enum([
+            "forgotten",
+            "condemned",
+            "nullified",
+            "avatar_seed",
+          ]),
+          ownerId: zod.string(),
+          summonedAtTurnCount: zod.number(),
+        })
+        .describe(
+          "A marker placed on a market card by a Luminary effect (v0.8)",
+        ),
+    )
+    .optional()
+    .describe(
+      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+    ),
+  avatarSeedDeckSeeds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+  avatarSeedOwnerId: zod
+    .string()
+    .nullish()
+    .describe("Player ID who owns Avatar Seeds; null if inactive (v0.8)"),
+  firstHungerAvailable: zod
+    .string()
+    .nullish()
+    .describe(
+      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+    ),
+  catalystBloomBurnCount: zod
+    .number()
+    .optional()
+    .describe(
+      "Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)",
+    ),
+  concordanceMandalaTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+    ),
+  glassOrchardTriggered: zod
+    .boolean()
+    .optional()
+    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
 });
 
 /**
@@ -963,6 +1015,58 @@ export const RematchResponse = zod.object({
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
     ),
+  marketMarkers: zod
+    .record(
+      zod.string(),
+      zod
+        .object({
+          type: zod.enum([
+            "forgotten",
+            "condemned",
+            "nullified",
+            "avatar_seed",
+          ]),
+          ownerId: zod.string(),
+          summonedAtTurnCount: zod.number(),
+        })
+        .describe(
+          "A marker placed on a market card by a Luminary effect (v0.8)",
+        ),
+    )
+    .optional()
+    .describe(
+      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+    ),
+  avatarSeedDeckSeeds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+  avatarSeedOwnerId: zod
+    .string()
+    .nullish()
+    .describe("Player ID who owns Avatar Seeds; null if inactive (v0.8)"),
+  firstHungerAvailable: zod
+    .string()
+    .nullish()
+    .describe(
+      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+    ),
+  catalystBloomBurnCount: zod
+    .number()
+    .optional()
+    .describe(
+      "Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)",
+    ),
+  concordanceMandalaTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+    ),
+  glassOrchardTriggered: zod
+    .boolean()
+    .optional()
+    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
 });
 
 /**
@@ -1326,6 +1430,58 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
     ),
+  marketMarkers: zod
+    .record(
+      zod.string(),
+      zod
+        .object({
+          type: zod.enum([
+            "forgotten",
+            "condemned",
+            "nullified",
+            "avatar_seed",
+          ]),
+          ownerId: zod.string(),
+          summonedAtTurnCount: zod.number(),
+        })
+        .describe(
+          "A marker placed on a market card by a Luminary effect (v0.8)",
+        ),
+    )
+    .optional()
+    .describe(
+      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+    ),
+  avatarSeedDeckSeeds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+  avatarSeedOwnerId: zod
+    .string()
+    .nullish()
+    .describe("Player ID who owns Avatar Seeds; null if inactive (v0.8)"),
+  firstHungerAvailable: zod
+    .string()
+    .nullish()
+    .describe(
+      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+    ),
+  catalystBloomBurnCount: zod
+    .number()
+    .optional()
+    .describe(
+      "Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)",
+    ),
+  concordanceMandalaTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+    ),
+  glassOrchardTriggered: zod
+    .boolean()
+    .optional()
+    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
 });
 
 /**
@@ -1752,6 +1908,58 @@ export const SubmitActionResponse = zod.object({
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
     ),
+  marketMarkers: zod
+    .record(
+      zod.string(),
+      zod
+        .object({
+          type: zod.enum([
+            "forgotten",
+            "condemned",
+            "nullified",
+            "avatar_seed",
+          ]),
+          ownerId: zod.string(),
+          summonedAtTurnCount: zod.number(),
+        })
+        .describe(
+          "A marker placed on a market card by a Luminary effect (v0.8)",
+        ),
+    )
+    .optional()
+    .describe(
+      "Active card markers keyed by cardId (v0.8 — Forgotten\/Condemned\/Nullified\/AvatarSeed)",
+    ),
+  avatarSeedDeckSeeds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Card IDs currently in deck with Avatar Seed markers (v0.8)"),
+  avatarSeedOwnerId: zod
+    .string()
+    .nullish()
+    .describe("Player ID who owns Avatar Seeds; null if inactive (v0.8)"),
+  firstHungerAvailable: zod
+    .string()
+    .nullish()
+    .describe(
+      "Player ID if First Hunger Assimilation is available this turn (v0.8)",
+    ),
+  catalystBloomBurnCount: zod
+    .number()
+    .optional()
+    .describe(
+      "Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)",
+    ),
+  concordanceMandalaTriggered: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once Concordance Mandala Perfect Coherence has fired (v0.8)",
+    ),
+  glassOrchardTriggered: zod
+    .boolean()
+    .optional()
+    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
 });
 
 /**

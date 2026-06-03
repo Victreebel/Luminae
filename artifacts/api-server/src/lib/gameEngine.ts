@@ -2560,5 +2560,8 @@ export function formatGameState(
     avatarSeedDeckSeeds: stateData.avatarSeedState?.deckSeeds ?? [],
     avatarSeedOwnerId: stateData.avatarSeedState?.ownerId ?? null,
     firstHungerAvailable: stateData.firstHungerAvailable ?? null,
+    catalystBloomBurnCount: stateData.catalystBloomBurnCount ?? 0,
+    concordanceMandalaTriggered: stateData.concordanceMandalaTriggered ?? false,
+    glassOrchardTriggered: stateData.glassOrchardTriggered ?? false,
   };
 }

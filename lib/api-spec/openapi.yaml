@@ -1425,6 +1425,22 @@ components:
         - luminaryId
         - claimedByPlayerId
 
+    CardMarker:
+      type: object
+      description: A marker placed on a market card by a Luminary effect (v0.8)
+      properties:
+        type:
+          type: string
+          enum: [forgotten, condemned, nullified, avatar_seed]
+        ownerId:
+          type: string
+        summonedAtTurnCount:
+          type: integer
+      required:
+        - type
+        - ownerId
+        - summonedAtTurnCount
+
     GameState:
       type: object
       properties:
@@ -1504,6 +1520,31 @@ components:
           description: Summon events awaiting client acknowledgement (resolve_summon action)
           items:
             $ref: "#/components/schemas/PendingSummonEvent"
+        marketMarkers:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/CardMarker"
+          description: Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed)
+        avatarSeedDeckSeeds:
+          type: array
+          items:
+            type: string
+          description: Card IDs currently in deck with Avatar Seed markers (v0.8)
+        avatarSeedOwnerId:
+          type: ["string", "null"]
+          description: Player ID who owns Avatar Seeds; null if inactive (v0.8)
+        firstHungerAvailable:
+          type: ["string", "null"]
+          description: Player ID if First Hunger Assimilation is available this turn (v0.8)
+        catalystBloomBurnCount:
+          type: integer
+          description: Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8)
+        concordanceMandalaTriggered:
+          type: boolean
+          description: True once Concordance Mandala Perfect Coherence has fired (v0.8)
+        glassOrchardTriggered:
+          type: boolean
+          description: True once Glass Orchard Perfect Replication has fired (v0.8)
       required:
         - roomId
         - status

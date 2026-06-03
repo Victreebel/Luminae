@@ -522,6 +522,25 @@ export interface PendingSummonEvent {
   createdAt?: number;
 }
 
+export type CardMarkerType =
+  (typeof CardMarkerType)[keyof typeof CardMarkerType];
+
+export const CardMarkerType = {
+  forgotten: "forgotten",
+  condemned: "condemned",
+  nullified: "nullified",
+  avatar_seed: "avatar_seed",
+} as const;
+
+/**
+ * A marker placed on a market card by a Luminary effect (v0.8)
+ */
+export interface CardMarker {
+  type: CardMarkerType;
+  ownerId: string;
+  summonedAtTurnCount: number;
+}
+
 export type GameStateStatus =
   (typeof GameStateStatus)[keyof typeof GameStateStatus];
 
@@ -541,6 +560,11 @@ export type GameStateDeckCounts = {
  * @nullable
  */
 export type GameStateLastAction = { [key: string]: unknown } | null;
+
+/**
+ * Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed)
+ */
+export type GameStateMarketMarkers = { [key: string]: CardMarker };
 
 export interface GameState {
   roomId: string;
@@ -578,6 +602,26 @@ export interface GameState {
   version: number;
   /** Summon events awaiting client acknowledgement (resolve_summon action) */
   pendingSummonEvents: PendingSummonEvent[];
+  /** Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed) */
+  marketMarkers?: GameStateMarketMarkers;
+  /** Card IDs currently in deck with Avatar Seed markers (v0.8) */
+  avatarSeedDeckSeeds?: string[];
+  /**
+   * Player ID who owns Avatar Seeds; null if inactive (v0.8)
+   * @nullable
+   */
+  avatarSeedOwnerId?: string | null;
+  /**
+   * Player ID if First Hunger Assimilation is available this turn (v0.8)
+   * @nullable
+   */
+  firstHungerAvailable?: string | null;
+  /** Burn count accumulator for Catalyst Bloom since owner's last turn (v0.8) */
+  catalystBloomBurnCount?: number;
+  /** True once Concordance Mandala Perfect Coherence has fired (v0.8) */
+  concordanceMandalaTriggered?: boolean;
+  /** True once Glass Orchard Perfect Replication has fired (v0.8) */
+  glassOrchardTriggered?: boolean;
 }
 
 export type ActionRequestType =

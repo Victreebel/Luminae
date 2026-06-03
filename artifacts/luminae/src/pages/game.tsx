@@ -63,6 +63,7 @@ import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
+import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 
 type ActiveTab = 'board' | 'hand' | 'log';
@@ -452,6 +453,11 @@ export default function GameBoard() {
   const [chipAbsorbRipple, setChipAbsorbRipple] = useState<{
     id: string; chipRect: DOMRect; color: string;
   } | null>(null);
+  // v0.8 Luminary animation state
+  const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect }>>([]);
+  const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
+  const [boardDimKey, setBoardDimKey] = useState(0);
+  const prevStateForAnimRef = useRef<typeof state>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
     tier: number;
@@ -859,6 +865,19 @@ export default function GameBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.players]);
 
+  // v0.8 — which Luminaries currently have a pending delayed effect.
+  // Drives the ArmedSigil on the Luminary portal.
+  const armedLumIds = useMemo(() => {
+    if (!state) return new Set<string>();
+    const claimedIds = new Set(state.players.flatMap(p => p.claimedLuminaryIds ?? []));
+    const armed = new Set<string>();
+    if (claimedIds.has('lum_radiant') && !state.concordanceMandalaTriggered) armed.add('lum_radiant');
+    if (claimedIds.has('lum_bloom'))                                          armed.add('lum_bloom');
+    if (claimedIds.has('lum_orchard') && !state.glassOrchardTriggered)       armed.add('lum_orchard');
+    if (claimedIds.has('lum_seed') && !!state.avatarSeedOwnerId)             armed.add('lum_seed');
+    return armed;
+  }, [state]);
+
   // Market keyboard navigation — roving tabindex for the 3×N card Forge grid.
   // Counts how many keyboard-navigable (non-ghost, non-hidden, non-null) cards
   // exist per tier row so the hook knows when to wrap focus.
@@ -1025,6 +1044,110 @@ export default function GameBoard() {
     seenAiAffinityLogCountRef.current = aiAffinityCount;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.actionLog]);
+
+  // ── v0.8 Luminary animation detection ────────────────────────────────────
+  // Fires on every state change to detect burn replacements, delayed-effect
+  // payouts, and Void Warden Oblivion — then triggers the matching animations.
+  // Pure visual; never mutates game state.
+  useEffect(() => {
+    if (!state) return;
+    const prev = prevStateForAnimRef.current;
+    prevStateForAnimRef.current = state;
+    if (!prev) return;
+
+    // ── Card burn replacements (Void Warden / Bloom burn) ──────────────────
+    // A slot is a "burn" when its card ID changes on a non-purchase/non-reserve
+    // action (i.e. the engine replaced the card as a side-effect).
+    const lastAction = state.lastAction;
+    const isPurchaseOrReserve =
+      lastAction?.type === 'purchase_card' ||
+      lastAction?.type === 'purchase_reserved' ||
+      lastAction?.type === 'reserve_card';
+
+    if (!isPurchaseOrReserve) {
+      const tiers = [
+        { tier: 1 as const, oldCards: prev.marketTier1, newCards: state.marketTier1 },
+        { tier: 2 as const, oldCards: prev.marketTier2, newCards: state.marketTier2 },
+        { tier: 3 as const, oldCards: prev.marketTier3, newCards: state.marketTier3 },
+      ] as const;
+      for (const { tier, oldCards, newCards } of tiers) {
+        const len = Math.min(oldCards.length, newCards.length);
+        for (let i = 0; i < len; i++) {
+          const o = oldCards[i], n = newCards[i];
+          if (o && n && o.id !== n.id) {
+            const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
+            if (slotEl) {
+              const rect = slotEl.getBoundingClientRect();
+              setBurnFlashes(pf => [...pf, { id: `burn-${tier}-${i}-${Date.now()}`, slotRect: rect }]);
+            }
+          }
+        }
+      }
+    }
+
+    // ── Concordance Mandala (+2 eminence) ──────────────────────────────────
+    if (!prev.concordanceMandalaTriggered && state.concordanceMandalaTriggered) {
+      const lumEl = document.querySelector('[data-luminary-id="lum_radiant"]');
+      const rect = lumEl?.getBoundingClientRect();
+      if (rect) {
+        setDelayedEffectFloats(pf => [
+          ...pf, { id: `mandala-${Date.now()}`, amount: 2, color: '#d4af37', originRect: rect },
+        ]);
+      }
+    }
+
+    // ── Catalyst Bloom (N burns → N eminence payout) ───────────────────────
+    const prevBloom  = prev.catalystBloomBurnCount  ?? 0;
+    const newBloom   = state.catalystBloomBurnCount ?? 0;
+    if (prevBloom > 0 && newBloom === 0) {
+      const lumEl = document.querySelector('[data-luminary-id="lum_bloom"]');
+      const rect = lumEl?.getBoundingClientRect();
+      if (rect) {
+        setDelayedEffectFloats(pf => [
+          ...pf, { id: `bloom-${Date.now()}`, amount: prevBloom, color: '#4ade80', originRect: rect },
+        ]);
+      }
+    }
+
+    // ── Glass Orchard (+1 bonus copy) ─────────────────────────────────────
+    if (!prev.glassOrchardTriggered && state.glassOrchardTriggered) {
+      const lumEl = document.querySelector('[data-luminary-id="lum_orchard"]');
+      const rect = lumEl?.getBoundingClientRect();
+      if (rect) {
+        setDelayedEffectFloats(pf => [
+          ...pf, { id: `orchard-${Date.now()}`, amount: 1, color: '#86efac', originRect: rect },
+        ]);
+      }
+    }
+
+    // ── Seed Beyond Seasons (payout from actionLog) ───────────────────────
+    const prevLog = prev.actionLog ?? [];
+    const newLog  = state.actionLog ?? [];
+    if (newLog.length >= prevLog.length) {
+      const newEntries = newLog.slice(newLog.length - (newLog.length - prevLog.length));
+      for (const entry of newEntries) {
+        const m = /Seed Beyond Seasons.*?\+(\d+) pending Eminence/.exec(entry.summary ?? '');
+        if (m) {
+          const amount = parseInt(m[1], 10);
+          const lumEl = document.querySelector('[data-luminary-id="lum_seed"]');
+          const rect = lumEl?.getBoundingClientRect();
+          if (rect && amount > 0) {
+            setDelayedEffectFloats(pf => [
+              ...pf, { id: `seed-${Date.now()}`, amount, color: '#4cc88a', originRect: rect },
+            ]);
+          }
+        }
+      }
+    }
+
+    // ── Void Warden Oblivion (board dim) ──────────────────────────────────
+    const prevVoid = prev.pendingSummonEvents?.some(e => e.luminaryId === 'lum_void') ?? false;
+    const newVoid  = state.pendingSummonEvents?.some(e => e.luminaryId === 'lum_void') ?? false;
+    if (!prevVoid && newVoid) {
+      setBoardDimKey(k => k + 1);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   // ── Undo hint trigger ─────────────────────────────────────────────────────
   // Must live here — before the early returns — so hook order is stable across
@@ -3170,6 +3293,7 @@ export default function GameBoard() {
                 playerBonuses={me?.bonuses}
                 isMyTurn={isMyTurn}
                 onOpenSheet={() => setSelectedLuminary(l)}
+                isArmed={armedLumIds.has(l.id)}
               />
             );
           })}
@@ -3456,6 +3580,9 @@ export default function GameBoard() {
                         />
                       </motion.div>
                       {isQueued && <QueuedOverlay />}
+                      {state?.marketMarkers?.[c.id] && (
+                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                      )}
                     </div>
                   );
                 }
@@ -3493,6 +3620,10 @@ export default function GameBoard() {
                       </div>
                       {/* Subtle dark scrim to ease card art brightness in compact view */}
                       <div className="pointer-events-none absolute inset-0" style={{ background: 'rgba(0,0,0,0.28)' }} />
+                      {/* Marker badge (v0.8) — rendered above all chip art layers */}
+                      {state?.marketMarkers?.[c.id] && (
+                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                      )}
                       {/* Native-resolution info overlay — sized for the 56×80 chip */}
                       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1">
                         {/* Top row: lumen badge (left) + bonus gem badge (right) */}
@@ -6980,6 +7111,26 @@ export default function GameBoard() {
           onDone={() => setChipAbsorbRipple(null)}
         />
       )}
+      {/* ── v0.8 Burn flashes ── */}
+      {burnFlashes.map(f => (
+        <BurnFlash
+          key={f.id}
+          slotRect={f.slotRect}
+          onDone={() => setBurnFlashes(pf => pf.filter(x => x.id !== f.id))}
+        />
+      ))}
+      {/* ── v0.8 Delayed-effect eminence floats ── */}
+      {delayedEffectFloats.map(f => (
+        <DelayedEffectFloat
+          key={f.id}
+          amount={f.amount}
+          color={f.color}
+          originRect={f.originRect}
+          onDone={() => setDelayedEffectFloats(pf => pf.filter(x => x.id !== f.id))}
+        />
+      ))}
+      {/* ── v0.8 Board dim (Void Warden Oblivion) ── */}
+      <BoardDimOverlay dimKey={boardDimKey} />
       {/* ── Eminence Gain Burst — fires when any player's lumens increases ── */}
       <AnimatePresence>
         {lumensBursts.map((burst) => (

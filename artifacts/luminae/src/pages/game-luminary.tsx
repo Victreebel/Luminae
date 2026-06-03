@@ -7,6 +7,7 @@ import { LuminaryPanelArt } from '@/lib/luminaryAssets';
 import { CRYSTALS } from './game-constants';
 import { MiniGem, EminenceDiamond } from './game-card';
 import { PlayerAvatar } from './game-player';
+import { ArmedSigil } from './game-luminary-effects';
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
@@ -22,7 +23,7 @@ import { PlayerAvatar } from './game-player';
 // remaining 3 cycle through the other requirement colours.
 export function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false,
+  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false, isArmed = false,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
@@ -32,6 +33,7 @@ export function LuminaryClaimedPortal({
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
   isNew?: boolean;
+  isArmed?: boolean;
 }) {
   const fresh = useRef(isNew).current;
 
@@ -355,6 +357,9 @@ export function LuminaryClaimedPortal({
         </div>
       )}
 
+      {/* Armed sigil — shown when this Luminary has a pending delayed effect */}
+      <ArmedSigil isVisible={isArmed} color={g1} />
+
     </Tag>
   );
 }
@@ -362,7 +367,7 @@ export function LuminaryClaimedPortal({
 export function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
-  costMode, playerBonuses, isMyTurn, onOpenSheet,
+  costMode, playerBonuses, isMyTurn, onOpenSheet, isArmed = false,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -377,6 +382,7 @@ export function LuminaryCard({
   playerBonuses?: Partial<CrystalCounts>;
   isMyTurn?: boolean;
   onOpenSheet?: () => void;
+  isArmed?: boolean;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -438,6 +444,7 @@ export function LuminaryCard({
           canToggle={canToggle}
           onToggle={onToggle}
           isNew={portalIsNew}
+          isArmed={isArmed}
         />
       ) : (
         <>
