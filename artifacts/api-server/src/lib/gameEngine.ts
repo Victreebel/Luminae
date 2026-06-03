@@ -1409,10 +1409,19 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
     (x) => x.luminaryId === "lum_compass" && x.ownerId === player.playerId,
   );
   if (forgottenLa && state.turnCount > forgottenLa.summonedAtTurnCount && state.marketMarkers) {
+    let clearedCount = 0;
     for (const [id, marker] of Object.entries(state.marketMarkers)) {
       if (marker.type === "forgotten" && marker.ownerId === player.playerId) {
         delete state.marketMarkers[id];
+        clearedCount++;
       }
+    }
+    if (clearedCount > 0) {
+      pushLog(state, {
+        playerId: player.playerId, playerName: player.playerName,
+        summary: `Forgotten Hour — markers expired: ${clearedCount} Forgotten card(s) cleared`,
+        turn: state.roundNumber,
+      });
     }
   }
 }
@@ -1766,7 +1775,9 @@ export function applyAction(
       if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
 
-      // Reserve from market (Avatar Seed stays on the card in marketMarkers)
+      // Reserve from market. drawIntoMarket removes any marker from the card as it
+      // leaves the market; the Avatar Seed pending trigger only fires when an opponent
+      // forges the seeded card directly from the market (spec: "forged from market").
       player.reservedCardIds.push(action.cardId);
       drawIntoMarket(state, market, getDeckForTier(state, card.tier as 1 | 2 | 3), action.cardId);
       if (state.crystalBank.flux > 0) {
@@ -1852,14 +1863,10 @@ export function applyAction(
         return { success: false, error: "Cannot afford this card" };
       const kardashevBeforeReserved = computeKardashevTier(player.purchasedCardIds, player.discountedForgeIds);
 
-      // Avatar Seed on a reserved card: if forged by an opponent, accumulate pending.
-      const reservedMarker = (state.marketMarkers ?? {})[action.cardId];
-      if (reservedMarker?.type === "avatar_seed" && reservedMarker.ownerId !== playerId) {
-        if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-          state.avatarSeedState.pendingLumens++;
-        }
-      }
-      // Clean up the marker now that the card is leaving the tracked pool.
+      // Avatar Seed markers are removed from marketMarkers when a card is reserved from
+      // market (via drawIntoMarket). The pending trigger only fires on direct market
+      // purchase; forging from reserved pile does not re-check avatar_seed markers.
+      // Clean up any residual marker (e.g. Forgotten/Condemned/Nullified carried to reserve).
       if (state.marketMarkers) delete state.marketMarkers[action.cardId];
 
       payForCard(card, player, state.crystalBank, liveBonusesReserved);
