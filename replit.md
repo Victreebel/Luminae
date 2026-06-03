@@ -68,7 +68,7 @@ Luminaries are cosmic survival intelligences and post-civilizational archetypes 
 - **Panel:** throne and body visibly sealed within a dark crystalline reliquary — entity embedded, suspended, refracted, or restrained within the containment, not sitting in front of a background crystal.
 - **Entity:** roughly humanoid seated/throne-associated silhouette, headless, deep glossy-black obsidian-like body with white specular highlights, alive and intentional, complete silhouette (not cropped), transparent background.
 
-### Stellar Guide — canonical direction (updated from CNS-organism to astral navigator)
+### ??? — canonical direction (updated from CNS-organism to astral navigator)
 - Full-body cosmic navigator / astral guide. Humanoid silhouette beneath deep indigo-navy robes.
 - Robe fabric IS the star chart — living constellation maps, glowing star paths, and orbital arc lines embedded directly into the cloth.
 - 2–4 armillary spheres / celestial orrery rings float around the figure (brass and starlight-blue, etched orbital paths).

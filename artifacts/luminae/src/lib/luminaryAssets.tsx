@@ -586,8 +586,8 @@ function BloomEntity({ size = 140, className = '' }: { size?: number; className?
   );
 }
 
-// ── Stellar Guide ──────────────────────────────────────────────────────────────
-// Stellar guide: 8-point compass rose crown, navigator with pointing arm.
+// ── ??? ─────────────────────────────────────────────────────────────────────────
+// 8-point compass rose crown, navigator with pointing arm.
 function CompassEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
