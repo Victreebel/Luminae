@@ -40,6 +40,24 @@ export function LuminaryClaimedPortal({
   const activeKey = (luminaryAffinity?.activeAffinity ?? null) as GemKey | null;
   const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
 
+  // Next affinity in the cycle (null when single-eligible — no toggle possible)
+  const nextKey: GemKey | null = (canToggle && eligibleKeys.length >= 2 && activeKey)
+    ? eligibleKeys[(eligibleKeys.indexOf(activeKey) + 1) % eligibleKeys.length] as GemKey
+    : null;
+
+  // Preview state — set on hover (desktop) or long-press hold (mobile)
+  const [previewKey, setPreviewKey] = useState<GemKey | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressActiveRef = useRef(false);
+  const suppressClickRef = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   // Detect affinity switches on any claimed portal and trigger a flash animation
   const isAIPortal = claimedByPlayer?.aiDifficulty === 'medium' || claimedByPlayer?.aiDifficulty === 'hard';
   const prevActiveKeyRef = useRef<GemKey | null>(activeKey);
@@ -134,13 +152,49 @@ export function LuminaryClaimedPortal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hexes.join(','), g1]);
 
-  const handleToggle = () => {
+  const fireToggle = () => {
     if (!canToggle || !onToggle || eligibleKeys.length < 2 || !activeKey) return;
     const idx = eligibleKeys.indexOf(activeKey);
     const next = eligibleKeys[(idx + 1) % eligibleKeys.length];
     onToggle(next);
   };
 
+  // Click handler — suppressed after a long-press release to avoid double-fire
+  const handleClick = () => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+    fireToggle();
+  };
+
+  // Desktop hover: show next-affinity preview while cursor is over the portal
+  const handleMouseEnter = () => { if (nextKey) setPreviewKey(nextKey); };
+  const handleMouseLeave = () => { setPreviewKey(null); };
+
+  // Mobile long-press: hold 350ms → show preview; release → commit toggle
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' || !nextKey) return;
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressActiveRef.current = true;
+      setPreviewKey(nextKey);
+    }, 350);
+  };
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    clearLongPress();
+    if (longPressActiveRef.current) {
+      longPressActiveRef.current = false;
+      setPreviewKey(null);
+      suppressClickRef.current = true;
+      fireToggle();
+    }
+  };
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    clearLongPress();
+    longPressActiveRef.current = false;
+    setPreviewKey(null);
+  };
+
+  const previewMeta = previewKey ? GEM_META[previewKey] : null;
   const ownerName = claimedByPlayer?.playerName ?? '';
 
   const { auraStyle } = getLuminaryVisuals(luminary.id);
@@ -156,7 +210,12 @@ export function LuminaryClaimedPortal({
       initial={fresh ? { scale: 0.04, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
-      onClick={canToggle ? handleToggle : undefined}
+      onClick={canToggle ? handleClick : undefined}
+      onMouseEnter={canToggle ? handleMouseEnter : undefined}
+      onMouseLeave={canToggle ? handleMouseLeave : undefined}
+      onPointerDown={canToggle ? handlePointerDown : undefined}
+      onPointerUp={canToggle ? handlePointerUp : undefined}
+      onPointerCancel={canToggle ? handlePointerCancel : undefined}
       {...(canToggle ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
     >
       {/* ── Opening spiral burst ── */}
@@ -316,6 +375,67 @@ export function LuminaryClaimedPortal({
           />
         </>
       )}
+
+      {/* ── Next-affinity preview ghost — visible on hover (desktop) or long-press (mobile) ── */}
+      <AnimatePresence>
+        {previewKey && previewMeta && (
+          <>
+            {/* Soft color wash of the next affinity */}
+            <motion.div
+              key={`preview-wash-${previewKey}`}
+              className="absolute inset-0 pointer-events-none z-[25]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              style={{
+                background: `radial-gradient(ellipse 80% 70% at 50% 44%, ${previewMeta.hex}26 0%, ${previewMeta.hex}14 55%, transparent 80%)`,
+              }}
+            />
+            {/* Dashed preview ring tracing the portal edge in the next affinity color */}
+            <motion.div
+              key={`preview-ring-${previewKey}`}
+              className="absolute inset-0 pointer-events-none z-[26] rounded-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              style={{
+                boxShadow: `inset 0 0 0 1.5px ${previewMeta.hex}55`,
+                outline: `1.5px dashed ${previewMeta.hex}44`,
+                outlineOffset: -1,
+              }}
+            />
+            {/* Center badge: current gem → next gem */}
+            <motion.div
+              key={`preview-badge-${previewKey}`}
+              className="absolute pointer-events-none z-[27]"
+              style={{ left: '50%', top: '50%' }}
+              initial={{ opacity: 0, y: 4, x: '-50%' }}
+              animate={{ opacity: 1, y: '-50%', x: '-50%' }}
+              exit={{ opacity: 0, y: 4, x: '-50%' }}
+              transition={{ duration: 0.18 }}
+            >
+              <div
+                className="flex items-center gap-1 rounded-full px-2 py-1 select-none"
+                style={{
+                  background: 'rgba(3,3,8,0.82)',
+                  backdropFilter: 'blur(4px)',
+                  border: `1px dashed ${previewMeta.hex}77`,
+                  boxShadow: `0 0 10px ${previewMeta.hex}33`,
+                }}
+              >
+                {activeKey && <MiniGem color={activeKey} size={11} />}
+                <span className="text-[9px] font-bold text-white/50 leading-none">→</span>
+                <MiniGem color={previewKey} size={13} />
+                <span className="text-[7px] font-semibold leading-none tracking-wide" style={{ color: previewMeta.hex }}>
+                  {GEM_META[previewKey].name}
+                </span>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── UI Overlay ── */}
       {/* Top row: eminence value (left) + floating active affinity gem (right) */}
