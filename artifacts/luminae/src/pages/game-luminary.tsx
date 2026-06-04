@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Info } from 'lucide-react';
 import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import { LuminaryPanelArt, getLuminaryVisuals, AURA_STYLE_NAMES, AURA_STYLE_DESCRIPTIONS } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt } from '@/lib/luminaryAssets';
 import { CRYSTALS } from './game-constants';
 import { MiniGem, EminenceDiamond } from './game-card';
 import { PlayerAvatar } from './game-player';
@@ -200,10 +200,6 @@ export function LuminaryClaimedPortal({
 
   const previewMeta = previewKey ? GEM_META[previewKey] : null;
   const ownerName = claimedByPlayer?.playerName ?? '';
-
-  const { auraStyle } = getLuminaryVisuals(luminary.id);
-  const auraName = AURA_STYLE_NAMES[auraStyle];
-  const auraDesc = AURA_STYLE_DESCRIPTIONS[auraStyle];
 
   const Tag = (canToggle ? motion.button : motion.div) as typeof motion.div;
 
@@ -519,16 +515,6 @@ export function LuminaryClaimedPortal({
         </div>
       )}
 
-      {/* Aura label — center void, always visible on the portal card */}
-      <div className="absolute inset-x-0 z-10 pointer-events-none flex flex-col items-center gap-0" style={{ top: '52%' }}>
-        <span className="text-[5px] font-bold uppercase tracking-widest text-white/25 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
-          Aura Presence
-        </span>
-        <p className="text-center leading-tight px-1.5">
-          <span className="text-[7px] font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,1)]" style={{ color: `${g1}cc` }}>{auraName}</span>
-          <span className="text-[5.5px] italic text-white/30 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]"> — {auraDesc}</span>
-        </p>
-      </div>
 
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
       {claimedByPlayer && ownerName && (
@@ -683,35 +669,6 @@ export function LuminaryCard({
               <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
                 {luminary.name}
               </div>
-              {/* Tier indicator — 1/2/3 stars matching the Luminary's primary affinity color.
-                  Tier 1 = mono (2L), Tier 2 = dual (3L), Tier 3 = triple (4L). */}
-              {(() => {
-                const vis = getLuminaryVisuals(luminary.id);
-                const tier = vis.tier;
-                const auraName = AURA_STYLE_NAMES[vis.auraStyle];
-                const auraDesc = AURA_STYLE_DESCRIPTIONS[vis.auraStyle];
-                return (
-                  <>
-                    <div
-                      className="text-[7px] font-bold leading-none tracking-[0.08em] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
-                      style={{ color: glowHex }}
-                      title={`Tier ${tier} Luminary — rewards ${luminary.lumens} Eminence on claim`}
-                      aria-label={`Tier ${tier}`}
-                    >
-                      {'★'.repeat(tier)}
-                    </div>
-                    {/* Aura presence — compact version matching the detail sheet treatment */}
-                    <div className="flex flex-col gap-0">
-                      <span className="text-[5px] font-bold uppercase tracking-widest text-white/30 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">Aura Presence</span>
-                      <p className="text-[7px] leading-tight line-clamp-1">
-                        <span className="font-semibold text-white/60">{auraName}</span>
-                        <span className="text-white/25"> — </span>
-                        <span className="italic text-white/35">{auraDesc}</span>
-                      </p>
-                    </div>
-                  </>
-                );
-              })()}
               <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
                 Artifacts Required:
               </div>

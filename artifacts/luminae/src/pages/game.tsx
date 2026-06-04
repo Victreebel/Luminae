@@ -5715,26 +5715,6 @@ export default function GameBoard() {
                         </button>
                       );
                     })()}
-                    {/* Aura style name label — click/hover shows description */}
-                    {(() => {
-                      const _auraKey = getLuminaryVisuals(selectedLuminary.id).auraStyle;
-                      const _auraLabel = AURA_STYLE_NAMES[_auraKey];
-                      const _auraDesc = AURA_STYLE_DESCRIPTIONS[_auraKey];
-                      return (
-                        <div className="relative group flex flex-col items-center">
-                          <button
-                            type="button"
-                            className="text-[8px] font-bold uppercase tracking-widest text-white/40 hover:text-white/65 focus-visible:text-white/65 transition-colors cursor-default focus-visible:outline-none"
-                            aria-label={`Aura style: ${_auraLabel} — ${_auraDesc}`}
-                          >
-                            {_auraLabel}
-                          </button>
-                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-44 px-2.5 py-1.5 rounded-lg bg-black/90 border border-white/10 text-[9px] text-white/70 leading-snug italic pointer-events-none opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150 z-50 text-center">
-                            {_auraDesc}
-                          </div>
-                        </div>
-                      );
-                    })()}
                     {(() => {
                       const claimer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(selectedLuminary.id));
                       return claimer ? (
@@ -5754,23 +5734,6 @@ export default function GameBoard() {
                     {selectedLuminary.flavor && (
                       <p className="text-[11px] text-muted-foreground italic leading-relaxed">"{selectedLuminary.flavor}"</p>
                     )}
-                    {/* Aura presence */}
-                    {(() => {
-                      const vis = getLuminaryVisuals(selectedLuminary.id);
-                      const auraKey = vis.auraStyle;
-                      const auraName = AURA_STYLE_NAMES[auraKey];
-                      const auraDesc = AURA_STYLE_DESCRIPTIONS[auraKey];
-                      return (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Aura Presence</span>
-                          <p className="text-[11px] leading-snug">
-                            <span className="font-semibold text-foreground/80">{auraName}</span>
-                            <span className="text-muted-foreground/60"> — </span>
-                            <span className="italic text-muted-foreground/70">{auraDesc}</span>
-                          </p>
-                        </div>
-                      );
-                    })()}
                     {/* Artifact requirements */}
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Artifacts Required</span>
