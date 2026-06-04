@@ -1075,7 +1075,7 @@ export function LuminaryPanelArt({
           src={panelArt}
           alt=""
           className="absolute inset-0 w-full h-full"
-          style={{ objectFit: luminaryId === 'lum_compass' ? 'contain' : 'cover', objectPosition: 'center' }}
+          style={{ objectFit: 'cover', objectPosition: 'center' }}
           draggable={false}
         />
       ) : (
