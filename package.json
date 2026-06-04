@@ -8,9 +8,11 @@
     "normalize:gems": "pnpm --filter @workspace/scripts run normalize:gems",
     "lint:version-stamps": "pnpm --filter @workspace/scripts run test:version-stamps && pnpm --filter @workspace/scripts run lint:version-stamps",
     "lint:summon-colors": "pnpm --filter @workspace/scripts run lint:summon-colors",
+    "lint:luminary-files": "pnpm --filter @workspace/scripts run lint:luminary-files",
     "test:summon-colors": "pnpm --filter @workspace/scripts run test:summon-colors",
+    "test:luminary-files": "pnpm --filter @workspace/scripts run test:luminary-files",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run normalize:gems && pnpm run lint:version-stamps && pnpm run lint:summon-colors && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run normalize:gems && pnpm run lint:version-stamps && pnpm run lint:summon-colors && pnpm run lint:luminary-files && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "devDependencies": {
