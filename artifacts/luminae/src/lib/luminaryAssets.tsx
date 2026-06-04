@@ -2192,15 +2192,15 @@ export function LuminarySummonCutscene({
             transition={{
               duration: 0.65,
               delay: i * 0.03,
-              x:       { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
-              y:       { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
-              z:       { times: [0, 0.15, 0.38, 0.65, 0.90, 1.0], ease: ['easeOut', 'easeInOut'] },
-              rotateX: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeOut', duration: 0.65 },
-              rotateY: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeOut', duration: 0.65 },
-              rotateZ: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeOut', duration: 0.65 },
-              scale:   { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeInOut' },
-              opacity: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeInOut' },
+              x:       { times: [0, 0.12, 0.35, 0.62, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
+              y:       { times: [0, 0.12, 0.35, 0.62, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
+              z:       { times: [0, 0.15, 0.38, 0.65, 1.0], ease: ['easeOut', 'easeInOut'] },
+              rotateX: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeOut', duration: 0.65 },
+              rotateY: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeOut', duration: 0.65 },
+              rotateZ: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeOut', duration: 0.65 },
+              scale:   { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeInOut' },
+              opacity: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeInOut' },
             }}
           >
             {/* Panel artwork — fills the shard so the clipPath shows the correct piece */}
