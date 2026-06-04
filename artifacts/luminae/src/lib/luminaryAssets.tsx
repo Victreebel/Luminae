@@ -1053,6 +1053,9 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
   // to a tiny sliver with letterbox bars on top and bottom.
   lum_compass: { objectFit: 'cover', objectPosition: 'center center' },
+  // Wide horizontal seed — shift down so the body sits at the center of
+  // the tall portrait panel rather than floating at the top.
+  lum_seed: { objectPosition: 'center 70%' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -2329,7 +2332,9 @@ export function LuminarySummonCutscene({
                           style={{
                             width: ENT_W, height: ENT_H,
                             objectFit: 'contain',
-                            objectPosition: 'center',
+                            // Shift the wide horizontal seed down so its body sits
+                            // at the center of the tall vortex panel.
+                            objectPosition: luminaryId === 'lum_seed' ? 'center 70%' : 'center',
                             display: 'block',
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
