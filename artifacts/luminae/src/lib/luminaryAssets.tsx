@@ -1036,11 +1036,13 @@ const IDLE_H = Math.round(BOARD_CARD_H * 1.1);   // ≈ 176
 // rest (e.g. extra negative space, unusual aspect ratio, seated vs standing).
 // `scale`          — multiplier on the inner entity wrapper (transformOrigin: center top).
 // `objectPosition` — CSS object-position for the entity <img>; overrides 'center top'.
+// `objectFit`      — CSS object-fit for the entity <img>; overrides 'contain'.
 // `idleCyFactor`   — TideEyeOverlay-only: vertical centre of the eye in the idle panel
 //                    as a fraction of IDLE_H. Lower value → eye moves up.
 const IDLE_ENTITY_OVERRIDES: Record<string, {
   scale?: number;
   objectPosition?: string;
+  objectFit?: string;
   idleCyFactor?: number;
 }> = {
   lum_void:   { scale: 1.22, objectPosition: 'center 25%' },
@@ -1048,9 +1050,9 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   // Cosmic arachnid spans radially — center it in the portrait card frame
   // rather than using the default portrait 'center top' position.
   lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
-  // Wide cosmic entity — zoom in slightly and center vertically so it
-  // doesn't shrink to a tiny sliver at the top of the portrait card.
-  lum_compass: { scale: 1.25, objectPosition: 'center center' },
+  // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
+  // to a tiny sliver with letterbox bars on top and bottom.
+  lum_compass: { objectFit: 'cover', objectPosition: 'center center' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -2565,6 +2567,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
           const entScale = ov.scale ?? 1;
           const objPos   = ov.objectPosition ?? 'center top';
+          const objFit   = ov.objectFit ?? 'contain';
           const cyFactor = ov.idleCyFactor;
           // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
           // factor via CSS custom property) so CSS transform and scale never conflict.
@@ -2676,7 +2679,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     style={{
                       width: IDLE_W,
                       height: IDLE_H,
-                      objectFit: 'contain',
+                      objectFit: objFit as React.CSSProperties['objectFit'],
                       objectPosition: objPos,
                       display: 'block',
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
