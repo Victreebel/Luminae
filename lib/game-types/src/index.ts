@@ -70,6 +70,7 @@ export const KNOWN_AURA_STYLES = [
   'compass',
   'oracle',
   'null',
+  'distorted',
 ] as const;
 
 export type AuraStyle = (typeof KNOWN_AURA_STYLES)[number];

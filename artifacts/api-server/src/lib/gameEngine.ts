@@ -415,7 +415,7 @@ export const LUMINARIES: LuminaryDef[] = [
     flavor: "Everyone remembered something happened, but no one can recall what was lost.",
     summonColor: "#38bdf8",
     summonSecondaryColor: "#0a0a14",
-    auraStyle: "compass",
+    auraStyle: "distorted",
     effectName: "The Forgotten Hour",
   },
   {

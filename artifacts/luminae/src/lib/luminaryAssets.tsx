@@ -901,7 +901,7 @@ export const LUMINARY_VISUALS: Record<LuminaryId, LuminaryVisuals> = {
   lum_forge:   { id: 'lum_forge',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: ForgeEntity,   summonColor: '#ef4444', summonSecondaryColor: '#1c1917', auraStyle: 'storm',   tier: 2 },
   lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity,    summonColor: '#cbd5e1', summonSecondaryColor: '#0a0a14', auraStyle: 'pale',    tier: 2 },
   lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#86efac', summonSecondaryColor: '#7f1d1d', auraStyle: 'bloom',   tier: 2 },
-  lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity, summonColor: '#38bdf8', summonSecondaryColor: '#0a0a14', auraStyle: 'compass', tier: 2, entityBlendMode: 'screen' },
+  lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity, summonColor: '#38bdf8', summonSecondaryColor: '#0a0a14', auraStyle: 'distorted', tier: 2, entityBlendMode: 'screen' },
   lum_oracle:  { id: 'lum_oracle',  primaryColor: '#f59e0b', secondaryColor: '#2dd4bf', glowColor: 'rgba(245,158,11,0.65)', EntityArt: OracleEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#ef4444', auraStyle: 'oracle',  tier: 3 },
   lum_null:    { id: 'lum_null',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.5)',  EntityArt: NullEntity,    summonColor: '#4c1d95', summonSecondaryColor: '#0a0a14', auraStyle: 'null',    tier: 3 },
   lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#4ade80', auraStyle: 'oracle',  tier: 3 },
@@ -1002,6 +1002,8 @@ export const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
   oracle:  { idleClass: 'lum-aura-fire',  ambientClass: 'lum-ambient-fire',  gradientShape: 'ellipse 52% 60% at 50% 48%', flashOrigin: '50% 46%', flashScaleEnd: 1.76 },
   // null — entropy; barely perceptible, bloom barely expands
   null:    { idleClass: 'lum-aura-null',  ambientClass: 'lum-ambient-null',  gradientShape: 'circle at 50% 50%',           flashOrigin: '50% 50%', flashScaleEnd: 1.44 },
+  // distorted — warped space ripple; lateral stretch with fold pulse
+  distorted: { idleClass: 'lum-aura-distorted', ambientClass: 'lum-ambient-distorted', gradientShape: 'ellipse 72% 56% at 50% 46%', flashOrigin: '50% 46%', flashScaleEnd: 1.78 },
 };
 
 /**
@@ -1022,6 +1024,7 @@ export const AURA_STYLE_NAMES: Record<AuraStyle, string> = {
   compass: 'Compass',
   oracle:  'Oracle',
   null:    'Null',
+  distorted: 'Distorted',
 };
 
 /**
@@ -1042,6 +1045,7 @@ export const AURA_STYLE_DESCRIPTIONS: Record<AuraStyle, string> = {
   compass: 'Orbital wave — sweeping horizontal spread, tracing unseen paths',
   oracle:  'Slow amber burn — upward ember drift, deliberate and foretelling',
   null:    'Entropy field — presence reduced to near-absence, the silence beneath silence',
+  distorted: 'Warped space ripple — lateral stretch and fold pulse, reality fraying at the edges',
 };
 
 // ─── Panel Art Component ──────────────────────────────────────────────────────
