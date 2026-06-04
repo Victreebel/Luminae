@@ -964,7 +964,7 @@ interface AuraVariant {
   flashScaleEnd: number;
 }
 
-const AURA_VARIANT_FALLBACK: AuraVariant = {
+export const AURA_VARIANT_FALLBACK: AuraVariant = {
   idleClass: 'lum-idle-aura',
   ambientClass: 'lum-ambient-generic',
   gradientShape: 'ellipse at 50% 42%',
@@ -972,7 +972,7 @@ const AURA_VARIANT_FALLBACK: AuraVariant = {
   flashScaleEnd: 1.72,
 };
 
-const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
+export const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
   // fire — irregular upward flicker; bloom rises from below
   fire:    { idleClass: 'lum-aura-fire',  ambientClass: 'lum-ambient-fire',  gradientShape: 'ellipse 44% 72% at 50% 58%', flashOrigin: '50% 62%', flashScaleEnd: 1.80 },
   // storm — electric rapid flicker; tight sharp bloom

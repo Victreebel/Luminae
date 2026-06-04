@@ -46,7 +46,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS, AURA_VARIANT_FALLBACK } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -5646,6 +5646,28 @@ export default function GameBoard() {
                       <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
+                    {/* Live aura animation preview */}
+                    {(() => {
+                      const previewVis = getLuminaryVisuals(selectedLuminary.id);
+                      const previewVariant = AURA_VARIANTS[previewVis.auraStyle] ?? AURA_VARIANT_FALLBACK;
+                      return (
+                        <div
+                          aria-hidden="true"
+                          className="relative rounded-xl overflow-hidden"
+                          style={{ width: 76, height: 38, background: '#06060f', boxShadow: `inset 0 0 0 1px ${previewVis.primaryColor}22` }}
+                        >
+                          <div
+                            className={previewVariant.idleClass}
+                            style={{
+                              position: 'absolute',
+                              inset: -10,
+                              borderRadius: 18,
+                              background: `radial-gradient(${previewVariant.gradientShape}, ${previewVis.primaryColor}bb 0%, ${previewVis.primaryColor}55 44%, ${previewVis.primaryColor}1a 68%, transparent 86%)`,
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
                     {(() => {
                       const claimer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(selectedLuminary.id));
                       return claimer ? (
