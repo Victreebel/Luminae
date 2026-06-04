@@ -1075,7 +1075,7 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   lum_compass: { objectFit: 'cover', objectPosition: 'center center' },
   // Wide horizontal seed — shift down slightly so the body fills the tall
   // portrait panel without floating at the top.
-  lum_seed: { objectPosition: 'center 60%' },
+  lum_seed: { objectPosition: 'center 55%' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -2356,11 +2356,11 @@ export function LuminarySummonCutscene({
                             objectFit: 'contain',
                             // Shift the wide horizontal seed down slightly so its body
                             // sits at the center of the tall vortex panel.
-                            objectPosition: luminaryId === 'lum_seed' ? 'center 60%' : 'center',
+                            objectPosition: luminaryId === 'lum_seed' ? 'center 55%' : 'center',
                             display: 'block',
                             // Stretch the seed vertically so it fills the tall panel
                             // without squishing the horizontal portals.
-                            transform: luminaryId === 'lum_seed' ? 'scaleY(1.40)' : luminaryId === 'lum_compass' ? 'scale(1.35)' : undefined,
+                            transform: luminaryId === 'lum_seed' ? 'scaleY(1.55)' : luminaryId === 'lum_compass' ? 'scale(1.35)' : undefined,
                             transformOrigin: luminaryId === 'lum_seed' ? 'center center' : luminaryId === 'lum_compass' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
@@ -2716,7 +2716,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       display: 'block',
                       // Stretch the seed vertically so it fills the tall portrait
                       // card without squishing the horizontal portals.
-                      transform: luminaryId === 'lum_seed' ? 'scaleY(1.40)' : undefined,
+                      transform: luminaryId === 'lum_seed' ? 'scaleY(1.55)' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
