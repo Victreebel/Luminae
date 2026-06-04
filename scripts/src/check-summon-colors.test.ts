@@ -246,6 +246,33 @@ assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
   );
 }
 
+// An assets-only entry (not yet in the engine) with an invalid auraStyle must be flagged.
+{
+  const fakeEngine = new Map<string, { summonColor: string; summonSecondaryColor: string; auraStyle: string }>();
+  const fakeAssets = new Map([
+    ["lum_future", { summonColor: "#aabbcc", summonSecondaryColor: "#001122", auraStyle: "placeholder_style" }],
+  ]);
+  const result = checkColors(fakeEngine, fakeAssets);
+  const violation = result.invalidAuraStyles.find((b) => b.id === "lum_future");
+  assert(
+    violation !== undefined && violation.source === "assets" && violation.value === "placeholder_style",
+    `assets-only entry "lum_future" with invalid auraStyle "placeholder_style" is flagged (source=assets)`
+  );
+}
+
+// An assets-only entry with a valid auraStyle must produce no violation.
+{
+  const fakeEngine = new Map<string, { summonColor: string; summonSecondaryColor: string; auraStyle: string }>();
+  const fakeAssets = new Map([
+    ["lum_future_valid", { summonColor: "#aabbcc", summonSecondaryColor: "#001122", auraStyle: "tide" }],
+  ]);
+  const result = checkColors(fakeEngine, fakeAssets);
+  assert(
+    result.invalidAuraStyles.length === 0,
+    `assets-only entry "lum_future_valid" with valid auraStyle "tide" produces no violation`
+  );
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 console.log("");
