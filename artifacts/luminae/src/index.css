@@ -966,6 +966,106 @@ button,
 }
 .lum-ambient-generic-t3 { animation: lum-ambient-generic-t3 5.7s ease-in-out infinite; }
 
+/* ── Summon cutscene — CSS-compositor tremble animations ───────────────
+   These replace framer-motion repeat:Infinity loops inside the summon
+   cutscene.  During the ~6 s cutscene the browser would otherwise run JS
+   interpolation on every frame for the vessel shake and board glow.
+   CSS keyframes move the same motion to the compositor thread, eliminating
+   all JS frame budget for the tremble.                                      */
+
+/* Board-card glow — irregular micro-tremble during the establish phase */
+@keyframes lum-board-glow-tremble {
+  0%   { transform: translateX(0px)    translateY(0px)    rotate(0deg);    opacity: 0.50; }
+  14.3% { transform: translateX(-2.5px) translateY(1.2px)  rotate(-0.4deg); opacity: 0.85; }
+  28.6% { transform: translateX(1.5px)  translateY(-1.8px) rotate(0.3deg);  opacity: 0.40; }
+  42.9% { transform: translateX(-1.0px) translateY(0.5px)  rotate(-0.5deg); opacity: 0.92; }
+  57.1% { transform: translateX(2.8px)  translateY(-1.5px) rotate(0.2deg);  opacity: 0.45; }
+  71.4% { transform: translateX(-1.5px) translateY(1.8px)  rotate(-0.4deg); opacity: 0.88; }
+  85.7% { transform: translateX(0.8px)  translateY(-0.8px) rotate(0.3deg);  opacity: 0.55; }
+  100% { transform: translateX(0px)    translateY(0px)    rotate(0deg);    opacity: 0.50; }
+}
+.lum-board-glow-tremble {
+  animation: lum-board-glow-tremble 0.28s linear infinite;
+}
+
+/* Vessel internal-pressure tremble — six escalating intensity levels.
+   Each level has its own duration and amplitude, matching the original
+   framer-motion keyframe arrays exactly.                                    */
+
+/* Level 0 — intro / zooming (gentle, slow) */
+@keyframes lum-vessel-shake-0 {
+  0%    { transform: translateX(-1.5px) translateY(0.5px)  rotate(-0.25deg); }
+  16.7% { transform: translateX(1px)    translateY(-1px)   rotate(0.18deg); }
+  33.3% { transform: translateX(-0.8px)  translateY(0.8px)  rotate(-0.3deg); }
+  50%   { transform: translateX(1.8px)  translateY(-0.4px) rotate(0.2deg); }
+  66.7% { transform: translateX(-1px)   translateY(1px)   rotate(-0.15deg); }
+  83.3% { transform: translateX(0.5px)  translateY(-0.6px) rotate(0.12deg); }
+  100%  { transform: translateX(0px)    translateY(0px)   rotate(0deg); }
+}
+.lum-vessel-shake-0 { animation: lum-vessel-shake-0 0.13s linear infinite; }
+
+/* Level 1 — pressure (medium) */
+@keyframes lum-vessel-shake-1 {
+  0%    { transform: translateX(-2px)   translateY(0.6px)  rotate(-0.35deg); }
+  16.7% { transform: translateX(1.5px) translateY(-1.2px) rotate(0.25deg); }
+  33.3% { transform: translateX(-0.9px) translateY(1px)   rotate(-0.45deg); }
+  50%   { transform: translateX(2.2px)  translateY(-0.5px) rotate(0.3deg); }
+  66.7% { transform: translateX(-1.2px) translateY(1.3px)  rotate(-0.2deg); }
+  83.3% { transform: translateX(0.7px)  translateY(-0.8px) rotate(0.15deg); }
+  100%  { transform: translateX(0px)   translateY(0px)   rotate(0deg); }
+}
+.lum-vessel-shake-1 { animation: lum-vessel-shake-1 0.12s linear infinite; }
+
+/* Level 2 — first crack (faster) */
+@keyframes lum-vessel-shake-2 {
+  0%    { transform: translateX(-2.5px) translateY(0.8px)  rotate(-0.5deg); }
+  16.7% { transform: translateX(1.8px)  translateY(-1.5px) rotate(0.3deg); }
+  33.3% { transform: translateX(-1px)  translateY(1.2px)  rotate(-0.6deg); }
+  50%   { transform: translateX(2.8px)  translateY(-0.6px) rotate(0.4deg); }
+  66.7% { transform: translateX(-1.5px) translateY(1.5px)  rotate(-0.3deg); }
+  83.3% { transform: translateX(0.8px)  translateY(-1px)   rotate(0.2deg); }
+  100%  { transform: translateX(0px)   translateY(0px)   rotate(0deg); }
+}
+.lum-vessel-shake-2 { animation: lum-vessel-shake-2 0.11s linear infinite; }
+
+/* Level 3 — leaking (faster still) */
+@keyframes lum-vessel-shake-3 {
+  0%    { transform: translateX(-3px)  translateY(1px)   rotate(-0.6deg); }
+  16.7% { transform: translateX(2px)   translateY(-2px)  rotate(0.4deg); }
+  33.3% { transform: translateX(-1.5px) translateY(1.5px) rotate(-0.8deg); }
+  50%   { transform: translateX(3.5px)  translateY(-0.8px) rotate(0.5deg); }
+  66.7% { transform: translateX(-1.8px) translateY(2px)   rotate(-0.4deg); }
+  83.3% { transform: translateX(1.2px)  translateY(-1.2px) rotate(0.3deg); }
+  100%  { transform: translateX(0px)   translateY(0px)   rotate(0deg); }
+}
+.lum-vessel-shake-3 { animation: lum-vessel-shake-3 0.10s linear infinite; }
+
+/* Level 4 — second crack (very fast) */
+@keyframes lum-vessel-shake-4 {
+  0%    { transform: translateX(-3.5px) translateY(1.2px)  rotate(-0.7deg); }
+  14.3% { transform: translateX(2.2px)  translateY(-2.2px) rotate(0.45deg); }
+  28.6% { transform: translateX(-1.5px) translateY(1.8px)  rotate(-0.9deg); }
+  42.9% { transform: translateX(3.8px)  translateY(-0.9px) rotate(0.55deg); }
+  57.1% { transform: translateX(-2px)   translateY(2.2px)  rotate(-0.45deg); }
+  71.4% { transform: translateX(1.3px)  translateY(-1.4px) rotate(0.35deg); }
+  85.7% { transform: translateX(-2.5px) translateY(0.8px)  rotate(-0.6deg); }
+  100%  { transform: translateX(0px)   translateY(0px)   rotate(0deg); }
+}
+.lum-vessel-shake-4 { animation: lum-vessel-shake-4 0.09s linear infinite; }
+
+/* Level 5 — cracking (fastest, most violent) */
+@keyframes lum-vessel-shake-5 {
+  0%    { transform: translateX(-4px)  translateY(1.5px)  rotate(-0.8deg); }
+  14.3% { transform: translateX(2.5px)  translateY(-2.5px) rotate(0.5deg); }
+  28.6% { transform: translateX(-1.8px) translateY(2px)   rotate(-1deg); }
+  42.9% { transform: translateX(4.2px)  translateY(-1px)   rotate(0.6deg); }
+  57.1% { transform: translateX(-2.2px) translateY(2.5px)  rotate(-0.5deg); }
+  71.4% { transform: translateX(1.5px)  translateY(-1.5px) rotate(0.4deg); }
+  85.7% { transform: translateX(-3px)  translateY(1px)   rotate(-0.7deg); }
+  100%  { transform: translateX(0px)   translateY(0px)   rotate(0deg); }
+}
+.lum-vessel-shake-5 { animation: lum-vessel-shake-5 0.08s linear infinite; }
+
 /* ── Radiant Keeper idle — layered ring/core rotation + pulse ────────────
    Ring (radiant1): CCW rotation applied to img; scale-up via wrapper div.
    Core (radiant3): CW rotation on img; scale-down + pulse on wrapper div.

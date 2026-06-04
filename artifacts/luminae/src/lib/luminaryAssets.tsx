@@ -1551,46 +1551,11 @@ export function LuminarySummonCutscene({
     isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
   const camScale = camZoomed ? targetScale : 1;
 
-  // ── Shake profile (internal-pressure trembling, replaces scale-pulse) ───────
-  // Six intensity levels: intro/zooming → pressure → firstcrack → leaking → secondcrack → cracking.
-  // Irregular keyframe arrays make the motion feel non-rhythmic / organic.
-  const shakeDur = isCracking ? 0.08 : isSecondCrack ? 0.09 : isLeaking ? 0.10 : isFirstCrack ? 0.11 : isPressure ? 0.12 : 0.13;
-  const glowDur  = isCracking ? 0.40 : isSecondCrack ? 0.48 : isLeaking ? 0.55 : isFirstCrack ? 0.65 : isPressure ? 0.75 : 0.80;
-  const shakeX: number[] = isCracking
-    ? [-4, 2.5, -1.8, 4.2, -2.2, 1.5, -3, 0]
-    : isSecondCrack
-      ? [-3.5, 2.2, -1.5, 3.8, -2, 1.3, -2.5, 0]
-      : isLeaking
-        ? [-3, 2, -1.5, 3.5, -1.8, 1.2, 0]
-        : isFirstCrack
-          ? [-2.5, 1.8, -1, 2.8, -1.5, 0.8, 0]
-          : isPressure
-            ? [-2, 1.5, -0.9, 2.2, -1.2, 0.7, 0]
-            : [-1.5, 1, -0.8, 1.8, -1, 0.5, 0];
-  const shakeY: number[] = isCracking
-    ? [1.5, -2.5, 2, -1, 2.5, -1.5, 1, 0]
-    : isSecondCrack
-      ? [1.2, -2.2, 1.8, -0.9, 2.2, -1.4, 0.8, 0]
-      : isLeaking
-        ? [1, -2, 1.5, -0.8, 2, -1.2, 0]
-        : isFirstCrack
-          ? [0.8, -1.5, 1.2, -0.6, 1.5, -1, 0]
-          : isPressure
-            ? [0.6, -1.2, 1, -0.5, 1.3, -0.8, 0]
-            : [0.5, -1, 0.8, -0.4, 1, -0.6, 0];
-  const shakeR: number[] = isCracking
-    ? [-0.8, 0.5, -1, 0.6, -0.5, 0.4, -0.7, 0]
-    : isSecondCrack
-      ? [-0.7, 0.45, -0.9, 0.55, -0.45, 0.35, -0.6, 0]
-      : isLeaking
-        ? [-0.6, 0.4, -0.8, 0.5, -0.4, 0.3, 0]
-        : isFirstCrack
-          ? [-0.5, 0.3, -0.6, 0.4, -0.3, 0.2, 0]
-          : isPressure
-            ? [-0.35, 0.25, -0.45, 0.3, -0.2, 0.15, 0]
-            : [-0.25, 0.18, -0.3, 0.2, -0.15, 0.12, 0];
-
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
+  // NOTE: shake/tremble animation is now handled via CSS keyframes
+  // (lum-vessel-shake-0 through lum-vessel-shake-5 in index.css) to avoid
+  // JS frame budget burn from framer-motion repeat:Infinity loops.
+  const glowDur = isCracking ? 0.40 : isSecondCrack ? 0.48 : isLeaking ? 0.55 : isFirstCrack ? 0.65 : isPressure ? 0.75 : 0.80;
   const vesselGlow: [string, string, string] = isPressure
     ? [`0 0 10px ${primaryColor}60`, `0 0 24px ${primaryColor}90`, `0 0 10px ${primaryColor}60`]
     : isFirstCrack
@@ -1637,18 +1602,8 @@ export function LuminarySummonCutscene({
       {/* Exits before panning so it doesn't drift from the moving card.        */}
       <AnimatePresence>
         {isEstablish && (
-          <motion.div
-            key="boardglow"
-            className="absolute pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0.50, 0.85, 0.40, 0.92, 0.45, 0.88, 0.55],
-              x: [0, -2.5, 1.5, -1.0, 2.8, -1.5,  0.8, 0],
-              y: [0,  1.2, -1.8, 0.5, -1.5, 1.8, -0.8, 0],
-              rotate: [0, -0.4, 0.3, -0.5, 0.2, -0.4, 0.3, 0],
-            }}
-            exit={{ opacity: 0, rotate: 0, transition: { duration: 0.18 } }}
-            transition={{ repeat: Infinity, duration: 0.28, ease: 'linear' }}
+          <div
+            className="absolute pointer-events-none lum-board-glow-tremble"
             style={{
               left: (cardRect ? cardRect.cx : vw / 2) - BOARD_CARD_W / 2 - 8,
               top:  (cardRect ? cardRect.cy : vh / 2) - BOARD_CARD_H / 2 - 8,
@@ -1681,7 +1636,16 @@ export function LuminarySummonCutscene({
           {isVessel && (
             <motion.div
               key="vessel"
-              className="absolute overflow-hidden bg-black"
+              className={
+                `absolute overflow-hidden bg-black ${
+                  isCracking ? 'lum-vessel-shake-5'
+                  : isSecondCrack ? 'lum-vessel-shake-4'
+                  : isLeaking ? 'lum-vessel-shake-3'
+                  : isFirstCrack ? 'lum-vessel-shake-2'
+                  : isPressure ? 'lum-vessel-shake-1'
+                  : 'lum-vessel-shake-0'
+                }`
+              }
               style={{
                 left: vesselLeft,
                 top:  vesselTop,
@@ -1693,22 +1657,16 @@ export function LuminarySummonCutscene({
               animate={{
                 opacity: 1,
                 scale: 1,
-                x: shakeX,
-                y: shakeY,
-                rotate: shakeR,
                 boxShadow: (isPressure || hasCracks)
                   // eslint-disable-next-line no-restricted-syntax -- vesselGlow is a framer-motion MotionValue<string>; boxShadow accepts string | MotionValue<string> at runtime but the TS overload only accepts string, so the double-cast is required to satisfy framer-motion's type definitions.
                   ? (vesselGlow as unknown as string)
                   : '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
               }}
-              exit={{ opacity: 0, x: 0, y: 0, rotate: 0, transition: { duration: 0.06, ease: 'linear' } }}
+              exit={{ opacity: 0, transition: { duration: 0.06, ease: 'linear' } }}
               transition={{
                 scale:     { duration: 0.26 },
                 opacity:   { duration: 0.28 },
-                x:         { repeat: Infinity, duration: shakeDur, ease: 'linear' },
-                y:         { repeat: Infinity, duration: shakeDur, ease: 'linear' },
-                rotate:    { repeat: Infinity, duration: shakeDur, ease: 'linear' },
-                boxShadow: { repeat: Infinity, duration: glowDur,  ease: 'easeInOut' },
+                boxShadow: { repeat: Infinity, duration: glowDur, ease: 'easeInOut' },
               }}
             >
               {/* Identical interior to LuminaryCard — same component, same props */}
