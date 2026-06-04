@@ -2116,12 +2116,14 @@ export function LuminarySummonCutscene({
             initial={{ opacity: 0, scale: 0.08 }}
             animate={{
               opacity: isFlashing ? 0 : [0, 0.84, 0.98, 0.96, 0.82, 0.46, 0],
-              scale:   isFlashing ? 0.16 : [0.08, 0.40, 0.78, 1.02, 1.20, 1.30, 1.26],
+              // Breath-hold at peak scale (1.30) for 120 ms before settling,
+              // so the flash feels like a camera charging — more impact.
+              scale:   isFlashing ? 0.16 : [0.08, 0.40, 0.78, 1.02, 1.20, 1.30, 1.30, 1.26],
             }}
             exit={{ opacity: 0, transition: { duration: 0.85, ease: 'easeOut' } }}
             transition={{
               opacity: { duration: 1.08, times: [0, 0.10, 0.24, 0.42, 0.64, 0.84, 1.0], ease: 'easeInOut' },
-              scale:   { duration: 1.08, times: [0, 0.10, 0.26, 0.44, 0.64, 0.84, 1.0], ease: [0.16, 1, 0.3, 1] },
+              scale:   { duration: 1.08, times: [0, 0.10, 0.26, 0.44, 0.64, 0.76, 0.88, 1.0], ease: [0.16, 1, 0.3, 1] },
             }}
             style={{
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
@@ -2316,6 +2318,23 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 50%, #ffffff88 72%, transparent 86%)`,
+              }}
+            />
+            {/* Shock ring — thin white ring expanding outward from the flash centre,
+                like a blast shockwave.  Fades as it grows.  CSS blur softens the edge. */}
+            <motion.div key="flash-ring" className="absolute pointer-events-none"
+              initial={{ opacity: 0, scale: 0.45 }}
+              animate={{ opacity: [0, 0.55, 0.22, 0], scale: [0.45, 1.35, 2.20, 2.90] }}
+              transition={{ duration: 1.10, times: [0, 0.14, 0.52, 1.0], ease: 'easeOut' }}
+              exit={{ opacity: 0 }}
+              style={{
+                width: BOARD_CARD_W * 3.2, height: BOARD_CARD_H * 3.2,
+                left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 1.6,
+                top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 1.6,
+                borderRadius: '50%',
+                border: '1.5px solid rgba(255,255,255,0.72)',
+                filter: 'blur(3px)',
+                transformOrigin: '50% 50%',
               }}
             />
           </>
@@ -2621,9 +2640,12 @@ export function LuminarySummonCutscene({
                 {/* Name / domain / Eminence badge */}
                 <motion.div
                   className="flex flex-col items-center gap-1 text-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: isFlashing ? 0 : (isFading ? 0 : 1) }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
+                  initial={{ opacity: 0, filter: 'brightness(4) blur(8px)' }}
+                  animate={{
+                    opacity: isFlashing ? 0 : (isFading ? 0 : 1),
+                    filter: isFlashing ? 'brightness(4) blur(8px)' : (isFading ? 'brightness(1) blur(0px)' : 'brightness(1) blur(0px)'),
+                  }}
+                  transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 >
                   {domain && (
                     <div className="text-[10px] font-bold tracking-[0.22em] uppercase"
