@@ -3159,6 +3159,47 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             }
           }
 
+          // ── lum_compass: static starry background + heat-haze shimmer on entity ──
+          // The entity uses screen blend mode, so the star field shows through
+          // the dark indigo robes. The entity itself gets a subtle mirage-like
+          // distortion to suggest cosmic motion while the background stays fixed.
+          if (luminaryId === 'lum_compass') {
+            const fill: React.CSSProperties = {
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              display: 'block',
+            };
+            return (
+              <div
+                style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'hidden', borderRadius: 4 }}
+              >
+                {/* Static star field — never animates, provides the cosmic backdrop */}
+                <div className="lum-compass-stars" style={fill} />
+                {/* Entity with heat-haze shimmer — subtle distortion suggesting living motion */}
+                {entityCutout && (
+                  <div
+                    className={isIdle ? 'lum-compass-heat-haze' : undefined}
+                    style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+                  >
+                    <img
+                      src={entityCutout}
+                      alt=""
+                      draggable={false}
+                      style={{
+                        ...fill,
+                        objectFit: 'cover',
+                        objectPosition: 'center center',
+                        mixBlendMode: 'screen',
+                        // Fade to transparent at the bottom so the card name row stays legible
+                        maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                        WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           // ── lum_hunger: nanite background crossfade behind entity cutout ──────
           if (luminaryId === 'lum_hunger') {
             const hBg1 = _luminaryImageMap['lum_hunger/background1'] ?? null;

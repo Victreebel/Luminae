@@ -1281,6 +1281,45 @@ button,
   animation: lum-aw-pending-pulse 0.9s ease-in-out infinite;
 }
 
+/* ── Compass (lum_compass) — static star field + heat-haze shimmer ─────────
+   Star field: a deep cosmic blue background with random white dots using
+   a CSS-conic-gradient technique. 50 dots across the card, tiny and varied.
+   Heat haze: very subtle scaleX ripple + slight skew creating a mirage-like
+   distortion on the entity itself. The background stays fixed; only the
+   entity seems to shimmer with cosmic motion.                                */
+.lum-compass-stars {
+  background: radial-gradient(circle at 20% 40%, #0f172a 0%, #020617 35%, #0a0a14 70%);
+  position: relative;
+}
+.lum-compass-stars::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, #ffffff 1px, transparent 0),
+    radial-gradient(circle, #a5b4fc 0.5px, transparent 0),
+    radial-gradient(circle, #f0f9ff 0.8px, transparent 0),
+    radial-gradient(circle, #818cf8 0.6px, transparent 0),
+    radial-gradient(circle, #e0e7ff 0.4px, transparent 0),
+    radial-gradient(circle, #ffffff 1.2px, transparent 0);
+  background-size: 20px 22px, 28px 34px, 16px 19px, 36px 31px, 24px 27px, 18px 20px;
+  background-position: 0 0, 7px 11px, 13px 5px, 3px 17px, 19px 8px, 11px 23px;
+  opacity: 0.45;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 70%);
+}
+
+@keyframes lum-compass-haze {
+  0%, 100% { transform: scaleX(1.00) scaleY(1.00) skewX(0deg); opacity: 1; }
+  25%      { transform: scaleX(1.012) scaleY(0.992) skewX(0.35deg); opacity: 0.97; }
+  50%      { transform: scaleX(1.00) scaleY(1.00) skewX(0deg); opacity: 1; }
+  75%      { transform: scaleX(0.992) scaleY(1.008) skewX(-0.35deg); opacity: 0.97; }
+}
+.lum-compass-heat-haze {
+  animation: lum-compass-haze 2.8s linear infinite;
+  transform-origin: center center;
+}
+
 /* ── First Hunger (lum_hunger) — nanite background crossfade ─────────────
    bg1 and bg2 alternate in opposition: as one fades out the other fades in,
    creating the illusion of slowly shifting nanite swarm movement.           */
