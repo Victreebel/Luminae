@@ -39,6 +39,14 @@ interface LuminaryVisuals {
    * update both together.  The lint:summon-colors script enforces this at CI time.
    */
   auraStyle: AuraStyle;
+  /**
+   * Claim-cost tier — drives ambient glow intensity in LuminaryIdleOverlay.
+   *   1 = mono-color  (single affinity requirement, 2L reward)   → 1.0× base opacity
+   *   2 = dual-color  (two affinity requirements, 3L reward)      → 1.2× base opacity
+   *   3 = triple-color (three affinity requirements, 4L reward)   → 1.45× base opacity
+   * Mirrors the groupings in gameEngine.ts LUMINARIES[].requirements.
+   */
+  tier: 1 | 2 | 3;
 }
 
 // ─── Illustrated Asset Discovery ──────────────────────────────────────────────
@@ -884,22 +892,22 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
 // sync whenever a Luminary's flash palette changes.
 
 export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
-  lum_ember:   { id: 'lum_ember',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: EmberEntity,   summonColor: '#ff5a3c', summonSecondaryColor: '#7b1fa2', auraStyle: 'fire' },
-  lum_tide:    { id: 'lum_tide',    primaryColor: '#3d6bff', secondaryColor: '#e2e8f0', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: TideEntity,    summonColor: '#60a5fa', summonSecondaryColor: '#e2e8f0', auraStyle: 'tide' },
-  lum_verdant: { id: 'lum_verdant', primaryColor: '#2ecc71', secondaryColor: '#166534', glowColor: 'rgba(46,204,113,0.55)',  EntityArt: VerdantEntity, summonColor: '#4ade80', summonSecondaryColor: '#166534', auraStyle: 'verdant' },
-  lum_void:    { id: 'lum_void',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.55)',  EntityArt: VoidEntity,    summonColor: '#4c1d95', summonSecondaryColor: '#0a0a14', auraStyle: 'void' },
-  lum_radiant: { id: 'lum_radiant', primaryColor: '#fbbf24', secondaryColor: '#2ecc71', glowColor: 'rgba(251,191,36,0.5)',   EntityArt: RadiantEntity, summonColor: '#fef9c3', summonSecondaryColor: '#2ecc71', auraStyle: 'radiant' },
-  lum_astral:  { id: 'lum_astral',  primaryColor: '#ef4444', secondaryColor: '#3d6bff', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: AstralEntity,  summonColor: '#f43f5e', summonSecondaryColor: '#3d6bff', auraStyle: 'astral' },
-  lum_forge:   { id: 'lum_forge',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: ForgeEntity,   summonColor: '#ef4444', summonSecondaryColor: '#1c1917', auraStyle: 'storm' },
-  lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity,    summonColor: '#cbd5e1', summonSecondaryColor: '#0a0a14', auraStyle: 'pale' },
-  lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#86efac', summonSecondaryColor: '#7f1d1d', auraStyle: 'bloom' },
-  lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity, summonColor: '#38bdf8', summonSecondaryColor: '#0a0a14', auraStyle: 'compass', entityBlendMode: 'screen' },
-  lum_oracle:  { id: 'lum_oracle',  primaryColor: '#f59e0b', secondaryColor: '#2dd4bf', glowColor: 'rgba(245,158,11,0.65)', EntityArt: OracleEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#ef4444', auraStyle: 'oracle' },
-  lum_null:    { id: 'lum_null',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.5)', EntityArt: NullEntity,    summonColor: '#4c1d95', summonSecondaryColor: '#0a0a14', auraStyle: 'null' },
-  lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#4ade80', auraStyle: 'oracle' },
-  lum_moth:    { id: 'lum_moth',    primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: BloomEntity,   summonColor: '#ef4444', summonSecondaryColor: '#7f1d1d', auraStyle: 'fire',    entityBlendMode: 'screen' },
-  lum_seed:    { id: 'lum_seed',    primaryColor: '#38bdf8', secondaryColor: '#4ade80', glowColor: 'rgba(56,189,248,0.55)',  EntityArt: BloomEntity,   summonColor: '#38bdf8', summonSecondaryColor: '#4ade80', auraStyle: 'compass', entityBlendMode: 'screen' },
-  lum_orchard: { id: 'lum_orchard', primaryColor: '#4ade80', secondaryColor: '#fef9c3', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#4ade80', summonSecondaryColor: '#fef9c3', auraStyle: 'verdant', entityBlendMode: 'screen' },
+  lum_ember:   { id: 'lum_ember',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: EmberEntity,   summonColor: '#ff5a3c', summonSecondaryColor: '#7b1fa2', auraStyle: 'fire',    tier: 3 },
+  lum_tide:    { id: 'lum_tide',    primaryColor: '#3d6bff', secondaryColor: '#e2e8f0', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: TideEntity,    summonColor: '#60a5fa', summonSecondaryColor: '#e2e8f0', auraStyle: 'tide',    tier: 1 },
+  lum_verdant: { id: 'lum_verdant', primaryColor: '#2ecc71', secondaryColor: '#166534', glowColor: 'rgba(46,204,113,0.55)',  EntityArt: VerdantEntity, summonColor: '#4ade80', summonSecondaryColor: '#166534', auraStyle: 'verdant', tier: 1 },
+  lum_void:    { id: 'lum_void',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.55)',  EntityArt: VoidEntity,    summonColor: '#4c1d95', summonSecondaryColor: '#0a0a14', auraStyle: 'void',    tier: 1 },
+  lum_radiant: { id: 'lum_radiant', primaryColor: '#fbbf24', secondaryColor: '#2ecc71', glowColor: 'rgba(251,191,36,0.5)',   EntityArt: RadiantEntity, summonColor: '#fef9c3', summonSecondaryColor: '#2ecc71', auraStyle: 'radiant', tier: 1 },
+  lum_astral:  { id: 'lum_astral',  primaryColor: '#ef4444', secondaryColor: '#3d6bff', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: AstralEntity,  summonColor: '#f43f5e', summonSecondaryColor: '#3d6bff', auraStyle: 'astral',  tier: 2 },
+  lum_forge:   { id: 'lum_forge',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: ForgeEntity,   summonColor: '#ef4444', summonSecondaryColor: '#1c1917', auraStyle: 'storm',   tier: 2 },
+  lum_pale:    { id: 'lum_pale',    primaryColor: '#94a3b8', secondaryColor: '#0a0a14', glowColor: 'rgba(148,163,184,0.5)',  EntityArt: PaleEntity,    summonColor: '#cbd5e1', summonSecondaryColor: '#0a0a14', auraStyle: 'pale',    tier: 2 },
+  lum_bloom:   { id: 'lum_bloom',   primaryColor: '#4ade80', secondaryColor: '#7f1d1d', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#86efac', summonSecondaryColor: '#7f1d1d', auraStyle: 'bloom',   tier: 2 },
+  lum_compass: { id: 'lum_compass', primaryColor: '#3d6bff', secondaryColor: '#2ecc71', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: CompassEntity, summonColor: '#38bdf8', summonSecondaryColor: '#0a0a14', auraStyle: 'compass', tier: 2, entityBlendMode: 'screen' },
+  lum_oracle:  { id: 'lum_oracle',  primaryColor: '#f59e0b', secondaryColor: '#2dd4bf', glowColor: 'rgba(245,158,11,0.65)', EntityArt: OracleEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#ef4444', auraStyle: 'oracle',  tier: 3 },
+  lum_null:    { id: 'lum_null',    primaryColor: '#7c3aed', secondaryColor: '#0a0a14', glowColor: 'rgba(124,58,237,0.5)',  EntityArt: NullEntity,    summonColor: '#4c1d95', summonSecondaryColor: '#0a0a14', auraStyle: 'null',    tier: 3 },
+  lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity,  summonColor: '#fbbf24', summonSecondaryColor: '#4ade80', auraStyle: 'oracle',  tier: 3 },
+  lum_moth:    { id: 'lum_moth',    primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: BloomEntity,   summonColor: '#ef4444', summonSecondaryColor: '#7f1d1d', auraStyle: 'fire',    tier: 2, entityBlendMode: 'screen' },
+  lum_seed:    { id: 'lum_seed',    primaryColor: '#38bdf8', secondaryColor: '#4ade80', glowColor: 'rgba(56,189,248,0.55)',  EntityArt: BloomEntity,   summonColor: '#38bdf8', summonSecondaryColor: '#4ade80', auraStyle: 'compass', tier: 2, entityBlendMode: 'screen' },
+  lum_orchard: { id: 'lum_orchard', primaryColor: '#4ade80', secondaryColor: '#fef9c3', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#4ade80', summonSecondaryColor: '#fef9c3', auraStyle: 'verdant', tier: 2, entityBlendMode: 'screen' },
 };
 
 const FALLBACK_VISUALS: LuminaryVisuals = {
@@ -910,6 +918,7 @@ const FALLBACK_VISUALS: LuminaryVisuals = {
   summonColor: '#fbbf24',
   summonSecondaryColor: '#f59e0b',
   auraStyle: 'fire',
+  tier: 1,
   EntityArt: ({ size = 140 }) => (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4}>
       <circle cx="50" cy="70" r="30" fill="#fbbf24" opacity="0.7" />
@@ -2692,6 +2701,19 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
   // Ambient board glow — centred on the same card position as the idle overlay.
   // Rendered only once idle and visible; uses a CSS-only opacity animation so it
   // costs zero JS budget even when several Luminaries are idle simultaneously.
+  //
+  // Glow intensity scales with the Luminary's claim-cost tier so triple-color
+  // (4L) Luminaries cast a visibly more imposing halo than mono-color (2L) ones.
+  //   tier 1 (mono)  → 1.00× base opacity  (stops: 0x14, 0x0b, 0x07)
+  //   tier 2 (dual)  → 1.20× base opacity  (stops: 0x18, 0x0d, 0x08)
+  //   tier 3 (triple)→ 1.45× base opacity  (stops: 0x1d, 0x10, 0x0a)
+  const tierMult = vis.tier === 3 ? 1.45 : vis.tier === 2 ? 1.2 : 1.0;
+  const scaledHex = (base: number) =>
+    Math.min(255, Math.round(base * tierMult)).toString(16).padStart(2, '0');
+  const ambientStop1 = scaledHex(0x14); // outer centre
+  const ambientStop2 = scaledHex(0x0b); // mid ring
+  const ambientStop3 = scaledHex(0x07); // feather edge
+
   const ambientVisible = isIdle && !hidden && isWithinScroller;
   const ambientLeft = cardPos.x - AMBIENT_W / 2;
   const ambientTop  = cardPos.y - AMBIENT_H / 2;
@@ -2724,8 +2746,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             width: AMBIENT_W,
             height: AMBIENT_H,
             background: activeAffinityColor
-              ? `radial-gradient(ellipse at 50% 50%, ${activeAffinityColor}18 0%, ${activeAffinityColor}0e 38%, ${activeAffinityColor}07 62%, transparent 78%)`
-              : `radial-gradient(ellipse at 50% 50%, ${glowColor}14 0%, ${primaryColor}0b 38%, ${glowColor}07 62%, transparent 78%)`,
+              ? `radial-gradient(ellipse at 50% 50%, ${activeAffinityColor}${scaledHex(0x18)} 0%, ${activeAffinityColor}${scaledHex(0x0e)} 38%, ${activeAffinityColor}${ambientStop3} 62%, transparent 78%)`
+              : `radial-gradient(ellipse at 50% 50%, ${glowColor}${ambientStop1} 0%, ${primaryColor}${ambientStop2} 38%, ${glowColor}${ambientStop3} 62%, transparent 78%)`,
             clipPath: ambientClipPath,
             transition: 'background 0.8s ease',
           }}
