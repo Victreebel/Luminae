@@ -46,7 +46,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS, AURA_VARIANT_FALLBACK } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -305,6 +305,7 @@ export default function GameBoard() {
   const luminarySheetContainerRef = useRef<HTMLElement | null>(null);
   const winOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
+  const [auraPreviewLuminaryId, setAuraPreviewLuminaryId] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
@@ -575,7 +576,7 @@ export default function GameBoard() {
   // IMPORTANT — when adding a new overlay, add its boolean here.
   // useScrollLock below reads this same array, so you only need to update
   // this one list; no separately wired scroll-lock effect is required.
-  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, !!selectedLuminary] as const;
+  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, !!selectedLuminary, !!auraPreviewLuminaryId] as const;
   const isAnyOverlayOpen = overlayStates.some(Boolean);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
@@ -641,6 +642,7 @@ export default function GameBoard() {
   // Priority order — most contextual/recently-opened first so that nested
   // sheets close inner-to-outer (e.g. card sheet before reserved overlay).
   useEscapeToClose([
+    { isOpen: !!auraPreviewLuminaryId,  onClose: () => setAuraPreviewLuminaryId(null) },
     { isOpen: !!selectedCard,           onClose: () => { setSelectedCard(null); setPendingSheetAction(null); } },
     { isOpen: !!selectedLuminary,       onClose: () => setSelectedLuminary(null) },
     { isOpen: selectedDeckTier !== null, onClose: () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); } },
@@ -5646,14 +5648,17 @@ export default function GameBoard() {
                       <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
-                    {/* Live aura animation preview */}
+                    {/* Live aura animation preview — click to expand full-screen */}
                     {(() => {
                       const previewVis = getLuminaryVisuals(selectedLuminary.id);
                       const previewVariant = AURA_VARIANTS[previewVis.auraStyle];
                       return (
-                        <div
-                          aria-hidden="true"
-                          className="relative rounded-xl overflow-hidden"
+                        <button
+                          type="button"
+                          title="Preview aura"
+                          aria-label="Preview aura full screen"
+                          onClick={() => setAuraPreviewLuminaryId(selectedLuminary.id)}
+                          className="relative rounded-xl overflow-hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 cursor-pointer group"
                           style={{ width: 76, height: 38, background: '#06060f', boxShadow: `inset 0 0 0 1px ${previewVis.primaryColor}22` }}
                         >
                           <div
@@ -5665,7 +5670,15 @@ export default function GameBoard() {
                               background: `radial-gradient(${previewVariant.gradientShape}, ${previewVis.primaryColor}bb 0%, ${previewVis.primaryColor}55 44%, ${previewVis.primaryColor}1a 68%, transparent 86%)`,
                             }}
                           />
-                        </div>
+                          {/* Expand hint shown on hover */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+                               style={{ background: 'rgba(0,0,0,0.45)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/80">
+                              <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+                              <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+                            </svg>
+                          </div>
+                        </button>
                       );
                     })()}
                     {/* Aura style name label — click/hover shows description */}
@@ -7340,6 +7353,18 @@ export default function GameBoard() {
             </motion.div>
           </motion.div>
         ))}
+      </AnimatePresence>
+
+      {/* Aura preview modal — full-screen entity + aura animation */}
+      <AnimatePresence>
+        {auraPreviewLuminaryId && selectedLuminary && (
+          <AuraPreviewModal
+            key={auraPreviewLuminaryId}
+            luminaryId={auraPreviewLuminaryId}
+            luminaryName={selectedLuminary.name}
+            onClose={() => setAuraPreviewLuminaryId(null)}
+          />
+        )}
       </AnimatePresence>
 
       {/* Hand-tab absorb flash — abridged forge card absorbed by Civilization tab */}

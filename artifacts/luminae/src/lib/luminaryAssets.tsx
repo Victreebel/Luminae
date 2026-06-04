@@ -2563,6 +2563,114 @@ export function LuminarySummonCutscene({
   );
 }
 
+// ── AuraPreviewModal ─────────────────────────────────────────────────────────
+// Full-screen overlay triggered by clicking the small aura preview widget in
+// the Luminary detail sheet. Shows entity art + full-size aura animation.
+// Keyboard: Escape closes via the parent's useEscapeToClose handler
+//           (useFocusTrap uses handleEscape:false to avoid double-close).
+// Tap/click backdrop to close.
+
+const MODAL_ENTITY_W = 260;
+const MODAL_ENTITY_H = Math.round(MODAL_ENTITY_W * 1.43); // ≈ 372
+
+export function AuraPreviewModal({
+  luminaryId,
+  luminaryName,
+  onClose,
+}: {
+  luminaryId: string;
+  luminaryName: string;
+  onClose: () => void;
+}) {
+  const vis = getLuminaryVisuals(luminaryId);
+  const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
+  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
+  const { entityCutout } = getLuminaryImageAssets(luminaryId);
+  const containerRef = useRef<HTMLElement | null>(null);
+
+  useFocusTrap(containerRef, true, onClose, { handleEscape: false });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      {/* Backdrop — dark with a soft centered halo in the Luminary's color */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(ellipse 80% 70% at 50% 42%, ${primaryColor}22 0%, #00000099 55%, #000000dd 100%)`,
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+        }}
+      />
+      {/* Dialog container */}
+      <motion.div
+        ref={(el) => { containerRef.current = el; }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${luminaryName} aura preview`}
+        initial={{ scale: 0.88, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.88, opacity: 0 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 290 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative flex flex-col items-center gap-5"
+      >
+        {/* Entity + aura layer */}
+        <div style={{ position: 'relative', width: MODAL_ENTITY_W, height: MODAL_ENTITY_H }}>
+          {/* Aura glow — same CSS animation as the board idle overlay, but larger */}
+          <div
+            className={auraVariant.idleClass}
+            style={{
+              position: 'absolute',
+              inset: -52,
+              borderRadius: 28,
+              background: `radial-gradient(${auraVariant.gradientShape}, ${glowColor}55 0%, ${primaryColor}33 40%, ${glowColor}18 64%, transparent 84%)`,
+            }}
+          />
+          {/* Entity art — full portrait, no fade mask (not overlaying card content) */}
+          {entityCutout ? (
+            <img
+              src={entityCutout}
+              alt=""
+              draggable={false}
+              style={{
+                position: 'relative',
+                zIndex: 1,
+                width: MODAL_ENTITY_W,
+                height: MODAL_ENTITY_H,
+                objectFit: 'contain',
+                objectPosition: 'center top',
+                display: 'block',
+                ...(entityBlendMode
+                  ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] }
+                  : {}),
+              }}
+            />
+          ) : (
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <EntityArt size={MODAL_ENTITY_W} />
+            </div>
+          )}
+        </div>
+        {/* Dismiss hint — also acts as the primary keyboard focus target */}
+        <button
+          onClick={onClose}
+          className="text-[11px] font-semibold tracking-widest uppercase text-white/35 hover:text-white/65 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/25 rounded px-3 py-1"
+          aria-label="Close aura preview"
+        >
+          Tap anywhere to dismiss
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── LuminaryIdleOverlay ──────────────────────────────────────────────────────
 // After the summon cutscene completes the entity flies back to its panel card
 // and remains there as a living guardian for the rest of the game.
