@@ -329,6 +329,7 @@ export default function GameBoard() {
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
+  const [testPanelCollapsed, setTestPanelCollapsed] = useState(false);
   const [summonQueue, setSummonQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
     claimedBy?: string; // player name who claimed this Luminary
@@ -7119,8 +7120,18 @@ export default function GameBoard() {
       {/* ── Dev: Luminary Summon Test Panel ── */}
       {import.meta.env.DEV && summonQueue.length === 0 && state?.status === 'playing' && (
         <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1">
-          <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
-          {(state.luminaries ?? []).map(l => (
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
+            <button
+              type="button"
+              onClick={() => setTestPanelCollapsed(c => !c)}
+              className="text-[8px] text-white/30 hover:text-white/60 px-1 font-mono transition-colors"
+              title={testPanelCollapsed ? 'Expand test panel' : 'Collapse test panel'}
+            >
+              {testPanelCollapsed ? '▶' : '▼'}
+            </button>
+          </div>
+          {!testPanelCollapsed && (state.luminaries ?? []).map(l => (
             <button
               key={l.id}
               type="button"
@@ -7133,6 +7144,9 @@ export default function GameBoard() {
               ✦ {l.name}
             </button>
           ))}
+          {testPanelCollapsed && (
+            <span className="text-[8px] text-white/20 px-1 font-mono">{((state.luminaries ?? []).length)} Luminaries</span>
+          )}
         </div>
       )}
 
