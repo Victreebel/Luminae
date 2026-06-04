@@ -2337,6 +2337,9 @@ export function LuminarySummonCutscene({
                             objectFit: luminaryId === 'lum_seed' ? 'cover' : 'contain',
                             objectPosition: luminaryId === 'lum_seed' ? 'center 75%' : 'center',
                             display: 'block',
+                            // Compress the wide horizontal seed horizontally so it fits
+                            // the tall narrow vortex panel without overflowing the sides.
+                            transform: luminaryId === 'lum_seed' ? 'scaleX(0.72)' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: luminaryId === 'lum_seed'
                               ? 'radial-gradient(ellipse 80% 90% at 50% 55%, black 20%, rgba(0,0,0,0.92) 46%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.12) 76%, transparent 86%)'
@@ -2693,6 +2696,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       objectFit: objFit as React.CSSProperties['objectFit'],
                       objectPosition: objPos,
                       display: 'block',
+                      // Compress the wide horizontal seed horizontally so it fits
+                      // the narrow portrait card without overflowing the sides.
+                      transform: luminaryId === 'lum_seed' ? 'scaleX(0.72)' : undefined,
+                      transformOrigin: luminaryId === 'lum_seed' ? 'center center' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
