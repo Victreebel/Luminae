@@ -422,6 +422,10 @@ export interface Luminary {
   summonSecondaryColor: string;
   /** Named aura style for the summoning cutscene */
   auraStyle: string;
+  /** Short display name for this Luminary's special effect */
+  effectName?: string;
+  /** Plain-English description of this Luminary's special effect for players */
+  effectDescription?: string;
 }
 
 /**

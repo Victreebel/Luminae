@@ -5717,6 +5717,19 @@ export default function GameBoard() {
                     {selectedLuminary.flavor && (
                       <p className="text-[11px] text-muted-foreground italic leading-relaxed">"{selectedLuminary.flavor}"</p>
                     )}
+                    {/* Effect description */}
+                    {(selectedLuminary.effectName || selectedLuminary.effectDescription) && (
+                      <div className="rounded-lg px-3 py-2 bg-white/5 border border-white/10">
+                        {selectedLuminary.effectName && (
+                          <span className="block text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: getLuminaryVisuals(selectedLuminary.id).primaryColor }}>
+                            {selectedLuminary.effectName}
+                          </span>
+                        )}
+                        {selectedLuminary.effectDescription && (
+                          <p className="text-[11px] text-white/75 leading-relaxed">{selectedLuminary.effectDescription}</p>
+                        )}
+                      </div>
+                    )}
                     {/* Artifact requirements */}
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Artifacts Required</span>

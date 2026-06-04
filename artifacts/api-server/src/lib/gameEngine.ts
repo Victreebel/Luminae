@@ -87,6 +87,8 @@ export interface LuminaryDef {
   auraStyle: AuraStyle;
   /** Display name for this Luminary's special effect (v0.8+). */
   effectName?: string;
+  /** Plain-English description of this Luminary's special effect for players (v0.8+). */
+  effectDescription?: string;
 }
 
 export interface PlayerGameState {
@@ -319,6 +321,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7f1d1d",
     auraStyle: "fire",
     effectName: "Rupture of the Still",
+    effectDescription: "On summon, burns the lowest-cost Tier III and Tier II Artifact without Flare affinity from the market, forcing those slots to immediately redraw.",
   },
   {
     id: "lum_tide",
@@ -331,6 +334,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#e2e8f0",
     auraStyle: "tide",
     effectName: "The Observer Effect",
+    effectDescription: "On summon, scries the top cards of the Tier II and Tier III decks and reorders them so Continuum Artifacts surface first.",
   },
   {
     id: "lum_verdant",
@@ -343,6 +347,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#166534",
     auraStyle: "verdant",
     effectName: "Early Bloom",
+    effectDescription: "Living Luminary bonus — starting the turn after you summon this Luminary, you gain +1 Verdance toward every card purchase while you own it.",
   },
   {
     id: "lum_void",
@@ -356,6 +361,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "void",
     effectName: "Oblivion",
+    effectDescription: "On summon, ALL players (including you) immediately lose 4 Eminence. This Luminary awards no Eminence to its summoner.",
   },
   {
     id: "lum_radiant",
@@ -368,6 +374,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#2ecc71",
     auraStyle: "radiant",
     effectName: "Perfect Coherence",
+    effectDescription: "Once per game, when you end a turn with 8 or more Radiance Artifacts forged, you immediately gain +2 Eminence.",
   },
   // ── Dual-color Luminaries (3 Eminence) ──────────────────────────────────────
   {
@@ -381,6 +388,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#3d6bff",
     auraStyle: "astral",
     effectName: "Ash-Seeking Recurrence",
+    effectDescription: "On summon, burns face-up Tier III then Tier II Artifacts from the market one by one until a Flare or Continuum card is revealed — that card stays in the market.",
   },
   {
     id: "lum_bloom",
@@ -393,6 +401,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7f1d1d",
     auraStyle: "bloom",
     effectName: "Aftergrowth",
+    effectDescription: "At the end of each of your turns, you gain +1 Eminence for every burn effect that occurred since your last turn (from any source).",
   },
   {
     id: "lum_forge",
@@ -405,6 +414,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#1c1917",
     auraStyle: "storm",
     effectName: "Impact Extinction",
+    effectDescription: "On summon, burns every currently face-up Tier III Artifact from the market, forcing all those slots to immediately redraw from the deck.",
   },
   {
     id: "lum_compass",
@@ -417,6 +427,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "distorted",
     effectName: "The Forgotten Hour",
+    effectDescription: "On summon, marks all currently face-up market Artifacts as Forgotten — they award 0 Eminence when forged until the end of your next turn.",
   },
   {
     id: "lum_seed",
@@ -429,6 +440,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "compass",
     effectName: "Avatar Seeds",
+    effectDescription: "On summon, places Avatar Seed tokens on the top card of each deck tier. When an opponent forges a seeded card, you earn pending Eminence paid out at the end of your next turn.",
   },
   {
     id: "lum_orchard",
@@ -441,6 +453,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#fef9c3",
     auraStyle: "verdant",
     effectName: "Perfect Replication",
+    effectDescription: "Once per game, the first time you forge an Artifact, a free copy of your cheapest-cost Tier I Artifact is added to your collection.",
   },
   {
     id: "lum_pale",
@@ -453,6 +466,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
     effectName: "Balance Due",
+    effectDescription: "On summon, each player holding more than half the starting supply of any crystal must return 1 of that crystal to the bank.",
   },
   // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
   {
@@ -466,6 +480,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
     effectName: "Cinder Mandate",
+    effectDescription: "On summon, marks all face-up Artifacts lacking Flare, Abyss, or Radiance affinity as Condemned — they burn at the start of your next turn, clearing those market slots.",
   },
   {
     id: "lum_hunger",
@@ -478,6 +493,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "oracle",
     effectName: "Assimilation",
+    effectDescription: "On summon, you may replace your forge action this turn with Assimilation — copy the bonus affinity of any Artifact card in your collection as a permanent bonus.",
   },
   {
     id: "lum_null",
@@ -490,6 +506,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "null",
     effectName: "Black Domain",
+    effectDescription: "On summon, marks all face-up Tier III Artifacts lacking Continuum, Abyss, or Radiance affinity as Nullified — they award 0 Eminence when forged.",
   },
   // ── Deferred / Inactive Luminaries (not in active summon pool) ────────────
   {

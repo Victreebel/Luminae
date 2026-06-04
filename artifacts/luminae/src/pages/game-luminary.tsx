@@ -37,6 +37,7 @@ export function LuminaryClaimedPortal({
   isArmed?: boolean;
 }) {
   const fresh = useRef(isNew).current;
+  const [showEffectInfo, setShowEffectInfo] = useState(false);
 
   const activeKey = (luminaryAffinity?.activeAffinity ?? null) as GemKey | null;
   const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
@@ -537,6 +538,74 @@ export function LuminaryClaimedPortal({
         </div>
       )}
 
+      {/* ⓘ Effect info trigger — bottom-left corner, distinct from affinity toggle.
+          Uses a div[role=button] rather than <button> to avoid nested-button markup
+          (the parent Tag is already motion.button when canToggle).
+          All three pointer handlers stop propagation so the parent's long-press
+          timer never starts from interactions with this element. */}
+      {(luminary.effectName || luminary.effectDescription) && (
+        <div
+          role="button"
+          tabIndex={0}
+          className="absolute z-30 pointer-events-auto select-none"
+          style={{ bottom: claimedByPlayer ? 28 : 6, left: 5 }}
+          aria-label={`Effect info: ${luminary.effectName ?? 'Luminary effect'}`}
+          aria-pressed={showEffectInfo}
+          onClick={(e) => { e.stopPropagation(); setShowEffectInfo(v => !v); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+          onPointerCancel={(e) => e.stopPropagation()}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowEffectInfo(v => !v); } }}
+        >
+          <div
+            className="flex items-center justify-center rounded-full"
+            style={{
+              width: 14, height: 14,
+              background: showEffectInfo ? `${g1}33` : 'rgba(3,3,8,0.70)',
+              border: `1px solid ${showEffectInfo ? g1 : 'rgba(255,255,255,0.18)'}`,
+              boxShadow: showEffectInfo ? `0 0 6px ${g1}55` : undefined,
+            }}
+          >
+            <span className="text-[7px] font-bold leading-none" style={{ color: showEffectInfo ? g1 : 'rgba(255,255,255,0.55)' }}>ⓘ</span>
+          </div>
+        </div>
+      )}
+
+      {/* Effect info overlay — appears when ⓘ is tapped */}
+      <AnimatePresence>
+        {showEffectInfo && (luminary.effectName || luminary.effectDescription) && (
+          <motion.div
+            key="effect-info"
+            className="absolute inset-x-0 z-[35] pointer-events-none"
+            style={{ bottom: claimedByPlayer ? 28 : 6, left: 22, right: 6 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div
+              className="rounded-lg p-1.5"
+              style={{
+                background: 'rgba(3,3,8,0.92)',
+                border: `1px solid ${g1}44`,
+                boxShadow: `0 0 8px rgba(0,0,0,0.8), 0 0 12px ${g1}22`,
+              }}
+            >
+              {luminary.effectName && (
+                <span className="block text-[7px] font-bold uppercase tracking-[0.12em] leading-none mb-0.5" style={{ color: g1 }}>
+                  {luminary.effectName}
+                </span>
+              )}
+              {luminary.effectDescription && (
+                <span className="block text-[6.5px] leading-relaxed text-white/70">
+                  {luminary.effectDescription}
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Armed sigil — shown when this Luminary has a pending delayed effect */}
       <ArmedSigil isVisible={isArmed} color={g1} />
 
@@ -565,6 +634,7 @@ export function LuminaryCard({
   isArmed?: boolean;
 }) {
   const isClaimed = claimedByNames.length > 0;
+  const [showEffectInfo, setShowEffectInfo] = useState(false);
   const initialClaimedRef = useRef(isClaimed);
   const portalIsNew = !initialClaimedRef.current;
 
@@ -666,9 +736,66 @@ export function LuminaryCard({
 
             {/* Bottom — name + aura presence + requirement gems */}
             <div className="space-y-1">
-              <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
-                {luminary.name}
+              <div className="flex items-start gap-1">
+                <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2 flex-1">
+                  {luminary.name}
+                </div>
+                {/* ⓘ effect info button — stops propagation so it doesn't open the sheet */}
+                {(luminary.effectName || luminary.effectDescription) && (
+                  <button
+                    type="button"
+                    aria-label={`Effect: ${luminary.effectName ?? 'info'}`}
+                    className="shrink-0 flex items-center justify-center rounded-full mt-0.5"
+                    style={{
+                      width: 12, height: 12,
+                      background: showEffectInfo ? `${glowHex}44` : 'rgba(3,3,8,0.65)',
+                      border: `1px solid ${showEffectInfo ? glowHex : 'rgba(255,255,255,0.22)'}`,
+                      boxShadow: showEffectInfo ? `0 0 5px ${glowHex}55` : undefined,
+                    }}
+                    onClick={(e) => { e.stopPropagation(); setShowEffectInfo(v => !v); }}
+                    onMouseEnter={() => setShowEffectInfo(true)}
+                    onMouseLeave={() => setShowEffectInfo(false)}
+                  >
+                    <span className="text-[6px] font-bold leading-none" style={{ color: showEffectInfo ? glowHex : 'rgba(255,255,255,0.5)' }}>ⓘ</span>
+                  </button>
+                )}
               </div>
+
+              {/* Effect info overlay — inside card bounds, appears above requirements */}
+              <AnimatePresence>
+                {showEffectInfo && (luminary.effectName || luminary.effectDescription) && (
+                  <motion.div
+                    key="effect-info-panel"
+                    className="absolute inset-x-2 z-20"
+                    style={{ bottom: 32 }}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    transition={{ duration: 0.14 }}
+                  >
+                    <div
+                      className="rounded-lg p-1.5"
+                      style={{
+                        background: 'rgba(3,3,8,0.93)',
+                        border: `1px solid ${glowHex}44`,
+                        boxShadow: `0 0 10px rgba(0,0,0,0.85), 0 0 12px ${glowHex}22`,
+                      }}
+                    >
+                      {luminary.effectName && (
+                        <span className="block text-[7px] font-bold uppercase tracking-[0.12em] leading-none mb-0.5" style={{ color: glowHex }}>
+                          {luminary.effectName}
+                        </span>
+                      )}
+                      {luminary.effectDescription && (
+                        <span className="block text-[6.5px] leading-relaxed text-white/75">
+                          {luminary.effectDescription}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
                 Artifacts Required:
               </div>

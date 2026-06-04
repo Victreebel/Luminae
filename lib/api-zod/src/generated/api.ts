@@ -402,6 +402,16 @@ export const StartGameResponse = zod.object({
       auraStyle: zod
         .string()
         .describe("Named aura style for the summoning cutscene"),
+      effectName: zod
+        .string()
+        .optional()
+        .describe("Short display name for this Luminary's special effect"),
+      effectDescription: zod
+        .string()
+        .optional()
+        .describe(
+          "Plain-English description of this Luminary's special effect for players",
+        ),
     }),
   ),
   luminaryAffinities: zod
@@ -819,6 +829,16 @@ export const RematchResponse = zod.object({
       auraStyle: zod
         .string()
         .describe("Named aura style for the summoning cutscene"),
+      effectName: zod
+        .string()
+        .optional()
+        .describe("Short display name for this Luminary's special effect"),
+      effectDescription: zod
+        .string()
+        .optional()
+        .describe(
+          "Plain-English description of this Luminary's special effect for players",
+        ),
     }),
   ),
   luminaryAffinities: zod
@@ -1236,6 +1256,16 @@ export const GetGameStateResponse = zod.object({
       auraStyle: zod
         .string()
         .describe("Named aura style for the summoning cutscene"),
+      effectName: zod
+        .string()
+        .optional()
+        .describe("Short display name for this Luminary's special effect"),
+      effectDescription: zod
+        .string()
+        .optional()
+        .describe(
+          "Plain-English description of this Luminary's special effect for players",
+        ),
     }),
   ),
   luminaryAffinities: zod
@@ -1716,6 +1746,16 @@ export const SubmitActionResponse = zod.object({
       auraStyle: zod
         .string()
         .describe("Named aura style for the summoning cutscene"),
+      effectName: zod
+        .string()
+        .optional()
+        .describe("Short display name for this Luminary's special effect"),
+      effectDescription: zod
+        .string()
+        .optional()
+        .describe(
+          "Plain-English description of this Luminary's special effect for players",
+        ),
     }),
   ),
   luminaryAffinities: zod

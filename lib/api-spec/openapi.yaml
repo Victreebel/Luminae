@@ -1298,6 +1298,12 @@ components:
         auraStyle:
           type: string
           description: Named aura style for the summoning cutscene
+        effectName:
+          type: string
+          description: Short display name for this Luminary's special effect
+        effectDescription:
+          type: string
+          description: Plain-English description of this Luminary's special effect for players
       required:
         - id
         - name
