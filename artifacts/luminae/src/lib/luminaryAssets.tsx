@@ -1471,11 +1471,11 @@ export function LuminarySummonCutscene({
   // Vessel appears at intro — camera has fully arrived at the card by then.
   // Keeping it out of focusing prevents the proxy from overlapping the real card
   // during board-camera travel, which caused the "duplicate panning" artifact.
-  const isVessel  = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
+  const isVessel  = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
   const hasCracks = isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
   // Shards stay mounted through the entity reveal so they drift apart while
   // the Luminary manifests — creating the "born from the shattered vessel" effect.
-  const isShatterVisible = isShattering || isFlashing || isRevealedActive;
+  const isShatterVisible = isShattering || isFlashing;
 
   // Stores the board element's NATURAL top (before any pan transform is applied).
   // Needed to compute a correct transform-origin during the focusing scale phase,
