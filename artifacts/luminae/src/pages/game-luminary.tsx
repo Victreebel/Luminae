@@ -74,7 +74,7 @@ export function LuminaryClaimedPortal({
       // AI portals:    stay silent here — the action-log useEffect in game.tsx
       //                is the canonical trigger for AI toggles, preventing double-fire.
       if (!isAIPortal) {
-        gameAudio.playAffinitySwitch();
+        gameAudio.playAffinitySwitch(activeKey ?? undefined);
       }
     }
     prevActiveKeyRef.current = activeKey;

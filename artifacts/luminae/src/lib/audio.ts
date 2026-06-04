@@ -473,22 +473,34 @@ class GameAudio {
   }
 
   /**
-   * Brief recalibration cue — plays when an AI switches its active Luminary affinity.
-   * Distinct from harvest/purchase: a quick descending two-pitch shimmer with a
-   * soft mid-range click, suggesting a gear-shift or strategic pivot.
+   * Brief recalibration cue — plays when a player or AI switches its active
+   * Luminary affinity.  Distinct from harvest/purchase: a quick descending
+   * two-pitch shimmer with a soft mid-range click, suggesting a gear-shift or
+   * strategic pivot.
+   *
+   * When `gemKey` is supplied the chime is pitched to that affinity's GEM_FREQS
+   * entry so each affinity colour has a unique sound signature.  When omitted the
+   * call falls back to a neutral 740 Hz root (preserving the original behaviour).
+   *
+   * Pitch relationships (ratio-based so the descending shape is consistent):
+   *   tone 1  — base × 1.00  (root)
+   *   tone 2  — base × 0.75  (descending minor-third-ish)
+   *   noise   — base × 1.20  (mid-range tactile click)
+   *   shimmer — base × 2.00  (sparkling harmonic overtone)
    */
-  playAffinitySwitch() {
+  playAffinitySwitch(gemKey?: GemKey) {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
+      const base = gemKey ? GEM_FREQS[gemKey] : 740;
       // Two descending sine tones — "cycling down to next setting"
-      this.osc(ctx, 740,  'sine', t,        t + 0.18, 0.06, 0.004);
-      this.osc(ctx, 554,  'sine', t + 0.10, t + 0.32, 0.07, 0.005);
+      this.osc(ctx, base,        'sine', t,        t + 0.18, 0.06, 0.004);
+      this.osc(ctx, base * 0.75, 'sine', t + 0.10, t + 0.32, 0.07, 0.005);
       // Soft mid-range click for tactile punctuation
-      this.noiseBlip(ctx, t + 0.08, 0.05, 0.05, 900, 7);
+      this.noiseBlip(ctx, t + 0.08, 0.05, 0.05, base * 1.2, 7);
       // Faint high shimmer to keep it cosmic
-      this.osc(ctx, 1480, 'sine', t + 0.16, t + 0.38, 0.025, 0.008);
+      this.osc(ctx, base * 2,    'sine', t + 0.16, t + 0.38, 0.025, 0.008);
     } catch (e) { console.warn('SFX failed', e); }
   }
 

@@ -66,6 +66,17 @@ import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
 import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 
+// Reverse of the server-side COLOR_LABEL table — maps affinity display name → GemKey.
+// Used to parse the trailing affinity label out of action-log "switched …" summaries
+// so the affinity-switch chime can be pitched to the correct gem frequency.
+const AFFINITY_LABEL_TO_GEM_KEY: Record<string, GemKey> = {
+  Flare:     'ruby',
+  Continuum: 'sapphire',
+  Verdance:  'emerald',
+  Abyss:     'onyx',
+  Radiance:  'pearl',
+};
+
 type ActiveTab = 'board' | 'hand' | 'log';
 
 interface SelectedCard {
@@ -1043,14 +1054,20 @@ export default function GameBoard() {
         .filter((p) => p.aiDifficulty === 'medium' || p.aiDifficulty === 'hard')
         .map((p) => p.playerId),
     );
-    const aiAffinityCount = state.actionLog.filter(
+    const aiAffinityEntries = state.actionLog.filter(
       (e) => e.summary.startsWith('switched ') && aiPlayerIds.has(e.playerId),
-    ).length;
+    );
+    const aiAffinityCount = aiAffinityEntries.length;
     if (!aiAffinityLogInitializedRef.current) {
       // First run: snapshot existing entries so we don't replay history as sound.
       aiAffinityLogInitializedRef.current = true;
     } else if (aiAffinityCount > seenAiAffinityLogCountRef.current) {
-      gameAudio.playAffinitySwitch();
+      // Parse the target affinity from the newest "switched … to … <Label>" entry.
+      // The summary always ends with the target affinity's display name (single word).
+      const newestEntry = aiAffinityEntries[aiAffinityCount - 1];
+      const lastWord = newestEntry?.summary.split(' ').pop() ?? '';
+      const toggledKey: GemKey | undefined = AFFINITY_LABEL_TO_GEM_KEY[lastWord];
+      gameAudio.playAffinitySwitch(toggledKey);
     }
     seenAiAffinityLogCountRef.current = aiAffinityCount;
   // eslint-disable-next-line react-hooks/exhaustive-deps
