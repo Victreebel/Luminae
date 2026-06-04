@@ -2631,9 +2631,23 @@ export function LuminarySummonCutscene({
                         }}
                       />
                     </div>
-                    <div className="aura-desc-shimmer text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug">
+                    <motion.div
+                      className="aura-desc-shimmer text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug"
+                      animate={{
+                        opacity: isFlashing || isFading
+                          ? 0
+                          : reducedMotion ? 1 : [1, 0.6, 1],
+                      }}
+                      transition={
+                        isFlashing || isFading
+                          ? { duration: 0.3 }
+                          : reducedMotion
+                            ? { duration: 0 }
+                            : { duration: 2, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+                      }
+                    >
                       {AURA_STYLE_DESCRIPTIONS[auraStyle]}
-                    </div>
+                    </motion.div>
                   </motion.div>
                 </motion.div>
 
