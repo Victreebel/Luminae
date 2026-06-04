@@ -8,6 +8,7 @@ import { CRYSTALS } from './game-constants';
 import { MiniGem, EminenceDiamond } from './game-card';
 import { PlayerAvatar } from './game-player';
 import { ArmedSigil } from './game-luminary-effects';
+import { gameAudio } from '@/lib/audio';
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
@@ -69,12 +70,15 @@ export function LuminaryClaimedPortal({
       const newColor = GEM_META[activeKey].hex;
       setAffinityFlashColor(newColor);
       setAffinityFlashKey(k => k + 1);
-      // Sound is intentionally omitted here — the action-log useEffect is the
-      // single canonical trigger for playAffinitySwitch().  This prevents
-      // double-firing (portal + log) and ensures human-player toggles stay silent.
+      // Human portals: play the chime here, synced to the burst.
+      // AI portals:    stay silent here — the action-log useEffect in game.tsx
+      //                is the canonical trigger for AI toggles, preventing double-fire.
+      if (!isAIPortal) {
+        gameAudio.playAffinitySwitch();
+      }
     }
     prevActiveKeyRef.current = activeKey;
-  }, [activeKey]);
+  }, [activeKey, isAIPortal]);
 
   // Self-clean: clear flash state after animations finish so burst nodes unmount.
   // 700 ms is safely after the longest burst animation (ring1 at 0.55 s).
