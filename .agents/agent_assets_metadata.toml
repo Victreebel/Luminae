@@ -1722,12 +1722,6 @@ uri = "file://attached_assets/generated_images/lum_null_panel_v2.png"
 type = "image"
 title = "null sovereign panel v2 crystal wall"
 
-[[generated]]
-id = "pjeDXHpTEKvDUbi51BqAY"
-uri = "file://artifacts/luminae/src/assets/luminaries/lum_seed/entity.png"
-type = "image"
-title = "generated_image"
-
 [[outputs]]
 id = "ZPWXinhoCjaB5iqAGx_z5"
 uri = "file://card_gallery.png"

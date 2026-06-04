@@ -1042,31 +1042,12 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   scale?: number;
   objectPosition?: string;
   idleCyFactor?: number;
-  objectFit?: 'contain' | 'cover';
 }> = {
   lum_void:   { scale: 1.22, objectPosition: 'center 25%' },
   lum_tide:   { idleCyFactor: 0.435 },
   // Cosmic arachnid spans radially — center it in the portrait card frame
   // rather than using the default portrait 'center top' position.
   lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
-  // The Seed Beyond Seasons and ??? are landscape-oriented entities (3:2)
-  // inside portrait slots (2:3). `objectFit: 'cover'` fills the frame by
-  // cropping the sides; no extra scale is needed because cover already
-  // maps the image to the full container.
-  lum_seed:   { objectPosition: 'center 42%', objectFit: 'cover' },
-  lum_compass:{ objectPosition: 'center 42%', objectFit: 'cover' },
-};
-
-// Per-entity cutscene (summon portal) display tweaks.
-// When an entity is landscape-oriented but the cutscene container is portrait,
-// `objectFit: 'cover'` with `objectPosition: 'center'` crops the sides and
-// fills the frame without empty vertical bars.
-const CUTSCENE_ENTITY_OVERRIDES: Record<string, {
-  objectFit?: 'contain' | 'cover';
-  objectPosition?: string;
-}> = {
-  lum_seed:   { objectFit: 'cover', objectPosition: 'center' },
-  lum_compass:{ objectFit: 'cover', objectPosition: 'center' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -2339,23 +2320,17 @@ export function LuminarySummonCutscene({
                           </div>
                         );
                       })() : entityCutout ? (
-                        (() => {
-                          const csOv = CUTSCENE_ENTITY_OVERRIDES[luminaryId] ?? {};
-                          return (
-                            <img src={entityCutout} alt={luminaryName}
-                              style={{
-                                width: ENT_W, height: ENT_H,
-                                objectFit: csOv.objectFit ?? 'contain',
-                                objectPosition: csOv.objectPosition ?? 'center',
-                                display: 'block',
-                                ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                                maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
-                                WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
-                              }}
-                              draggable={false}
-                            />
-                          );
-                        })()
+                        <img src={entityCutout} alt={luminaryName}
+                          style={{
+                            width: ENT_W, height: ENT_H,
+                            objectFit: 'contain', objectPosition: 'center',
+                            display: 'block',
+                            ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
+                            maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                            WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                          }}
+                          draggable={false}
+                        />
                       ) : (
                         // Procedural SVG entity — transparent bg, no mask needed
                         <EntityArt size={ENT_W} />
@@ -2587,7 +2562,6 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
           const entScale = ov.scale ?? 1;
           const objPos   = ov.objectPosition ?? 'center top';
-          const idleObjFit = ov.objectFit ?? 'contain';
           const cyFactor = ov.idleCyFactor;
           // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
           // factor via CSS custom property) so CSS transform and scale never conflict.
@@ -2699,7 +2673,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     style={{
                       width: IDLE_W,
                       height: IDLE_H,
-                      objectFit: idleObjFit,
+                      objectFit: 'contain',
                       objectPosition: objPos,
                       display: 'block',
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
