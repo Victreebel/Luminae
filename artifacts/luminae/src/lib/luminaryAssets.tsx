@@ -2551,7 +2551,7 @@ export function LuminarySummonCutscene({
                                 style={{
                                   ...fill,
                                   objectFit: 'cover',
-                                  transform: 'scale(1.45)',
+                                  transform: 'scale(1.10)',
                                   transformOrigin: 'center center',
                                 }}
                               />
@@ -2570,7 +2570,7 @@ export function LuminarySummonCutscene({
                                     ...fill,
                                     objectFit: 'cover',
                                     objectPosition: 'center center',
-                                    transform: 'scale(1.12)',
+                                    transform: 'scale(0.72)',
                                     transformOrigin: 'center center',
                                     ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                                     maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
@@ -3310,7 +3310,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     style={{
                       ...fill,
                       objectFit: 'cover',
-                      transform: 'scale(1.45)',
+                      transform: 'scale(1.10)',
                       transformOrigin: 'center center',
                     }}
                   />
@@ -3329,7 +3329,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                         ...fill,
                         objectFit: 'cover',
                         objectPosition: 'center center',
-                        transform: 'scale(1.12)',
+                        transform: 'scale(0.72)',
                         transformOrigin: 'center center',
                         mixBlendMode: 'screen',
                         // Fade to transparent at the bottom so the card name row stays legible
