@@ -2566,9 +2566,21 @@ export function LuminarySummonCutscene({
                           background: `linear-gradient(to right, transparent, ${primaryColor}80)`,
                           originX: 0,
                         }}
-                        initial={{ scaleX: reducedMotion ? 1 : 0 }}
-                        animate={{ scaleX: isFlashing || isFading ? 0 : 1 }}
-                        transition={{ duration: 0.5, delay: 0.9, ease: 'easeOut' }}
+                        initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
+                        animate={{
+                          scaleX: isFlashing || isFading ? 0 : 1,
+                          opacity: isFlashing || isFading
+                            ? 0
+                            : reducedMotion ? 1 : [1, 0.5, 1],
+                        }}
+                        transition={{
+                          scaleX: { duration: 0.5, delay: 0.9, ease: 'easeOut' },
+                          opacity: isFlashing || isFading
+                            ? { duration: 0.3 }
+                            : reducedMotion
+                              ? { duration: 0 }
+                              : { duration: 2, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+                        }}
                       />
                       <div
                         className="aura-label-glow text-[9px] font-bold tracking-[0.20em] uppercase"
@@ -2602,9 +2614,21 @@ export function LuminarySummonCutscene({
                           background: `linear-gradient(to left, transparent, ${primaryColor}80)`,
                           originX: 1,
                         }}
-                        initial={{ scaleX: reducedMotion ? 1 : 0 }}
-                        animate={{ scaleX: isFlashing || isFading ? 0 : 1 }}
-                        transition={{ duration: 0.5, delay: 0.9, ease: 'easeOut' }}
+                        initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
+                        animate={{
+                          scaleX: isFlashing || isFading ? 0 : 1,
+                          opacity: isFlashing || isFading
+                            ? 0
+                            : reducedMotion ? 1 : [1, 0.5, 1],
+                        }}
+                        transition={{
+                          scaleX: { duration: 0.5, delay: 0.9, ease: 'easeOut' },
+                          opacity: isFlashing || isFading
+                            ? { duration: 0.3 }
+                            : reducedMotion
+                              ? { duration: 0 }
+                              : { duration: 2, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+                        }}
                       />
                     </div>
                     <div className="aura-desc-shimmer text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug">
