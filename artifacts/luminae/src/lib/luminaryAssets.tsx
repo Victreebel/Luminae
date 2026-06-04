@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
@@ -1357,6 +1357,7 @@ export function LuminarySummonCutscene({
   onSkip?: () => void;
   overrideColor?: string;
 }) {
+  const reducedMotion = useReducedMotion();
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
@@ -2559,9 +2560,15 @@ export function LuminarySummonCutscene({
                     style={{ '--aura-glow-color': primaryColor } as React.CSSProperties}
                   >
                     <div className="flex items-center gap-1.5">
-                      <div
+                      <motion.div
                         className="w-4 h-px"
-                        style={{ background: `linear-gradient(to right, transparent, ${primaryColor}80)` }}
+                        style={{
+                          background: `linear-gradient(to right, transparent, ${primaryColor}80)`,
+                          originX: 0,
+                        }}
+                        initial={{ scaleX: reducedMotion ? 1 : 0 }}
+                        animate={{ scaleX: isFlashing || isFading ? 0 : 1 }}
+                        transition={{ duration: 0.5, delay: 0.9, ease: 'easeOut' }}
                       />
                       <div
                         className="aura-label-glow text-[9px] font-bold tracking-[0.20em] uppercase"
@@ -2569,9 +2576,15 @@ export function LuminarySummonCutscene({
                       >
                         {AURA_STYLE_NAMES[auraStyle]} Aura
                       </div>
-                      <div
+                      <motion.div
                         className="w-4 h-px"
-                        style={{ background: `linear-gradient(to left, transparent, ${primaryColor}80)` }}
+                        style={{
+                          background: `linear-gradient(to left, transparent, ${primaryColor}80)`,
+                          originX: 1,
+                        }}
+                        initial={{ scaleX: reducedMotion ? 1 : 0 }}
+                        animate={{ scaleX: isFlashing || isFading ? 0 : 1 }}
+                        transition={{ duration: 0.5, delay: 0.9, ease: 'easeOut' }}
                       />
                     </div>
                     <div className="aura-desc-shimmer text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug">
