@@ -401,7 +401,7 @@ export const LUMINARIES: LuminaryDef[] = [
     lumens: 3,
     requirements: { ruby: 4, sapphire: 0, emerald: 0, onyx: 4, pearl: 0, flux: 0 },
     flavor: "The hammer falls only after the future has already broken.",
-    summonColor: "#ef4444",
+    summonColor: "#f97316",
     summonSecondaryColor: "#1c1917",
     auraStyle: "storm",
     effectName: "Impact Extinction",
