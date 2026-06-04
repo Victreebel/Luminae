@@ -2325,28 +2325,18 @@ export function LuminarySummonCutscene({
                           </div>
                         );
                       })() : entityCutout ? (
-                        <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
-                          <img src={entityCutout} alt={luminaryName}
-                            style={{
-                              width: ENT_W, height: ENT_H,
-                              objectFit: 'cover',
-                              objectPosition: 'left 80%',
-                              display: 'block',
-                              // Compress horizontally and stretch vertically to fill the panel
-                              transform: 'scaleX(0.85) scaleY(1.4)',
-                              transformOrigin: 'left 80%',
-                              ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                            }}
-                            draggable={false}
-                          />
-                          {/* Fade mask at the right and bottom edges to blend the stretched entity */}
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: 'linear-gradient(90deg, transparent 0%, transparent 72%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0.8) 100%), linear-gradient(180deg, transparent 0%, transparent 80%, rgba(0,0,0,0.6) 95%, rgba(0,0,0,0.9) 100%)',
-                            pointerEvents: 'none',
-                          }} />
-                        </div>
+                        <img src={entityCutout} alt={luminaryName}
+                          style={{
+                            width: ENT_W, height: ENT_H,
+                            objectFit: 'contain',
+                            objectPosition: 'center',
+                            display: 'block',
+                            ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
+                            maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                            WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                          }}
+                          draggable={false}
+                        />
                       ) : (
                         // Procedural SVG entity — transparent bg, no mask needed
                         <EntityArt size={ENT_W} />
@@ -2577,6 +2567,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
         {(() => {
           const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
           const entScale = ov.scale ?? 1;
+          const objPos   = ov.objectPosition ?? 'center top';
+          const objFit   = ov.objectFit ?? 'contain';
           const cyFactor = ov.idleCyFactor;
           // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
           // factor via CSS custom property) so CSS transform and scale never conflict.
@@ -2681,31 +2673,23 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             >
               {entityCutout ? (
                 <>
-                  <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'hidden', borderRadius: 2 }}>
-                    <img
-                      src={entityCutout}
-                      alt=""
-                      draggable={false}
-                      style={{
-                        width: IDLE_W,
-                        height: IDLE_H,
-                        objectFit: 'cover',
-                        objectPosition: 'left 80%',
-                        display: 'block',
-                        // Compress horizontally and stretch vertically to fill the portrait card
-                        transform: 'scaleX(0.85) scaleY(1.4)',
-                        transformOrigin: 'left 80%',
-                        ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                      }}
-                    />
-                    {/* Fade mask at the right and bottom edges to blend the stretched entity */}
-                    <div style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'linear-gradient(90deg, transparent 0%, transparent 72%, rgba(0,0,0,0.4) 88%, rgba(0,0,0,0.8) 100%), linear-gradient(180deg, transparent 0%, transparent 80%, rgba(0,0,0,0.6) 95%, rgba(0,0,0,0.9) 100%)',
-                      pointerEvents: 'none',
-                    }} />
-                  </div>
+                  <img
+                    src={entityCutout}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      width: IDLE_W,
+                      height: IDLE_H,
+                      objectFit: objFit as React.CSSProperties['objectFit'],
+                      objectPosition: objPos,
+                      display: 'block',
+                      ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
+                      // Fade to transparent in the lower third so the card's name /
+                      // requirements row stays legible underneath the entity.
+                      maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                      WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                    }}
+                  />
                   {luminaryId === 'lum_tide' && (
                     <TideEyeOverlay
                       width={IDLE_W}
