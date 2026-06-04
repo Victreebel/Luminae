@@ -2548,7 +2548,12 @@ export function LuminarySummonCutscene({
                                 alt=""
                                 draggable={false}
                                 className="lum-compass-bg-fade"
-                                style={{ ...fill, objectFit: 'cover' }}
+                                style={{
+                                  ...fill,
+                                  objectFit: 'cover',
+                                  transform: 'scale(1.45)',
+                                  transformOrigin: 'center center',
+                                }}
                               />
                             )}
                             {/* Entity with heat-haze shimmer — living motion while background stays fixed */}
@@ -2565,7 +2570,7 @@ export function LuminarySummonCutscene({
                                     ...fill,
                                     objectFit: 'cover',
                                     objectPosition: 'center center',
-                                    transform: 'scale(1.35)',
+                                    transform: 'scale(1.12)',
                                     transformOrigin: 'center center',
                                     ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                                     maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
@@ -3302,7 +3307,12 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     alt=""
                     draggable={false}
                     className="lum-compass-bg-fade"
-                    style={{ ...fill, objectFit: 'cover' }}
+                    style={{
+                      ...fill,
+                      objectFit: 'cover',
+                      transform: 'scale(1.45)',
+                      transformOrigin: 'center center',
+                    }}
                   />
                 )}
                 {/* Entity with heat-haze shimmer — subtle distortion suggesting living motion */}
@@ -3319,6 +3329,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                         ...fill,
                         objectFit: 'cover',
                         objectPosition: 'center center',
+                        transform: 'scale(1.12)',
+                        transformOrigin: 'center center',
                         mixBlendMode: 'screen',
                         // Fade to transparent at the bottom so the card name row stays legible
                         maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
