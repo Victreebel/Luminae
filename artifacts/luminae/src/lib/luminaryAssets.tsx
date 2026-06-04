@@ -89,6 +89,8 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_astral',
   'lum_hunger',
   'lum_moth',
+  'lum_seed',
+  'lum_orchard',
 ]);
 
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
@@ -868,6 +870,8 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
   lum_null:    { id: 'lum_null',    primaryColor: '#ffffff', secondaryColor: '#0a0a14', glowColor: 'rgba(255,255,255,0.5)',  EntityArt: NullEntity    },
   lum_hunger:  { id: 'lum_hunger',  primaryColor: '#dc2626', secondaryColor: '#0a0a0a', glowColor: 'rgba(220,38,38,0.55)',   EntityArt: HungerEntity  },
   lum_moth:    { id: 'lum_moth',    primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.55)',  EntityArt: BloomEntity,   entityBlendMode: 'screen' },
+  lum_seed:    { id: 'lum_seed',    primaryColor: '#38bdf8', secondaryColor: '#4ade80', glowColor: 'rgba(56,189,248,0.55)',  EntityArt: BloomEntity,   entityBlendMode: 'screen' },
+  lum_orchard: { id: 'lum_orchard', primaryColor: '#4ade80', secondaryColor: '#fef9c3', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   entityBlendMode: 'screen' },
 };
 
 const FALLBACK_VISUALS: LuminaryVisuals = {
