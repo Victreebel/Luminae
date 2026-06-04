@@ -2694,7 +2694,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       display: 'block',
                       // Stretch the seed vertically so it fills the tall portrait
                       // card without squishing the horizontal portals.
-                      transform: luminaryId === 'lum_seed' ? 'scaleY(1.22)' : luminaryId === 'lum_compass' ? 'scale(1.25)' : undefined,
+                      transform: luminaryId === 'lum_seed' ? 'scaleY(1.22)' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
