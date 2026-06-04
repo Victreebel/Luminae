@@ -2235,17 +2235,7 @@ export function LuminarySummonCutscene({
       <AnimatePresence>
         {isFlashing && (
           <>
-            {/* Affinity-tinted core — white-hot centre, Luminary colour blooms outward */}
-            <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: [1, 0.94, 0.58, 0.22, 0.06, 0] }}
-              transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
-              exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
-              style={{
-                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 50%, #ffffff88 72%, transparent 86%)`,
-              }}
-            />
-            {/* Affinity haze — lingering afterglow in the Luminary's primary colour.
+            {/* Affinity haze — rendered first so it sits behind the white core.
                 transformOrigin and final scale are auraStyle-driven so the bloom
                 radiates from the Luminary's thematic focal point (fire rises up,
                 tide spreads wide, void stays tight, bloom bursts furthest).      */}
@@ -2264,6 +2254,16 @@ export function LuminarySummonCutscene({
               style={{
                 background: `radial-gradient(circle farthest-corner at 50% 42%, rgba(${pRgb},0.88) 0%, rgba(${pRgb},0.50) 32%, rgba(${sRgb},0.26) 62%, rgba(${sRgb},0.08) 86%, transparent 100%)`,
                 transformOrigin: auraVariant.flashOrigin,
+              }}
+            />
+            {/* White core — rendered on top of the haze, so the flash centre is white */}
+            <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: [1, 0.94, 0.58, 0.22, 0.06, 0] }}
+              transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
+              exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
+              style={{
+                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 50%, #ffffff88 72%, transparent 86%)`,
               }}
             />
           </>
