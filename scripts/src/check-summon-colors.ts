@@ -60,6 +60,8 @@ export interface CheckResult {
   mismatches: Mismatch[];
   /** IDs present in the engine but missing from LUMINARY_VISUALS. */
   missingFromAssets: string[];
+  /** IDs present in LUMINARY_VISUALS but not yet in the engine (pre-release placeholders). */
+  missingFromEngine: string[];
   /** Entries whose auraStyle is not in the valid styles set derived from KNOWN_AURA_STYLES. */
   invalidAuraStyles: InvalidAuraStyle[];
 }
@@ -379,14 +381,19 @@ export function checkColors(
     }
   }
 
-  // Also check assets-only entries (not in engine) for invalid auraStyle
+  // Check assets-only entries (not in engine): collect missing-from-engine IDs
+  // and validate their auraStyle values.
+  const missingFromEngine: string[] = [];
   for (const [id, assetsEntry] of assetsColors) {
-    if (!engineColors.has(id) && !validSet.has(assetsEntry.auraStyle)) {
-      invalidAuraStyles.push({ id, source: "assets", value: assetsEntry.auraStyle });
+    if (!engineColors.has(id)) {
+      missingFromEngine.push(id);
+      if (!validSet.has(assetsEntry.auraStyle)) {
+        invalidAuraStyles.push({ id, source: "assets", value: assetsEntry.auraStyle });
+      }
     }
   }
 
-  return { mismatches, missingFromAssets, invalidAuraStyles };
+  return { mismatches, missingFromAssets, missingFromEngine, invalidAuraStyles };
 }
 
 // ── CLI entrypoint ───────────────────────────────────────────────────────────
@@ -407,7 +414,7 @@ if (isMain) {
   // KNOWN_AURA_STYLES in luminaryAssets.tsx is the single source of truth.
   const knownStyles = parseKnownAuraStyles(assetsSrc);
 
-  const { mismatches, missingFromAssets, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStyles);
+  const { mismatches, missingFromAssets, missingFromEngine, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStyles);
 
   const hasErrors =
     mismatches.length > 0 ||
@@ -470,6 +477,22 @@ if (isMain) {
     );
 
     process.exit(1);
+  }
+
+  // Report assets-only entries as info (not a hard failure — pre-release placeholders are allowed).
+  if (missingFromEngine.length > 0) {
+    console.warn(
+      `check-summon-colors: INFO — ${missingFromEngine.length} LUMINARY_VISUALS entr${
+        missingFromEngine.length === 1 ? "y" : "ies"
+      } not yet wired into LUMINARIES (pre-release placeholder${missingFromEngine.length === 1 ? "" : "s"}):`
+    );
+    console.warn("  IDs in LUMINARY_VISUALS but not yet in LUMINARIES:");
+    for (const id of missingFromEngine) {
+      console.warn(`    ${id}`);
+    }
+    console.warn(
+      "  These will be ignored at runtime until added to gameEngine.ts.\n"
+    );
   }
 
   console.log(

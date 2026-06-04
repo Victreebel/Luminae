@@ -90,7 +90,7 @@ for (const [id, engineEntry] of engineColors) {
 console.log("\n── Structural sanity ────────────────────────────────────────────────");
 
 const knownStylesForCheck = parseKnownAuraStyles(assetsSrc);
-const { mismatches, missingFromAssets, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStylesForCheck);
+const { mismatches, missingFromAssets, missingFromEngine, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStylesForCheck);
 
 assert(
   mismatches.length === 0,
@@ -107,6 +107,19 @@ assert(
     ? "checkColors() reports no IDs missing from LUMINARY_VISUALS"
     : `checkColors() reports ${missingFromAssets.length} missing ID(s): ${missingFromAssets.join(", ")}`
 );
+
+// missingFromEngine is informational: placeholder entries are allowed, so this
+// assertion only checks that the field is present and is an array — not that it
+// is empty.  The actual IDs (if any) are reported below for visibility.
+assert(
+  Array.isArray(missingFromEngine),
+  "checkColors() returns a missingFromEngine array"
+);
+if (missingFromEngine.length > 0) {
+  console.log(
+    `  info: ${missingFromEngine.length} LUMINARY_VISUALS ID(s) not yet in LUMINARIES (pre-release placeholders): ${missingFromEngine.join(", ")}`
+  );
+}
 
 assert(
   invalidAuraStyles.length === 0,
@@ -270,6 +283,54 @@ assert(knownStyles.size > 0, "KNOWN_AURA_STYLES (parsed from luminaryAssets.tsx)
   assert(
     result.invalidAuraStyles.length === 0,
     `assets-only entry "lum_future_valid" with valid auraStyle "tide" produces no violation`
+  );
+}
+
+// ── missingFromEngine unit tests ──────────────────────────────────────────────
+
+console.log("\n── missingFromEngine unit tests ─────────────────────────────────────");
+
+// An assets entry not present in the engine must appear in missingFromEngine.
+{
+  const fakeEngine = new Map<string, { summonColor: string; summonSecondaryColor: string; auraStyle: string }>();
+  const fakeAssets = new Map([
+    ["lum_prerelease", { summonColor: "#aabbcc", summonSecondaryColor: "#001122", auraStyle: "fire" }],
+  ]);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
+  assert(
+    result.missingFromEngine.length === 1 && result.missingFromEngine[0] === "lum_prerelease",
+    `assets-only "lum_prerelease" appears in missingFromEngine (got [${result.missingFromEngine.join(", ")}])`
+  );
+}
+
+// An entry present in both engine and assets must NOT appear in missingFromEngine.
+{
+  const shared = { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "fire" };
+  const fakeEngine = new Map([["lum_live", shared]]);
+  const fakeAssets = new Map([["lum_live", shared]]);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
+  assert(
+    result.missingFromEngine.length === 0,
+    `"lum_live" present in both engine and assets — missingFromEngine is empty`
+  );
+}
+
+// Only the engine-missing ID is listed; engine-present IDs are not included.
+{
+  const shared = { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "fire" };
+  const fakeEngine = new Map([["lum_live", shared]]);
+  const fakeAssets = new Map([
+    ["lum_live", shared],
+    ["lum_wip", { summonColor: "#001122", summonSecondaryColor: "#334455", auraStyle: "tide" }],
+  ]);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
+  assert(
+    result.missingFromEngine.length === 1 && result.missingFromEngine[0] === "lum_wip",
+    `only "lum_wip" (assets-only) appears in missingFromEngine, not "lum_live"`
+  );
+  assert(
+    result.missingFromAssets.length === 0,
+    `no engine IDs are missing from assets`
   );
 }
 
