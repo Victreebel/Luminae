@@ -2550,10 +2550,10 @@ export function LuminarySummonCutscene({
                             // sits at the center of the tall vortex panel.
                             objectPosition: luminaryId === 'lum_seed' ? 'center 55%' : 'center',
                             display: 'block',
-                            // Stretch the seed vertically so it fills the tall panel
-                            // without squishing the horizontal portals.
-                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : undefined,
-                            transformOrigin: luminaryId === 'lum_seed' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
+                            // Stretch wide landscape entities (seed, orchard) vertically
+                            // so they fill the tall portrait panel without letterboxing.
+                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
+                            transformOrigin: luminaryId === 'lum_seed' || luminaryId === 'lum_orchard' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
