@@ -2556,9 +2556,10 @@ export function LuminarySummonCutscene({
                                 }}
                               />
                             )}
-                            {/* Entity — static during summon (no heat-haze bounce) */}
+                            {/* Entity with heat-haze shimmer — living motion while background stays fixed */}
                             {entityCutout && (
                               <div
+                                className="lum-compass-heat-haze"
                                 style={{ position: 'absolute', inset: 0, zIndex: 1 }}
                               >
                                 <img
