@@ -46,7 +46,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS, AURA_VARIANT_FALLBACK, type AuraStyle } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS, type AuraStyle } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';

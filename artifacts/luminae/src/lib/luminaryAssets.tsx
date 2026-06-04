@@ -2120,7 +2120,7 @@ export function LuminarySummonCutscene({
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ffffff 6%, rgba(255,200,200,0.40) 14%, rgba(255,255,200,0.35) 20%, rgba(200,255,200,0.40) 28%, rgba(200,200,255,0.35) 36%, rgba(255,200,255,0.30) 44%, transparent 84%)`,
+              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ffffffff 10%, #ffffffdd 24%, #ffffff88 50%, transparent 84%)`,
               filter: 'blur(14px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
@@ -2263,7 +2263,7 @@ export function LuminarySummonCutscene({
               transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
               exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
               style={{
-                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 18%, rgba(255,200,200,0.50) 34%, rgba(255,255,200,0.45) 44%, rgba(200,255,200,0.50) 54%, rgba(200,200,255,0.45) 64%, rgba(255,200,255,0.40) 74%, transparent 86%)`,
+                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 50%, #ffffff88 72%, transparent 86%)`,
               }}
             />
           </>
