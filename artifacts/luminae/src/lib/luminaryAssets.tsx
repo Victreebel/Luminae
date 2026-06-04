@@ -1325,8 +1325,8 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   leaking:      850,  // energy bleeds through; sustained quiet-before-storm
   secondcrack:  360,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
-  shattering: 1000,
-  flashing:    950,
+  shattering: 3800,  // chunks drift apart slowly; vessel visible
+  flashing:    600,   // brief white flash before reveal
   revealed:   4200,
   fading:      550,
   done:           0,
@@ -1470,8 +1470,8 @@ export function LuminarySummonCutscene({
   // Vessel appears at intro — camera has fully arrived at the card by then.
   // Keeping it out of focusing prevents the proxy from overlapping the real card
   // during board-camera travel, which caused the "duplicate panning" artifact.
-  const isVessel  = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
-  const hasCracks = isFirstCrack || isLeaking || isSecondCrack || isCracking;
+  const isVessel  = isIntro || isZooming || isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
+  const hasCracks = isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
   // Shards stay mounted through the entity reveal so they drift apart while
   // the Luminary manifests — creating the "born from the shattered vessel" effect.
   const isShatterVisible = isShattering || isRevealedActive;
@@ -1588,8 +1588,10 @@ export function LuminarySummonCutscene({
   // directly into the card without any additional translate.
   const camZoomed =
     isFocusing || isIntro || isZooming ||
-    isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
-  const camScale = camZoomed ? targetScale : 1;
+    isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
+  // Camera zooms out during shattering so the pieces are visible against the
+  // shrinking board, creating a dramatic "pull back to reveal the break" effect.
+  const camScale = isShattering ? 1 : (camZoomed ? targetScale : 1);
 
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
   // NOTE: shake/tremble animation is now handled via CSS keyframes
@@ -1704,7 +1706,7 @@ export function LuminarySummonCutscene({
               }}
               initial={{ opacity: 0 }}
               animate={{
-                opacity: 1,
+                opacity: isShattering ? 0 : 1,
                 scale: 1,
                 boxShadow: (isPressure || hasCracks)
                   // eslint-disable-next-line no-restricted-syntax -- vesselGlow is a framer-motion MotionValue<string>; boxShadow accepts string | MotionValue<string> at runtime but the TS overload only accepts string, so the double-cast is required to satisfy framer-motion's type definitions.
@@ -2172,14 +2174,14 @@ export function LuminarySummonCutscene({
               filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
             animate={{
-              // Hard jolt then wide drift — pieces peel far apart so the
-              // break is visually unmistakable even at zoomed scale.
-              x: [0, dx * 0.08, dx * 1.8],
-              y: [0, dy * 0.08, dy * 1.8],
-              z: [0, z * 0.4, z],
-              rotateX: [0, piece.rotateX * 1.6],
-              rotateY: [0, piece.rotateY * 1.6],
-              rotateZ: [0, piece.rotateZ * 1.4],
+              // Slow, deliberate peel — pieces drift apart at a measured pace
+              // so the viewer can read the fracture before the panel dissolves.
+              x: [0, dx * 0.03, dx],
+              y: [0, dy * 0.03, dy],
+              z: [0, z * 0.2, z],
+              rotateX: [0, piece.rotateX],
+              rotateY: [0, piece.rotateY],
+              rotateZ: [0, piece.rotateZ],
               scale: [0.98, 0.98, 0.98, 0.98, 0.96, 0.92],
               // Stay opaque through the first half, then dissolve bright.
               opacity: [1, 1, 1, 0.96, 0.55, 0],
@@ -2195,15 +2197,15 @@ export function LuminarySummonCutscene({
               ],
             }}
             transition={{
-              duration: 4.20,
+              duration: 8.0,
               delay: i * 0.04,
               // Crack jolt then slow float
-              x:       { times: [0, 0.04, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              y:       { times: [0, 0.04, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              z:       { times: [0, 0.14, 1.0], ease: ['easeOut', 'easeInOut'] },
-              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 4.20 },
-              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 4.20 },
-              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 4.20 },
+              x:       { times: [0, 0.02, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              y:       { times: [0, 0.02, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              z:       { times: [0, 0.08, 1.0], ease: ['easeOut', 'easeInOut'] },
+              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 8.0 },
+              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 8.0 },
+              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 8.0 },
               scale:   { times: [0, 0.06, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
               opacity: { times: [0, 0.06, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
               filter:  { times: [0, 0.08, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
