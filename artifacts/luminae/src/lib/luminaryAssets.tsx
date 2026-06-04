@@ -2571,7 +2571,7 @@ export function LuminarySummonCutscene({
                           scaleX: isFlashing || isFading ? 0 : reducedMotion ? 1 : [1, 0.6, 1],
                           opacity: isFlashing || isFading
                             ? 0
-                            : reducedMotion ? 1 : [1, 0.3, 1],
+                            : reducedMotion || claimedBy ? 1 : [1, 0.3, 1],
                         }}
                         transition={{
                           scaleX: { duration: 0.5, delay: 0.9, ease: 'easeOut' },
@@ -2579,7 +2579,9 @@ export function LuminarySummonCutscene({
                             ? { duration: 0.3 }
                             : reducedMotion
                               ? { duration: 0 }
-                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+                              : claimedBy
+                                ? { duration: 1.5, ease: 'easeOut' }
+                                : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
                         }}
                       />
                       <motion.div
@@ -2588,14 +2590,16 @@ export function LuminarySummonCutscene({
                         animate={{
                           opacity: isFlashing || isFading
                             ? 0
-                            : reducedMotion ? 1 : [1, 0.6, 1],
+                            : reducedMotion || claimedBy ? 1 : [1, 0.6, 1],
                         }}
                         transition={
                           isFlashing || isFading
                             ? { duration: 0.3 }
                             : reducedMotion
                               ? { duration: 0 }
-                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+                              : claimedBy
+                                ? { duration: 1.5, ease: 'easeOut' }
+                                : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
                         }
                       >
                         {[...(AURA_STYLE_NAMES[auraStyle] + ' Aura')].map((char, i) => (
@@ -2631,7 +2635,7 @@ export function LuminarySummonCutscene({
                           scaleX: isFlashing || isFading ? 0 : reducedMotion ? 1 : [1, 0.6, 1],
                           opacity: isFlashing || isFading
                             ? 0
-                            : reducedMotion ? 1 : [1, 0.3, 1],
+                            : reducedMotion || claimedBy ? 1 : [1, 0.3, 1],
                         }}
                         transition={{
                           scaleX: { duration: 0.5, delay: 0.9, ease: 'easeOut' },
@@ -2639,7 +2643,9 @@ export function LuminarySummonCutscene({
                             ? { duration: 0.3 }
                             : reducedMotion
                               ? { duration: 0 }
-                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+                              : claimedBy
+                                ? { duration: 1.5, ease: 'easeOut' }
+                                : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
                         }}
                       />
                     </div>
@@ -2648,14 +2654,16 @@ export function LuminarySummonCutscene({
                       animate={{
                         opacity: isFlashing || isFading
                           ? 0
-                          : reducedMotion ? 1 : [1, 0.6, 1],
+                          : reducedMotion || claimedBy ? 1 : [1, 0.6, 1],
                       }}
                       transition={
                         isFlashing || isFading
                           ? { duration: 0.3 }
                           : reducedMotion
                             ? { duration: 0 }
-                            : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+                            : claimedBy
+                              ? { duration: 1.5, ease: 'easeOut' }
+                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
                       }
                     >
                       {AURA_STYLE_DESCRIPTIONS[auraStyle]}
