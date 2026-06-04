@@ -2100,7 +2100,7 @@ export function LuminarySummonCutscene({
               }}
               exit={{ opacity: 0, scale: 1.90, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
               style={{
-                background: `radial-gradient(circle farthest-corner at 50% 42%, rgba(${pRgb},0.88) 0%, rgba(${pRgb},0.50) 32%, rgba(${pRgb},0.26) 62%, rgba(${pRgb},0.08) 86%, transparent 100%)`,
+                background: `radial-gradient(circle farthest-corner at 50% 42%, rgba(${pRgb},0.88) 0%, rgba(${pRgb},0.50) 32%, rgba(${sRgb},0.26) 62%, rgba(${sRgb},0.08) 86%, transparent 100%)`,
                 transformOrigin: '50% 42%',
               }}
             />
