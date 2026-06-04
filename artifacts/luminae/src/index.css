@@ -759,15 +759,12 @@ button,
 }
 .lum-aura-pale { animation: lum-aura-pale 4.8s ease-in-out infinite; }
 
-/* distorted — warped space ripple; uniform scale only, no anisotropic stretch
-   (non-uniform scale(x,y) causes sub-pixel shimmer and layout jitter) */
+/* distorted — fast continuous pulse, linear to avoid any "hang" */
 @keyframes lum-aura-distorted {
-  0%, 100% { opacity: 0.38; transform: scale(1.00); }
-  25%       { opacity: 0.62; transform: scale(1.06); }
-  50%       { opacity: 0.46; transform: scale(0.98); }
-  75%       { opacity: 0.70; transform: scale(1.04); }
+  0%, 100% { opacity: 0.65; transform: scale(1.00); }
+  50%       { opacity: 0.85; transform: scale(1.03); }
 }
-.lum-aura-distorted { animation: lum-aura-distorted 4.8s ease-in-out infinite; }
+.lum-aura-distorted { animation: lum-aura-distorted 2.4s linear infinite; }
 
 /* ── Ambient board glow — low-opacity halo cast onto surrounding board area ─
    A 2.5× card-sized fixed div sits behind each claimed Luminary's idle
@@ -836,8 +833,8 @@ button,
 
 /* distorted — ambient */
 @keyframes lum-ambient-distorted {
-  0%, 100% { opacity: 0.05; }
-  25%       { opacity: 0.15; }
+  0%, 100% { opacity: 0.08; }
+  25%       { opacity: 0.18; }
   50%       { opacity: 0.08; }
   75%       { opacity: 0.18; }
 }
@@ -912,8 +909,8 @@ button,
 
 /* distorted — tier-2 ambient */
 @keyframes lum-ambient-distorted-t2 {
-  0%, 100% { opacity: 0.08; }
-  25%       { opacity: 0.22; }
+  0%, 100% { opacity: 0.12; }
+  25%       { opacity: 0.26; }
   50%       { opacity: 0.12; }
   75%       { opacity: 0.26; }
 }
@@ -990,9 +987,9 @@ button,
 
 /* distorted — tier-3 ambient */
 @keyframes lum-ambient-distorted-t3 {
-  0%, 100% { opacity: 0.08; transform: scale(1.00); }
-  25%       { opacity: 0.30; transform: scale(1.10); }
-  50%       { opacity: 0.16; transform: scale(1.00); }
+  0%, 100% { opacity: 0.12; transform: scale(1.00); }
+  25%       { opacity: 0.36; transform: scale(1.08); }
+  50%       { opacity: 0.12; transform: scale(1.00); }
   75%       { opacity: 0.36; transform: scale(1.08); }
 }
 .lum-ambient-distorted-t3 { animation: lum-ambient-distorted-t3 7.2s ease-in-out infinite; }

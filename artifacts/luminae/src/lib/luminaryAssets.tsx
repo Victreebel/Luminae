@@ -1002,7 +1002,7 @@ export const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
   oracle:  { idleClass: 'lum-aura-fire',  ambientClass: 'lum-ambient-fire',  gradientShape: 'ellipse 52% 60% at 50% 48%', flashOrigin: '50% 46%', flashScaleEnd: 1.76 },
   // null — entropy; barely perceptible, bloom barely expands
   null:    { idleClass: 'lum-aura-null',  ambientClass: 'lum-ambient-null',  gradientShape: 'circle at 50% 50%',           flashOrigin: '50% 50%', flashScaleEnd: 1.44 },
-  // distorted — warped space ripple; lateral stretch with fold pulse
+  // distorted — double-pulse stutter; two gentle breaths per cycle
   distorted: { idleClass: 'lum-aura-distorted', ambientClass: 'lum-ambient-distorted', gradientShape: 'ellipse 72% 56% at 50% 46%', flashOrigin: '50% 46%', flashScaleEnd: 1.78 },
 };
 
