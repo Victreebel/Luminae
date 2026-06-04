@@ -330,6 +330,7 @@ export default function GameBoard() {
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [testPanelCollapsed, setTestPanelCollapsed] = useState(false);
+  const [expandedLumEffects, setExpandedLumEffects] = useState<Set<string>>(new Set());
   const [summonQueue, setSummonQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
     claimedBy?: string; // player name who claimed this Luminary
@@ -4210,6 +4211,65 @@ export default function GameBoard() {
                 </div>
               );
             })()}
+            {/* Claimed Luminary alliances — name + effect name, tap to reveal description */}
+            {(me?.claimedLuminaryIds ?? []).length > 0 && (
+              <div className="flex flex-col gap-1 mb-3">
+                {(me?.claimedLuminaryIds ?? []).map(lumId => {
+                  const lum = (state.luminaries as Luminary[]).find(l => l.id === lumId);
+                  if (!lum) return null;
+                  const visuals = getLuminaryVisuals(lumId);
+                  const primaryColor = visuals.primaryColor;
+                  const isExpanded = expandedLumEffects.has(lumId);
+                  const hasEffect = !!(lum.effectName || lum.effectDescription);
+                  return (
+                    <div key={lumId}>
+                      <div
+                        role={hasEffect ? 'button' : undefined}
+                        tabIndex={hasEffect ? 0 : undefined}
+                        aria-expanded={hasEffect ? isExpanded : undefined}
+                        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors${hasEffect ? ' cursor-pointer select-none' : ''}`}
+                        style={{ background: `${primaryColor}11`, border: `1px solid ${primaryColor}33` }}
+                        onClick={() => {
+                          if (!hasEffect) return;
+                          setExpandedLumEffects(prev => {
+                            const next = new Set(prev);
+                            if (next.has(lumId)) next.delete(lumId); else next.add(lumId);
+                            return next;
+                          });
+                        }}
+                        onKeyDown={(e) => {
+                          if (!hasEffect) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setExpandedLumEffects(prev => {
+                              const next = new Set(prev);
+                              if (next.has(lumId)) next.delete(lumId); else next.add(lumId);
+                              return next;
+                            });
+                          }
+                        }}
+                      >
+                        <LuminaryPanelArt luminaryId={lumId} size={24} claimed />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-semibold text-white leading-tight truncate">{lum.name}</p>
+                          {lum.effectName && (
+                            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] leading-none mt-0.5" style={{ color: primaryColor }}>{lum.effectName}</p>
+                          )}
+                        </div>
+                        {hasEffect && (
+                          <span className="text-[10px] text-muted-foreground shrink-0 leading-none">{isExpanded ? '▲' : '▼'}</span>
+                        )}
+                      </div>
+                      {isExpanded && lum.effectDescription && (
+                        <div className="mt-0.5 mx-0.5 rounded-lg px-3 py-2" style={{ background: `${primaryColor}0A`, border: `1px solid ${primaryColor}22` }}>
+                          <p className="text-[10px] text-white/70 leading-relaxed">{lum.effectDescription}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {/* Cards / Timeline toggle */}
             {(me?.purchasedCards?.length ?? 0) > 0 && (
               <div className="flex gap-1 mb-3">
