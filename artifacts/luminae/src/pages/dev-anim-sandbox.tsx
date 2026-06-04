@@ -336,6 +336,9 @@ export default function DevAnimSandbox() {
   const [selected, setSelected] = useState<SandboxLuminary | null>(null);
   const [idleKey, setIdleKey] = useState(0);
 
+  // Collapsible panel
+  const [collapsed, setCollapsed] = useState(false);
+
   function handleGridClick(lum: SandboxLuminary) {
     if (mode === 'summon') {
       setActive(lum);
@@ -372,78 +375,111 @@ export default function DevAnimSandbox() {
         <span className="text-sm font-semibold tracking-wide">DevAnimSandbox</span>
 
         {/* Mode tabs */}
-        <div className="flex items-center gap-1 ml-2 bg-black/30 rounded-md p-0.5 border border-border/20">
-          {MODES.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => {
-                setMode(m.id);
-                setSelected(null);
-              }}
-              className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
-              style={{
-                background: mode === m.id ? 'rgba(255,255,255,0.10)' : 'transparent',
-                color:      mode === m.id ? '#e2e8f0' : '#64748b',
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        {!collapsed && (
+          <div className="flex items-center gap-1 ml-2 bg-black/30 rounded-md p-0.5 border border-border/20">
+            {MODES.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => {
+                  setMode(m.id);
+                  setSelected(null);
+                }}
+                className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
+                style={{
+                  background: mode === m.id ? 'rgba(255,255,255,0.10)' : 'transparent',
+                  color:      mode === m.id ? '#e2e8f0' : '#64748b',
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Collapse toggle */}
+        <button
+          type="button"
+          onClick={() => setCollapsed(c => !c)}
+          className="text-[11px] font-mono px-2 py-1 rounded border border-border/30 hover:border-border/60 transition-colors"
+          style={{ color: '#64748b' }}
+          title={collapsed ? 'Expand panel' : 'Collapse panel'}
+        >
+          {collapsed ? '▶ expand' : '▼ collapse'}
+        </button>
 
         <span className="ml-auto text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">DEV ONLY</span>
       </div>
 
       {/* ── Instructions ──────────────────────────────────────────────────── */}
-      <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
-        {instructions[mode]}
-      </p>
+      {!collapsed && (
+        <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
+          {instructions[mode]}
+        </p>
+      )}
 
       {/* ── Content ───────────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      {!collapsed && (
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          {/* Luminary Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-w-3xl mx-auto">
+            {SANDBOX_LUMINARIES.map(lum => (
+              <LuminaryGridCard
+                key={lum.id}
+                lum={lum}
+                isActive={
+                  mode === 'summon'
+                    ? active?.id === lum.id
+                    : selected?.id === lum.id
+                }
+                mode={mode}
+                onClick={() => handleGridClick(lum)}
+              />
+            ))}
+          </div>
 
-        {/* Luminary Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-w-3xl mx-auto">
-          {SANDBOX_LUMINARIES.map(lum => (
-            <LuminaryGridCard
-              key={lum.id}
-              lum={lum}
-              isActive={
-                mode === 'summon'
-                  ? active?.id === lum.id
-                  : selected?.id === lum.id
-              }
-              mode={mode}
-              onClick={() => handleGridClick(lum)}
-            />
-          ))}
+          {/* ── Idle Portal Preview ────────────────────────────────────────── */}
+          {mode === 'idle' && selected && (
+            <div className="max-w-3xl mx-auto mt-6 border-t border-border/20 pt-4">
+              <IdlePortalPreview lum={selected} idleKey={idleKey} />
+            </div>
+          )}
+          {mode === 'idle' && !selected && (
+            <p className="text-center text-[11px] text-muted-foreground/30 mt-8">
+              ↑ select a Luminary above to preview its idle portal
+            </p>
+          )}
+
+          {/* ── Aura Layer Preview ─────────────────────────────────────────── */}
+          {mode === 'aura' && selected && (
+            <div className="max-w-3xl mx-auto mt-6 border-t border-border/20 pt-4">
+              <AuraLayerPreview lum={selected} />
+            </div>
+          )}
+          {mode === 'aura' && !selected && (
+            <p className="text-center text-[11px] text-muted-foreground/30 mt-8">
+              ↑ select a Luminary above to preview its aura layer
+            </p>
+          )}
         </div>
+      )}
 
-        {/* ── Idle Portal Preview ────────────────────────────────────────── */}
-        {mode === 'idle' && selected && (
-          <div className="max-w-3xl mx-auto mt-6 border-t border-border/20 pt-4">
-            <IdlePortalPreview lum={selected} idleKey={idleKey} />
-          </div>
-        )}
-        {mode === 'idle' && !selected && (
-          <p className="text-center text-[11px] text-muted-foreground/30 mt-8">
-            ↑ select a Luminary above to preview its idle portal
+      {/* Collapsed state — minimal placeholder */}
+      {collapsed && (
+        <div className="flex-1 flex items-center justify-center px-4">
+          <p className="text-xs text-muted-foreground/40 text-center">
+            Panel collapsed.
+            <br />
+            <button
+              type="button"
+              onClick={() => setCollapsed(false)}
+              className="text-xs text-muted-foreground hover:text-foreground underline mt-1"
+            >
+              Click to expand
+            </button>
           </p>
-        )}
-
-        {/* ── Aura Layer Preview ─────────────────────────────────────────── */}
-        {mode === 'aura' && selected && (
-          <div className="max-w-3xl mx-auto mt-6 border-t border-border/20 pt-4">
-            <AuraLayerPreview lum={selected} />
-          </div>
-        )}
-        {mode === 'aura' && !selected && (
-          <p className="text-center text-[11px] text-muted-foreground/30 mt-8">
-            ↑ select a Luminary above to preview its aura layer
-          </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Summon Cutscene (overlay) ──────────────────────────────────────── */}
       <AnimatePresence>
