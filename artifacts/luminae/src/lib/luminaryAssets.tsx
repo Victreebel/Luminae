@@ -958,6 +958,17 @@ interface AuraVariant {
   flashScaleEnd: number;
 }
 
+/**
+ * Emergency fallback — kept for error-boundary / dynamic-string scenarios only.
+ * Normal code must NOT use this: `AURA_VARIANTS` is typed as
+ * `Record<AuraStyle, AuraVariant>` so every valid `AuraStyle` is guaranteed
+ * a real entry at compile time.  Using the fallback at call sites that already
+ * hold a typed `AuraStyle` silences the compile-time guarantee and allows an
+ * unrecognised style to slip through silently.
+ *
+ * If you need to add a new aura style, add it to `KNOWN_AURA_STYLES` in
+ * `@workspace/game-types` and implement the matching entry in `AURA_VARIANTS`.
+ */
 export const AURA_VARIANT_FALLBACK: AuraVariant = {
   idleClass: 'lum-idle-aura',
   ambientClass: 'lum-ambient-generic',
@@ -1349,7 +1360,7 @@ export function LuminarySummonCutscene({
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
-  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
+  const auraVariant = AURA_VARIANTS[auraStyle];
   // When overrideColor is provided (win-sealing summon), use it for all burst/particle
   // visuals so they match the sealing Luminary's summonColor rather than the generic
   // LUMINARY_VISUALS primaryColor.
@@ -2570,7 +2581,7 @@ export function LuminarySummonCutscene({
 export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
-  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
+  const auraVariant = AURA_VARIANTS[auraStyle];
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
 
   const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);

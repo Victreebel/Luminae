@@ -46,7 +46,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS, AURA_VARIANT_FALLBACK } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -5649,7 +5649,7 @@ export default function GameBoard() {
                     {/* Live aura animation preview */}
                     {(() => {
                       const previewVis = getLuminaryVisuals(selectedLuminary.id);
-                      const previewVariant = AURA_VARIANTS[previewVis.auraStyle] ?? AURA_VARIANT_FALLBACK;
+                      const previewVariant = AURA_VARIANTS[previewVis.auraStyle];
                       return (
                         <div
                           aria-hidden="true"
