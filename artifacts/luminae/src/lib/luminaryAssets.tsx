@@ -1569,6 +1569,7 @@ export function LuminarySummonCutscene({
     isEstablish      ? 0    :
     isPanning        ? 0    :   // board fully visible while camera travels
     isFocusing       ? 0    :   // board still visible — whole scene zooms in
+    isShattering     ? 0.98 :   // hide the real board so only shards are visible
     isFlashing       ? 0.32 :
     isRevealedActive ? 0.52 :
     isFading         ? 0    :
@@ -1587,7 +1588,7 @@ export function LuminarySummonCutscene({
   // directly into the card without any additional translate.
   const camZoomed =
     isFocusing || isIntro || isZooming ||
-    isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
+    isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
   const camScale = camZoomed ? targetScale : 1;
 
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
@@ -2139,39 +2140,49 @@ export function LuminarySummonCutscene({
       </AnimatePresence>
 
       {/* ── Six large crystal polygon chunks ─────────────────────────── */}
-      {/* OUTSIDE camera layer — rendered in fixed screen space so the   */}
-      {/* camera scale-out does not interfere with chunk drift motion.   */}
-      {/* Chunks drift slowly outward, rotate in 3-D, pulse into the     */}
-      {/* Luminary's primary affinity colour via screen-blend overlay,   */}
-      {/* and fade out while the entity manifests from the shattered vessel. */}
+      {/* Rendered at the SAME zoom scale as the vessel (targetScale) so the   */}
+      {/* shards are the same apparent size as the card they split from. They   */}
+      {/* drift apart in a large arc, rotate in 3-D, and dissolve into the    */}
+      {/* Luminary's primary affinity colour via screen-blend overlay.          */}
       <AnimatePresence>
-        {isShatterVisible && PANEL_PIECES.map((piece, i) => (
+        {isShatterVisible && PANEL_PIECES.map((piece, i) => {
+          // Scale drift distances to match the zoomed card so the break
+          // reads at the same visual scale as the vessel.
+          const s = targetScale;
+          const dx = piece.dx * s;
+          const dy = piece.dy * s;
+          const z  = (piece.z ?? (i % 2 === 0 ? 80 : -80)) * s;
+          return (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
-              width: BOARD_CARD_W * 1.28, height: BOARD_CARD_H * 1.28,
-              left: vesselLeft, top: vesselTop,
+              width:  BOARD_CARD_W * s,
+              height: BOARD_CARD_H * s,
+              left:   vw / 2 - (BOARD_CARD_W * s) / 2,
+              top:    vh / 2 - (BOARD_CARD_H * s) / 2,
               clipPath: piece.clip,
               transformPerspective: 1000,
               transformStyle: 'preserve-3d',
+              zIndex: 10,
             }}
             initial={{
               x: 0, y: 0,
               z: 0,
               rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
+              scale: 0.98,
               filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
             animate={{
-              // Micro-jolt at crack moment (8% of travel in first ~0.3 s),
-              // then the pieces peel slowly outward under magical suspension.
-              // No projectile overshoot — the panel is being consumed, not shattered.
-              x: [0, piece.dx * 0.11, piece.dx],
-              y: [0, piece.dy * 0.11, piece.dy],
-              z: [0, piece.z ?? (i % 2 === 0 ? 80 : -80), piece.z ?? (i % 2 === 0 ? 180 : -180)],
-              rotateX: [0, piece.rotateX],
-              rotateY: [0, piece.rotateY],
-              rotateZ: [0, piece.rotateZ],
-              // Stay fully opaque through the "beat" (55%), then dissolve bright.
-              opacity: [1, 1, 1, 0.96, 0.66, 0],
+              // Hard jolt then wide drift — pieces peel far apart so the
+              // break is visually unmistakable even at zoomed scale.
+              x: [0, dx * 0.08, dx * 1.8],
+              y: [0, dy * 0.08, dy * 1.8],
+              z: [0, z * 0.4, z],
+              rotateX: [0, piece.rotateX * 1.6],
+              rotateY: [0, piece.rotateY * 1.6],
+              rotateZ: [0, piece.rotateZ * 1.4],
+              scale: [0.98, 0.98, 0.98, 0.98, 0.96, 0.92],
+              // Stay opaque through the first half, then dissolve bright.
+              opacity: [1, 1, 1, 0.96, 0.55, 0],
               // Filter arc: normal → affinity glow builds → pulse peak → white-hot
               // burn-out. Chunks never go dark — they dissolve INTO affinity light.
               filter: [
@@ -2184,31 +2195,32 @@ export function LuminarySummonCutscene({
               ],
             }}
             transition={{
-              duration: 5.00,
+              duration: 4.20,
               delay: i * 0.04,
               // Crack jolt then slow float
-              x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              z:       { times: [0, 0.18, 1.0], ease: ['easeOut', 'easeInOut'] },
-              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
-              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
-              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
-              opacity: { times: [0, 0.08, 0.26, 0.46, 0.66, 0.84, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.10, 0.24, 0.44, 0.64, 0.82, 1.0], ease: 'easeInOut' },
+              x:       { times: [0, 0.04, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              y:       { times: [0, 0.04, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              z:       { times: [0, 0.14, 1.0], ease: ['easeOut', 'easeInOut'] },
+              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 4.20 },
+              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 4.20 },
+              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 4.20 },
+              scale:   { times: [0, 0.06, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
+              opacity: { times: [0, 0.06, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.08, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
             }}
           >
-            {/* Panel artwork — the face of the vessel shard */}
+            {/* Panel artwork — fills the shard so the clipPath shows the correct piece */}
             {panelArt ? (
               <img src={panelArt} alt="" aria-hidden
                 style={{
-                  width: BOARD_CARD_W, height: BOARD_CARD_H,
-                  objectFit: 'cover', objectPosition: 'center top',
+                  width: '100%', height: '100%',
+                  objectFit: 'cover', objectPosition: 'center',
                   display: 'block',
                 }}
                 draggable={false}
               />
             ) : (
-              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
+              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W * s} />
             )}
             {/* Affinity-colour transmutation — the vessel material is consumed by the
                 Luminary's energy. Ramps to full opacity (solid affinity colour) before
@@ -2233,7 +2245,7 @@ export function LuminarySummonCutscene({
               boxShadow: `inset 0 0 0 1.5px rgba(${pRgb},0.80), inset 3px 3px 0 rgba(${pRgb},0.28), inset -3px -3px 0 rgba(0,0,20,0.55), inset 0 0 22px rgba(${pRgb},0.30)`,
             }} />
           </motion.div>
-        ))}
+        )})}
       </AnimatePresence>
 
       {/* ── Crystal dust particles ── scattering from vessel center ───────────
