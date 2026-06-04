@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { AnimatePresence } from 'framer-motion';
 import {
@@ -73,6 +73,10 @@ const MOCK_CARD_H = 160;
 
 function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: number }) {
   const vis = getLuminaryVisuals(lum.id);
+  const [replayKey, setReplayKey] = useState(0);
+
+  // Reset local replay counter whenever the parent selects a new Luminary
+  useEffect(() => { setReplayKey(0); }, [idleKey]);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-6">
@@ -134,8 +138,24 @@ function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: nu
         </div>
       </div>
 
-      {/* The overlay mounts fresh on each idleKey change (re-keyed on selection) */}
-      <LuminaryIdleOverlay key={idleKey} luminaryId={lum.id} />
+      {/* The overlay mounts fresh on each key change (outer idleKey = new selection, inner replayKey = replay) */}
+      <LuminaryIdleOverlay key={`${idleKey}-${replayKey}`} luminaryId={lum.id} />
+
+      {/* Replay button — re-keys the overlay so the return-flight runs again from scratch */}
+      <button
+        type="button"
+        onClick={() => setReplayKey(k => k + 1)}
+        className="text-[11px] font-mono px-3 py-1.5 rounded border transition-colors"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          borderColor: `${vis.primaryColor}50`,
+          color: vis.primaryColor,
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.09)'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
+      >
+        ↺ Replay
+      </button>
 
       <p className="text-[10px] text-muted-foreground/40 text-center max-w-xs">
         {lum.flavor}
