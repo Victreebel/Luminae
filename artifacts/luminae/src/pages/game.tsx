@@ -5668,6 +5668,10 @@ export default function GameBoard() {
                         </div>
                       );
                     })()}
+                    {/* Aura style name label */}
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-white/40">
+                      {AURA_STYLE_NAMES[getLuminaryVisuals(selectedLuminary.id).auraStyle]}
+                    </span>
                     {(() => {
                       const claimer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(selectedLuminary.id));
                       return claimer ? (
