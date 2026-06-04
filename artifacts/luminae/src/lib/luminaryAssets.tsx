@@ -1618,25 +1618,21 @@ export function LuminarySummonCutscene({
       }}
     >
 
-      {/* ── Skip View / Continue button ─────────────────────────────────────── */}
-      {onSkip && (
+      {/* ── Skip View button — only visible before the cutscene is ready to dismiss ── */}
+      {onSkip && !awaitingDismiss && (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (awaitingDismiss && dismissRef.current) {
-              dismissRef.current();
-            } else {
-              onSkip();
-            }
+            onSkip();
           }}
           className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur transition-colors select-none"
-          aria-label={awaitingDismiss ? 'Tap to continue' : 'Skip summoning view'}
+          aria-label="Skip summoning view"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
             <path d="M1 1l8 4-8 4V1z" />
             <rect x="8" y="1" width="1.5" height="8" rx="0.5" />
           </svg>
-          {awaitingDismiss ? 'Tap to continue' : 'Skip view'}
+          Skip view
         </button>
       )}
 
