@@ -7135,13 +7135,25 @@ export default function GameBoard() {
       <AnimatePresence>
         {!isTutorial && summonQueue.length > 0 && summonQueue[0] && (() => {
           const entry = summonQueue[0];
+          // Completion logic shared by both onSkip and the cutscene's internal
+          // onComplete timer. When the user taps Skip, the cutscene is unmounted
+          // immediately so the queue advances and the server gate resolves.
+          const resolveSummon = () => {
+            console.log(`[Luminae] Summon resolved: eventId="${entry.eventId}" isDevTest=${entry.isDevTest}`);
+            setCutscenePostFlash(false);
+            setLocalSummonSkipped(false);
+            setSummonQueue(q => q.slice(1));
+            setClaimedThisSession(prev =>
+              prev.includes(entry.id) ? prev : [...prev, entry.id]
+            );
+            // Resolve the global summon gate on the server so all clients
+            // can unblock their turn actions once the cutscene is done.
+            if (!entry.isDevTest) {
+              executeAction({ type: 'resolve_summon', eventId: entry.eventId });
+            }
+          };
           return (
-            <div
-              key={entry.eventId}
-              style={localSummonSkipped
-                ? { visibility: 'hidden', pointerEvents: 'none' }
-                : undefined}
-            >
+            <div key={entry.eventId}>
               <LuminarySummonCutscene
                 luminaryId={entry.id}
                 luminaryName={entry.name}
@@ -7155,25 +7167,9 @@ export default function GameBoard() {
                 onSkip={() => {
                   console.log(`[Luminae] Summon view skipped locally for eventId="${entry.eventId}"`);
                   gameAudio.stopSummonCutscene();
-                  setLocalSummonSkipped(true);
+                  resolveSummon();
                 }}
-                onComplete={(() => {
-                  const capturedEntry = entry;
-                  return () => {
-                    console.log(`[Luminae] Summon onComplete: eventId="${capturedEntry.eventId}" isDevTest=${capturedEntry.isDevTest}`);
-                    setCutscenePostFlash(false);
-                    setLocalSummonSkipped(false);
-                    setSummonQueue(q => q.slice(1));
-                    setClaimedThisSession(prev =>
-                      prev.includes(capturedEntry.id) ? prev : [...prev, capturedEntry.id]
-                    );
-                    // Resolve the global summon gate on the server so all clients
-                    // can unblock their turn actions once the cutscene is done.
-                    if (!capturedEntry.isDevTest) {
-                      executeAction({ type: 'resolve_summon', eventId: capturedEntry.eventId });
-                    }
-                  };
-                })()}
+                onComplete={resolveSummon}
               />
             </div>
           );
