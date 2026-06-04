@@ -2689,7 +2689,11 @@ export function AuraPreviewModal({
 export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
-  const auraVariant = AURA_VARIANTS[auraStyle];
+  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
+  // Tier-aware ambient class — tier-2 gets a wider opacity swing; tier-3 gets
+  // a dramatically wider swing + scale swell at a slower breathing cadence.
+  const tierSuffix = vis.tier === 3 ? '-t3' : vis.tier === 2 ? '-t2' : '';
+  const tieredAmbientClass = `${auraVariant.ambientClass}${tierSuffix}`;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
 
   const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
@@ -2857,7 +2861,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           clip-path: inset() keeps the glow inside [data-game-board] bounds. */}
       {ambientVisible && (
         <div
-          className={`fixed pointer-events-none ${auraVariant.ambientClass}`}
+          className={`fixed pointer-events-none ${tieredAmbientClass}`}
           style={{
             zIndex: 17,
             left: ambientLeft,

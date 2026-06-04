@@ -794,6 +794,142 @@ button,
 }
 .lum-ambient-generic { animation: lum-ambient-generic 3.8s ease-in-out infinite; }
 
+/* ── Tier-2 ambient variants (dual-color Luminaries) ────────────────────────
+   ~1.4× wider opacity swing vs tier-1 baseline; same cadence.
+   Applied when vis.tier === 2.                                               */
+
+@keyframes lum-ambient-fire-t2 {
+  0%   { opacity: 0.08; }
+  15%  { opacity: 0.24; }
+  32%  { opacity: 0.11; }
+  54%  { opacity: 0.26; }
+  74%  { opacity: 0.13; }
+  100% { opacity: 0.08; }
+}
+.lum-ambient-fire-t2 { animation: lum-ambient-fire-t2 2.6s ease-in-out infinite; }
+
+@keyframes lum-ambient-storm-t2 {
+  0%   { opacity: 0.06; }
+  8%   { opacity: 0.22; }
+  18%  { opacity: 0.07; }
+  30%  { opacity: 0.20; }
+  44%  { opacity: 0.06; }
+  60%  { opacity: 0.23; }
+  76%  { opacity: 0.09; }
+  90%  { opacity: 0.19; }
+  100% { opacity: 0.06; }
+}
+.lum-ambient-storm-t2 { animation: lum-ambient-storm-t2 1.8s ease-in-out infinite; }
+
+@keyframes lum-ambient-tide-t2 {
+  0%, 100% { opacity: 0.10; }
+  50%       { opacity: 0.24; }
+}
+.lum-ambient-tide-t2 { animation: lum-ambient-tide-t2 5.4s ease-in-out infinite; }
+
+@keyframes lum-ambient-void-t2 {
+  0%   { opacity: 0.17; }
+  35%  { opacity: 0.06; }
+  55%  { opacity: 0.20; }
+  80%  { opacity: 0.07; }
+  100% { opacity: 0.17; }
+}
+.lum-ambient-void-t2 { animation: lum-ambient-void-t2 4.2s ease-in-out infinite; }
+
+@keyframes lum-ambient-bloom-t2 {
+  0%, 100% { opacity: 0.09; }
+  50%       { opacity: 0.22; }
+}
+.lum-ambient-bloom-t2 { animation: lum-ambient-bloom-t2 6.0s ease-in-out infinite; }
+
+@keyframes lum-ambient-null-t2 {
+  0%, 100% { opacity: 0.03; }
+  50%       { opacity: 0.12; }
+}
+.lum-ambient-null-t2 { animation: lum-ambient-null-t2 7.2s ease-in-out infinite; }
+
+@keyframes lum-ambient-pale-t2 {
+  0%, 100% { opacity: 0.09; }
+  30%       { opacity: 0.20; }
+  60%       { opacity: 0.13; }
+}
+.lum-ambient-pale-t2 { animation: lum-ambient-pale-t2 4.8s ease-in-out infinite; }
+
+@keyframes lum-ambient-generic-t2 {
+  0%, 100% { opacity: 0.09; }
+  50%       { opacity: 0.17; }
+}
+.lum-ambient-generic-t2 { animation: lum-ambient-generic-t2 3.8s ease-in-out infinite; }
+
+/* ── Tier-3 ambient variants (triple-color Luminaries) ──────────────────────
+   ~2.2× wider opacity swing + transform:scale swell (1.0 → 1.12) vs tier-1.
+   Duration is 1.4× slower — a deeper, more ominous breathing rhythm.
+   scale() is compositor-thread-only (same as opacity), zero layout cost.
+   Applied when vis.tier === 3.                                               */
+
+@keyframes lum-ambient-fire-t3 {
+  0%   { opacity: 0.06; transform: scale(1.00); }
+  15%  { opacity: 0.38; transform: scale(1.10); }
+  32%  { opacity: 0.10; transform: scale(1.00); }
+  54%  { opacity: 0.42; transform: scale(1.12); }
+  74%  { opacity: 0.12; transform: scale(1.01); }
+  100% { opacity: 0.06; transform: scale(1.00); }
+}
+.lum-ambient-fire-t3 { animation: lum-ambient-fire-t3 3.9s ease-in-out infinite; }
+
+@keyframes lum-ambient-storm-t3 {
+  0%   { opacity: 0.05; transform: scale(1.00); }
+  8%   { opacity: 0.33; transform: scale(1.10); }
+  18%  { opacity: 0.07; transform: scale(1.00); }
+  30%  { opacity: 0.31; transform: scale(1.09); }
+  44%  { opacity: 0.06; transform: scale(1.00); }
+  60%  { opacity: 0.36; transform: scale(1.12); }
+  76%  { opacity: 0.08; transform: scale(1.01); }
+  90%  { opacity: 0.29; transform: scale(1.08); }
+  100% { opacity: 0.05; transform: scale(1.00); }
+}
+.lum-ambient-storm-t3 { animation: lum-ambient-storm-t3 2.7s ease-in-out infinite; }
+
+@keyframes lum-ambient-tide-t3 {
+  0%, 100% { opacity: 0.08; transform: scale(1.00); }
+  50%       { opacity: 0.38; transform: scale(1.13); }
+}
+.lum-ambient-tide-t3 { animation: lum-ambient-tide-t3 8.1s ease-in-out infinite; }
+
+@keyframes lum-ambient-void-t3 {
+  0%   { opacity: 0.24; transform: scale(1.11); }
+  35%  { opacity: 0.06; transform: scale(1.00); }
+  55%  { opacity: 0.30; transform: scale(1.13); }
+  80%  { opacity: 0.07; transform: scale(1.01); }
+  100% { opacity: 0.24; transform: scale(1.11); }
+}
+.lum-ambient-void-t3 { animation: lum-ambient-void-t3 6.3s ease-in-out infinite; }
+
+@keyframes lum-ambient-bloom-t3 {
+  0%, 100% { opacity: 0.08; transform: scale(1.00); }
+  50%       { opacity: 0.34; transform: scale(1.14); }
+}
+.lum-ambient-bloom-t3 { animation: lum-ambient-bloom-t3 9.0s ease-in-out infinite; }
+
+@keyframes lum-ambient-null-t3 {
+  0%, 100% { opacity: 0.03; transform: scale(1.00); }
+  50%       { opacity: 0.18; transform: scale(1.10); }
+}
+.lum-ambient-null-t3 { animation: lum-ambient-null-t3 10.8s ease-in-out infinite; }
+
+@keyframes lum-ambient-pale-t3 {
+  0%, 100% { opacity: 0.07; transform: scale(1.00); }
+  30%       { opacity: 0.30; transform: scale(1.11); }
+  60%       { opacity: 0.15; transform: scale(1.05); }
+}
+.lum-ambient-pale-t3 { animation: lum-ambient-pale-t3 7.2s ease-in-out infinite; }
+
+@keyframes lum-ambient-generic-t3 {
+  0%, 100% { opacity: 0.08; transform: scale(1.00); }
+  50%       { opacity: 0.26; transform: scale(1.12); }
+}
+.lum-ambient-generic-t3 { animation: lum-ambient-generic-t3 5.7s ease-in-out infinite; }
+
 /* ── Radiant Keeper idle — layered ring/core rotation + pulse ────────────
    Ring (radiant1): CCW rotation applied to img; scale-up via wrapper div.
    Core (radiant3): CW rotation on img; scale-down + pulse on wrapper div.
