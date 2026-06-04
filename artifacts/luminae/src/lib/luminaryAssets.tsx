@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
-import type { AuraStyle } from '@workspace/game-types';
+import type { AuraStyle, LuminaryId } from '@workspace/game-types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,10 +14,10 @@ import type { AuraStyle } from '@workspace/game-types';
  * the backend share the same type.  When adding a new animation variant, add
  * its key there and implement the matching case in AURA_VARIANTS below.
  */
-export { KNOWN_AURA_STYLES, type AuraStyle };
+export { KNOWN_AURA_STYLES, type AuraStyle, type LuminaryId };
 
 interface LuminaryVisuals {
-  id: string;
+  id: LuminaryId;
   primaryColor: string;
   secondaryColor: string;
   glowColor: string;
@@ -891,7 +891,7 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
 // the frontend never reads them from the server event. Update both files in
 // sync whenever a Luminary's flash palette changes.
 
-export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
+export const LUMINARY_VISUALS: Record<LuminaryId, LuminaryVisuals> = {
   lum_ember:   { id: 'lum_ember',   primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.6)',    EntityArt: EmberEntity,   summonColor: '#ff5a3c', summonSecondaryColor: '#7b1fa2', auraStyle: 'fire',    tier: 3 },
   lum_tide:    { id: 'lum_tide',    primaryColor: '#3d6bff', secondaryColor: '#e2e8f0', glowColor: 'rgba(61,107,255,0.55)',  EntityArt: TideEntity,    summonColor: '#60a5fa', summonSecondaryColor: '#e2e8f0', auraStyle: 'tide',    tier: 1 },
   lum_verdant: { id: 'lum_verdant', primaryColor: '#2ecc71', secondaryColor: '#166534', glowColor: 'rgba(46,204,113,0.55)',  EntityArt: VerdantEntity, summonColor: '#4ade80', summonSecondaryColor: '#166534', auraStyle: 'verdant', tier: 1 },
@@ -911,7 +911,7 @@ export const LUMINARY_VISUALS: Record<string, LuminaryVisuals> = {
 };
 
 const FALLBACK_VISUALS: LuminaryVisuals = {
-  id: 'fallback',
+  id: 'fallback' as LuminaryId,
   primaryColor: '#fbbf24',
   secondaryColor: '#f59e0b',
   glowColor: 'rgba(251,191,36,0.5)',
@@ -928,7 +928,7 @@ const FALLBACK_VISUALS: LuminaryVisuals = {
 };
 
 export function getLuminaryVisuals(id: string): LuminaryVisuals {
-  return LUMINARY_VISUALS[id] ?? FALLBACK_VISUALS;
+  return (LUMINARY_VISUALS as Record<string, LuminaryVisuals>)[id] ?? FALLBACK_VISUALS;
 }
 
 // ─── Aura Variant Lookup ──────────────────────────────────────────────────────

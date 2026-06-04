@@ -2,9 +2,18 @@
 /**
  * check-summon-colors.ts
  *
- * Asserts that every Luminary's summonColor / summonSecondaryColor / auraStyle
- * in LUMINARY_VISUALS (luminaryAssets.tsx) matches the corresponding entry in
- * the LUMINARIES array (gameEngine.ts).
+ * Secondary runtime safety net that asserts:
+ *   1. Every Luminary ID in the engine and assets is a member of LUMINARY_IDS
+ *      in @workspace/game-types (the primary compile-time guard).
+ *   2. Every Luminary's summonColor / summonSecondaryColor / auraStyle in
+ *      LUMINARY_VISUALS (luminaryAssets.tsx) matches the corresponding entry in
+ *      the LUMINARIES array (gameEngine.ts).
+ *
+ * PRIMARY GUARD: The `LuminaryId` union type in @workspace/game-types gives
+ * compile-time errors in both gameEngine.ts and luminaryAssets.tsx whenever an
+ * ID is added or removed from the canonical list.  This script is the secondary
+ * layer that catches runtime-only divergences (summon tint values and aura
+ * style strings) that TypeScript cannot check statically.
  *
  * LUMINARY_VISUALS is the single source of truth for flash tints and aura
  * animation styles consumed by the frontend. gameEngine.ts drives the actual
@@ -80,7 +89,58 @@ export interface AuraCheckResult {
 // ── Parsers ─────────────────────────────────────────────────────────────────
 
 /**
- * Parse the KNOWN_AURA_STYLES array from luminaryAssets.tsx.
+ * Parse the LUMINARY_IDS array from @workspace/game-types index.ts.
+ *
+ * Returns the set of canonical Luminary IDs defined in the shared lib.
+ * Fails loudly if the declaration or any entries cannot be found, so a rename
+ * or restructuring of the constant is caught immediately.
+ */
+export function parseLuminaryIds(src: string): ReadonlySet<string> {
+  const declStart = src.indexOf("export const LUMINARY_IDS");
+  if (declStart === -1) {
+    throw new Error(
+      "Could not find `export const LUMINARY_IDS` in game-types/src/index.ts — " +
+      "the constant may have been renamed or removed."
+    );
+  }
+
+  const bracketOpen = src.indexOf("[", declStart);
+  if (bracketOpen === -1) {
+    throw new Error("Could not find `[` after LUMINARY_IDS declaration");
+  }
+
+  let depth = 0;
+  let bracketClose = -1;
+  for (let i = bracketOpen; i < src.length; i++) {
+    if (src[i] === "[") depth++;
+    else if (src[i] === "]") {
+      depth--;
+      if (depth === 0) { bracketClose = i; break; }
+    }
+  }
+  if (bracketClose === -1) {
+    throw new Error("Unterminated LUMINARY_IDS array in game-types/src/index.ts");
+  }
+
+  const arrayContent = src.slice(bracketOpen + 1, bracketClose);
+  const entries = new Set<string>();
+  const STRING_RE = /["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = STRING_RE.exec(arrayContent)) !== null) {
+    entries.add(m[1]);
+  }
+
+  if (entries.size === 0) {
+    throw new Error(
+      "LUMINARY_IDS array parsed as empty — check the constant in game-types/src/index.ts."
+    );
+  }
+
+  return entries;
+}
+
+/**
+ * Parse the KNOWN_AURA_STYLES array from @workspace/game-types index.ts.
  *
  * Strategy: locate the `export const KNOWN_AURA_STYLES` declaration, find the
  * bracketed array literal that follows it, and extract each quoted string entry.
@@ -91,7 +151,7 @@ export function parseKnownAuraStyles(src: string): ReadonlySet<string> {
   const declStart = src.indexOf("export const KNOWN_AURA_STYLES");
   if (declStart === -1) {
     throw new Error(
-      "Could not find `export const KNOWN_AURA_STYLES` in luminaryAssets.tsx — " +
+      "Could not find `export const KNOWN_AURA_STYLES` in game-types/src/index.ts — " +
       "the constant may have been renamed or removed."
     );
   }
@@ -415,12 +475,54 @@ if (isMain) {
   const engineColors = parseEngineColors(engineSrc);
   const assetsColors = parseAssetsColors(assetsSrc);
 
-  // KNOWN_AURA_STYLES in @workspace/game-types is the single source of truth.
-  // Both gameEngine.ts and luminaryAssets.tsx re-export from there, so we parse
-  // the shared lib file directly to validate against the authoritative list.
+  // @workspace/game-types is the single source of truth for LUMINARY_IDS and
+  // KNOWN_AURA_STYLES.  Parse both from the shared lib file directly so we
+  // validate against the authoritative compile-time lists.
   const gameTypesSrc = readFileSync(GAME_TYPES_PATH, "utf-8");
+  const canonicalIds = parseLuminaryIds(gameTypesSrc);
   const knownStyles = parseKnownAuraStyles(gameTypesSrc);
 
+  // ── Pass 1: ID membership check ─────────────────────────────────────────
+  // Every engine and assets ID must be in LUMINARY_IDS.  TypeScript catches
+  // this at compile time via the LuminaryId union, but the script re-checks
+  // at runtime in case source files were edited without re-compiling.
+  const unknownEngineIds: string[] = [];
+  for (const id of engineColors.keys()) {
+    if (!canonicalIds.has(id)) unknownEngineIds.push(id);
+  }
+  const unknownAssetsIds: string[] = [];
+  for (const id of assetsColors.keys()) {
+    if (!canonicalIds.has(id)) unknownAssetsIds.push(id);
+  }
+  const missingFromCanonical: string[] = [];
+  for (const id of canonicalIds) {
+    if (!engineColors.has(id) && !assetsColors.has(id)) {
+      missingFromCanonical.push(id);
+    }
+  }
+
+  const idErrors = unknownEngineIds.length + unknownAssetsIds.length + missingFromCanonical.length;
+  if (idErrors > 0) {
+    console.error(`check-summon-colors: FAIL — ${idErrors} LUMINARY_IDS discrepancy(ies):\n`);
+    if (unknownEngineIds.length > 0) {
+      console.error("  IDs in LUMINARIES not in LUMINARY_IDS (add them to @workspace/game-types):");
+      for (const id of unknownEngineIds) console.error(`    ${id}`);
+      console.error("");
+    }
+    if (unknownAssetsIds.length > 0) {
+      console.error("  IDs in LUMINARY_VISUALS not in LUMINARY_IDS (add them to @workspace/game-types):");
+      for (const id of unknownAssetsIds) console.error(`    ${id}`);
+      console.error("");
+    }
+    if (missingFromCanonical.length > 0) {
+      console.error("  IDs in LUMINARY_IDS not found in either engine or assets (remove or implement them):");
+      for (const id of missingFromCanonical) console.error(`    ${id}`);
+      console.error("");
+    }
+    process.exit(1);
+  }
+
+  // ── Pass 2: Color / auraStyle cross-check ───────────────────────────────
   const { mismatches, missingFromAssets, missingFromEngine, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStyles);
 
   const hasErrors =
@@ -466,7 +568,7 @@ if (isMain) {
         `  Valid values: ${[...knownStyles].map((s) => `"${s}"`).join(", ")}`
       );
       console.error(
-        "  To add a new style: extend KNOWN_AURA_STYLES in luminaryAssets.tsx\n" +
+        "  To add a new style: extend KNOWN_AURA_STYLES in @workspace/game-types\n" +
         "  AND add a matching case to the frontend animation switch."
       );
       console.error("");
@@ -478,7 +580,7 @@ if (isMain) {
         "  Summon-color mismatch — Update LUMINARY_VISUALS in luminaryAssets.tsx to match",
         "    gameEngine.ts, or vice versa.  LUMINARY_VISUALS is the canonical source of truth.",
         "  Unrecognised auraStyle — Either fix the typo in LUMINARY_VISUALS, or add the new",
-        "    animation key to KNOWN_AURA_STYLES in luminaryAssets.tsx",
+        "    animation key to KNOWN_AURA_STYLES in @workspace/game-types",
         "    (and implement the animation branch in the aura renderer).",
       ].join("\n")
     );
@@ -503,7 +605,7 @@ if (isMain) {
   }
 
   console.log(
-    `check-summon-colors: OK — all ${engineColors.size} engine Luminar${
+    `check-summon-colors: OK — ${canonicalIds.size} canonical IDs verified; all ${engineColors.size} engine Luminar${
       engineColors.size === 1 ? "y" : "ies"
     } match LUMINARY_VISUALS; all auraStyle values are in the allowlist.`
   );

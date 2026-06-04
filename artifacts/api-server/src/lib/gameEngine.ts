@@ -3,8 +3,8 @@
 // Original names, original card designs, original rules presentation.
 
 import { z } from "zod";
-import { KNOWN_AURA_STYLES } from '@workspace/game-types';
-import type { AuraStyle } from '@workspace/game-types';
+import { KNOWN_AURA_STYLES, LUMINARY_IDS } from '@workspace/game-types';
+import type { AuraStyle, LuminaryId } from '@workspace/game-types';
 import { getCardLore } from "./cardLore";
 
 export type CrystalColor = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl";
@@ -69,10 +69,10 @@ export interface ArtifactCard {
   cost: CrystalCounts;
 }
 
-export { KNOWN_AURA_STYLES, type AuraStyle };
+export { KNOWN_AURA_STYLES, LUMINARY_IDS, type AuraStyle, type LuminaryId };
 
 export interface LuminaryDef {
-  id: string;
+  id: LuminaryId;
   name: string;
   domain: string;
   lumens: number;
