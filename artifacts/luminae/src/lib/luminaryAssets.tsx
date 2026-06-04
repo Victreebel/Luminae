@@ -2338,8 +2338,8 @@ export function LuminarySummonCutscene({
                             display: 'block',
                             // Stretch the seed vertically so it fills the tall panel
                             // without squishing the horizontal portals.
-                            transform: luminaryId === 'lum_seed' ? 'scaleY(1.22)' : undefined,
-                            transformOrigin: luminaryId === 'lum_seed' ? 'center center' : undefined,
+                            transform: luminaryId === 'lum_seed' ? 'scaleY(1.22)' : luminaryId === 'lum_compass' ? 'scaleX(1.35)' : undefined,
+                            transformOrigin: luminaryId === 'lum_seed' ? 'center center' : luminaryId === 'lum_compass' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
