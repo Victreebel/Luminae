@@ -238,6 +238,27 @@ button,
 .harness-swirl-ring { animation: harness-swirl 3s linear infinite; }
 .harness-press-flash { animation: harness-press-flash 0.48s ease-out forwards; }
 
+/* ── Aura label beat-drop glow ──────────────────────────────────────────── */
+/* Fires once on the cutscene beat-drop (~0.9 s delay, set on the element).  */
+/* text-shadow only — opacity is still driven by framer-motion on the parent. */
+@keyframes aura-label-glow {
+  0%   { text-shadow: none; }
+  25%  { text-shadow: 0 0 10px var(--aura-glow-color, #fff),
+                      0 0 22px var(--aura-glow-color, #fff),
+                      0 0 40px var(--aura-glow-color, #fff); }
+  65%  { text-shadow: 0 0 6px var(--aura-glow-color, #fff); }
+  100% { text-shadow: none; }
+}
+.aura-label-glow {
+  animation: aura-label-glow 1.4s ease-out forwards;
+  animation-delay: 0.9s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aura-label-glow {
+    animation: none;
+  }
+}
+
 /* ── Tutorial keyword shimmer ───────────────────────────────────────────── */
 @keyframes lumii-keyword-shimmer {
   0%, 100% { filter: brightness(1); }

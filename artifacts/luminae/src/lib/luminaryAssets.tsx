@@ -2556,6 +2556,7 @@ export function LuminarySummonCutscene({
                     initial={{ opacity: 0 }}
                     animate={{ opacity: isFlashing ? 0 : (isFading ? 0 : 1) }}
                     transition={{ duration: 0.7, delay: 0.9 }}
+                    style={{ '--aura-glow-color': primaryColor } as React.CSSProperties}
                   >
                     <div className="flex items-center gap-1.5">
                       <div
@@ -2563,7 +2564,7 @@ export function LuminarySummonCutscene({
                         style={{ background: `linear-gradient(to right, transparent, ${primaryColor}80)` }}
                       />
                       <div
-                        className="text-[9px] font-bold tracking-[0.20em] uppercase"
+                        className="aura-label-glow text-[9px] font-bold tracking-[0.20em] uppercase"
                         style={{ color: `${primaryColor}cc` }}
                       >
                         {AURA_STYLE_NAMES[auraStyle]} Aura
