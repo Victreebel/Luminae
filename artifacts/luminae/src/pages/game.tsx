@@ -7293,13 +7293,13 @@ export default function GameBoard() {
 
       {/* ── Dev: Luminary Summon Test Panel ── */}
       {import.meta.env.DEV && summonQueue.length === 0 && state?.status === 'playing' && (
-        <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1">
-          <div className="flex items-center gap-1">
-            <span className="text-[8px] text-white/30 px-1 font-mono uppercase tracking-wider">Test Cutscene</span>
+        <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1 p-2 rounded-lg border border-amber-500/40 bg-black/80 shadow-lg shadow-black/60">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-amber-300 font-mono uppercase tracking-wider font-semibold">Test Cutscene</span>
             <button
               type="button"
               onClick={() => setTestPanelCollapsed(c => !c)}
-              className="text-[8px] text-white/30 hover:text-white/60 px-1 font-mono transition-colors"
+              className="text-[10px] text-amber-300/70 hover:text-amber-300 font-mono transition-colors px-1 rounded border border-amber-500/20 hover:border-amber-500/50"
               title={testPanelCollapsed ? 'Expand test panel' : 'Collapse test panel'}
             >
               {testPanelCollapsed ? '▶' : '▼'}
@@ -7313,13 +7313,13 @@ export default function GameBoard() {
                 l.id, l.name, l.domain ?? '', l.lumens, l.flavor ?? '',
                 `dev-test-${l.id}`, true,
               )}
-              className="text-[9px] bg-black/70 text-amber-300/80 border border-amber-500/30 rounded px-2 py-0.5 hover:bg-amber-900/40 transition-colors text-left"
+              className="text-[10px] bg-black/60 text-amber-300/90 border border-amber-500/40 rounded px-2 py-1 hover:bg-amber-900/50 hover:border-amber-500/70 transition-colors text-left"
             >
               ✦ {l.name}
             </button>
           ))}
           {testPanelCollapsed && (
-            <span className="text-[8px] text-white/20 px-1 font-mono">{((state.luminaries ?? []).length)} Luminaries</span>
+            <span className="text-[10px] text-amber-300/50 px-1 font-mono">{((state.luminaries ?? []).length)} Luminaries</span>
           )}
         </div>
       )}
