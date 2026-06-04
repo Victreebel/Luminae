@@ -997,6 +997,46 @@ const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
   null:    { idleClass: 'lum-aura-null',  gradientShape: 'circle at 50% 50%',           flashOrigin: '50% 50%', flashScaleEnd: 1.44 },
 };
 
+/**
+ * Lore-appropriate display names for each aura animation style key.
+ * Used to surface the style name in the Luminary detail panel alongside
+ * the description, e.g. "Tide — Slow rolling wave…"
+ */
+export const AURA_STYLE_NAMES: Record<AuraStyle, string> = {
+  fire:    'Flare',
+  storm:   'Storm',
+  tide:    'Tide',
+  void:    'Void',
+  radiant: 'Radiant',
+  astral:  'Astral',
+  verdant: 'Verdant',
+  pale:    'Pale',
+  bloom:   'Bloom',
+  compass: 'Compass',
+  oracle:  'Oracle',
+  null:    'Null',
+};
+
+/**
+ * Human-readable lore descriptions for each aura animation style.
+ * Surfaced in the Luminary detail panel so players understand the entity's
+ * presence before committing to a claim.
+ */
+export const AURA_STYLE_DESCRIPTIONS: Record<AuraStyle, string> = {
+  fire:    'Irregular upward flicker — ignition consciousness rising from below',
+  storm:   'Electric rapid discharge — tight arc bloom, tense and violent',
+  tide:    'Slow rolling wave — broad horizontal drift, patient and inevitable',
+  void:    'Imploding dark pulse — presence collapses inward, resisting observation',
+  radiant: 'Slow organic swell — layered resonant luminescence, ordered and serene',
+  astral:  'Dual fire-ice flicker — twin-natured bloom caught between states',
+  verdant: 'Slow organic swell — growth rising from deep roots, unhurried',
+  pale:    'Double-peak silver shimmer — starburst radiance, between breath and silence',
+  bloom:   'Widest organic swell — vast expansion bloom, generative and open',
+  compass: 'Orbital wave — sweeping horizontal spread, tracing unseen paths',
+  oracle:  'Slow amber burn — upward ember drift, deliberate and foretelling',
+  null:    'Entropy field — presence reduced to near-absence, the silence beneath silence',
+};
+
 // ─── Panel Art Component ──────────────────────────────────────────────────────
 // Renders the Luminary entity "sealed" inside the board objective tile.
 // Uses panelArt illustrated image when available; falls back to procedural SVG.

@@ -46,7 +46,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -5665,6 +5665,23 @@ export default function GameBoard() {
                     {selectedLuminary.flavor && (
                       <p className="text-[11px] text-muted-foreground italic leading-relaxed">"{selectedLuminary.flavor}"</p>
                     )}
+                    {/* Aura presence */}
+                    {(() => {
+                      const vis = getLuminaryVisuals(selectedLuminary.id);
+                      const auraKey = vis.auraStyle;
+                      const auraName = AURA_STYLE_NAMES[auraKey];
+                      const auraDesc = AURA_STYLE_DESCRIPTIONS[auraKey];
+                      return (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Aura Presence</span>
+                          <p className="text-[11px] leading-snug">
+                            <span className="font-semibold text-foreground/80">{auraName}</span>
+                            <span className="text-muted-foreground/60"> — </span>
+                            <span className="italic text-muted-foreground/70">{auraDesc}</span>
+                          </p>
+                        </div>
+                      );
+                    })()}
                     {/* Artifact requirements */}
                     <div className="flex flex-col gap-1.5">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Artifacts Required</span>
