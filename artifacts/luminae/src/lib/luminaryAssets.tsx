@@ -2561,7 +2561,7 @@ export function LuminarySummonCutscene({
                   >
                     <div className="flex items-center gap-1.5">
                       <motion.div
-                        className="w-4 h-px"
+                        className="w-8 h-px"
                         style={{
                           background: `linear-gradient(to right, transparent, ${primaryColor}80)`,
                           originX: 1,
@@ -2609,7 +2609,7 @@ export function LuminarySummonCutscene({
                         ))}
                       </div>
                       <motion.div
-                        className="w-4 h-px"
+                        className="w-8 h-px"
                         style={{
                           background: `linear-gradient(to left, transparent, ${primaryColor}80)`,
                           originX: 0,
