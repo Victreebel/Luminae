@@ -1211,6 +1211,8 @@ export function LuminarySummonCutscene({
     : visPrimaryColor;
   // RGB components of primaryColor for rgba() drop-shadows on shatter chunks
   const pRgb = `${parseInt(primaryColor.slice(1,3),16)},${parseInt(primaryColor.slice(3,5),16)},${parseInt(primaryColor.slice(5,7),16)}`;
+  // RGB components of secondaryColor for the flash haze tint blend
+  const sRgb = `${parseInt(secondaryColor.slice(1,3),16)},${parseInt(secondaryColor.slice(3,5),16)},${parseInt(secondaryColor.slice(5,7),16)}`;
   const { panelArt, entityCutout } = getLuminaryImageAssets(luminaryId);
 
   // Trap keyboard focus inside the cutscene container for the duration of the
@@ -2074,17 +2076,17 @@ export function LuminarySummonCutscene({
       <AnimatePresence>
         {isFlashing && (
           <>
-            {/* White core — the blinding peak, retreats quickly */}
+            {/* Affinity-tinted core — white-hot centre, Luminary colour blooms outward */}
             <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 1 }}
               animate={{ opacity: [1, 0.94, 0.58, 0.22, 0.06, 0] }}
               transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
               exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
               style={{
-                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 28%, #ffffff88 54%, transparent 82%)`,
+                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 18%, rgba(${pRgb},0.72) 44%, rgba(${sRgb},0.22) 68%, transparent 86%)`,
               }}
             />
-            {/* Warm golden haze — the lingering afterimage as eyes readjust */}
+            {/* Affinity haze — lingering afterglow in the Luminary's primary colour */}
             <motion.div key="flash-haze" className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 0.88, scale: 1.0 }}
               animate={{
@@ -2098,7 +2100,7 @@ export function LuminarySummonCutscene({
               }}
               exit={{ opacity: 0, scale: 1.90, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
               style={{
-                background: `radial-gradient(circle farthest-corner at 50% 42%, #ffffff 0%, #ffffff66 32%, #ffffff38 62%, #ffffff10 86%, transparent 100%)`,
+                background: `radial-gradient(circle farthest-corner at 50% 42%, rgba(${pRgb},0.88) 0%, rgba(${pRgb},0.50) 32%, rgba(${pRgb},0.26) 62%, rgba(${pRgb},0.08) 86%, transparent 100%)`,
                 transformOrigin: '50% 42%',
               }}
             />
