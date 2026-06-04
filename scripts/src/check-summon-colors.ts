@@ -2,13 +2,14 @@
 /**
  * check-summon-colors.ts
  *
- * Asserts that every Luminary's summonColor / summonSecondaryColor in
- * LUMINARY_VISUALS (luminaryAssets.tsx) matches the corresponding entry in the
- * LUMINARIES array (gameEngine.ts).
+ * Asserts that every Luminary's summonColor / summonSecondaryColor / auraStyle
+ * in LUMINARY_VISUALS (luminaryAssets.tsx) matches the corresponding entry in
+ * the LUMINARIES array (gameEngine.ts).
  *
- * LUMINARY_VISUALS is the single source of truth for flash tints consumed by
- * the frontend. gameEngine.ts drives the actual summon effect broadcast to
- * clients. If the two diverge, the in-game flash will differ from the spec.
+ * LUMINARY_VISUALS is the single source of truth for flash tints and aura
+ * animation styles consumed by the frontend. gameEngine.ts drives the actual
+ * summon effect broadcast to clients. If the two diverge, the in-game flash or
+ * aura animation will differ from the spec.
  *
  * Run directly:
  *   pnpm --filter @workspace/scripts run lint:summon-colors
@@ -38,11 +39,12 @@ const ENGINE_PATH = resolve(
 export interface ColorEntry {
   summonColor: string;
   summonSecondaryColor: string;
+  auraStyle: string;
 }
 
 export interface Mismatch {
   id: string;
-  field: "summonColor" | "summonSecondaryColor";
+  field: "summonColor" | "summonSecondaryColor" | "auraStyle";
   inEngine: string;
   inAssets: string;
 }
@@ -58,13 +60,14 @@ export interface CheckResult {
 const ID_RE = /id:\s*["']([^"']+)["']/;
 const COLOR_RE = /summonColor:\s*["']([^"']+)["']/;
 const SECONDARY_RE = /summonSecondaryColor:\s*["']([^"']+)["']/;
+const AURA_RE = /auraStyle:\s*["']([^"']+)["']/;
 
 /**
  * Parse the LUMINARIES array from gameEngine.ts.
  *
  * Strategy: locate the `export const LUMINARIES` array literal, then
  * brace-match each top-level `{...}` entry within it and extract
- * id / summonColor / summonSecondaryColor via regex.
+ * id / summonColor / summonSecondaryColor / auraStyle via regex.
  */
 export function parseEngineColors(src: string): Map<string, ColorEntry> {
   const result = new Map<string, ColorEntry>();
@@ -129,6 +132,7 @@ export function parseEngineColors(src: string): Map<string, ColorEntry> {
     if (idMatch && idMatch[1].startsWith("lum_")) {
       const colorMatch = COLOR_RE.exec(chunk);
       const secondaryMatch = SECONDARY_RE.exec(chunk);
+      const auraMatch = AURA_RE.exec(chunk);
 
       if (!colorMatch) {
         throw new Error(
@@ -140,10 +144,16 @@ export function parseEngineColors(src: string): Map<string, ColorEntry> {
           `LUMINARIES entry "${idMatch[1]}" has no summonSecondaryColor in gameEngine.ts`
         );
       }
+      if (!auraMatch) {
+        throw new Error(
+          `LUMINARIES entry "${idMatch[1]}" has no auraStyle in gameEngine.ts`
+        );
+      }
 
       result.set(idMatch[1], {
         summonColor: colorMatch[1].toLowerCase(),
         summonSecondaryColor: secondaryMatch[1].toLowerCase(),
+        auraStyle: auraMatch[1],
       });
     }
 
@@ -186,11 +196,13 @@ export function parseAssetsColors(src: string): Map<string, ColorEntry> {
     const idMatch = /id:\s*["']([^"']+)["']/.exec(line);
     const colorMatch = COLOR_RE.exec(line);
     const secondaryMatch = SECONDARY_RE.exec(line);
+    const auraMatch = AURA_RE.exec(line);
 
-    if (idMatch && colorMatch && secondaryMatch) {
+    if (idMatch && colorMatch && secondaryMatch && auraMatch) {
       result.set(idMatch[1], {
         summonColor: colorMatch[1].toLowerCase(),
         summonSecondaryColor: secondaryMatch[1].toLowerCase(),
+        auraStyle: auraMatch[1],
       });
     }
   }
@@ -245,6 +257,15 @@ export function checkColors(
         inAssets: assetsEntry.summonSecondaryColor,
       });
     }
+
+    if (engineEntry.auraStyle !== assetsEntry.auraStyle) {
+      mismatches.push({
+        id,
+        field: "auraStyle",
+        inEngine: engineEntry.auraStyle,
+        inAssets: assetsEntry.auraStyle,
+      });
+    }
   }
 
   return { mismatches, missingFromAssets };
@@ -277,7 +298,7 @@ if (isMain) {
     );
 
     if (mismatches.length > 0) {
-      console.error("  Color mismatches (engine ≠ assets):");
+      console.error("  Visual mismatches (engine ≠ assets):");
       for (const m of mismatches) {
         console.error(
           `    ${m.id}.${m.field}:  engine=${m.inEngine}  assets=${m.inAssets}`
@@ -301,8 +322,8 @@ if (isMain) {
         "How to fix:",
         "  Option A — Update LUMINARY_VISUALS in luminaryAssets.tsx to match gameEngine.ts.",
         "  Option B — Update the LUMINARIES array in gameEngine.ts to match luminaryAssets.tsx.",
-        "  LUMINARY_VISUALS is the canonical source of truth for flash tint colors.",
-        "  When adding a new Luminary, add it to both files at the same time.",
+        "  LUMINARY_VISUALS is the canonical source of truth for summonColor, summonSecondaryColor,",
+        "  and auraStyle. When adding a new Luminary, add it to both files at the same time.",
       ].join("\n")
     );
 
@@ -312,6 +333,6 @@ if (isMain) {
   console.log(
     `check-summon-colors: OK — all ${engineColors.size} engine Luminar${
       engineColors.size === 1 ? "y" : "ies"
-    } match LUMINARY_VISUALS (summonColor + summonSecondaryColor).`
+    } match LUMINARY_VISUALS (summonColor + summonSecondaryColor + auraStyle).`
   );
 }
