@@ -1321,10 +1321,11 @@ button,
 }
 
 /* Radial fade variant — the star field fades outward to transparent so it
-   blends into the cosmic portal or card background without a hard square edge. */
+   blends into the cosmic portal or card background without a hard square edge.
+   Tightened to 55% so the star field stays comfortably inside the card bounds. */
 .lum-compass-stars-fade {
-  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 72%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 72%);
+  mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, black 35%, transparent 68%);
+  -webkit-mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, black 35%, transparent 68%);
 }
 
 /* ── First Hunger (lum_hunger) — nanite background crossfade ─────────────
