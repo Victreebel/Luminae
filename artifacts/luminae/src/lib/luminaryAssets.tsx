@@ -141,10 +141,6 @@ export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
   };
 }
 
-/** Returns the aura layer URL for the given Luminary, or null if not available. */
-export function getLuminaryAuraUrl(id: string): string | null {
-  return _getLuminaryImage(id, 'aura');
-}
 
 // ─── Procedural Entity SVG Components (Fallback Art) ─────────────────────────
 // Used only when real illustrated assets are not yet available.

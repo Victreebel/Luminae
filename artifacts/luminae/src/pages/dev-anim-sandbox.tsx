@@ -5,7 +5,7 @@ import {
   LuminarySummonCutscene,
   LuminaryIdleOverlay,
   getLuminaryVisuals,
-  getLuminaryAuraUrl,
+  getLuminaryImageAssets,
 } from '@/lib/luminaryAssets';
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
@@ -155,7 +155,7 @@ function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: nu
 
 function AuraLayerPreview({ lum }: { lum: SandboxLuminary }) {
   const vis = getLuminaryVisuals(lum.id);
-  const auraUrl = getLuminaryAuraUrl(lum.id);
+  const { auraLayer: auraUrl } = getLuminaryImageAssets(lum.id);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-6">
