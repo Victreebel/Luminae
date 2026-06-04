@@ -2190,7 +2190,7 @@ export function LuminarySummonCutscene({
               transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
               exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
               style={{
-                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 18%, rgba(${pRgb},0.72) 44%, rgba(${sRgb},0.22) 68%, transparent 86%)`,
+                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 18%, #ffffffdd 44%, #ffffff55 68%, transparent 86%)`,
               }}
             />
             {/* Affinity haze — lingering afterglow in the Luminary's primary colour.
