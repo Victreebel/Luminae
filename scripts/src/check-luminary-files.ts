@@ -195,9 +195,8 @@ export function findSlotFile(
 }
 
 /**
- * Check that every illustrated Luminary has all required image slots on disk.
- * Required slots: panel, entity, aura — a missing one causes exit 1.
- * Optional slots: background — only checked if present, missing does not fail.
+ * Check that every illustrated Luminary has all declared image slots on disk.
+ * All slots (panel, entity, aura) are required — a missing slot causes exit 1.
  *
  * @param illustratedIds  IDs from ILLUSTRATED_IDS
  * @param allSlots        All slot names derived from _getLuminaryImage signature
@@ -209,12 +208,11 @@ export function checkLuminaryFiles(
   luminariesDir: string = DEFAULT_LUMINARIES_DIR,
 ): FileCheckResult {
   const missing: MissingFile[] = [];
-  const optionalSlots = new Set(['background']);
 
   for (const id of illustratedIds) {
     for (const slot of allSlots) {
       const found = findSlotFile(luminariesDir, id, slot);
-      if (!found && !optionalSlots.has(slot)) {
+      if (!found) {
         missing.push({
           id,
           slot,
@@ -265,8 +263,7 @@ export function main(): void {
       }
     }
     console.error(
-      `\nRequired slots: ${allSlots.filter(s => s !== 'background').join(', ')}.\n` +
-        `Optional slots: background\n` +
+      `\nAll slots declared in _getLuminaryImage (${allSlots.join(', ')}) are required.\n` +
         `Drop the missing files into artifacts/luminae/src/assets/luminaries/<id>/\n` +
         `or remove the ID from ILLUSTRATED_IDS until the art is ready.\n`,
     );
