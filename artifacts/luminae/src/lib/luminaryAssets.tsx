@@ -2600,6 +2600,11 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
   const frozenRef = useRef(frozen);
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
 
+  // Latest [data-game-board] bounding rect — updated on every measure() call.
+  // Stored as a ref (not state) so scroll events don't trigger extra re-renders;
+  // the clip-path is recomputed inline whenever cardPos causes a re-render.
+  const boardRectRef = useRef<DOMRect | null>(null);
+
   useEffect(() => {
     let animFrame = 0;
     const scrollTargets: Element[] = [];
@@ -2624,7 +2629,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       // When scrolled above the header the overlay must be hidden so it doesn't
       // paint over fixed chrome.
       const mainEl = document.querySelector('[data-game-board]') as HTMLElement | null;
-      const mainRect = mainEl?.getBoundingClientRect();
+      const mainRect = mainEl?.getBoundingClientRect() ?? null;
+      boardRectRef.current = mainRect;
       const withinScroller = mainRect
         ? r.bottom > mainRect.top && r.top < mainRect.bottom
         : true;
@@ -2705,11 +2711,24 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
   const ambientLeft = cardPos.x - AMBIENT_W / 2;
   const ambientTop  = cardPos.y - AMBIENT_H / 2;
 
+  // Clip the ambient glow to [data-game-board] so it never bleeds over the
+  // header, side panels, or opponent areas.  clip-path: inset() trims each
+  // edge of the fixed div to the board bounding rect using pixel offsets
+  // relative to the element itself — zero re-render cost (ref-based rect).
+  const br = boardRectRef.current;
+  const ambientClipPath = br
+    ? `inset(${Math.max(0, br.top    - ambientTop )}px ${
+               Math.max(0, ambientLeft + AMBIENT_W - br.right  )}px ${
+               Math.max(0, ambientTop  + AMBIENT_H - br.bottom )}px ${
+               Math.max(0, br.left    - ambientLeft)}px)`
+    : undefined;
+
   return (
     <>
       {/* ── Ambient board glow — 2.5× card-size, behind the idle overlay (z 17) ──
           Conditionally rendered only when idle and within the scroller so
-          off-screen Luminaries mount zero extra DOM nodes.              */}
+          off-screen Luminaries mount zero extra DOM nodes.
+          clip-path: inset() keeps the glow inside [data-game-board] bounds. */}
       {ambientVisible && (
         <div
           className={`fixed pointer-events-none ${auraVariant.ambientClass}`}
@@ -2720,6 +2739,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             width: AMBIENT_W,
             height: AMBIENT_H,
             background: `radial-gradient(ellipse at 50% 50%, ${glowColor}14 0%, ${primaryColor}0b 38%, ${glowColor}07 62%, transparent 78%)`,
+            clipPath: ambientClipPath,
           }}
         />
       )}
