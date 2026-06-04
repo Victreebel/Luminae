@@ -2582,9 +2582,21 @@ export function LuminarySummonCutscene({
                               : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
                         }}
                       />
-                      <div
+                      <motion.div
                         className="aura-label-glow text-[9px] font-bold tracking-[0.20em] uppercase"
                         style={{ color: `${primaryColor}cc` }}
+                        animate={{
+                          opacity: isFlashing || isFading
+                            ? 0
+                            : reducedMotion ? 1 : [1, 0.6, 1],
+                        }}
+                        transition={
+                          isFlashing || isFading
+                            ? { duration: 0.3 }
+                            : reducedMotion
+                              ? { duration: 0 }
+                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+                        }
                       >
                         {[...(AURA_STYLE_NAMES[auraStyle] + ' Aura')].map((char, i) => (
                           <motion.span
@@ -2607,7 +2619,7 @@ export function LuminarySummonCutscene({
                             {char}
                           </motion.span>
                         ))}
-                      </div>
+                      </motion.div>
                       <motion.div
                         className="w-8 h-px"
                         style={{
