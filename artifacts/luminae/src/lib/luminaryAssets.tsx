@@ -2574,7 +2574,27 @@ export function LuminarySummonCutscene({
                         className="aura-label-glow text-[9px] font-bold tracking-[0.20em] uppercase"
                         style={{ color: `${primaryColor}cc` }}
                       >
-                        {AURA_STYLE_NAMES[auraStyle]} Aura
+                        {[...(AURA_STYLE_NAMES[auraStyle] + ' Aura')].map((char, i) => (
+                          <motion.span
+                            key={i}
+                            initial={{
+                              opacity: reducedMotion ? 1 : 0,
+                              y: reducedMotion ? 0 : 4,
+                            }}
+                            animate={{
+                              opacity: isFlashing || isFading ? 0 : 1,
+                              y: 0,
+                            }}
+                            transition={{
+                              duration: reducedMotion ? 0 : 0.25,
+                              delay: reducedMotion ? 0 : 0.9 + i * 0.035,
+                              ease: 'easeOut',
+                            }}
+                            style={{ display: 'inline-block', whiteSpace: 'pre' }}
+                          >
+                            {char}
+                          </motion.span>
+                        ))}
                       </div>
                       <motion.div
                         className="w-4 h-px"
