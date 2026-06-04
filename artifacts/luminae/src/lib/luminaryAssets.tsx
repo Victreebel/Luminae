@@ -2655,7 +2655,7 @@ export function LuminarySummonCutscene({
                           ? { duration: 0.3 }
                           : reducedMotion
                             ? { duration: 0 }
-                            : { duration: 2, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+                            : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
                       }
                     >
                       {AURA_STYLE_DESCRIPTIONS[auraStyle]}
