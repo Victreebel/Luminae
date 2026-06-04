@@ -143,6 +143,10 @@ export function LuminaryClaimedPortal({
 
   const ownerName = claimedByPlayer?.playerName ?? '';
 
+  const { auraStyle } = getLuminaryVisuals(luminary.id);
+  const auraName = AURA_STYLE_NAMES[auraStyle];
+  const auraDesc = AURA_STYLE_DESCRIPTIONS[auraStyle];
+
   const Tag = (canToggle ? motion.button : motion.div) as typeof motion.div;
 
   return (
@@ -390,6 +394,17 @@ export function LuminaryClaimedPortal({
           </div>
         </div>
       )}
+
+      {/* Aura label — center void, always visible on the portal card */}
+      <div className="absolute inset-x-0 z-10 pointer-events-none flex flex-col items-center gap-0" style={{ top: '52%' }}>
+        <span className="text-[5px] font-bold uppercase tracking-widest text-white/25 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
+          Aura Presence
+        </span>
+        <p className="text-center leading-tight px-1.5">
+          <span className="text-[7px] font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,1)]" style={{ color: `${g1}cc` }}>{auraName}</span>
+          <span className="text-[5.5px] italic text-white/30 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]"> — {auraDesc}</span>
+        </p>
+      </div>
 
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
       {claimedByPlayer && ownerName && (
