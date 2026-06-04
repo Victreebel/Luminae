@@ -715,6 +715,53 @@ describe("Balance Due (lum_pale) — returns crystals held above half supply", (
   });
 });
 
+// ─── normalizeState — action log string migration ─────────────────────────────
+
+describe("normalizeState — Glass Orchard action log migration", () => {
+  it("rewrites old 'Glass Orchard — Perfect Replication' summaries to include 'The'", () => {
+    const raw = {
+      ...initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2),
+      actionLog: [
+        { playerId: "p1", summary: "Glass Orchard — Perfect Replication: +1 extra emerald bonus" },
+        { playerId: "p1", summary: "Glass Orchard — Perfect Replication: +1 extra pearl bonus" },
+      ],
+    };
+    const normalized = normalizeState(raw);
+    expect(normalized.actionLog[0].summary).toBe(
+      "The Glass Orchard — Perfect Replication: +1 extra emerald bonus",
+    );
+    expect(normalized.actionLog[1].summary).toBe(
+      "The Glass Orchard — Perfect Replication: +1 extra pearl bonus",
+    );
+  });
+
+  it("does not alter summaries that already contain 'The Glass Orchard'", () => {
+    const raw = {
+      ...initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2),
+      actionLog: [
+        { playerId: "p1", summary: "The Glass Orchard — Perfect Replication: +1 extra emerald bonus" },
+      ],
+    };
+    const normalized = normalizeState(raw);
+    expect(normalized.actionLog[0].summary).toBe(
+      "The Glass Orchard — Perfect Replication: +1 extra emerald bonus",
+    );
+  });
+
+  it("does not alter unrelated action log summaries", () => {
+    const raw = {
+      ...initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2),
+      actionLog: [
+        { playerId: "p1", summary: "Player 1 forged Starfall Conduit for 2 Eminence" },
+        { playerId: "p2", summary: "Player 2 harvested 2 ruby" },
+      ],
+    };
+    const normalized = normalizeState(raw);
+    expect(normalized.actionLog[0].summary).toBe("Player 1 forged Starfall Conduit for 2 Eminence");
+    expect(normalized.actionLog[1].summary).toBe("Player 2 harvested 2 ruby");
+  });
+});
+
 // ─── LUMINARIES catalogue ─────────────────────────────────────────────────────
 
 describe("LUMINARIES catalogue", () => {

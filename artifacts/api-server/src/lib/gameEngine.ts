@@ -2432,6 +2432,26 @@ export function normalizeState(raw: unknown): GameStateData {
   }
   // avatarSeedState: leave undefined if not set (it's truly optional)
 
+  // migrate old action log summaries: "Glass Orchard — Perfect Replication" → "The Glass Orchard — Perfect Replication"
+  if (Array.isArray(state.actionLog)) {
+    state.actionLog = (state.actionLog as Record<string, unknown>[]).map((entry) => {
+      if (
+        typeof entry.summary === "string" &&
+        entry.summary.includes("Glass Orchard — Perfect Replication") &&
+        !entry.summary.includes("The Glass Orchard — Perfect Replication")
+      ) {
+        return {
+          ...entry,
+          summary: entry.summary.replace(
+            "Glass Orchard — Perfect Replication",
+            "The Glass Orchard — Perfect Replication",
+          ),
+        };
+      }
+      return entry;
+    });
+  }
+
   // filter activeLuminaries to only known IDs (backward compat for old saves)
   if (Array.isArray(state.activeLuminaries)) {
     const original = state.activeLuminaries as string[];
