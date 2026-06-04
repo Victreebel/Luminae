@@ -5,21 +5,8 @@ import {
   LuminarySummonCutscene,
   LuminaryIdleOverlay,
   getLuminaryVisuals,
+  getLuminaryAuraUrl,
 } from '@/lib/luminaryAssets';
-
-// Module-level glob — Vite de-dupes this with the identical pattern in luminaryAssets.tsx.
-// Must be at module level (Vite restriction: import.meta.glob cannot be inside a function).
-const _sandboxImageModules = import.meta.glob<{ default: string }>(
-  '../assets/luminaries/**/*.{webp,png,jpg}',
-  { eager: true },
-);
-
-function getSandboxAuraUrl(luminaryId: string): string | null {
-  const key = Object.keys(_sandboxImageModules).find(p =>
-    p.includes(`/${luminaryId}/aura.`)
-  );
-  return key ? (_sandboxImageModules[key]?.default ?? null) : null;
-}
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
 // summonColor is no longer stored here — it is derived from getLuminaryVisuals()
@@ -168,7 +155,7 @@ function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: nu
 
 function AuraLayerPreview({ lum }: { lum: SandboxLuminary }) {
   const vis = getLuminaryVisuals(lum.id);
-  const auraUrl = getSandboxAuraUrl(lum.id);
+  const auraUrl = getLuminaryAuraUrl(lum.id);
 
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-6">
