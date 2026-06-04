@@ -2564,7 +2564,7 @@ export function LuminarySummonCutscene({
                         className="w-4 h-px"
                         style={{
                           background: `linear-gradient(to right, transparent, ${primaryColor}80)`,
-                          originX: 0,
+                          originX: 1,
                         }}
                         initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
                         animate={{
@@ -2612,7 +2612,7 @@ export function LuminarySummonCutscene({
                         className="w-4 h-px"
                         style={{
                           background: `linear-gradient(to left, transparent, ${primaryColor}80)`,
-                          originX: 1,
+                          originX: 0,
                         }}
                         initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
                         animate={{
