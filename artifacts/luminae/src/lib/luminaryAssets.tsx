@@ -1318,16 +1318,16 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   establish:    600,
   panning:      750,  // board DOM pans as a unit toward the card (overlay=0)
   focusing:     600,  // camera layer zooms in on the now-centred card
-  intro:        50,
-  zooming:      80,
-  pressure:     90,
-  firstcrack:   320,  // primary fault + branch draw, then hold for suspense
-  leaking:      850,  // energy bleeds through; sustained quiet-before-storm
-  secondcrack:  360,  // second branch crack appears; faint rays start seeping
-  cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
-  shattering:  600,  // chunks break apart quickly
-  flashing:    400,   // white flash + entity entrance
-  revealed:    800,   // entity visible; user taps to dismiss
+  intro:         50,
+  zooming:       80,
+  pressure:      90,
+  firstcrack:   320,
+  leaking:      850,
+  secondcrack:  360,
+  cracking:    1100,
+  shattering:  1000,
+  flashing:    950,
+  revealed:   4200,
   fading:      550,
   done:           0,
 };
@@ -2148,67 +2148,59 @@ export function LuminarySummonCutscene({
       {/* Luminary's primary affinity colour via screen-blend overlay.          */}
       <AnimatePresence>
         {isShatterVisible && PANEL_PIECES.map((piece, i) => {
-          // Natural size chunks (board card size) positioned at viewport center.
-          // The camera zooms out during shatter, so the pieces are readable.
-          const dx = piece.dx;
-          const dy = piece.dy;
-          const z  = piece.z ?? (i % 2 === 0 ? 80 : -80);
+          const z0 = piece.z ?? (i % 2 === 0 ? 80 : -80);
+          const z1 = piece.z ? piece.z * 2.2 : (i % 2 === 0 ? 180 : -180);
           return (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
-              width:  BOARD_CARD_W,
-              height: BOARD_CARD_H,
-              left:   vw / 2 - BOARD_CARD_W / 2,
-              top:    vh / 2 - BOARD_CARD_H / 2,
+              width: BOARD_CARD_W * 1.28, height: BOARD_CARD_H * 1.28,
+              left: vesselLeft, top: vesselTop,
               clipPath: piece.clip,
               transformPerspective: 1000,
               transformStyle: 'preserve-3d',
-              zIndex: 10,
             }}
             initial={{
               x: 0, y: 0,
               z: 0,
               rotateX: 0, rotateY: 0, rotateZ: 0, opacity: 1,
-              scale: 0.98,
               filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
             animate={{
-              x: [0, dx * 0.15, dx * 0.55, dx * 0.90, dx * 1.2],
-              y: [0, dy * 0.15, dy * 0.55, dy * 0.90, dy * 1.2],
-              z: [0, z * 0.25, z * 0.55, z * 0.80, z * 0.95],
-              rotateX: [0, piece.rotateX * 0.35, piece.rotateX * 0.65, piece.rotateX * 0.88, piece.rotateX],
-              rotateY: [0, piece.rotateY * 0.35, piece.rotateY * 0.65, piece.rotateY * 0.88, piece.rotateY],
-              rotateZ: [0, piece.rotateZ * 0.35, piece.rotateZ * 0.65, piece.rotateZ * 0.88, piece.rotateZ],
-              scale: [0.95, 0.92, 0.86, 0.78, 0.68],
-              opacity: [0.98, 0.88, 0.68, 0.38, 0.12],
+              x: [0, piece.dx * 0.11, piece.dx],
+              y: [0, piece.dy * 0.11, piece.dy],
+              z: [0, z0, z1],
+              rotateX: [0, piece.rotateX],
+              rotateY: [0, piece.rotateY],
+              rotateZ: [0, piece.rotateZ],
+              opacity: [1, 1, 1, 0.96, 0.66, 0],
               filter: [
+                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
                 `brightness(1.3) drop-shadow(3px -3px 4px rgba(${pRgb},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
-                `brightness(2.2) drop-shadow(5px -4px 8px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 7px rgba(${pRgb},0.35))`,
-                `brightness(3.8) drop-shadow(0 0 16px rgba(${pRgb},0.96)) drop-shadow(0 0 28px rgba(${pRgb},0.60))`,
-                `brightness(5.8) drop-shadow(0 0 22px rgba(${pRgb},1.0)) drop-shadow(0 0 40px rgba(255,255,255,0.72))`,
-                `brightness(8.0) drop-shadow(0 0 28px rgba(${pRgb},1.0)) drop-shadow(0 0 50px rgba(255,255,255,0.88))`,
+                `brightness(2.0) drop-shadow(5px -4px 7px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.30))`,
+                `brightness(3.6) drop-shadow(0 0 14px rgba(${pRgb},0.96)) drop-shadow(0 0 26px rgba(${pRgb},0.58))`,
+                `brightness(5.6) drop-shadow(0 0 20px rgba(${pRgb},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
+                `brightness(8.0) drop-shadow(0 0 26px rgba(${pRgb},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
               ],
             }}
             transition={{
-              duration: 0.65,
-              delay: i * 0.03,
-              x:       { times: [0, 0.12, 0.35, 0.62, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
-              y:       { times: [0, 0.12, 0.35, 0.62, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
-              z:       { times: [0, 0.15, 0.38, 0.65, 1.0], ease: ['easeOut', 'easeInOut'] },
-              rotateX: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeOut', duration: 0.65 },
-              rotateY: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeOut', duration: 0.65 },
-              rotateZ: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeOut', duration: 0.65 },
-              scale:   { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeInOut' },
-              opacity: { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.12, 0.35, 0.62, 1.0], ease: 'easeInOut' },
+              duration: 5.00,
+              delay: i * 0.04,
+              x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
+              z:       { times: [0, 0.18, 1.0], ease: ['easeOut', 'easeInOut'] },
+              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              opacity: { times: [0, 0.08, 0.26, 0.46, 0.66, 0.84, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.10, 0.24, 0.44, 0.64, 0.82, 1.0], ease: 'easeInOut' },
             }}
           >
-            {/* Panel artwork — fills the shard so the clipPath shows the correct piece */}
+            {/* Panel artwork — the face of the vessel shard */}
             {panelArt ? (
               <img src={panelArt} alt="" aria-hidden
                 style={{
-                  width: '100%', height: '100%',
-                  objectFit: 'cover', objectPosition: 'center',
+                  width: BOARD_CARD_W, height: BOARD_CARD_H,
+                  objectFit: 'cover', objectPosition: 'center top',
                   display: 'block',
                 }}
                 draggable={false}

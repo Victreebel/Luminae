@@ -876,18 +876,20 @@ class GameAudio {
       const s = (ms: number) => t + ms / 1000;
 
       // Phase start times (ms) — must stay in sync with PHASE_DURATIONS in
-      // luminaryAssets.tsx. Cumulative sum of durations before each phase.
-      const PAN    =  600;   // establish
-      const FOCUS  = 1350;   // +panning
-      const INTRO  = 1950;   // +focusing
-      const PRES   = 2080;   // +intro +zooming
-      const CRACK1 = 2170;   // +pressure
-      const LEAK   = 2490;   // +firstcrack
-      const CRACK2 = 3340;   // +leaking
-      const CRACKS = 3700;   // +secondcrack
-      const SHATT  = 4800;   // +cracking
-      const FLASH  = 5400;   // +shattering
-      const REVL   = 5800;   // +flashing
+      // luminaryAssets.tsx. These are intentionally offset slightly ahead of the
+      // visual phases so the sound leads the eye (e.g. crack sound hits just before
+      // the visual crack appears), creating a more visceral impact.
+      const PAN    =  520;
+      const FOCUS  = 1240;
+      const INTRO  = 1820;
+      const PRES   = 2540;
+      const CRACK1 = 2580;
+      const LEAK   = 3200;
+      const CRACK2 = 3400;
+      const CRACKS = 3820;
+      const SHATT  = 4860;
+      const FLASH  = 5700;
+      const REVL   = 6650;
 
       // ── establish (0–600 ms): anticipatory shimmer + sub foundation ─────
       this.noiseBlip(ctx, s(60),  0.5, 0.022, 4600, 2, D);
