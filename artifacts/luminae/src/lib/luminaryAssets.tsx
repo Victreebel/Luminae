@@ -2789,7 +2789,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             position: 'absolute',
             inset: -20,
             borderRadius: 22,
-            background: `radial-gradient(${auraVariant.gradientShape}, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
+            background: activeAffinityColor
+              ? `radial-gradient(${auraVariant.gradientShape}, ${activeAffinityColor}3a 0%, ${activeAffinityColor}1c 42%, ${activeAffinityColor}0d 66%, transparent 84%)`
+              : `radial-gradient(${auraVariant.gradientShape}, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
+            transition: 'background 0.8s ease',
           }}
           className={isIdle ? auraVariant.idleClass : undefined}
           animate={!isIdle ? { opacity: 0.75 } : {}}
