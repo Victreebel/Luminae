@@ -67,6 +67,31 @@ export interface ArtifactCard {
   cost: CrystalCounts;
 }
 
+/**
+ * Canonical set of aura animation style keys recognised by the aura renderer.
+ * Must be kept in sync with KNOWN_AURA_STYLES in
+ * artifacts/luminae/src/lib/luminaryAssets.tsx — they are intentionally
+ * duplicated so the backend has no compile-time dependency on the frontend
+ * package. TypeScript will catch an invalid value in the LUMINARIES array
+ * immediately at typecheck time rather than only at lint:summon-colors time.
+ */
+export const KNOWN_AURA_STYLES = [
+  'fire',
+  'tide',
+  'verdant',
+  'void',
+  'radiant',
+  'astral',
+  'storm',
+  'pale',
+  'bloom',
+  'compass',
+  'oracle',
+  'null',
+] as const;
+
+export type AuraStyle = (typeof KNOWN_AURA_STYLES)[number];
+
 export interface LuminaryDef {
   id: string;
   name: string;
@@ -80,7 +105,7 @@ export interface LuminaryDef {
   flavor: string;
   summonColor: string;
   summonSecondaryColor: string;
-  auraStyle: string;
+  auraStyle: AuraStyle;
   /** Display name for this Luminary's special effect (v0.8+). */
   effectName?: string;
 }
