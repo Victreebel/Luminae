@@ -1053,9 +1053,6 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
   // to a tiny sliver with letterbox bars on top and bottom.
   lum_compass: { objectFit: 'cover', objectPosition: 'center center' },
-  // Wide horizontal seed entity — crop to fill the tall portrait card and
-  // shift the focal point down so the body sits in the lower half.
-  lum_seed: { objectFit: 'cover', objectPosition: 'center 70%' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -2331,22 +2328,12 @@ export function LuminarySummonCutscene({
                         <img src={entityCutout} alt={luminaryName}
                           style={{
                             width: ENT_W, height: ENT_H,
-                            // Wide horizontal seed entity: crop to fill the tall vortex
-                            // panel and shift the focal point down so the central body
-                            // sits in the lower half rather than floating at the top.
-                            objectFit: luminaryId === 'lum_seed' ? 'cover' : 'contain',
-                            objectPosition: luminaryId === 'lum_seed' ? 'center 75%' : 'center',
+                            objectFit: 'contain',
+                            objectPosition: 'center',
                             display: 'block',
-                            // Compress the wide horizontal seed horizontally so it fits
-                            // the tall narrow vortex panel without overflowing the sides.
-                            transform: luminaryId === 'lum_seed' ? 'scaleX(0.72)' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                            maskImage: luminaryId === 'lum_seed'
-                              ? 'radial-gradient(ellipse 80% 90% at 50% 55%, black 20%, rgba(0,0,0,0.92) 46%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.12) 76%, transparent 86%)'
-                              : 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
-                            WebkitMaskImage: luminaryId === 'lum_seed'
-                              ? 'radial-gradient(ellipse 80% 90% at 50% 55%, black 20%, rgba(0,0,0,0.92) 46%, rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.12) 76%, transparent 86%)'
-                              : 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                            maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                            WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                           }}
                           draggable={false}
                         />
@@ -2696,10 +2683,6 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       objectFit: objFit as React.CSSProperties['objectFit'],
                       objectPosition: objPos,
                       display: 'block',
-                      // Compress the wide horizontal seed horizontally so it fits
-                      // the narrow portrait card without overflowing the sides.
-                      transform: luminaryId === 'lum_seed' ? 'scaleX(0.72)' : undefined,
-                      transformOrigin: luminaryId === 'lum_seed' ? 'center center' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
