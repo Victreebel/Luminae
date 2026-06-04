@@ -46,7 +46,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_STYLE_DESCRIPTIONS, AURA_STYLE_NAMES, AURA_VARIANTS, type AuraStyle } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_VARIANTS } from '@/lib/luminaryAssets';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -4518,13 +4518,6 @@ export default function GameBoard() {
               const isCancelled = entry.summary.startsWith('planned move voided');
               const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
               const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
-              const isLuminaryClaim = entry.summary.startsWith('Drew the favor of ') || entry.summary.startsWith('Invoked the Oblivion of ');
-              const claimedLuminary = isLuminaryClaim ? (() => {
-                const prefix = entry.summary.startsWith('Drew the favor of ') ? 'Drew the favor of ' : 'Invoked the Oblivion of ';
-                const nameEnd = entry.summary.indexOf(' (', prefix.length);
-                const lumName = nameEnd >= 0 ? entry.summary.slice(prefix.length, nameEnd) : null;
-                return lumName ? ((state.luminaries ?? []) as Luminary[]).find((l) => l.name === lumName) ?? null : null;
-              })() : null;
               return (
               <div
                 key={i}
@@ -4573,16 +4566,6 @@ export default function GameBoard() {
                     <span className="text-foreground/80"> · {entry.summary}</span>
                   )}
                   <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
-                  {claimedLuminary && (() => {
-                    const auraKey = claimedLuminary.auraStyle as AuraStyle;
-                    const auraName = AURA_STYLE_NAMES[auraKey] ?? claimedLuminary.auraStyle;
-                    const auraDesc = AURA_STYLE_DESCRIPTIONS[auraKey];
-                    return (
-                      <div className="text-[10px] text-muted-foreground/55 italic mt-0.5">
-                        {auraName}{auraDesc ? ` — ${auraDesc}` : ''}
-                      </div>
-                    );
-                  })()}
                 </div>
               </div>
               );
@@ -7359,7 +7342,6 @@ export default function GameBoard() {
             key={auraPreviewLuminaryId}
             luminaryId={auraPreviewLuminaryId}
             luminaryName={selectedLuminary.name}
-            claimedBy={safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(auraPreviewLuminaryId))?.playerName}
             onClose={() => setAuraPreviewLuminaryId(null)}
           />
         )}

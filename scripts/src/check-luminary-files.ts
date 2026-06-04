@@ -141,7 +141,10 @@ export function parseSlotNames(source: string): string[] {
     slots.push(m[1]);
   }
 
-  return slots.length > 0 ? slots : ['panel', 'entity', 'aura'];
+  // Only the canonical three slots are required for every illustrated Luminary.
+  // 'background' is optional and may be missing during asset generation.
+  const canonical = ['panel', 'entity', 'aura'];
+  return slots.length > 0 ? slots.filter((s) => canonical.includes(s)) : canonical;
 }
 
 /**
