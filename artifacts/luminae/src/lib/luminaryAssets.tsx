@@ -1975,7 +1975,7 @@ export function LuminarySummonCutscene({
               width: BOARD_CARD_W * 5.5, height: BOARD_CARD_H * 5,
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
-              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #FFE255ff 10%, #FFD04Add 24%, #FFD04A88 50%, transparent 84%)`,
+              background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ffffffff 10%, #ffffffdd 24%, #ffffff88 50%, transparent 84%)`,
               filter: 'blur(14px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
