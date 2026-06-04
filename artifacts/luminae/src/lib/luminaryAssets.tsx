@@ -1050,11 +1050,11 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   // rather than using the default portrait 'center top' position.
   lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
   // The Seed Beyond Seasons and ??? are landscape-oriented entities (3:2)
-  // inside portrait slots (2:3). Scale up and center so the wide body fills
-  // the frame without empty vertical bars. Use `cover` so the image fills the
-  // entire card slot; sides are cropped by the radial mask.
-  lum_seed:   { scale: 2.35, objectPosition: 'center 42%', objectFit: 'cover' },
-  lum_compass:{ scale: 2.35, objectPosition: 'center 42%', objectFit: 'cover' },
+  // inside portrait slots (2:3). `objectFit: 'cover'` fills the frame by
+  // cropping the sides; no extra scale is needed because cover already
+  // maps the image to the full container.
+  lum_seed:   { objectPosition: 'center 42%', objectFit: 'cover' },
+  lum_compass:{ objectPosition: 'center 42%', objectFit: 'cover' },
 };
 
 // Per-entity cutscene (summon portal) display tweaks.
