@@ -2455,6 +2455,42 @@ export function LuminarySummonCutscene({
                             )}
                           </div>
                         );
+                      })() : luminaryId === 'lum_compass' ? (() => {
+                        const fill: React.CSSProperties = {
+                          position: 'absolute', inset: 0, width: '100%', height: '100%',
+                          display: 'block',
+                        };
+                        return (
+                          <div
+                            style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}
+                          >
+                            {/* Static star field — cosmic backdrop for the summon reveal */}
+                            <div className="lum-compass-stars" style={fill} />
+                            {/* Entity with heat-haze shimmer — living motion while background stays fixed */}
+                            {entityCutout && (
+                              <div
+                                className="lum-compass-heat-haze"
+                                style={{ position: 'absolute', inset: 0, zIndex: 1 }}
+                              >
+                                <img
+                                  src={entityCutout}
+                                  alt={luminaryName}
+                                  draggable={false}
+                                  style={{
+                                    ...fill,
+                                    objectFit: 'cover',
+                                    objectPosition: 'center center',
+                                    transform: 'scale(1.35)',
+                                    transformOrigin: 'center center',
+                                    ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
+                                    maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                                    WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
                       })() : entityCutout ? (
                         <img src={entityCutout} alt={luminaryName}
                           style={{
@@ -2466,8 +2502,8 @@ export function LuminarySummonCutscene({
                             display: 'block',
                             // Stretch the seed vertically so it fills the tall panel
                             // without squishing the horizontal portals.
-                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_compass' ? 'scale(1.35)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : undefined,
-                            transformOrigin: luminaryId === 'lum_seed' ? 'center center' : luminaryId === 'lum_compass' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
+                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : undefined,
+                            transformOrigin: luminaryId === 'lum_seed' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
