@@ -1218,6 +1218,8 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   // Wide horizontal seed — shift down slightly so the body fills the tall
   // portrait panel without floating at the top.
   lum_seed: { objectPosition: 'center 55%' },
+  // Wide horizontal Glass Orchard — scale up and center so it fills the panel.
+  lum_orchard: { scale: 1.18, objectPosition: 'center 45%' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -3144,9 +3146,9 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       objectFit: objFit as React.CSSProperties['objectFit'],
                       objectPosition: objPos,
                       display: 'block',
-                      // Stretch the seed vertically so it fills the tall portrait
-                      // card without squishing the horizontal portals.
-                      transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : undefined,
+                      // Stretch wide landscape entities vertically so they fill
+                      // the tall portrait card without letterboxing.
+                      transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
