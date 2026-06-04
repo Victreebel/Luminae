@@ -1364,6 +1364,15 @@ export function LuminarySummonCutscene({
 }) {
   const reducedMotion = useReducedMotion();
   const [phase, setPhase] = useState<CutscenePhase>('establish');
+  // True once the cutscene reaches the fully-revealed phase and lingers,
+  // waiting for the player to tap/click to continue.
+  const [awaitingDismiss, setAwaitingDismiss] = useState(false);
+  // True after a short delay post-reveal so the hint fades in gently.
+  const [hintVisible, setHintVisible] = useState(false);
+  // Ref to the dismiss function so the click handler and the Skip/Continue
+  // button can both call it without capturing stale closures.
+  const dismissRef = useRef<(() => void) | null>(null);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle];
@@ -1384,7 +1393,17 @@ export function LuminarySummonCutscene({
   // focusable element; without it the cutscene has no interactive elements and
   // the trap activates but immediately releases on Escape via the onSkip path.
   const containerRef = useRef<HTMLElement | null>(null);
-  useFocusTrap(containerRef, true, onSkip ?? (() => {}));
+  // When the cutscene is waiting at the reveal frame, route Escape to the same
+  // dismiss handler as the tap-anywhere path so the summon can always resolve.
+  // Before reveal, Escape keeps the existing local-skip behaviour (hides the
+  // overlay but lets the internal timer complete so the server gate is not jumped).
+  useFocusTrap(
+    containerRef,
+    true,
+    awaitingDismiss
+      ? () => { if (dismissRef.current) dismissRef.current(); }
+      : (onSkip ?? (() => {})),
+  );
 
   // Keep refs so the phase-advance closure always sees the latest callbacks
   // without the effect needing to re-run (which would reset the timer chain).
@@ -1410,11 +1429,33 @@ export function LuminarySummonCutscene({
       const next = PHASES[idx] ?? 'done';
       setPhase(next);
       if (next === 'flashing') onFlashRef.current?.();
+
+      if (next === 'revealed') {
+        // Pause here — do not auto-advance to fading. Instead arm the dismiss
+        // ref so the player can tap/click anywhere to continue.
+        setAwaitingDismiss(true);
+        hintTimerRef.current = setTimeout(() => {
+          if (!cancelled) setHintVisible(true);
+        }, 1500);
+        dismissRef.current = () => {
+          if (cancelled || !dismissRef.current) return;
+          dismissRef.current = null; // guard against double-fire
+          setHintVisible(false);
+          setAwaitingDismiss(false);
+          advance(); // advances idx → fading, then done
+        };
+        return;
+      }
+
       if (next !== 'done') setTimeout(advance, PHASE_DURATIONS[next]);
       else setTimeout(() => onCompleteRef.current(), 80);
     }
     const t = setTimeout(advance, PHASE_DURATIONS['establish']);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
   }, []);
 
   // ── Phase booleans ────────────────────────────────────────────────────────
@@ -1577,22 +1618,57 @@ export function LuminarySummonCutscene({
   const vesselTop  = vh / 2 - BOARD_CARD_H / 2;
 
   return (
-    <div ref={(el) => { containerRef.current = el; }} className="fixed inset-0 z-[9000]">
+    <div
+      ref={(el) => { containerRef.current = el; }}
+      className="fixed inset-0 z-[9000]"
+      onClick={() => {
+        if (awaitingDismiss && dismissRef.current) dismissRef.current();
+      }}
+    >
 
-      {/* ── Skip View button ───────────────────────────────────────────────── */}
+      {/* ── Skip View / Continue button ─────────────────────────────────────── */}
       {onSkip && (
         <button
-          onClick={(e) => { e.stopPropagation(); onSkip(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (awaitingDismiss && dismissRef.current) {
+              dismissRef.current();
+            } else {
+              onSkip();
+            }
+          }}
           className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur transition-colors select-none"
-          aria-label="Skip summoning view"
+          aria-label={awaitingDismiss ? 'Continue' : 'Skip summoning view'}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
             <path d="M1 1l8 4-8 4V1z" />
             <rect x="8" y="1" width="1.5" height="8" rx="0.5" />
           </svg>
-          Skip view
+          {awaitingDismiss ? 'Continue' : 'Skip view'}
         </button>
       )}
+
+      {/* ── Tap to continue hint ────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {hintVisible && (
+          <motion.div
+            key="tap-hint"
+            className="absolute bottom-16 inset-x-0 flex justify-center pointer-events-none z-[9100]"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          >
+            <motion.span
+              className="text-white/50 text-sm tracking-widest select-none"
+              animate={{ opacity: [0.5, 0.85, 0.5] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              Tap to continue
+            </motion.span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Dark overlay ──────────────────────────────────────────────────── */}
       <motion.div
