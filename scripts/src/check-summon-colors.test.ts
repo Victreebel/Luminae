@@ -23,6 +23,8 @@ import {
   parseEngineColors,
   parseAssetsColors,
   checkColors,
+  parseKnownAuraStyles,
+  checkAuraStyles,
 } from "./check-summon-colors.js";
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
@@ -104,6 +106,78 @@ assert(
     ? "checkColors() reports no IDs missing from LUMINARY_VISUALS"
     : `checkColors() reports ${missingFromAssets.length} missing ID(s): ${missingFromAssets.join(", ")}`
 );
+
+// ── Aura style validation ─────────────────────────────────────────────────────
+
+console.log("\n── Aura style validation ────────────────────────────────────────────");
+
+const knownStyles = parseKnownAuraStyles(assetsSrc);
+
+assert(
+  knownStyles.size > 0,
+  `parseKnownAuraStyles() returned ${knownStyles.size} known style(s) — expected at least 1`
+);
+
+const { unrecognised } = checkAuraStyles(assetsColors, knownStyles);
+
+assert(
+  unrecognised.length === 0,
+  unrecognised.length === 0
+    ? `all ${assetsColors.size} LUMINARY_VISUALS auraStyle values are in KNOWN_AURA_STYLES`
+    : `${unrecognised.length} unrecognised auraStyle value(s): ${unrecognised
+        .map(({ id, auraStyle }) => `${id}="${auraStyle}"`)
+        .join(", ")}`
+);
+
+// Unit-test: checkAuraStyles catches an unknown key
+{
+  const fakeMap = new Map([
+    ["lum_fake", { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "nonexistent_style" }],
+  ]);
+  const { unrecognised: fakeUnrecognised } = checkAuraStyles(fakeMap, knownStyles);
+  assert(
+    fakeUnrecognised.length === 1 && fakeUnrecognised[0].id === "lum_fake",
+    "checkAuraStyles() correctly flags an unrecognised auraStyle value"
+  );
+}
+
+// Unit-test: checkAuraStyles accepts a known key
+{
+  const fakeMap = new Map([
+    ["lum_fake", { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "fire" }],
+  ]);
+  const { unrecognised: fakeUnrecognised } = checkAuraStyles(fakeMap, knownStyles);
+  assert(
+    fakeUnrecognised.length === 0,
+    "checkAuraStyles() correctly accepts a recognised auraStyle value ('fire')"
+  );
+}
+
+// Unit-test: parseKnownAuraStyles fails loudly when the constant is absent
+{
+  let threw = false;
+  try {
+    parseKnownAuraStyles("const foo = 'bar';");
+  } catch {
+    threw = true;
+  }
+  assert(threw, "parseKnownAuraStyles() throws when KNOWN_AURA_STYLES is missing from source");
+}
+
+// ── Per-Luminary auraStyle assertions ─────────────────────────────────────────
+
+console.log(
+  `\n── Per-Luminary auraStyle check (${assetsColors.size} LUMINARY_VISUALS entries) ──`
+);
+
+for (const [id, entry] of assetsColors) {
+  assert(
+    knownStyles.has(entry.auraStyle),
+    knownStyles.has(entry.auraStyle)
+      ? `${id} auraStyle="${entry.auraStyle}" — recognised`
+      : `${id} auraStyle="${entry.auraStyle}" — NOT in KNOWN_AURA_STYLES`
+  );
+}
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 

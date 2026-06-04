@@ -6,6 +6,31 @@ import { gameAudio } from './audio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * Canonical set of aura animation style keys recognised by the aura renderer.
+ *
+ * This is the single source of truth for valid auraStyle values.  When a new
+ * aura animation variant is added to the renderer, add its key here too.
+ * The `lint:summon-colors` script reads this array at build-time and fails if
+ * any Luminary's auraStyle is not a member — preventing silent fallbacks.
+ */
+export const KNOWN_AURA_STYLES = [
+  'fire',
+  'tide',
+  'verdant',
+  'void',
+  'radiant',
+  'astral',
+  'storm',
+  'pale',
+  'bloom',
+  'compass',
+  'oracle',
+  'null',
+] as const;
+
+export type AuraStyle = typeof KNOWN_AURA_STYLES[number];
+
 interface LuminaryVisuals {
   id: string;
   primaryColor: string;
@@ -25,9 +50,10 @@ interface LuminaryVisuals {
   summonSecondaryColor: string;
   /**
    * Aura animation style key consumed by the aura animation system.
-   * Mirrors gameEngine.ts LUMINARIES[].auraStyle; update both together.
+   * Must be a member of KNOWN_AURA_STYLES.  Mirrors gameEngine.ts LUMINARIES[].auraStyle;
+   * update both together.  The lint:summon-colors script enforces this at CI time.
    */
-  auraStyle: string;
+  auraStyle: AuraStyle;
 }
 
 // ─── Illustrated Asset Discovery ──────────────────────────────────────────────

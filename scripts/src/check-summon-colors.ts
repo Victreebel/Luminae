@@ -55,7 +55,86 @@ export interface CheckResult {
   missingFromAssets: string[];
 }
 
+export interface AuraCheckResult {
+  /** auraStyle values in LUMINARY_VISUALS that are not in KNOWN_AURA_STYLES. */
+  unrecognised: Array<{ id: string; auraStyle: string }>;
+  /** The set of recognised aura keys parsed from luminaryAssets.tsx. */
+  knownStyles: ReadonlySet<string>;
+}
+
 // ── Parsers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Parse the KNOWN_AURA_STYLES array from luminaryAssets.tsx.
+ *
+ * Strategy: locate the `export const KNOWN_AURA_STYLES` declaration, find the
+ * bracketed array literal that follows it, and extract each quoted string entry.
+ * Fails loudly if the declaration or any entries cannot be found, so a rename
+ * or restructuring of the constant is caught immediately.
+ */
+export function parseKnownAuraStyles(src: string): ReadonlySet<string> {
+  const declStart = src.indexOf("export const KNOWN_AURA_STYLES");
+  if (declStart === -1) {
+    throw new Error(
+      "Could not find `export const KNOWN_AURA_STYLES` in luminaryAssets.tsx — " +
+      "the constant may have been renamed or removed."
+    );
+  }
+
+  // Find the `[` that opens the array literal
+  const bracketOpen = src.indexOf("[", declStart);
+  if (bracketOpen === -1) {
+    throw new Error("Could not find `[` after KNOWN_AURA_STYLES declaration");
+  }
+
+  // Find the matching `]`
+  let depth = 0;
+  let bracketClose = -1;
+  for (let i = bracketOpen; i < src.length; i++) {
+    if (src[i] === "[") depth++;
+    else if (src[i] === "]") {
+      depth--;
+      if (depth === 0) { bracketClose = i; break; }
+    }
+  }
+  if (bracketClose === -1) {
+    throw new Error("Unterminated KNOWN_AURA_STYLES array in luminaryAssets.tsx");
+  }
+
+  const arrayContent = src.slice(bracketOpen + 1, bracketClose);
+  const entries = new Set<string>();
+  const STRING_RE = /["']([^"']+)["']/g;
+  let m: RegExpExecArray | null;
+  while ((m = STRING_RE.exec(arrayContent)) !== null) {
+    entries.add(m[1]);
+  }
+
+  if (entries.size === 0) {
+    throw new Error(
+      "KNOWN_AURA_STYLES array parsed as empty — check the constant in luminaryAssets.tsx."
+    );
+  }
+
+  return entries;
+}
+
+/**
+ * Verify that every auraStyle value in the assets map is a member of the
+ * known aura styles set.  Returns unrecognised entries so callers can report
+ * them; an empty `unrecognised` array means all values are valid.
+ */
+export function checkAuraStyles(
+  assetsColors: Map<string, ColorEntry>,
+  knownStyles: ReadonlySet<string>
+): AuraCheckResult {
+  const unrecognised: Array<{ id: string; auraStyle: string }> = [];
+  for (const [id, entry] of assetsColors) {
+    if (!knownStyles.has(entry.auraStyle)) {
+      unrecognised.push({ id, auraStyle: entry.auraStyle });
+    }
+  }
+  return { unrecognised, knownStyles };
+}
 
 const ID_RE = /id:\s*["']([^"']+)["']/;
 const COLOR_RE = /summonColor:\s*["']([^"']+)["']/;
@@ -288,13 +367,20 @@ if (isMain) {
 
   const { mismatches, missingFromAssets } = checkColors(engineColors, assetsColors);
 
-  const hasErrors = mismatches.length > 0 || missingFromAssets.length > 0;
+  // ── Aura style validation ─────────────────────────────────────────────────
+  const knownStyles = parseKnownAuraStyles(assetsSrc);
+  const { unrecognised } = checkAuraStyles(assetsColors, knownStyles);
+
+  const hasErrors =
+    mismatches.length > 0 ||
+    missingFromAssets.length > 0 ||
+    unrecognised.length > 0;
 
   if (hasErrors) {
+    const totalIssues =
+      mismatches.length + missingFromAssets.length + unrecognised.length;
     console.error(
-      `check-summon-colors: FAIL — ${
-        mismatches.length + missingFromAssets.length
-      } issue(s) found between gameEngine.ts and luminaryAssets.tsx:\n`
+      `check-summon-colors: FAIL — ${totalIssues} issue(s) found:\n`
     );
 
     if (mismatches.length > 0) {
@@ -317,13 +403,27 @@ if (isMain) {
       console.error("");
     }
 
+    if (unrecognised.length > 0) {
+      console.error(
+        "  auraStyle values not in KNOWN_AURA_STYLES (silent fallback risk):"
+      );
+      for (const { id, auraStyle } of unrecognised) {
+        console.error(`    ${id}: auraStyle="${auraStyle}"`);
+      }
+      console.error(
+        `  Known styles: ${[...knownStyles].sort().join(", ")}`
+      );
+      console.error("");
+    }
+
     console.error(
       [
         "How to fix:",
-        "  Option A — Update LUMINARY_VISUALS in luminaryAssets.tsx to match gameEngine.ts.",
-        "  Option B — Update the LUMINARIES array in gameEngine.ts to match luminaryAssets.tsx.",
-        "  LUMINARY_VISUALS is the canonical source of truth for summonColor, summonSecondaryColor,",
-        "  and auraStyle. When adding a new Luminary, add it to both files at the same time.",
+        "  Summon-color mismatch — Update LUMINARY_VISUALS in luminaryAssets.tsx to match",
+        "    gameEngine.ts, or vice versa.  LUMINARY_VISUALS is the canonical source of truth.",
+        "  Unrecognised auraStyle — Either fix the typo in LUMINARY_VISUALS, or add the new",
+        "    animation key to KNOWN_AURA_STYLES in luminaryAssets.tsx (and implement the",
+        "    corresponding animation branch in the aura renderer).",
       ].join("\n")
     );
 
@@ -333,6 +433,6 @@ if (isMain) {
   console.log(
     `check-summon-colors: OK — all ${engineColors.size} engine Luminar${
       engineColors.size === 1 ? "y" : "ies"
-    } match LUMINARY_VISUALS (summonColor + summonSecondaryColor + auraStyle).`
+    } match LUMINARY_VISUALS; all ${assetsColors.size} auraStyle values recognised (${knownStyles.size} known styles).`
   );
 }
