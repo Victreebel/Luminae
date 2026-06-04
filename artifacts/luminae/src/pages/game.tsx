@@ -7179,14 +7179,24 @@ export default function GameBoard() {
       {/* Persistent entity overlays — one per luminary claimed this session.
           Each overlay flies from the viewport centre back to its panel card
           and then idles there with breathing / floating animations. */}
-      {claimedThisSession.map(lumId => (
-        <LuminaryIdleOverlay
-          key={lumId}
-          luminaryId={lumId}
-          frozen={summonQueue.length > 0}
-          hidden={activeTab !== 'board' || (summonQueue.length > 0 && !cutscenePostFlash)}
-        />
-      ))}
+      {claimedThisSession.map(lumId => {
+        const lumAff = state?.luminaryAffinities?.find(
+          (la: LuminaryActiveState) => la.luminaryId === lumId
+        );
+        const isMultiEligible = (lumAff?.eligibleAffinities?.length ?? 0) >= 2;
+        const activeAffinityColor = isMultiEligible && lumAff?.activeAffinity
+          ? GEM_KEY_TO_HEX[lumAff.activeAffinity] ?? undefined
+          : undefined;
+        return (
+          <LuminaryIdleOverlay
+            key={lumId}
+            luminaryId={lumId}
+            frozen={summonQueue.length > 0}
+            hidden={activeTab !== 'board' || (summonQueue.length > 0 && !cutscenePostFlash)}
+            activeAffinityColor={activeAffinityColor}
+          />
+        );
+      })}
 
       {/* Lumii tutorial — rendered when ?tutorial=1 is in the URL */}
       {isTutorial && (

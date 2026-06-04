@@ -2558,7 +2558,7 @@ export function LuminarySummonCutscene({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false }: { luminaryId: string; frozen?: boolean; hidden?: boolean }) {
+export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
@@ -2723,8 +2723,11 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             top: ambientTop,
             width: AMBIENT_W,
             height: AMBIENT_H,
-            background: `radial-gradient(ellipse at 50% 50%, ${glowColor}14 0%, ${primaryColor}0b 38%, ${glowColor}07 62%, transparent 78%)`,
+            background: activeAffinityColor
+              ? `radial-gradient(ellipse at 50% 50%, ${activeAffinityColor}18 0%, ${activeAffinityColor}0e 38%, ${activeAffinityColor}07 62%, transparent 78%)`
+              : `radial-gradient(ellipse at 50% 50%, ${glowColor}14 0%, ${primaryColor}0b 38%, ${glowColor}07 62%, transparent 78%)`,
             clipPath: ambientClipPath,
+            transition: 'background 0.8s ease',
           }}
         />
       )}
