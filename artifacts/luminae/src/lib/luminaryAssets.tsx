@@ -1338,9 +1338,10 @@ export function LuminarySummonCutscene({
 
   // Fire all cutscene sound effects pre-scheduled against AudioContext time.
   // Runs exactly once on mount; respects the user's mute setting internally.
+  // auraStyle is stable for the lifetime of this component (derived from luminaryId).
   useEffect(() => {
-    gameAudio.playSummonCutscene();
-  }, []);
+    gameAudio.playSummonCutscene(auraStyle);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
   useEffect(() => {

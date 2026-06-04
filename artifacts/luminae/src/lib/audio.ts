@@ -705,7 +705,136 @@ class GameAudio {
   //   shattering:  6570(1000 ms) ← rupture + shards + bass bloom
   //   flashing:    7570(950 ms)  ← bright swell + chord + shimmer
   //   revealed:    8520(4200 ms) ← cosmic chord + sub + bell overtones
-  playSummonCutscene() {
+  /**
+   * Maps the 12 aura style keys to one of 6 sound groups.
+   * Unrecognised styles fall through to 'radiant' (the generic bright swell).
+   */
+  private auraStyleGroup(auraStyle: string): string {
+    const MAP: Record<string, string> = {
+      fire:    'fire',     // Ember Sovereign, Moth
+      oracle:  'fire',     // Oracle (amber burn)
+      storm:   'storm',    // Iron Harbinger
+      astral:  'storm',    // Astral (fire/ice electric)
+      tide:    'tide',     // Tide Luminary
+      compass: 'tide',     // Compass (orbital wave)
+      void:    'void',     // Void
+      null:    'void',     // Null Sovereign (entropy, silence)
+      radiant: 'radiant',  // Radiant (crystalline order)
+      pale:    'radiant',  // Pale (silver/pearl shimmer)
+      verdant: 'verdant',  // Verdant Oracle
+      bloom:   'verdant',  // Bloom Tyrant (organic swell)
+    };
+    return MAP[auraStyle] ?? 'radiant';
+  }
+
+  /**
+   * Synthesises the flash-phase reveal burst tuned to the Luminary's aura group.
+   * Called from playSummonCutscene() at the FLASH beat (t + FLASH/1000).
+   * All oscillators/noise are routed to `D` (the shared compressor bus).
+   *
+   * Groups and their sonic character:
+   *   fire    — hot crackle + sawtooth roar + rising sweep
+   *   storm   — rapid electric arc pops + descending high sweep
+   *   tide    — deep ocean rumble + layered pad chord + high shimmer
+   *   void    — sub-bass implosion + descending sweep (dark collapse)
+   *   radiant — pure sine Cmaj7 chord + crystal bell harmonics (default)
+   *   verdant — organic layered mid-range chord + nature whoosh
+   */
+  private flashSynthForStyle(ctx: AudioContext, at: number, group: string, D: AudioNode) {
+    switch (group) {
+      case 'fire': {
+        // Crackle + roar: sawtooth harmonics simulate heat shimmer
+        this.osc(ctx, 880,  'sawtooth', at,          at + 0.35, 0.075, 0.008, D);
+        this.osc(ctx, 440,  'sawtooth', at,          at + 0.55, 0.045, 0.010, D);
+        // Rapid crackle pops staggered over 0.4 s
+        for (let i = 0; i < 5; i++) {
+          const cr = at + i * 0.09 + Math.random() * 0.04;
+          this.noiseBlip(ctx, cr, 0.040, 0.068 - i * 0.008, 1400 + Math.random() * 1200, 5, D);
+        }
+        // Rising fire sweep — energy climbing
+        this.noiseSweep(ctx, at + 0.10, 0.65, 0.065, 600, 2400, D);
+        // Bright hot shimmer tail
+        this.osc(ctx, 1760, 'sine', at + 0.20, at + 0.82, 0.038, 0.010, D);
+        break;
+      }
+      case 'storm': {
+        // Rapid electric arc pops — staccato lightning strikes
+        for (let i = 0; i < 7; i++) {
+          const cr = at + i * 0.058 + Math.random() * 0.018;
+          this.noiseBlip(ctx, cr, 0.022, Math.max(0.020, 0.080 - i * 0.008), 3000 + Math.random() * 2000, 10, D);
+        }
+        // Sharp electric crack — leading edge
+        this.osc(ctx, 2200, 'sine', at,        at + 0.20, 0.065, 0.004, D);
+        this.osc(ctx, 3300, 'sine', at + 0.04, at + 0.16, 0.038, 0.004, D);
+        // Descending high sweep — discharge falling away
+        this.noiseSweep(ctx, at, 0.45, 0.085, 4000, 800, D);
+        // Ringing afterglow
+        this.osc(ctx, 1320, 'sine', at + 0.30, at + 0.88, 0.052, 0.015, D);
+        break;
+      }
+      case 'tide': {
+        // Ocean surge: wide low-freq sweep from sub to mid
+        this.noiseSweep(ctx, at, 0.70, 0.090, 80, 600, D);
+        // Deep resonant pad chord — water-column harmonics
+        this.osc(ctx, 110, 'sine', at,          at + 0.82, 0.100, 0.040, D);
+        this.osc(ctx, 220, 'sine', at + 0.05,   at + 0.78, 0.070, 0.040, D);
+        this.osc(ctx, 330, 'sine', at + 0.10,   at + 0.72, 0.050, 0.035, D);
+        // High-freq sea-spray shimmer at the crest
+        this.noiseBlip(ctx, at + 0.40, 0.55, 0.058, 5200, 2.5, D);
+        this.osc(ctx, 1320, 'sine', at + 0.50, at + 0.92, 0.038, 0.018, D);
+        break;
+      }
+      case 'void': {
+        // Sub-bass implosion — descending collapse into silence
+        this.osc(ctx, 55,  'sine', at, at + 0.90, 0.115, 0.010, D);
+        this.osc(ctx, 38,  'sine', at, at + 0.80, 0.085, 0.012, D);
+        // Descending noise sweep (high → sub) — implosion shape, not explosion
+        this.noiseSweep(ctx, at, 0.55, 0.068, 1400, 60, D);
+        this.osc(ctx, 220, 'sine', at, at + 0.45, 0.048, 0.008, D);
+        // Dark whisper — a barely-there shimmer that fades to nothing
+        this.osc(ctx, 440, 'sine', at + 0.30, at + 0.88, 0.022, 0.030, D);
+        break;
+      }
+      case 'radiant': {
+        // Crystal chord: Cmaj7 — pure sine, clear and luminous
+        [523.25, 659.25, 783.99, 987.77].forEach((f, i) => {
+          this.osc(ctx, f, 'sine', at + 0.022 + i * 0.016, at + 0.91, 0.075, 0.012, D);
+        });
+        this.osc(ctx, 880,  'sine', at,          at + 0.46, 0.110, 0.008, D);
+        this.osc(ctx, 1320, 'sine', at,          at + 0.31, 0.055, 0.008, D);
+        this.noiseBlip(ctx, at + 0.038, 0.60, 0.085, 5400, 2.0, D);
+        // High crystal bell overtone
+        this.osc(ctx, 2093, 'sine', at + 0.25, at + 0.88, 0.028, 0.012, D);
+        break;
+      }
+      case 'verdant': {
+        // Organic layered mid chord — living harmonics
+        this.osc(ctx, 196,  'sine', at,          at + 0.88, 0.090, 0.040, D);
+        this.osc(ctx, 293,  'sine', at + 0.05,   at + 0.82, 0.072, 0.040, D);
+        this.osc(ctx, 392,  'sine', at + 0.10,   at + 0.76, 0.058, 0.038, D);
+        this.osc(ctx, 587,  'sine', at + 0.15,   at + 0.70, 0.045, 0.035, D);
+        // Nature whoosh — wind through leaves
+        this.noiseSweep(ctx, at, 0.60, 0.058, 200, 1200, D);
+        this.noiseBlip(ctx, at + 0.35, 0.50, 0.052, 3800, 2.5, D);
+        // Soft high shimmer — sunlight through canopy
+        this.osc(ctx, 1047, 'sine', at + 0.45, at + 0.92, 0.033, 0.018, D);
+        break;
+      }
+      default: {
+        // Fallback — same as 'radiant' (explicit, not silent)
+        [523.25, 659.25, 783.99, 987.77].forEach((f, i) => {
+          this.osc(ctx, f, 'sine', at + 0.022 + i * 0.016, at + 0.91, 0.075, 0.012, D);
+        });
+        this.osc(ctx, 880,  'sine', at, at + 0.46, 0.110, 0.008, D);
+        this.osc(ctx, 1320, 'sine', at, at + 0.31, 0.055, 0.008, D);
+        this.noiseBlip(ctx, at + 0.038, 0.60, 0.085, 5400, 2.0, D);
+        this.noiseBlip(ctx, at + 0.240, 0.50, 0.060, 6600, 2.5, D);
+        break;
+      }
+    }
+  }
+
+  playSummonCutscene(auraStyle = 'radiant') {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
@@ -833,15 +962,10 @@ class GameAudio {
       this.osc(ctx, 58, 'sine',  s(SHATT),       s(SHATT + 560), 0.08, 0.015, D);
       this.osc(ctx, 80, 'sine',  s(SHATT +  18), s(SHATT + 400), 0.055, 0.020, D);
 
-      // ── flashing (5700–6650 ms): bright swell + celestial chord + shimmer ─
-      this.osc(ctx, 880,  'sine', s(FLASH),      s(FLASH + 460), 0.11, 0.008, D);
-      this.osc(ctx, 1320, 'sine', s(FLASH),      s(FLASH + 310), 0.055, 0.008, D);
-      // Cmaj7 voiced: C5 E5 G5 B5
-      [523.25, 659.25, 783.99, 987.77].forEach((f, i) => {
-        this.osc(ctx, f, 'sine', s(FLASH + 22 + i * 16), s(FLASH + 910), 0.075, 0.012, D);
-      });
-      this.noiseBlip(ctx, s(FLASH +  38), 0.60, 0.085, 5400, 2.0, D);
-      this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
+      // ── flashing (5700–6650 ms): aura-style specific reveal burst ──────────
+      // cosmicPortalBoom MP3 (below) provides the shared physical shockwave;
+      // flashSynthForStyle() layers the Luminary-specific harmonic character on top.
+      this.flashSynthForStyle(ctx, s(FLASH), this.auraStyleGroup(auraStyle), D);
 
       // ── revealed (6650–10850 ms): cosmic hum + sub + bell overtones ──────
       // C2 G2 C3 E3 warm chord — slow attack, fades before done
