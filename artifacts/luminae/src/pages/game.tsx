@@ -7396,6 +7396,7 @@ export default function GameBoard() {
             key={auraPreviewLuminaryId}
             luminaryId={auraPreviewLuminaryId}
             luminaryName={selectedLuminary.name}
+            claimedBy={safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(auraPreviewLuminaryId))?.playerName}
             onClose={() => setAuraPreviewLuminaryId(null)}
           />
         )}

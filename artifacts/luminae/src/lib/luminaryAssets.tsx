@@ -2653,10 +2653,12 @@ const MODAL_ENTITY_H = Math.round(MODAL_ENTITY_W * 1.43); // ≈ 372
 export function AuraPreviewModal({
   luminaryId,
   luminaryName,
+  claimedBy,
   onClose,
 }: {
   luminaryId: string;
   luminaryName: string;
+  claimedBy?: string;
   onClose: () => void;
 }) {
   const vis = getLuminaryVisuals(luminaryId);
@@ -2664,6 +2666,7 @@ export function AuraPreviewModal({
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
   const containerRef = useRef<HTMLElement | null>(null);
+  const reducedMotion = useReducedMotion();
 
   useFocusTrap(containerRef, true, onClose, { handleEscape: false });
 
@@ -2735,6 +2738,90 @@ export function AuraPreviewModal({
             </div>
           )}
         </div>
+        {/* Aura presence row — side-lines + name label + description.
+            Mirrors the aura row in LuminaryDetailSheet: pulses on unclaimed,
+            settles to steady glow (easeOut 1.5 s) when claimedBy is set. */}
+        <motion.div
+          className="flex flex-col items-center gap-0.5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.4 }}
+          style={{ '--aura-glow-color': primaryColor } as React.CSSProperties}
+        >
+          <div className="flex items-center gap-1.5">
+            <motion.div
+              className="w-10 h-px"
+              style={{
+                background: `linear-gradient(to right, transparent, ${primaryColor}80)`,
+                originX: 1,
+              }}
+              initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
+              animate={{
+                scaleX: reducedMotion ? 1 : [1, 0.6, 1],
+                opacity: reducedMotion || claimedBy ? 1 : [1, 0.3, 1],
+              }}
+              transition={{
+                scaleX: { duration: 0.5, delay: 0.4, ease: 'easeOut' },
+                opacity: reducedMotion
+                  ? { duration: 0 }
+                  : claimedBy
+                    ? { duration: 1.5, ease: 'easeOut' }
+                    : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+              }}
+            />
+            <motion.div
+              className="aura-label-glow text-[9px] font-bold tracking-[0.20em] uppercase"
+              style={{ color: `${primaryColor}cc` }}
+              animate={{
+                opacity: reducedMotion || claimedBy ? 1 : [1, 0.6, 1],
+              }}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : claimedBy
+                    ? { duration: 1.5, ease: 'easeOut' }
+                    : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+              }
+            >
+              {AURA_STYLE_NAMES[auraStyle]} Aura
+            </motion.div>
+            <motion.div
+              className="w-10 h-px"
+              style={{
+                background: `linear-gradient(to left, transparent, ${primaryColor}80)`,
+                originX: 0,
+              }}
+              initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
+              animate={{
+                scaleX: reducedMotion ? 1 : [1, 0.6, 1],
+                opacity: reducedMotion || claimedBy ? 1 : [1, 0.3, 1],
+              }}
+              transition={{
+                scaleX: { duration: 0.5, delay: 0.4, ease: 'easeOut' },
+                opacity: reducedMotion
+                  ? { duration: 0 }
+                  : claimedBy
+                    ? { duration: 1.5, ease: 'easeOut' }
+                    : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+              }}
+            />
+          </div>
+          <motion.div
+            className="aura-desc-shimmer text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug"
+            animate={{
+              opacity: reducedMotion || claimedBy ? 1 : [1, 0.6, 1],
+            }}
+            transition={
+              reducedMotion
+                ? { duration: 0 }
+                : claimedBy
+                  ? { duration: 1.5, ease: 'easeOut' }
+                  : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' }
+            }
+          >
+            {AURA_STYLE_DESCRIPTIONS[auraStyle]}
+          </motion.div>
+        </motion.div>
         {/* Dismiss hint — also acts as the primary keyboard focus target */}
         <button
           onClick={onClose}
