@@ -146,7 +146,6 @@ export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
   };
 }
 
-
 // ─── Procedural Entity SVG Components (Fallback Art) ─────────────────────────
 // Used only when real illustrated assets are not yet available.
 // viewBox="0 0 100 140" — transparent background, no rect fill.
