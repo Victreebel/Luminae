@@ -1367,12 +1367,9 @@ export function LuminarySummonCutscene({
   // True once the cutscene reaches the fully-revealed phase and lingers,
   // waiting for the player to tap/click to continue.
   const [awaitingDismiss, setAwaitingDismiss] = useState(false);
-  // True after a short delay post-reveal so the hint fades in gently.
-  const [hintVisible, setHintVisible] = useState(false);
   // Ref to the dismiss function so the click handler and the Skip/Continue
   // button can both call it without capturing stale closures.
   const dismissRef = useRef<(() => void) | null>(null);
-  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle];
@@ -1434,13 +1431,9 @@ export function LuminarySummonCutscene({
         // Pause here — do not auto-advance to fading. Instead arm the dismiss
         // ref so the player can tap/click anywhere to continue.
         setAwaitingDismiss(true);
-        hintTimerRef.current = setTimeout(() => {
-          if (!cancelled) setHintVisible(true);
-        }, 1500);
         dismissRef.current = () => {
           if (cancelled || !dismissRef.current) return;
           dismissRef.current = null; // guard against double-fire
-          setHintVisible(false);
           setAwaitingDismiss(false);
           advance(); // advances idx → fading, then done
         };
@@ -1454,7 +1447,6 @@ export function LuminarySummonCutscene({
     return () => {
       cancelled = true;
       clearTimeout(t);
-      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     };
   }, []);
 
@@ -1638,37 +1630,15 @@ export function LuminarySummonCutscene({
             }
           }}
           className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur transition-colors select-none"
-          aria-label={awaitingDismiss ? 'Continue' : 'Skip summoning view'}
+          aria-label={awaitingDismiss ? 'Tap to continue' : 'Skip summoning view'}
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
             <path d="M1 1l8 4-8 4V1z" />
             <rect x="8" y="1" width="1.5" height="8" rx="0.5" />
           </svg>
-          {awaitingDismiss ? 'Continue' : 'Skip view'}
+          {awaitingDismiss ? 'Tap to continue' : 'Skip view'}
         </button>
       )}
-
-      {/* ── Tap to continue hint ────────────────────────────────────────────── */}
-      <AnimatePresence>
-        {hintVisible && (
-          <motion.div
-            key="tap-hint"
-            className="absolute bottom-16 inset-x-0 flex justify-center pointer-events-none z-[9100]"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-          >
-            <motion.span
-              className="text-white/50 text-sm tracking-widest select-none"
-              animate={{ opacity: [0.5, 0.85, 0.5] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              Tap to continue
-            </motion.span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Dark overlay ──────────────────────────────────────────────────── */}
       <motion.div
