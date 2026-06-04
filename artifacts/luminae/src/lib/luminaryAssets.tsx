@@ -2326,7 +2326,6 @@ export function LuminarySummonCutscene({
                         );
                       })() : entityCutout ? (
                         <img src={entityCutout} alt={luminaryName}
-                          className={luminaryId === 'lum_compass' ? 'lum-compass-spin-cw' : undefined}
                           style={{
                             width: ENT_W, height: ENT_H,
                             objectFit: 'contain', objectPosition: 'center',
@@ -2677,7 +2676,6 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                     src={entityCutout}
                     alt=""
                     draggable={false}
-                    className={luminaryId === 'lum_compass' ? 'lum-compass-spin-cw' : undefined}
                     style={{
                       width: IDLE_W,
                       height: IDLE_H,

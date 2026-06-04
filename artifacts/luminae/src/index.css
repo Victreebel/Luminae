@@ -852,14 +852,3 @@ button,
   animation: lum-hunger-bg2 5s ease-in-out infinite;
 }
 
-/* ── ??? (lum_compass) — slow clockwise rotation ──────────────────────────
-   The cosmic entity slowly rotates clockwise, giving the nebula arms and
-   eye cluster a gentle, eternal drift.                                                   */
-@keyframes lum-compass-spin-cw {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-.lum-compass-spin-cw {
-  animation: lum-compass-spin-cw 40s linear infinite;
-  transform-origin: center center;
-}
