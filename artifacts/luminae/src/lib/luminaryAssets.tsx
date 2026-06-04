@@ -2568,10 +2568,10 @@ export function LuminarySummonCutscene({
                         }}
                         initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
                         animate={{
-                          scaleX: isFlashing || isFading ? 0 : 1,
+                          scaleX: isFlashing || isFading ? 0 : reducedMotion ? 1 : [1, 0.6, 1],
                           opacity: isFlashing || isFading
                             ? 0
-                            : reducedMotion ? 1 : [1, 0.5, 1],
+                            : reducedMotion ? 1 : [1, 0.3, 1],
                         }}
                         transition={{
                           scaleX: { duration: 0.5, delay: 0.9, ease: 'easeOut' },
@@ -2579,7 +2579,7 @@ export function LuminarySummonCutscene({
                             ? { duration: 0.3 }
                             : reducedMotion
                               ? { duration: 0 }
-                              : { duration: 2, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
                         }}
                       />
                       <div
@@ -2616,10 +2616,10 @@ export function LuminarySummonCutscene({
                         }}
                         initial={{ scaleX: reducedMotion ? 1 : 0, opacity: 1 }}
                         animate={{
-                          scaleX: isFlashing || isFading ? 0 : 1,
+                          scaleX: isFlashing || isFading ? 0 : reducedMotion ? 1 : [1, 0.6, 1],
                           opacity: isFlashing || isFading
                             ? 0
-                            : reducedMotion ? 1 : [1, 0.5, 1],
+                            : reducedMotion ? 1 : [1, 0.3, 1],
                         }}
                         transition={{
                           scaleX: { duration: 0.5, delay: 0.9, ease: 'easeOut' },
@@ -2627,7 +2627,7 @@ export function LuminarySummonCutscene({
                             ? { duration: 0.3 }
                             : reducedMotion
                               ? { duration: 0 }
-                              : { duration: 2, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
+                              : { duration: 2.4, delay: 1.4, repeat: Infinity, ease: 'easeInOut' },
                         }}
                       />
                     </div>
