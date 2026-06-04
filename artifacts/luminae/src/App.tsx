@@ -16,6 +16,7 @@ import { AccountProvider } from "@/contexts/AccountContext";
 
 const DevCardBacks = lazy(() => import("@/pages/dev-card-backs"));
 const DevCardBrowser = lazy(() => import("@/pages/dev-card-browser"));
+const DevAnimSandbox = lazy(() => import("@/pages/dev-anim-sandbox"));
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -78,6 +79,13 @@ function Router() {
         <Route path="/dev/card-browser">
           <Suspense fallback={null}>
             <DevCardBrowser />
+          </Suspense>
+        </Route>
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/dev/anim-sandbox">
+          <Suspense fallback={null}>
+            <DevAnimSandbox />
           </Suspense>
         </Route>
       )}

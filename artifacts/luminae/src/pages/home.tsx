@@ -787,13 +787,22 @@ export default function Home() {
       )}
 
       {import.meta.env.DEV && (
-        <button
-          type="button"
-          onClick={() => setLocation("/dev/card-browser")}
-          className="absolute bottom-3 right-3 z-50 text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors px-2 py-1 rounded border border-transparent hover:border-border/30"
-        >
-          dev: card browser
-        </button>
+        <div className="absolute bottom-3 right-3 z-50 flex flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={() => setLocation("/dev/anim-sandbox")}
+            className="text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors px-2 py-1 rounded border border-transparent hover:border-border/30"
+          >
+            dev: anim sandbox
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocation("/dev/card-browser")}
+            className="text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors px-2 py-1 rounded border border-transparent hover:border-border/30"
+          >
+            dev: card browser
+          </button>
+        </div>
       )}
     </div>
   );
