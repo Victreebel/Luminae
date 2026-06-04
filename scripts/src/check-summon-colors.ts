@@ -252,58 +252,66 @@ export function checkColors(
 
 // ── CLI entrypoint ───────────────────────────────────────────────────────────
 
-const engineSrc = readFileSync(ENGINE_PATH, "utf-8");
-const assetsSrc = readFileSync(ASSETS_PATH, "utf-8");
+// Guard so this block only runs when the script is executed directly, not when
+// the module is imported by a test file.
+const isMain =
+  process.argv[1] != null &&
+  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
-const engineColors = parseEngineColors(engineSrc);
-const assetsColors = parseAssetsColors(assetsSrc);
+if (isMain) {
+  const engineSrc = readFileSync(ENGINE_PATH, "utf-8");
+  const assetsSrc = readFileSync(ASSETS_PATH, "utf-8");
 
-const { mismatches, missingFromAssets } = checkColors(engineColors, assetsColors);
+  const engineColors = parseEngineColors(engineSrc);
+  const assetsColors = parseAssetsColors(assetsSrc);
 
-const hasErrors = mismatches.length > 0 || missingFromAssets.length > 0;
+  const { mismatches, missingFromAssets } = checkColors(engineColors, assetsColors);
 
-if (hasErrors) {
-  console.error(
-    `check-summon-colors: FAIL — ${
-      mismatches.length + missingFromAssets.length
-    } issue(s) found between gameEngine.ts and luminaryAssets.tsx:\n`
-  );
+  const hasErrors = mismatches.length > 0 || missingFromAssets.length > 0;
 
-  if (mismatches.length > 0) {
-    console.error("  Color mismatches (engine ≠ assets):");
-    for (const m of mismatches) {
-      console.error(
-        `    ${m.id}.${m.field}:  engine=${m.inEngine}  assets=${m.inAssets}`
-      );
-    }
-    console.error("");
-  }
-
-  if (missingFromAssets.length > 0) {
+  if (hasErrors) {
     console.error(
-      "  IDs present in LUMINARIES but missing from LUMINARY_VISUALS:"
+      `check-summon-colors: FAIL — ${
+        mismatches.length + missingFromAssets.length
+      } issue(s) found between gameEngine.ts and luminaryAssets.tsx:\n`
     );
-    for (const id of missingFromAssets) {
-      console.error(`    ${id}`);
+
+    if (mismatches.length > 0) {
+      console.error("  Color mismatches (engine ≠ assets):");
+      for (const m of mismatches) {
+        console.error(
+          `    ${m.id}.${m.field}:  engine=${m.inEngine}  assets=${m.inAssets}`
+        );
+      }
+      console.error("");
     }
-    console.error("");
+
+    if (missingFromAssets.length > 0) {
+      console.error(
+        "  IDs present in LUMINARIES but missing from LUMINARY_VISUALS:"
+      );
+      for (const id of missingFromAssets) {
+        console.error(`    ${id}`);
+      }
+      console.error("");
+    }
+
+    console.error(
+      [
+        "How to fix:",
+        "  Option A — Update LUMINARY_VISUALS in luminaryAssets.tsx to match gameEngine.ts.",
+        "  Option B — Update the LUMINARIES array in gameEngine.ts to match luminaryAssets.tsx.",
+        "  LUMINARY_VISUALS is the canonical source of truth for flash tint colors.",
+        "  When adding a new Luminary, add it to both files at the same time.",
+      ].join("\n")
+    );
+
+    process.exit(1);
   }
 
-  console.error(
-    [
-      "How to fix:",
-      "  Option A — Update LUMINARY_VISUALS in luminaryAssets.tsx to match gameEngine.ts.",
-      "  Option B — Update the LUMINARIES array in gameEngine.ts to match luminaryAssets.tsx.",
-      "  LUMINARY_VISUALS is the canonical source of truth for flash tint colors.",
-      "  When adding a new Luminary, add it to both files at the same time.",
-    ].join("\n")
+  console.log(
+    `check-summon-colors: OK — all ${engineColors.size} engine Luminar${
+      engineColors.size === 1 ? "y" : "ies"
+    } match LUMINARY_VISUALS (summonColor + summonSecondaryColor).`
   );
-
-  process.exit(1);
 }
-
-console.log(
-  `check-summon-colors: OK — all ${engineColors.size} engine Luminar${
-    engineColors.size === 1 ? "y" : "ies"
-  } match LUMINARY_VISUALS (summonColor + summonSecondaryColor).`
-);

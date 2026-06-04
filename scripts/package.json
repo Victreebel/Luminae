@@ -11,6 +11,7 @@
     "lint:version-stamps": "tsx ./src/check-version-stamps.ts",
     "lint:summon-colors": "tsx ./src/check-summon-colors.ts",
     "test:version-stamps": "tsx ./src/check-version-stamps.test.ts",
+    "test:summon-colors": "tsx ./src/check-summon-colors.test.ts",
     "audit:overlays": "node overlay-audit/audit-overlays.cjs",
     "test:overlays": "playwright test --config=playwright.config.ts overlay-audit/overlay-centering.spec.ts",
     "test:dialog-keyboard": "playwright test --config=dialog-keyboard.config.ts"

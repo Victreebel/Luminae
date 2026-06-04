@@ -8,6 +8,7 @@
     "normalize:gems": "pnpm --filter @workspace/scripts run normalize:gems",
     "lint:version-stamps": "pnpm --filter @workspace/scripts run test:version-stamps && pnpm --filter @workspace/scripts run lint:version-stamps",
     "lint:summon-colors": "pnpm --filter @workspace/scripts run lint:summon-colors",
+    "test:summon-colors": "pnpm --filter @workspace/scripts run test:summon-colors",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run normalize:gems && pnpm run lint:version-stamps && pnpm run lint:summon-colors && pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
