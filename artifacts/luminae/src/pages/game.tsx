@@ -211,6 +211,7 @@ export default function GameBoard() {
     return 'needed_now';
   });
   const [showPurchased, setShowPurchased] = useState(false);
+  const [showActiveLuminaries, setShowActiveLuminaries] = useState(true);
   const [forgedView, setForgedView] = useState<'cards' | 'timeline'>('cards');
   const [marketCompact, setMarketCompact] = useState(false);
   const [deckPosition, setDeckPosition] = useState<'left' | 'right'>(() => {
@@ -4333,6 +4334,119 @@ export default function GameBoard() {
           </div>
         )}
       </div>
+
+      {/* Luminaries in Play */}
+      {(state.luminaries?.length ?? 0) > 0 && (
+        <div className="rounded-2xl border border-border/50 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowActiveLuminaries(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-secondary/40 text-sm font-semibold"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-base leading-none">✦</span>
+              Luminaries in Play ({state.luminaries.length})
+            </span>
+            {showActiveLuminaries ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+          {showActiveLuminaries && (
+            <div className="p-3 flex flex-col gap-2">
+              {state.luminaries.map((lum) => {
+                const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(lum.id)) ?? null;
+                const claimedByMe = claimedByPlayer?.playerId === session?.playerId;
+                const vis = getLuminaryVisuals(lum.id);
+                const accentColor = lum.summonColor ?? vis.primaryColor;
+                const reqEntries = CRYSTALS.filter(c => (lum.requirements[c as keyof CrystalCounts] ?? 0) > 0);
+                return (
+                  <div
+                    key={lum.id}
+                    className="flex items-center gap-2.5 py-1.5 px-2 rounded-xl"
+                    style={{
+                      background: claimedByMe
+                        ? `${accentColor}18`
+                        : claimedByPlayer
+                          ? 'rgba(255,255,255,0.04)'
+                          : 'rgba(0,0,0,0.25)',
+                      border: `1px solid ${claimedByMe ? accentColor + '44' : 'rgba(255,255,255,0.07)'}`,
+                    }}
+                  >
+                    {/* Tiny panel art */}
+                    <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
+                      <LuminaryPanelArt luminaryId={lum.id} size={32} claimed={!!claimedByPlayer} />
+                    </div>
+                    {/* Name + domain */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-semibold leading-tight truncate" style={{ color: claimedByMe ? accentColor : 'rgba(255,255,255,0.85)' }}>
+                        {lum.name}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground leading-none truncate mt-0.5">{lum.domain}</p>
+                    </div>
+                    {/* Right: claimed badge OR progress chips */}
+                    <div className="shrink-0 flex items-center gap-1">
+                      {claimedByMe ? (
+                        <span
+                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: accentColor + '33', color: accentColor, border: `1px solid ${accentColor}66` }}
+                        >
+                          ✓ Claimed
+                        </span>
+                      ) : claimedByPlayer ? (
+                        <span className="text-[9px] text-muted-foreground truncate max-w-[72px]">
+                          {claimedByPlayer.playerName}
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-0.5 flex-wrap justify-end max-w-[120px]">
+                          {reqEntries.map((c) => {
+                            const needed = lum.requirements[c as keyof CrystalCounts] ?? 0;
+                            const have = me?.bonuses?.[c as keyof CrystalCounts] ?? 0;
+                            const met = have >= needed;
+                            const meta = GEM_META[c as GemKey];
+                            return (
+                              <div
+                                key={c}
+                                className="flex items-center gap-0.5 rounded px-1 py-0.5"
+                                style={{
+                                  background: met ? `${meta.glowHex}22` : 'rgba(0,0,0,0.35)',
+                                  border: `1px solid ${met ? meta.glowHex + '66' : 'rgba(255,255,255,0.12)'}`,
+                                  opacity: met ? 0.7 : 1,
+                                }}
+                                title={met ? `${meta.name} requirement met (${have}/${needed})` : `Need ${needed - have} more ${meta.name} (${have}/${needed})`}
+                              >
+                                <MiniGem color={c as GemKey} size={8} />
+                                <span
+                                  className="text-[8px] font-bold leading-none tabular-nums"
+                                  style={{ color: met ? meta.glowHex : 'rgba(255,255,255,0.75)' }}
+                                >
+                                  {met ? '✓' : `${have}/${needed}`}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* Eminence value badge */}
+                      {!claimedByPlayer && (
+                        <div
+                          className="flex items-center gap-0.5 ml-1 shrink-0"
+                          title={lum.oblivion ? `−${lum.oblivion} Eminence (Oblivion)` : `+${lum.lumens} Eminence`}
+                        >
+                          <span
+                            className="text-[9px] font-black leading-none"
+                            style={{ color: lum.oblivion ? '#f87171' : accentColor }}
+                          >
+                            {lum.oblivion ? `−${lum.oblivion}` : `+${lum.lumens}`}
+                          </span>
+                          <EminenceDiamond size={8} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 
