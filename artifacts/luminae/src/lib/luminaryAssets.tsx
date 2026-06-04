@@ -1045,7 +1045,7 @@ export const AURA_STYLE_DESCRIPTIONS: Record<AuraStyle, string> = {
   compass: 'Orbital wave — sweeping horizontal spread, tracing unseen paths',
   oracle:  'Slow amber burn — upward ember drift, deliberate and foretelling',
   null:    'Entropy field — presence reduced to near-absence, the silence beneath silence',
-  distorted: 'Warped space ripple — lateral stretch and fold pulse, reality fraying at the edges',
+  distorted: 'Warped space ripple — gentle scale breathing, reality fraying at the edges',
 };
 
 // ─── Panel Art Component ──────────────────────────────────────────────────────

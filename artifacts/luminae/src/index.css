@@ -759,15 +759,15 @@ button,
 }
 .lum-aura-pale { animation: lum-aura-pale 4.8s ease-in-out infinite; }
 
-/* distorted — warped space ripple; lateral stretch + fold pulse */
+/* distorted — warped space ripple; uniform scale only, no anisotropic stretch
+   (non-uniform scale(x,y) causes sub-pixel shimmer and layout jitter) */
 @keyframes lum-aura-distorted {
-  0%, 100% { opacity: 0.32; transform: scale(1.00, 1.00); }
-  22%       { opacity: 0.66; transform: scale(1.14, 0.94); }
-  44%       { opacity: 0.44; transform: scale(0.94, 1.10); }
-  68%       { opacity: 0.78; transform: scale(1.08, 0.98); }
-  88%       { opacity: 0.36; transform: scale(1.02, 1.06); }
+  0%, 100% { opacity: 0.38; transform: scale(1.00); }
+  25%       { opacity: 0.62; transform: scale(1.06); }
+  50%       { opacity: 0.46; transform: scale(0.98); }
+  75%       { opacity: 0.70; transform: scale(1.04); }
 }
-.lum-aura-distorted { animation: lum-aura-distorted 3.6s ease-in-out infinite; }
+.lum-aura-distorted { animation: lum-aura-distorted 4.8s ease-in-out infinite; }
 
 /* ── Ambient board glow — low-opacity halo cast onto surrounding board area ─
    A 2.5× card-sized fixed div sits behind each claimed Luminary's idle
@@ -837,12 +837,11 @@ button,
 /* distorted — ambient */
 @keyframes lum-ambient-distorted {
   0%, 100% { opacity: 0.05; }
-  22%       { opacity: 0.15; }
-  44%       { opacity: 0.08; }
-  68%       { opacity: 0.18; }
-  88%       { opacity: 0.06; }
+  25%       { opacity: 0.15; }
+  50%       { opacity: 0.08; }
+  75%       { opacity: 0.18; }
 }
-.lum-ambient-distorted { animation: lum-ambient-distorted 3.6s ease-in-out infinite; }
+.lum-ambient-distorted { animation: lum-ambient-distorted 4.8s ease-in-out infinite; }
 
 @keyframes lum-ambient-generic {
   0%, 100% { opacity: 0.06; }
@@ -914,12 +913,11 @@ button,
 /* distorted — tier-2 ambient */
 @keyframes lum-ambient-distorted-t2 {
   0%, 100% { opacity: 0.08; }
-  22%       { opacity: 0.22; }
-  44%       { opacity: 0.12; }
-  68%       { opacity: 0.26; }
-  88%       { opacity: 0.09; }
+  25%       { opacity: 0.22; }
+  50%       { opacity: 0.12; }
+  75%       { opacity: 0.26; }
 }
-.lum-ambient-distorted-t2 { animation: lum-ambient-distorted-t2 3.6s ease-in-out infinite; }
+.lum-ambient-distorted-t2 { animation: lum-ambient-distorted-t2 4.8s ease-in-out infinite; }
 
 @keyframes lum-ambient-generic-t2 {
   0%, 100% { opacity: 0.09; }
@@ -993,12 +991,11 @@ button,
 /* distorted — tier-3 ambient */
 @keyframes lum-ambient-distorted-t3 {
   0%, 100% { opacity: 0.08; transform: scale(1.00); }
-  22%       { opacity: 0.30; transform: scale(1.10); }
-  44%       { opacity: 0.16; transform: scale(1.00); }
-  68%       { opacity: 0.36; transform: scale(1.08); }
-  88%       { opacity: 0.10; transform: scale(1.00); }
+  25%       { opacity: 0.30; transform: scale(1.10); }
+  50%       { opacity: 0.16; transform: scale(1.00); }
+  75%       { opacity: 0.36; transform: scale(1.08); }
 }
-.lum-ambient-distorted-t3 { animation: lum-ambient-distorted-t3 5.4s ease-in-out infinite; }
+.lum-ambient-distorted-t3 { animation: lum-ambient-distorted-t3 7.2s ease-in-out infinite; }
 
 @keyframes lum-ambient-generic-t3 {
   0%, 100% { opacity: 0.08; transform: scale(1.00); }
