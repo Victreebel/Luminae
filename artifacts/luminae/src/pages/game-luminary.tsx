@@ -40,14 +40,14 @@ export function LuminaryClaimedPortal({
   const activeKey = (luminaryAffinity?.activeAffinity ?? null) as GemKey | null;
   const eligibleKeys = (luminaryAffinity?.eligibleAffinities ?? []) as GemKey[];
 
-  // Detect affinity switches on AI-owned portals and trigger a flash animation
+  // Detect affinity switches on any claimed portal and trigger a flash animation
   const isAIPortal = claimedByPlayer?.aiDifficulty === 'medium' || claimedByPlayer?.aiDifficulty === 'hard';
   const prevActiveKeyRef = useRef<GemKey | null>(activeKey);
   const [affinityFlashKey, setAffinityFlashKey] = useState<number>(0);
   const [affinityFlashColor, setAffinityFlashColor] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAIPortal && prevActiveKeyRef.current !== null && prevActiveKeyRef.current !== activeKey && activeKey) {
+    if (prevActiveKeyRef.current !== null && prevActiveKeyRef.current !== activeKey && activeKey) {
       const newColor = GEM_META[activeKey].hex;
       setAffinityFlashColor(newColor);
       setAffinityFlashKey(k => k + 1);
@@ -56,7 +56,16 @@ export function LuminaryClaimedPortal({
       // double-firing (portal + log) and ensures human-player toggles stay silent.
     }
     prevActiveKeyRef.current = activeKey;
-  }, [activeKey, isAIPortal]);
+  }, [activeKey]);
+
+  // Self-clean: clear flash state after animations finish so burst nodes unmount.
+  // 700 ms is safely after the longest burst animation (ring1 at 0.55 s).
+  // Each new toggle resets the timer, so rapid toggles leave only one pending cleanup.
+  useEffect(() => {
+    if (affinityFlashKey === 0) return;
+    const id = window.setTimeout(() => setAffinityFlashColor(null), 700);
+    return () => window.clearTimeout(id);
+  }, [affinityFlashKey]);
   const activeAffinityMeta = activeKey ? GEM_META[activeKey] : null;
 
   // All requirement colours — basis for the vortex mix (no flux)
@@ -257,6 +266,52 @@ export function LuminaryClaimedPortal({
           }}
         />
       ))}
+
+      {/* ── Affinity-switch burst — fires on every toggle for all claimed portals ── */}
+      {affinityFlashColor && (
+        <>
+          {/* Full-card radial flash */}
+          <motion.div
+            key={`cardflash-${affinityFlashKey}`}
+            className="absolute inset-0 pointer-events-none z-30 rounded-xl"
+            style={{
+              background: `radial-gradient(circle at 50% 42%, ${affinityFlashColor}88 0%, ${affinityFlashColor}33 45%, transparent 75%)`,
+            }}
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+          {/* Expanding ring 1 — from portal center */}
+          <motion.div
+            key={`cardring1-${affinityFlashKey}`}
+            className="absolute rounded-full pointer-events-none z-30"
+            style={{
+              width: 20, height: 20,
+              left: '50%', top: '42%',
+              marginLeft: -10, marginTop: -10,
+              border: `2px solid ${affinityFlashColor}`,
+              boxShadow: `0 0 8px ${affinityFlashColor}, 0 0 18px ${affinityFlashColor}88`,
+            }}
+            initial={{ scale: 1, opacity: 0.9 }}
+            animate={{ scale: 7, opacity: 0 }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          />
+          {/* Expanding ring 2 — slightly delayed, softer */}
+          <motion.div
+            key={`cardring2-${affinityFlashKey}`}
+            className="absolute rounded-full pointer-events-none z-30"
+            style={{
+              width: 16, height: 16,
+              left: '50%', top: '42%',
+              marginLeft: -8, marginTop: -8,
+              border: `1.5px solid ${affinityFlashColor}aa`,
+            }}
+            initial={{ scale: 1, opacity: 0.7 }}
+            animate={{ scale: 5.5, opacity: 0 }}
+            transition={{ duration: 0.5, delay: 0.08, ease: 'easeOut' }}
+          />
+        </>
+      )}
 
       {/* ── UI Overlay ── */}
       {/* Top row: eminence value (left) + floating active affinity gem (right) */}
