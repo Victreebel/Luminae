@@ -3,7 +3,7 @@
  *
  * Covers: markers (Forgotten / Condemned / Nullified / Avatar Seed),
  * on-summon burn / scry effects, end-of-turn payouts, start-of-turn burns,
- * the Assimilation action, Glass Orchard bonus, and normalizeState defaults.
+ * the Assimilation action, The Glass Orchard bonus, and normalizeState defaults.
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -384,9 +384,9 @@ describe("Concordance Mandala — Perfect Coherence: +2 Eminence at end of turn 
   });
 });
 
-// ─── Glass Orchard ────────────────────────────────────────────────────────────
+// ─── The Glass Orchard ────────────────────────────────────────────────────────
 
-describe("Glass Orchard — Perfect Replication: +1 extra bonus on first Verdance/Radiance forge", () => {
+describe("The Glass Orchard — Perfect Replication: +1 extra bonus on first Verdance/Radiance forge", () => {
   let state: GameStateData;
 
   beforeEach(() => {
@@ -421,7 +421,7 @@ describe("Glass Orchard — Perfect Replication: +1 extra bonus on first Verdanc
     const bonusBefore = state.players[0].bonuses[card.bonusColor];
     const r = applyAction(state, "p1", { type: "purchase_card", cardId });
     expect(r.success).toBe(true);
-    // Normal forge gives +1; Glass Orchard gives an additional +1 = +2 total.
+    // Normal forge gives +1; The Glass Orchard gives an additional +1 = +2 total.
     expect(state.players[0].bonuses[card.bonusColor]).toBe(bonusBefore + 2);
     expect(state.glassOrchardTriggered).toBe(true);
   });
@@ -438,7 +438,7 @@ describe("Glass Orchard — Perfect Replication: +1 extra bonus on first Verdanc
     const bonusBefore = state.players[0].bonuses[card.bonusColor];
     const r = applyAction(state, "p1", { type: "purchase_card", cardId });
     expect(r.success).toBe(true);
-    // Only +1 (no Glass Orchard bonus this time).
+    // Only +1 (no The Glass Orchard bonus this time).
     expect(state.players[0].bonuses[card.bonusColor]).toBe(bonusBefore + 1);
   });
 });

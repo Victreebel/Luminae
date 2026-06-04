@@ -1,4 +1,4 @@
-# Glass Orchard — lum_orchard
+# The Glass Orchard — lum_orchard
 
 Place artwork files here:
 - `panel.png` (or `.webp`) — sealed crystal prison panel art

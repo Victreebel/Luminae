@@ -37,7 +37,7 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
   { id: 'lum_hunger',  name: 'The First Hunger',        domain: 'Assimilation', lumens: 2, flavor: 'Its first act is consumption. Its second is perfect repetition.' },
   { id: 'lum_moth',    name: 'Red Moth',                domain: 'Rupture',      lumens: 2, flavor: 'Where it passes, the universe is divided into before and after.' },
   { id: 'lum_seed',    name: 'The Seed Beyond Seasons', domain: 'Propagation',  lumens: 3, flavor: 'It leaves its avatars where tomorrow has already begun to remember.' },
-  { id: 'lum_orchard', name: 'Glass Orchard',           domain: 'Replication',  lumens: 3, flavor: 'It learned to copy itself perfectly, and called the absence of error peace.' },
+  { id: 'lum_orchard', name: 'The Glass Orchard',        domain: 'Replication',  lumens: 3, flavor: 'It learned to copy itself perfectly, and called the absence of error peace.' },
 ];
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────

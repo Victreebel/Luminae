@@ -620,7 +620,7 @@ export interface GameState {
   catalystBloomBurnCount?: number;
   /** True once Concordance Mandala Perfect Coherence has fired (v0.8) */
   concordanceMandalaTriggered?: boolean;
-  /** True once Glass Orchard Perfect Replication has fired (v0.8) */
+  /** True once The Glass Orchard Perfect Replication has fired (v0.8) */
   glassOrchardTriggered?: boolean;
 }
 

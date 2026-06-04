@@ -651,7 +651,9 @@ export const StartGameResponse = zod.object({
   glassOrchardTriggered: zod
     .boolean()
     .optional()
-    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
+    .describe(
+      "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
 });
 
 /**
@@ -1066,7 +1068,9 @@ export const RematchResponse = zod.object({
   glassOrchardTriggered: zod
     .boolean()
     .optional()
-    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
+    .describe(
+      "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
 });
 
 /**
@@ -1481,7 +1485,9 @@ export const GetGameStateResponse = zod.object({
   glassOrchardTriggered: zod
     .boolean()
     .optional()
-    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
+    .describe(
+      "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
 });
 
 /**
@@ -1959,7 +1965,9 @@ export const SubmitActionResponse = zod.object({
   glassOrchardTriggered: zod
     .boolean()
     .optional()
-    .describe("True once Glass Orchard Perfect Replication has fired (v0.8)"),
+    .describe(
+      "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
 });
 
 /**

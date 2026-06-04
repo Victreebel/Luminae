@@ -1137,7 +1137,7 @@ export default function GameBoard() {
       }
     }
 
-    // ── Glass Orchard (+1 bonus copy) ─────────────────────────────────────
+    // ── The Glass Orchard (+1 bonus copy) ─────────────────────────────────
     if (!prev.glassOrchardTriggered && state.glassOrchardTriggered) {
       const lumEl = document.querySelector('[data-luminary-id="lum_orchard"]');
       const rect = lumEl?.getBoundingClientRect();
@@ -1219,7 +1219,7 @@ export default function GameBoard() {
       }
     }
 
-    // ── Glass Orchard copy pulse (on trigger) ─────────────────────────────
+    // ── The Glass Orchard copy pulse (on trigger) ──────────────────────────
     if (!prev.glassOrchardTriggered && state.glassOrchardTriggered) {
       const orchardEl = document.querySelector('[data-luminary-id="lum_orchard"]');
       orchardPortalRectRef.current = orchardEl?.getBoundingClientRect() ?? null;
@@ -7270,7 +7270,7 @@ export default function GameBoard() {
           onDone={() => setBloomSeedParticles(pf => pf.filter(x => x.id !== p.id))}
         />
       ))}
-      {/* ── v0.8 Glass Orchard copy pulse ── */}
+      {/* ── v0.8 The Glass Orchard copy pulse ── */}
       <OrchardCopyPulse
         originRect={orchardPortalRectRef.current}
         pulseKey={orchardCopyPulseKey}

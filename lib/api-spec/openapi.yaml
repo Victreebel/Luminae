@@ -1544,7 +1544,7 @@ components:
           description: True once Concordance Mandala Perfect Coherence has fired (v0.8)
         glassOrchardTriggered:
           type: boolean
-          description: True once Glass Orchard Perfect Replication has fired (v0.8)
+          description: True once The Glass Orchard Perfect Replication has fired (v0.8)
       required:
         - roomId
         - status

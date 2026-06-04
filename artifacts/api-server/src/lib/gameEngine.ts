@@ -432,7 +432,7 @@ export const LUMINARIES: LuminaryDef[] = [
   },
   {
     id: "lum_orchard",
-    name: "Glass Orchard",
+    name: "The Glass Orchard",
     domain: "Replication",
     lumens: 3,
     requirements: { ruby: 0, sapphire: 0, emerald: 4, onyx: 0, pearl: 4, flux: 0 },
@@ -1901,7 +1901,7 @@ export function applyAction(
       // Marked cards grant 0 Eminence; unmarked/avatar-seeded grant normal printed value.
       player.lumens += markerZerosLumens ? 0 : card.lumens;
 
-      // Glass Orchard — Perfect Replication: first forge with Verdance or Radiance cost.
+      // The Glass Orchard — Perfect Replication: first forge with Verdance or Radiance cost.
       if (
         !markerZerosLumens &&
         !state.glassOrchardTriggered &&
@@ -1912,7 +1912,7 @@ export function applyAction(
         state.glassOrchardTriggered = true;
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
-          summary: `Glass Orchard — Perfect Replication: +1 extra ${COLOR_LABEL[card.bonusColor]} bonus`,
+          summary: `The Glass Orchard — Perfect Replication: +1 extra ${COLOR_LABEL[card.bonusColor]} bonus`,
           turn: state.roundNumber,
         });
       }
@@ -1965,7 +1965,7 @@ export function applyAction(
       player.bonuses[card.bonusColor]++;
       player.lumens += card.lumens;
 
-      // Glass Orchard — Perfect Replication (reserved forge path).
+      // The Glass Orchard — Perfect Replication (reserved forge path).
       if (
         !state.glassOrchardTriggered &&
         player.luminaries.includes("lum_orchard") &&
@@ -1975,7 +1975,7 @@ export function applyAction(
         state.glassOrchardTriggered = true;
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
-          summary: `Glass Orchard — Perfect Replication: +1 extra ${COLOR_LABEL[card.bonusColor]} bonus`,
+          summary: `The Glass Orchard — Perfect Replication: +1 extra ${COLOR_LABEL[card.bonusColor]} bonus`,
           turn: state.roundNumber,
         });
       }

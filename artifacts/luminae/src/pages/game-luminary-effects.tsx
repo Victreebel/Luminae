@@ -395,7 +395,7 @@ export function BloomSeedParticle({
 }
 
 // ── OrchardCopyPulse ─────────────────────────────────────────────────────────
-// Mirrored-copy sigil that radiates outward from the Glass Orchard portal
+// Mirrored-copy sigil that radiates outward from The Glass Orchard portal
 // when the Perfect Replication trigger fires.
 // Key-driven — increment key to re-trigger.
 
