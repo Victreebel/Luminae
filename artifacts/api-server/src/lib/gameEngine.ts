@@ -486,7 +486,7 @@ export const LUMINARIES: LuminaryDef[] = [
     lumens: 0,
     requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 4, pearl: 4, flux: 0 },
     flavor: "Past the last observable star, entire futures fall silent without being destroyed.",
-    summonColor: "#4c1d95",
+    summonColor: "#ffffff",
     summonSecondaryColor: "#0a0a14",
     auraStyle: "null",
     effectName: "Black Domain",
