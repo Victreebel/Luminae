@@ -939,6 +939,11 @@ export default function GameBoard() {
       const lum = state?.luminaries?.find((l: Luminary) => l.id === evt.luminaryId);
       if (lum) {
         const isSealing = initialWinTrigId && evt.luminaryId === initialWinTrigId;
+        // summonColor is read from the server-side Luminary object here (rather
+        // than getLuminaryVisuals) because `lum` is already in hand from the
+        // state query and both sources hold the same value. The frontend asset
+        // map (LUMINARY_VISUALS) is the canonical reference for any new code
+        // that doesn't have a Luminary object readily available.
         const wsc: string | undefined = isSealing ? (lum.summonColor ?? '') || undefined : undefined;
         const claimer = (state?.players ?? []).find((p: { claimedLuminaryIds?: string[] }) =>
           (p.claimedLuminaryIds ?? []).includes(evt.luminaryId));

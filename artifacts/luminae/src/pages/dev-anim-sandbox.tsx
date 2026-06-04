@@ -22,33 +22,35 @@ function getSandboxAuraUrl(luminaryId: string): string | null {
 }
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
+// summonColor is no longer stored here — it is derived from getLuminaryVisuals()
+// which is now the single source of truth (LUMINARY_VISUALS in luminaryAssets.tsx).
+// Only display-only fields that are not part of the visual asset map live here.
 
 interface SandboxLuminary {
   id: string;
   name: string;
   domain: string;
   lumens: number;
-  summonColor: string;
   flavor: string;
 }
 
 const SANDBOX_LUMINARIES: SandboxLuminary[] = [
-  { id: 'lum_ember',   name: 'The Ember Sovereign',     domain: 'Flame',        lumens: 4, summonColor: '#ff5a3c', flavor: 'What cannot survive the fire is granted the mercy of disappearance.' },
-  { id: 'lum_tide',    name: 'The Tide Architect',      domain: 'Tides',        lumens: 2, summonColor: '#60a5fa', flavor: 'Possibility collapses to its bias.' },
-  { id: 'lum_verdant', name: 'The Verdant Oracle',      domain: 'Verdance',     lumens: 2, summonColor: '#4ade80', flavor: 'It answers only after the question has taken root.' },
-  { id: 'lum_void',    name: 'The Void Warden',         domain: 'Void',         lumens: 0, summonColor: '#4c1d95', flavor: 'In the space between stars, something watches without eyes.' },
-  { id: 'lum_radiant', name: 'Concordance Mandala',     domain: 'Coherence',    lumens: 2, summonColor: '#fef9c3', flavor: 'Truth is not revealed. It is aligned.' },
-  { id: 'lum_astral',  name: 'Phoenix Paradox',         domain: 'Recurrence',   lumens: 3, summonColor: '#f43f5e', flavor: 'Every ending becomes fuel. Every return comes back less innocent.' },
-  { id: 'lum_bloom',   name: 'Catalyst Bloom',          domain: 'Aftergrowth',  lumens: 3, summonColor: '#86efac', flavor: 'It waits for the nova to wound the world, then flowers in the scar.' },
-  { id: 'lum_forge',   name: 'The Iron Harbinger',      domain: 'Ruin',         lumens: 3, summonColor: '#ef4444', flavor: 'The hammer falls only after the future has already broken.' },
-  { id: 'lum_compass', name: '???',                     domain: 'Erasure',      lumens: 3, summonColor: '#38bdf8', flavor: 'Everyone remembered something happened, but no one can recall what was lost.' },
-  { id: 'lum_pale',    name: 'The Pale Merchant',       domain: 'Balance',      lumens: 3, summonColor: '#cbd5e1', flavor: 'Every bargain reveals one truth and buries another.' },
-  { id: 'lum_oracle',  name: 'The Cosmic Oracle',       domain: 'Prophecy',     lumens: 4, summonColor: '#fbbf24', flavor: 'She sees what will be, and what might have been, and cannot tell the difference.' },
-  { id: 'lum_null',    name: 'The Null Sovereign',      domain: 'Transcendence',lumens: 0, summonColor: '#0f172a', flavor: 'Past the last observable star, entire futures fall silent without being destroyed.' },
-  { id: 'lum_hunger',  name: 'The First Hunger',        domain: 'Assimilation', lumens: 2, summonColor: '#fbbf24', flavor: 'Its first act is consumption. Its second is perfect repetition.' },
-  { id: 'lum_moth',    name: 'Red Moth',                domain: 'Rupture',      lumens: 2, summonColor: '#ef4444', flavor: 'Where it passes, the universe is divided into before and after.' },
-  { id: 'lum_seed',    name: 'The Seed Beyond Seasons', domain: 'Propagation',  lumens: 3, summonColor: '#38bdf8', flavor: 'It leaves its avatars where tomorrow has already begun to remember.' },
-  { id: 'lum_orchard', name: 'Glass Orchard',           domain: 'Replication',  lumens: 3, summonColor: '#4ade80', flavor: 'It learned to copy itself perfectly, and called the absence of error peace.' },
+  { id: 'lum_ember',   name: 'The Ember Sovereign',     domain: 'Flame',        lumens: 4, flavor: 'What cannot survive the fire is granted the mercy of disappearance.' },
+  { id: 'lum_tide',    name: 'The Tide Architect',      domain: 'Tides',        lumens: 2, flavor: 'Possibility collapses to its bias.' },
+  { id: 'lum_verdant', name: 'The Verdant Oracle',      domain: 'Verdance',     lumens: 2, flavor: 'It answers only after the question has taken root.' },
+  { id: 'lum_void',    name: 'The Void Warden',         domain: 'Void',         lumens: 0, flavor: 'In the space between stars, something watches without eyes.' },
+  { id: 'lum_radiant', name: 'Concordance Mandala',     domain: 'Coherence',    lumens: 2, flavor: 'Truth is not revealed. It is aligned.' },
+  { id: 'lum_astral',  name: 'Phoenix Paradox',         domain: 'Recurrence',   lumens: 3, flavor: 'Every ending becomes fuel. Every return comes back less innocent.' },
+  { id: 'lum_bloom',   name: 'Catalyst Bloom',          domain: 'Aftergrowth',  lumens: 3, flavor: 'It waits for the nova to wound the world, then flowers in the scar.' },
+  { id: 'lum_forge',   name: 'The Iron Harbinger',      domain: 'Ruin',         lumens: 3, flavor: 'The hammer falls only after the future has already broken.' },
+  { id: 'lum_compass', name: '???',                     domain: 'Erasure',      lumens: 3, flavor: 'Everyone remembered something happened, but no one can recall what was lost.' },
+  { id: 'lum_pale',    name: 'The Pale Merchant',       domain: 'Balance',      lumens: 3, flavor: 'Every bargain reveals one truth and buries another.' },
+  { id: 'lum_oracle',  name: 'The Cosmic Oracle',       domain: 'Prophecy',     lumens: 4, flavor: 'She sees what will be, and what might have been, and cannot tell the difference.' },
+  { id: 'lum_null',    name: 'The Null Sovereign',      domain: 'Transcendence',lumens: 0, flavor: 'Past the last observable star, entire futures fall silent without being destroyed.' },
+  { id: 'lum_hunger',  name: 'The First Hunger',        domain: 'Assimilation', lumens: 2, flavor: 'Its first act is consumption. Its second is perfect repetition.' },
+  { id: 'lum_moth',    name: 'Red Moth',                domain: 'Rupture',      lumens: 2, flavor: 'Where it passes, the universe is divided into before and after.' },
+  { id: 'lum_seed',    name: 'The Seed Beyond Seasons', domain: 'Propagation',  lumens: 3, flavor: 'It leaves its avatars where tomorrow has already begun to remember.' },
+  { id: 'lum_orchard', name: 'Glass Orchard',           domain: 'Replication',  lumens: 3, flavor: 'It learned to copy itself perfectly, and called the absence of error peace.' },
 ];
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
@@ -258,10 +260,10 @@ function LuminaryGridCard({
       className="relative rounded-lg overflow-hidden border border-border/30 hover:border-border/60 transition-colors text-left group"
       style={{ background: '#0a0a14' }}
     >
-      {/* Color swatch strip */}
+      {/* Color swatch strip — summonColor sourced from LUMINARY_VISUALS */}
       <div
         className="h-1.5 w-full"
-        style={{ background: mode === 'summon' ? lum.summonColor : vis.primaryColor }}
+        style={{ background: mode === 'summon' ? vis.summonColor : vis.primaryColor }}
       />
 
       <div className="p-3 flex flex-col gap-1">
@@ -295,9 +297,9 @@ function LuminaryGridCard({
           <div className="flex items-center gap-1.5 mt-1">
             <span
               className="inline-block w-3 h-3 rounded-sm shrink-0 border border-white/10"
-              style={{ background: lum.summonColor }}
+              style={{ background: vis.summonColor }}
             />
-            <span className="text-[9px] font-mono text-muted-foreground/50">{lum.summonColor}</span>
+            <span className="text-[9px] font-mono text-muted-foreground/50">{vis.summonColor}</span>
           </div>
         )}
       </div>
@@ -306,7 +308,7 @@ function LuminaryGridCard({
       {isActive && (
         <div
           className="absolute inset-0 pointer-events-none rounded-lg"
-          style={{ boxShadow: `inset 0 0 0 2px ${mode === 'summon' ? lum.summonColor : vis.primaryColor}` }}
+          style={{ boxShadow: `inset 0 0 0 2px ${mode === 'summon' ? vis.summonColor : vis.primaryColor}` }}
         />
       )}
     </button>
@@ -446,7 +448,7 @@ export default function DevAnimSandbox() {
               domain={active.domain}
               lumens={active.lumens}
               flavor={active.flavor}
-              overrideColor={active.summonColor}
+              overrideColor={getLuminaryVisuals(active.id).summonColor}
               onComplete={handleSummonComplete}
               onSkip={handleSummonComplete}
             />
