@@ -2574,7 +2574,7 @@ export function LuminarySummonCutscene({
                         style={{ background: `linear-gradient(to left, transparent, ${primaryColor}80)` }}
                       />
                     </div>
-                    <div className="text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug">
+                    <div className="aura-desc-shimmer text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug">
                       {AURA_STYLE_DESCRIPTIONS[auraStyle]}
                     </div>
                   </motion.div>

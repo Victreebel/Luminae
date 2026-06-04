@@ -253,8 +253,23 @@ button,
   animation: aura-label-glow 1.4s ease-out forwards;
   animation-delay: 0.9s;
 }
+
+/* Softer companion shimmer on the description line, ~0.17 s after the name. */
+@keyframes aura-desc-shimmer {
+  0%   { text-shadow: none; }
+  30%  { text-shadow: 0 0 6px var(--aura-glow-color, #fff),
+                      0 0 14px var(--aura-glow-color, #fff); }
+  70%  { text-shadow: 0 0 3px var(--aura-glow-color, #fff); }
+  100% { text-shadow: none; }
+}
+.aura-desc-shimmer {
+  animation: aura-desc-shimmer 1.4s ease-out forwards;
+  animation-delay: 1.07s;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .aura-label-glow {
+  .aura-label-glow,
+  .aura-desc-shimmer {
     animation: none;
   }
 }
