@@ -2462,10 +2462,10 @@ export function LuminarySummonCutscene({
                         };
                         return (
                           <div
-                            style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}
+                            style={{ position: 'relative', width: ENT_W, height: ENT_H }}
                           >
-                            {/* Static star field — cosmic backdrop for the summon reveal */}
-                            <div className="lum-compass-stars" style={fill} />
+                            {/* Static star field — cosmic backdrop that fades outward radially */}
+                            <div className="lum-compass-stars lum-compass-stars-fade" style={fill} />
                             {/* Entity with heat-haze shimmer — living motion while background stays fixed */}
                             {entityCutout && (
                               <div
@@ -3206,10 +3206,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             };
             return (
               <div
-                style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'hidden', borderRadius: 4 }}
+                style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
               >
-                {/* Static star field — never animates, provides the cosmic backdrop */}
-                <div className="lum-compass-stars" style={fill} />
+                {/* Static star field — fades outward radially, no hard square edge */}
+                <div className="lum-compass-stars lum-compass-stars-fade" style={fill} />
                 {/* Entity with heat-haze shimmer — subtle distortion suggesting living motion */}
                 {entityCutout && (
                   <div
