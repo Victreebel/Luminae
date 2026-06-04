@@ -958,6 +958,7 @@ export function getLuminaryVisuals(id: string): LuminaryVisuals {
 
 interface AuraVariant {
   idleClass: string;
+  ambientClass: string;
   gradientShape: string;
   flashOrigin: string;
   flashScaleEnd: number;
@@ -965,6 +966,7 @@ interface AuraVariant {
 
 const AURA_VARIANT_FALLBACK: AuraVariant = {
   idleClass: 'lum-idle-aura',
+  ambientClass: 'lum-ambient-generic',
   gradientShape: 'ellipse at 50% 42%',
   flashOrigin: '50% 42%',
   flashScaleEnd: 1.72,
@@ -972,29 +974,29 @@ const AURA_VARIANT_FALLBACK: AuraVariant = {
 
 const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
   // fire — irregular upward flicker; bloom rises from below
-  fire:    { idleClass: 'lum-aura-fire',  gradientShape: 'ellipse 44% 72% at 50% 58%', flashOrigin: '50% 62%', flashScaleEnd: 1.80 },
+  fire:    { idleClass: 'lum-aura-fire',  ambientClass: 'lum-ambient-fire',  gradientShape: 'ellipse 44% 72% at 50% 58%', flashOrigin: '50% 62%', flashScaleEnd: 1.80 },
   // storm — electric rapid flicker; tight sharp bloom
-  storm:   { idleClass: 'lum-aura-storm', gradientShape: 'ellipse 42% 62% at 50% 48%', flashOrigin: '50% 42%', flashScaleEnd: 1.68 },
+  storm:   { idleClass: 'lum-aura-storm', ambientClass: 'lum-ambient-storm', gradientShape: 'ellipse 42% 62% at 50% 48%', flashOrigin: '50% 42%', flashScaleEnd: 1.68 },
   // tide — slow rolling wave; bloom spreads wide horizontally
-  tide:    { idleClass: 'lum-aura-tide',  gradientShape: 'ellipse 82% 44% at 50% 46%', flashOrigin: '50% 50%', flashScaleEnd: 1.88 },
+  tide:    { idleClass: 'lum-aura-tide',  ambientClass: 'lum-ambient-tide',  gradientShape: 'ellipse 82% 44% at 50% 46%', flashOrigin: '50% 50%', flashScaleEnd: 1.88 },
   // void — imploding dark pulse; bloom contracts rather than expands far
-  void:    { idleClass: 'lum-aura-void',  gradientShape: 'circle at 50% 44%',          flashOrigin: '50% 44%', flashScaleEnd: 1.52 },
+  void:    { idleClass: 'lum-aura-void',  ambientClass: 'lum-ambient-void',  gradientShape: 'circle at 50% 44%',          flashOrigin: '50% 44%', flashScaleEnd: 1.52 },
   // radiant — slow organic swell (lum_radiant has layered spinning FX on top)
-  radiant: { idleClass: 'lum-aura-bloom', gradientShape: 'ellipse 70% 68% at 50% 44%', flashOrigin: '50% 42%', flashScaleEnd: 1.82 },
+  radiant: { idleClass: 'lum-aura-bloom', ambientClass: 'lum-ambient-bloom', gradientShape: 'ellipse 70% 68% at 50% 44%', flashOrigin: '50% 42%', flashScaleEnd: 1.82 },
   // astral — dual fire/ice electric flicker; crisp mid-range bloom
-  astral:  { idleClass: 'lum-aura-storm', gradientShape: 'ellipse 60% 62% at 50% 44%', flashOrigin: '50% 42%', flashScaleEnd: 1.72 },
+  astral:  { idleClass: 'lum-aura-storm', ambientClass: 'lum-ambient-storm', gradientShape: 'ellipse 60% 62% at 50% 44%', flashOrigin: '50% 42%', flashScaleEnd: 1.72 },
   // verdant — slow organic swell; bloom rises from roots upward
-  verdant: { idleClass: 'lum-aura-bloom', gradientShape: 'ellipse 68% 70% at 50% 46%', flashOrigin: '50% 48%', flashScaleEnd: 1.86 },
+  verdant: { idleClass: 'lum-aura-bloom', ambientClass: 'lum-ambient-bloom', gradientShape: 'ellipse 68% 70% at 50% 46%', flashOrigin: '50% 48%', flashScaleEnd: 1.86 },
   // pale — double-peak silver shimmer; starburst-shaped glow
-  pale:    { idleClass: 'lum-aura-pale',  gradientShape: 'ellipse 66% 58% at 50% 44%', flashOrigin: '50% 44%', flashScaleEnd: 1.74 },
+  pale:    { idleClass: 'lum-aura-pale',  ambientClass: 'lum-ambient-pale',  gradientShape: 'ellipse 66% 58% at 50% 44%', flashOrigin: '50% 44%', flashScaleEnd: 1.74 },
   // bloom — largest organic swell; widest bloom expansion
-  bloom:   { idleClass: 'lum-aura-bloom', gradientShape: 'ellipse 72% 72% at 50% 46%', flashOrigin: '50% 46%', flashScaleEnd: 1.90 },
+  bloom:   { idleClass: 'lum-aura-bloom', ambientClass: 'lum-ambient-bloom', gradientShape: 'ellipse 72% 72% at 50% 46%', flashOrigin: '50% 46%', flashScaleEnd: 1.90 },
   // compass — orbital wave; wide horizontal spread
-  compass: { idleClass: 'lum-aura-tide',  gradientShape: 'ellipse 76% 48% at 50% 44%', flashOrigin: '50% 44%', flashScaleEnd: 1.82 },
+  compass: { idleClass: 'lum-aura-tide',  ambientClass: 'lum-ambient-tide',  gradientShape: 'ellipse 76% 48% at 50% 44%', flashOrigin: '50% 44%', flashScaleEnd: 1.82 },
   // oracle — slow amber burn; upward-biased flicker like embers
-  oracle:  { idleClass: 'lum-aura-fire',  gradientShape: 'ellipse 52% 60% at 50% 48%', flashOrigin: '50% 46%', flashScaleEnd: 1.76 },
+  oracle:  { idleClass: 'lum-aura-fire',  ambientClass: 'lum-ambient-fire',  gradientShape: 'ellipse 52% 60% at 50% 48%', flashOrigin: '50% 46%', flashScaleEnd: 1.76 },
   // null — entropy; barely perceptible, bloom barely expands
-  null:    { idleClass: 'lum-aura-null',  gradientShape: 'circle at 50% 50%',           flashOrigin: '50% 50%', flashScaleEnd: 1.44 },
+  null:    { idleClass: 'lum-aura-null',  ambientClass: 'lum-ambient-null',  gradientShape: 'circle at 50% 50%',           flashOrigin: '50% 50%', flashScaleEnd: 1.44 },
 };
 
 /**
@@ -1176,6 +1178,10 @@ const ENT_H = Math.round(ENT_W * 1.43); // ≈ 458
 // the card's name / requirements row remains legible underneath.
 const IDLE_W = BOARD_CARD_W;                     // 112
 const IDLE_H = Math.round(BOARD_CARD_H * 1.1);   // ≈ 176
+// Ambient board glow — larger fixed div that sits behind the idle overlay (z-index 17)
+// and casts a diffuse tinted halo onto the surrounding board area.
+const AMBIENT_W = Math.round(IDLE_W * 2.5);      // ≈ 280
+const AMBIENT_H = Math.round(IDLE_H * 2.5);      // ≈ 440
 
 // Per-entity idle-overlay display tweaks.
 // Adjust here when a specific entity image is proportioned differently from the
@@ -2692,7 +2698,31 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
   const initY = startViewRef.current.y - destY - IDLE_H / 2;
   const initScale = ENT_W / IDLE_W; // ≈ 2.86 — matches cutscene entity visual size
 
+  // Ambient board glow — centred on the same card position as the idle overlay.
+  // Rendered only once idle and visible; uses a CSS-only opacity animation so it
+  // costs zero JS budget even when several Luminaries are idle simultaneously.
+  const ambientVisible = isIdle && !hidden && isWithinScroller;
+  const ambientLeft = cardPos.x - AMBIENT_W / 2;
+  const ambientTop  = cardPos.y - AMBIENT_H / 2;
+
   return (
+    <>
+      {/* ── Ambient board glow — 2.5× card-size, behind the idle overlay (z 17) ──
+          Conditionally rendered only when idle and within the scroller so
+          off-screen Luminaries mount zero extra DOM nodes.              */}
+      {ambientVisible && (
+        <div
+          className={`fixed pointer-events-none ${auraVariant.ambientClass}`}
+          style={{
+            zIndex: 17,
+            left: ambientLeft,
+            top: ambientTop,
+            width: AMBIENT_W,
+            height: AMBIENT_H,
+            background: `radial-gradient(ellipse at 50% 50%, ${glowColor}14 0%, ${primaryColor}0b 38%, ${glowColor}07 62%, transparent 78%)`,
+          }}
+        />
+      )}
     <div
       className="fixed pointer-events-none"
       style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
@@ -2882,5 +2912,6 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
         })()}
       </motion.div>
     </div>
+    </>
   );
 }

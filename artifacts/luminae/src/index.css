@@ -723,6 +723,77 @@ button,
 }
 .lum-aura-pale { animation: lum-aura-pale 4.8s ease-in-out infinite; }
 
+/* ── Ambient board glow — low-opacity halo cast onto surrounding board area ─
+   A 2.5× card-sized fixed div sits behind each claimed Luminary's idle
+   overlay (z-index 17, below the card-size overlay at z-index 18) and
+   tints the neighbouring board area with the Luminary's affinity colour.
+   These keyframes mirror the aura variants in period and rhythm but use
+   opacity-only animation (no transform) at roughly ⅕ the opacity range.
+   CSS-only — zero JS animation budget, compositor thread only.          */
+
+@keyframes lum-ambient-fire {
+  0%   { opacity: 0.06; }
+  15%  { opacity: 0.16; }
+  32%  { opacity: 0.08; }
+  54%  { opacity: 0.18; }
+  74%  { opacity: 0.10; }
+  100% { opacity: 0.06; }
+}
+.lum-ambient-fire { animation: lum-ambient-fire 2.6s ease-in-out infinite; }
+
+@keyframes lum-ambient-storm {
+  0%   { opacity: 0.04; }
+  8%   { opacity: 0.15; }
+  18%  { opacity: 0.05; }
+  30%  { opacity: 0.14; }
+  44%  { opacity: 0.04; }
+  60%  { opacity: 0.16; }
+  76%  { opacity: 0.06; }
+  90%  { opacity: 0.13; }
+  100% { opacity: 0.04; }
+}
+.lum-ambient-storm { animation: lum-ambient-storm 1.8s ease-in-out infinite; }
+
+@keyframes lum-ambient-tide {
+  0%, 100% { opacity: 0.07; }
+  50%       { opacity: 0.17; }
+}
+.lum-ambient-tide { animation: lum-ambient-tide 5.4s ease-in-out infinite; }
+
+@keyframes lum-ambient-void {
+  0%   { opacity: 0.12; }
+  35%  { opacity: 0.04; }
+  55%  { opacity: 0.14; }
+  80%  { opacity: 0.05; }
+  100% { opacity: 0.12; }
+}
+.lum-ambient-void { animation: lum-ambient-void 4.2s ease-in-out infinite; }
+
+@keyframes lum-ambient-bloom {
+  0%, 100% { opacity: 0.06; }
+  50%       { opacity: 0.15; }
+}
+.lum-ambient-bloom { animation: lum-ambient-bloom 6.0s ease-in-out infinite; }
+
+@keyframes lum-ambient-null {
+  0%, 100% { opacity: 0.02; }
+  50%       { opacity: 0.08; }
+}
+.lum-ambient-null { animation: lum-ambient-null 7.2s ease-in-out infinite; }
+
+@keyframes lum-ambient-pale {
+  0%, 100% { opacity: 0.06; }
+  30%       { opacity: 0.14; }
+  60%       { opacity: 0.09; }
+}
+.lum-ambient-pale { animation: lum-ambient-pale 4.8s ease-in-out infinite; }
+
+@keyframes lum-ambient-generic {
+  0%, 100% { opacity: 0.06; }
+  50%       { opacity: 0.12; }
+}
+.lum-ambient-generic { animation: lum-ambient-generic 3.8s ease-in-out infinite; }
+
 /* ── Radiant Keeper idle — layered ring/core rotation + pulse ────────────
    Ring (radiant1): CCW rotation applied to img; scale-up via wrapper div.
    Core (radiant3): CW rotation on img; scale-down + pulse on wrapper div.
