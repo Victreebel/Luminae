@@ -3,33 +3,18 @@ import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence } from 'framer-motion';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
+import { KNOWN_AURA_STYLES } from '@workspace/game-types';
+import type { AuraStyle } from '@workspace/game-types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
- * Canonical set of aura animation style keys recognised by the aura renderer.
- *
- * This is the single source of truth for valid auraStyle values.  When a new
- * aura animation variant is added to the renderer, add its key here too.
- * The `lint:summon-colors` script reads this array at build-time and fails if
- * any Luminary's auraStyle is not a member — preventing silent fallbacks.
+ * KNOWN_AURA_STYLES and AuraStyle are the single source of truth for valid
+ * auraStyle values, defined in @workspace/game-types so both the frontend and
+ * the backend share the same type.  When adding a new animation variant, add
+ * its key there and implement the matching case in AURA_VARIANTS below.
  */
-export const KNOWN_AURA_STYLES = [
-  'fire',
-  'tide',
-  'verdant',
-  'void',
-  'radiant',
-  'astral',
-  'storm',
-  'pale',
-  'bloom',
-  'compass',
-  'oracle',
-  'null',
-] as const;
-
-export type AuraStyle = typeof KNOWN_AURA_STYLES[number];
+export { KNOWN_AURA_STYLES, type AuraStyle };
 
 interface LuminaryVisuals {
   id: string;

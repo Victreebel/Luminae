@@ -33,6 +33,10 @@ const ENGINE_PATH = resolve(
   SCRIPTS_DIR,
   "../artifacts/api-server/src/lib/gameEngine.ts"
 );
+const GAME_TYPES_PATH = resolve(
+  SCRIPTS_DIR,
+  "../lib/game-types/src/index.ts"
+);
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -411,8 +415,11 @@ if (isMain) {
   const engineColors = parseEngineColors(engineSrc);
   const assetsColors = parseAssetsColors(assetsSrc);
 
-  // KNOWN_AURA_STYLES in luminaryAssets.tsx is the single source of truth.
-  const knownStyles = parseKnownAuraStyles(assetsSrc);
+  // KNOWN_AURA_STYLES in @workspace/game-types is the single source of truth.
+  // Both gameEngine.ts and luminaryAssets.tsx re-export from there, so we parse
+  // the shared lib file directly to validate against the authoritative list.
+  const gameTypesSrc = readFileSync(GAME_TYPES_PATH, "utf-8");
+  const knownStyles = parseKnownAuraStyles(gameTypesSrc);
 
   const { mismatches, missingFromAssets, missingFromEngine, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStyles);
 

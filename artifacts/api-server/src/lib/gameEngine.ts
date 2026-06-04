@@ -3,6 +3,8 @@
 // Original names, original card designs, original rules presentation.
 
 import { z } from "zod";
+import { KNOWN_AURA_STYLES } from '@workspace/game-types';
+import type { AuraStyle } from '@workspace/game-types';
 import { getCardLore } from "./cardLore";
 
 export type CrystalColor = "ruby" | "sapphire" | "emerald" | "onyx" | "pearl";
@@ -67,30 +69,7 @@ export interface ArtifactCard {
   cost: CrystalCounts;
 }
 
-/**
- * Canonical set of aura animation style keys recognised by the aura renderer.
- * Must be kept in sync with KNOWN_AURA_STYLES in
- * artifacts/luminae/src/lib/luminaryAssets.tsx — they are intentionally
- * duplicated so the backend has no compile-time dependency on the frontend
- * package. TypeScript will catch an invalid value in the LUMINARIES array
- * immediately at typecheck time rather than only at lint:summon-colors time.
- */
-export const KNOWN_AURA_STYLES = [
-  'fire',
-  'tide',
-  'verdant',
-  'void',
-  'radiant',
-  'astral',
-  'storm',
-  'pale',
-  'bloom',
-  'compass',
-  'oracle',
-  'null',
-] as const;
-
-export type AuraStyle = (typeof KNOWN_AURA_STYLES)[number];
+export { KNOWN_AURA_STYLES, type AuraStyle };
 
 export interface LuminaryDef {
   id: string;
