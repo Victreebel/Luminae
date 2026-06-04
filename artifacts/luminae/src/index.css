@@ -1281,31 +1281,19 @@ button,
   animation: lum-aw-pending-pulse 0.9s ease-in-out infinite;
 }
 
-/* ── Compass (lum_compass) — static star field + heat-haze shimmer ─────────
-   Star field: a visible cosmic blue background with bright white/indigo dots.
-   The background is bright enough to read against the dark game board, and
-   the star field is shrunk so it never spills off the card edge.
+/* ── Compass (lum_compass) — illustrated background + heat-haze shimmer ─────
+   Uses the real background.png star-field image as the cosmic backdrop.
+   The background fades radially into the card so there's no hard square edge.
    Heat haze: very subtle scaleX ripple + slight skew creating a mirage-like
    distortion on the entity itself. The background stays fixed; only the
    entity seems to shimmer with cosmic motion.                                */
-.lum-compass-stars {
-  background: radial-gradient(circle at 50% 45%, #1e293b 0%, #0f172a 35%, #020617 65%);
-  position: relative;
-}
-.lum-compass-stars::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    radial-gradient(circle, #ffffff 1.2px, transparent 0),
-    radial-gradient(circle, #a5b4fc 0.6px, transparent 0),
-    radial-gradient(circle, #f0f9ff 1.0px, transparent 0),
-    radial-gradient(circle, #818cf8 0.8px, transparent 0),
-    radial-gradient(circle, #e0e7ff 0.5px, transparent 0),
-    radial-gradient(circle, #ffffff 1.4px, transparent 0);
-  background-size: 20px 22px, 28px 34px, 16px 19px, 36px 31px, 24px 27px, 18px 20px;
-  background-position: 0 0, 7px 11px, 13px 5px, 3px 17px, 19px 8px, 11px 23px;
-  opacity: 0.85;
+
+/* Radial fade on the real background image — fades outward to transparent so it
+   blends into the cosmic portal or card background without a hard square edge.
+   Expanded to 72% so the dense cosmic background is more visible. */
+.lum-compass-bg-fade {
+  mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, black 50%, transparent 76%);
+  -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, black 50%, transparent 76%);
 }
 
 @keyframes lum-compass-haze {
@@ -1317,14 +1305,6 @@ button,
 .lum-compass-heat-haze {
   animation: lum-compass-haze 2.8s linear infinite;
   transform-origin: center center;
-}
-
-/* Radial fade variant — the star field fades outward to transparent so it
-   blends into the cosmic portal or card background without a hard square edge.
-   Shrunk to 42% so the star field stays well inside the card bounds. */
-.lum-compass-stars-fade {
-  mask-image: radial-gradient(ellipse 42% 42% at 50% 50%, black 45%, transparent 72%);
-  -webkit-mask-image: radial-gradient(ellipse 42% 42% at 50% 50%, black 45%, transparent 72%);
 }
 
 /* ── First Hunger (lum_hunger) — nanite background crossfade ─────────────

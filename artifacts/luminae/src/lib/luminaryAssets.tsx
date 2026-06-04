@@ -142,7 +142,7 @@ for (const [path, mod] of Object.entries(_luminaryImageModules)) {
   }
 }
 
-function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura'): string | null {
+function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura' | 'background'): string | null {
   if (!ILLUSTRATED_IDS.has(id)) return null;
   return _luminaryImageMap[`${id}/${slot}`] ?? null;
 }
@@ -2532,6 +2532,7 @@ export function LuminarySummonCutscene({
                           </div>
                         );
                       })() : luminaryId === 'lum_compass' ? (() => {
+                        const bg = _getLuminaryImage('lum_compass', 'background');
                         const fill: React.CSSProperties = {
                           position: 'absolute', inset: 0, width: '100%', height: '100%',
                           display: 'block',
@@ -2540,8 +2541,16 @@ export function LuminarySummonCutscene({
                           <div
                             style={{ position: 'relative', width: ENT_W, height: ENT_H }}
                           >
-                            {/* Static star field — cosmic backdrop that fades outward radially */}
-                            <div className="lum-compass-stars lum-compass-stars-fade" style={fill} />
+                            {/* Illustrated cosmic background — actual star-field image that fades radially into the portal */}
+                            {bg && (
+                              <img
+                                src={bg}
+                                alt=""
+                                draggable={false}
+                                className="lum-compass-bg-fade"
+                                style={{ ...fill, objectFit: 'cover' }}
+                              />
+                            )}
                             {/* Entity with heat-haze shimmer — living motion while background stays fixed */}
                             {entityCutout && (
                               <div
@@ -3271,11 +3280,13 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             }
           }
 
-          // ── lum_compass: static starry background + heat-haze shimmer on entity ──
-          // The entity uses screen blend mode, so the star field shows through
-          // the dark indigo robes. The entity itself gets a subtle mirage-like
-          // distortion to suggest cosmic motion while the background stays fixed.
+          // ── lum_compass: illustrated cosmic background + heat-haze shimmer on entity ──
+          // Uses the real background.png star-field image as the backdrop. The entity
+          // uses screen blend mode so the stars show through the dark indigo robes.
+          // The entity itself gets a subtle mirage-like distortion to suggest cosmic
+          // motion while the illustrated background stays fixed.
           if (luminaryId === 'lum_compass') {
+            const bg = _getLuminaryImage('lum_compass', 'background');
             const fill: React.CSSProperties = {
               position: 'absolute', inset: 0, width: '100%', height: '100%',
               display: 'block',
@@ -3284,8 +3295,16 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
               <div
                 style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
               >
-                {/* Static star field — fades outward radially, no hard square edge */}
-                <div className="lum-compass-stars lum-compass-stars-fade" style={fill} />
+                {/* Illustrated cosmic background — actual star-field image, faded radially */}
+                {bg && (
+                  <img
+                    src={bg}
+                    alt=""
+                    draggable={false}
+                    className="lum-compass-bg-fade"
+                    style={{ ...fill, objectFit: 'cover' }}
+                  />
+                )}
                 {/* Entity with heat-haze shimmer — subtle distortion suggesting living motion */}
                 {entityCutout && (
                   <div
