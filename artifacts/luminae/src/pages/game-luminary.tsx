@@ -544,20 +544,33 @@ export function LuminaryCard({
               <div className="text-[9px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,1)] line-clamp-2">
                 {luminary.name}
               </div>
-              {/* Aura presence — compact version matching the detail sheet treatment */}
+              {/* Tier indicator — 1/2/3 stars matching the Luminary's primary affinity color.
+                  Tier 1 = mono (2L), Tier 2 = dual (3L), Tier 3 = triple (4L). */}
               {(() => {
                 const vis = getLuminaryVisuals(luminary.id);
+                const tier = vis.tier;
                 const auraName = AURA_STYLE_NAMES[vis.auraStyle];
                 const auraDesc = AURA_STYLE_DESCRIPTIONS[vis.auraStyle];
                 return (
-                  <div className="flex flex-col gap-0">
-                    <span className="text-[5px] font-bold uppercase tracking-widest text-white/30 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">Aura Presence</span>
-                    <p className="text-[7px] leading-tight line-clamp-1">
-                      <span className="font-semibold text-white/60">{auraName}</span>
-                      <span className="text-white/25"> — </span>
-                      <span className="italic text-white/35">{auraDesc}</span>
-                    </p>
-                  </div>
+                  <>
+                    <div
+                      className="text-[7px] font-bold leading-none tracking-[0.08em] drop-shadow-[0_1px_2px_rgba(0,0,0,1)]"
+                      style={{ color: glowHex }}
+                      title={`Tier ${tier} Luminary — rewards ${luminary.lumens} Eminence on claim`}
+                      aria-label={`Tier ${tier}`}
+                    >
+                      {'★'.repeat(tier)}
+                    </div>
+                    {/* Aura presence — compact version matching the detail sheet treatment */}
+                    <div className="flex flex-col gap-0">
+                      <span className="text-[5px] font-bold uppercase tracking-widest text-white/30 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">Aura Presence</span>
+                      <p className="text-[7px] leading-tight line-clamp-1">
+                        <span className="font-semibold text-white/60">{auraName}</span>
+                        <span className="text-white/25"> — </span>
+                        <span className="italic text-white/35">{auraDesc}</span>
+                      </p>
+                    </div>
+                  </>
                 );
               })()}
               <div className="text-[6px] uppercase tracking-[0.15em] font-bold text-white/70 drop-shadow-[0_1px_1px_rgba(0,0,0,1)]">
