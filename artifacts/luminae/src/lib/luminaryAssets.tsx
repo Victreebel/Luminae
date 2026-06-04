@@ -937,6 +937,66 @@ export function getLuminaryVisuals(id: string): LuminaryVisuals {
   return LUMINARY_VISUALS[id] ?? FALLBACK_VISUALS;
 }
 
+// ─── Aura Variant Lookup ──────────────────────────────────────────────────────
+// Maps each AuraStyle key to the CSS class and visual parameters that drive
+// the idle overlay aura div and the cutscene flash-haze animation.
+//
+// idleClass     — CSS class applied to the idle aura div when isIdle===true.
+//                 Replaces the generic 'lum-idle-aura'.  The CSS keyframes
+//                 are defined in index.css under "Aura style variants".
+// gradientShape — ellipse/circle descriptor injected into the radial-gradient
+//                 background of the aura div (colours are appended at render).
+// flashOrigin   — transformOrigin for the cutscene flash-haze expansion so the
+//                 bloom radiates from the Luminary's thematic focal point
+//                 (fire rises upward, tide spreads sideways, void collapses in).
+// flashScaleEnd — final scale keyframe of the flash-haze animation; controls
+//                 how far the bloom expands before fading (void stays tight,
+//                 bloom bursts wide).
+//
+// FALLBACK: any style missing from this map uses 'lum-idle-aura' and the
+// default parameters — this is an explicit fallback, not a silent one.
+
+interface AuraVariant {
+  idleClass: string;
+  gradientShape: string;
+  flashOrigin: string;
+  flashScaleEnd: number;
+}
+
+const AURA_VARIANT_FALLBACK: AuraVariant = {
+  idleClass: 'lum-idle-aura',
+  gradientShape: 'ellipse at 50% 42%',
+  flashOrigin: '50% 42%',
+  flashScaleEnd: 1.72,
+};
+
+const AURA_VARIANTS: Record<AuraStyle, AuraVariant> = {
+  // fire — irregular upward flicker; bloom rises from below
+  fire:    { idleClass: 'lum-aura-fire',  gradientShape: 'ellipse 44% 72% at 50% 58%', flashOrigin: '50% 62%', flashScaleEnd: 1.80 },
+  // storm — electric rapid flicker; tight sharp bloom
+  storm:   { idleClass: 'lum-aura-storm', gradientShape: 'ellipse 42% 62% at 50% 48%', flashOrigin: '50% 42%', flashScaleEnd: 1.68 },
+  // tide — slow rolling wave; bloom spreads wide horizontally
+  tide:    { idleClass: 'lum-aura-tide',  gradientShape: 'ellipse 82% 44% at 50% 46%', flashOrigin: '50% 50%', flashScaleEnd: 1.88 },
+  // void — imploding dark pulse; bloom contracts rather than expands far
+  void:    { idleClass: 'lum-aura-void',  gradientShape: 'circle at 50% 44%',          flashOrigin: '50% 44%', flashScaleEnd: 1.52 },
+  // radiant — slow organic swell (lum_radiant has layered spinning FX on top)
+  radiant: { idleClass: 'lum-aura-bloom', gradientShape: 'ellipse 70% 68% at 50% 44%', flashOrigin: '50% 42%', flashScaleEnd: 1.82 },
+  // astral — dual fire/ice electric flicker; crisp mid-range bloom
+  astral:  { idleClass: 'lum-aura-storm', gradientShape: 'ellipse 60% 62% at 50% 44%', flashOrigin: '50% 42%', flashScaleEnd: 1.72 },
+  // verdant — slow organic swell; bloom rises from roots upward
+  verdant: { idleClass: 'lum-aura-bloom', gradientShape: 'ellipse 68% 70% at 50% 46%', flashOrigin: '50% 48%', flashScaleEnd: 1.86 },
+  // pale — double-peak silver shimmer; starburst-shaped glow
+  pale:    { idleClass: 'lum-aura-pale',  gradientShape: 'ellipse 66% 58% at 50% 44%', flashOrigin: '50% 44%', flashScaleEnd: 1.74 },
+  // bloom — largest organic swell; widest bloom expansion
+  bloom:   { idleClass: 'lum-aura-bloom', gradientShape: 'ellipse 72% 72% at 50% 46%', flashOrigin: '50% 46%', flashScaleEnd: 1.90 },
+  // compass — orbital wave; wide horizontal spread
+  compass: { idleClass: 'lum-aura-tide',  gradientShape: 'ellipse 76% 48% at 50% 44%', flashOrigin: '50% 44%', flashScaleEnd: 1.82 },
+  // oracle — slow amber burn; upward-biased flicker like embers
+  oracle:  { idleClass: 'lum-aura-fire',  gradientShape: 'ellipse 52% 60% at 50% 48%', flashOrigin: '50% 46%', flashScaleEnd: 1.76 },
+  // null — entropy; barely perceptible, bloom barely expands
+  null:    { idleClass: 'lum-aura-null',  gradientShape: 'circle at 50% 50%',           flashOrigin: '50% 50%', flashScaleEnd: 1.44 },
+};
+
 // ─── Panel Art Component ──────────────────────────────────────────────────────
 // Renders the Luminary entity "sealed" inside the board objective tile.
 // Uses panelArt illustrated image when available; falls back to procedural SVG.
@@ -1248,7 +1308,8 @@ export function LuminarySummonCutscene({
 }) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   const vis = getLuminaryVisuals(luminaryId);
-  const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode } = vis;
+  const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
+  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
   // When overrideColor is provided (win-sealing summon), use it for all burst/particle
   // visuals so they match the sealing Luminary's summonColor rather than the generic
   // LUMINARY_VISUALS primaryColor.
@@ -2132,22 +2193,25 @@ export function LuminarySummonCutscene({
                 background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 18%, rgba(${pRgb},0.72) 44%, rgba(${sRgb},0.22) 68%, transparent 86%)`,
               }}
             />
-            {/* Affinity haze — lingering afterglow in the Luminary's primary colour */}
+            {/* Affinity haze — lingering afterglow in the Luminary's primary colour.
+                transformOrigin and final scale are auraStyle-driven so the bloom
+                radiates from the Luminary's thematic focal point (fire rises up,
+                tide spreads wide, void stays tight, bloom bursts furthest).      */}
             <motion.div key="flash-haze" className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 0.88, scale: 1.0 }}
               animate={{
                 opacity: [0.88, 0.82, 0.58, 0.24, 0.07, 0],
-                scale:   [1.00, 1.06, 1.20, 1.38, 1.56, 1.72],
+                scale:   [1.00, 1.06, 1.20, 1.38, 1.56, auraVariant.flashScaleEnd],
               }}
               transition={{
                 duration: 5.20,
                 times: [0, 0.10, 0.32, 0.60, 0.82, 1.0],
                 ease: 'easeOut',
               }}
-              exit={{ opacity: 0, scale: 1.90, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
+              exit={{ opacity: 0, scale: auraVariant.flashScaleEnd + 0.18, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
               style={{
                 background: `radial-gradient(circle farthest-corner at 50% 42%, rgba(${pRgb},0.88) 0%, rgba(${pRgb},0.50) 32%, rgba(${sRgb},0.26) 62%, rgba(${sRgb},0.08) 86%, transparent 100%)`,
-                transformOrigin: '50% 42%',
+                transformOrigin: auraVariant.flashOrigin,
               }}
             />
           </>
@@ -2464,7 +2528,8 @@ export function LuminarySummonCutscene({
 // of the card (name, claim tag) stays legible underneath the transparent edge.
 export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false }: { luminaryId: string; frozen?: boolean; hidden?: boolean }) {
   const vis = getLuminaryVisuals(luminaryId);
-  const { EntityArt, primaryColor, glowColor, entityBlendMode } = vis;
+  const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
+  const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
   const { entityCutout } = getLuminaryImageAssets(luminaryId);
 
   const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
@@ -2607,15 +2672,25 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       >
         {/* Colored aura — pulses once idle via CSS animation (compositor thread).
             Gradient-only (no filter:blur) so the browser does NOT force a
-            separate GPU compositing layer for each of the 5 possible overlays. */}
+            separate GPU compositing layer for each of the 5 possible overlays.
+            The CSS class and gradient shape are selected by auraStyle via
+            AURA_VARIANTS so each Luminary has a distinct animation character:
+              fire/oracle  → lum-aura-fire  (irregular upward flicker, 2.6 s)
+              storm/astral → lum-aura-storm (electric rapid flicker, 1.8 s)
+              tide/compass → lum-aura-tide  (slow rolling wave, 5.4 s)
+              void         → lum-aura-void  (imploding dark pulse, 4.2 s)
+              bloom/verdant/radiant → lum-aura-bloom (organic swell, 6.0 s)
+              null         → lum-aura-null  (entropy stillness, 7.2 s)
+              pale         → lum-aura-pale  (silver starburst shimmer, 4.8 s)
+            Fallback (AURA_VARIANT_FALLBACK): 'lum-idle-aura' generic pulse.  */}
         <motion.div
           style={{
             position: 'absolute',
             inset: -20,
             borderRadius: 22,
-            background: `radial-gradient(ellipse at 50% 42%, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
+            background: `radial-gradient(${auraVariant.gradientShape}, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
           }}
-          className={isIdle ? 'lum-idle-aura' : undefined}
+          className={isIdle ? auraVariant.idleClass : undefined}
           animate={!isIdle ? { opacity: 0.75 } : {}}
           transition={!isIdle ? { duration: 0.4 } : {}}
         />

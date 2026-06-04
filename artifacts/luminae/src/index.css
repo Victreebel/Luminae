@@ -653,6 +653,76 @@ button,
   animation: lum-idle-aura 3.8s ease-in-out infinite;
 }
 
+/* ── Aura style variants — distinct animation per Luminary auraStyle ────────
+   Each uses compositor-thread-only properties (opacity + transform) so they
+   cost zero JS frame budget even when multiple Luminaries are idle at once.
+   Applied instead of 'lum-idle-aura' by the auraStyle → AURA_VARIANTS map.
+   Fallback: any unmapped style continues to use 'lum-idle-aura'.           */
+
+/* fire / oracle — irregular upward flicker, fast period */
+@keyframes lum-aura-fire {
+  0%   { opacity: 0.38; transform: scale(1.00) translateY(0px); }
+  15%  { opacity: 0.85; transform: scale(1.09) translateY(-4px); }
+  32%  { opacity: 0.48; transform: scale(1.04) translateY(-6px); }
+  54%  { opacity: 0.93; transform: scale(1.13) translateY(-3px); }
+  74%  { opacity: 0.56; transform: scale(1.06) translateY(-5px); }
+  100% { opacity: 0.38; transform: scale(1.00) translateY(0px); }
+}
+.lum-aura-fire { animation: lum-aura-fire 2.6s ease-in-out infinite; }
+
+/* storm / astral — rapid electric flicker with sharp opacity spikes */
+@keyframes lum-aura-storm {
+  0%   { opacity: 0.28; transform: scale(1.00); }
+  8%   { opacity: 0.88; transform: scale(1.11); }
+  18%  { opacity: 0.34; transform: scale(1.02); }
+  30%  { opacity: 0.82; transform: scale(1.13); }
+  44%  { opacity: 0.30; transform: scale(1.01); }
+  60%  { opacity: 0.90; transform: scale(1.12); }
+  76%  { opacity: 0.38; transform: scale(1.03); }
+  90%  { opacity: 0.76; transform: scale(1.10); }
+  100% { opacity: 0.28; transform: scale(1.00); }
+}
+.lum-aura-storm { animation: lum-aura-storm 1.8s ease-in-out infinite; }
+
+/* tide / compass — slow rolling wave, horizontal scale emphasis */
+@keyframes lum-aura-tide {
+  0%, 100% { opacity: 0.42; transform: scale(1.00, 0.92); }
+  50%       { opacity: 0.88; transform: scale(1.18, 1.06); }
+}
+.lum-aura-tide { animation: lum-aura-tide 5.4s ease-in-out infinite; }
+
+/* void — imploding dark pulse: scale CONTRACTS at peak, then rebounds */
+@keyframes lum-aura-void {
+  0%   { opacity: 0.65; transform: scale(1.04); }
+  35%  { opacity: 0.22; transform: scale(0.92); }
+  55%  { opacity: 0.78; transform: scale(1.00); }
+  80%  { opacity: 0.32; transform: scale(0.95); }
+  100% { opacity: 0.65; transform: scale(1.04); }
+}
+.lum-aura-void { animation: lum-aura-void 4.2s ease-in-out infinite; }
+
+/* bloom / verdant / radiant — slow organic swell, large scale expansion */
+@keyframes lum-aura-bloom {
+  0%, 100% { opacity: 0.35; transform: scale(1.00); }
+  50%       { opacity: 0.80; transform: scale(1.24); }
+}
+.lum-aura-bloom { animation: lum-aura-bloom 6.0s ease-in-out infinite; }
+
+/* null — entropy: near stillness, barely perceptible presence */
+@keyframes lum-aura-null {
+  0%, 100% { opacity: 0.14; transform: scale(1.00); }
+  50%       { opacity: 0.48; transform: scale(1.05); }
+}
+.lum-aura-null { animation: lum-aura-null 7.2s ease-in-out infinite; }
+
+/* pale — slow silver starburst shimmer with slight double-peak rhythm */
+@keyframes lum-aura-pale {
+  0%, 100% { opacity: 0.40; transform: scale(1.00); }
+  30%       { opacity: 0.82; transform: scale(1.10); }
+  60%       { opacity: 0.50; transform: scale(1.16); }
+}
+.lum-aura-pale { animation: lum-aura-pale 4.8s ease-in-out infinite; }
+
 /* ── Radiant Keeper idle — layered ring/core rotation + pulse ────────────
    Ring (radiant1): CCW rotation applied to img; scale-up via wrapper div.
    Core (radiant3): CW rotation on img; scale-down + pulse on wrapper div.
