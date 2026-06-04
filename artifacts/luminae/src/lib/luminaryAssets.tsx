@@ -2550,6 +2550,33 @@ export function LuminarySummonCutscene({
                       &ldquo;{flavor}&rdquo;
                     </div>
                   )}
+                  {/* Aura presence label — name + one-line lore description */}
+                  <motion.div
+                    className="flex flex-col items-center gap-0.5 mt-2"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: isFlashing ? 0 : (isFading ? 0 : 1) }}
+                    transition={{ duration: 0.7, delay: 0.9 }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="w-4 h-px"
+                        style={{ background: `linear-gradient(to right, transparent, ${primaryColor}80)` }}
+                      />
+                      <div
+                        className="text-[9px] font-bold tracking-[0.20em] uppercase"
+                        style={{ color: `${primaryColor}cc` }}
+                      >
+                        {AURA_STYLE_NAMES[auraStyle]} Aura
+                      </div>
+                      <div
+                        className="w-4 h-px"
+                        style={{ background: `linear-gradient(to left, transparent, ${primaryColor}80)` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-white/40 italic max-w-[240px] text-center leading-snug">
+                      {AURA_STYLE_DESCRIPTIONS[auraStyle]}
+                    </div>
+                  </motion.div>
                 </motion.div>
 
               </div>
