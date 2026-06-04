@@ -1205,6 +1205,7 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   objectPosition?: string;
   objectFit?: string;
   idleCyFactor?: number;
+  noFloat?: boolean;
 }> = {
   lum_void:   { scale: 1.22, objectPosition: 'center 25%' },
   lum_tide:   { idleCyFactor: 0.435 },
@@ -1213,7 +1214,7 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
   // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
   // to a tiny sliver with letterbox bars on top and bottom.
-  lum_compass: { objectFit: 'cover', objectPosition: 'center center' },
+  lum_compass: { objectFit: 'cover', objectPosition: 'center center', noFloat: true },
   // Wide horizontal seed — shift down slightly so the body fills the tall
   // portrait panel without floating at the top.
   lum_seed: { objectPosition: 'center 55%' },
@@ -3099,7 +3100,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
           const cyFactor = ov.idleCyFactor;
           // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
           // factor via CSS custom property) so CSS transform and scale never conflict.
-          const idleClass = isIdle
+          const idleClass = isIdle && !ov.noFloat
             ? (entScale !== 1 ? 'lum-idle-float-scaled' : 'lum-idle-float')
             : undefined;
 
