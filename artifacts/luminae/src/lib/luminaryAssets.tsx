@@ -1325,9 +1325,9 @@ const PHASE_DURATIONS: Record<CutscenePhase, number> = {
   leaking:      850,  // energy bleeds through; sustained quiet-before-storm
   secondcrack:  360,  // second branch crack appears; faint rays start seeping
   cracking:    1100,  // multi-crack burst + full rays; accelerates into shatter
-  shattering: 3800,  // chunks drift apart slowly; vessel visible
-  flashing:    600,   // brief white flash before reveal
-  revealed:   4200,
+  shattering:  600,  // chunks break apart quickly
+  flashing:    400,   // white flash + entity entrance
+  revealed:    800,   // entity visible; user taps to dismiss
   fading:      550,
   done:           0,
 };
@@ -1373,7 +1373,8 @@ export function LuminarySummonCutscene({
   const dismissRef = useRef<(() => void) | null>(null);
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
-  const auraVariant = AURA_VARIANTS[auraStyle];
+  // AURA_VARIANTS[auraStyle] intentionally not used — all flash elements now use
+  // fixed duration/scale regardless of aura variant for a consistent snappy feel.
   // When overrideColor is provided (win-sealing summon), use it for all burst/particle
   // visuals so they match the sealing Luminary's summonColor rather than the generic
   // LUMINARY_VISUALS primaryColor.
@@ -1474,7 +1475,7 @@ export function LuminarySummonCutscene({
   const hasCracks = isFirstCrack || isLeaking || isSecondCrack || isCracking || isShattering;
   // Shards stay mounted through the entity reveal so they drift apart while
   // the Luminary manifests — creating the "born from the shattered vessel" effect.
-  const isShatterVisible = isShattering || isRevealedActive;
+  const isShatterVisible = isShattering || isFlashing || isRevealedActive;
 
   // Stores the board element's NATURAL top (before any pan transform is applied).
   // Needed to compute a correct transform-origin during the focusing scale phase,
@@ -1589,8 +1590,7 @@ export function LuminarySummonCutscene({
   const camZoomed =
     isFocusing || isIntro || isZooming ||
     isPressure || isFirstCrack || isLeaking || isSecondCrack || isCracking;
-  // Camera zooms out during shattering so the pieces are visible against the
-  // shrinking board, creating a dramatic "pull back to reveal the break" effect.
+  // Camera zooms OUT during shatter so the pieces are visible against the board.
   const camScale = isShattering ? 1 : (camZoomed ? targetScale : 1);
 
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
@@ -2148,19 +2148,18 @@ export function LuminarySummonCutscene({
       {/* Luminary's primary affinity colour via screen-blend overlay.          */}
       <AnimatePresence>
         {isShatterVisible && PANEL_PIECES.map((piece, i) => {
-          // Scale drift distances to match the zoomed card so the break
-          // reads at the same visual scale as the vessel.
-          const s = targetScale;
-          const dx = piece.dx * s;
-          const dy = piece.dy * s;
-          const z  = (piece.z ?? (i % 2 === 0 ? 80 : -80)) * s;
+          // Natural size chunks (board card size) positioned at viewport center.
+          // The camera zooms out during shatter, so the pieces are readable.
+          const dx = piece.dx;
+          const dy = piece.dy;
+          const z  = piece.z ?? (i % 2 === 0 ? 80 : -80);
           return (
           <motion.div key={`chunk-${i}`} className="absolute pointer-events-none"
             style={{
-              width:  BOARD_CARD_W * s,
-              height: BOARD_CARD_H * s,
-              left:   vw / 2 - (BOARD_CARD_W * s) / 2,
-              top:    vh / 2 - (BOARD_CARD_H * s) / 2,
+              width:  BOARD_CARD_W,
+              height: BOARD_CARD_H,
+              left:   vw / 2 - BOARD_CARD_W / 2,
+              top:    vh / 2 - BOARD_CARD_H / 2,
               clipPath: piece.clip,
               transformPerspective: 1000,
               transformStyle: 'preserve-3d',
@@ -2174,41 +2173,34 @@ export function LuminarySummonCutscene({
               filter: `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.60)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.55))`,
             }}
             animate={{
-              // Slow, deliberate peel — pieces drift apart at a measured pace
-              // so the viewer can read the fracture before the panel dissolves.
-              x: [0, dx * 0.03, dx],
-              y: [0, dy * 0.03, dy],
-              z: [0, z * 0.2, z],
-              rotateX: [0, piece.rotateX],
-              rotateY: [0, piece.rotateY],
-              rotateZ: [0, piece.rotateZ],
-              scale: [0.98, 0.98, 0.98, 0.98, 0.96, 0.92],
-              // Stay opaque through the first half, then dissolve bright.
-              opacity: [1, 1, 1, 0.96, 0.55, 0],
-              // Filter arc: normal → affinity glow builds → pulse peak → white-hot
-              // burn-out. Chunks never go dark — they dissolve INTO affinity light.
+              x: [0, dx * 0.15, dx * 0.55, dx * 0.90, dx * 1.2],
+              y: [0, dy * 0.15, dy * 0.55, dy * 0.90, dy * 1.2],
+              z: [0, z * 0.25, z * 0.55, z * 0.80, z * 0.95],
+              rotateX: [0, piece.rotateX * 0.35, piece.rotateX * 0.65, piece.rotateX * 0.88, piece.rotateX],
+              rotateY: [0, piece.rotateY * 0.35, piece.rotateY * 0.65, piece.rotateY * 0.88, piece.rotateY],
+              rotateZ: [0, piece.rotateZ * 0.35, piece.rotateZ * 0.65, piece.rotateZ * 0.88, piece.rotateZ],
+              scale: [0.95, 0.92, 0.86, 0.78, 0.68],
+              opacity: [0.98, 0.88, 0.68, 0.38, 0.12],
               filter: [
-                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
                 `brightness(1.3) drop-shadow(3px -3px 4px rgba(${pRgb},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
-                `brightness(2.0) drop-shadow(5px -4px 7px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.30))`,
-                `brightness(3.6) drop-shadow(0 0 14px rgba(${pRgb},0.96)) drop-shadow(0 0 26px rgba(${pRgb},0.58))`,
-                `brightness(5.6) drop-shadow(0 0 20px rgba(${pRgb},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
-                `brightness(8.0) drop-shadow(0 0 26px rgba(${pRgb},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
+                `brightness(2.2) drop-shadow(5px -4px 8px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 7px rgba(${pRgb},0.35))`,
+                `brightness(3.8) drop-shadow(0 0 16px rgba(${pRgb},0.96)) drop-shadow(0 0 28px rgba(${pRgb},0.60))`,
+                `brightness(5.8) drop-shadow(0 0 22px rgba(${pRgb},1.0)) drop-shadow(0 0 40px rgba(255,255,255,0.72))`,
+                `brightness(8.0) drop-shadow(0 0 28px rgba(${pRgb},1.0)) drop-shadow(0 0 50px rgba(255,255,255,0.88))`,
               ],
             }}
             transition={{
-              duration: 8.0,
-              delay: i * 0.04,
-              // Crack jolt then slow float
-              x:       { times: [0, 0.02, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              y:       { times: [0, 0.02, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              z:       { times: [0, 0.08, 1.0], ease: ['easeOut', 'easeInOut'] },
-              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 8.0 },
-              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 8.0 },
-              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 8.0 },
-              scale:   { times: [0, 0.06, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
-              opacity: { times: [0, 0.06, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.08, 0.22, 0.42, 0.62, 0.82, 1.0], ease: 'easeInOut' },
+              duration: 0.65,
+              delay: i * 0.03,
+              x:       { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
+              y:       { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: ['easeIn', [0.22, 1, 0.36, 1]] },
+              z:       { times: [0, 0.15, 0.38, 0.65, 0.90, 1.0], ease: ['easeOut', 'easeInOut'] },
+              rotateX: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeOut', duration: 0.65 },
+              rotateY: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeOut', duration: 0.65 },
+              rotateZ: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeOut', duration: 0.65 },
+              scale:   { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeInOut' },
+              opacity: { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeInOut' },
+              filter:  { times: [0, 0.12, 0.35, 0.62, 0.88, 1.0], ease: 'easeInOut' },
             }}
           >
             {/* Panel artwork — fills the shard so the clipPath shows the correct piece */}
@@ -2222,7 +2214,7 @@ export function LuminarySummonCutscene({
                 draggable={false}
               />
             ) : (
-              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W * s} />
+              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
             )}
             {/* Affinity-colour transmutation — the vessel material is consumed by the
                 Luminary's energy. Ramps to full opacity (solid affinity colour) before
@@ -2307,47 +2299,41 @@ export function LuminarySummonCutscene({
                 transformOrigin and final scale are auraStyle-driven so the bloom
                 radiates from the Luminary's thematic focal point (fire rises up,
                 tide spreads wide, void stays tight, bloom bursts furthest).      */}
-            <motion.div key="flash-haze" className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 0.88, scale: 1.0 }}
-              animate={{
-                opacity: [0.88, 0.82, 0.58, 0.24, 0.07, 0],
-                scale:   [1.00, 1.06, 1.20, 1.38, 1.56, auraVariant.flashScaleEnd],
-              }}
-              transition={{
-                duration: 5.20,
-                times: [0, 0.10, 0.32, 0.60, 0.82, 1.0],
-                ease: 'easeOut',
-              }}
-              exit={{ opacity: 0, scale: auraVariant.flashScaleEnd + 0.18, transition: { duration: 5.60, ease: [0.04, 0, 0.05, 1] } }}
-              style={{
-                background: `radial-gradient(circle farthest-corner at 50% 42%, rgba(${pRgb},0.88) 0%, rgba(${pRgb},0.50) 32%, rgba(${sRgb},0.26) 62%, rgba(${sRgb},0.08) 86%, transparent 100%)`,
-                transformOrigin: auraVariant.flashOrigin,
-              }}
-            />
-            {/* White core — rendered on top of the haze, so the flash centre is white */}
+            {/* White core — immediate bright flash, then fades fast */}
             <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 1 }}
-              animate={{ opacity: [1, 0.94, 0.58, 0.22, 0.06, 0] }}
-              transition={{ duration: 2.20, times: [0, 0.08, 0.36, 0.66, 0.86, 1], ease: 'easeInOut' }}
-              exit={{ opacity: 0, transition: { duration: 0.80, ease: 'easeOut' } }}
+              initial={{ opacity: 1, scale: 0.5 }}
+              animate={{ opacity: [1, 1, 0.6, 0.1, 0], scale: [0.5, 1.2, 1.8, 2.2, 2.6] }}
+              transition={{ duration: 0.55, times: [0, 0.15, 0.45, 0.75, 1], ease: 'easeOut' }}
+              exit={{ opacity: 0, transition: { duration: 0.2, ease: 'easeOut' } }}
               style={{
-                background: `radial-gradient(ellipse 65% 65% at 50% 42%, #ffffff 0%, #ffffff 50%, #ffffff88 72%, transparent 86%)`,
+                background: `radial-gradient(ellipse 55% 55% at 50% 42%, #ffffff 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.2) 70%, transparent 100%)`,
+                filter: 'blur(8px)',
               }}
             />
-            {/* Shock ring — thin white ring expanding outward from the flash centre,
-                like a blast shockwave.  Fades as it grows.  CSS blur softens the edge. */}
+            {/* Affinity haze — quick burst of the luminary's color */}
+            <motion.div key="flash-haze" className="absolute inset-0 pointer-events-none"
+              initial={{ opacity: 0, scale: 0.4 }}
+              animate={{ opacity: [0, 0.7, 0.35, 0.1, 0], scale: [0.4, 1.0, 1.4, 1.8, 2.2] }}
+              transition={{ duration: 0.8, times: [0, 0.15, 0.40, 0.70, 1], ease: 'easeOut' }}
+              exit={{ opacity: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
+              style={{
+                background: `radial-gradient(ellipse at 50% 42%, rgba(${pRgb},0.9) 0%, rgba(${pRgb},0.5) 35%, rgba(${sRgb},0.2) 60%, transparent 85%)`,
+                filter: 'blur(16px)',
+              }}
+            />
+            {/* Shock ring — expanding ring burst */}
             <motion.div key="flash-ring" className="absolute pointer-events-none"
-              initial={{ opacity: 0, scale: 0.45 }}
-              animate={{ opacity: [0, 0.55, 0.22, 0], scale: [0.45, 1.35, 2.20, 2.90] }}
-              transition={{ duration: 1.10, times: [0, 0.14, 0.52, 1.0], ease: 'easeOut' }}
+              initial={{ opacity: 0, scale: 0.3 }}
+              animate={{ opacity: [0, 0.8, 0.4, 0], scale: [0.3, 1.0, 1.6, 2.2] }}
+              transition={{ duration: 0.6, times: [0, 0.2, 0.55, 1], ease: 'easeOut' }}
               exit={{ opacity: 0 }}
               style={{
                 width: BOARD_CARD_W * 3.2, height: BOARD_CARD_H * 3.2,
                 left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 1.6,
                 top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 1.6,
                 borderRadius: '50%',
-                border: '1.5px solid rgba(255,255,255,0.72)',
-                filter: 'blur(3px)',
+                border: '2px solid rgba(255,255,255,0.85)',
+                filter: 'blur(2px)',
                 transformOrigin: '50% 50%',
               }}
             />
@@ -2394,7 +2380,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 2.10, delay: 0.00, ease: [0.18, 0, 0.82, 1] }
+              : { duration: 0.45, delay: 0.05, ease: [0.18, 0, 0.82, 1] }
             }
           >
             {/* Swing-in entrance — poster-to-anterior sweep timed to beat drop.  */}
@@ -2411,9 +2397,9 @@ export function LuminarySummonCutscene({
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 1.10, times: [0, 0.50, 0.78, 1.0], ease: 'easeOut' },
-                    y:       { duration: 1.00, ease: [0.22, 1, 0.36, 1] },
-                    rotateY: { duration: 1.10, times: [0, 0.56, 1.0],
+                    scale:   { duration: 0.45, times: [0, 0.45, 0.72, 1.0], ease: 'easeOut' },
+                    y:       { duration: 0.40, ease: [0.22, 1, 0.36, 1] },
+                    rotateY: { duration: 0.45, times: [0, 0.52, 1.0],
                                ease: ['easeIn', [0.16, 1, 0.3, 1]] },
                   }
               }
