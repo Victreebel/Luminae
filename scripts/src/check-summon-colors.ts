@@ -34,37 +34,6 @@ const ENGINE_PATH = resolve(
   "../artifacts/api-server/src/lib/gameEngine.ts"
 );
 
-// ── Allowlist ────────────────────────────────────────────────────────────────
-
-/**
- * The exhaustive list of valid auraStyle values.
- *
- * Every entry in LUMINARIES (gameEngine.ts) and LUMINARY_VISUALS
- * (luminaryAssets.tsx) must use one of these strings. Inventing a new
- * style without adding it here will cause `pnpm run typecheck` to fail
- * immediately — before the unknown value can silently fall through the
- * runtime animation switch statement.
- *
- * When you add a genuinely new aura animation, add its string here AND
- * implement the corresponding case in the frontend animation switch.
- */
-export const VALID_AURA_STYLES = [
-  "fire",
-  "tide",
-  "verdant",
-  "void",
-  "radiant",
-  "astral",
-  "storm",
-  "pale",
-  "bloom",
-  "compass",
-  "oracle",
-  "null",
-] as const;
-
-export type AuraStyle = (typeof VALID_AURA_STYLES)[number];
-
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface ColorEntry {
@@ -91,7 +60,7 @@ export interface CheckResult {
   mismatches: Mismatch[];
   /** IDs present in the engine but missing from LUMINARY_VISUALS. */
   missingFromAssets: string[];
-  /** Entries whose auraStyle is not in VALID_AURA_STYLES. */
+  /** Entries whose auraStyle is not in the valid styles set derived from KNOWN_AURA_STYLES. */
   invalidAuraStyles: InvalidAuraStyle[];
 }
 
@@ -345,18 +314,24 @@ export function parseAssetsColors(src: string): Map<string, ColorEntry> {
  * IDs present in the engine but missing from LUMINARY_VISUALS are errors.
  *
  * Also validates that every auraStyle value (in both files) belongs to
- * VALID_AURA_STYLES — this catches typos and invented styles before they
- * can silently fall through the runtime animation switch statement.
+ * validStyles (derived from KNOWN_AURA_STYLES in luminaryAssets.tsx) — this
+ * catches typos and invented styles before they can silently fall through the
+ * runtime animation switch statement.
+ *
+ * @param validStyles - The authoritative set of recognised aura style strings,
+ *   obtained by calling parseKnownAuraStyles() on the luminaryAssets.tsx source.
+ *   KNOWN_AURA_STYLES in luminaryAssets.tsx is the single source of truth.
  */
 export function checkColors(
   engineColors: Map<string, ColorEntry>,
-  assetsColors: Map<string, ColorEntry>
+  assetsColors: Map<string, ColorEntry>,
+  validStyles: ReadonlySet<string>
 ): CheckResult {
   const mismatches: Mismatch[] = [];
   const missingFromAssets: string[] = [];
   const invalidAuraStyles: InvalidAuraStyle[] = [];
 
-  const validSet = new Set<string>(VALID_AURA_STYLES);
+  const validSet = validStyles;
 
   for (const [id, engineEntry] of engineColors) {
     // Validate engine auraStyle against the allowlist
@@ -429,7 +404,10 @@ if (isMain) {
   const engineColors = parseEngineColors(engineSrc);
   const assetsColors = parseAssetsColors(assetsSrc);
 
-  const { mismatches, missingFromAssets, invalidAuraStyles } = checkColors(engineColors, assetsColors);
+  // KNOWN_AURA_STYLES in luminaryAssets.tsx is the single source of truth.
+  const knownStyles = parseKnownAuraStyles(assetsSrc);
+
+  const { mismatches, missingFromAssets, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStyles);
 
   const hasErrors =
     mismatches.length > 0 ||
@@ -465,16 +443,16 @@ if (isMain) {
 
     if (invalidAuraStyles.length > 0) {
       console.error(
-        "  auraStyle values not in VALID_AURA_STYLES allowlist (silent fallback risk):"
+        "  auraStyle values not in KNOWN_AURA_STYLES allowlist (silent fallback risk):"
       );
       for (const bad of invalidAuraStyles) {
         console.error(`    ${bad.id} [${bad.source}]: auraStyle="${bad.value}"`);
       }
       console.error(
-        `  Valid values: ${VALID_AURA_STYLES.map((s) => `"${s}"`).join(", ")}`
+        `  Valid values: ${[...knownStyles].map((s) => `"${s}"`).join(", ")}`
       );
       console.error(
-        "  To add a new style: extend VALID_AURA_STYLES in check-summon-colors.ts\n" +
+        "  To add a new style: extend KNOWN_AURA_STYLES in luminaryAssets.tsx\n" +
         "  AND add a matching case to the frontend animation switch."
       );
       console.error("");
@@ -486,8 +464,8 @@ if (isMain) {
         "  Summon-color mismatch — Update LUMINARY_VISUALS in luminaryAssets.tsx to match",
         "    gameEngine.ts, or vice versa.  LUMINARY_VISUALS is the canonical source of truth.",
         "  Unrecognised auraStyle — Either fix the typo in LUMINARY_VISUALS, or add the new",
-        "    animation key to KNOWN_AURA_STYLES in luminaryAssets.tsx and to VALID_AURA_STYLES",
-        "    in check-summon-colors.ts (and implement the animation branch in the aura renderer).",
+        "    animation key to KNOWN_AURA_STYLES in luminaryAssets.tsx",
+        "    (and implement the animation branch in the aura renderer).",
       ].join("\n")
     );
 

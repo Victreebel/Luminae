@@ -25,7 +25,6 @@ import {
   checkColors,
   parseKnownAuraStyles,
   checkAuraStyles,
-  VALID_AURA_STYLES,
 } from "./check-summon-colors.js";
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
@@ -90,7 +89,8 @@ for (const [id, engineEntry] of engineColors) {
 
 console.log("\n── Structural sanity ────────────────────────────────────────────────");
 
-const { mismatches, missingFromAssets, invalidAuraStyles } = checkColors(engineColors, assetsColors);
+const knownStylesForCheck = parseKnownAuraStyles(assetsSrc);
+const { mismatches, missingFromAssets, invalidAuraStyles } = checkColors(engineColors, assetsColors, knownStylesForCheck);
 
 assert(
   mismatches.length === 0,
@@ -189,11 +189,11 @@ for (const [id, entry] of assetsColors) {
   );
 }
 
-// ── VALID_AURA_STYLES allowlist unit tests ────────────────────────────────────
+// ── KNOWN_AURA_STYLES allowlist unit tests ────────────────────────────────────
 
 console.log("\n── auraStyle allowlist unit tests ───────────────────────────────────");
 
-assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
+assert(knownStyles.size > 0, "KNOWN_AURA_STYLES (parsed from luminaryAssets.tsx) is non-empty");
 
 // A synthetic engine entry with a bad auraStyle must be flagged.
 {
@@ -203,7 +203,7 @@ assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
   const fakeAssets = new Map([
     ["lum_test", { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "solar" }],
   ]);
-  const result = checkColors(fakeEngine, fakeAssets);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
   assert(
     result.invalidAuraStyles.length === 2,
     `synthetic "solar" auraStyle flagged in both engine and assets (got ${result.invalidAuraStyles.length} violation(s))`
@@ -218,7 +218,7 @@ assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
   const fakeAssets = new Map([
     ["lum_test2", { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "fire" }],
   ]);
-  const result = checkColors(fakeEngine, fakeAssets);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
   const engineViolations = result.invalidAuraStyles.filter((b) => b.source === "engine");
   const assetsViolations = result.invalidAuraStyles.filter((b) => b.source === "assets");
   assert(
@@ -239,7 +239,7 @@ assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
   const fakeAssets = new Map([
     ["lum_good", { summonColor: "#ff0000", summonSecondaryColor: "#000000", auraStyle: "fire" }],
   ]);
-  const result = checkColors(fakeEngine, fakeAssets);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
   assert(
     result.invalidAuraStyles.length === 0,
     `valid auraStyle "fire" produces no violations`
@@ -252,7 +252,7 @@ assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
   const fakeAssets = new Map([
     ["lum_future", { summonColor: "#aabbcc", summonSecondaryColor: "#001122", auraStyle: "placeholder_style" }],
   ]);
-  const result = checkColors(fakeEngine, fakeAssets);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
   const violation = result.invalidAuraStyles.find((b) => b.id === "lum_future");
   assert(
     violation !== undefined && violation.source === "assets" && violation.value === "placeholder_style",
@@ -266,7 +266,7 @@ assert(VALID_AURA_STYLES.length > 0, "VALID_AURA_STYLES is non-empty");
   const fakeAssets = new Map([
     ["lum_future_valid", { summonColor: "#aabbcc", summonSecondaryColor: "#001122", auraStyle: "tide" }],
   ]);
-  const result = checkColors(fakeEngine, fakeAssets);
+  const result = checkColors(fakeEngine, fakeAssets, knownStyles);
   assert(
     result.invalidAuraStyles.length === 0,
     `assets-only entry "lum_future_valid" with valid auraStyle "tide" produces no violation`
