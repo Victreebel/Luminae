@@ -2359,7 +2359,7 @@ export function LuminarySummonCutscene({
                             display: 'block',
                             // Stretch the seed vertically so it fills the tall panel
                             // without squishing the horizontal portals.
-                            transform: luminaryId === 'lum_seed' ? 'scaleY(1.22)' : luminaryId === 'lum_compass' ? 'scale(1.35)' : undefined,
+                            transform: luminaryId === 'lum_seed' ? 'scaleY(1.30)' : luminaryId === 'lum_compass' ? 'scale(1.35)' : undefined,
                             transformOrigin: luminaryId === 'lum_seed' ? 'center center' : luminaryId === 'lum_compass' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
@@ -2715,7 +2715,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       display: 'block',
                       // Stretch the seed vertically so it fills the tall portrait
                       // card without squishing the horizontal portals.
-                      transform: luminaryId === 'lum_seed' ? 'scaleY(1.22)' : undefined,
+                      transform: luminaryId === 'lum_seed' ? 'scaleY(1.30)' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
