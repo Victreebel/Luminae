@@ -1261,6 +1261,23 @@ button,
   animation-fill-mode: backwards;
 }
 
+/* ── Summon cutscene — crystal dust particles ───────────────────────────────
+   Tiny primaryColor dots that scatter outward from the vessel center during
+   the shattering phase.  CSS-driven so they stay on the compositor thread.
+   --dust-dx / --dust-dy are set inline per particle for radial scatter.
+   --dust-dur varies per particle for organic irregularity.                   */
+@keyframes lum-cs-dust {
+  0%   { opacity: 0;   transform: translate(0, 0) scale(0); }
+  12%  { opacity: 0.9; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0;   transform: translate(var(--dust-dx, 0px), var(--dust-dy, 0px)) scale(0.25); }
+}
+.lum-cs-dust {
+  animation: lum-cs-dust var(--dust-dur, 1.6s) ease-out forwards;
+  border-radius: 50%;
+  pointer-events: none;
+  position: absolute;
+}
+
 /* ── AffinityWell — CSS pulse animations ─────────────────────────────────
    Replaces framer-motion repeat:Infinity on the forge-deduction badge,
    forge-count span, and pending-harvest count span. These three loops

@@ -2234,6 +2234,51 @@ export function LuminarySummonCutscene({
         ))}
       </AnimatePresence>
 
+      {/* ── Crystal dust particles ── scattering from vessel center ───────────
+          Tiny primaryColor dots burst outward during the shattering phase, like
+          pulverized crystal fragments.  CSS-driven (compositor thread) with
+          per-particle --dust-dx/dy/dur for organic irregularity.                  */}
+      {isShattering && (() => {
+        const dustCount = 48;
+        const maxRadius = 280;
+        const particles = Array.from({ length: dustCount }, (_, i) => {
+          const angle = (Math.PI * 2 * i) / dustCount + (Math.random() - 0.5) * 0.6;
+          const radius = maxRadius * (0.3 + Math.random() * 0.7);
+          const size = 1.5 + Math.random() * 2.5;
+          const dur = 1.2 + Math.random() * 1.4;
+          const delay = Math.random() * 0.35;
+          return {
+            key: `dust-${i}`,
+            dx: Math.cos(angle) * radius,
+            dy: Math.sin(angle) * radius,
+            size,
+            dur,
+            delay,
+          };
+        });
+        return (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {particles.map((p) => (
+              <div
+                key={p.key}
+                className="lum-cs-dust"
+                style={{
+                  left: `calc(50% + ${p.dx * 0.06}px)`,
+                  top: `calc(50% + ${p.dy * 0.06}px)`,
+                  width: p.size,
+                  height: p.size,
+                  background: `rgba(${pRgb},0.92)`,
+                  ['--dust-dx' as string]: `${p.dx}px`,
+                  ['--dust-dy' as string]: `${p.dy}px`,
+                  ['--dust-dur' as string]: `${p.dur}s`,
+                  animationDelay: `${p.delay}s`,
+                }}
+              />
+            ))}
+          </div>
+        );
+      })()}
+
       {/* ── Full-viewport bloom flash — outside camera layer ────────────────── */}
       {/* Two-layer structure simulates eyes recovering from a blinding flash:  */}
       {/*   Layer 1 (white core): acute overexposure — clears fast (~1.1 s)    */}
@@ -2289,7 +2334,7 @@ export function LuminarySummonCutscene({
             exit={{ opacity: 0 }}
             transition={{ duration: isFading ? 0.55 : 1.20, delay: isFading ? 0 : 0.40, ease: 'easeOut' }}
             style={{
-              background: 'radial-gradient(ellipse 54% 58% at 50% 42%, rgba(0,0,10,0.22) 0%, rgba(0,0,10,0.70) 100%)',
+              background: `radial-gradient(ellipse 54% 58% at 50% 42%, rgba(${pRgb},0.18) 0%, rgba(0,0,0,0.62) 100%)`,
             }}
           />
         )}
