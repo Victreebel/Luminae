@@ -6,6 +6,7 @@ import { CipherApertureAnimation } from "@/components/CipherApertureAnimation";
 import { saveTutorialProgress, saveTutorialProgressId, clearTutorialProgress, markTutorialSeen, hasTutorialSeen, markTutorialComplete, markIntroSeen } from "@/lib/tutorialProgress";
 import { Sparkles, RotateCcw, X, Lock, Volume2, VolumeX, Hammer, Droplets } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion, useMotionValue, animate as fmAnimate } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useLocation } from "wouter";
 import { GEM_META, GEM_KEYS, type GemKey } from "@/lib/gemMeta";
 import {
@@ -1546,6 +1547,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   onRevealCosmos?: () => void;
   onShattering?: () => void;
 }) {
+  const isMobile = useIsMobile();
   const [phase, setPhase] = useState<FSPhase>('pressure');
   const [impactFlash, setImpactFlash] = useState(false);
   const doneRef = useRef(onDone);
@@ -1587,8 +1589,9 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
   }, []);
 
   // Stable star positions — seeded once on mount, same look as the pre-shatter black/starry backdrop.
+  // Reduced count on mobile to ease GPU pressure during the heavy shard animation.
   const stars = useMemo(() =>
-    Array.from({ length: 30 }, () => ({
+    Array.from({ length: isMobile ? 12 : 30 }, () => ({
       width:    Math.random() * 2 + 1,
       height:   Math.random() * 2 + 1,
       left:     `${Math.random() * 100}%`,
@@ -1597,7 +1600,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
       duration: Math.random() * 4 + 2,
       delay:    Math.random() * 3,
     })),
-  []);
+  [isMobile]);
 
   // ── Tremor / screen-shake ─────────────────────────────────────────────────
   const prefersReducedMotion = useReducedMotion();
@@ -1690,32 +1693,47 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
           style={{
             clipPath: sh.clip,
             background: FS_SHARD_GLASS[i].base,
-            transformPerspective: 900,
-            transformStyle: 'preserve-3d',
+            willChange: 'transform, opacity',
+            ...(isMobile ? {} : {
+              transformPerspective: 900,
+              transformStyle: 'preserve-3d',
+            }),
           }}
           animate={{
             x: [0, `${parseFloat(sh.dx) * 0.08}`, sh.dx],
             y: [0, `${parseFloat(sh.dy) * 0.08}`, sh.dy],
             // Protrude toward viewer on burst, then recede as shard tumbles away
-            z: [0, sh.zPeak, sh.zPeak * 0.55, sh.zPeak * 0.15, 0],
+            ...(isMobile ? {} : {
+              z: [0, sh.zPeak, sh.zPeak * 0.55, sh.zPeak * 0.15, 0],
+            }),
             rotateX: [0, sh.rX], rotateY: [0, sh.rY], rotateZ: [0, sh.rZ],
             opacity: [1, 1, 0.96, 0.66, 0],
-            filter: [
-              'brightness(1.0)',
-              'brightness(1.4) drop-shadow(0 0 12px rgba(168,204,248,0.70))',
-              'brightness(2.0) drop-shadow(0 0 20px rgba(168,204,248,0.85))',
-              'brightness(3.2) drop-shadow(0 0 28px rgba(200,225,255,0.92))',
-              'brightness(5.0) drop-shadow(0 0 32px rgba(255,255,255,0.75))',
-            ],
+            filter: isMobile
+              ? [
+                  'brightness(1.0)',
+                  'brightness(2.0) drop-shadow(0 0 8px rgba(168,204,248,0.70))',
+                ]
+              : [
+                  'brightness(1.0)',
+                  'brightness(1.4) drop-shadow(0 0 12px rgba(168,204,248,0.70))',
+                  'brightness(2.0) drop-shadow(0 0 20px rgba(168,204,248,0.85))',
+                  'brightness(3.2) drop-shadow(0 0 28px rgba(200,225,255,0.92))',
+                  'brightness(5.0) drop-shadow(0 0 32px rgba(255,255,255,0.75))',
+                ],
           }}
           transition={{
-            duration: 4.5, delay: i * 0.04,
+            duration: isMobile ? 3.2 : 4.5,
+            delay: i * 0.04,
             x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
             y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-            z:       { times: [0, 0.06, 0.22, 0.55, 1.0], ease: 'easeOut' },
+            ...(isMobile ? {} : {
+              z:       { times: [0, 0.06, 0.22, 0.55, 1.0], ease: 'easeOut' },
+            }),
             rotateX: { ease: 'easeOut' }, rotateY: { ease: 'easeOut' }, rotateZ: { ease: 'easeOut' },
             opacity: { times: [0, 0.08, 0.26, 0.56, 1.0], ease: 'easeInOut' },
-            filter:  { times: [0, 0.06, 0.22, 0.60, 0.82], ease: 'easeInOut' },
+            filter:  isMobile
+              ? { times: [0, 1.0], ease: 'easeInOut' }
+              : { times: [0, 0.06, 0.22, 0.60, 0.82], ease: 'easeInOut' },
           }}
         >
           {/* Ghost-thin surface glint — barely visible, preserves the glass-face feel */}
@@ -1724,14 +1742,15 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
           />
 
           {/* Prismatic iridescence wash — ice-blue/gold/pearl, screen blend, subtle pulse */}
-          {isShattering ? (
+          {isShattering && !isMobile && (
             <motion.div className="absolute inset-0 pointer-events-none"
               style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen' }}
               initial={{ opacity: 0.32 }}
               animate={{ opacity: [0.32, 0.26, 0.13, 0.22, 0] }}
-              transition={{ duration: 4.5, times: [0, 0.18, 0.40, 0.62, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
+              transition={{ duration: isMobile ? 3.2 : 4.5, times: [0, 0.18, 0.40, 0.62, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
             />
-          ) : (
+          )}
+          {!isShattering && (
             <div className="absolute inset-0 pointer-events-none"
               style={{ background: FS_SHARD_GLASS[i].iri, mixBlendMode: 'screen', opacity: 0.32 }}
             />
@@ -1749,19 +1768,21 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
           )}
 
           {/* Edge inset glow — light bleeding through the cut perimeter of each shard */}
-          <div className="absolute inset-0 pointer-events-none"
-            style={{
-              boxShadow: 'inset 0 0 24px 5px rgba(140,195,255,0.28), inset 0 0 6px 2px rgba(255,255,255,0.18)',
-            }}
-          />
+          {!isMobile && (
+            <div className="absolute inset-0 pointer-events-none"
+              style={{
+                boxShadow: 'inset 0 0 24px 5px rgba(140,195,255,0.28), inset 0 0 6px 2px rgba(255,255,255,0.18)',
+              }}
+            />
+          )}
 
           {/* Cool light flood — shard catches and transmits back-light as it flies away */}
-          {isShattering && (
+          {isShattering && !isMobile && (
             <motion.div className="absolute inset-0 pointer-events-none"
               style={{ background: 'rgba(190,220,255,1)', mixBlendMode: 'screen' }}
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0, 0.12, 0.55, 0.90, 0.75] }}
-              transition={{ duration: 4.5, times: [0, 0.10, 0.34, 0.58, 0.78, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
+              transition={{ duration: isMobile ? 3.2 : 4.5, times: [0, 0.10, 0.34, 0.58, 0.78, 1.0], ease: 'easeInOut', delay: i * 0.04 }}
             />
           )}
         </motion.div>
