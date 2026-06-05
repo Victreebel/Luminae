@@ -1324,10 +1324,10 @@ button,
   transform-origin: center center;
 }
 
-/* ── First Hunger (lum_hunger) — nanite background crossfade + shimmer ────
+/* ── First Hunger (lum_hunger) — nanite background crossfade + heat haze ──
    bg1 and bg2 alternate in opposition: as one fades out the other fades in.
-   A diagonal shimmer sweep passes across the background for a living-metal
-   sheen effect.                                                           */
+   Heat haze: very subtle scaleX ripple + slight skew creating a mirage-like
+   distortion on the nanite swarm.                                         */
 @keyframes lum-hunger-bg1 {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
@@ -1336,9 +1336,11 @@ button,
   0%, 100% { opacity: 0; }
   50%       { opacity: 1; }
 }
-@keyframes lum-hunger-shimmer {
-  0%   { transform: translateX(-120%) skewX(-22deg); }
-  100% { transform: translateX(220%) skewX(-22deg); }
+@keyframes lum-hunger-haze {
+  0%, 100% { transform: scaleX(1.00) scaleY(1.00) skewX(0deg); opacity: 1; }
+  25%      { transform: scaleX(1.012) scaleY(0.992) skewX(0.35deg); opacity: 0.97; }
+  50%      { transform: scaleX(1.00) scaleY(1.00) skewX(0deg); opacity: 1; }
+  75%      { transform: scaleX(0.992) scaleY(1.008) skewX(-0.35deg); opacity: 0.97; }
 }
 .lum-hunger-bg1 {
   animation: lum-hunger-bg1 5s ease-in-out infinite;
@@ -1346,27 +1348,8 @@ button,
 .lum-hunger-bg2 {
   animation: lum-hunger-bg2 5s ease-in-out infinite;
 }
-/* Shimmer overlay — injected via a pseudo-element on the background wrapper */
-.lum-hunger-bg-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.lum-hunger-bg-shimmer::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(
-    105deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.10) 48%,
-    rgba(255, 255, 255, 0.18) 50%,
-    rgba(255, 255, 255, 0.10) 52%,
-    transparent 60%,
-    transparent 100%
-  );
-  animation: lum-hunger-shimmer 3.5s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 2;
+.lum-hunger-heat-haze {
+  animation: lum-hunger-haze 2.8s linear infinite;
+  transform-origin: center center;
 }
 
