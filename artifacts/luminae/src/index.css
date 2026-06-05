@@ -1324,38 +1324,21 @@ button,
   transform-origin: center center;
 }
 
-/* ── First Hunger (lum_hunger) — nanite background crossfade + drift ─────
-   bg1 and bg2 alternate in opposition: as one fades out the other fades in.
-   Both layers also rotate continuously in opposite directions (clockwise vs
-   counter-clockwise) so the drift never snaps back.                       */
-@keyframes lum-hunger-bg1-fade {
+/* ── First Hunger (lum_hunger) — nanite background crossfade ────────────
+   bg1 and bg2 alternate in opposition: as one fades out the other fades in,
+   creating the illusion of slowly shifting nanite swarm movement.           */
+@keyframes lum-hunger-bg1 {
   0%, 100% { opacity: 1; }
-  48%       { opacity: 0; }
-  52%       { opacity: 0; }
+  50%       { opacity: 0; }
 }
-@keyframes lum-hunger-bg2-fade {
+@keyframes lum-hunger-bg2 {
   0%, 100% { opacity: 0; }
-  48%       { opacity: 1; }
-  52%       { opacity: 1; }
-}
-@keyframes lum-hunger-bg1-rotate {
-  from { transform: rotate(0deg) scale(1.35); }
-  to   { transform: rotate(360deg) scale(1.35); }
-}
-@keyframes lum-hunger-bg2-rotate {
-  from { transform: rotate(0deg) scale(1.35); }
-  to   { transform: rotate(-360deg) scale(1.35); }
+  50%       { opacity: 1; }
 }
 .lum-hunger-bg1 {
-  animation: lum-hunger-bg1-fade 1s ease-in-out infinite,
-             lum-hunger-bg1-rotate 60s linear infinite;
-  -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
-  mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
+  animation: lum-hunger-bg1 5s ease-in-out infinite;
 }
 .lum-hunger-bg2 {
-  animation: lum-hunger-bg2-fade 1s ease-in-out infinite,
-             lum-hunger-bg2-rotate 60s linear infinite;
-  -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
-  mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
+  animation: lum-hunger-bg2 5s ease-in-out infinite;
 }
 
