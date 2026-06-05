@@ -2372,7 +2372,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.80, delay: 0.20, ease: [0.18, 0, 0.82, 1] }
+              : { duration: 1.00, delay: 0.84, ease: [0.18, 0, 0.82, 1] }
             }
           >
             {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
@@ -2388,9 +2388,9 @@ export function LuminarySummonCutscene({
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 0.90, delay: 0.20, times: [0, 0.55, 1.0], ease: 'easeOut' },
-                    y:       { duration: 0.85, delay: 0.20, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.75, delay: 0.20, ease: 'easeOut' },
+                    scale:   { duration: 0.95, delay: 0.84, times: [0, 0.55, 1.0], ease: 'easeOut' },
+                    y:       { duration: 0.95, delay: 0.84, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.95, delay: 0.84, ease: 'easeOut' },
                   }
               }
             >
