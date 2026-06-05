@@ -2359,9 +2359,9 @@ export function LuminarySummonCutscene({
       {/* snaps forward on the beat-drop boom to a +6° overshoot, then settles   */}
       {/* face-on. Haze blur is lighter (6px) so the silhouette is readable     */}
       {/* through it while swinging.                                              */}
-      {/* Slow, even reveal: entity mounts at 4800ms (shattering) and fades in     */}
-      {/* + grows steadily over ~5.0 s, reaching full size/opacity by ~9800ms.      */}
-      {/* No keyframe jumps — one smooth easeOut curve from hidden to fully present.  */}
+      {/* Slow, even reveal: entity mounts at 4800ms (shattering), starts at 5000ms, */}
+      {/* and reaches full size/opacity by 7000ms. No keyframe jumps — one smooth    */}
+      {/* easeOut curve from hidden to fully present.                               */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
@@ -2375,7 +2375,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 5.0, ease: 'easeOut' }
+              : { duration: 2.0, delay: 0.20, ease: 'easeOut' }
             }
           >
             {/* Slow grow + fade — steady single-segment easeOut, no speed bumps.  */}
@@ -2390,9 +2390,9 @@ export function LuminarySummonCutscene({
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 5.0, ease: 'easeOut' },
-                    y:       { duration: 5.0, ease: 'easeOut' },
-                    opacity: { duration: 5.0, ease: 'easeOut' },
+                    scale:   { duration: 2.0, delay: 0.20, ease: 'easeOut' },
+                    y:       { duration: 2.0, delay: 0.20, ease: 'easeOut' },
+                    opacity: { duration: 2.0, delay: 0.20, ease: 'easeOut' },
                   }
               }
             >
