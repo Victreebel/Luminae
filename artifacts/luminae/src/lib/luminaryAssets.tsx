@@ -1465,7 +1465,7 @@ export function LuminarySummonCutscene({
   const isCracking    = phase === 'cracking';
   const isShattering  = phase === 'shattering' || phase === 'flashing';
   const isFlashing    = phase === 'flashing';
-  const isRevealed    = phase === 'flashing' || phase === 'revealed' || phase === 'fading';
+  const isRevealed    = phase === 'shattering' || phase === 'flashing' || phase === 'revealed' || phase === 'fading';
   const isRevealedActive = phase === 'revealed';
   const isFading      = phase === 'fading';
   // Vessel appears at intro — camera has fully arrived at the card by then.
@@ -2372,7 +2372,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.45, delay: 0.05, ease: [0.18, 0, 0.82, 1] }
+              : { duration: 0.40, delay: 0.44, ease: [0.18, 0, 0.82, 1] }
             }
           >
             {/* Swing-in entrance — poster-to-anterior sweep timed to beat drop.  */}
