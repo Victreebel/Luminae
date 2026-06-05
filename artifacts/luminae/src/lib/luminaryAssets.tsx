@@ -2372,7 +2372,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.86, delay: 0.84, ease: [0.25, 0.1, 0.25, 1] }
+              : { duration: 0.80, delay: 0.20, ease: [0.18, 0, 0.82, 1] }
             }
           >
             {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
@@ -2383,14 +2383,14 @@ export function LuminarySummonCutscene({
               initial={{ scale: 0.18, y: 42, opacity: 0 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, opacity: 0 }
-                : { scale: [0.18, 0.45, 0.72, 1.0], y: [42, 28, 14, 0], opacity: [0, 1] }
+                : { scale: [0.18, 0.72, 1.0], y: [42, -8, 0], opacity: [0, 0.65, 1] }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 0.86, delay: 0.84, times: [0, 0.33, 0.66, 1.0], ease: 'linear' },
-                    y:       { duration: 0.86, delay: 0.84, times: [0, 0.33, 0.66, 1.0], ease: 'linear' },
-                    opacity: { duration: 0.86, delay: 0.84, ease: 'linear' },
+                    scale:   { duration: 0.90, delay: 0.20, times: [0, 0.55, 1.0], ease: 'easeOut' },
+                    y:       { duration: 0.85, delay: 0.20, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.75, delay: 0.20, ease: 'easeOut' },
                   }
               }
             >
@@ -2408,7 +2408,7 @@ export function LuminarySummonCutscene({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.22 }}
                     animate={{
-                      opacity: isFlashing ? 0 : isFading ? 0 : 0.03,
+                      opacity: isFlashing ? 0 : isFading ? 0 : 0.78,
                       scale:   isFlashing ? 0.22 : isFading ? 1.18 : 1.0,
                     }}
                     transition={{
@@ -2421,10 +2421,9 @@ export function LuminarySummonCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      backgroundImage: `radial-gradient(ellipse at 50% 48%, ${primaryColor}08 0%, transparent 8%)`,
+                      background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ff 0%, ${primaryColor}cc 12%, ${primaryColor}77 34%, ${secondaryColor}33 58%, transparent 76%)`,
                       filter: 'blur(38px)',
                       zIndex: 0,
-                      mixBlendMode: 'screen',
                     }}
                   />
 
@@ -2432,7 +2431,7 @@ export function LuminarySummonCutscene({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.28 }}
                     animate={{
-                      opacity: isFlashing ? 0 : isFading ? 0 : 0.02,
+                      opacity: isFlashing ? 0 : isFading ? 0 : 0.90,
                       scale:   isFlashing ? 0.28 : isFading ? 1.12 : 1.0,
                     }}
                     transition={{
@@ -2445,10 +2444,9 @@ export function LuminarySummonCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      backgroundImage: `radial-gradient(ellipse at 50% 46%, ${glowColor}08 0%, transparent 6%)`,
+                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}ff 0%, ${glowColor}dd 14%, ${glowColor}88 32%, ${primaryColor}44 54%, transparent 72%)`,
                       filter: 'blur(18px)',
                       zIndex: 4,
-                      mixBlendMode: 'screen',
                     }}
                   />
 
@@ -2458,7 +2456,7 @@ export function LuminarySummonCutscene({
                 <motion.div
                   initial={{ opacity: 0, scale: 0.5 }}
                   animate={{
-                    opacity: isFlashing ? 0 : isFading ? 0 : 0.03,
+                    opacity: isFlashing ? 0 : isFading ? 0 : 0.38,
                     scale: isFlashing ? 0.5 : isFading ? 1.1 : 1.0,
                   }}
                   transition={{
@@ -2474,7 +2472,8 @@ export function LuminarySummonCutscene({
                     x: '-50%',
                     y: '-52%',
                     borderRadius: '50%',
-                    boxShadow: `0 0 0 2px ${glowColor}22, inset 0 0 28px ${glowColor}0c`,
+                    background: 'transparent',
+                    boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
                     filter: 'blur(4px)',
                     zIndex: 5,
                     pointerEvents: 'none',
@@ -2544,7 +2543,7 @@ export function LuminarySummonCutscene({
                           objectFit: 'cover', display: 'block',
                         };
                         return (
-                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
+                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
                             {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
                             {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
                             {hEnt && (
