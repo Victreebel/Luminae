@@ -2375,24 +2375,22 @@ export function LuminarySummonCutscene({
               : { duration: 0.40, delay: 0.44, ease: [0.18, 0, 0.82, 1] }
             }
           >
-            {/* Swing-in entrance — poster-to-anterior sweep timed to beat drop.  */}
-            {/* rotateY: −32° (edge-on) → +6° (overshoot) → 0° (face-on).       */}
-            {/* transformPerspective gives the Y-rotation proper 3-D depth.       */}
+            {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
+            {/* to anterior (full size, clear) like a figure walking out of fog.    */}
             <motion.div
               className="relative flex flex-col items-center"
-              style={{ overflow: 'visible', transformPerspective: 1100 }}
-              initial={{ scale: 0.26, y: 20, rotateY: -32 }}
+              style={{ overflow: 'visible' }}
+              initial={{ scale: 0.28, y: 28, opacity: 0 }}
               animate={isFading
-                ? { scale: 1.14, y: -38, rotateY: 0 }
-                : { scale: [0.26, 1.10, 1.04, 1.0], y: [20, -8, 0], rotateY: [-32, 4, 0] }
+                ? { scale: 1.14, y: -38, opacity: 0 }
+                : { scale: [0.28, 1.08, 1.0], y: [28, -6, 0], opacity: [0, 1, 1] }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 0.45, times: [0, 0.45, 0.72, 1.0], ease: 'easeOut' },
-                    y:       { duration: 0.40, ease: [0.22, 1, 0.36, 1] },
-                    rotateY: { duration: 0.45, times: [0, 0.52, 1.0],
-                               ease: ['easeIn', [0.16, 1, 0.3, 1]] },
+                    scale:   { duration: 0.40, delay: 0.44, times: [0, 0.55, 1.0], ease: 'easeOut' },
+                    y:       { duration: 0.38, delay: 0.44, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.35, delay: 0.44, ease: 'easeOut' },
                   }
               }
             >
