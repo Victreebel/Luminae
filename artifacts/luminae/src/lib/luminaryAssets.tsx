@@ -2383,14 +2383,14 @@ export function LuminarySummonCutscene({
               initial={{ scale: 0.18, y: 42, opacity: 0 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, opacity: 0 }
-                : { scale: [0.18, 0.45, 0.72, 1.0], y: [42, 28, 14, 0], opacity: [0, 0.33, 0.66, 1] }
+                : { scale: [0.18, 0.45, 0.72, 1.0], y: [42, 28, 14, 0], opacity: [0, 1] }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
                     scale:   { duration: 0.86, delay: 0.84, times: [0, 0.33, 0.66, 1.0], ease: 'linear' },
                     y:       { duration: 0.86, delay: 0.84, times: [0, 0.33, 0.66, 1.0], ease: 'linear' },
-                    opacity: { duration: 0.86, delay: 0.84, times: [0, 0.33, 0.66, 1.0], ease: 'linear' },
+                    opacity: { duration: 0.86, delay: 0.84, ease: 'linear' },
                   }
               }
             >
