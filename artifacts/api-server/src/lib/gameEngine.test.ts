@@ -765,14 +765,14 @@ describe("normalizeState — Glass Orchard action log migration", () => {
 // ─── LUMINARIES catalogue ─────────────────────────────────────────────────────
 
 describe("LUMINARIES catalogue", () => {
-  it("contains all 16 v0.8 entries (15 active + lum_oracle deferred)", () => {
-    // 12 original + 4 new (lum_moth, lum_seed, lum_orchard, lum_hunger) = 16.
-    expect(LUMINARIES).toHaveLength(16);
+  it("contains all 17 v0.8/v0.9 entries (16 active + lum_oracle deferred)", () => {
+    // 12 original + 4 new (lum_moth, lum_seed, lum_orchard, lum_hunger) + 1 v0.9 (lum_scholar) = 17.
+    expect(LUMINARIES).toHaveLength(17);
   });
 
-  it("all 15 active Luminaries (excluding lum_oracle) have effectName defined", () => {
+  it("all 16 active Luminaries (excluding lum_oracle) have effectName defined", () => {
     const active = LUMINARIES.filter((l) => l.id !== "lum_oracle");
-    expect(active).toHaveLength(15);
+    expect(active).toHaveLength(16);
     for (const lum of active) {
       expect(lum.effectName, `${lum.id} missing effectName`).toBeTruthy();
     }
@@ -793,10 +793,10 @@ describe("LUMINARIES catalogue", () => {
     }
   });
 
-  it("new v0.8 Luminaries are in the active pool", () => {
-    const newIds = ["lum_moth", "lum_seed", "lum_orchard", "lum_hunger"];
+  it("new v0.8/v0.9 Luminaries are in the active pool", () => {
+    const newIds = ["lum_moth", "lum_seed", "lum_orchard", "lum_hunger", "lum_scholar"];
     // Run 200 full initializations (always, not short-circuit) and verify each
-    // new ID appears at least once. With 15 active luminaries and 3 per game,
+    // new ID appears at least once. With 16 active luminaries and 3 per game,
     // the probability of not seeing any specific ID in 200 games is vanishingly small.
     const seen = new Set<string>();
     for (let i = 0; i < 200; i++) {

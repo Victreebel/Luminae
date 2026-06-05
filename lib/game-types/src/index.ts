@@ -41,6 +41,7 @@ export const LUMINARY_IDS = [
   'lum_moth',
   'lum_null',
   'lum_oracle',
+  'lum_scholar',
 ] as const;
 
 export type LuminaryId = (typeof LUMINARY_IDS)[number];

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
@@ -124,6 +125,7 @@ const ILLUSTRATED_IDS = new Set<string>([
   'lum_moth',
   'lum_seed',
   'lum_orchard',
+  'lum_scholar',
 ]);
 
 const _luminaryImageModules = import.meta.glob<{ default: string }>(
@@ -909,6 +911,7 @@ export const LUMINARY_VISUALS: Record<LuminaryId, LuminaryVisuals> = {
   lum_moth:    { id: 'lum_moth',    primaryColor: '#ef4444', secondaryColor: '#1c1917', glowColor: 'rgba(239,68,68,0.55)',   EntityArt: BloomEntity,   summonColor: '#ef4444', summonSecondaryColor: '#7f1d1d', auraStyle: 'fire',    tier: 2, entityBlendMode: 'screen' },
   lum_seed:    { id: 'lum_seed',    primaryColor: '#38bdf8', secondaryColor: '#4ade80', glowColor: 'rgba(56,189,248,0.55)',  EntityArt: BloomEntity,   summonColor: '#38bdf8', summonSecondaryColor: '#4ade80', auraStyle: 'compass', tier: 2, entityBlendMode: 'screen' },
   lum_orchard: { id: 'lum_orchard', primaryColor: '#4ade80', secondaryColor: '#fef9c3', glowColor: 'rgba(74,222,128,0.55)',  EntityArt: BloomEntity,   summonColor: '#4ade80', summonSecondaryColor: '#fef9c3', auraStyle: 'verdant', tier: 2, entityBlendMode: 'screen' },
+  lum_scholar: { id: 'lum_scholar', primaryColor: '#818cf8', secondaryColor: '#e0e7ff', glowColor: 'rgba(129,140,248,0.55)',  EntityArt: BloomEntity,   summonColor: '#818cf8', summonSecondaryColor: '#e0e7ff', auraStyle: 'distorted', tier: 2, entityBlendMode: 'screen' },
 };
 
 const FALLBACK_VISUALS: LuminaryVisuals = {
@@ -1372,6 +1375,7 @@ export function LuminarySummonCutscene({
   // Ref to the dismiss function so the click handler and the Skip/Continue
   // button can both call it without capturing stale closures.
   const dismissRef = useRef<(() => void) | null>(null);
+  const isMobile = useIsMobile();
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   // AURA_VARIANTS[auraStyle] intentionally not used — all flash elements now use
@@ -2159,6 +2163,7 @@ export function LuminarySummonCutscene({
               clipPath: piece.clip,
               transformPerspective: 1000,
               transformStyle: 'preserve-3d',
+              willChange: 'transform, opacity',
             }}
             initial={{
               x: 0, y: 0,
@@ -2174,14 +2179,19 @@ export function LuminarySummonCutscene({
               rotateY: [0, piece.rotateY],
               rotateZ: [0, piece.rotateZ],
               opacity: [1, 1, 1, 0.96, 0.66, 0],
-              filter: [
-                `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
-                `brightness(1.3) drop-shadow(3px -3px 4px rgba(${pRgb},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
-                `brightness(2.0) drop-shadow(5px -4px 7px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.30))`,
-                `brightness(3.6) drop-shadow(0 0 14px rgba(${pRgb},0.96)) drop-shadow(0 0 26px rgba(${pRgb},0.58))`,
-                `brightness(5.6) drop-shadow(0 0 20px rgba(${pRgb},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
-                `brightness(8.0) drop-shadow(0 0 26px rgba(${pRgb},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
-              ],
+              filter: isMobile
+                ? [
+                    `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56))`,
+                    `brightness(2.0) drop-shadow(0 0 8px rgba(${pRgb},0.88))`,
+                  ]
+                : [
+                    `brightness(1.0) drop-shadow(2px -2px 2px rgba(${pRgb},0.56)) drop-shadow(-1px 1px 2px rgba(0,0,22,0.52))`,
+                    `brightness(1.3) drop-shadow(3px -3px 4px rgba(${pRgb},0.72)) drop-shadow(-2px 2px 4px rgba(0,0,22,0.40))`,
+                    `brightness(2.0) drop-shadow(5px -4px 7px rgba(${pRgb},0.88)) drop-shadow(-3px 3px 6px rgba(${pRgb},0.30))`,
+                    `brightness(3.6) drop-shadow(0 0 14px rgba(${pRgb},0.96)) drop-shadow(0 0 26px rgba(${pRgb},0.58))`,
+                    `brightness(5.6) drop-shadow(0 0 20px rgba(${pRgb},1.0)) drop-shadow(0 0 38px rgba(255,255,255,0.68))`,
+                    `brightness(8.0) drop-shadow(0 0 26px rgba(${pRgb},1.0)) drop-shadow(0 0 48px rgba(255,255,255,0.86))`,
+                  ],
             }}
             transition={{
               duration: 5.00,
@@ -2193,7 +2203,9 @@ export function LuminarySummonCutscene({
               rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
               rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
               opacity: { times: [0, 0.08, 0.26, 0.46, 0.66, 0.84, 1.0], ease: 'easeInOut' },
-              filter:  { times: [0, 0.10, 0.24, 0.44, 0.64, 0.82, 1.0], ease: 'easeInOut' },
+              filter:  isMobile
+                ? { times: [0, 1.0], ease: 'easeInOut' }
+                : { times: [0, 0.10, 0.24, 0.44, 0.64, 0.82, 1.0], ease: 'easeInOut' },
             }}
           >
             {/* Panel artwork — the face of the vessel shard */}
@@ -2288,10 +2300,6 @@ export function LuminarySummonCutscene({
       <AnimatePresence>
         {isFlashing && (
           <>
-            {/* Affinity haze — rendered first so it sits behind the white core.
-                transformOrigin and final scale are auraStyle-driven so the bloom
-                radiates from the Luminary's thematic focal point (fire rises up,
-                tide spreads wide, void stays tight, bloom bursts furthest).      */}
             {/* White core — immediate bright flash, then fades fast */}
             <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
               initial={{ opacity: 1, scale: 0.5 }}
@@ -2300,7 +2308,7 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: 0.2, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 55% 55% at 50% 42%, #ffffff 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.2) 70%, transparent 100%)`,
-                filter: 'blur(4px)',
+                filter: isMobile ? 'blur(2px)' : 'blur(4px)',
               }}
             />
             {/* Affinity haze — quick burst of the luminary's color */}
@@ -2311,7 +2319,7 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse at 50% 42%, rgba(${pRgb},0.9) 0%, rgba(${pRgb},0.5) 35%, rgba(${sRgb},0.2) 60%, transparent 85%)`,
-                filter: 'blur(8px)',
+                filter: isMobile ? 'blur(4px)' : 'blur(8px)',
               }}
             />
             {/* Shock ring — expanding ring burst */}
@@ -2321,9 +2329,10 @@ export function LuminarySummonCutscene({
               transition={{ duration: 0.6, times: [0, 0.2, 0.55, 1], ease: 'easeOut' }}
               exit={{ opacity: 0 }}
               style={{
-                width: BOARD_CARD_W * 3.2, height: BOARD_CARD_H * 3.2,
-                left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 1.6,
-                top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 1.6,
+                width: isMobile ? BOARD_CARD_W * 2.0 : BOARD_CARD_W * 3.2,
+                height: isMobile ? BOARD_CARD_H * 2.0 : BOARD_CARD_H * 3.2,
+                left: vesselLeft + BOARD_CARD_W / 2 - (isMobile ? BOARD_CARD_W * 1.0 : BOARD_CARD_W * 1.6),
+                top:  vesselTop  + BOARD_CARD_H / 2 - (isMobile ? BOARD_CARD_H * 1.0 : BOARD_CARD_H * 1.6),
                 borderRadius: '50%',
                 border: '2px solid rgba(255,255,255,0.55)',
                 transformOrigin: '50% 50%',

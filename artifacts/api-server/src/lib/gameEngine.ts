@@ -520,6 +520,20 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#ef4444",
     auraStyle: "oracle",
   },
+  // ── New v0.9 Luminaries ───────────────────────────────────────────────────
+  {
+    id: "lum_scholar",
+    name: "The Celestial Scholar",
+    domain: "Erasure",
+    lumens: 3,
+    requirements: { ruby: 0, sapphire: 4, emerald: 0, onyx: 0, pearl: 4, flux: 0 },
+    flavor: "It does not forget. It simply removes the possibility that anything was ever known.",
+    summonColor: "#818cf8",
+    summonSecondaryColor: "#e0e7ff",
+    auraStyle: "distorted",
+    effectName: "Selective Amnesia",
+    effectDescription: "On summon, draws two cards from the top of the Artifact deck and chooses one to immediately add to your collection (the other is discarded).",
+  },
 ];
 
 export const CARD_MAP = new Map<string, ArtifactCard>(
@@ -609,6 +623,8 @@ const ILLUSTRATED_IDS = new Set([
   "lum_pale", "lum_radiant", "lum_tide", "lum_void",
   // v0.8 additions (procedural art until panels/entities are approved):
   "lum_moth", "lum_seed", "lum_orchard", "lum_hunger",
+  // v0.9 additions:
+  "lum_scholar",
 ]);
 const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
   ILLUSTRATED_IDS.has(l.id),
@@ -771,6 +787,7 @@ const SUMMON_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
   "#a8b8e8": "pearl",
   "#fef9c3": "pearl",    // lum_radiant
   "#cbd5e1": "pearl",    // lum_pale (pearl is first eligible)
+  "#818cf8": "sapphire",   // lum_scholar (sapphire is first eligible)
 };
 
 function defaultActiveAffinity(
@@ -1385,6 +1402,32 @@ function applySummonEffect(
         summary: `First Hunger — Assimilation available: replace forge action this turn`,
         turn: state.roundNumber,
       });
+      break;
+    }
+    case "lum_scholar": {
+      // Selective Amnesia: draw up to 2 cards from the top of any deck.
+      const drawn: { id: string; tier: 1 | 2 | 3 }[] = [];
+      for (const tier of [1, 2, 3] as const) {
+        const deck = getDeckForTier(state, tier);
+        while (deck.length > 0 && drawn.length < 2) {
+          drawn.push({ id: deck.shift()!, tier });
+        }
+      }
+      if (drawn.length > 0) {
+        const chosen = drawn[0];
+        const card = CARD_MAP.get(chosen.id);
+        if (card) {
+          player.purchasedCardIds.push(chosen.id);
+          player.bonuses[card.bonusColor]++;
+          player.lumens += card.lumens;
+          player.discountedForgeIds.push(chosen.id);
+        }
+        pushLog(state, {
+          playerId: player.playerId, playerName: player.playerName,
+          summary: `Celestial Scholar — Selective Amnesia: drew ${drawn.length} card(s), added ${chosen.id} to collection`,
+          turn: state.roundNumber,
+        });
+      }
       break;
     }
     // Passive / delayed effects — nothing on summon:
