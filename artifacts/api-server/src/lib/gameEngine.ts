@@ -1809,6 +1809,7 @@ export function applyAction(
           state.crystalBank[c] += count;
         }
       }
+      checkLuminaries(state, player);
       break;
     }
 
@@ -1852,6 +1853,7 @@ export function applyAction(
           state.crystalBank[c] += count;
         }
       }
+      checkLuminaries(state, player);
       break;
     }
 
