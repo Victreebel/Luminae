@@ -681,12 +681,18 @@ button,
 }
 .lum-idle-float {
   animation: lum-idle-float 3.3s ease-in-out 0.3s infinite;
+  will-change: transform;
+  contain: layout;
 }
 .lum-idle-float-scaled {
   animation: lum-idle-float-scaled 3.3s ease-in-out 0.3s infinite;
+  will-change: transform;
+  contain: layout;
 }
 .lum-idle-aura {
   animation: lum-idle-aura 3.8s ease-in-out infinite;
+  will-change: transform, opacity;
+  contain: layout;
 }
 
 /* ── Aura style variants — distinct animation per Luminary auraStyle ────────
@@ -704,7 +710,7 @@ button,
   74%  { opacity: 0.56; transform: scale(1.06) translateY(-5px); }
   100% { opacity: 0.38; transform: scale(1.00) translateY(0px); }
 }
-.lum-aura-fire { animation: lum-aura-fire 2.6s ease-in-out infinite; }
+.lum-aura-fire { animation: lum-aura-fire 2.6s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* storm / astral — rapid electric flicker with sharp opacity spikes */
 @keyframes lum-aura-storm {
@@ -718,14 +724,14 @@ button,
   90%  { opacity: 0.76; transform: scale(1.10); }
   100% { opacity: 0.28; transform: scale(1.00); }
 }
-.lum-aura-storm { animation: lum-aura-storm 1.8s ease-in-out infinite; }
+.lum-aura-storm { animation: lum-aura-storm 1.8s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* tide / compass — slow rolling wave, horizontal scale emphasis */
 @keyframes lum-aura-tide {
   0%, 100% { opacity: 0.42; transform: scale(1.00, 0.92); }
   50%       { opacity: 0.88; transform: scale(1.18, 1.06); }
 }
-.lum-aura-tide { animation: lum-aura-tide 5.4s ease-in-out infinite; }
+.lum-aura-tide { animation: lum-aura-tide 5.4s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* void — imploding dark pulse: scale CONTRACTS at peak, then rebounds */
 @keyframes lum-aura-void {
@@ -735,21 +741,21 @@ button,
   80%  { opacity: 0.32; transform: scale(0.95); }
   100% { opacity: 0.65; transform: scale(1.04); }
 }
-.lum-aura-void { animation: lum-aura-void 4.2s ease-in-out infinite; }
+.lum-aura-void { animation: lum-aura-void 4.2s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* bloom / verdant / radiant — slow organic swell, large scale expansion */
 @keyframes lum-aura-bloom {
   0%, 100% { opacity: 0.35; transform: scale(1.00); }
   50%       { opacity: 0.80; transform: scale(1.24); }
 }
-.lum-aura-bloom { animation: lum-aura-bloom 6.0s ease-in-out infinite; }
+.lum-aura-bloom { animation: lum-aura-bloom 6.0s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* null — entropy: near stillness, barely perceptible presence */
 @keyframes lum-aura-null {
   0%, 100% { opacity: 0.14; transform: scale(1.00); }
   50%       { opacity: 0.48; transform: scale(1.05); }
 }
-.lum-aura-null { animation: lum-aura-null 7.2s ease-in-out infinite; }
+.lum-aura-null { animation: lum-aura-null 7.2s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* pale — slow silver starburst shimmer with slight double-peak rhythm */
 @keyframes lum-aura-pale {
@@ -757,14 +763,14 @@ button,
   30%       { opacity: 0.82; transform: scale(1.10); }
   60%       { opacity: 0.50; transform: scale(1.16); }
 }
-.lum-aura-pale { animation: lum-aura-pale 4.8s ease-in-out infinite; }
+.lum-aura-pale { animation: lum-aura-pale 4.8s ease-in-out infinite; will-change: transform, opacity; contain: layout; }
 
 /* distorted — fast continuous pulse, linear to avoid any "hang" */
 @keyframes lum-aura-distorted {
   0%, 100% { opacity: 0.65; transform: scale(1.00); }
   50%       { opacity: 0.85; transform: scale(1.03); }
 }
-.lum-aura-distorted { animation: lum-aura-distorted 2.4s linear infinite; }
+.lum-aura-distorted { animation: lum-aura-distorted 2.4s linear infinite; will-change: transform, opacity; contain: layout; }
 
 /* ── Ambient board glow — low-opacity halo cast onto surrounding board area ─
    A 2.5× card-sized fixed div sits behind each claimed Luminary's idle
@@ -1322,6 +1328,8 @@ button,
 .lum-compass-heat-haze {
   animation: lum-compass-haze 2.8s linear infinite;
   transform-origin: center center;
+  will-change: transform;
+  contain: layout;
 }
 
 /* ── First Hunger (lum_hunger) — nanite background crossfade + heat haze + breathe ─
@@ -1353,13 +1361,19 @@ button,
   animation: lum-hunger-bg1 5s ease-in-out infinite,
              lum-hunger-haze 2.8s linear infinite;
   transform-origin: center center;
+  will-change: transform, opacity;
+  contain: layout;
 }
 .lum-hunger-bg2 {
   animation: lum-hunger-bg2 5s ease-in-out infinite,
              lum-hunger-haze 2.8s linear infinite;
   transform-origin: center center;
+  will-change: transform, opacity;
+  contain: layout;
 }
 .lum-hunger-breathe {
   animation: lum-hunger-breathe 6s ease-in-out infinite;
+  will-change: opacity;
+  contain: layout;
 }
 

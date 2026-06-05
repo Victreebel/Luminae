@@ -2134,7 +2134,7 @@ export function LuminarySummonCutscene({
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
               background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ffffffff 10%, #ffffffdd 24%, #ffffff88 50%, transparent 84%)`,
-              filter: 'blur(14px)',
+              filter: 'blur(6px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
             }}
@@ -2300,7 +2300,7 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: 0.2, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 55% 55% at 50% 42%, #ffffff 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.2) 70%, transparent 100%)`,
-                filter: 'blur(8px)',
+                filter: 'blur(4px)',
               }}
             />
             {/* Affinity haze — quick burst of the luminary's color */}
@@ -2311,7 +2311,7 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse at 50% 42%, rgba(${pRgb},0.9) 0%, rgba(${pRgb},0.5) 35%, rgba(${sRgb},0.2) 60%, transparent 85%)`,
-                filter: 'blur(16px)',
+                filter: 'blur(8px)',
               }}
             />
             {/* Shock ring — expanding ring burst */}
@@ -2325,8 +2325,7 @@ export function LuminarySummonCutscene({
                 left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 1.6,
                 top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 1.6,
                 borderRadius: '50%',
-                border: '2px solid rgba(255,255,255,0.85)',
-                filter: 'blur(2px)',
+                border: '2px solid rgba(255,255,255,0.55)',
                 transformOrigin: '50% 50%',
               }}
             />
@@ -2366,7 +2365,7 @@ export function LuminarySummonCutscene({
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'blur(10px)' }}
+            initial={{ opacity: 0, filter: 'blur(6px)' }}
             animate={isFading
               ? { opacity: 0, filter: 'blur(0px)' }
               : { opacity: 1, filter: 'blur(0px)' }
@@ -2423,7 +2422,7 @@ export function LuminarySummonCutscene({
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ff 0%, ${primaryColor}cc 12%, ${primaryColor}77 34%, ${secondaryColor}33 58%, transparent 76%)`,
-                      filter: 'blur(38px)',
+                      filter: 'blur(12px)',
                       zIndex: 0,
                     }}
                   />
@@ -2446,7 +2445,7 @@ export function LuminarySummonCutscene({
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 46%, ${glowColor}88 0%, ${glowColor}55 18%, ${glowColor}22 36%, ${primaryColor}11 56%, transparent 76%)`,
-                      filter: 'blur(18px)',
+                      filter: 'blur(8px)',
                       zIndex: 2,
                       mixBlendMode: 'screen',
                     }}
@@ -2476,7 +2475,6 @@ export function LuminarySummonCutscene({
                     borderRadius: '50%',
                     background: 'transparent',
                     boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
-                    filter: 'blur(4px)',
                     zIndex: 5,
                     pointerEvents: 'none',
                   }}
@@ -2630,10 +2628,10 @@ export function LuminarySummonCutscene({
                 {/* Name / domain / Eminence badge */}
                 <motion.div
                   className="flex flex-col items-center gap-1 text-center"
-                  initial={{ opacity: 0, filter: 'brightness(4) blur(8px)' }}
+                  initial={{ opacity: 0, filter: 'brightness(4) blur(4px)' }}
                   animate={{
                     opacity: isFlashing ? 0 : (isFading ? 0 : 1),
-                    filter: isFlashing ? 'brightness(4) blur(8px)' : (isFading ? 'brightness(1) blur(0px)' : 'brightness(1) blur(0px)'),
+                    filter: isFlashing ? 'brightness(4) blur(4px)' : (isFading ? 'brightness(1) blur(0px)' : 'brightness(1) blur(0px)'),
                   }}
                   transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 >
@@ -2709,13 +2707,13 @@ export function AuraPreviewModal({
       className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}
     >
-      {/* Backdrop — dark with a soft centered halo in the Luminary's color */}
+      {/* Backdrop — dark with a soft centered halo in the Luminary's color.
+          Intentionally avoids backdrop-filter:blur (very expensive on mobile).
+          The gradient alone is sufficient and runs at native GPU fill-rate. */}
       <div
         className="absolute inset-0"
         style={{
           background: `radial-gradient(ellipse 80% 70% at 50% 42%, ${primaryColor}22 0%, #00000099 55%, #000000dd 100%)`,
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
         }}
       />
       {/* Dialog container */}
