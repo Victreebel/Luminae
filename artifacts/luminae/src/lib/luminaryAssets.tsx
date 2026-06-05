@@ -2365,10 +2365,10 @@ export function LuminarySummonCutscene({
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'brightness(6) blur(12px)' }}
+            initial={{ opacity: 0, filter: 'blur(10px)' }}
             animate={isFading
-              ? { opacity: 0, filter: 'brightness(1) blur(0px)' }
-              : { opacity: 1, filter: 'brightness(1) blur(0px)' }
+              ? { opacity: 0, filter: 'blur(0px)' }
+              : { opacity: 1, filter: 'blur(0px)' }
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
@@ -2444,9 +2444,10 @@ export function LuminarySummonCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}ff 0%, ${glowColor}dd 14%, ${glowColor}88 32%, ${primaryColor}44 54%, transparent 72%)`,
+                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}88 0%, ${glowColor}55 18%, ${glowColor}22 36%, ${primaryColor}11 56%, transparent 76%)`,
                       filter: 'blur(18px)',
-                      zIndex: 4,
+                      zIndex: 2,
+                      mixBlendMode: 'screen',
                     }}
                   />
 
