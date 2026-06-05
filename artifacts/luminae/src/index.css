@@ -1330,11 +1330,13 @@ button,
    counter-clockwise) so the drift never snaps back.                       */
 @keyframes lum-hunger-bg1-fade {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
+  45%       { opacity: 0; }
+  55%       { opacity: 0; }
 }
 @keyframes lum-hunger-bg2-fade {
   0%, 100% { opacity: 0; }
-  50%       { opacity: 1; }
+  45%       { opacity: 1; }
+  55%       { opacity: 1; }
 }
 @keyframes lum-hunger-bg1-rotate {
   from { transform: rotate(0deg) scale(1.35); }
