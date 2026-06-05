@@ -2357,8 +2357,12 @@ export function LuminarySummonCutscene({
       {/* entrance div drives the physical "swing in" from portal depth:          */}
       {/* entity starts small and angled (~32° rotateY, like a poster edge-on),  */}
       {/* snaps forward on the beat-drop boom to a +6° overshoot, then settles   */}
-      {/* face-on. Haze blur is lighter (10px) so the silhouette is readable     */}
+      {/* face-on. Haze blur is lighter (6px) so the silhouette is readable     */}
       {/* through it while swinging.                                              */}
+      {/* Slow fade-in: entity is invisible from 4800ms (shattering) until      */}
+      {/* 6750ms (revealed), then fades in over 4250ms to reach full opacity at   */}
+      {/* ~11000ms. The inner grow animation completes while invisible; only the  */}
+      {/* container opacity is animated slowly.                                   */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
@@ -2372,7 +2376,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.80, delay: 0.20, ease: [0.18, 0, 0.82, 1] }
+              : { duration: 4.25, delay: 1.95, ease: 'easeOut' }
             }
           >
             {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
