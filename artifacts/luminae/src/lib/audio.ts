@@ -883,13 +883,13 @@ class GameAudio {
       const FOCUS  =  580;
       const INTRO  = 1160;
       const PRES   = 1400;
-      const CRACK1 = 1750;
-      const LEAK   = 2320;
-      const CRACK2 = 2500;
-      const CRACKS = 2920;
-      const SHATT  = 3960;
-      const FLASH  = 4800;
-      const REVL   = 5750;
+      const CRACK1 = 1800;
+      const LEAK   = 2370;
+      const CRACK2 = 3000;
+      const CRACKS = 3420;
+      const SHATT  = 4460;
+      const FLASH  = 5300;
+      const REVL   = 6250;
 
       // ── establish (0–600 ms): anticipatory shimmer + sub foundation ─────
       this.noiseBlip(ctx, s(60),  0.5, 0.022, 4600, 2, D);
