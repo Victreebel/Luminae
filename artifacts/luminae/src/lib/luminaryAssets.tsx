@@ -2161,9 +2161,11 @@ export function LuminarySummonCutscene({
               width: BOARD_CARD_W * 1.28, height: BOARD_CARD_H * 1.28,
               left: vesselLeft, top: vesselTop,
               clipPath: piece.clip,
-              transformPerspective: 1000,
-              transformStyle: 'preserve-3d',
               willChange: 'transform, opacity',
+              ...(isMobile ? {} : {
+                transformPerspective: 1000,
+                transformStyle: 'preserve-3d',
+              }),
             }}
             initial={{
               x: 0, y: 0,
@@ -2174,7 +2176,9 @@ export function LuminarySummonCutscene({
             animate={{
               x: [0, piece.dx * 0.11, piece.dx],
               y: [0, piece.dy * 0.11, piece.dy],
-              z: [0, z0, z1],
+              ...(isMobile ? {} : {
+                z: [0, z0, z1],
+              }),
               rotateX: [0, piece.rotateX],
               rotateY: [0, piece.rotateY],
               rotateZ: [0, piece.rotateZ],
@@ -2194,14 +2198,16 @@ export function LuminarySummonCutscene({
                   ],
             }}
             transition={{
-              duration: 5.00,
+              duration: isMobile ? 3.2 : 5.00,
               delay: i * 0.04,
               x:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
               y:       { times: [0, 0.06, 1.0], ease: ['easeIn', [0.10, 0.70, 0.30, 1.0]] },
-              z:       { times: [0, 0.18, 1.0], ease: ['easeOut', 'easeInOut'] },
-              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
-              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
-              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: 5.00 },
+              ...(isMobile ? {} : {
+                z:       { times: [0, 0.18, 1.0], ease: ['easeOut', 'easeInOut'] },
+              }),
+              rotateX: { times: [0, 1.0], ease: 'easeOut', duration: isMobile ? 3.2 : 5.00 },
+              rotateY: { times: [0, 1.0], ease: 'easeOut', duration: isMobile ? 3.2 : 5.00 },
+              rotateZ: { times: [0, 1.0], ease: 'easeOut', duration: isMobile ? 3.2 : 5.00 },
               opacity: { times: [0, 0.08, 0.26, 0.46, 0.66, 0.84, 1.0], ease: 'easeInOut' },
               filter:  isMobile
                 ? { times: [0, 1.0], ease: 'easeInOut' }
@@ -3003,7 +3009,8 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       className="fixed pointer-events-none"
       style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
                opacity: (hidden || !isWithinScroller) ? 0 : 1,
-               transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in' }}
+               transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in',
+               display: (hidden || !isWithinScroller) ? 'none' : undefined }}
     >
       {/* ── Return flight: centre of viewport → card position ── */}
       <motion.div

@@ -389,8 +389,6 @@ export default function GameBoard() {
   const gameFinishedRef = useRef(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
-  // True once the active cutscene's flash has fired; resets to false on each new cutscene.
-  const [cutscenePostFlash, setCutscenePostFlash] = useState(false);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
   // Client-side only — never written to the server.
   const [turnAnnouncement, setTurnAnnouncement] = useState<{
@@ -7341,7 +7339,6 @@ export default function GameBoard() {
           // immediately so the queue advances and the server gate resolves.
           const resolveSummon = () => {
             console.log(`[Luminae] Summon resolved: eventId="${entry.eventId}" isDevTest=${entry.isDevTest}`);
-            setCutscenePostFlash(false);
             setLocalSummonSkipped(false);
             setSummonQueue(q => q.slice(1));
             setClaimedThisSession(prev =>
@@ -7364,7 +7361,6 @@ export default function GameBoard() {
                 claimedBy={entry.claimedBy}
                 cardRect={entry.cardRect}
                 overrideColor={entry.winSealingColor}
-                onFlash={() => setCutscenePostFlash(true)}
                 onSkip={() => {
                   console.log(`[Luminae] Summon view skipped locally for eventId="${entry.eventId}"`);
                   gameAudio.stopSummonCutscene();
@@ -7402,7 +7398,7 @@ export default function GameBoard() {
             key={lumId}
             luminaryId={lumId}
             frozen={summonQueue.length > 0}
-            hidden={activeTab !== 'board' || (summonQueue.length > 0 && !cutscenePostFlash)}
+            hidden={activeTab !== 'board' || summonQueue.length > 0}
             activeAffinityColor={activeAffinityColor}
           />
         );
