@@ -2372,7 +2372,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.40, delay: 0.44, ease: [0.18, 0, 0.82, 1] }
+              : { duration: 0.80, delay: 0.20, ease: [0.18, 0, 0.82, 1] }
             }
           >
             {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
@@ -2380,17 +2380,17 @@ export function LuminarySummonCutscene({
             <motion.div
               className="relative flex flex-col items-center"
               style={{ overflow: 'visible' }}
-              initial={{ scale: 0.28, y: 28, opacity: 0 }}
+              initial={{ scale: 0.18, y: 42, opacity: 0 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, opacity: 0 }
-                : { scale: [0.28, 1.08, 1.0], y: [28, -6, 0], opacity: [0, 1, 1] }
+                : { scale: [0.18, 0.72, 1.0], y: [42, -8, 0], opacity: [0, 0.65, 1] }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 0.40, delay: 0.44, times: [0, 0.55, 1.0], ease: 'easeOut' },
-                    y:       { duration: 0.38, delay: 0.44, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.35, delay: 0.44, ease: 'easeOut' },
+                    scale:   { duration: 0.90, delay: 0.20, times: [0, 0.55, 1.0], ease: 'easeOut' },
+                    y:       { duration: 0.85, delay: 0.20, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.75, delay: 0.20, ease: 'easeOut' },
                   }
               }
             >
