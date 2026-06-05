@@ -2815,7 +2815,7 @@ export function AuraPreviewModal({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
+export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
@@ -2845,15 +2845,20 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
   // without needing to re-register listeners on every render.
   const frozenRef = useRef(frozen);
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
+  const hiddenRef = useRef(hidden);
+  useEffect(() => { hiddenRef.current = hidden; }, [hidden]);
 
   // Latest [data-game-board] bounding rect — updated on every measure() call.
   // Stored as a ref (not state) so scroll events don't trigger extra re-renders;
   // the clip-path is recomputed inline whenever cardPos causes a re-render.
   const boardRectRef = useRef<DOMRect | null>(null);
+  // Cached element refs so querySelector only runs once per element.
+  const luminaryCardRef = useRef<HTMLElement | null>(null);
+  const mainElRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    let animFrame = 0;
     const scrollTargets: Element[] = [];
+    let throttleTimer: ReturnType<typeof setTimeout> | null = null;
 
     // Track last measured values so we can skip setState when nothing moved.
     // Even a 1px threshold prevents cascading React renders on every scroll tick
@@ -2865,16 +2870,22 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       // A position update would recalculate initX/initY and re-trigger the
       // return-flight animation, causing this entity to fly away mid-idle.
       if (frozenRef.current) return;
-      const el = document.querySelector(
+      // Skip measurement when the overlay is hidden (off-tab or during summon).
+      // The scroll listener is still attached but the callback returns early,
+      // reducing DOM API load during the most common high-lag scenarios.
+      if (hiddenRef.current) return;
+      const el = luminaryCardRef.current ?? document.querySelector(
         `[data-luminary-id="${luminaryId}"]`
       ) as HTMLElement | null;
+      if (el) luminaryCardRef.current = el;
       if (!el) return;
       const r = el.getBoundingClientRect();
       if (r.width === 0) return;
       // Check whether the card overlaps the scroll container's visible bounds.
       // When scrolled above the header the overlay must be hidden so it doesn't
       // paint over fixed chrome.
-      const mainEl = document.querySelector('[data-game-board]') as HTMLElement | null;
+      const mainEl = mainElRef.current ?? document.querySelector('[data-game-board]') as HTMLElement | null;
+      if (mainEl) mainElRef.current = mainEl;
       const mainRect = mainEl?.getBoundingClientRect() ?? null;
       boardRectRef.current = mainRect;
       const withinScroller = mainRect
@@ -2903,9 +2914,17 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
       });
     };
 
+    // Throttle scroll measurements to 200ms max per overlay.
+    // The old requestAnimationFrame pattern caused a storm: every scroll event
+    // on every overlay scheduled a new RAF, each forcing getBoundingClientRect
+    // (layout recalc). With 5+ overlays this produced 300+ forced layouts/sec.
     const onScroll = () => {
-      cancelAnimationFrame(animFrame);
-      animFrame = requestAnimationFrame(measure);
+      if (frozenRef.current || hiddenRef.current) return;
+      if (throttleTimer) return;
+      throttleTimer = setTimeout(() => {
+        throttleTimer = null;
+        measure();
+      }, 200);
     };
 
     measure();
@@ -2921,7 +2940,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
 
     return () => {
       clearTimeout(t);
-      cancelAnimationFrame(animFrame);
+      if (throttleTimer) clearTimeout(throttleTimer);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       scrollTargets.forEach(el => el.removeEventListener('scroll', onScroll));
@@ -3249,4 +3268,4 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
     </div>
     </>
   );
-}
+});

@@ -873,7 +873,8 @@ export default function GameBoard() {
         if (delta > 0) {
           const key = ++lumensBurstKeyRef.current;
           setLumensBursts(bs => [...bs, { key, playerName: p.playerName, delta }]);
-          setTimeout(() => setLumensBursts(bs => bs.filter(b => b.key !== key)), 2400);
+          const tBurst = setTimeout(() => setLumensBursts(bs => bs.filter(b => b.key !== key)), 2400);
+          cardAnimTimersRef.current.push(tBurst);
         }
       }
     }
@@ -1543,7 +1544,8 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
+                          const tRipple = setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
+                          cardAnimTimersRef.current.push(tRipple);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -1640,7 +1642,8 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
+                          const tRipple = setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
+                          cardAnimTimersRef.current.push(tRipple);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -1738,7 +1741,8 @@ export default function GameBoard() {
                       const slotR = slotEl?.getBoundingClientRect();
                       if (slotR) {
                         setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
-                        setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
+                        const tRipple = setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
+                        cardAnimTimersRef.current.push(tRipple);
                       }
                     }
                     const t2 = setTimeout(() => {
@@ -2774,7 +2778,8 @@ export default function GameBoard() {
         const name = payload.cardRef?.name ?? 'Artifact';
         burstKeyRef.current += 1;
         setPurchaseBurst({ key: burstKeyRef.current, lumens, name });
-        setTimeout(() => setPurchaseBurst(null), 1400);
+        const tPurchase = setTimeout(() => setPurchaseBurst(null), 1400);
+        cardAnimTimersRef.current.push(tPurchase);
         // Forge animation — same path as market forge, card flies from reserved slot to hand tab
         if (payload.cardRef) {
           const cardEl = document.querySelector(`[data-reserved-card-id="${payload.cardId}"]`);
