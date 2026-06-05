@@ -1324,22 +1324,32 @@ button,
   transform-origin: center center;
 }
 
-/* ── First Hunger (lum_hunger) — nanite background crossfade ─────────────
-   bg1 and bg2 alternate in opposition: as one fades out the other fades in,
-   creating the illusion of slowly shifting nanite swarm movement.
-   bg1 rotates clockwise, bg2 counter-clockwise, for a living drift effect.   */
-@keyframes lum-hunger-bg1 {
-  0%, 100% { opacity: 1; transform: rotate(0deg); }
-  50%       { opacity: 0; transform: rotate(4deg); }
+/* ── First Hunger (lum_hunger) — nanite background crossfade + drift ─────
+   bg1 and bg2 alternate in opposition: as one fades out the other fades in.
+   Both layers also rotate continuously in opposite directions (clockwise vs
+   counter-clockwise) so the drift never snaps back.                       */
+@keyframes lum-hunger-bg1-fade {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
-@keyframes lum-hunger-bg2 {
-  0%, 100% { opacity: 0; transform: rotate(0deg); }
-  50%       { opacity: 1; transform: rotate(-4deg); }
+@keyframes lum-hunger-bg2-fade {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+@keyframes lum-hunger-bg1-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes lum-hunger-bg2-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
 }
 .lum-hunger-bg1 {
-  animation: lum-hunger-bg1 5s ease-in-out infinite;
+  animation: lum-hunger-bg1-fade 5s ease-in-out infinite,
+             lum-hunger-bg1-rotate 60s linear infinite;
 }
 .lum-hunger-bg2 {
-  animation: lum-hunger-bg2 5s ease-in-out infinite;
+  animation: lum-hunger-bg2-fade 5s ease-in-out infinite,
+             lum-hunger-bg2-rotate 60s linear infinite;
 }
 
