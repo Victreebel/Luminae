@@ -1347,13 +1347,13 @@ button,
 .lum-hunger-bg1 {
   animation: lum-hunger-bg1-fade 5s ease-in-out infinite,
              lum-hunger-bg1-rotate 60s linear infinite;
-  -webkit-mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
-  mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
+  mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
 }
 .lum-hunger-bg2 {
   animation: lum-hunger-bg2-fade 5s ease-in-out infinite,
              lum-hunger-bg2-rotate 60s linear infinite;
-  -webkit-mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
-  mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
+  mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
 }
 

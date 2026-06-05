@@ -872,10 +872,15 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
   const w = size;
   const h = Math.round(size * 1.5);
   const fill: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', border: 'none' };
+  const bgMask: React.CSSProperties = {
+    ...fill,
+    WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)',
+    maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)',
+  };
   return (
-    <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0, borderRadius: 2 }}>
-      {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
-      {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
+    <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0 }}>
+      {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1" style={bgMask} />}
+      {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2" style={bgMask} />}
       {entity && (
         <img src={entity} alt="" draggable={false}
           style={{ ...fill, objectFit: 'contain', zIndex: 1,
@@ -2547,7 +2552,7 @@ export function LuminarySummonCutscene({
                           objectFit: 'cover', display: 'block', border: 'none',
                         };
                         return (
-                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H, borderRadius: 4 }}>
+                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
                             {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
                             {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
                             {hEnt && (
@@ -3170,7 +3175,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             return (
               <div
                 className={isIdle ? 'lum-idle-float' : undefined}
-                style={{ position: 'relative', width: IDLE_W, height: IDLE_H, borderRadius: 4 }}
+                style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
               >
                 {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
                 {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
