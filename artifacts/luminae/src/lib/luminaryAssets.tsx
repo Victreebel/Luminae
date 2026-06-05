@@ -2359,10 +2359,10 @@ export function LuminarySummonCutscene({
       {/* snaps forward on the beat-drop boom to a +6° overshoot, then settles   */}
       {/* face-on. Haze blur is lighter (6px) so the silhouette is readable     */}
       {/* through it while swinging.                                              */}
-      {/* Slow fade-in: entity is invisible from 4800ms (shattering) until      */}
-      {/* 6750ms (revealed), then fades in over 800ms to reach full opacity at    */}
-      {/* ~8500ms. The inner grow animation completes while invisible; only the     */}
-      {/* container opacity is animated slowly.                                   */}
+      {/* Fade-in: entity is invisible from 4800ms (shattering) until 5000ms,      */}
+      {/* then fades in over 800ms to reach full opacity at ~5800ms. The inner    */}
+      {/* grow animation completes while invisible; only the container opacity       */}
+      {/* is animated.                                                            */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
@@ -2376,7 +2376,7 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.80, delay: 0.95, ease: 'easeOut' }
+              : { duration: 0.80, delay: 0.20, ease: 'easeOut' }
             }
           >
             {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
