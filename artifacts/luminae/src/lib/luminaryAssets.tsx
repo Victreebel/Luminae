@@ -2378,14 +2378,16 @@ export function LuminarySummonCutscene({
               : { duration: 2.0, delay: 0.20, ease: 'easeOut' }
             }
           >
-            {/* Slow grow + fade — steady single-segment easeOut, no speed bumps.  */}
+            {/* 3D portal break-through — entity starts deep behind the portal     */}
+            {/* (rotateY=32°, z=-200), then swings face-on toward the viewer.        */}
+            {/* perspective=800px gives the depth illusion; easeOut keeps it slow.    */}
             <motion.div
               className="relative flex flex-col items-center"
-              style={{ overflow: 'visible' }}
-              initial={{ scale: 0.18, y: 42, opacity: 0 }}
+              style={{ overflow: 'visible', perspective: '800px' }}
+              initial={{ scale: 0.18, y: 42, opacity: 0, rotateY: 32, z: -200 }}
               animate={isFading
-                ? { scale: 1.14, y: -38, opacity: 0 }
-                : { scale: 1.0, y: 0, opacity: 1 }
+                ? { scale: 1.14, y: -38, opacity: 0, rotateY: 0 }
+                : { scale: 1.0, y: 0, opacity: 1, rotateY: 0 }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
@@ -2393,6 +2395,8 @@ export function LuminarySummonCutscene({
                     scale:   { duration: 2.0, delay: 0.20, ease: 'easeOut' },
                     y:       { duration: 2.0, delay: 0.20, ease: 'easeOut' },
                     opacity: { duration: 2.0, delay: 0.20, ease: 'easeOut' },
+                    rotateY: { duration: 2.0, delay: 0.20, ease: 'easeOut' },
+                    z:       { duration: 2.0, delay: 0.20, ease: 'easeOut' },
                   }
               }
             >
