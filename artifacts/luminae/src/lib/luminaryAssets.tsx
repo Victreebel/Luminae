@@ -2402,7 +2402,7 @@ export function LuminarySummonCutscene({
 
                 {/* ── Portal composition — relative anchor sized to entity frame ── */}
                 {/* Portal layers extend beyond via overflow:visible on each parent. */}
-                <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'visible', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'visible', flexShrink: 0, backgroundColor: '#080810' }}>
 
                   {/* Outer portal bloom (680×740) — blooms from flash via spring */}
                   <motion.div
@@ -2499,7 +2499,7 @@ export function LuminarySummonCutscene({
                         : `drop-shadow(0 0 22px ${glowColor}cc) drop-shadow(0 0 10px ${primaryColor}88)`,
                     }}
                   >
-                    <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1 }}>
+                    <div style={{ position: 'relative', width: ENT_W, height: ENT_H, zIndex: 1, backgroundColor: '#0a0a0a' }}>
                       {luminaryId === 'lum_radiant' ? (() => {
                         // Three-layer animated composite — same form as the idle overlay,
                         // scaled to the larger ENT_W container.
