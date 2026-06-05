@@ -871,7 +871,7 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
   const bg2    = _luminaryImageMap['lum_hunger/background2'] ?? null;
   const w = size;
   const h = Math.round(size * 1.5);
-  const fill: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' };
+  const fill: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block', border: 'none' };
   return (
     <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
       {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
@@ -2541,7 +2541,7 @@ export function LuminarySummonCutscene({
                         const hEnt   = _getLuminaryImage('lum_hunger', 'entity');
                         const fill: React.CSSProperties = {
                           position: 'absolute', inset: 0, width: '100%', height: '100%',
-                          objectFit: 'cover', display: 'block',
+                          objectFit: 'cover', display: 'block', border: 'none',
                         };
                         return (
                           <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
@@ -3159,7 +3159,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             const hEnt = _getLuminaryImage('lum_hunger', 'entity');
             const fill: React.CSSProperties = {
               position: 'absolute', inset: 0, width: '100%', height: '100%',
-              objectFit: 'cover', display: 'block',
+              objectFit: 'cover', display: 'block', border: 'none',
             };
             return (
               <div

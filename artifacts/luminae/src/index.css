@@ -1337,19 +1337,23 @@ button,
   50%       { opacity: 1; }
 }
 @keyframes lum-hunger-bg1-rotate {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from { transform: rotate(0deg) scale(1.35); }
+  to   { transform: rotate(360deg) scale(1.35); }
 }
 @keyframes lum-hunger-bg2-rotate {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(-360deg); }
+  from { transform: rotate(0deg) scale(1.35); }
+  to   { transform: rotate(-360deg) scale(1.35); }
 }
 .lum-hunger-bg1 {
   animation: lum-hunger-bg1-fade 5s ease-in-out infinite,
              lum-hunger-bg1-rotate 60s linear infinite;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
+  mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
 }
 .lum-hunger-bg2 {
   animation: lum-hunger-bg2-fade 5s ease-in-out infinite,
              lum-hunger-bg2-rotate 60s linear infinite;
+  -webkit-mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
+  mask-image: radial-gradient(ellipse at center, black 55%, transparent 95%);
 }
 
