@@ -1347,13 +1347,13 @@ button,
   to   { transform: rotate(-360deg) scale(1.35); }
 }
 .lum-hunger-bg1 {
-  animation: lum-hunger-bg1-fade 2.5s ease-in-out infinite,
+  animation: lum-hunger-bg1-fade 1s ease-in-out infinite,
              lum-hunger-bg1-rotate 60s linear infinite;
   -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
   mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
 }
 .lum-hunger-bg2 {
-  animation: lum-hunger-bg2-fade 2.5s ease-in-out infinite,
+  animation: lum-hunger-bg2-fade 1s ease-in-out infinite,
              lum-hunger-bg2-rotate 60s linear infinite;
   -webkit-mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
   mask-image: radial-gradient(ellipse at center, black 50%, transparent 78%);
