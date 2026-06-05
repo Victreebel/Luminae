@@ -873,12 +873,12 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
   const h = Math.round(size * 1.5);
   const fill: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' };
   return (
-    <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
-      {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1 lum-hunger-heat-haze" style={fill} />}
-      {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2 lum-hunger-heat-haze" style={fill} />}
+    <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0 }}>
+      {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1 lum-hunger-heat-haze" style={{ ...fill, WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
+      {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2 lum-hunger-heat-haze" style={{ ...fill, WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
       {entity && (
         <img src={entity} alt="" draggable={false}
-          style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+          style={{ ...fill, objectFit: 'contain', zIndex: 1, WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
       )}
     </div>
   );
@@ -2544,12 +2544,12 @@ export function LuminarySummonCutscene({
                           objectFit: 'cover', display: 'block', border: 'none',
                         };
                         return (
-                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
-                            {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1 lum-hunger-heat-haze" style={fill} />}
-                            {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2 lum-hunger-heat-haze" style={fill} />}
+                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
+                            {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1 lum-hunger-heat-haze" style={{ ...fill, WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
+                            {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2 lum-hunger-heat-haze" style={{ ...fill, WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
                             {hEnt && (
                               <img src={hEnt} alt={luminaryName} draggable={false}
-                                style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+                                style={{ ...fill, objectFit: 'contain', zIndex: 1, WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
                             )}
                           </div>
                         );
@@ -3164,13 +3164,13 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             return (
               <div
                 className={isIdle ? 'lum-idle-float' : undefined}
-                style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'hidden', borderRadius: 4 }}
+                style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
               >
-                {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1 lum-hunger-heat-haze" style={fill} />}
-                {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2 lum-hunger-heat-haze" style={fill} />}
+                {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1 lum-hunger-heat-haze" style={{ ...fill, WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
+                {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2 lum-hunger-heat-haze" style={{ ...fill, WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
                 {hEnt && (
                   <img src={hEnt} alt="" draggable={false}
-                    style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+                    style={{ ...fill, objectFit: 'contain', zIndex: 1, WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
                 )}
               </div>
             );
