@@ -1324,9 +1324,10 @@ button,
   transform-origin: center center;
 }
 
-/* ── First Hunger (lum_hunger) — nanite background crossfade ────────────
-   bg1 and bg2 alternate in opposition: as one fades out the other fades in,
-   creating the illusion of slowly shifting nanite swarm movement.           */
+/* ── First Hunger (lum_hunger) — nanite background crossfade + shimmer ────
+   bg1 and bg2 alternate in opposition: as one fades out the other fades in.
+   A diagonal shimmer sweep passes across the background for a living-metal
+   sheen effect.                                                           */
 @keyframes lum-hunger-bg1 {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
@@ -1335,10 +1336,37 @@ button,
   0%, 100% { opacity: 0; }
   50%       { opacity: 1; }
 }
+@keyframes lum-hunger-shimmer {
+  0%   { transform: translateX(-120%) skewX(-22deg); }
+  100% { transform: translateX(220%) skewX(-22deg); }
+}
 .lum-hunger-bg1 {
   animation: lum-hunger-bg1 5s ease-in-out infinite;
 }
 .lum-hunger-bg2 {
   animation: lum-hunger-bg2 5s ease-in-out infinite;
+}
+/* Shimmer overlay — injected via a pseudo-element on the background wrapper */
+.lum-hunger-bg-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.lum-hunger-bg-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.10) 48%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.10) 52%,
+    transparent 60%,
+    transparent 100%
+  );
+  animation: lum-hunger-shimmer 3.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
 }
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
@@ -873,7 +874,7 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
   const h = Math.round(size * 1.5);
   const fill: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' };
   return (
-    <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
+    <div className={cn(className, 'lum-hunger-bg-shimmer')} style={{ position: 'relative', width: w, height: h, flexShrink: 0, overflow: 'hidden', borderRadius: 2 }}>
       {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
       {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
       {entity && (
@@ -2544,7 +2545,7 @@ export function LuminarySummonCutscene({
                           objectFit: 'cover', display: 'block', border: 'none',
                         };
                         return (
-                          <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
+                          <div className="lum-hunger-bg-shimmer" style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'hidden', borderRadius: 4 }}>
                             {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
                             {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
                             {hEnt && (
@@ -3163,7 +3164,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
             };
             return (
               <div
-                className={isIdle ? 'lum-idle-float' : undefined}
+                className={cn(isIdle ? 'lum-idle-float' : undefined, 'lum-hunger-bg-shimmer')}
                 style={{ position: 'relative', width: IDLE_W, height: IDLE_H, overflow: 'hidden', borderRadius: 4 }}
               >
                 {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={fill} />}
