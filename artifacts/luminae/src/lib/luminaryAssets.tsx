@@ -2612,7 +2612,7 @@ export function LuminarySummonCutscene({
                             display: 'block',
                             // Stretch wide landscape entities (seed, orchard) vertically
                             // so they fill the tall portrait panel without letterboxing.
-                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
+                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
                             transformOrigin: luminaryId === 'lum_seed' || luminaryId === 'lum_orchard' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
@@ -3207,7 +3207,7 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                       display: 'block',
                       // Stretch wide landscape entities vertically so they fill
                       // the tall portrait card without letterboxing.
-                      transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.55)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
+                      transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
                       ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                       // Fade to transparent in the lower third so the card's name /
                       // requirements row stays legible underneath the entity.
