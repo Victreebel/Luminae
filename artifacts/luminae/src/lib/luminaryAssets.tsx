@@ -2421,7 +2421,7 @@ export function LuminarySummonCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}88 0%, ${primaryColor}66 12%, ${primaryColor}33 34%, ${secondaryColor}11 58%, transparent 76%)`,
+                      backgroundImage: `radial-gradient(ellipse at 50% 48%, ${primaryColor}88 0%, ${primaryColor}66 12%, ${primaryColor}33 34%, ${secondaryColor}11 58%, transparent 76%)`,
                       filter: 'blur(38px)',
                       zIndex: 0,
                     }}
@@ -2444,7 +2444,7 @@ export function LuminarySummonCutscene({
                       top: '50%', left: '50%',
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
-                      background: `radial-gradient(ellipse at 50% 46%, ${glowColor}aa 0%, ${glowColor}88 14%, ${glowColor}55 32%, ${primaryColor}22 54%, transparent 72%)`,
+                      backgroundImage: `radial-gradient(ellipse at 50% 46%, ${glowColor}aa 0%, ${glowColor}88 14%, ${glowColor}55 32%, ${primaryColor}22 54%, transparent 72%)`,
                       filter: 'blur(18px)',
                       zIndex: 4,
                     }}
@@ -2472,7 +2472,6 @@ export function LuminarySummonCutscene({
                     x: '-50%',
                     y: '-52%',
                     borderRadius: '50%',
-                    background: 'transparent',
                     boxShadow: `0 0 0 2px ${glowColor}55, inset 0 0 28px ${glowColor}33`,
                     filter: 'blur(4px)',
                     zIndex: 5,
