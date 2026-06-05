@@ -1326,14 +1326,15 @@ button,
 
 /* ── First Hunger (lum_hunger) — nanite background crossfade ─────────────
    bg1 and bg2 alternate in opposition: as one fades out the other fades in,
-   creating the illusion of slowly shifting nanite swarm movement.           */
+   creating the illusion of slowly shifting nanite swarm movement.
+   bg1 rotates clockwise, bg2 counter-clockwise, for a living drift effect.   */
 @keyframes lum-hunger-bg1 {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
+  0%, 100% { opacity: 1; transform: rotate(0deg); }
+  50%       { opacity: 0; transform: rotate(4deg); }
 }
 @keyframes lum-hunger-bg2 {
-  0%, 100% { opacity: 0; }
-  50%       { opacity: 1; }
+  0%, 100% { opacity: 0; transform: rotate(0deg); }
+  50%       { opacity: 1; transform: rotate(-4deg); }
 }
 .lum-hunger-bg1 {
   animation: lum-hunger-bg1 5s ease-in-out infinite;
