@@ -879,17 +879,17 @@ class GameAudio {
       // luminaryAssets.tsx. These are intentionally offset ahead of the visual
       // phases so the sound leads the eye (e.g. crack sound hits before the visual
       // crack appears), creating a more visceral impact.
-      const PAN    =  260;
-      const FOCUS  =  980;
-      const INTRO  = 1560;
-      const PRES   = 1800;
-      const CRACK1 = 2100;
-      const LEAK   = 2720;
-      const CRACK2 = 2920;
-      const CRACKS = 3340;
-      const SHATT  = 4380;
-      const FLASH  = 5220;
-      const REVL   = 6170;
+      const PAN    =    0;
+      const FOCUS  =  580;
+      const INTRO  = 1160;
+      const PRES   = 1400;
+      const CRACK1 = 1700;
+      const LEAK   = 2320;
+      const CRACK2 = 2520;
+      const CRACKS = 2940;
+      const SHATT  = 3980;
+      const FLASH  = 4820;
+      const REVL   = 5770;
 
       // ── establish (0–600 ms): anticipatory shimmer + sub foundation ─────
       this.noiseBlip(ctx, s(60),  0.5, 0.022, 4600, 2, D);
