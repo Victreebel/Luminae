@@ -878,7 +878,10 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
       {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
       {entity && (
         <img src={entity} alt="" draggable={false}
-          style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+          style={{ ...fill, objectFit: 'contain', zIndex: 1,
+            WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)',
+            maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)',
+          }} />
       )}
     </div>
   );
@@ -2549,7 +2552,10 @@ export function LuminarySummonCutscene({
                             {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
                             {hEnt && (
                               <img src={hEnt} alt={luminaryName} draggable={false}
-                                style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+                                style={{ ...fill, objectFit: 'contain', zIndex: 1,
+                                  WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)',
+                                  maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)',
+                                }} />
                             )}
                           </div>
                         );
@@ -3170,7 +3176,10 @@ export function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false
                 {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={fill} />}
                 {hEnt && (
                   <img src={hEnt} alt="" draggable={false}
-                    style={{ ...fill, objectFit: 'contain', zIndex: 1 }} />
+                    style={{ ...fill, objectFit: 'contain', zIndex: 1,
+                      WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)',
+                      maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)',
+                    }} />
                 )}
               </div>
             );
