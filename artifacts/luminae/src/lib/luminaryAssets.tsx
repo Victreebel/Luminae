@@ -2359,10 +2359,9 @@ export function LuminarySummonCutscene({
       {/* snaps forward on the beat-drop boom to a +6° overshoot, then settles   */}
       {/* face-on. Haze blur is lighter (6px) so the silhouette is readable     */}
       {/* through it while swinging.                                              */}
-      {/* Fade-in: entity is invisible from 4800ms (shattering) until 5000ms,      */}
-      {/* then fades in over 800ms to reach full opacity at ~5800ms. The inner    */}
-      {/* grow animation completes while invisible; only the container opacity       */}
-      {/* is animated.                                                            */}
+      {/* Slow, even reveal: entity mounts at 4800ms (shattering) and fades in     */}
+      {/* + grows steadily over ~5.0 s, reaching full size/opacity by ~9800ms.      */}
+      {/* No keyframe jumps — one smooth easeOut curve from hidden to fully present.  */}
       <AnimatePresence>
         {isRevealed && (
           <motion.div
@@ -2376,25 +2375,24 @@ export function LuminarySummonCutscene({
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 0.80, delay: 0.20, ease: 'easeOut' }
+              : { duration: 5.0, ease: 'easeOut' }
             }
           >
-            {/* Fade-in-while-growing — approaches from posterior (small, faint)  */}
-            {/* to anterior (full size, clear) like a figure walking out of fog.    */}
+            {/* Slow grow + fade — steady single-segment easeOut, no speed bumps.  */}
             <motion.div
               className="relative flex flex-col items-center"
               style={{ overflow: 'visible' }}
               initial={{ scale: 0.18, y: 42, opacity: 0 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, opacity: 0 }
-                : { scale: [0.18, 0.72, 1.0], y: [42, -8, 0], opacity: [0, 0.65, 1] }
+                : { scale: 1.0, y: 0, opacity: 1 }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 0.90, delay: 0.20, times: [0, 0.55, 1.0], ease: 'easeOut' },
-                    y:       { duration: 0.85, delay: 0.20, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.75, delay: 0.20, ease: 'easeOut' },
+                    scale:   { duration: 5.0, ease: 'easeOut' },
+                    y:       { duration: 5.0, ease: 'easeOut' },
+                    opacity: { duration: 5.0, ease: 'easeOut' },
                   }
               }
             >
