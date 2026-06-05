@@ -1316,19 +1316,19 @@ const PANEL_PIECES: readonly ShardPiece[] = [
 ];
 
 const PHASE_DURATIONS: Record<CutscenePhase, number> = {
-  establish:    600,
-  panning:      750,  // board DOM pans as a unit toward the card (overlay=0)
-  focusing:     600,  // camera layer zooms in on the now-centred card
+  establish:    500,
+  panning:      650,  // board DOM pans as a unit toward the card (overlay=0)
+  focusing:     550,  // camera layer zooms in on the now-centred card
   intro:         50,
-  zooming:       80,
-  pressure:      90,
+  zooming:       50,
+  pressure:      60,
   firstcrack:   320,
   leaking:      850,
   secondcrack:  360,
   cracking:    1100,
-  shattering:  1000,
-  flashing:    950,
-  revealed:   4200,
+  shattering:   850,
+  flashing:     800,
+  revealed:   3600,
   fading:      550,
   done:           0,
 };
