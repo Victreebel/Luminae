@@ -623,8 +623,7 @@ const ILLUSTRATED_IDS = new Set([
   "lum_pale", "lum_radiant", "lum_tide", "lum_void",
   // v0.8 additions (procedural art until panels/entities are approved):
   "lum_moth", "lum_seed", "lum_orchard", "lum_hunger",
-  // v0.9 additions:
-  "lum_scholar",
+  // v0.9 additions (lum_scholar deferred — not in active rotation):
 ]);
 const AVAILABLE_LUMINARIES = LUMINARIES.filter((l) =>
   ILLUSTRATED_IDS.has(l.id),
