@@ -4278,7 +4278,9 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        <LuminaryPanelArt luminaryId={lumId} size={24} claimed />
+                        <div className="relative shrink-0 rounded-md overflow-hidden" style={{ width: 24, height: 24 }}>
+                          <LuminaryPanelArt luminaryId={lumId} size={24} claimed />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-semibold text-white leading-tight truncate">{lum.name}</p>
                           {lum.effectName && (
