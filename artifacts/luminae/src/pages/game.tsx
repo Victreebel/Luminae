@@ -4401,7 +4401,7 @@ export default function GameBoard() {
                     }}
                   >
                     {/* Tiny panel art */}
-                    <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
+                    <div className="relative shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
                       <LuminaryPanelArt luminaryId={lum.id} size={32} claimed={!!claimedByPlayer} />
                     </div>
                     {/* Name + domain */}
