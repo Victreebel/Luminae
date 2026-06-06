@@ -30,11 +30,17 @@ export function OpponentChip({
   isActive,
   isLocalTurn,
   affinityTotals,
+  artifactTotals,
+  isExpanded,
+  onToggle,
 }: {
   player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
   isActive: boolean;
   isLocalTurn: boolean;
   affinityTotals?: Partial<Record<GemKey, number>>;
+  artifactTotals?: Partial<Record<GemKey, number>>;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }) {
   const dimmed = !isActive && !isLocalTurn;
   return (
@@ -44,7 +50,10 @@ export function OpponentChip({
         initial={false}
         animate={isActive ? 'active' : 'idle'}
         variants={opponentTurnVariants}
+        onClick={onToggle}
         className={`relative flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-full text-xs font-semibold transition-all duration-300 ${
+          onToggle ? 'cursor-pointer' : ''
+        } ${
           isActive
             ? 'ring-1 ring-primary bg-primary/10 text-foreground'
             : dimmed
@@ -67,40 +76,86 @@ export function OpponentChip({
         </span>
       </motion.div>
 
-      {affinityTotals && (
+      {isExpanded && affinityTotals && (
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
             marginTop: 3,
-            padding: '2px 7px',
+            padding: '4px 7px',
             borderRadius: 5,
             background: 'rgba(0,0,0,0.40)',
             border: '1px solid rgba(255,255,255,0.07)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
           }}
         >
-          {NON_FLUX_KEYS.map(key => {
-            const meta = GEM_META[key];
-            const val = affinityTotals[key] ?? 0;
-            return (
-              <span
-                key={key}
-                title={`${meta.name}: ${val}`}
-                style={{
-                  color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  minWidth: 9,
-                  textAlign: 'center',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {val}
-              </span>
-            );
-          })}
+          {/* Row 1: artifact counts per affinity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* Hollow rectangle icon — card silhouette */}
+            <svg
+              width={10}
+              height={8}
+              viewBox="0 0 10 8"
+              style={{ flexShrink: 0, opacity: 0.55 }}
+            >
+              <rect x={0.5} y={0.5} width={9} height={7} rx={1} fill="none" stroke="white" strokeWidth={1} />
+            </svg>
+            {NON_FLUX_KEYS.map(key => {
+              const meta = GEM_META[key];
+              const val = artifactTotals?.[key] ?? 0;
+              return (
+                <span
+                  key={key}
+                  title={`${meta.name} artifacts: ${val}`}
+                  style={{
+                    color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    minWidth: 9,
+                    textAlign: 'center',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {val}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Row 2: crystal token counts per affinity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {/* Filled circle icon — token */}
+            <svg
+              width={10}
+              height={10}
+              viewBox="0 0 10 10"
+              style={{ flexShrink: 0, opacity: 0.55 }}
+            >
+              <circle cx={5} cy={5} r={4} fill="white" />
+            </svg>
+            {NON_FLUX_KEYS.map(key => {
+              const meta = GEM_META[key];
+              const val = affinityTotals[key] ?? 0;
+              return (
+                <span
+                  key={key}
+                  title={`${meta.name} crystals: ${val}`}
+                  style={{
+                    color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    minWidth: 9,
+                    textAlign: 'center',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {val}
+                </span>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

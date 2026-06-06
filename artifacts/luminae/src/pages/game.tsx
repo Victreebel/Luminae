@@ -4791,16 +4791,22 @@ export default function GameBoard() {
           {state.players
             .filter(p => p.playerId !== session.playerId)
             .map(opponent => {
-              const lumAffs: LuminaryActiveState[] = state.luminaryAffinities ?? [];
-              const tc: number = state.turnCount ?? 0;
-              const affinityTotals: Partial<Record<GemKey, number>> = {};
+              const crystalTotals: Partial<Record<GemKey, number>> = {};
+              const artifactTotals: Partial<Record<GemKey, number>> = {};
               for (const k of CRYSTALS) {
                 if (k === 'flux') continue;
-                const lumBonus = lumAffs.filter(
-                  la => la.ownerId === opponent.playerId && la.activeAffinity === k && tc > la.summonedAtTurnCount,
-                ).length;
-                affinityTotals[k] = (opponent.crystals[k as keyof CrystalCounts] ?? 0) + (opponent.bonuses[k as keyof CrystalCounts] ?? 0) + lumBonus;
+                crystalTotals[k] = opponent.crystals[k as keyof CrystalCounts] ?? 0;
+                artifactTotals[k] = opponent.purchasedCards.filter(c => c.bonusColor === k).length;
               }
+              const isExpanded = expandedOpponents.has(opponent.playerId);
+              const onToggle = () => {
+                setExpandedOpponents(prev => {
+                  const next = new Set(prev);
+                  if (next.has(opponent.playerId)) next.delete(opponent.playerId);
+                  else next.add(opponent.playerId);
+                  return next;
+                });
+              };
               return (
                 <OpponentChip
                   key={opponent.playerId}
@@ -4809,7 +4815,10 @@ export default function GameBoard() {
                     state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
                   }
                   isLocalTurn={isMyTurn}
-                  affinityTotals={affinityTotals}
+                  affinityTotals={crystalTotals}
+                  artifactTotals={artifactTotals}
+                  isExpanded={isExpanded}
+                  onToggle={onToggle}
                 />
               );
             })}
