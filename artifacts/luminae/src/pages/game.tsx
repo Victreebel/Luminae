@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useParams, useLocation } from 'wouter';
 import { 
@@ -1303,7 +1303,7 @@ export default function GameBoard() {
     );
   }, [state?.players]);
 
-  const effectiveCost = (card: ArtifactCard, p: GamePlayerState) => {
+  const effectiveCost = useCallback((card: ArtifactCard, p: GamePlayerState) => {
     const luminaryAffinities: LuminaryActiveState[] = state?.luminaryAffinities ?? [];
     const turnCount: number = state?.turnCount ?? 0;
     const out: Record<string, number> = {};
@@ -1318,8 +1318,8 @@ export default function GameBoard() {
       out[c] = Math.max(0, (card.cost[c as keyof CrystalCounts] ?? 0) - bonus);
     }
     return out;
-  };
-  const canAffordCard = (card: ArtifactCard, p: GamePlayerState): boolean => {
+  }, [state?.luminaryAffinities, state?.turnCount]);
+  const canAffordCard = useCallback((card: ArtifactCard, p: GamePlayerState): boolean => {
     const cost = effectiveCost(card, p);
     let fluxNeeded = 0;
     for (const [c, need] of Object.entries(cost)) {
@@ -1327,7 +1327,7 @@ export default function GameBoard() {
       if (have < need) fluxNeeded += need - have;
     }
     return fluxNeeded <= (p.crystals.flux ?? 0);
-  };
+  }, [effectiveCost]);
 
   // Derived forge-deduction map — how many of each affinity the selected card
   // would spend from the player's current inventory. Placed here (after
@@ -2957,7 +2957,7 @@ export default function GameBoard() {
   }) ?? [];
 
   // ── computeCosts: returns display costs for the active costMode ──────────
-  const computeCosts = (card: ArtifactCard, mode: CostMode): Partial<Record<GemKey, number>> | undefined => {
+  const computeCosts = useCallback((card: ArtifactCard, mode: CostMode): Partial<Record<GemKey, number>> | undefined => {
     if (!me) return undefined;
     if (mode === 'printed') return undefined;
     const afterBonus = effectiveCost(card, me) as Record<string, number>;
@@ -2991,7 +2991,7 @@ export default function GameBoard() {
       out[c as GemKey] = Math.max(0, eff - held - harvest);
     }
     return out;
-  };
+  }, [me, effectiveCost, selectedCrystals]);
   const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
 
   const handleBuy = (card: ArtifactCard, fromReserve = false) => {
@@ -3015,7 +3015,7 @@ export default function GameBoard() {
     setPendingDeckConfirm(false);
   };
 
-  const openCardSheet = (card: ArtifactCard, fromReserve: boolean) => {
+  const openCardSheet = useCallback((card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
     if (!cardDetailDiscovered) {
       setCardDetailDiscovered(true);
@@ -3029,13 +3029,13 @@ export default function GameBoard() {
       canReserve: isMyTurnForCoreAction && !fromReserve && canReserveMore(me),
       effectiveCosts: computeCosts(card, costMode),
     });
-  };
+  }, [me, cardDetailDiscovered, isMyTurnForCoreAction, costMode, computeCosts, canAffordCard, canReserveMore]);
 
-  const openForgedCardSheet = (card: ArtifactCard) => {
+  const openForgedCardSheet = useCallback((card: ArtifactCard) => {
     setCardFlipped(false);
     setPendingSheetAction(null);
     setSelectedCard({ card, fromReserve: false, canBuy: false, canReserve: false, readOnly: true });
-  };
+  }, []);
 
   const handleSurrender = () => {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });

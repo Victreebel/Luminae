@@ -21,7 +21,7 @@ import { gameAudio } from '@/lib/audio';
 // Inner counter-swirl uses conicAll (all colours equal) so every requirement
 // colour remains visibly present. 4 of 7 motes are the active colour;
 // remaining 3 cycle through the other requirement colours.
-export function LuminaryClaimedPortal({
+export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
   isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false, isArmed = false,
 }: {
@@ -543,7 +543,7 @@ export function LuminaryClaimedPortal({
   );
 }
 
-export function LuminaryCard({
+export const LuminaryCard = React.memo(function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
   costMode, playerBonuses, isMyTurn, onOpenSheet, isArmed = false,

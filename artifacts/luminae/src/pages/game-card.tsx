@@ -113,7 +113,7 @@ export function CrystalIcon({
   );
 }
 
-export function ArtifactCardView({
+export const ArtifactCardView = React.memo(function ArtifactCardView({
   card, onTap, tapped, tier, effectiveCosts, bonusCosts, artOnly, hideStrike,
 }: {
   card: ArtifactCard;
