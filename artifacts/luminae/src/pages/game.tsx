@@ -2598,6 +2598,85 @@ export default function GameBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.crystals]);
 
+  // ── Callback hooks for card interaction ────────────────────────────
+  // These must be declared before any early return so they satisfy
+  // react-hooks/rules-of-hooks. They are safe because effectiveCost
+  // and me are already declared (may be undefined/null before the
+  // state is loaded, but the hooks themselves handle that).
+  const computeCosts = useCallback((card: ArtifactCard, mode: CostMode): Partial<Record<GemKey, number>> | undefined => {
+    if (!me) return undefined;
+    if (mode === 'printed') return undefined;
+    const afterBonus = effectiveCost(card, me) as Record<string, number>;
+    if (mode === 'after_bonuses') return afterBonus as Partial<Record<GemKey, number>>;
+    // 'needed_now': after bonuses, subtract held tokens + pre-harvest tally, clamp >= 0.
+    const check = pendingHarvestCheckRef.current;
+    let activeTally: Partial<CrystalCounts> = selectedCrystals;
+    if (check?.tally && check?.preCrystals) {
+      const alreadyLanded = Object.keys(check.tally).some(
+        g => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals![g as keyof CrystalCounts] ?? 0),
+      );
+      activeTally = alreadyLanded ? {} : check.tally;
+    }
+    const out: Partial<Record<GemKey, number>> = {};
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      const eff = afterBonus[c] ?? 0;
+      const held = me.crystals[c as keyof CrystalCounts] ?? 0;
+      const harvest = activeTally[c as keyof CrystalCounts] ?? 0;
+      out[c as GemKey] = Math.max(0, eff - held - harvest);
+    }
+    return out;
+  }, [me, effectiveCost, selectedCrystals]);
+
+  const canReserveMore = useCallback((p: GamePlayerState) => p.reservedCards.length < 3, []);
+
+  const handleBuy = (card: ArtifactCard, fromReserve = false) => {
+    if (!isMyTurnForCoreAction) return;
+    executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id, cardRef: card });
+  };
+
+  const handleReserveCard = (card: ArtifactCard) => {
+    if (!isMyTurnForCoreAction) return;
+    executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
+  };
+
+  const handleReserveDeck = (tier: number) => {
+    if (!isMyTurnForCoreAction) return;
+    executeAction({ type: 'reserve_card', tier, _tier: tier });
+  };
+
+  const openDeckSheet = useCallback((tier: 1 | 2 | 3) => {
+    setPendingDeckConfirm(false);
+    setSelectedDeckTier(tier);
+  }, []);
+
+  const closeDeckSheet = useCallback(() => {
+    setSelectedDeckTier(null);
+    setPendingDeckConfirm(false);
+  }, []);
+
+  const openCardSheet = useCallback((card: ArtifactCard, fromReserve: boolean) => {
+    if (!me) return;
+    if (!cardDetailDiscovered) {
+      setCardDetailDiscovered(true);
+      localStorage.setItem('luminae_card_detail_discovered', 'true');
+    }
+    setCardFlipped(false);
+    setPendingSheetAction(null);
+    setSelectedCard({
+      card, fromReserve,
+      canBuy: isMyTurnForCoreAction && canAffordCard(card, me),
+      canReserve: isMyTurnForCoreAction && !fromReserve && canReserveMore(me),
+      effectiveCosts: computeCosts(card, costMode),
+    });
+  }, [me, cardDetailDiscovered, isMyTurnForCoreAction, costMode, computeCosts, canAffordCard, canReserveMore]);
+
+  const openForgedCardSheet = useCallback((card: ArtifactCard) => {
+    setCardFlipped(false);
+    setPendingSheetAction(null);
+    setSelectedCard({ card, fromReserve: false, canBuy: false, canReserve: false, readOnly: true });
+  }, []);
+
   if (accountLoading) return <AccountLoadingScreen />;
 
   if (error) {
@@ -2956,86 +3035,6 @@ export default function GameBoard() {
     };
   }) ?? [];
 
-  // ── computeCosts: returns display costs for the active costMode ──────────
-  const computeCosts = useCallback((card: ArtifactCard, mode: CostMode): Partial<Record<GemKey, number>> | undefined => {
-    if (!me) return undefined;
-    if (mode === 'printed') return undefined;
-    const afterBonus = effectiveCost(card, me) as Record<string, number>;
-    if (mode === 'after_bonuses') return afterBonus as Partial<Record<GemKey, number>>;
-    // 'needed_now': after bonuses, subtract held tokens + pre-harvest tally, clamp >= 0.
-    // Strategy: use pendingHarvestCheckRef.tally only while the server update hasn't
-    // landed yet. We know the update has landed when me.crystals has moved past the
-    // pre-snapshot for at least one of the harvested gems. This covers two gaps:
-    //   (a) selectedCrystals is cleared synchronously by executeAction before the
-    //       server response arrives — tally keeps costs stable in that window.
-    //   (b) me.crystals updates before the useEffect clears the ref — the alreadyLanded
-    //       check prevents a one-frame double-deduction (tally + updated held).
-    const check = pendingHarvestCheckRef.current;
-    let activeTally: Partial<CrystalCounts> = selectedCrystals;
-    if (check?.tally && check?.preCrystals) {
-      const alreadyLanded = Object.keys(check.tally).some(
-        g => (me.crystals[g as keyof CrystalCounts] ?? 0) > (check.preCrystals![g as keyof CrystalCounts] ?? 0),
-      );
-      // If landed: harvest is already in me.crystals — use {} so we never
-      // double-deduct from selectedCrystals (which may not have been cleared
-      // yet when the WS update races ahead of the REST response).
-      // If not landed: use the tally snapshot to bridge the selectedCrystals gap.
-      activeTally = alreadyLanded ? {} : check.tally;
-    }
-    const out: Partial<Record<GemKey, number>> = {};
-    for (const c of CRYSTALS) {
-      if (c === 'flux') continue;
-      const eff = afterBonus[c] ?? 0;
-      const held = me.crystals[c as keyof CrystalCounts] ?? 0;
-      const harvest = activeTally[c as keyof CrystalCounts] ?? 0;
-      out[c as GemKey] = Math.max(0, eff - held - harvest);
-    }
-    return out;
-  }, [me, effectiveCost, selectedCrystals]);
-  const canReserveMore = (p: GamePlayerState) => p.reservedCards.length < 3;
-
-  const handleBuy = (card: ArtifactCard, fromReserve = false) => {
-    if (!isMyTurnForCoreAction) return;
-    executeAction({ type: fromReserve ? 'purchase_reserved' : 'purchase_card', cardId: card.id, cardRef: card });
-  };
-  const handleReserveCard = (card: ArtifactCard) => {
-    if (!isMyTurnForCoreAction) return;
-    executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
-  };
-  const handleReserveDeck = (tier: number) => {
-    if (!isMyTurnForCoreAction) return;
-    executeAction({ type: 'reserve_card', tier, _tier: tier });
-  };
-  const openDeckSheet = (tier: 1 | 2 | 3) => {
-    setPendingDeckConfirm(false);
-    setSelectedDeckTier(tier);
-  };
-  const closeDeckSheet = () => {
-    setSelectedDeckTier(null);
-    setPendingDeckConfirm(false);
-  };
-
-  const openCardSheet = useCallback((card: ArtifactCard, fromReserve: boolean) => {
-    if (!me) return;
-    if (!cardDetailDiscovered) {
-      setCardDetailDiscovered(true);
-      localStorage.setItem('luminae_card_detail_discovered', 'true');
-    }
-    setCardFlipped(false);
-    setPendingSheetAction(null);
-    setSelectedCard({
-      card, fromReserve,
-      canBuy: isMyTurnForCoreAction && canAffordCard(card, me),
-      canReserve: isMyTurnForCoreAction && !fromReserve && canReserveMore(me),
-      effectiveCosts: computeCosts(card, costMode),
-    });
-  }, [me, cardDetailDiscovered, isMyTurnForCoreAction, costMode, computeCosts, canAffordCard, canReserveMore]);
-
-  const openForgedCardSheet = useCallback((card: ArtifactCard) => {
-    setCardFlipped(false);
-    setPendingSheetAction(null);
-    setSelectedCard({ card, fromReserve: false, canBuy: false, canReserve: false, readOnly: true });
-  }, []);
 
   const handleSurrender = () => {
     if (confirm("Surrender? This cannot be undone.")) executeAction({ type: 'surrender' });
