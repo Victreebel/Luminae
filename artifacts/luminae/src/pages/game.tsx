@@ -357,6 +357,7 @@ export default function GameBoard() {
   const [showRules, setShowRules] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [showAllLog, setShowAllLog] = useState(false);
+  const [showBoardViewLog, setShowBoardViewLog] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [unreadChat, setUnreadChat] = useState(0);
@@ -7260,6 +7261,108 @@ export default function GameBoard() {
             bannerRef={returnBannerRef}
             onReturn={onReturnToResults}
           />
+        );
+      })()}
+
+      {/* ── Board-view action log panel (shown when viewing board after game over) ── */}
+      {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && !showWinOverlay && (() => {
+        const AFFINITY_DOT_COLOR: Record<string, string> = {
+          Flare: '#FF5A3C',
+          Continuum: '#3D6BFF',
+          Verdance: '#2ECC71',
+          Abyss: '#9C27B0',
+          Radiance: '#DFC878',
+        };
+        const entries = [...(state.actionLog ?? [])].reverse();
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-[200] flex flex-col" style={{ maxHeight: '45vh' }}>
+            {/* Toggle header */}
+            <button
+              type="button"
+              onClick={() => setShowBoardViewLog(v => !v)}
+              className="flex items-center justify-between px-4 py-2.5 bg-black/88 backdrop-blur-sm border-t border-white/10 text-sm font-semibold text-foreground/70 hover:text-foreground/90 transition-colors select-none"
+              aria-expanded={showBoardViewLog}
+              aria-label={showBoardViewLog ? 'Collapse action history' : 'Expand action history'}
+            >
+              <span className="flex items-center gap-2">
+                <List className="h-3.5 w-3.5 shrink-0" />
+                Action History
+                <span className="text-[10px] font-normal text-muted-foreground/60">({entries.length})</span>
+              </span>
+              {showBoardViewLog
+                ? <ChevronDown className="h-4 w-4 shrink-0" />
+                : <ChevronUp className="h-4 w-4 shrink-0" />}
+            </button>
+
+            {/* Scrollable log entries */}
+            {showBoardViewLog && (
+              <div
+                className="overflow-y-auto divide-y divide-border/30 border-t border-border/20"
+                style={{ background: 'rgba(4,2,14,0.90)', backdropFilter: 'blur(8px)' }}
+              >
+                {entries.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground italic text-center">No actions recorded.</div>
+                ) : (
+                  entries.map((entry, i) => {
+                    const isMe = entry.playerId === session.playerId;
+                    const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
+                    const isAffinityChange = entry.summary.startsWith('switched ');
+                    const isCancelled = entry.summary.startsWith('planned move voided');
+                    const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
+                    const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-start gap-2.5 px-3 py-2.5"
+                        style={
+                          isCancelled
+                            ? { background: 'rgba(234,179,8,0.07)' }
+                            : isAffinityChange
+                            ? { background: `${dotColor}0D` }
+                            : undefined
+                        }
+                      >
+                        <PlayerAvatar
+                          avatarId={logPlayer?.avatarId ?? (isMe ? session.avatarId : null)}
+                          name={entry.playerName}
+                          size={22}
+                        />
+                        <div className="text-xs leading-relaxed flex-1">
+                          <span className={`font-semibold ${isMe ? 'text-primary' : 'text-foreground'}`}>{entry.playerName}</span>
+                          {isCancelled ? (
+                            <>
+                              <span className="text-yellow-400/80 italic"> · Planned move voided</span>
+                              <span
+                                className="inline-flex items-center justify-center ml-1.5 align-middle"
+                                title={entry.summary.replace('planned move voided — ', '')}
+                                style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(234,179,8,0.18)', border: '1px solid rgba(234,179,8,0.4)', flexShrink: 0 }}
+                              >
+                                <span style={{ fontSize: 9, lineHeight: 1, color: '#EAB308' }}>!</span>
+                              </span>
+                            </>
+                          ) : isAffinityChange ? (
+                            <>
+                              <span className="text-foreground/70 italic"> · {entry.summary}</span>
+                              <span className="inline-flex items-center gap-1 ml-1.5 align-middle" title={affinityLabel}>
+                                <span
+                                  className="inline-block rounded-full border border-white/20"
+                                  style={{ width: 7, height: 7, background: dotColor, boxShadow: `0 0 4px ${dotColor}99` }}
+                                />
+                                <span style={{ color: dotColor, fontSize: 10, lineHeight: 1 }}>↻</span>
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-foreground/80"> · {entry.summary}</span>
+                          )}
+                          <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
         );
       })()}
 
