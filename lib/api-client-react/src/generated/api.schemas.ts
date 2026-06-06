@@ -686,6 +686,7 @@ export const ActionRequestType = {
   tutorial_fast_forward: "tutorial_fast_forward",
   set_civ_name: "set_civ_name",
   choose_luminary_order: "choose_luminary_order",
+  assimilate: "assimilate",
 } as const;
 
 export type ActionRequestCrystal =

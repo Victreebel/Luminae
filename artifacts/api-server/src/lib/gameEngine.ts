@@ -1584,7 +1584,7 @@ function applySummonEffect(
       state.firstHungerAvailable = player.playerId;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `First Hunger — Assimilation available: replace forge action this turn`,
+        summary: `First Hunger — Assimilation available: consume any Artifact for Eminence (one-time lingering ability)`,
         turn: state.roundNumber,
       });
       pushActivationEvent(state, lumId, "summon", player.playerId);
@@ -1733,10 +1733,7 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
  * the currentPlayerIndex has advanced.
  */
 function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
-  // ── Clear Assimilation if it belongs to a different player ──
-  if (state.firstHungerAvailable && state.firstHungerAvailable !== player.playerId) {
-    state.firstHungerAvailable = null;
-  }
+  // ── Assimilation (First Hunger): lingering one-shot — persists until used, never auto-cleared ──
 
   // ── Ember Sovereign (lum_ember): burn remaining Condemned cards at start of summoner's next turn ──
   const emberLa = state.luminaryAffinities.find(
@@ -2293,13 +2290,13 @@ export function applyAction(
       if (assimCard.cost.ruby === 0 && assimCard.cost.emerald === 0 && assimCard.cost.pearl === 0)
         return { success: false, error: "Target must have Flare, Verdance, or Radiance in its cost" };
 
-      // Cost: normal effective cost with -1 each in Flare, Verdance, Radiance (min 0 per color).
-      const assimBonuses = effectiveBonuses(state, player);
-      const assimBase = effectiveCost(assimCard, player, assimBonuses);
-      const assimCost: CrystalCounts = { ...assimBase } as CrystalCounts;
-      assimCost.ruby = Math.max(0, (assimCost.ruby ?? 0) - 1);
-      assimCost.emerald = Math.max(0, (assimCost.emerald ?? 0) - 1);
-      assimCost.pearl = Math.max(0, (assimCost.pearl ?? 0) - 1);
+      // Cost: printed base cost, reduced by player's card-derived bonuses for Flare (ruby),
+      // Verdance (emerald), and Radiance (pearl) only. Continuum/Abyss/Singularity costs
+      // are paid in full from the printed cost. Luminary bonuses do not apply here.
+      const assimCost: CrystalCounts = { ...assimCard.cost } as CrystalCounts;
+      assimCost.ruby   = Math.max(0, (assimCost.ruby   ?? 0) - (player.bonuses.ruby   ?? 0));
+      assimCost.emerald = Math.max(0, (assimCost.emerald ?? 0) - (player.bonuses.emerald ?? 0));
+      assimCost.pearl  = Math.max(0, (assimCost.pearl  ?? 0) - (player.bonuses.pearl  ?? 0));
       if (!canAfford(assimCost, player.crystals))
         return { success: false, error: "Cannot afford Assimilation" };
 

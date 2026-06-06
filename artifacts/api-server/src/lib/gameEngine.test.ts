@@ -514,6 +514,143 @@ describe("Assimilation — First Hunger one-time burn action", () => {
     const r = applyAction(state, "p1", { type: "assimilate", cardId: pureOnyx.id });
     expect(r.success).toBe(false);
   });
+
+  it("summon sets flag but does not auto-execute the ability", () => {
+    // The lum_hunger summon handler sets firstHungerAvailable to the summoner's ID;
+    // it must NOT immediately grant the Assimilation +2 bonus — the player must
+    // explicitly use the assimilate action later.
+    const freshState = makeGame();
+    enrichPlayer(freshState, 0);
+    freshState.activeLuminaries = ["lum_hunger"];
+    const p = freshState.players[0];
+    const lum = LUMINARY_MAP.get("lum_hunger")!;
+    for (const c of CRYSTAL_COLORS) p.bonuses[c] = lum.requirements[c];
+    const lumensBefore = p.lumens;
+
+    const cardId = freshState.marketTier1[0]!;
+    applyAction(freshState, "p1", { type: "purchase_card", cardId });
+
+    // Flag should now be set for the summoner — NOT consumed.
+    expect(freshState.firstHungerAvailable).toBe("p1");
+
+    // Eminence gained must equal: card's printed lumens + luminary's own lumens bonus.
+    // It must NOT include an extra +2 Assimilation bonus.
+    const cardLumens = CARD_MAP.get(cardId)?.lumens ?? 0;
+    const luminaryLumens = lum.lumens; // granted for claiming the Luminary itself
+    expect(freshState.players[0].lumens).toBe(lumensBefore + cardLumens + luminaryLumens);
+  });
+
+  it("firstHungerAvailable persists across turns — not cleared when opponent plays", () => {
+    // After p1 gains the ability, p2 takes their turn. The flag must still be set.
+    pass(state); // p1's turn ends (state.firstHungerAvailable === "p1")
+    // Now it is p2's turn.
+    expect(state.players[state.currentPlayerIndex].playerId).toBe("p2");
+    expect(state.firstHungerAvailable).toBe("p1"); // persists
+    pass(state); // p2's turn ends
+    // Back to p1.
+    expect(state.players[state.currentPlayerIndex].playerId).toBe("p1");
+    expect(state.firstHungerAvailable).toBe("p1"); // still persists
+  });
+
+  it("cost reduces Flare/Verdance/Radiance by card-derived bonuses only — other colors paid in full", () => {
+    // Set up a known card with Flare (ruby) AND Continuum/Abyss (sapphire or onyx) cost.
+    const target = [...CARD_MAP.values()].find(
+      (c) => c.tier === 1 && c.cost.ruby > 0 && (c.cost.sapphire > 0 || c.cost.onyx > 0),
+    );
+    if (!target) return; // skip if card catalog changes
+    state.marketTier1[0] = target.id;
+
+    // Give the player exactly 2 ruby card bonuses; no emerald or pearl bonuses.
+    state.players[0].bonuses.ruby    = 2;
+    state.players[0].bonuses.emerald = 0;
+    state.players[0].bonuses.pearl   = 0;
+
+    // Expected costs after reduction:
+    //   ruby:     max(0, printed - 2)      ← discounted
+    //   emerald:  max(0, printed - 0)      ← full (bonus=0)
+    //   pearl:    max(0, printed - 0)      ← full (bonus=0)
+    //   sapphire: printed                  ← no reduction
+    //   onyx:     printed                  ← no reduction
+    const rubyCost    = Math.max(0, target.cost.ruby     - 2);
+    const sapphireCost = target.cost.sapphire;
+    const emeraldCost  = target.cost.emerald;
+    const onyxCost     = target.cost.onyx;
+    const pearlCost    = target.cost.pearl;
+
+    // Drain crystals, then give EXACTLY what is required by the formula above.
+    for (const c of CRYSTAL_COLORS) {
+      state.players[0].crystals[c] = 0;
+      state.crystalBank[c] = 20;
+    }
+    state.players[0].crystals.ruby     = rubyCost;
+    state.players[0].crystals.sapphire = sapphireCost;
+    state.players[0].crystals.emerald  = emeraldCost;
+    state.players[0].crystals.onyx     = onyxCost;
+    state.players[0].crystals.pearl    = pearlCost;
+    state.players[0].crystals.flux     = 0;
+
+    const r = applyAction(state, "p1", { type: "assimilate", cardId: target.id });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejected by a different player even when flag is set", () => {
+    // firstHungerAvailable === "p1" but p2 tries to assimilate.
+    enrichPlayer(state, 1);
+    const cardId =
+      state.marketTier1.find((id) => (CARD_MAP.get(id)?.cost.ruby ?? 0) > 0) ??
+      state.marketTier1[0]!;
+    const r = applyAction(state, "p2", { type: "assimilate", cardId });
+    expect(r.success).toBe(false);
+    expect(state.firstHungerAvailable).toBe("p1"); // flag unchanged
+  });
+
+  it("cannot be used a second time — flag is null after first use", () => {
+    const cardId = state.marketTier1.find((id) => (CARD_MAP.get(id)?.cost.ruby ?? 0) > 0)!;
+    if (!cardId) return;
+
+    const r1 = applyAction(state, "p1", { type: "assimilate", cardId });
+    expect(r1.success).toBe(true);
+    expect(state.firstHungerAvailable).toBeNull();
+
+    // Advance turns so p1 acts again, then try a second assimilation.
+    pass(state); // p2 passes
+    const secondCard =
+      state.marketTier1.find((id) => (CARD_MAP.get(id)?.cost.ruby ?? 0) > 0) ??
+      state.marketTier1[0]!;
+    const r2 = applyAction(state, "p1", { type: "assimilate", cardId: secondCard });
+    expect(r2.success).toBe(false);
+  });
+
+  it("card bonuses and purchasedCardIds are unchanged after assimilation — no forge effects", () => {
+    const targetId =
+      state.marketTier1.find((id) => (CARD_MAP.get(id)?.cost.ruby ?? 0) > 0) ??
+      state.marketTier1[0]!;
+    const bonusesBefore = { ...state.players[0].bonuses };
+    const cardCountBefore = state.players[0].purchasedCardIds.length;
+
+    applyAction(state, "p1", { type: "assimilate", cardId: targetId });
+
+    // No extra card in hand.
+    expect(state.players[0].purchasedCardIds.length).toBe(cardCountBefore);
+    // No bonus gem awarded.
+    for (const c of CRYSTAL_COLORS) {
+      expect(state.players[0].bonuses[c]).toBe(bonusesBefore[c]);
+    }
+  });
+
+  it("assimilation works on a future turn (not just the summon turn)", () => {
+    // firstHungerAvailable is "p1"; have p1 pass, p2 pass, then p1 assimilates.
+    pass(state); // p1 passes
+    pass(state); // p2 passes
+    // Now it is p1's turn again and the flag should still be set.
+    expect(state.firstHungerAvailable).toBe("p1");
+    const cardId =
+      state.marketTier1.find((id) => (CARD_MAP.get(id)?.cost.ruby ?? 0) > 0) ??
+      state.marketTier1[0]!;
+    const r = applyAction(state, "p1", { type: "assimilate", cardId });
+    expect(r.success).toBe(true);
+    expect(state.firstHungerAvailable).toBeNull();
+  });
 });
 
 // ─── Cinder Mandate (Ember Sovereign) — start-of-turn burn ───────────────────

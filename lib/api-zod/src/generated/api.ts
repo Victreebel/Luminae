@@ -1653,6 +1653,7 @@ export const SubmitActionBody = zod.object({
     "tutorial_fast_forward",
     "set_civ_name",
     "choose_luminary_order",
+    "assimilate",
   ]),
   crystals: zod
     .object({

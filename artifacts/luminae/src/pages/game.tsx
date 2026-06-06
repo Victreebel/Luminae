@@ -28,7 +28,7 @@ import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
-import { ForgeButton, EncryptButton } from '@/components/ForgeEncryptButton';
+import { ForgeButton, EncryptButton, AssimilateButton } from '@/components/ForgeEncryptButton';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -263,7 +263,7 @@ export default function GameBoard() {
     () => localStorage.getItem('luminae_card_detail_discovered') === 'true'
   );
   const [cardFlipped, setCardFlipped] = useState(false);
-  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | null>(null);
+  const [pendingSheetAction, setPendingSheetAction] = useState<'forge' | 'reserve' | 'plan_forge' | 'plan_reserve' | 'assimilate' | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<1 | 2 | 3 | null>(null);
   const [pendingDeckConfirm, setPendingDeckConfirm] = useState(false);
   const [btnAnimKey, setBtnAnimKey] = useState(0);
@@ -1321,6 +1321,40 @@ export default function GameBoard() {
 
   // Derived forge-deduction map — how many of each affinity the selected card
   // would spend from the player's current inventory. Placed here (after
+  // ── First Hunger: Assimilation state ──────────────────────────────────────
+  const assimilateAvailable = !!(state?.firstHungerAvailable && session && state.firstHungerAvailable === session.playerId);
+
+  const assimCost = useMemo<CrystalCounts | null>(() => {
+    if (!selectedCard || !me || !assimilateAvailable) return null;
+    const c = selectedCard.card.cost;
+    return {
+      ruby:     Math.max(0, (c.ruby     ?? 0) - (me.bonuses.ruby     ?? 0)),
+      sapphire: c.sapphire ?? 0,
+      emerald:  Math.max(0, (c.emerald  ?? 0) - (me.bonuses.emerald  ?? 0)),
+      onyx:     c.onyx     ?? 0,
+      pearl:    Math.max(0, (c.pearl    ?? 0) - (me.bonuses.pearl    ?? 0)),
+      flux:     c.flux     ?? 0,
+    };
+  }, [selectedCard, me, assimilateAvailable]);
+
+  const canAffordAssim = useMemo<boolean>(() => {
+    if (!assimCost || !me) return false;
+    let shortfall = 0;
+    for (const c of CRYSTALS) {
+      if (c === 'flux') continue;
+      const need = assimCost[c as keyof CrystalCounts] ?? 0;
+      const have = me.crystals[c as keyof CrystalCounts] ?? 0;
+      shortfall += Math.max(0, need - have);
+    }
+    return shortfall <= (me.crystals.flux ?? 0);
+  }, [assimCost, me]);
+
+  const assimEligible = useMemo<boolean>(() => {
+    if (!selectedCard) return false;
+    const c = selectedCard.card.cost;
+    return (c.ruby ?? 0) > 0 || (c.emerald ?? 0) > 0 || (c.pearl ?? 0) > 0;
+  }, [selectedCard]);
+
   // effectiveCost is declared, before any early returns) so both the TDZ and
   // react-hooks/rules-of-hooks constraints are satisfied. canPlan is inlined
   // via optional chaining because state may still be null at this point.
@@ -5675,6 +5709,56 @@ export default function GameBoard() {
                             }
                           }}
                         />
+                      </div>
+                    )}
+
+                    {/* ── Assimilate (First Hunger lingering ability) ── */}
+                    {assimilateAvailable && assimEligible && !selectedCard.fromReserve && (
+                      <div>
+                        {/* Separator + label so the player knows this is a different kind of action */}
+                        <div className="flex items-center gap-1.5 px-0.5 mb-2.5">
+                          <div className="flex-1 h-px bg-red-900/40" />
+                          <span className="text-[8.5px] font-black uppercase tracking-widest text-red-400/70">First Hunger</span>
+                          <div className="flex-1 h-px bg-red-900/40" />
+                        </div>
+                        <div
+                          key={btnAnimTarget === 'assimilate' ? `assimilate-${btnAnimKey}` : 'assimilate'}
+                          className={`relative w-full${btnAnimTarget === 'assimilate' ? ` btn-${btnAnimType}-flash` : ''}`}
+                        >
+                          <AssimilateButton
+                            disabled={!canAffordAssim}
+                            isPending={pendingSheetAction === 'assimilate'}
+                            isSent={sentFlashBtn === 'assimilate'}
+                            eminenceReward={pendingSheetAction === 'assimilate' ? undefined : (selectedCard.card.lumens + 2)}
+                            label={pendingSheetAction === 'assimilate' ? 'CONFIRM' : 'ASSIMILATE'}
+                            subtitle={
+                              pendingSheetAction === 'assimilate'
+                                ? 'Tap to consume'
+                                : canAffordAssim
+                                  ? `+${selectedCard.card.lumens + 2} Eminence — one use`
+                                  : 'Cannot afford'
+                            }
+                            onClick={() => {
+                              if (pendingSheetAction === 'assimilate') {
+                                gameAudio.playButtonConfirm();
+                                triggerBtnAnim('assimilate', 'confirm');
+                                executeAction({ type: 'assimilate', cardId: selectedCard.card.id });
+                                setSelectedCard(null);
+                                setPendingSheetAction(null);
+                              } else {
+                                gameAudio.playButtonSelect();
+                                triggerBtnAnim('assimilate', 'select');
+                                setPendingSheetAction('assimilate');
+                              }
+                            }}
+                          />
+                        </div>
+                        {/* Tooltip: clarify the consume mechanic */}
+                        {pendingSheetAction !== 'assimilate' && (
+                          <p className="mt-1.5 text-[9.5px] text-red-300/50 text-center leading-snug px-1">
+                            Burns artifact · grants Eminence · no card acquired · cannot undo
+                          </p>
+                        )}
                       </div>
                     )}
                   </>

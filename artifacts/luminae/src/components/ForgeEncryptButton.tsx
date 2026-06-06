@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gavel, Check } from 'lucide-react';
+import { Gavel, Check, Flame } from 'lucide-react';
 import { CipherSigil } from '@/components/CipherApertureAnimation';
 
 // ── Shared geometry ───────────────────────────────────────────────────────────
@@ -526,6 +526,239 @@ export function EncryptButton({
                 textShadow: '0 1px 2px rgba(0,0,0,0.75)',
               }}>
                 {isPending ? '— Encoding… —' : `— ${subtitle} —`}
+              </span>
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ASSIMILATE — First Hunger / Consuming Crimson
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ASSIM_BG_IDLE = [
+  'radial-gradient(ellipse at 30% 0%,   rgba(200,30,20,0.35) 0%, transparent 52%)',
+  'radial-gradient(ellipse at 62% 58%,  rgba(140,18,10,0.20) 0%, transparent 45%)',
+  'radial-gradient(ellipse at 88% 100%, rgba(80,10,5,0.22)   0%, transparent 46%)',
+  'linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(60,8,4,0.12) 20%, rgba(80,10,5,0.06) 50%, rgba(30,4,2,0.18) 80%, rgba(0,0,0,0.34) 100%)',
+  'linear-gradient(158deg, #140808 0%, #201010 48%, #120606 100%)',
+].join(', ');
+
+const ASSIM_BG_PENDING = [
+  'radial-gradient(ellipse at 50% 50%, rgba(240,40,20,0.40) 0%, rgba(165,18,8,0.24) 38%, transparent 70%)',
+  'radial-gradient(ellipse at 25% 85%, rgba(105,12,5,0.28) 0%, transparent 48%)',
+  'linear-gradient(180deg, rgba(0,0,0,0.44) 0%, rgba(80,10,5,0.10) 25%, rgba(90,12,5,0.08) 50%, rgba(25,4,2,0.22) 78%, rgba(0,0,0,0.48) 100%)',
+  'linear-gradient(158deg, #0e0504 0%, #180a0a 48%, #0c0404 100%)',
+].join(', ');
+
+const ASSIM_INSET_IDLE = [
+  'inset 0 0 0 0.75px rgba(255,180,160,0.48)',
+  'inset 0 0 0 2px    rgba(32,4,2,0.99)',
+  'inset 0 0 0 4px    rgba(200,50,28,0.95)',
+  'inset 0 0 0 5.5px  rgba(38,6,2,0.96)',
+  'inset 0 0 0 6.5px  rgba(165,35,18,0.80)',
+  'inset 0 1px 0 0px  rgba(255,200,180,0.24)',
+  'inset 0 -1px 0 0px rgba(0,0,0,0.85)',
+  'inset 0 0 30px 0px rgba(180,30,10,0.10)',
+].join(', ');
+
+const ASSIM_INSET_HOVER = [
+  'inset 0 0 0 0.75px rgba(255,210,195,0.85)',
+  'inset 0 0 0 2px    rgba(28,4,2,0.99)',
+  'inset 0 0 0 4px    rgba(240,65,35,0.99)',
+  'inset 0 0 0 5.5px  rgba(34,4,2,0.96)',
+  'inset 0 0 0 6.5px  rgba(210,52,28,0.94)',
+  'inset 0 1px 0 0px  rgba(255,230,215,0.46)',
+  'inset 0 -1px 0 0px rgba(0,0,0,0.85)',
+  'inset 0 0 30px 0px rgba(220,60,18,0.30)',
+].join(', ');
+
+const ASSIM_PENDING_DIM = [
+  'inset 0 0 0 0.75px rgba(255,190,170,0.60)',
+  'inset 0 0 0 2px    rgba(28,4,2,0.99)',
+  'inset 0 0 0 4px    rgba(215,52,28,0.92)',
+  'inset 0 0 0 5.5px  rgba(34,4,2,0.96)',
+  'inset 0 0 0 6.5px  rgba(185,38,18,0.86)',
+  'inset 0 1px 0 0px  rgba(0,0,0,0.64)',
+  'inset 0 -1px 0 0px rgba(255,195,175,0.26)',
+  'inset 0 0 30px 0px rgba(190,42,14,0.26)',
+].join(', ');
+
+const ASSIM_PENDING_BRIGHT = [
+  'inset 0 0 0 0.75px rgba(255,225,210,0.92)',
+  'inset 0 0 0 2px    rgba(24,4,2,0.99)',
+  'inset 0 0 0 4px    rgba(255,72,38,1.00)',
+  'inset 0 0 0 5.5px  rgba(30,4,2,0.96)',
+  'inset 0 0 0 6.5px  rgba(235,58,28,0.99)',
+  'inset 0 1px 0 0px  rgba(0,0,0,0.72)',
+  'inset 0 -1px 0 0px rgba(255,215,195,0.48)',
+  'inset 0 0 30px 0px rgba(235,60,14,0.58)',
+].join(', ');
+
+const ASSIM_FILTER_IDLE       = 'drop-shadow(0 0 5px rgba(185,38,18,0.34)) drop-shadow(0 0 12px rgba(155,28,8,0.18)) drop-shadow(0 0 22px rgba(130,18,4,0.09))';
+const ASSIM_FILTER_HOVER      = 'drop-shadow(0 0 18px rgba(245,75,35,0.82)) drop-shadow(0 0 36px rgba(220,45,14,0.52)) drop-shadow(0 0 65px rgba(195,25,4,0.26))';
+const ASSIM_FILTER_PEND_DIM   = 'drop-shadow(0 0 8px  rgba(220,50,22,0.55)) drop-shadow(0 0 18px rgba(185,35,8,0.28)) drop-shadow(0 0 38px rgba(150,20,4,0.14))';
+const ASSIM_FILTER_PEND_BRIGHT= 'drop-shadow(0 0 16px rgba(255,80,42,0.88)) drop-shadow(0 0 32px rgba(235,52,14,0.58)) drop-shadow(0 0 60px rgba(205,30,4,0.28))';
+
+export interface AssimilateButtonProps {
+  onClick: () => void;
+  disabled?: boolean;
+  isPending?: boolean;
+  isSent?: boolean;
+  label: string;
+  subtitle?: string;
+  /** Eminence reward shown in the medallion (printed lumens + 2). */
+  eminenceReward?: number;
+}
+
+export function AssimilateButton({
+  onClick, disabled, isPending, isSent,
+  label, subtitle = 'Consume Artifact',
+  eminenceReward,
+}: AssimilateButtonProps) {
+  const nubColor = isPending ? 'rgba(240,90,50,0.95)' : 'rgba(195,40,18,0.88)';
+  const diaColor = isPending ? 'rgba(255,100,60,1.00)' : 'rgba(218,52,24,0.95)';
+  const nubGlow  = isPending ? '0 0 8px rgba(245,80,40,0.90)' : '0 0 5px rgba(220,48,18,0.50)';
+  const diaGlow  = isPending
+    ? '0 0 10px rgba(255,90,45,0.92), 0 0 20px rgba(235,55,18,0.55)'
+    : '0 0 6px rgba(225,55,22,0.55)';
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="relative w-full flex items-center overflow-hidden"
+      style={{
+        height: 72,
+        clipPath: CLIP,
+        background: isPending ? ASSIM_BG_PENDING : ASSIM_BG_IDLE,
+        opacity: disabled ? 0.38 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        outline: 'none', border: 'none', padding: 0,
+        color: '#FFD8CC',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+      animate={isPending ? {
+        boxShadow: [ASSIM_PENDING_DIM, ASSIM_PENDING_BRIGHT],
+        filter: [ASSIM_FILTER_PEND_DIM, ASSIM_FILTER_PEND_BRIGHT],
+        y: 1,
+      } : {
+        boxShadow: ASSIM_INSET_IDLE,
+        filter: ASSIM_FILTER_IDLE,
+        y: 0,
+      }}
+      whileHover={disabled || isPending ? {} : {
+        boxShadow: ASSIM_INSET_HOVER,
+        filter: ASSIM_FILTER_HOVER,
+      }}
+      whileTap={disabled ? {} : {
+        scale: 0.96,
+        y: isPending ? 3 : 1,
+        transition: { duration: 0.07 },
+      }}
+      transition={isPending ? {
+        boxShadow: { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        filter:    { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        y:         { duration: 0.12 },
+      } : {
+        boxShadow: { duration: 0.20 },
+        filter:    { duration: 0.20 },
+        y:         { duration: 0.15 },
+      }}
+    >
+      <TopCapStripe color={isPending ? 'rgba(255,180,160,0.16)' : 'rgba(255,165,145,0.13)'} />
+
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
+        background: isPending
+          ? 'radial-gradient(ellipse at 50% 55%, rgba(230,50,20,0.40) 0%, rgba(160,22,8,0.20) 40%, transparent 68%)'
+          : 'radial-gradient(ellipse at 38% 52%, rgba(200,38,14,0.28) 0%, rgba(140,18,6,0.13) 42%, transparent 68%)',
+      }} />
+
+      <CornerNub style={{ top: -5.5,    left: -5.5   }} color={nubColor} glow={nubGlow} />
+      <CornerNub style={{ top: -5.5,    right: -5.5  }} color={nubColor} glow={nubGlow} />
+      <CornerNub style={{ bottom: -5.5, left: -5.5   }} color={nubColor} glow={nubGlow} />
+      <CornerNub style={{ bottom: -5.5, right: -5.5  }} color={nubColor} glow={nubGlow} />
+      <EdgeDiamond style={{ top: 2.5 }}    color={diaColor} glow={diaGlow} />
+      <EdgeDiamond style={{ bottom: 2.5 }} color={diaColor} glow={diaGlow} />
+
+      {/* Medallion */}
+      <div aria-hidden className="flex-shrink-0 flex items-center justify-center" style={{
+        width: 66, height: '100%', position: 'relative', zIndex: 1,
+        background: [
+          'radial-gradient(circle at 54% 44%, rgba(185,38,18,0.55) 0%, rgba(85,12,4,0.36) 52%, transparent 78%)',
+          'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(110,18,6,0.22) 30%, rgba(44,6,2,0.18) 70%, rgba(0,0,0,0.30) 100%)',
+        ].join(', '),
+        borderRight: '1px solid rgba(165,35,18,0.20)',
+      }}>
+        <div aria-hidden style={{
+          position: 'absolute', right: 0, top: 6, bottom: 6, width: 1,
+          background: 'linear-gradient(180deg, transparent, rgba(255,140,100,0.38) 30%, rgba(255,110,70,0.28) 70%, transparent)',
+        }} />
+        <div
+          className="flex items-center justify-center rounded-full"
+          style={{
+            width: 44, height: 44, flexShrink: 0,
+            background: isPending
+              ? 'radial-gradient(circle at 38% 34%, #e03818 0%, #8a1a08 50%, #4e0c04 100%)'
+              : 'radial-gradient(circle at 38% 34%, #c42e14 0%, #7a1406 50%, #3e0a03 100%)',
+            boxShadow: isPending
+              ? '0 0 12px rgba(240,60,20,0.70), 0 0 24px rgba(210,40,10,0.35)'
+              : '0 0 8px rgba(195,40,16,0.50)',
+          }}
+        >
+          {eminenceReward != null ? (
+            <span style={{
+              fontWeight: 900, fontSize: 15, letterSpacing: '-0.02em', lineHeight: 1,
+              color: isPending ? '#FFD8CC' : '#FFBFAA',
+              textShadow: '0 0 8px rgba(255,120,80,0.80), 0 1px 3px rgba(0,0,0,0.75)',
+            }}>+{eminenceReward}</span>
+          ) : (
+            <Flame className="h-[21px] w-[21px]" style={{
+              color: isPending ? '#FFD0C0' : '#FFBFAA',
+              filter: isPending
+                ? 'drop-shadow(0 0 8px rgba(255,100,50,0.95)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))'
+                : 'drop-shadow(0 0 6px rgba(235,80,30,0.82)) drop-shadow(0 1px 3px rgba(0,0,0,0.75))',
+            }} />
+          )}
+        </div>
+      </div>
+
+      {/* Text */}
+      <div className="flex flex-col items-start justify-center flex-1 px-4" style={{ position: 'relative', zIndex: 1, gap: 0 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          {isSent ? (
+            <motion.span key="sent" className="flex items-center gap-1.5 text-emerald-300 font-bold"
+              style={{ fontSize: 14, letterSpacing: '0.06em' }}
+              initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
+              <Check className="h-4 w-4" />Consumed!
+            </motion.span>
+          ) : (
+            <motion.span key="label" className="flex flex-col items-start"
+              initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.10 } }}
+              exit={{ opacity: 0, transition: { duration: 0.12 } }}>
+              <span className="font-bold uppercase leading-none" style={{
+                fontSize: 17, letterSpacing: '0.15em',
+                color: '#FFD8CC',
+                textShadow: isPending
+                  ? '0 0 24px rgba(255,120,70,0.80), 0 0 10px rgba(240,80,40,0.55), 0 1px 3px rgba(0,0,0,0.85)'
+                  : '0 0 20px rgba(230,80,40,0.40), 0 0 8px rgba(210,50,18,0.25), 0 1px 3px rgba(0,0,0,0.85)',
+              }}>
+                {label}
+              </span>
+              <span className="leading-none" style={{
+                fontSize: 10.5, marginTop: 5,
+                opacity: isPending ? 0.78 : 0.50,
+                letterSpacing: '0.09em',
+                color: '#FFD0C0',
+                textShadow: '0 1px 2px rgba(0,0,0,0.70)',
+              }}>
+                {isPending ? '— Confirming… —' : `— ${subtitle} —`}
               </span>
             </motion.span>
           )}
