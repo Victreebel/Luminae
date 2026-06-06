@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { ArtifactCardView } from './game-card';
@@ -167,6 +167,121 @@ export function ChipAbsorbRipple({
           );
         })}
       </div>
+    </div>,
+    document.body,
+  );
+}
+
+// --- Lumens gain flyover: white balls that condense and fly to target eminence display ---
+export function LumensGainFlyer({
+  burst,
+  onDone,
+}: {
+  burst: {
+    key: number;
+    playerId: string;
+    playerName: string;
+    delta: number;
+    target: 'self' | 'opponent';
+  };
+  onDone: () => void;
+}) {
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    const t = setTimeout(() => onDoneRef.current(), 1400);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Resolve target DOM element for the fly-in
+  const targetEl = useMemo(() => {
+    if (burst.target === 'self') {
+      return document.querySelector('[data-my-lumens]') as HTMLElement | null;
+    }
+    return document.querySelector(`[data-opponent-chip="${burst.playerId}"]`) as HTMLElement | null;
+  }, [burst.target, burst.playerId]);
+
+  const targetRect = targetEl?.getBoundingClientRect() ?? null;
+  const toX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2;
+  const toY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight / 2;
+
+  const ballCount = Math.min(burst.delta, 8); // cap at 8 balls
+  const balls = Array.from({ length: ballCount }, (_, i) => ({
+    id: i,
+    stagger: i * 0.06,
+    spreadX: (i - ballCount / 2) * 18,
+    spreadY: (Math.random() - 0.5) * 20,
+  }));
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9998 }}>
+      {/* Brief central flash */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          top: '20%',
+          left: '50%',
+          translateX: '-50%',
+          width: 120,
+          height: 120,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%)',
+        }}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: [0, 0.8, 0], scale: [0.5, 1.2, 1.5] }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      />
+
+      {/* Flying white balls */}
+      {balls.map(b => (
+        <motion.div
+          key={b.id}
+          style={{
+            position: 'absolute',
+            top: '20%',
+            left: '50%',
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 30% 30%, #ffffff, #e2e8f0)',
+            boxShadow: '0 0 8px 2px rgba(255,255,255,0.6), 0 0 16px 4px rgba(255,255,255,0.3)',
+          }}
+          initial={{
+            x: b.spreadX,
+            y: b.spreadY,
+            opacity: 0,
+            scale: 0,
+          }}
+          animate={{
+            x: toX - window.innerWidth / 2,
+            y: toY - window.innerHeight * 0.2,
+            opacity: [0, 1, 1, 0],
+            scale: [0, 1.2, 0.8, 0.3],
+          }}
+          transition={{
+            duration: 0.9,
+            delay: 0.15 + b.stagger,
+            ease: [0.25, 0.46, 0.45, 0.94],
+            times: [0, 0.15, 0.75, 1],
+          }}
+        />
+      ))}
+
+      {/* Brief "+N" label that fades quickly */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          top: '20%',
+          left: '50%',
+          translateX: '-50%',
+          translateY: '-50%',
+        }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: [0, 1, 0], y: [10, 0, -20] }}
+        transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
+        className="text-white font-serif font-bold text-lg pointer-events-none"
+      >
+        +{burst.delta}
+      </motion.div>
     </div>,
     document.body,
   );

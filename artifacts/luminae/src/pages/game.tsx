@@ -62,7 +62,7 @@ import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
-import { CompactCardGhost, ChipAbsorbRipple } from './game-animation';
+import { CompactCardGhost, ChipAbsorbRipple, LumensGainFlyer } from './game-animation';
 import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 
@@ -301,8 +301,10 @@ export default function GameBoard() {
   const lumensBurstKeyRef = useRef(0);
   const prevLumensRef = useRef<Record<string, number>>({});
   const [lumensBursts, setLumensBursts] = useState<Array<{
-    key: number; playerName: string; delta: number;
+    key: number; playerId: string; playerName: string; delta: number;
+    target: 'self' | 'opponent';
   }>>([]);
+  const [myLumensPulse, setMyLumensPulse] = useState(0);
   // True when the optimistic token-flip already fired from a click-path harvest.
   // Lets the WS handler skip re-firing for normal harvests while still firing
   // for planned harvests (which skip the click path entirely).
@@ -874,8 +876,16 @@ export default function GameBoard() {
         const delta = p.lumens - prevVal;
         if (delta > 0) {
           const key = ++lumensBurstKeyRef.current;
-          setLumensBursts(bs => [...bs, { key, playerName: p.playerName, delta }]);
-          const tBurst = setTimeout(() => setLumensBursts(bs => bs.filter(b => b.key !== key)), 2400);
+          const isMe = p.playerId === session?.playerId;
+          const target: 'self' | 'opponent' = isMe ? 'self' : 'opponent';
+          setLumensBursts(bs => [...bs, { key, playerId: p.playerId, playerName: p.playerName, delta, target }]);
+          // Trigger absorption pulse on the target eminence display
+          if (isMe) {
+            setMyLumensPulse(n => n + 1);
+          } else {
+            setChipAbsorbPulse(prev => ({ ...prev, [p.playerId]: (prev[p.playerId] ?? 0) + 1 }));
+          }
+          const tBurst = setTimeout(() => setLumensBursts(bs => bs.filter(b => b.key !== key)), 1400);
           cardAnimTimersRef.current.push(tBurst);
         }
       }
@@ -4105,10 +4115,23 @@ export default function GameBoard() {
           )}
         </div>
         <div className="text-center">
-          <div className="flex items-center justify-center gap-1.5">
+          <motion.div
+            className="relative flex items-center justify-center gap-1.5"
+            data-my-lumens
+            animate={myLumensPulse > 0 ? {
+              scale: [1, 1.12, 1],
+              textShadow: [
+                '0 0 0px rgba(255,255,255,0)',
+                '0 0 18px rgba(255,255,255,0.45)',
+                '0 0 0px rgba(255,255,255,0)',
+              ],
+            } : {}}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            key={myLumensPulse}
+          >
             <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
             <EminenceDiamond size={22} />
-          </div>
+          </motion.div>
           <div className="text-xs text-white/50 mt-0.5">eminence</div>
         </div>
       </div>
@@ -7488,55 +7511,14 @@ export default function GameBoard() {
           onDone={() => setSummonOverlays(pf => pf.filter(x => x.id !== o.id))}
         />
       ))}
-      {/* ── Eminence Gain Burst — fires when any player's lumens increases ── */}
+      {/* ── Eminence Gain Burst — condenses into white balls that fly to target eminence display ── */}
       <AnimatePresence>
         {lumensBursts.map((burst) => (
-          <motion.div
+          <LumensGainFlyer
             key={burst.key}
-            className="pointer-events-none fixed inset-0 z-[54] flex items-start justify-center"
-            style={{ paddingTop: '20%' }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-          >
-            <motion.div
-              className="relative flex flex-col items-center gap-2"
-              initial={{ scale: 0.35, y: 36 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: -72, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 360, damping: 22 }}
-            >
-              {/* Expanding ring burst */}
-              <motion.div
-                className="pointer-events-none absolute rounded-full"
-                style={{ border: '1.5px solid rgba(255,255,255,0.22)', top: '50%', left: '50%', translateX: '-50%', translateY: '-50%' }}
-                initial={{ width: 56, height: 56, opacity: 0.85 }}
-                animate={{ width: 300, height: 300, opacity: 0 }}
-                transition={{ duration: 0.75, ease: 'easeOut', delay: 0.06 }}
-              />
-              {/* Score pill */}
-              <div
-                className="flex items-center gap-3 px-7 py-4 rounded-2xl"
-                style={{
-                  background: 'rgba(8,8,8,0.90)',
-                  boxShadow: '0 0 64px rgba(255,255,255,0.08), 0 8px 40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.07)',
-                }}
-              >
-                <span
-                  className="font-serif font-black text-5xl text-white leading-none tabular-nums"
-                  style={{ textShadow: '0 0 28px rgba(255,255,255,0.40)' }}
-                >
-                  +{burst.delta}
-                </span>
-                <EminenceDiamond size={34} />
-              </div>
-              {/* Player name label */}
-              <span className="text-[11px] font-semibold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                {burst.playerName}
-              </span>
-            </motion.div>
-          </motion.div>
+            burst={burst}
+            onDone={() => setLumensBursts(bs => bs.filter(b => b.key !== burst.key))}
+          />
         ))}
       </AnimatePresence>
 
