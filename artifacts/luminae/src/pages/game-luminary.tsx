@@ -671,6 +671,31 @@ export const LuminaryCard = React.memo(function LuminaryCard({
 
   const summonColor = getLuminaryVisuals(luminary.id).summonColor;
 
+  // Hold-to-info for the unclaimed (idle) card face
+  const idleHoldKeyRef = useRef(0);
+  const [idleIsHolding, setIdleIsHolding] = useState(false);
+  const idleTimerRef = useRef<number | null>(null);
+  const idleSuppressClickRef = useRef(false);
+  const handleIdlePointerDown = (_e: React.PointerEvent) => {
+    if (!onOpenSheet || isHidden || isClaimed) return;
+    idleHoldKeyRef.current += 1;
+    setIdleIsHolding(true);
+    idleTimerRef.current = window.setTimeout(() => {
+      setIdleIsHolding(false);
+      idleSuppressClickRef.current = true;
+      onOpenSheet();
+    }, 700);
+  };
+  const handleIdlePointerUpOrCancel = () => {
+    setIdleIsHolding(false);
+    if (idleTimerRef.current !== null) { window.clearTimeout(idleTimerRef.current); idleTimerRef.current = null; }
+  };
+  const handleIdleClick = () => {
+    if (isHidden || isClaimed || !onOpenSheet) return;
+    if (idleSuppressClickRef.current) { idleSuppressClickRef.current = false; return; }
+    onOpenSheet();
+  };
+
   return (
     <motion.div
       ref={cardRef}
@@ -692,7 +717,10 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
-      onClick={!isHidden && !isClaimed && onOpenSheet ? onOpenSheet : undefined}
+      onClick={!isHidden && !isClaimed ? handleIdleClick : undefined}
+      onPointerDown={!isHidden && !isClaimed ? handleIdlePointerDown : undefined}
+      onPointerUp={!isHidden && !isClaimed ? handleIdlePointerUpOrCancel : undefined}
+      onPointerCancel={!isHidden && !isClaimed ? handleIdlePointerUpOrCancel : undefined}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal
@@ -801,6 +829,52 @@ export const LuminaryCard = React.memo(function LuminaryCard({
             </div>
           </div>
         </>
+      )}
+
+      {/* Hold-to-info progress ring — idle card face only */}
+      {!isClaimed && (
+        <AnimatePresence>
+          {idleIsHolding && onOpenSheet && (
+            <motion.div
+              key={idleHoldKeyRef.current}
+              className="absolute inset-0 pointer-events-none z-[27]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
+              style={{
+                background: `radial-gradient(ellipse 72% 62% at 50% 42%, rgba(3,3,8,0.52) 0%, rgba(3,3,8,0.18) 65%, transparent 100%)`,
+              }}
+            >
+              <svg
+                width={78} height={78}
+                style={{
+                  position: 'absolute',
+                  left: '50%', top: '42%',
+                  transform: 'translate(-50%, -50%)',
+                  overflow: 'visible',
+                  filter: `drop-shadow(0 0 6px ${glowHex}) drop-shadow(0 0 14px ${glowHex}88)`,
+                }}
+                aria-hidden="true"
+              >
+                <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.1} strokeWidth={5} />
+                <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.22} strokeWidth={1.5} />
+                <motion.circle
+                  cx={39} cy={39} r={34}
+                  fill="none"
+                  stroke={glowHex}
+                  strokeOpacity={0.92}
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  transform="rotate(-90 39 39)"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.7, ease: 'linear' }}
+                />
+              </svg>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
 
       {/* Flash overlay — triggered when Luminary activates its on-summon effect */}
