@@ -625,9 +625,10 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
 export interface KardashevSceneProps {
   tier: KardashevTier;
   palette: AffinityPalette;
+  className?: string;
 }
 
-export function KardashevScene({ tier, palette }: KardashevSceneProps) {
+export function KardashevScene({ tier, palette, className }: KardashevSceneProps) {
   const civName = getCivilizationName(palette, tier);
   const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
   const secondaryColor = getSecondaryAffinityColor(palette);
@@ -640,7 +641,7 @@ export function KardashevScene({ tier, palette }: KardashevSceneProps) {
 
   return (
     <SceneErrorBoundary>
-      <div className="relative h-[220px] rounded-2xl overflow-hidden bg-black">
+      <div className={className ?? "relative h-[220px] rounded-2xl overflow-hidden bg-black"}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={tier}

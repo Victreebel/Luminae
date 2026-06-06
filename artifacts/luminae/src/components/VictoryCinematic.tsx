@@ -98,26 +98,81 @@ export function VictoryCinematic({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.55 }}
-      className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
-      style={{ background: 'radial-gradient(ellipse at 50% 40%, #06040f 0%, #000000 100%)' }}
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-end overflow-hidden cursor-pointer"
       onClick={handleDismiss}
       role="presentation"
     >
-      {/* Vignette edges */}
+      {/* KardashevScene — fills the entire overlay as the cinematic background */}
+      <motion.div
+        className="absolute inset-0"
+        initial={{ opacity: 0, scale: 1.04 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1.1, ease: 'easeOut' }}
+      >
+        <KardashevScene
+          tier={tier}
+          palette={palette}
+          className="relative w-full h-full overflow-hidden bg-black"
+        />
+      </motion.div>
+
+      {/* Dark gradient at top so title text is readable over the scene */}
+      <div
+        className="absolute inset-x-0 top-0 pointer-events-none"
+        style={{ height: '45%', background: 'linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, transparent 100%)' }}
+      />
+
+      {/* Dark gradient at bottom so stat / button text is readable */}
+      <div
+        className="absolute inset-x-0 bottom-0 pointer-events-none"
+        style={{ height: '55%', background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%)' }}
+      />
+
+      {/* Affinity color bloom — subtle center tint */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: `radial-gradient(ellipse 85% 70% at 50% 45%, transparent 30%, rgba(0,0,0,0.75) 100%)`,
+          background: `radial-gradient(ellipse 55% 35% at 50% 50%, ${palette.primary}18 0%, transparent 70%)`,
         }}
       />
 
-      {/* Affinity color bloom behind scene */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse 60% 40% at 50% 42%, ${palette.primary}1a 0%, transparent 65%)`,
-        }}
-      />
+      {/* ── Title — anchored near top ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+        className="absolute top-8 left-0 right-0 text-center pointer-events-none select-none px-6"
+      >
+        <h2
+          className="text-5xl font-serif font-bold tracking-tight"
+          style={{ color: titleColor, textShadow: titleGlow ?? `0 2px 24px rgba(0,0,0,0.8)` }}
+        >
+          {titleText}
+        </h2>
+        {!isLocalWinner && !isSpectator && (
+          <p className="mt-1 text-sm text-muted-foreground/80">
+            {winnerName}&rsquo;s civilization prevails
+          </p>
+        )}
+      </motion.div>
+
+      {/* ── Civilization name + tier — bottom area above stats ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35, duration: 0.45 }}
+        className="absolute bottom-[clamp(156px,28%,220px)] left-0 right-0 text-center space-y-1 pointer-events-none select-none"
+      >
+        <div
+          className="text-2xl font-semibold tracking-wide"
+          style={{ color: palette.primary, textShadow: `0 0 30px ${palette.primary}66` }}
+        >
+          {civName}
+        </div>
+        <div className="text-xs font-mono tracking-widest uppercase text-white/40">
+          {TIER_LABELS[tier]}
+        </div>
+      </motion.div>
 
       {/* Dialog container — focus trap anchor; does NOT stop click propagation
           so that clicks on content areas also reach the outer onClick handler. */}
@@ -126,60 +181,8 @@ export function VictoryCinematic({
         role="dialog"
         aria-modal="true"
         aria-label={titleText}
-        className="relative z-10 flex flex-col items-center w-full max-w-lg px-6 gap-5"
+        className="relative z-10 flex flex-col items-center w-full max-w-lg px-6 gap-4 pb-safe mb-8"
       >
-        {/* Title card */}
-        <motion.div
-          initial={{ opacity: 0, y: -18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: 'easeOut' }}
-          className="text-center pointer-events-none select-none"
-        >
-          <h2
-            className="text-5xl font-serif font-bold tracking-tight"
-            style={{ color: titleColor, textShadow: titleGlow }}
-          >
-            {titleText}
-          </h2>
-          {!isLocalWinner && !isSpectator && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {winnerName}&rsquo;s civilization prevails
-            </p>
-          )}
-        </motion.div>
-
-        {/* KardashevScene — winner's observatory */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, delay: 0.15, ease: 'easeOut' }}
-          className="w-full rounded-2xl overflow-hidden"
-          style={{
-            boxShadow: `0 0 0 1px ${palette.primary}33, 0 8px 48px ${palette.primary}22`,
-          }}
-        >
-          <div style={{ height: 'clamp(180px, 30vh, 280px)' }}>
-            <KardashevScene tier={tier} palette={palette} />
-          </div>
-        </motion.div>
-
-        {/* Civilization name + tier */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.45 }}
-          className="text-center space-y-1 pointer-events-none select-none"
-        >
-          <div
-            className="text-xl font-semibold tracking-wide"
-            style={{ color: palette.primary }}
-          >
-            {civName}
-          </div>
-          <div className="text-xs font-mono tracking-widest uppercase text-muted-foreground/60">
-            {TIER_LABELS[tier]}
-          </div>
-        </motion.div>
 
         {/* Stat lines */}
         <motion.div
