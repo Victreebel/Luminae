@@ -6,6 +6,8 @@ import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
 import { KNOWN_AURA_STYLES } from '@workspace/game-types';
 import type { AuraStyle, LuminaryId } from '@workspace/game-types';
+import { BOARD_CARD_W, BOARD_CARD_H } from './constants';
+export { BOARD_CARD_W, BOARD_CARD_H };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1175,9 +1177,7 @@ type CutscenePhase =
   | 'pressure' | 'firstcrack' | 'leaking' | 'secondcrack' | 'cracking'
   | 'shattering' | 'flashing' | 'revealed' | 'fading' | 'done';
 
-// Board-card dimensions: Tailwind w-28 h-40 = 112 × 160 px
-const BOARD_CARD_W = 112;
-const BOARD_CARD_H = 160;
+// Board-card dimensions: imported from '@/lib/constants' (BOARD_CARD_W / BOARD_CARD_H)
 
 // Freed entity display size (larger than original card frame)
 const ENT_W = 320;

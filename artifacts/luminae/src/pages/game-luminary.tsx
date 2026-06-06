@@ -4,6 +4,7 @@ import { Info } from 'lucide-react';
 import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { LuminaryPanelArt, getLuminaryVisuals } from '@/lib/luminaryAssets';
+import { BOARD_CARD_W, BOARD_CARD_H } from '@/lib/constants';
 import { CRYSTALS } from './game-constants';
 import { MiniGem, EminenceDiamond } from './game-card';
 import { PlayerAvatar } from './game-player';
@@ -12,7 +13,7 @@ import { gameAudio } from '@/lib/audio';
 
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
-// Fits the same 112×160 footprint.
+// Fits the same BOARD_CARD_W × BOARD_CARD_H footprint.
 //
 // isLive=true   → bonus is currently active (turnCount > summonedAtTurnCount)
 // isNew=true    → 900ms entrance: collapses from center, spiral burst, spring-settle.
@@ -270,7 +271,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
             animate={{ opacity: [0, 1, 1, 0] }}
             transition={{ duration: 0.82, times: [0, 0.04, 0.38, 1], ease: 'easeOut' }}
           >
-            <svg width="112" height="160" viewBox="0 0 112 160" className="w-full h-full overflow-visible">
+            <svg width={BOARD_CARD_W} height={BOARD_CARD_H} viewBox={`0 0 ${BOARD_CARD_W} ${BOARD_CARD_H}`} className="w-full h-full overflow-visible">
               <polyline points="56,70 50,54 62,40 53,24 61,10 49,0" stroke={g2} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 4px white) drop-shadow(0 0 8px ${g1})` }} />
               <polyline points="62,40 74,32 82,18" stroke={g2} strokeWidth="0.9" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
               <polyline points="53,24 44,20 36,12" stroke={g2} strokeWidth="0.7" fill="none" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 2px ${g1})` }} />
@@ -719,7 +720,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         <>
           {/* Background art layer — procedural entity portrait fills the card */}
           <div className="absolute inset-0 pointer-events-none">
-            <LuminaryPanelArt luminaryId={luminary.id} width={112} height={160} claimed={false} />
+            <LuminaryPanelArt luminaryId={luminary.id} width={BOARD_CARD_W} height={BOARD_CARD_H} claimed={false} />
           </div>
 
           {/* Same dark gradient as artifact cards */}

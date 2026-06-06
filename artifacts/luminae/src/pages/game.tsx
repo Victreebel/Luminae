@@ -47,6 +47,7 @@ import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_VARIANTS } from '@/lib/luminaryAssets';
+import { BOARD_CARD_W, BOARD_CARD_H } from '@/lib/constants';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
@@ -1453,7 +1454,7 @@ export default function GameBoard() {
                   tier,
                   startRect: rect
                     ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-                    : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                    : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H },
                   chipCenter,
                   ownerName: purchaseActorName,
                   // Use the card's bonus color as a single affinity stream hint.
@@ -1550,7 +1551,7 @@ export default function GameBoard() {
                   gotFlux: false,
                   startRect: rect
                     ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-                    : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                    : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H },
                   destPos: burstDestPos,
                   spentColors: _spentColors,
                 });
@@ -1642,7 +1643,7 @@ export default function GameBoard() {
                 key: cipherBurstKeyRef.current,
                 sourceRect: rect
                   ? { x: rect.left, y: rect.top, w: rect.width, h: rect.height }
-                  : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                  : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H },
                 affinityHex: exitCard.bonusColor
                   ? (GEM_META[exitCard.bonusColor as GemKey]?.glowHex ?? '#7090FF')
                   : '#7090FF',
@@ -1770,7 +1771,7 @@ export default function GameBoard() {
             tier: reservedCard.tier,
             startRect: cardRect
               ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
-              : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+              : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H },
             chipCenter,
             ownerName: reservedForgeActorName,
           });
@@ -2025,7 +2026,7 @@ export default function GameBoard() {
               key: cipherBurstKeyRef.current,
               sourceRect: deckRect
                 ? { x: deckRect.left, y: deckRect.top, w: deckRect.width, h: deckRect.height }
-                : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+                : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H },
               affinityHex: newCard?.bonusColor
                 ? (GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#7090FF')
                 : '#7090FF',
@@ -2831,7 +2832,7 @@ export default function GameBoard() {
             gotFlux: false,
             startRect: cardRect
               ? { x: cardRect.left, y: cardRect.top, w: cardRect.width, h: cardRect.height }
-              : { x: window.innerWidth / 2 - 56, y: window.innerHeight / 2 - 80, w: 112, h: 160 },
+              : { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight / 2 - BOARD_CARD_H / 2, w: BOARD_CARD_W, h: BOARD_CARD_H },
             destPos: burstDestPos,
             spentColors: _spentColors,
           });
@@ -5789,7 +5790,7 @@ export default function GameBoard() {
                   {/* Panel art column */}
                   <div className="flex flex-col items-center gap-2 sm:shrink-0">
                     <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="rounded-xl overflow-hidden shadow-xl">
-                      <LuminaryPanelArt luminaryId={selectedLuminary.id} width={112} height={160} claimed={false} />
+                      <LuminaryPanelArt luminaryId={selectedLuminary.id} width={BOARD_CARD_W} height={BOARD_CARD_H} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
                     {/* Live aura animation preview — click to expand full-screen */}

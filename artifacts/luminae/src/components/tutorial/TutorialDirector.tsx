@@ -34,6 +34,7 @@ import {
   type TAction,
 } from "@/lib/tutorialReducer";
 import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
+import { BOARD_CARD_W, BOARD_CARD_H } from "@/lib/constants";
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from "@/components/ArtifactCardBack";
 import { AffinityEmblem } from "@/components/AffinityEmblem";
 import { gameAudio } from "@/lib/audio";
@@ -327,8 +328,8 @@ function CostCallout() {
   return (
     <svg
       className="absolute inset-0 pointer-events-none z-20"
-      width={112}
-      height={160}
+      width={BOARD_CARD_W}
+      height={BOARD_CARD_H}
       style={{ overflow: "visible" }}
     >
       {/* Draw-in stroke */}
@@ -451,7 +452,7 @@ function TutorialCard({
       onClick={onTap && !forged ? onTap : undefined}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
       className={`relative shrink-0 ${onTap && !forged ? "cursor-pointer" : ""}`}
-      style={{ width: 112, height: 160 }}
+      style={{ width: BOARD_CARD_W, height: BOARD_CARD_H }}
     >
       {costHighlight && <CostCallout />}
       {ringPulse && (
@@ -924,15 +925,15 @@ function DeckPile({ tier, count }: { tier: number; count?: number }) {
     <div className="flex flex-col items-center shrink-0" style={{ gap: 6 }}>
       <div className="relative shrink-0" style={{ width: 120, height: 168 }}>
         <div className="absolute rounded-xl overflow-hidden border border-white/5"
-          style={{ left: 8, top: 8, width: 112, height: 160, opacity: 0.28 }}>
+          style={{ left: 8, top: 8, width: BOARD_CARD_W, height: BOARD_CARD_H, opacity: 0.28 }}>
           <BackComponent />
         </div>
         <div className="absolute rounded-xl overflow-hidden border border-white/8"
-          style={{ left: 4, top: 4, width: 112, height: 160, opacity: 0.55 }}>
+          style={{ left: 4, top: 4, width: BOARD_CARD_W, height: BOARD_CARD_H, opacity: 0.55 }}>
           <BackComponent />
         </div>
         <div className="absolute rounded-xl overflow-hidden border border-white/12 shadow-lg"
-          style={{ left: 0, top: 0, width: 112, height: 160 }}>
+          style={{ left: 0, top: 0, width: BOARD_CARD_W, height: BOARD_CARD_H }}>
           <BackComponent />
         </div>
         {count !== undefined && count > 0 && (
@@ -957,7 +958,7 @@ function GhostCardSlot({ tier }: { tier: number }) {
   return (
     <div className="shrink-0 rounded-xl border flex items-center justify-center"
       style={{
-        width: 112, height: 160,
+        width: BOARD_CARD_W, height: BOARD_CARD_H,
         borderColor: BORDER_COLORS[tier] ?? "rgba(255,255,255,0.09)",
         background: "rgba(255,255,255,0.018)",
       }}>
@@ -976,7 +977,7 @@ function DeckDrawAnimation({ tier }: { tier: number }) {
   return (
     <motion.div
       className="shrink-0 rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10"
-      style={{ width: 112, height: 160 }}
+      style={{ width: BOARD_CARD_W, height: BOARD_CARD_H }}
       initial={{ x: -60, scale: 0.68, opacity: 0 }}
       animate={{ x: 0, scale: 1, opacity: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 24, mass: 0.9 }}
@@ -1045,7 +1046,7 @@ function CardFlipReveal({
 
   if (phase === "done") return <>{children}</>;
 
-  const W = 112, H = 160;
+  const W = BOARD_CARD_W, H = BOARD_CARD_H;
   return (
     <div style={{ width: W, height: H, flexShrink: 0, perspective: "700px" }}>
       {(phase === "back" || phase === "out") && (
@@ -1289,7 +1290,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
               if (cardId === FIRST_FORGE_ID) {
                 if (beatId === "b6_forge_appears") {
                   return (
-                    <div key={cardId} style={{ width: 112, height: 160, flexShrink: 0 }}>
+                    <div key={cardId} style={{ width: BOARD_CARD_W, height: BOARD_CARD_H, flexShrink: 0 }}>
                       <CardBackTier1 />
                     </div>
                   );
@@ -2926,8 +2927,8 @@ function TutorialLuminarySection({ beatIndex }: { beatIndex: number }) {
       <div className="flex gap-3 overflow-x-auto pb-1 items-start">
         {verdantRevealed ? (
           <div className="relative shrink-0">
-            <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12 }}>
-              <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} width={112} height={160} />
+            <div style={{ width: BOARD_CARD_W, height: BOARD_CARD_H, overflow: "hidden", borderRadius: 12 }}>
+              <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} width={BOARD_CARD_W} height={BOARD_CARD_H} />
             </div>
             <div className="absolute inset-0 rounded-xl pointer-events-none"
               style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72) 40%, transparent 100%)" }}>
@@ -3025,7 +3026,7 @@ function CollectionSheet({ forged, bonuses, filterGem, onClose }: {
                   : { background: `linear-gradient(175deg, #021005 0%, #063020 50%, #020c04 100%)` };
                 return (
                   <div key={id} className="shrink-0 rounded-xl overflow-hidden shadow-xl ring-1 ring-white/10 relative"
-                    style={{ width: 112, height: 160, ...bgStyle }}>
+                    style={{ width: BOARD_CARD_W, height: BOARD_CARD_H, ...bgStyle }}>
                     <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
                     <div className="relative z-10 h-full p-2 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
@@ -3739,7 +3740,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               encryptBurstKeyRef.current += 1;
               setEncryptBurst({
                 key: encryptBurstKeyRef.current,
-                sourceRect: { x: window.innerWidth / 2 - 56, y: window.innerHeight * 0.32, w: 112, h: 160 },
+                sourceRect: { x: window.innerWidth / 2 - BOARD_CARD_W / 2, y: window.innerHeight * 0.32, w: BOARD_CARD_W, h: BOARD_CARD_H },
                 affinityHex: affHex,
                 cardName: selectedCardData.card.name,
                 gotFlux: true,
@@ -3834,7 +3835,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
         const tCard = TUTORIAL_CARDS[encryptBurst.cardId];
         const artUrl = tCard ? CARD_ART[tCard.id] : undefined;
         const cardFace = (
-          <div style={{ width: 112, height: 160, position: "relative", overflow: "hidden", borderRadius: 12, background: artUrl ? undefined : "linear-gradient(175deg, #021005, #063020)" }}>
+          <div style={{ width: BOARD_CARD_W, height: BOARD_CARD_H, position: "relative", overflow: "hidden", borderRadius: 12, background: artUrl ? undefined : "linear-gradient(175deg, #021005, #063020)" }}>
             {artUrl && <img src={artUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} draggable={false} />}
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.82))" }} />
             <div style={{ position: "absolute", bottom: 8, left: 8, fontSize: 8, fontWeight: 600, color: "rgba(255,255,255,0.9)", lineHeight: 1.3 }}>{encryptBurst.cardName}</div>
