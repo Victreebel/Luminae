@@ -1062,7 +1062,7 @@ export function LuminaryPanelArt({
   const { panelArt } = getLuminaryImageAssets(luminaryId);
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden">
 
       {panelArt ? (
         // ── Real illustrated panel art ──────────────────────────────────────

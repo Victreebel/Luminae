@@ -4278,7 +4278,7 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        <div className="relative shrink-0 rounded-md overflow-hidden" style={{ width: 24, height: 24 }}>
+                        <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 24, height: 24 }}>
                           <LuminaryPanelArt luminaryId={lumId} size={24} claimed />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -4401,7 +4401,7 @@ export default function GameBoard() {
                     }}
                   >
                     {/* Tiny panel art */}
-                    <div className="relative shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
+                    <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
                       <LuminaryPanelArt luminaryId={lum.id} size={32} claimed={!!claimedByPlayer} />
                     </div>
                     {/* Name + domain */}
@@ -5866,7 +5866,7 @@ export default function GameBoard() {
                 <div className="flex flex-col sm:flex-row gap-4 mb-5">
                   {/* Panel art column */}
                   <div className="flex flex-col items-center gap-2 sm:shrink-0">
-                    <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="relative rounded-xl overflow-hidden shadow-xl">
+                    <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="rounded-xl overflow-hidden shadow-xl">
                       <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
@@ -7114,7 +7114,7 @@ export default function GameBoard() {
                     className="flex flex-col items-center gap-2"
                   >
                     <div
-                      className="relative rounded-xl overflow-hidden border-2 shrink-0 seal-glow-pulse"
+                      className="rounded-xl overflow-hidden border-2 shrink-0 seal-glow-pulse"
                       style={{
                         width: 80,
                         height: 80,

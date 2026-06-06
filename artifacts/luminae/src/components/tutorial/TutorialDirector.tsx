@@ -2926,7 +2926,7 @@ function TutorialLuminarySection({ beatIndex }: { beatIndex: number }) {
       <div className="flex gap-3 overflow-x-auto pb-1 items-start">
         {verdantRevealed ? (
           <div className="relative shrink-0">
-            <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12, position: "relative" }}>
+            <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12 }}>
               <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} size={160} />
             </div>
             <div className="absolute inset-0 rounded-xl pointer-events-none"
