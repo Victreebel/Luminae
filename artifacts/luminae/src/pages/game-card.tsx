@@ -302,7 +302,7 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
       </AnimatePresence>
     </motion.div>
   );
-}
+});
 
 export function ForgedCardWithTooltip({ card, tier, onOpenSheet }: { card: ArtifactCard; tier?: number; onOpenSheet: () => void }) {
   const [show, setShow] = useState(false);

@@ -541,7 +541,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
 
     </Tag>
   );
-}
+});
 
 export const LuminaryCard = React.memo(function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
@@ -716,4 +716,4 @@ export const LuminaryCard = React.memo(function LuminaryCard({
       )}
     </motion.div>
   );
-}
+});
