@@ -299,7 +299,7 @@ export function SeedBeyondSeasonsEffect({ onComplete }: { onComplete: () => void
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 8920 }}>
+    <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 300 }}>
       {([1, 2, 3] as const).map(tier => {
         const { phase, rect } = tiers[tier];
         if (phase === 'idle' || phase === 'recede' || !rect) return null;

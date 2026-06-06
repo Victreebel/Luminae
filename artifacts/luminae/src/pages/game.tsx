@@ -19,6 +19,7 @@ import type {
   PendingLuminaryActivationEvent,
 } from '@workspace/api-client-react';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
+import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
 import { useAccount } from '@/contexts/AccountContext';
@@ -520,6 +521,7 @@ export default function GameBoard() {
   const [boardDimKey, setBoardDimKey] = useState(0);
   const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
   const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
+  const [showSeedBoardEffect, setShowSeedBoardEffect] = useState(false);
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
   const [summonOverlays, setSummonOverlays] = useState<Array<{ id: string; lumId: string }>>([]);
   // Luminary currently undergoing a summon-flash animation (zoom + flash effect)
@@ -2105,6 +2107,10 @@ export default function GameBoard() {
         const prevPending = prev?.pendingLuminaryActivationEvents ?? [];
         const newPending = newState?.pendingLuminaryActivationEvents ?? [];
         for (const evt of newPending) {
+          // Summon-type events are shown via the summon cutscene — skip them here.
+          // (lum_seed no longer pushes a summon activation event from the engine,
+          // but this guard handles any in-flight game states from before that change.)
+          if (evt.effectType === 'summon') continue;
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
           if (!alreadyKnown && !handledActivationEventIdsRef.current.has(evt.eventId)) {
             handledActivationEventIdsRef.current.add(evt.eventId);
@@ -7740,6 +7746,11 @@ export default function GameBoard() {
             setClaimedThisSession(prev =>
               prev.includes(entry.id) ? prev : [...prev, entry.id]
             );
+            // After the Seed Beyond Seasons summon cutscene resolves, show the
+            // deck-seeding flourish as a compact board-level effect (no fullscreen overlay).
+            if (entry.id === 'lum_seed') {
+              setShowSeedBoardEffect(true);
+            }
             // Resolve the global summon gate on the server so all clients
             // can unblock their turn actions once the cutscene is done.
             if (!entry.isDevTest) {
@@ -7791,11 +7802,6 @@ export default function GameBoard() {
             effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
             luminaryName={lum?.name ?? evt.luminaryId}
             triggeringPlayerName={triggeringPlayer?.playerName}
-            seedCardIds={
-              evt.luminaryId === 'lum_seed' && evt.effectType === 'summon'
-                ? (state?.avatarSeedDeckSeeds ?? [])
-                : undefined
-            }
             onComplete={() => {
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
@@ -7890,6 +7896,12 @@ export default function GameBoard() {
         originRect={orchardPortalRectRef.current}
         pulseKey={orchardCopyPulseKey}
       />
+      {/* ── Seed Beyond Seasons board-level seeding flourish ──
+          Plays after the summon cutscene resolves for lum_seed.
+          Renders at normal board scale (no dimming, no entity overlay). */}
+      {showSeedBoardEffect && (
+        <SeedBeyondSeasonsEffect onComplete={() => setShowSeedBoardEffect(false)} />
+      )}
       {/* ── v0.8 Per-Luminary summon market overlays ── */}
       {summonOverlays.map(o => (
         <SummonMarketOverlay

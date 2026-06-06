@@ -3,19 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { getLuminaryVisuals, getLuminaryImageAssets } from '@/lib/luminaryAssets';
 import { gameAudio } from '@/lib/audio';
-import { SeedBeyondSeasonsEffect, SEED_EFFECT_TOTAL_MS } from './SeedBeyondSeasonsEffect';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Phase = 'zoom_out' | 'reveal' | 'hold' | 'effect' | 'pan_out' | 'done';
+type Phase = 'zoom_out' | 'reveal' | 'hold' | 'pan_out' | 'done';
 
 interface LuminaryActivationCinematicProps {
   luminaryId: string;
   effectType: 'summon' | 'end_of_turn' | 'start_of_turn';
   luminaryName: string;
   triggeringPlayerName?: string;
-  /** When provided, inserts the Seed Beyond Seasons animation before pan_out. */
-  seedCardIds?: string[];
   onComplete: () => void;
 }
 
@@ -23,8 +20,7 @@ interface LuminaryActivationCinematicProps {
 
 const ZOOM_OUT_MS  = 720;   // board scales down, dim fades in
 const REVEAL_MS    = 680;   // entity fades + scales in from above
-const HOLD_MS      = 1900;  // linger at full opacity (standard)
-const HOLD_SEED_MS = 400;   // shortened hold when seed effect follows
+const HOLD_MS      = 1900;  // linger at full opacity
 const PAN_OUT_MS   = 980;   // entity drifts + fades, board restores
 
 // CSS scale applied to [data-game-board] during the cinematic
@@ -45,7 +41,6 @@ export function LuminaryActivationCinematic({
   effectType,
   luminaryName,
   triggeringPlayerName,
-  seedCardIds,
   onComplete,
 }: LuminaryActivationCinematicProps) {
   const onCompleteRef = useRef(onComplete);
@@ -62,39 +57,22 @@ export function LuminaryActivationCinematic({
 
   const label = EFFECT_TYPE_LABELS[effectType] ?? 'EFFECT';
 
-  // Whether to play the Seed Beyond Seasons effect animation
-  const hasSeedEffect = !!seedCardIds && seedCardIds.length > 0;
-
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
     gameAudio.playActivationSting(effectType, primaryColor);
 
-    const holdMs = hasSeedEffect ? HOLD_SEED_MS : HOLD_MS;
-    const totalMs = hasSeedEffect
-      ? ZOOM_OUT_MS + REVEAL_MS + holdMs + SEED_EFFECT_TOTAL_MS + PAN_OUT_MS
-      : ZOOM_OUT_MS + REVEAL_MS + holdMs + PAN_OUT_MS;
+    const totalMs = ZOOM_OUT_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS;
 
-    const t1 = setTimeout(() => setPhase('reveal'), ZOOM_OUT_MS);
-    const t2 = setTimeout(() => setPhase('hold'),   ZOOM_OUT_MS + REVEAL_MS);
-    let t3: ReturnType<typeof setTimeout>;
-    let t4: ReturnType<typeof setTimeout>;
-    let t5: ReturnType<typeof setTimeout>;
-
-    if (hasSeedEffect) {
-      t3 = setTimeout(() => setPhase('effect'),  ZOOM_OUT_MS + REVEAL_MS + holdMs);
-      t4 = setTimeout(() => setPhase('pan_out'), ZOOM_OUT_MS + REVEAL_MS + holdMs + SEED_EFFECT_TOTAL_MS);
-    } else {
-      t3 = setTimeout(() => setPhase('pan_out'), ZOOM_OUT_MS + REVEAL_MS + holdMs);
-    }
-
-    t5 = setTimeout(() => {
+    const t1 = setTimeout(() => setPhase('reveal'),  ZOOM_OUT_MS);
+    const t2 = setTimeout(() => setPhase('hold'),    ZOOM_OUT_MS + REVEAL_MS);
+    const t3 = setTimeout(() => setPhase('pan_out'), ZOOM_OUT_MS + REVEAL_MS + HOLD_MS);
+    const t4 = setTimeout(() => {
       setPhase('done');
       onCompleteRef.current();
     }, totalMs);
 
     return () => {
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-      clearTimeout(t4!); clearTimeout(t5);
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -110,7 +88,7 @@ export function LuminaryActivationCinematic({
       board.style.transition      = `transform ${ZOOM_OUT_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
       board.style.transformOrigin = '50% 50%';
       board.style.transform       = `scale(${BOARD_SCALE})`;
-    } else if (phase === 'reveal' || phase === 'hold' || phase === 'effect') {
+    } else if (phase === 'reveal' || phase === 'hold') {
       board.style.transition = '';
       board.style.transform  = `scale(${BOARD_SCALE})`;
     } else if (phase === 'pan_out' || phase === 'done') {
@@ -127,22 +105,18 @@ export function LuminaryActivationCinematic({
   }, [phase]);
 
   // ── Derived state ─────────────────────────────────────────────────────────
-  const showEntity = phase === 'reveal' || phase === 'hold' || phase === 'effect' || phase === 'pan_out';
+  const showEntity = phase === 'reveal' || phase === 'hold' || phase === 'pan_out';
   const showText   = phase === 'reveal' || phase === 'hold';
   const isPanOut   = phase === 'pan_out';
-  const isEffect   = phase === 'effect';
 
-  // During the seed effect phase the entity fades back to a ghostly presence
-  // so the deck tile animations are clearly visible in the foreground.
-  const entityOpacity  = isEffect ? 0.15 : (isPanOut ? 0 : 1);
-  const entityScale    = isEffect ? 0.62 : (isPanOut ? 0.78 : 1.0);
-  const entityY        = isEffect ? '-10vh' : (isPanOut ? '6vh' : '0');
+  const entityOpacity  = isPanOut ? 0 : 1;
+  const entityScale    = isPanOut ? 0.78 : 1.0;
+  const entityY        = isPanOut ? '6vh' : '0';
 
   const overlayOpacity =
     phase === 'zoom_out' ? 0.60 :
     phase === 'reveal'   ? 0.72 :
     phase === 'hold'     ? 0.75 :
-    phase === 'effect'   ? 0.60 :
     0;
 
   if (phase === 'done') return null;
@@ -157,7 +131,7 @@ export function LuminaryActivationCinematic({
         className="absolute inset-0"
         animate={{ opacity: overlayOpacity }}
         transition={{
-          duration: isPanOut ? PAN_OUT_MS / 1000 * 0.65 : isEffect ? 0.5 : ZOOM_OUT_MS / 1000,
+          duration: isPanOut ? PAN_OUT_MS / 1000 * 0.65 : ZOOM_OUT_MS / 1000,
           ease: 'easeInOut',
         }}
         style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
@@ -175,11 +149,9 @@ export function LuminaryActivationCinematic({
               opacity: entityOpacity,
               scale:   entityScale,
               y:       entityY,
-              transition: isEffect
-                ? { duration: 0.55, ease: [0.4, 0, 0.2, 1] as [number,number,number,number] }
-                : isPanOut
-                  ? { duration: PAN_OUT_MS / 1000, ease: [0.4, 0, 1, 1] as [number,number,number,number] }
-                  : { duration: REVEAL_MS / 1000, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] },
+              transition: isPanOut
+                ? { duration: PAN_OUT_MS / 1000, ease: [0.4, 0, 1, 1] as [number,number,number,number] }
+                : { duration: REVEAL_MS / 1000, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] },
             }}
           >
             {/* Colored glow bloom behind the entity */}
@@ -278,12 +250,6 @@ export function LuminaryActivationCinematic({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── Seed Beyond Seasons effect ─────────────────────────────────────── */}
-      {/* Rendered at zIndex 8920 (above dim but below any HUD) */}
-      {isEffect && hasSeedEffect && (
-        <SeedBeyondSeasonsEffect onComplete={() => { /* phase timer already handles transition */ }} />
-      )}
     </div>
   );
 

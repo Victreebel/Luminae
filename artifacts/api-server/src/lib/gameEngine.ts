@@ -1557,8 +1557,9 @@ function applySummonEffect(
     }
     case "lum_seed": {
       // Avatar Seeds: reveal and mark top 2 cards of each deck.
+      // The deck-seeding flourish is shown as a board-level effect in the frontend
+      // immediately after the summon cutscene resolves — no activation cinematic needed.
       applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
-      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_pale": {
