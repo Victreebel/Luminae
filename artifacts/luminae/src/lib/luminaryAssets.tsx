@@ -863,22 +863,14 @@ function PaleEntity({ size = 140, className = '' }: { size?: number; className?:
 
 // ── The First Hunger (lum_hunger) ─────────────────────────────────────────────
 // Nanite swarm intelligence — Abyss + Flare.
-// Entity.png sits over a crossfading pair of background images (background1/2)
-// that alternate opacity to simulate nanite movement. Used as the EntityArt
-// prop; the portal + cutscene renders have dedicated lum_hunger branches
-// that composite all three layers at their correct display sizes.
+// Background crossfade layers (background1/2) were removed to reduce GPU load.
+// Only the static entity PNG is rendered now — fast, no animation churn.
 function HungerEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
   const entity = _getLuminaryImage('lum_hunger', 'entity');
-  const bg1    = _luminaryImageMap['lum_hunger/background1'] ?? null;
-  const bg2    = _luminaryImageMap['lum_hunger/background2'] ?? null;
   const w = size;
   const h = Math.round(size * 1.5);
   return (
     <div className={className} style={{ position: 'relative', width: w, height: h, flexShrink: 0 }}>
-      <div className="lum-hunger-breathe" style={{ position: 'absolute', inset: 0 }}>
-        {bg1 && <img src={bg1} alt="" draggable={false} className="lum-hunger-bg1" style={{ position: 'absolute', width: '110%', height: '110%', left: '-5%', top: '-5%', objectFit: 'cover', display: 'block', WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
-        {bg2 && <img src={bg2} alt="" draggable={false} className="lum-hunger-bg2" style={{ position: 'absolute', width: '110%', height: '110%', left: '-5%', top: '-5%', objectFit: 'cover', display: 'block', WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
-      </div>
       {entity && (
         <img src={entity} alt="" draggable={false}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: 'block', WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
@@ -2555,16 +2547,9 @@ export function LuminarySummonCutscene({
                           </>
                         );
                       })() : luminaryId === 'lum_hunger' ? (() => {
-                        // Nanite background crossfade: bg1/bg2 alternate behind entity cutout.
-                        const hBg1   = _luminaryImageMap['lum_hunger/background1'] ?? null;
-                        const hBg2   = _luminaryImageMap['lum_hunger/background2'] ?? null;
-                        const hEnt   = _getLuminaryImage('lum_hunger', 'entity');
+                        const hEnt = _getLuminaryImage('lum_hunger', 'entity');
                         return (
                           <div style={{ position: 'relative', width: ENT_W, height: ENT_H }}>
-                            <div className="lum-hunger-breathe" style={{ position: 'absolute', inset: 0 }}>
-                              {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={{ position: 'absolute', width: '110%', height: '110%', left: '-5%', top: '-5%', objectFit: 'cover', display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
-                              {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={{ position: 'absolute', width: '110%', height: '110%', left: '-5%', top: '-5%', objectFit: 'cover', display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
-                            </div>
                             {hEnt && (
                               <img src={hEnt} alt={luminaryName} draggable={false}
                                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
@@ -3190,20 +3175,14 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
             );
           }
 
-          // ── lum_hunger: nanite background crossfade behind entity cutout ──────
+          // ── lum_hunger: entity only — backgrounds removed for performance ──
           if (luminaryId === 'lum_hunger') {
-            const hBg1 = _luminaryImageMap['lum_hunger/background1'] ?? null;
-            const hBg2 = _luminaryImageMap['lum_hunger/background2'] ?? null;
             const hEnt = _getLuminaryImage('lum_hunger', 'entity');
             return (
               <div
                 className={isIdle ? 'lum-idle-float' : undefined}
                 style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
               >
-                <div className="lum-hunger-breathe" style={{ position: 'absolute', inset: 0 }}>
-                  {hBg1 && <img src={hBg1} alt="" draggable={false} className="lum-hunger-bg1" style={{ position: 'absolute', width: '110%', height: '110%', left: '-5%', top: '-5%', objectFit: 'cover', display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
-                  {hBg2 && <img src={hBg2} alt="" draggable={false} className="lum-hunger-bg2" style={{ position: 'absolute', width: '110%', height: '110%', left: '-5%', top: '-5%', objectFit: 'cover', display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)', maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 78%)' }} />}
-                </div>
                 {hEnt && (
                   <img src={hEnt} alt="" draggable={false}
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />

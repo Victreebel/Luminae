@@ -1332,48 +1332,8 @@ button,
   contain: layout;
 }
 
-/* ── First Hunger (lum_hunger) — nanite background crossfade + heat haze + breathe ─
-   bg1 and bg2 alternate in opposition: as one fades out the other fades in.
-   Heat haze: very subtle scaleX ripple + slight skew creating a mirage-like
-   distortion on the nanite swarm.
-   Both layers also breathe (fade in/out) on a slower 6s cycle for a living
-   pulse effect.  The breathe is applied to a parent wrapper so it modulates
-   both layers simultaneously without fighting the crossfade.              */
-@keyframes lum-hunger-bg1 {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-@keyframes lum-hunger-bg2 {
-  0%, 100% { opacity: 0; }
-  50%       { opacity: 1; }
-}
-@keyframes lum-hunger-haze {
-  0%, 100% { transform: scaleX(1.00) scaleY(1.00) skewX(0deg); opacity: 1; }
-  25%      { transform: scaleX(1.012) scaleY(0.992) skewX(0.35deg); opacity: 0.97; }
-  50%      { transform: scaleX(1.00) scaleY(1.00) skewX(0deg); opacity: 1; }
-  75%      { transform: scaleX(0.992) scaleY(1.008) skewX(-0.35deg); opacity: 0.97; }
-}
-@keyframes lum-hunger-breathe {
-  0%, 100% { opacity: 0.85; }
-  50%      { opacity: 0.15; }
-}
-.lum-hunger-bg1 {
-  animation: lum-hunger-bg1 5s ease-in-out infinite,
-             lum-hunger-haze 2.8s linear infinite;
-  transform-origin: center center;
-  will-change: transform, opacity;
-  contain: layout;
-}
-.lum-hunger-bg2 {
-  animation: lum-hunger-bg2 5s ease-in-out infinite,
-             lum-hunger-haze 2.8s linear infinite;
-  transform-origin: center center;
-  will-change: transform, opacity;
-  contain: layout;
-}
-.lum-hunger-breathe {
-  animation: lum-hunger-breathe 6s ease-in-out infinite;
-  will-change: opacity;
-  contain: layout;
-}
+/* ── First Hunger (lum_hunger) — CSS animations removed.
+   Background crossfade layers (bg1/bg2) were stripped to reduce GPU churn.
+   Only the static entity PNG is rendered now.
+──────────────────────────────────────────────────────────────────────────────── */
 
