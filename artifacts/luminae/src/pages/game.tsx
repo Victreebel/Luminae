@@ -411,6 +411,13 @@ export default function GameBoard() {
   const lastAnnouncedTurnRef = useRef<string | null>(null);
   const initialTurnFiredRef = useRef(false);
   const animationEndTimeRef = useRef(0);
+  // Timer handle for the animation-barrier delay before the victory cinematic starts.
+  // Cleared on unmount to prevent a stale callback firing after navigation.
+  const winBarrierTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Stores remaining barrier ms captured in the summon path so the pendingGameOver
+  // flush effect can still respect it (summon cutscene always outlasts typical anims,
+  // so this resolves to 0 in practice but keeps the logic consistent).
+  const animBarrierMsRef = useRef(0);
   const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateQueueRef = useRef<GameState[]>([]);
   const queueTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -811,6 +818,7 @@ export default function GameBoard() {
       if (turnAnnounceTimerRef.current) clearTimeout(turnAnnounceTimerRef.current);
       if (pendingTurnAnnounceRef.current) clearTimeout(pendingTurnAnnounceRef.current);
       if (queueTimerRef.current) clearTimeout(queueTimerRef.current);
+      if (winBarrierTimerRef.current) clearTimeout(winBarrierTimerRef.current);
       stateQueueRef.current = [];
     };
   }, []);
@@ -1895,21 +1903,42 @@ export default function GameBoard() {
           // Defer: the flush useEffect below will fire win audio and clear the
           // hold once enqueuingCount reaches zero AND the queue drains.
           setPendingGameOver(true);
-          // Cancel all pre-win visual animations immediately so they do not
-          // block the win overlay after the active summon cutscene finishes.
-          // enqueuingCountRef is reset to 0 so that RAF-chain items that have
-          // not yet landed in summonQueue are silently dropped by doEnqueue
-          // (which checks gameFinishedRef before pushing). The slice(0,1) keeps
-          // only the currently-active cutscene; all queued-but-not-started
-          // summons are discarded.
+          // Capture the animation barrier before we clear the queue — the flush
+          // effect will use animBarrierMsRef to defer cancelPendingAnimations()
+          // so any in-flight card/gem animations can complete. The summon
+          // cutscene (~12 s) always outlasts the barrier cap (≤ 3 s), so this
+          // is a minor polish pass that keeps the logic symmetric with the
+          // non-summon path. enqueuingCountRef is reset to 0 so that RAF-chain
+          // items that have not yet landed in summonQueue are silently dropped
+          // by doEnqueue (which checks gameFinishedRef before pushing).
+          // The slice(0,1) keeps only the currently-active cutscene; all
+          // queued-but-not-started summons are discarded.
           gameFinishedRef.current = true;
           enqueuingCountRef.current = 0;
-          cancelPendingAnimations();
+          // Cancel the turn announcement immediately — it would be confusing to
+          // show "Your Turn" while the summon cutscene is playing.
+          cancelTurnAnnouncement();
+          const summonPathBarrierMs = Math.min(3000, Math.max(0, animationEndTimeRef.current - Date.now()));
+          // Store as an absolute deadline so the flush effect can compute remaining time
+          // even if it fires slightly later than expected.
+          animBarrierMsRef.current = summonPathBarrierMs > 0 ? Date.now() + summonPathBarrierMs : 0;
+          // Clear the state queue immediately so no further game states are
+          // processed, but defer full cancelPendingAnimations() to the flush
+          // effect so card/gem animations running underneath the cutscene finish.
+          if (queueTimerRef.current) { clearTimeout(queueTimerRef.current); queueTimerRef.current = null; }
+          stateQueueRef.current = [];
           setSummonQueue(q => q.slice(0, 1));
         } else {
           gameFinishedRef.current = true;
-          cancelPendingAnimations();
+          // Cancel the turn announcement immediately — showing "Your Turn" while
+          // entering win state would be confusing regardless of any animation delay.
           cancelTurnAnnouncement();
+
+          // Compute how long to wait for in-flight animations to complete.
+          // Hard-capped at 3 s so a runaway or stale barrier cannot delay indefinitely.
+          const elseBarrierMs = Math.min(3000, Math.max(0, animationEndTimeRef.current - Date.now()));
+
+          // Compute the dominant color now (all data is available in newState).
           const winnerPlayer = (newState.players as GamePlayerState[]).find(
             p => p.playerId === newState.winnerId
           );
@@ -1948,8 +1977,32 @@ export default function GameBoard() {
             }
             dominantColor = GEM_KEY_TO_HEX[dominantKey] ?? '#fbbf24';
           }
-          gameAudio.playLuminaryFanfare(dominantColor);
-          setTimeout(() => gameAudio.playWin(), 1400);
+
+          if (elseBarrierMs === 0) {
+            // No in-flight animations — fire immediately (identical to previous behavior).
+            cancelPendingAnimations();
+            gameAudio.playLuminaryFanfare(dominantColor);
+            setTimeout(() => gameAudio.playWin(), 1400);
+          } else {
+            // In-flight animations are still running. Hold back the victory cinematic
+            // (via pendingGameOver) and the state queue (immediately) until the barrier
+            // elapses, then cancel animations and release the overlay.
+            // Clear the state queue immediately so no further game states are processed.
+            if (queueTimerRef.current) { clearTimeout(queueTimerRef.current); queueTimerRef.current = null; }
+            stateQueueRef.current = [];
+            // Prevent the flush useEffect from firing this non-summon hold — we will
+            // release pendingGameOver ourselves inside the barrier timeout below.
+            fanfareFiredForGameOverRef.current = true;
+            setPendingGameOver(true);
+            winBarrierTimerRef.current = setTimeout(() => {
+              winBarrierTimerRef.current = null;
+              cancelPendingAnimations();
+              fanfareFiredForGameOverRef.current = false;
+              setPendingGameOver(false);
+              gameAudio.playLuminaryFanfare(dominantColor);
+              setTimeout(() => gameAudio.playWin(), 1400);
+            }, elseBarrierMs);
+          }
         }
       }
 
@@ -2499,13 +2552,23 @@ export default function GameBoard() {
       // the fanfare. playWin() fires in the same timeout, immediately after the
       // overlay is released. If no color was captured (edge case), the fanfare
       // gracefully falls back to the flux/default voice.
+      //
+      // Also check animBarrierMsRef: the summon path stored any remaining
+      // animation-barrier time there. The summon cutscene (~12 s) always
+      // outlasts the barrier cap (≤ 3 s), so this is zero in practice, but
+      // keeping the check here ensures cancelPendingAnimations() is not called
+      // while a card/gem animation burst is still mid-sequence.
+      const summonFlushBarrierMs = Math.max(0, animBarrierMsRef.current - Date.now());
+      animBarrierMsRef.current = 0;
       gameAudio.playLuminaryFanfare(pendingGameOverLumColorRef.current);
-      setTimeout(() => {
+      winBarrierTimerRef.current = setTimeout(() => {
+        winBarrierTimerRef.current = null;
+        cancelPendingAnimations();
         pendingGameOverLumColorRef.current = '';
         fanfareFiredForGameOverRef.current = false;
         setPendingGameOver(false);
         gameAudio.playWin();
-      }, WIN_FANFARE_DELAY_MS);
+      }, WIN_FANFARE_DELAY_MS + summonFlushBarrierMs);
     }
   }, [summonQueue.length, pendingGameOver]);
 
