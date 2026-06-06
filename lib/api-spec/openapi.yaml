@@ -1431,6 +1431,30 @@ components:
         - luminaryId
         - claimedByPlayerId
 
+    PendingLuminaryActivationEvent:
+      type: object
+      description: An activation event queued for the short (~4s) per-effect cinematic overlay
+      properties:
+        eventId:
+          type: string
+        luminaryId:
+          type: string
+        effectType:
+          type: string
+          enum: [summon, end_of_turn, start_of_turn]
+          description: Which hook fired this event
+        triggeringPlayerId:
+          type: string
+          description: Player ID who owns the Luminary
+        createdAt:
+          type: integer
+          description: Unix ms timestamp when this event was created; optional for backward compat
+      required:
+        - eventId
+        - luminaryId
+        - effectType
+        - triggeringPlayerId
+
     CardMarker:
       type: object
       description: A marker placed on a market card by a Luminary effect (v0.8)
@@ -1526,6 +1550,11 @@ components:
           description: Summon events awaiting client acknowledgement (resolve_summon action)
           items:
             $ref: "#/components/schemas/PendingSummonEvent"
+        pendingLuminaryActivationEvents:
+          type: array
+          description: Activation events queued for the short (~4s) per-effect cinematic overlay
+          items:
+            $ref: "#/components/schemas/PendingLuminaryActivationEvent"
         marketMarkers:
           type: object
           additionalProperties:
@@ -1573,6 +1602,7 @@ components:
         - turnDeadline
         - version
         - pendingSummonEvents
+        - pendingLuminaryActivationEvents
 
     ActionRequest:
       type: object
@@ -1591,6 +1621,7 @@ components:
             - surrender
             - toggle_luminary_affinity
             - resolve_summon
+            - resolve_luminary_activation
             - plan_action
             - cancel_plan
             - tutorial_fast_forward

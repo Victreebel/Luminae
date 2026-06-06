@@ -16,7 +16,9 @@ import type {
   GamePlayerState,
   LuminaryActiveState,
   ActionRequest,
+  PendingLuminaryActivationEvent,
 } from '@workspace/api-client-react';
+import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
 import { useAccount } from '@/contexts/AccountContext';
@@ -384,6 +386,11 @@ export default function GameBoard() {
   // True once status transitions to 'finished' — prevents doEnqueue from pushing
   // new summons after the game ends (only the already-active cutscene is allowed to finish).
   const gameFinishedRef = useRef(false);
+  // ── Activation cinematic queue ─────────────────────────────────────────────
+  // Unlike summon events, activation events do NOT gate game progression.
+  // They just enqueue a ~4s full-screen cinematic and auto-dismiss.
+  const [activationQueue, setActivationQueue] = useState<PendingLuminaryActivationEvent[]>([]);
+  const handledActivationEventIdsRef = useRef(new Set<string>());
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -1372,6 +1379,8 @@ export default function GameBoard() {
       initialTurnFiredRef.current = false;
       checkedInitialSummonRef.current = false;
       handledSummonEventIdsRef.current = new Set();
+      handledActivationEventIdsRef.current = new Set();
+      setActivationQueue([]);
       pendingSuppressLumIdsRef.current = new Set();
       stateQueueRef.current = [];
       gameFinishedRef.current = false;
@@ -1949,6 +1958,20 @@ export default function GameBoard() {
                 claimedByPlayer?.playerName,
               );
             }
+          }
+        }
+      }
+
+      // Detect newly arrived pendingLuminaryActivationEvents and enqueue ~4s activation cinematics.
+      // Unlike summon events these do NOT gate game progression — no drain-queue barrier needed.
+      {
+        const prevPending = prev?.pendingLuminaryActivationEvents ?? [];
+        const newPending = newState?.pendingLuminaryActivationEvents ?? [];
+        for (const evt of newPending) {
+          const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
+          if (!alreadyKnown && !handledActivationEventIdsRef.current.has(evt.eventId)) {
+            handledActivationEventIdsRef.current.add(evt.eventId);
+            setActivationQueue(q => [...q, evt]);
           }
         }
       }
@@ -7366,6 +7389,29 @@ export default function GameBoard() {
           );
         })()}
       </AnimatePresence>
+
+      {/* Luminary activation cinematic queue — plays one ~4s cinematic per effect.
+          These are distinct from the 12-s summon cutscene and do NOT gate progression. */}
+      {!isTutorial && activationQueue.length > 0 && (() => {
+        const evt = activationQueue[0];
+        const lum = (state?.luminaries ?? []).find((l: Luminary) => l.id === evt.luminaryId);
+        const triggeringPlayer = (state?.players ?? []).find(
+          (p: GamePlayerState) => p.playerId === evt.triggeringPlayerId
+        );
+        return (
+          <LuminaryActivationCinematic
+            key={evt.eventId}
+            luminaryId={evt.luminaryId}
+            effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
+            luminaryName={lum?.name ?? evt.luminaryId}
+            triggeringPlayerName={triggeringPlayer?.playerName}
+            onComplete={() => {
+              setActivationQueue(q => q.slice(1));
+              executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+            }}
+          />
+        );
+      })()}
 
       {/* "Waiting" chip shown when the user has skipped their local view but
           the summon is still globally resolving (cutscene timer still running). */}

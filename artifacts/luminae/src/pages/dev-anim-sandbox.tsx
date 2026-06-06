@@ -7,6 +7,7 @@ import {
   getLuminaryVisuals,
   getLuminaryImageAssets,
 } from '@/lib/luminaryAssets';
+import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
 // summonColor is no longer stored here — it is derived from getLuminaryVisuals()
@@ -42,12 +43,13 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 
-type SandboxMode = 'summon' | 'idle' | 'aura';
+type SandboxMode = 'summon' | 'idle' | 'aura' | 'activation';
 
 const MODES: { id: SandboxMode; label: string }[] = [
-  { id: 'summon', label: 'Summon Flash' },
-  { id: 'idle',   label: 'Idle Portal' },
-  { id: 'aura',   label: 'Aura Layer' },
+  { id: 'summon',     label: 'Summon Flash' },
+  { id: 'activation', label: 'Activation' },
+  { id: 'idle',       label: 'Idle Portal' },
+  { id: 'aura',       label: 'Aura Layer' },
 ];
 
 // Mock card dimensions matching the game board (BOARD_CARD_W × BOARD_CARD_H approx)
@@ -327,9 +329,11 @@ function LuminaryGridCard({
 export default function DevAnimSandbox() {
   const [, setLocation] = useLocation();
 
-  // Summon mode state
+  // Summon / Activation mode state
   const [active, setActive] = useState<SandboxLuminary | null>(null);
   const [summonKey, setSummonKey] = useState(0);
+  const [activationKey, setActivationKey] = useState(0);
+  const [activationEffectType, setActivationEffectType] = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon');
 
   // Idle / Aura mode state
   const [mode, setMode] = useState<SandboxMode>('summon');
@@ -343,6 +347,9 @@ export default function DevAnimSandbox() {
     if (mode === 'summon') {
       setActive(lum);
       setSummonKey(k => k + 1);
+    } else if (mode === 'activation') {
+      setActive(lum);
+      setActivationKey(k => k + 1);
     } else {
       setSelected(lum);
       // Re-key the overlay so it mounts fresh (new return-flight animation)
@@ -355,9 +362,10 @@ export default function DevAnimSandbox() {
   }
 
   const instructions: Record<SandboxMode, string> = {
-    summon: 'Click any Luminary to preview its full summon cutscene with its correct flash tint.',
-    idle:   'Click any Luminary to preview its idle portal overlay — entity return-flight + looping aura glow.',
-    aura:   'Click any Luminary to preview its aura PNG asset on mid-tone backgrounds to check fringing.',
+    summon:     'Click any Luminary to preview its full summon cutscene with its correct flash tint.',
+    activation: 'Click any Luminary to preview the ~4 s activation cinematic (arrival / end-of-turn / start-of-turn effect).',
+    idle:       'Click any Luminary to preview its idle portal overlay — entity return-flight + looping aura glow.',
+    aura:       'Click any Luminary to preview its aura PNG asset on mid-tone backgrounds to check fringing.',
   };
 
   return (
@@ -481,6 +489,28 @@ export default function DevAnimSandbox() {
         </div>
       )}
 
+      {/* ── Activation effect-type selector (activation mode only) ─────────── */}
+      {!collapsed && mode === 'activation' && (
+        <div className="flex items-center justify-center gap-2 px-4 pb-2">
+          <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Effect type:</span>
+          {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => (
+            <button
+              key={et}
+              type="button"
+              onClick={() => setActivationEffectType(et)}
+              className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
+              style={{
+                borderColor: activationEffectType === et ? '#a78bfa' : 'rgba(255,255,255,0.12)',
+                color: activationEffectType === et ? '#a78bfa' : '#64748b',
+                background: activationEffectType === et ? 'rgba(167,139,250,0.12)' : 'transparent',
+              }}
+            >
+              {et}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Summon Cutscene (overlay) ──────────────────────────────────────── */}
       <AnimatePresence>
         {mode === 'summon' && active && (
@@ -498,6 +528,18 @@ export default function DevAnimSandbox() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── Activation Cinematic (overlay) ─────────────────────────────────── */}
+      {mode === 'activation' && active && (
+        <LuminaryActivationCinematic
+          key={activationKey}
+          luminaryId={active.id}
+          effectType={activationEffectType}
+          luminaryName={active.name}
+          triggeringPlayerName="Preview Player"
+          onComplete={() => setActive(null)}
+        />
+      )}
     </div>
   );
 }

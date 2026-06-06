@@ -610,6 +610,32 @@ export const StartGameResponse = zod.object({
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
     ),
+  pendingLuminaryActivationEvents: zod
+    .array(
+      zod
+        .object({
+          eventId: zod.string(),
+          luminaryId: zod.string(),
+          effectType: zod
+            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .describe("Which hook fired this event"),
+          triggeringPlayerId: zod
+            .string()
+            .describe("Player ID who owns the Luminary"),
+          createdAt: zod
+            .number()
+            .optional()
+            .describe(
+              "Unix ms timestamp when this event was created; optional for backward compat",
+            ),
+        })
+        .describe(
+          "An activation event queued for the short (~4s) per-effect cinematic overlay",
+        ),
+    )
+    .describe(
+      "Activation events queued for the short (~4s) per-effect cinematic overlay",
+    ),
   marketMarkers: zod
     .record(
       zod.string(),
@@ -1036,6 +1062,32 @@ export const RematchResponse = zod.object({
     )
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
+    ),
+  pendingLuminaryActivationEvents: zod
+    .array(
+      zod
+        .object({
+          eventId: zod.string(),
+          luminaryId: zod.string(),
+          effectType: zod
+            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .describe("Which hook fired this event"),
+          triggeringPlayerId: zod
+            .string()
+            .describe("Player ID who owns the Luminary"),
+          createdAt: zod
+            .number()
+            .optional()
+            .describe(
+              "Unix ms timestamp when this event was created; optional for backward compat",
+            ),
+        })
+        .describe(
+          "An activation event queued for the short (~4s) per-effect cinematic overlay",
+        ),
+    )
+    .describe(
+      "Activation events queued for the short (~4s) per-effect cinematic overlay",
     ),
   marketMarkers: zod
     .record(
@@ -1464,6 +1516,32 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
     ),
+  pendingLuminaryActivationEvents: zod
+    .array(
+      zod
+        .object({
+          eventId: zod.string(),
+          luminaryId: zod.string(),
+          effectType: zod
+            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .describe("Which hook fired this event"),
+          triggeringPlayerId: zod
+            .string()
+            .describe("Player ID who owns the Luminary"),
+          createdAt: zod
+            .number()
+            .optional()
+            .describe(
+              "Unix ms timestamp when this event was created; optional for backward compat",
+            ),
+        })
+        .describe(
+          "An activation event queued for the short (~4s) per-effect cinematic overlay",
+        ),
+    )
+    .describe(
+      "Activation events queued for the short (~4s) per-effect cinematic overlay",
+    ),
   marketMarkers: zod
     .record(
       zod.string(),
@@ -1539,6 +1617,7 @@ export const SubmitActionBody = zod.object({
     "surrender",
     "toggle_luminary_affinity",
     "resolve_summon",
+    "resolve_luminary_activation",
     "plan_action",
     "cancel_plan",
     "tutorial_fast_forward",
@@ -1953,6 +2032,32 @@ export const SubmitActionResponse = zod.object({
     )
     .describe(
       "Summon events awaiting client acknowledgement (resolve_summon action)",
+    ),
+  pendingLuminaryActivationEvents: zod
+    .array(
+      zod
+        .object({
+          eventId: zod.string(),
+          luminaryId: zod.string(),
+          effectType: zod
+            .enum(["summon", "end_of_turn", "start_of_turn"])
+            .describe("Which hook fired this event"),
+          triggeringPlayerId: zod
+            .string()
+            .describe("Player ID who owns the Luminary"),
+          createdAt: zod
+            .number()
+            .optional()
+            .describe(
+              "Unix ms timestamp when this event was created; optional for backward compat",
+            ),
+        })
+        .describe(
+          "An activation event queued for the short (~4s) per-effect cinematic overlay",
+        ),
+    )
+    .describe(
+      "Activation events queued for the short (~4s) per-effect cinematic overlay",
     ),
   marketMarkers: zod
     .record(

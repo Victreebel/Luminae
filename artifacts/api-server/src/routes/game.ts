@@ -208,6 +208,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
   // room to be actively playing.
   const isHousekeepingAction =
     actionData.type === "resolve_summon" ||
+    actionData.type === "resolve_luminary_activation" ||
     actionData.type === "toggle_luminary_affinity";
 
   if (!room || (room.status !== "playing" && !isHousekeepingAction)) {
@@ -258,6 +259,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     if (
       action.type !== "toggle_luminary_affinity" &&
       action.type !== "resolve_summon" &&
+      action.type !== "resolve_luminary_activation" &&
       action.type !== "plan_action" &&
       action.type !== "cancel_plan"
     ) {
@@ -327,6 +329,7 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     }
     if (
       action.type !== "toggle_luminary_affinity" &&
+      action.type !== "resolve_luminary_activation" &&
       action.type !== "plan_action" &&
       action.type !== "cancel_plan"
     ) {

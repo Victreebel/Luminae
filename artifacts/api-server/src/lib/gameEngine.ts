@@ -30,6 +30,20 @@ interface PendingSummonEvent {
   createdAt?: number;
 }
 
+/** Emitted each time a Luminary's mechanical effect fires (summon arrival,
+ *  end-of-turn hook, start-of-turn hook).  Clients consume it to trigger
+ *  the 4-second activation cinematic overlay, then send
+ *  resolve_luminary_activation to pop it from the queue. */
+export interface PendingLuminaryActivationEvent {
+  eventId: string;
+  luminaryId: string;
+  /** Which hook fired this event. */
+  effectType: "summon" | "end_of_turn" | "start_of_turn";
+  /** Player ID who owns the Luminary (for display / color choice). */
+  triggeringPlayerId: string;
+  createdAt?: number;
+}
+
 export type CrystalCounts = Record<CrystalColorWithFlux, number>;
 
 export type CardMarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
@@ -152,6 +166,8 @@ export interface GameStateData {
   turnDeadline: number | null;
   version: number;
   pendingSummonEvents: PendingSummonEvent[];
+  /** Activation events queued for the short (~4s) per-effect cinematic overlay. */
+  pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
   /** Card markers: Forgotten / Condemned / Nullified / Avatar Seed (v0.8+). */
   marketMarkers?: Record<string, CardMarker>;
   /** State for Seed Beyond Seasons Avatar Seeds (v0.8+). */
@@ -712,6 +728,7 @@ export function initializeGame(
     activeLuminaries,
     luminaryAffinities: [],
     pendingSummonEvents: [],
+    pendingLuminaryActivationEvents: [],
     players: playerStates,
     winnerId: null,
     winTriggerLuminaryId: null,
@@ -743,6 +760,7 @@ type ActionType =
   | "surrender"
   | "toggle_luminary_affinity"
   | "resolve_summon"
+  | "resolve_luminary_activation"
   | "plan_action"
   | "cancel_plan"
   | "tutorial_fast_forward"
@@ -915,6 +933,7 @@ function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
           summary: `Invoked the Oblivion of ${lum.name} (−${lum.oblivion} eminence to all players)`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, lumId, "summon", player.playerId);
       } else {
         const lumensBeforeSummon = player.lumens;
         player.lumens += lum.lumens;
@@ -1308,6 +1327,25 @@ function applySummonEffect_blackDomain(
  * Dispatch the on-summon effect for the given Luminary (v0.8).
  * Called from checkLuminaries immediately after the eminence award.
  */
+/** Push a Luminary activation event so all clients can play the ~4s cinematic. */
+function pushActivationEvent(
+  state: GameStateData,
+  luminaryId: string,
+  effectType: PendingLuminaryActivationEvent["effectType"],
+  triggeringPlayerId: string,
+): void {
+  if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
+    state.pendingLuminaryActivationEvents = [];
+  }
+  state.pendingLuminaryActivationEvents.push({
+    eventId: `${luminaryId}-${effectType}-v${state.version}-${Date.now()}`,
+    luminaryId,
+    effectType,
+    triggeringPlayerId,
+    createdAt: Date.now(),
+  });
+}
+
 function applySummonEffect(
   state: GameStateData,
   player: PlayerGameState,
@@ -1327,6 +1365,7 @@ function applySummonEffect(
           turn: state.roundNumber,
         });
       }
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_tide": {
@@ -1338,6 +1377,7 @@ function applySummonEffect(
         summary: `Tide Architect — The Observer Effect: deck reordered (Continuum cards promoted)`,
         turn: state.roundNumber,
       });
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_forge": {
@@ -1351,6 +1391,7 @@ function applySummonEffect(
           turn: state.roundNumber,
         });
       }
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_astral": {
@@ -1366,31 +1407,37 @@ function applySummonEffect(
           turn: state.roundNumber,
         });
       }
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_compass": {
       // The Forgotten Hour: mark all face-up market cards as Forgotten.
       applySummonEffect_forgottenHour(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_seed": {
       // Avatar Seeds: reveal and mark top 2 cards of each deck.
       applySummonEffect_avatarSeeds(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_pale": {
       // Balance Due: each player holding more than half starting supply returns 1.
       applySummonEffect_balanceDue(state, player);
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_ember": {
       // Cinder Mandate: mark face-up cards without Flare/Abyss/Radiance as Condemned.
       applySummonEffect_cinderMandate(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_null": {
       // Black Domain: mark face-up T3 without Continuum/Abyss/Radiance as Nullified.
       applySummonEffect_blackDomain(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_hunger": {
@@ -1401,6 +1448,7 @@ function applySummonEffect(
         summary: `First Hunger — Assimilation available: replace forge action this turn`,
         turn: state.roundNumber,
       });
+      pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
     case "lum_scholar": {
@@ -1426,6 +1474,7 @@ function applySummonEffect(
           summary: `Celestial Scholar — Selective Amnesia: drew ${drawn.length} card(s), added ${chosen.id} to collection`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, lumId, "summon", player.playerId);
       }
       break;
     }
@@ -1461,6 +1510,7 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
         summary: `Concordance Mandala — Perfect Coherence: 8+ Radiance Artifacts → +2 Eminence`,
         turn: state.roundNumber,
       });
+      pushActivationEvent(state, "lum_radiant", "end_of_turn", player.playerId);
     }
   }
 
@@ -1474,6 +1524,7 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
         summary: `Catalyst Bloom — Aftergrowth: +${burnEffects} Eminence (${burnEffects} burn effect(s))`,
         turn: state.roundNumber,
       });
+      pushActivationEvent(state, "lum_bloom", "end_of_turn", player.playerId);
     }
     state.catalystBloomBurnCount = 0; // Reset for next period.
   }
@@ -1496,6 +1547,7 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
         summary: `Seed Beyond Seasons — Avatar Seeds: +${pending} pending Eminence paid out`,
         turn: state.roundNumber,
       });
+      pushActivationEvent(state, "lum_seed", "end_of_turn", player.playerId);
     }
     state.avatarSeedState.payoutDone = true;
     // Remove ALL remaining Avatar Seed tokens from deck tops, market, and
@@ -1531,6 +1583,7 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
         summary: `Forgotten Hour — markers expired: ${clearedCount} Forgotten card(s) cleared`,
         turn: state.roundNumber,
       });
+      pushActivationEvent(state, "lum_compass", "end_of_turn", player.playerId);
     }
   }
 }
@@ -1578,6 +1631,7 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
           summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
           turn: state.roundNumber,
         });
+        pushActivationEvent(state, "lum_ember", "start_of_turn", player.playerId);
       }
     }
   }
@@ -1703,10 +1757,12 @@ export function applyAction(
   }
 
   // Non-turn-gated actions: toggle_luminary_affinity, resolve_summon,
-  // plan_action, cancel_plan, tutorial_fast_forward, set_civ_name may be sent at any time.
+  // resolve_luminary_activation, plan_action, cancel_plan, tutorial_fast_forward,
+  // set_civ_name may be sent at any time.
   const isTurnGated =
     action.type !== "toggle_luminary_affinity" &&
     action.type !== "resolve_summon" &&
+    action.type !== "resolve_luminary_activation" &&
     action.type !== "plan_action" &&
     action.type !== "cancel_plan" &&
     action.type !== "tutorial_fast_forward" &&
@@ -2181,12 +2237,32 @@ export function applyAction(
       return { success: true };
     }
 
+    case "resolve_luminary_activation": {
+      // Non-turn-gated: any client can acknowledge the ~4s activation cinematic.
+      // Removes the matching event from the queue and bumps version for broadcast.
+      const { eventId } = action;
+      if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
+        state.pendingLuminaryActivationEvents = [];
+      }
+      const lenBefore = state.pendingLuminaryActivationEvents.length;
+      state.pendingLuminaryActivationEvents = state.pendingLuminaryActivationEvents.filter(
+        (e) => e.eventId !== eventId,
+      );
+      if (state.pendingLuminaryActivationEvents.length === lenBefore) {
+        // Already resolved by another client — no-op.
+        return { success: true };
+      }
+      state.lastAction = { type: "resolve_luminary_activation", playerId, eventId };
+      state.version++;
+      return { success: true };
+    }
+
     case "plan_action": {
       // Non-turn-gated: any player may submit a planned action for their
       // upcoming turn.  Validate legality first via a dry-run clone.
       const inner = action.plannedActionData;
       if (!inner) return { success: false, error: "No plannedActionData provided" };
-      const disallowed: ActionType[] = ["plan_action", "cancel_plan", "resolve_summon", "surrender", "pass"];
+      const disallowed: ActionType[] = ["plan_action", "cancel_plan", "resolve_summon", "resolve_luminary_activation", "surrender", "pass"];
       if (disallowed.includes(inner.type)) {
         return { success: false, error: `Cannot plan a '${inner.type}' action` };
       }
@@ -2471,6 +2547,10 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!Array.isArray(state.pendingSummonEvents)) {
     state.pendingSummonEvents = [];
   }
+  // ensure pendingLuminaryActivationEvents array exists (added in activation cinematic feature)
+  if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
+    state.pendingLuminaryActivationEvents = [];
+  }
   // ensure winTriggerLuminaryId exists (added in win-fanfare Luminary color feature)
   if (!("winTriggerLuminaryId" in state)) {
     state.winTriggerLuminaryId = null;
@@ -2640,6 +2720,7 @@ export function formatGameState(
     turnDeadline: stateData.turnDeadline,
     version: stateData.version,
     pendingSummonEvents: stateData.pendingSummonEvents ?? [],
+    pendingLuminaryActivationEvents: stateData.pendingLuminaryActivationEvents ?? [],
     // v0.8 marker / effect state exposed to clients
     marketMarkers: stateData.marketMarkers ?? {},
     avatarSeedDeckSeeds: stateData.avatarSeedState?.deckSeeds ?? [],

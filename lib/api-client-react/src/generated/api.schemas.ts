@@ -526,6 +526,32 @@ export interface PendingSummonEvent {
   createdAt?: number;
 }
 
+/**
+ * Which hook fired this event
+ */
+export type PendingLuminaryActivationEventEffectType =
+  (typeof PendingLuminaryActivationEventEffectType)[keyof typeof PendingLuminaryActivationEventEffectType];
+
+export const PendingLuminaryActivationEventEffectType = {
+  summon: "summon",
+  end_of_turn: "end_of_turn",
+  start_of_turn: "start_of_turn",
+} as const;
+
+/**
+ * An activation event queued for the short (~4s) per-effect cinematic overlay
+ */
+export interface PendingLuminaryActivationEvent {
+  eventId: string;
+  luminaryId: string;
+  /** Which hook fired this event */
+  effectType: PendingLuminaryActivationEventEffectType;
+  /** Player ID who owns the Luminary */
+  triggeringPlayerId: string;
+  /** Unix ms timestamp when this event was created; optional for backward compat */
+  createdAt?: number;
+}
+
 export type CardMarkerType =
   (typeof CardMarkerType)[keyof typeof CardMarkerType];
 
@@ -606,6 +632,8 @@ export interface GameState {
   version: number;
   /** Summon events awaiting client acknowledgement (resolve_summon action) */
   pendingSummonEvents: PendingSummonEvent[];
+  /** Activation events queued for the short (~4s) per-effect cinematic overlay */
+  pendingLuminaryActivationEvents: PendingLuminaryActivationEvent[];
   /** Active card markers keyed by cardId (v0.8 — Forgotten/Condemned/Nullified/AvatarSeed) */
   marketMarkers?: GameStateMarketMarkers;
   /** Card IDs currently in deck with Avatar Seed markers (v0.8) */
@@ -641,6 +669,7 @@ export const ActionRequestType = {
   surrender: "surrender",
   toggle_luminary_affinity: "toggle_luminary_affinity",
   resolve_summon: "resolve_summon",
+  resolve_luminary_activation: "resolve_luminary_activation",
   plan_action: "plan_action",
   cancel_plan: "cancel_plan",
   tutorial_fast_forward: "tutorial_fast_forward",
