@@ -4201,7 +4201,7 @@ export default function GameBoard() {
                           }
                         }}
                       >
-                        <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 24, height: 24 }}>
+                        <div className="shrink-0 rounded-md overflow-hidden">
                           <LuminaryPanelArt luminaryId={lumId} width={24} height={24} claimed />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -4324,7 +4324,7 @@ export default function GameBoard() {
                     }}
                   >
                     {/* Tiny panel art */}
-                    <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
+                    <div className="shrink-0 rounded-md overflow-hidden">
                       <LuminaryPanelArt luminaryId={lum.id} width={32} height={32} claimed={!!claimedByPlayer} />
                     </div>
                     {/* Name + domain */}
@@ -7038,8 +7038,6 @@ export default function GameBoard() {
                     <div
                       className="rounded-xl overflow-hidden border-2 shrink-0 seal-glow-pulse"
                       style={{
-                        width: 80,
-                        height: 80,
                         borderColor: accentColor,
                         '--seal-glow-dim': `${accentColor}44`,
                         '--seal-glow-bright': `${accentColor}cc`,
