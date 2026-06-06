@@ -7246,11 +7246,6 @@ export default function GameBoard() {
               cardsForged={winnerCards.length}
               accolades={accolades}
               onDismiss={() => setShowCinematic(false)}
-              onViewBoard={() => {
-                setShowCinematic(false);
-                setShowWinOverlay(false);
-                requestAnimationFrame(() => returnBannerRef.current?.focus());
-              }}
             />
           );
         })()}
@@ -7569,6 +7564,18 @@ export default function GameBoard() {
                   {votePending ? 'Sending…' : hasVoted ? 'Vote cast ✓' : 'Play Again'}
                 </Button>
                 <Button size="lg" variant="outline" className="w-full" onClick={() => setLocation('/')}>Back to Home</Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={() => {
+                    setShowWinOverlay(false);
+                    setShowCinematic(false);
+                    requestAnimationFrame(() => returnBannerRef.current?.focus());
+                  }}
+                >
+                  <span className="mr-2 opacity-60">⊞</span>View Board
+                </Button>
               </motion.div>
             </motion.div>
           </motion.div>
