@@ -3275,17 +3275,6 @@ export default function GameBoard() {
             </div>
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(160,120,255,0.5), transparent)' }} />
           </div>
-          {/* Reserved-height slot for toggle hint */}
-          <span className="text-[9px] italic" style={{ visibility: (() => {
-            const tc: number = state.turnCount;
-            const lumAffinities: LuminaryActiveState[] = state.luminaryAffinities;
-            const hasTogglable = lumAffinities.some(la =>
-              la.ownerId === session?.playerId && tc > la.summonedAtTurnCount && (la.eligibleAffinities?.length ?? 0) >= 2
-            );
-            return hasTogglable ? 'visible' : 'hidden';
-          })() as React.CSSProperties['visibility'], color: 'rgba(180,150,255,0.45)' }}>
-            tap to change affinity ↻
-          </span>
         </div>
         <div data-luminary-scroll className="relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar">
           {safeLuminaries.map(l => {
