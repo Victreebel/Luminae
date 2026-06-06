@@ -31,7 +31,6 @@ export function OpponentChip({
   isLocalTurn,
   affinityTotals,
   artifactTotals,
-  effectiveTotals,
   isExpanded,
   onToggle,
 }: {
@@ -40,7 +39,6 @@ export function OpponentChip({
   isLocalTurn: boolean;
   affinityTotals?: Partial<Record<GemKey, number>>;
   artifactTotals?: Partial<Record<GemKey, number>>;
-  effectiveTotals?: Partial<Record<GemKey, number>>;
   isExpanded?: boolean;
   onToggle?: () => void;
 }) {
@@ -159,41 +157,6 @@ export function OpponentChip({
             })}
           </div>
 
-          {/* Row 3: effective production (crystals + card bonuses + active Luminary bonus) */}
-          {effectiveTotals && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {/* Lightning bolt icon — effective production */}
-              <svg
-                width={10}
-                height={10}
-                viewBox="0 0 10 10"
-                style={{ flexShrink: 0, opacity: 0.7 }}
-              >
-                <polygon points="6,1 3,5.5 5.5,5.5 4,9 7,4.5 4.5,4.5" fill="white" />
-              </svg>
-              {NON_FLUX_KEYS.map(key => {
-                const meta = GEM_META[key];
-                const val = effectiveTotals[key] ?? 0;
-                return (
-                  <span
-                    key={key}
-                    title={`${meta.name} effective production: ${val}`}
-                    style={{
-                      color: val > 0 ? meta.hex : 'rgba(255,255,255,0.15)',
-                      fontSize: 9,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      minWidth: 9,
-                      textAlign: 'center',
-                      fontVariantNumeric: 'tabular-nums',
-                    }}
-                  >
-                    {val}
-                  </span>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
     </div>
