@@ -7434,8 +7434,10 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* Luminary activation cinematic queue — plays one ~4s cinematic per effect.
-          These are distinct from the 12-s summon cutscene and do NOT gate progression. */}
-      {!isTutorial && activationQueue.length > 0 && (() => {
+          These are distinct from the 12-s summon cutscene and do NOT gate progression.
+          Gated on summonQueue.length === 0 so the arrival effect never fires while
+          the summon cutscene is still playing. */}
+      {!isTutorial && activationQueue.length > 0 && summonQueue.length === 0 && (() => {
         const evt = activationQueue[0];
         const lum = (state?.luminaries ?? []).find((l: Luminary) => l.id === evt.luminaryId);
         const triggeringPlayer = (state?.players ?? []).find(

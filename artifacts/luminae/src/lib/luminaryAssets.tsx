@@ -214,8 +214,28 @@ function EmberEntity({ size = 140, className = '' }: { size?: number; className?
 }
 
 // ── Tide Architect ────────────────────────────────────────────────────────────
-// Tidal architect: very tall crystal spire head (top 35%), column body, arc arms.
+// Illustrated entity — loads the transparent PNG from disk; falls back to the
+// procedural SVG if the asset is unavailable at build time.
 function TideEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const src = _getLuminaryImage('lum_tide', 'entity');
+  if (src) {
+    const w = size;
+    const h = Math.round(size * 1.5);
+    return (
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        className={className}
+        style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+      />
+    );
+  }
+  return <TideEntityFallback size={size} className={className} />;
+}
+
+// Procedural SVG fallback — used only when the illustrated PNG is unavailable.
+function TideEntityFallback({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
       <defs>
