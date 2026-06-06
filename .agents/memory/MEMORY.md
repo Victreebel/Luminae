@@ -2,3 +2,4 @@
 - [Card tapped ring — no outline](card-tapped-ring.md) — outline-color: transparent flashes white on mount; use inset box-shadow with rgba() instead.
 - [WS ref guard pattern](ws-ref-guard.md) — to gate a useEffect on "our action landed", check lastAction.playerId+type, not state.version (opponents also advance version)
 - [Mobile perf: framer-motion CSS migration](mobile-perf-css-migration.md) — repeat:Infinity JS loops are the primary mobile lag/crash cause; migration pattern and what remains.
+- [pendingLuminaryChoice turn suspension](pending-luminary-choice-turn.md) — interactive multi-Luminary gate requires suspending advanceTurn in tail code; choose_luminary_order must break (not return) so tail code runs advanceTurn.

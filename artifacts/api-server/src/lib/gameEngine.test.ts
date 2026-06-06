@@ -762,6 +762,310 @@ describe("normalizeState — Glass Orchard action log migration", () => {
   });
 });
 
+// ─── Simultaneous-Claim Sequencing ────────────────────────────────────────────
+
+// Helper: when a purchase triggers pendingLuminaryChoice, dispatch
+// choose_luminary_order in the given order to complete the claim sequence.
+function resolveChoice(state: GameStateData, playerId: string, orderedIds: string[]) {
+  const r = applyAction(state, playerId, { type: "choose_luminary_order", orderedIds });
+  expect(r.success, `choose_luminary_order failed: ${r.error}`).toBe(true);
+}
+
+describe("checkLuminaries — simultaneous-claim sequencing", () => {
+  it("pendingLuminaryChoice is set (not auto-claimed) when two Luminaries qualify simultaneously", () => {
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+    p.bonuses.emerald = 5;
+    p.bonuses.sapphire = 6;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+
+    const cardId = state.marketTier1[0]!;
+    const r = applyAction(state, "p1", { type: "purchase_card", cardId });
+    expect(r.success).toBe(true);
+    // Must pause for player choice — not yet claimed
+    expect(state.pendingLuminaryChoice).not.toBeNull();
+    expect(state.pendingLuminaryChoice?.candidates).toContain("lum_verdant");
+    expect(state.pendingLuminaryChoice?.candidates).toContain("lum_tide");
+    expect(p.luminaries).toHaveLength(0);
+  });
+
+  it("both Luminaries are claimed when a single forge qualifies for two simultaneously", () => {
+    // lum_verdant (emerald ×5) and lum_tide (sapphire ×6) — no shared color requirement
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+    p.bonuses.emerald = 5;
+    p.bonuses.sapphire = 6;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+
+    const cardId = state.marketTier1[0]!;
+    const r = applyAction(state, "p1", { type: "purchase_card", cardId });
+    expect(r.success).toBe(true);
+    // Player chooses order: verdant first, tide second
+    resolveChoice(state, "p1", ["lum_verdant", "lum_tide"]);
+    expect(p.luminaries).toContain("lum_verdant");
+    expect(p.luminaries).toContain("lum_tide");
+    expect(state.pendingLuminaryChoice).toBeNull();
+  });
+
+  it("both Luminaries have summon events queued in player-chosen order", () => {
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+    p.bonuses.emerald = 5;
+    p.bonuses.sapphire = 6;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+
+    const cardId = state.marketTier1[0]!;
+    applyAction(state, "p1", { type: "purchase_card", cardId });
+    // Choose tide first, verdant second — events must match the chosen order
+    resolveChoice(state, "p1", ["lum_tide", "lum_verdant"]);
+
+    const eventIds = state.pendingSummonEvents.map((e) => e.luminaryId);
+    expect(eventIds.indexOf("lum_tide")).toBeLessThan(eventIds.indexOf("lum_verdant"));
+  });
+
+  it("Eminence is awarded for both Luminaries before any effect runs", () => {
+    // Use two passive Luminaries (no market effects) to verify clean Eminence sum.
+    // lum_verdant (2 Eminence, emerald×5) and lum_tide (2 Eminence, sapphire×6)
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+    const startLumens = p.lumens;
+    p.bonuses.emerald = 5;
+    p.bonuses.sapphire = 6;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+
+    const cardId = state.marketTier1[0]!;
+    applyAction(state, "p1", { type: "purchase_card", cardId });
+    resolveChoice(state, "p1", ["lum_verdant", "lum_tide"]);
+
+    // lum_verdant = 2, lum_tide = 2 → total +4 (plus any card lumens)
+    const cardLumens = CARD_MAP.get(cardId)?.lumens ?? 0;
+    expect(p.lumens).toBe(startLumens + 2 + 2 + cardLumens);
+  });
+
+  it("winTriggerLuminaryId is set to the Luminary that crosses WIN_THRESHOLD", () => {
+    // Player needs exactly 1 more Eminence to win.  Chosen order: verdant first.
+    // lum_verdant (2L, emerald×5) fires first, crosses 15.
+    // lum_tide (2L, sapphire×6) fires second.
+    // winTriggerLuminaryId should be lum_verdant (the first to cross 15 in chosen order).
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+    p.lumens = 14; // One Eminence away from 15
+    p.bonuses.emerald = 5;
+    p.bonuses.sapphire = 6;
+    // Use a 0-lumen card to keep the lumen math deterministic
+    const zeroLumenCard = [...CARD_MAP.entries()].find(([, c]) => c.lumens === 0)?.[0]
+      ?? state.marketTier1[0]!;
+    state.marketTier1[0] = zeroLumenCard;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+
+    applyAction(state, "p1", { type: "purchase_card", cardId: zeroLumenCard });
+    resolveChoice(state, "p1", ["lum_verdant", "lum_tide"]);
+
+    expect(state.winTriggerLuminaryId).toBe("lum_verdant");
+  });
+
+  it("winTriggerLuminaryId is set to the second Luminary when the first does not cross 15", () => {
+    // Player is at 12, needs 3+ to win.
+    // Chosen order: verdant first (+2) → 14, does not cross 15.
+    // lum_tide (+2) → 16, crosses 15.
+    // winTriggerLuminaryId should be lum_tide.
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+    p.lumens = 12;
+    p.bonuses.emerald = 5;
+    p.bonuses.sapphire = 6;
+    const zeroLumenCard = [...CARD_MAP.entries()].find(([, c]) => c.lumens === 0)?.[0]
+      ?? state.marketTier1[0]!;
+    state.marketTier1[0] = zeroLumenCard;
+    state.activeLuminaries = ["lum_verdant", "lum_tide"];
+
+    applyAction(state, "p1", { type: "purchase_card", cardId: zeroLumenCard });
+    resolveChoice(state, "p1", ["lum_verdant", "lum_tide"]);
+
+    expect(state.winTriggerLuminaryId).toBe("lum_tide");
+  });
+
+  // ─── Oblivion post-pass ─────────────────────────────────────────────────────
+
+  it("lum_void Oblivion applies AFTER all other effects — opponent lumens stable during effect loop", () => {
+    // Forge triggers both lum_void (Oblivion −4) and lum_verdant (+2 passive).
+    // Player chooses: verdant first, void second.
+    // Effects fire in that order, but Oblivion is always deferred to post-pass.
+    // If Oblivion were applied mid-loop, opponent lumens would be wrong when
+    // lum_verdant's effect runs.  The post-pass ensures Oblivion is last.
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    enrichPlayer(state, 1);
+    const p1 = state.players[0];
+    const p2 = state.players[1];
+
+    p1.bonuses.emerald = 5;
+    p1.bonuses.onyx = 6;
+    state.activeLuminaries = ["lum_verdant", "lum_void"];
+
+    // Give both players some lumens so Oblivion doesn't clamp to 0.
+    p1.lumens = 5;
+    p2.lumens = 5;
+
+    const zeroLumenCard = [...CARD_MAP.entries()].find(([, c]) => c.lumens === 0)?.[0]
+      ?? state.marketTier1[0]!;
+    state.marketTier1[0] = zeroLumenCard;
+    applyAction(state, "p1", { type: "purchase_card", cardId: zeroLumenCard });
+    resolveChoice(state, "p1", ["lum_verdant", "lum_void"]);
+
+    // lum_verdant: +2 Eminence to p1 → p1 was 5, now 7
+    // lum_void: −4 Oblivion to both (post-pass) → clamped at 0 minimum
+    const expectedP1 = Math.max(0, 5 + 2 - 4);
+    const expectedP2 = Math.max(0, 5 - 4);
+    expect(p1.lumens).toBe(expectedP1);
+    expect(p2.lumens).toBe(expectedP2);
+  });
+
+  it("Oblivion clamps player lumens to 0 — cannot go negative", () => {
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p1 = state.players[0];
+    const p2 = state.players[1];
+
+    p1.bonuses.onyx = 6;
+    state.activeLuminaries = ["lum_void"];
+
+    // Both players start at 0 lumens.
+    p1.lumens = 0;
+    p2.lumens = 0;
+
+    const cardId = state.marketTier1[0]!;
+    applyAction(state, "p1", { type: "purchase_card", cardId });
+
+    expect(p1.lumens).toBeGreaterThanOrEqual(0);
+    expect(p2.lumens).toBeGreaterThanOrEqual(0);
+  });
+
+  // ─── Cascade re-entry ───────────────────────────────────────────────────────
+
+  it("cascade re-entry: a summon effect that grants a crystal bonus can claim a second Luminary", () => {
+    // lum_scholar's Selective Amnesia draws a card from the deck and adds it to
+    // the player's collection, granting its bonusColor as a permanent bonus.
+    // Setup: lum_scholar fires at depth 0, draws an emerald card → player bonus
+    // reaches emerald×5 → depth-1 cascade detects lum_verdant eligibility → claims it.
+    //
+    // Deck-slot accounting: purchasing marketTier1[0] causes drawIntoMarket to
+    // shift deckTier1[0] into the market slot.  lum_scholar's Selective Amnesia
+    // then draws from deckTier1 starting at the new [0] (originally [1]).
+    // So the emerald card must be placed at deckTier1[1] to survive the market refill.
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+
+    // lum_scholar requires sapphire×4 + pearl×4.
+    p.bonuses.sapphire = 4;
+    p.bonuses.pearl = 4;
+    // Player needs emerald×4 now; after lum_scholar draws an emerald card → 5 → qualifies lum_verdant.
+    p.bonuses.emerald = 4;
+
+    // Find an emerald-bonus Tier 1 card.
+    const emeraldCard = [...CARD_MAP.values()].find(
+      (c) => c.tier === 1 && c.bonusColor === "emerald",
+    )!;
+
+    // Remove the emerald card from wherever it is (market or deck) to rebuild the deck cleanly.
+    state.marketTier1 = state.marketTier1.filter((id) => id !== emeraldCard.id);
+    state.deckTier1 = state.deckTier1.filter((id) => id !== emeraldCard.id);
+
+    // Place the emerald card at deckTier1[1].
+    // deckTier1[0] will be consumed by the market refill after the triggering purchase.
+    // After refill, emeraldCard is at deckTier1[0] — the slot lum_scholar draws.
+    const filler = state.deckTier1.shift()!; // take first card as the refill donor
+    state.deckTier1 = [filler, emeraldCard.id, ...state.deckTier1];
+
+    // Refill market to 4 if needed (we removed emeraldCard from market above).
+    while (state.marketTier1.length < 4 && state.deckTier1.length > 0) {
+      state.marketTier1.push(state.deckTier1.shift()!);
+    }
+    // After this, deckTier1[0] = filler (will be consumed by market refill),
+    // deckTier1[1] = emeraldCard.id (drawn by lum_scholar).
+
+    state.activeLuminaries = ["lum_scholar", "lum_verdant"];
+
+    // Use a non-emerald trigger card so the purchased card itself doesn't push
+    // emerald to ≥5 — we need lum_verdant to qualify only AFTER lum_scholar's
+    // Selective Amnesia draws the emerald card (depth-1 cascade path, not depth-0).
+    const nonEmeraldCardId = state.marketTier1.find((id) => {
+      const c = CARD_MAP.get(id);
+      return c && c.bonusColor !== "emerald";
+    }) ?? state.marketTier1[0]!;
+    // Ensure it's the first slot (for the market-refill accounting above).
+    state.marketTier1 = [
+      nonEmeraldCardId,
+      ...state.marketTier1.filter((id) => id !== nonEmeraldCardId),
+    ];
+
+    const r = applyAction(state, "p1", { type: "purchase_card", cardId: nonEmeraldCardId });
+    expect(r.success).toBe(true);
+    // No pending choice — single candidate at depth-0, cascade at depth-1.
+    expect(state.pendingLuminaryChoice).toBeNull();
+
+    // After depth-0: lum_scholar claimed → Selective Amnesia draws emeraldCard → emerald bonus +1 (now 5)
+    // After depth-1 cascade: lum_verdant now qualifies → should be claimed
+    expect(p.luminaries).toContain("lum_scholar");
+    expect(p.luminaries).toContain("lum_verdant");
+  });
+
+  // ─── plannedAction double-execution guard ───────────────────────────────────
+
+  it("plannedAction is NOT re-executed after deferred action creates new summon events", () => {
+    // Setup: player has a plannedAction.  A pending summon event is outstanding.
+    // When the event resolves, the plannedAction executes once.  If that execution
+    // triggers another Luminary claim (new pendingSummonEvent), the plannedAction
+    // must NOT execute again when the new event resolves.
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    const p = state.players[0];
+
+    // Give p enough bonuses to claim lum_verdant after buying one emerald card.
+    p.bonuses.emerald = 4; // one more emerald card will push to 5 → qualifies
+    state.activeLuminaries = ["lum_verdant"];
+
+    // Inject a fake pre-existing pending summon event (from a hypothetical earlier claim).
+    state.pendingSummonEvents = [{
+      eventId: "fake-event-v1",
+      luminaryId: "lum_tide",
+      claimedByPlayerId: "p1",
+      createdAt: Date.now(),
+    }];
+
+    // Store a planned purchase_card action.
+    const targetCard = state.marketTier1[0]!;
+    p.plannedAction = { type: "purchase_card", cardId: targetCard };
+
+    // Resolve the fake event → plannedAction fires → buys targetCard → claims lum_verdant → new event pushed.
+    const r = applyAction(state, "p1", { type: "resolve_summon", eventId: "fake-event-v1" });
+    expect(r.success).toBe(true);
+
+    // plannedAction should have been cleared (already executed or voided).
+    expect(p.plannedAction).toBeNull();
+
+    // If lum_verdant was claimed, there's now a new pending event.
+    // Simulate the client resolving that new event.
+    if (state.pendingSummonEvents.length > 0) {
+      const newEventId = state.pendingSummonEvents[0].eventId;
+      // Count purchases before.
+      const purchasedBefore = [...p.purchasedCardIds];
+      applyAction(state, "p1", { type: "resolve_summon", eventId: newEventId });
+      // The planned action (purchase_card) should NOT have fired again.
+      expect(p.purchasedCardIds.length).toBe(purchasedBefore.length);
+      // plannedAction still null.
+      expect(p.plannedAction).toBeNull();
+    }
+  });
+});
+
 // ─── LUMINARIES catalogue ─────────────────────────────────────────────────────
 
 describe("LUMINARIES catalogue", () => {
@@ -794,7 +1098,8 @@ describe("LUMINARIES catalogue", () => {
   });
 
   it("new v0.8/v0.9 Luminaries are in the active pool", () => {
-    const newIds = ["lum_moth", "lum_seed", "lum_orchard", "lum_hunger", "lum_scholar"];
+    // lum_scholar is v0.9 but explicitly deferred (not in ILLUSTRATED_IDS) — excluded here.
+    const newIds = ["lum_moth", "lum_seed", "lum_orchard", "lum_hunger"];
     // Run 200 full initializations (always, not short-circuit) and verify each
     // new ID appears at least once. With 16 active luminaries and 3 per game,
     // the probability of not seeing any specific ID in 200 games is vanishingly small.

@@ -180,6 +180,16 @@ export interface GameStateData {
   glassOrchardTriggered?: boolean;
   /** PlayerId if First Hunger Assimilation is available this turn (cleared on use or turn end, v0.8+). */
   firstHungerAvailable?: string | null;
+  /**
+   * Set when a player simultaneously qualifies for multiple Luminaries at depth-0 of
+   * checkLuminaries.  The player must choose claim order before any other turn action
+   * is permitted.  Cleared immediately once choose_luminary_order resolves.
+   */
+  pendingLuminaryChoice?: {
+    playerId: string;
+    candidates: string[];
+    createdAt: number;
+  } | null;
 }
 
 const ACTION_LOG_MAX = 100;
@@ -764,7 +774,8 @@ type ActionType =
   | "plan_action"
   | "cancel_plan"
   | "tutorial_fast_forward"
-  | "set_civ_name";
+  | "set_civ_name"
+  | "choose_luminary_order";
 
 export interface ActionPayload {
   type: ActionType;
@@ -778,6 +789,8 @@ export interface ActionPayload {
   eventId?: string;
   plannedActionData?: ActionPayload;
   civName?: string;
+  /** Ordered list of luminaryIds for choose_luminary_order action. */
+  orderedIds?: string[];
 }
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
@@ -901,79 +914,205 @@ function payForCard(
 
 // ─── Luminary Check ───────────────────────────────────────────────────────────
 
-function checkLuminaries(state: GameStateData, player: PlayerGameState): void {
+/**
+ * ── Simultaneous-Claim Sequencing Contract ──────────────────────────────────
+ *
+ * When a single game action qualifies a player for multiple Luminaries at once,
+ * the following canonical order is enforced to eliminate all ambiguities around
+ * mid-batch mutations, win attribution, and Oblivion ordering:
+ *
+ *  (1) COLLECT   — Scan activeLuminaries and gather all newly qualifying IDs
+ *                  into `toSummon[]`.  No state mutations occur in this phase.
+ *
+ *  (2) COMMIT    — For each ID in `toSummon` (declaration order):
+ *                    • Register the claim (player.luminaries, luminaryAffinities).
+ *                    • Award Eminence and push the summon event to
+ *                      pendingSummonEvents.  Oblivion Luminaries are queued for
+ *                      the post-effects pass instead of applying immediately.
+ *                    • Set winTriggerLuminaryId if this claim crosses WIN_THRESHOLD
+ *                      (evaluated at commit time, before any effects run), so
+ *                      attribution is always to the claim that actually crossed 15.
+ *
+ *  (3) EFFECTS   — Call applySummonEffect for each non-Oblivion Luminary in
+ *                  `toSummon` order.  Every effect fires against the same
+ *                  fully-committed Eminence state, but effects that mutate the
+ *                  market (burns, scries) see the market as left by any preceding
+ *                  effect in the same batch — this is intentional and canonical.
+ *
+ *  (4) OBLIVION  — Apply lum_void Oblivion (and any future Oblivion Luminaries)
+ *                  in a dedicated post-effects pass so opponent lumen totals are
+ *                  stable during the effects loop.  Clamps to 0 (lumens cannot
+ *                  go negative).
+ *
+ *  (5) CASCADE   — Re-enter checkLuminaries once at cascadeDepth=1 to catch any
+ *                  new claims unlocked by summon effects (e.g. a bonus crystal
+ *                  that pushes a player over a threshold).  A depth-1 pass does
+ *                  NOT recurse further.  If a depth-1 pass detects new eligible
+ *                  claims, a warning is logged (deeper cascades are unsupported).
+ *
+ * pendingSummonEvents is ordered to match the (2)+(5) claim sequence so the
+ * frontend cutscene always plays in the same order as the server-side effects.
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+/**
+ * applyLuminaryBatch — phases 2-5 of the simultaneous-claim sequencing contract.
+ *
+ * Runs the COMMIT → EFFECTS → OBLIVION → CASCADE phases in the exact order
+ * specified by `orderedIds`.  Called from:
+ *   • checkLuminaries (single-candidate fast path, and cascade depth-1 auto-apply)
+ *   • choose_luminary_order action handler (player-chosen order)
+ *
+ * cascadeDepth=0 triggers a depth-1 re-entry; cascadeDepth=1 stops recursion.
+ */
+function applyLuminaryBatch(
+  state: GameStateData,
+  player: PlayerGameState,
+  orderedIds: string[],
+  cascadeDepth: number,
+): void {
+  // Ensure the events array exists before the COMMIT phase appends to it.
+  if (!Array.isArray(state.pendingSummonEvents)) {
+    state.pendingSummonEvents = [];
+  }
+
+  // ── (2) COMMIT ─────────────────────────────────────────────────────────────
+  // All Eminence grants and win-trigger attribution happen here, atomically,
+  // before any applySummonEffect call mutates the market or bank.
+  const oblivionLumIds: string[] = [];
+  for (const lumId of orderedIds) {
+    const lum = LUMINARY_MAP.get(lumId)!;
+
+    // Register the claim.
+    player.luminaries.push(lumId);
+    const eligible = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
+    const defaultAffinity = defaultActiveAffinity(lum, eligible);
+    state.luminaryAffinities.push({
+      luminaryId: lumId,
+      ownerId: player.playerId,
+      activeAffinity: defaultAffinity,
+      eligibleAffinities: eligible,
+      summonedAtTurnCount: state.turnCount,
+    });
+
+    if (lum.oblivion) {
+      // Queue Oblivion for the post-effects pass — log now, apply later, so
+      // opponent lumen totals are stable while the main effect loop runs.
+      oblivionLumIds.push(lumId);
+      pushLog(state, {
+        playerId: player.playerId,
+        playerName: player.playerName,
+        summary: `Invoked the Oblivion of ${lum.name} (−${lum.oblivion} eminence to all players)`,
+        turn: state.roundNumber,
+      });
+      pushActivationEvent(state, lumId, "summon", player.playerId);
+    } else {
+      // Award Eminence and set winTriggerLuminaryId at commit time — before
+      // any effect runs — so attribution is always to the claim that actually
+      // crossed WIN_THRESHOLD.
+      const lumensBeforeSummon = player.lumens;
+      player.lumens += lum.lumens;
+      if (
+        state.phase === "playing" &&
+        lumensBeforeSummon < WIN_THRESHOLD &&
+        player.lumens >= WIN_THRESHOLD
+      ) {
+        state.winTriggerLuminaryId = lumId;
+      }
+      pushLog(state, {
+        playerId: player.playerId,
+        playerName: player.playerName,
+        summary: `Drew the favor of ${lum.name} (+${lum.lumens} eminence)`,
+        turn: state.roundNumber,
+      });
+    }
+
+    // Push summon event in orderedIds order so the frontend cutscene sequence
+    // matches the server-side effect sequence.  eventId uses the current
+    // version (before the post-action increment) to produce a stable unique
+    // key.  The idempotency guard prevents double-push if somehow called twice.
+    const eventId = `${lumId}-v${state.version}`;
+    if (!state.pendingSummonEvents.some((e) => e.eventId === eventId)) {
+      state.pendingSummonEvents.push({
+        eventId,
+        luminaryId: lumId,
+        claimedByPlayerId: player.playerId,
+        createdAt: Date.now(),
+      });
+    }
+  }
+
+  // ── (3) EFFECTS ────────────────────────────────────────────────────────────
+  // Run applySummonEffect for each non-Oblivion Luminary in orderedIds order.
+  // Effects see the fully-committed Eminence totals from phase (2).
+  // Because the player chose this order, each successive effect already benefits
+  // from all earlier Luminaries' passive bonuses being active.
+  for (const lumId of orderedIds) {
+    if (oblivionLumIds.includes(lumId)) continue;
+    applySummonEffect(state, player, lumId, state.turnCount);
+  }
+
+  // ── (4) OBLIVION POST-PASS ─────────────────────────────────────────────────
+  // Apply Oblivion after all other effects so opponent lumen totals are stable
+  // during the main effect loop.  Clamp to 0 — lumens cannot go negative.
+  for (const lumId of oblivionLumIds) {
+    const lum = LUMINARY_MAP.get(lumId)!;
+    for (const p of state.players) {
+      p.lumens = Math.max(0, p.lumens - lum.oblivion!);
+    }
+  }
+
+  // ── (5) CASCADE RE-ENTRY ───────────────────────────────────────────────────
+  // One re-entry pass at depth 1 to catch claims unlocked by summon effects.
+  // Depth-1 passes do not recurse further to prevent infinite loops.
+  if (cascadeDepth === 0) {
+    checkLuminaries(state, player, 1);
+  }
+  // Depth-1: no further cascade.  If multiple new candidates exist, they are
+  // auto-applied in scan order (no interactive choice at depth-1 — this path
+  // is rare and the extra UX step is not worth the complexity).
+}
+
+function checkLuminaries(
+  state: GameStateData,
+  player: PlayerGameState,
+  cascadeDepth = 0,
+): void {
+  // ── (1) COLLECT ────────────────────────────────────────────────────────────
+  // Compute bonuses once for the entire collection scan.
   const liveBonuses = effectiveBonuses(state, player);
-  for (const lumId of [...state.activeLuminaries]) {
+  const toSummon: string[] = [];
+  for (const lumId of state.activeLuminaries) {
     if (player.luminaries.includes(lumId)) continue;
+    if (isLuminaryAlreadyClaimed(state, lumId)) continue;
     const lum = LUMINARY_MAP.get(lumId);
     if (!lum) continue;
     const qualifies = CRYSTAL_COLORS.every(
       (c) => liveBonuses[c] >= lum.requirements[c],
     );
-    if (qualifies) {
-      if (isLuminaryAlreadyClaimed(state, lumId)) continue;
-      player.luminaries.push(lumId);
-      const eligible = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
-      const defaultAffinity = defaultActiveAffinity(lum, eligible);
-      state.luminaryAffinities.push({
-        luminaryId: lumId,
-        ownerId: player.playerId,
-        activeAffinity: defaultAffinity,
-        eligibleAffinities: eligible,
-        summonedAtTurnCount: state.turnCount,
-      });
-      if (lum.oblivion) {
-        // Oblivion — penalise every player, including the one who triggered the claim.
-        for (const p of state.players) {
-          p.lumens -= lum.oblivion;
-        }
-        pushLog(state, {
-          playerId: player.playerId,
-          playerName: player.playerName,
-          summary: `Invoked the Oblivion of ${lum.name} (−${lum.oblivion} eminence to all players)`,
-          turn: state.roundNumber,
-        });
-        pushActivationEvent(state, lumId, "summon", player.playerId);
-      } else {
-        const lumensBeforeSummon = player.lumens;
-        player.lumens += lum.lumens;
-        // Record the win trigger only when this specific Luminary summon is
-        // the action that crosses the threshold (player was below it before
-        // the lumens were added, and is at or above it after). This avoids
-        // falsely marking wins that were already secured by prior card forges.
-        if (
-          state.phase === "playing" &&
-          lumensBeforeSummon < WIN_THRESHOLD &&
-          player.lumens >= WIN_THRESHOLD
-        ) {
-          state.winTriggerLuminaryId = lumId;
-        }
-        pushLog(state, {
-          playerId: player.playerId,
-          playerName: player.playerName,
-          summary: `Drew the favor of ${lum.name} (+${lum.lumens} eminence)`,
-          turn: state.roundNumber,
-        });
-      }
-      // Queue a summon event so all clients can play the cutscene.
-      // eventId uses the current version (before the post-action increment) to
-      // produce a stable unique key. Idempotency guard prevents double-push.
-      if (!Array.isArray(state.pendingSummonEvents)) {
-        state.pendingSummonEvents = [];
-      }
-      const eventId = `${lumId}-v${state.version}`;
-      if (!state.pendingSummonEvents.some((e) => e.eventId === eventId)) {
-        state.pendingSummonEvents.push({
-          eventId,
-          luminaryId: lumId,
-          claimedByPlayerId: player.playerId,
-          createdAt: Date.now(),
-        });
-      }
-      // Apply the v0.8 on-summon mechanical effect for this Luminary.
-      applySummonEffect(state, player, lumId, state.turnCount);
-    }
+    if (qualifies) toSummon.push(lumId);
   }
+
+  if (toSummon.length === 0) return;
+
+  // ── INTERACTIVE GATE (depth-0 only) ────────────────────────────────────────
+  // When multiple Luminaries qualify simultaneously and it's the first pass,
+  // pause and ask the player to choose the claim order.  The order matters
+  // because each Luminary's passive effect activates immediately after claim,
+  // so the second claim benefits from the first's bonus.
+  //
+  // The choose_luminary_order action handler clears pendingLuminaryChoice and
+  // calls applyLuminaryBatch in the player-specified order.
+  if (toSummon.length > 1 && cascadeDepth === 0) {
+    state.pendingLuminaryChoice = {
+      playerId: player.playerId,
+      candidates: toSummon,
+      createdAt: Date.now(),
+    };
+    return;
+  }
+
+  // Single candidate, or depth-1 cascade auto-apply: proceed directly.
+  applyLuminaryBatch(state, player, toSummon, cascadeDepth);
 }
 
 function isLuminaryAlreadyClaimed(state: GameStateData, luminaryId: string): boolean {
@@ -1756,9 +1895,46 @@ export function applyAction(
     );
   }
 
+  // Auto-expire stale pendingLuminaryChoice.  If the client never responds,
+  // auto-apply candidates in eligibility-scan order after 120 s.
+  if (state.pendingLuminaryChoice) {
+    const CHOICE_TTL_MS = 120_000;
+    if (Date.now() - state.pendingLuminaryChoice.createdAt > CHOICE_TTL_MS) {
+      const expired = state.pendingLuminaryChoice;
+      state.pendingLuminaryChoice = null;
+      const expiredPlayerIdx = state.players.findIndex(
+        (p) => p.playerId === expired.playerId,
+      );
+      if (expiredPlayerIdx !== -1) {
+        applyLuminaryBatch(
+          state,
+          state.players[expiredPlayerIdx],
+          expired.candidates,
+          0,
+        );
+      }
+    }
+  }
+
+  // pendingLuminaryChoice gate — while a multi-Luminary claim is waiting for
+  // the player's ordering decision, ALL other turn-gated actions for the
+  // current player are blocked.  Only choose_luminary_order resolves this.
+  if (
+    state.pendingLuminaryChoice &&
+    state.pendingLuminaryChoice.playerId === playerId &&
+    action.type !== "choose_luminary_order"
+  ) {
+    return {
+      success: false,
+      error: "Choose your Luminary claim order before taking another action",
+    };
+  }
+
   // Non-turn-gated actions: toggle_luminary_affinity, resolve_summon,
   // resolve_luminary_activation, plan_action, cancel_plan, tutorial_fast_forward,
-  // set_civ_name may be sent at any time.
+  // set_civ_name, choose_luminary_order may be sent at any time
+  // (choose_luminary_order is always for the current player, so turn-gating
+  // is enforced inside the handler).
   const isTurnGated =
     action.type !== "toggle_luminary_affinity" &&
     action.type !== "resolve_summon" &&
@@ -1766,7 +1942,8 @@ export function applyAction(
     action.type !== "plan_action" &&
     action.type !== "cancel_plan" &&
     action.type !== "tutorial_fast_forward" &&
-    action.type !== "set_civ_name";
+    action.type !== "set_civ_name" &&
+    action.type !== "choose_luminary_order";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx)
     return { success: false, error: "Not your turn" };
 
@@ -2208,15 +2385,33 @@ export function applyAction(
       // the global cutscene is fully resolved, attempt to execute it.  Uses the
       // same _isAutoExec=true guard to prevent recursion; any new summon triggered
       // inside would re-enter pendingSummonEvents and gate again correctly.
+      //
+      // ── Double-execution guard ───────────────────────────────────────────────
+      // We clear plannedAction to null BEFORE calling applyAction.  If the
+      // deferred action triggers new Luminary claims (new pendingSummonEvents),
+      // those events will resolve via the normal cutscene flow.  When the last
+      // of those new events resolves and this block runs again, plannedAction is
+      // already null — so the action is NOT re-executed.  This is the canonical
+      // guard against double-execution: the action fires exactly once (here),
+      // and the cleared plannedAction prevents any subsequent resolve_summon
+      // handler invocation from re-firing it.
       if (state.pendingSummonEvents.length === 0) {
         const currentPlayer = state.players[state.currentPlayerIndex];
         const deferred = currentPlayer?.plannedAction ?? null;
         if (deferred) {
+          // Clear before executing — this is the double-execution guard.
           currentPlayer.plannedAction = null;
+          const eventsLenBefore = state.pendingSummonEvents.length;
           const autoResult = applyAction(state, currentPlayer.playerId, deferred, true);
+          // If the deferred action created new summon events, they will resolve
+          // via the cutscene flow.  plannedAction is already null, so this
+          // handler will NOT re-execute the action when those events resolve.
+          const newEventsCreated = state.pendingSummonEvents.length > eventsLenBefore;
           if (!autoResult.success) {
             const cancelReason =
               autoResult.error ?? "Planned move is no longer legal.";
+            // Do not re-store plannedAction on failure — the action was invalid
+            // regardless of new events.
             currentPlayer.plannedActionCancelReason = cancelReason;
             pushLog(state, {
               playerId: currentPlayer.playerId,
@@ -2230,6 +2425,12 @@ export function applyAction(
               reason: cancelReason,
             };
             state.version++;
+          } else if (newEventsCreated) {
+            // Deferred action succeeded and pushed new summon events.  Those
+            // events will be resolved by clients; no further action needed here.
+            // (newEventsCreated is informational — the guard above already ensures
+            // the action cannot fire again when those events resolve.)
+            void newEventsCreated;
           }
         }
       }
@@ -2255,6 +2456,41 @@ export function applyAction(
       state.lastAction = { type: "resolve_luminary_activation", playerId, eventId };
       state.version++;
       return { success: true };
+    }
+
+    case "choose_luminary_order": {
+      // Turn-gated action sent by the current player to resolve a pending
+      // simultaneous multi-Luminary claim.  orderedIds must be a permutation
+      // of pendingLuminaryChoice.candidates.
+      if (!state.pendingLuminaryChoice) {
+        return { success: false, error: "No pending Luminary choice" };
+      }
+      if (state.pendingLuminaryChoice.playerId !== playerId) {
+        return { success: false, error: "This choice belongs to another player" };
+      }
+      if (state.currentPlayerIndex !== playerIdx) {
+        return { success: false, error: "Not your turn" };
+      }
+      const { orderedIds } = action;
+      if (!orderedIds || !Array.isArray(orderedIds)) {
+        return { success: false, error: "orderedIds required" };
+      }
+      const candidates = state.pendingLuminaryChoice.candidates;
+      if (orderedIds.length !== candidates.length) {
+        return { success: false, error: "orderedIds must list all candidates exactly once" };
+      }
+      for (const id of orderedIds) {
+        if (!candidates.includes(id)) {
+          return { success: false, error: `Unknown candidate: ${id}` };
+        }
+      }
+      // Clear the gate before applying so any re-entry from cascade does not
+      // see a stale pendingLuminaryChoice.
+      state.pendingLuminaryChoice = null;
+      applyLuminaryBatch(state, player, orderedIds, 0);
+      // Fall through to the tail code — it will stamp lastAction, bump version,
+      // and call advanceTurn (since pendingLuminaryChoice is now null).
+      break;
     }
 
     case "plan_action": {
@@ -2388,8 +2624,11 @@ export function applyAction(
   });
   state.version++;
   
-  // Only advance turn if game hasn't ended (e.g., from surrender)
-  if (state.phase !== "finished") {
+  // Only advance turn if game hasn't ended and no interactive Luminary choice is
+  // waiting.  When pendingLuminaryChoice is set the turn suspends: the player
+  // must dispatch choose_luminary_order first, which then falls through here
+  // with pendingLuminaryChoice already cleared and advanceTurn runs normally.
+  if (state.phase !== "finished" && !state.pendingLuminaryChoice) {
     advanceTurn(state);
   }
 
@@ -2401,7 +2640,10 @@ export function applyAction(
   // the board underneath the cinematic.  Instead, leave the plan stored and defer
   // execution to the resolve_summon handler, which fires once the last client
   // finishes the cutscene.  See the "resolve_summon" case for the deferred path.
-  if (!_isAutoExec && state.phase !== "finished") {
+  //
+  // Similarly, if a pendingLuminaryChoice is set, defer auto-exec: the plan
+  // belongs to the next player who hasn't been determined yet.
+  if (!_isAutoExec && state.phase !== "finished" && !state.pendingLuminaryChoice) {
     const hasPendingSummons = (state.pendingSummonEvents ?? []).length > 0;
     if (!hasPendingSummons) {
       const nextPlayer = state.players[state.currentPlayerIndex];
@@ -2550,6 +2792,10 @@ export function normalizeState(raw: unknown): GameStateData {
   // ensure pendingLuminaryActivationEvents array exists (added in activation cinematic feature)
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
+  }
+  // ensure pendingLuminaryChoice exists (added in interactive claim-order feature)
+  if (!("pendingLuminaryChoice" in state)) {
+    state.pendingLuminaryChoice = null;
   }
   // ensure winTriggerLuminaryId exists (added in win-fanfare Luminary color feature)
   if (!("winTriggerLuminaryId" in state)) {

@@ -690,6 +690,16 @@ export const StartGameResponse = zod.object({
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
     ),
+  pendingLuminaryChoice: zod
+    .object({
+      playerId: zod.string(),
+      candidates: zod.array(zod.string()),
+      createdAt: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when the current player must choose the order to claim multiple simultaneous Luminaries",
+    ),
 });
 
 /**
@@ -1142,6 +1152,16 @@ export const RematchResponse = zod.object({
     .optional()
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
+  pendingLuminaryChoice: zod
+    .object({
+      playerId: zod.string(),
+      candidates: zod.array(zod.string()),
+      createdAt: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when the current player must choose the order to claim multiple simultaneous Luminaries",
     ),
 });
 
@@ -1596,6 +1616,16 @@ export const GetGameStateResponse = zod.object({
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
     ),
+  pendingLuminaryChoice: zod
+    .object({
+      playerId: zod.string(),
+      candidates: zod.array(zod.string()),
+      createdAt: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when the current player must choose the order to claim multiple simultaneous Luminaries",
+    ),
 });
 
 /**
@@ -1622,6 +1652,7 @@ export const SubmitActionBody = zod.object({
     "cancel_plan",
     "tutorial_fast_forward",
     "set_civ_name",
+    "choose_luminary_order",
   ]),
   crystals: zod
     .object({
@@ -1671,6 +1702,10 @@ export const SubmitActionBody = zod.object({
     .string()
     .optional()
     .describe("New civilization name for set_civ_name action"),
+  orderedIds: zod
+    .array(zod.string())
+    .optional()
+    .describe("Ordered list of luminaryIds for choose_luminary_order action"),
 });
 
 export const SubmitActionResponse = zod.object({
@@ -2112,6 +2147,16 @@ export const SubmitActionResponse = zod.object({
     .optional()
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
+  pendingLuminaryChoice: zod
+    .object({
+      playerId: zod.string(),
+      candidates: zod.array(zod.string()),
+      createdAt: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when the current player must choose the order to claim multiple simultaneous Luminaries",
     ),
 });
 

@@ -6,6 +6,7 @@ import {
   normalizeState,
   parseAiDifficulty,
   CRYSTAL_COLORS,
+  LUMINARY_MAP,
 } from "./gameEngine";
 import { chooseAiAction } from "./aiPlayer";
 import { getConnectedPlayerIds, sendToPlayer, filterStateForPlayer } from "./websocket";
@@ -124,6 +125,51 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         if (!dbPlayer || !dbPlayer.isAi) return { kind: "stop" as const };
 
         const difficulty = parseAiDifficulty(dbPlayer.aiDifficulty ?? "medium");
+
+        // Handle pending multi-Luminary choice: AI picks highest-eminence first,
+        // falling back to eligibility-scan order for ties.
+        if (
+          state.pendingLuminaryChoice &&
+          state.pendingLuminaryChoice.playerId === currentPlayerId
+        ) {
+          const candidates = [...state.pendingLuminaryChoice.candidates];
+          candidates.sort((a, b) => {
+            const la = LUMINARY_MAP.get(a);
+            const lb = LUMINARY_MAP.get(b);
+            const aVal = la ? (la.lumens ?? 0) : 0;
+            const bVal = lb ? (lb.lumens ?? 0) : 0;
+            return bVal - aVal;
+          });
+          const action = { type: "choose_luminary_order" as const, orderedIds: candidates };
+          const expectedVersion = state.version;
+          const result = applyAction(state, currentPlayerId, action);
+          if (!result.success) {
+            logger.warn(
+              { roomId, playerId: currentPlayerId, error: result.error },
+              "AI choose_luminary_order failed",
+            );
+            return { kind: "stop" as const };
+          }
+          updateTurnDeadline(state);
+          const isFinished = (state.phase as string) === "finished";
+          if (isFinished) {
+            await db.update(roomsTable).set({ status: "finished", updatedAt: new Date() }).where(eq(roomsTable.id, roomId));
+          }
+          const updated = await db
+            .update(gameStatesTable)
+            .set({ state: state as unknown as Record<string, unknown>, version: state.version, updatedAt: new Date() })
+            .where(
+              and(eq(gameStatesTable.roomId, roomId), eq(gameStatesTable.version, expectedVersion))
+            );
+          if (updated.rowCount === 0) return { kind: "stop" as const };
+          const connectedIds = getConnectedPlayerIds(roomId);
+          for (const pid of connectedIds) {
+            const filtered = filterStateForPlayer(state, pid);
+            sendToPlayer(roomId, pid, { type: "state_update", state: filtered });
+          }
+          return { kind: "continue" as const, delay: AI_TURN_DELAY_MS };
+        }
+
         const action = chooseAiAction(state, currentPlayerId, difficulty);
 
         const expectedVersion = state.version;

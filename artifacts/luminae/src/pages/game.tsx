@@ -65,6 +65,7 @@ import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
+import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
 import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
@@ -1246,7 +1247,16 @@ export default function GameBoard() {
   summonQueueLenRef.current = summonQueue.length;
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
-  const isMyTurn = isActivePlayer && !summonGateActive;
+
+  // pendingLuminaryChoice: set when the current player must order a simultaneous
+  // multi-Luminary claim before taking any other action.
+  const pendingLuminaryChoice = state?.pendingLuminaryChoice ?? null;
+  const luminaryChoiceIsOurs = !!pendingLuminaryChoice && pendingLuminaryChoice.playerId === session?.playerId;
+  const luminaryChoiceActive = !!pendingLuminaryChoice;
+
+  // isMyTurn is false while we're waiting to choose luminary order — the picker
+  // overlay is the only interactive surface during that phase.
+  const isMyTurn = isActivePlayer && !summonGateActive && !luminaryChoiceIsOurs;
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
@@ -6960,6 +6970,29 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
+
+      {/* ── Luminary Claim Order Picker ── */}
+      {/* Shown whenever a player qualifies for multiple Luminaries simultaneously.
+          Darkens the board and prompts the current player to choose order.
+          For other players, shows a waiting banner. */}
+      <AnimatePresence>
+        {luminaryChoiceActive && !!pendingLuminaryChoice && state.status === 'playing' && (() => {
+          const allLums = state.luminaries as Luminary[];
+          const candidateLums = allLums.filter(l => pendingLuminaryChoice.candidates.includes(l.id));
+          const choosingPlayer = (state.players as GamePlayerState[])
+            .find(p => p.playerId === pendingLuminaryChoice.playerId);
+          return (
+            <LuminaryOrderPicker
+              key="luminary-order-picker"
+              candidates={candidateLums}
+              isMyChoice={luminaryChoiceIsOurs}
+              choosingPlayerName={choosingPlayer?.playerName ?? 'Another player'}
+              roomId={roomId!}
+              sessionToken={session.sessionToken}
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ── Victory Cinematic ── */}
       <AnimatePresence>

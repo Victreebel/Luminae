@@ -596,6 +596,15 @@ export type GameStateLastAction = { [key: string]: unknown } | null;
  */
 export type GameStateMarketMarkers = { [key: string]: CardMarker };
 
+/**
+ * Set when the current player must choose the order to claim multiple simultaneous Luminaries
+ */
+export type GameStatePendingLuminaryChoice = {
+  playerId: string;
+  candidates: string[];
+  createdAt: number;
+} | null;
+
 export interface GameState {
   roomId: string;
   status: GameStateStatus;
@@ -654,6 +663,8 @@ export interface GameState {
   concordanceMandalaTriggered?: boolean;
   /** True once The Glass Orchard Perfect Replication has fired (v0.8) */
   glassOrchardTriggered?: boolean;
+  /** Set when the current player must choose the order to claim multiple simultaneous Luminaries */
+  pendingLuminaryChoice?: GameStatePendingLuminaryChoice;
 }
 
 export type ActionRequestType =
@@ -674,6 +685,7 @@ export const ActionRequestType = {
   cancel_plan: "cancel_plan",
   tutorial_fast_forward: "tutorial_fast_forward",
   set_civ_name: "set_civ_name",
+  choose_luminary_order: "choose_luminary_order",
 } as const;
 
 export type ActionRequestCrystal =
@@ -737,6 +749,8 @@ export interface ActionRequest {
   plannedActionData?: ActionRequestPlannedActionData;
   /** New civilization name for set_civ_name action */
   civName?: string;
+  /** Ordered list of luminaryIds for choose_luminary_order action */
+  orderedIds?: string[];
 }
 
 export type GetGameStateParams = {
