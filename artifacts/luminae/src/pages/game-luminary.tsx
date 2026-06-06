@@ -177,7 +177,6 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   const handleClick = () => {
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     if (canToggle) { fireToggle(); return; }
-    onOpenSheet?.();
   };
 
   // Desktop hover: show next-affinity preview while cursor is over the portal
@@ -699,9 +698,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
     if (idleTimerRef.current !== null) { window.clearTimeout(idleTimerRef.current); idleTimerRef.current = null; }
   };
   const handleIdleClick = () => {
-    if (isHidden || isClaimed || !onOpenSheet) return;
     if (idleSuppressClickRef.current) { idleSuppressClickRef.current = false; return; }
-    onOpenSheet();
   };
 
   return (
