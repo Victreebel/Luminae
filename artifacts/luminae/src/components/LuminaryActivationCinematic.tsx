@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { getLuminaryVisuals } from '@/lib/luminaryAssets';
+import { getLuminaryVisuals, getLuminaryImageAssets } from '@/lib/luminaryAssets';
 import { gameAudio } from '@/lib/audio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type Phase = 'zoom_out' | 'reveal' | 'hold' | 'pan_out' | 'done';
 
 interface LuminaryActivationCinematicProps {
   luminaryId: string;
@@ -14,47 +16,25 @@ interface LuminaryActivationCinematicProps {
   onComplete: () => void;
 }
 
-// ─── Timing constants ─────────────────────────────────────────────────────────
+// ─── Timing ───────────────────────────────────────────────────────────────────
 
-const SCRIM_IN_MS   = 400;
-const ENTITY_IN_MS  = 600;
-const HOLD_MS       = 2600;
-const SCRIM_OUT_MS  = 700;
-const TOTAL_MS      = SCRIM_IN_MS + HOLD_MS + SCRIM_OUT_MS; // ≈ 3700 ms
-const PARTICLE_FIRE_MS = 1000;
+const ZOOM_OUT_MS = 720;   // board scales down, dim fades in
+const REVEAL_MS   = 680;   // entity fades + scales in from above
+const HOLD_MS     = 1900;  // linger at full opacity
+const PAN_OUT_MS  = 980;   // entity drifts + fades, board restores
 
-// ─── Effect-type display ─────────────────────────────────────────────────────
+const TOTAL_MS = ZOOM_OUT_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS; // 4280 ms
+
+// CSS scale applied to [data-game-board] during the cinematic
+const BOARD_SCALE = 0.50;
+
+// ─── Effect-type labels ───────────────────────────────────────────────────────
 
 const EFFECT_TYPE_LABELS: Record<string, string> = {
   summon:        'ARRIVAL EFFECT',
   end_of_turn:   'END OF TURN EFFECT',
   start_of_turn: 'START OF TURN EFFECT',
 };
-
-// ─── Particle helpers ─────────────────────────────────────────────────────────
-
-interface Particle {
-  id: number;
-  angle: number;
-  radius: number;
-  size: number;
-  delay: number;
-  duration: number;
-}
-
-function useParticles(count = 24): Particle[] {
-  return useMemo(() => {
-    const golden = 137.508;
-    return Array.from({ length: count }, (_, i) => ({
-      id: i,
-      angle: i * golden,
-      radius: 90 + (i % 5) * 30,
-      size: 3 + (i % 4),
-      delay: (i / count) * 1.0,
-      duration: 0.9 + (i % 3) * 0.2,
-    }));
-  }, [count]);
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -68,184 +48,215 @@ export function LuminaryActivationCinematic({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
+  const [phase, setPhase] = useState<Phase>('zoom_out');
+
   const vis = getLuminaryVisuals(luminaryId);
-  const particles = useParticles(24);
+  const { primaryColor, EntityArt } = vis;
+  const { entityCutout, panelArt } = getLuminaryImageAssets(luminaryId);
+
+  // Best available image: transparent entity cutout > panel art > EntityArt component
+  const imageUrl = entityCutout ?? panelArt;
+
   const label = EFFECT_TYPE_LABELS[effectType] ?? 'EFFECT';
 
-  const primaryColor   = vis?.primaryColor  ?? '#7c3aed';
-  const secondaryColor = vis?.secondaryColor ?? '#4f46e5';
-  const EntityArt      = vis?.EntityArt;
-
+  // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
     gameAudio.playActivationSting(effectType, primaryColor);
-    const t = setTimeout(() => onCompleteRef.current(), TOTAL_MS);
-    return () => clearTimeout(t);
+
+    const t1 = setTimeout(() => setPhase('reveal'),   ZOOM_OUT_MS);
+    const t2 = setTimeout(() => setPhase('hold'),     ZOOM_OUT_MS + REVEAL_MS);
+    const t3 = setTimeout(() => setPhase('pan_out'),  ZOOM_OUT_MS + REVEAL_MS + HOLD_MS);
+    const t4 = setTimeout(() => {
+      setPhase('done');
+      onCompleteRef.current();
+    }, TOTAL_MS);
+
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fadeOutDelay = (SCRIM_IN_MS + HOLD_MS) / 1000;
+  // ── Board DOM zoom-out ────────────────────────────────────────────────────
+  // Applies a CSS scale transform to [data-game-board] so the full board
+  // shrinks into view (matching the summon cutscene's pan approach).
+  useEffect(() => {
+    const board = document.querySelector('[data-game-board]') as HTMLElement | null;
+    if (!board) return;
+
+    if (phase === 'zoom_out') {
+      // Snap scroll to top so the overview is visible as we pull back
+      board.scrollTop = 0;
+      board.style.transition      = `transform ${ZOOM_OUT_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+      board.style.transformOrigin = '50% 50%';
+      board.style.transform       = `scale(${BOARD_SCALE})`;
+    } else if (phase === 'reveal' || phase === 'hold') {
+      // Hold at zoomed-out; remove transition so it doesn't drift
+      board.style.transition = '';
+      board.style.transform  = `scale(${BOARD_SCALE})`;
+    } else if (phase === 'pan_out' || phase === 'done') {
+      // Restore board as entity fades out
+      board.style.transition      = `transform ${PAN_OUT_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+      board.style.transformOrigin = '50% 50%';
+      board.style.transform       = '';
+    }
+
+    return () => {
+      board.style.transform       = '';
+      board.style.transition      = '';
+      board.style.transformOrigin = '';
+    };
+  }, [phase]);
+
+  // ── Derived state ─────────────────────────────────────────────────────────
+  const showEntity = phase === 'reveal' || phase === 'hold' || phase === 'pan_out';
+  const showText   = phase === 'reveal' || phase === 'hold';
+  const isPanOut   = phase === 'pan_out';
+
+  // Overlay dims board; cleared during pan_out so board is visible on restore
+  const overlayOpacity =
+    phase === 'zoom_out' ? 0.60 :
+    phase === 'reveal'   ? 0.72 :
+    phase === 'hold'     ? 0.75 :
+    0;
+
+  if (phase === 'done') return null;
 
   const content = (
-    <motion.div
-      key="activation-scrim"
-      className="fixed inset-0 flex flex-col items-center justify-center"
-      style={{
-        zIndex: 9000,
-        background: `radial-gradient(ellipse at center, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.96) 100%)`,
-        pointerEvents: 'none',
-      }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { duration: SCRIM_IN_MS / 1000, ease: 'easeOut' as const } }}
-      exit={{ opacity: 0, transition: { duration: SCRIM_OUT_MS / 1000, ease: 'easeIn' as const, delay: fadeOutDelay } }}
+    <div
+      className="fixed inset-0"
+      style={{ zIndex: 8900, pointerEvents: 'none' }}
     >
-      {/* ── Glow rings ── */}
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width:  240 + i * 90,
-            height: 240 + i * 90,
-            border: `1.5px solid ${primaryColor}`,
-            opacity: 0,
-          }}
-          animate={{
-            opacity: [0, 0.35, 0],
-            scale:   [0.7, 1.25, 1.6],
-          }}
-          transition={{
-            duration:    2.2,
-            delay:       SCRIM_IN_MS / 1000 + i * 0.28,
-            ease:        'easeOut' as const,
-            repeat:      Infinity,
-            repeatDelay: 0.8,
-          }}
-        />
-      ))}
-
-      {/* ── Entity art ── */}
+      {/* ── Dark board dim ─────────────────────────────────────────────────── */}
       <motion.div
-        className="relative flex items-center justify-center"
-        style={{ width: 280, height: 280 }}
-        initial={{ opacity: 0, scale: 0.72, y: 24 }}
-        animate={{
-          opacity: 1, scale: 1, y: 0,
-          transition: {
-            duration: ENTITY_IN_MS / 1000,
-            delay: SCRIM_IN_MS / 1000,
-            ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
-          },
+        className="absolute inset-0"
+        animate={{ opacity: overlayOpacity }}
+        transition={{
+          duration: isPanOut ? PAN_OUT_MS / 1000 * 0.65 : ZOOM_OUT_MS / 1000,
+          ease: 'easeInOut',
         }}
-        exit={{
-          opacity: 0, scale: 0.88, y: -16,
-          transition: { duration: 0.45, ease: 'easeIn' as const, delay: fadeOutDelay - 0.2 },
-        }}
-      >
-        {/* Glow backdrop */}
-        <div
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background: `radial-gradient(circle, ${primaryColor}30 0%, transparent 72%)`,
-            filter: 'blur(24px)',
-          }}
-        />
+        style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
+      />
 
-        {EntityArt ? (
-          <EntityArt size={260} />
-        ) : (
-          <div
-            className="rounded-full"
-            style={{
-              width: 220, height: 220,
-              background: `radial-gradient(circle, ${primaryColor}60, ${secondaryColor}30)`,
-              boxShadow: `0 0 60px ${primaryColor}80`,
-            }}
-          />
-        )}
-
-        {/* Particles — fire at PARTICLE_FIRE_MS */}
-        {particles.map((p) => {
-          const rad = (p.angle * Math.PI) / 180;
-          const tx = Math.cos(rad) * p.radius;
-          const ty = Math.sin(rad) * p.radius;
-          return (
-            <motion.div
-              key={p.id}
-              className="absolute rounded-full pointer-events-none"
+      {/* ── Luminary — large, covers the board ─────────────────────────────── */}
+      <AnimatePresence>
+        {showEntity && (
+          <motion.div
+            key="entity"
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ pointerEvents: 'none' }}
+            initial={{ opacity: 0, scale: 1.22, y: '-3vh' }}
+            animate={isPanOut
+              ? {
+                  opacity: 0,
+                  scale: 0.78,
+                  y: '6vh',
+                  transition: { duration: PAN_OUT_MS / 1000, ease: [0.4, 0, 1, 1] as [number,number,number,number] },
+                }
+              : {
+                  opacity: 1,
+                  scale: 1.0,
+                  y: 0,
+                  transition: { duration: REVEAL_MS / 1000, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] },
+                }
+            }
+          >
+            {/* Colored glow bloom behind the entity */}
+            <div
               style={{
-                width: p.size,
-                height: p.size,
-                background: primaryColor,
-                left: '50%',
-                top: '50%',
-                marginLeft: -p.size / 2,
-                marginTop: -p.size / 2,
-                boxShadow: `0 0 ${p.size * 2}px ${primaryColor}`,
-              }}
-              initial={{ opacity: 0, x: 0, y: 0, scale: 1 }}
-              animate={{
-                opacity: [0, 0.9, 0],
-                x: [0, tx],
-                y: [0, ty],
-                scale: [1, 0.4],
-              }}
-              transition={{
-                duration: p.duration,
-                delay:    PARTICLE_FIRE_MS / 1000 + p.delay,
-                ease:     'easeOut' as const,
+                position: 'absolute',
+                inset: '-20%',
+                background: `radial-gradient(ellipse at center, ${primaryColor}25 0%, transparent 60%)`,
+                filter: 'blur(60px)',
+                pointerEvents: 'none',
               }}
             />
-          );
-        })}
-      </motion.div>
 
-      {/* ── Text block ── */}
-      <motion.div
-        className="flex flex-col items-center gap-2 mt-4"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{
-          opacity: 1, y: 0,
-          transition: { duration: 0.5, delay: (SCRIM_IN_MS + 200) / 1000, ease: 'easeOut' as const },
-        }}
-        exit={{
-          opacity: 0,
-          transition: { duration: 0.3, delay: fadeOutDelay - 0.35 },
-        }}
-      >
-        {/* Effect type badge */}
-        <div
-          className="px-3 py-0.5 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase"
-          style={{
-            background: `${primaryColor}22`,
-            border: `1px solid ${primaryColor}55`,
-            color: primaryColor,
-          }}
-        >
-          {label}
-        </div>
-
-        {/* Luminary name */}
-        <div
-          className="text-2xl font-bold tracking-wide text-center"
-          style={{
-            color: '#ffffff',
-            textShadow: `0 0 24px ${primaryColor}cc, 0 2px 8px rgba(0,0,0,0.8)`,
-            maxWidth: 320,
-          }}
-        >
-          {luminaryName}
-        </div>
-
-        {/* Triggering player name */}
-        {triggeringPlayerName && (
-          <div
-            className="text-xs tracking-wider"
-            style={{ color: `${primaryColor}cc` }}
-          >
-            {triggeringPlayerName}
-          </div>
+            {imageUrl ? (
+              // Real illustrated asset — entity cutout or panel art
+              <img
+                src={imageUrl}
+                alt=""
+                draggable={false}
+                style={{
+                  height: '92vh',
+                  width: 'auto',
+                  maxWidth: '92vw',
+                  objectFit: 'contain',
+                  display: 'block',
+                  position: 'relative',
+                  zIndex: 1,
+                  filter: `drop-shadow(0 0 52px ${primaryColor}72) drop-shadow(0 0 100px ${primaryColor}38)`,
+                }}
+              />
+            ) : (
+              // Fallback: procedural EntityArt rendered large
+              <div
+                style={{
+                  width: '72vmin',
+                  height: '72vmin',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  zIndex: 1,
+                  filter: `drop-shadow(0 0 52px ${primaryColor}88)`,
+                }}
+              >
+                <EntityArt
+                  size={Math.round(Math.min(
+                    typeof window !== 'undefined' ? window.innerWidth  : 400,
+                    typeof window !== 'undefined' ? window.innerHeight : 667,
+                  ) * 0.68)}
+                />
+              </div>
+            )}
+          </motion.div>
         )}
-      </motion.div>
-    </motion.div>
+      </AnimatePresence>
+
+      {/* ── Effect label + luminary name ───────────────────────────────────── */}
+      <AnimatePresence>
+        {showText && (
+          <motion.div
+            key="text"
+            className="absolute bottom-14 inset-x-0 flex flex-col items-center gap-2 px-4"
+            style={{ pointerEvents: 'none', zIndex: 1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.45, delay: 0.28, ease: 'easeOut' as const } }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
+          >
+            <div
+              className="px-3 py-0.5 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase"
+              style={{
+                background: `${primaryColor}22`,
+                border: `1px solid ${primaryColor}55`,
+                color: primaryColor,
+              }}
+            >
+              {label}
+            </div>
+
+            <div
+              className="text-2xl font-bold tracking-wide text-center"
+              style={{
+                color: '#ffffff',
+                textShadow: `0 0 24px ${primaryColor}cc, 0 2px 8px rgba(0,0,0,0.8)`,
+                maxWidth: 320,
+              }}
+            >
+              {luminaryName}
+            </div>
+
+            {triggeringPlayerName && (
+              <div
+                className="text-xs tracking-wider"
+                style={{ color: `${primaryColor}cc` }}
+              >
+                {triggeringPlayerName}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 
   return createPortal(content, document.body);
