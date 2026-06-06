@@ -474,6 +474,8 @@ export default function GameBoard() {
   const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
   const [summonOverlays, setSummonOverlays] = useState<Array<{ id: string; lumId: string }>>([]);
+  // Luminary currently undergoing a summon-flash animation (zoom + flash effect)
+  const [flashLumId, setFlashLumId] = useState<string | null>(null);
   const prevStateForAnimRef = useRef<typeof state>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -3378,6 +3380,7 @@ export default function GameBoard() {
                 isMyTurn={isMyTurn}
                 onOpenSheet={() => setSelectedLuminary(l)}
                 isArmed={armedLumIds.has(l.id)}
+                isFlashing={flashLumId === l.id}
               />
             );
           })}
@@ -7371,6 +7374,11 @@ export default function GameBoard() {
                   resolveSummon();
                 }}
                 onComplete={resolveSummon}
+                onFlash={() => {
+                  setFlashLumId(entry.id);
+                  // Auto-clear after the flash animation finishes (~0.5 s)
+                  setTimeout(() => setFlashLumId(prev => prev === entry.id ? null : prev), 500);
+                }}
               />
             </div>
           );

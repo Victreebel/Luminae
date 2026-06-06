@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import { LuminaryPanelArt } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { CRYSTALS } from './game-constants';
 import { MiniGem, EminenceDiamond } from './game-card';
 import { PlayerAvatar } from './game-player';
@@ -547,6 +547,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
   costMode, playerBonuses, isMyTurn, onOpenSheet, isArmed = false,
+  isFlashing = false,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -562,6 +563,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   isMyTurn?: boolean;
   onOpenSheet?: () => void;
   isArmed?: boolean;
+  isFlashing?: boolean;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -585,8 +587,18 @@ export const LuminaryCard = React.memo(function LuminaryCard({
     })
   );
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isFlashing && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }
+  }, [isFlashing]);
+
+  const summonColor = getLuminaryVisuals(luminary.id).summonColor;
+
   return (
     <motion.div
+      ref={cardRef}
       whileHover={hoverAnim}
       whileTap={!isHidden ? { scale: 0.97 } : {}}
       data-luminary-id={luminary.id}
@@ -714,6 +726,22 @@ export const LuminaryCard = React.memo(function LuminaryCard({
           </div>
         </>
       )}
+
+      {/* Flash overlay — triggered when Luminary activates its on-summon effect */}
+      <AnimatePresence>
+        {isFlashing && (
+          <motion.div
+            className="absolute inset-0 z-30 pointer-events-none"
+            style={{
+              background: `radial-gradient(ellipse at center, ${summonColor}cc 0%, ${summonColor}66 40%, transparent 75%)`,
+            }}
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1.05 }}
+            exit={{ opacity: 0, scale: 1.15 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 });
