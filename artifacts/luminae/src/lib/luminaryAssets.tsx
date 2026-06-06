@@ -1050,19 +1050,26 @@ export const AURA_STYLE_DESCRIPTIONS: Record<AuraStyle, string> = {
 
 export function LuminaryPanelArt({
   luminaryId,
-  size = 96,
+  width,
+  height,
   claimed = false,
 }: {
   luminaryId: string;
-  size?: number;
+  /** Explicit pixel width applied to the component's own root div. Required so callers
+   *  can never accidentally produce a 0×0 invisible tile by forgetting to size the parent. */
+  width: number;
+  /** Explicit pixel height applied to the component's own root div. Required for the same
+   *  reason as `width`. */
+  height: number;
   claimed?: boolean;
 }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { primaryColor, secondaryColor, glowColor, EntityArt } = vis;
   const { panelArt } = getLuminaryImageAssets(luminaryId);
+  const entitySize = Math.min(width, height);
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative overflow-hidden" style={{ width, height }}>
 
       {panelArt ? (
         // ── Real illustrated panel art ──────────────────────────────────────
@@ -1086,7 +1093,7 @@ export function LuminaryPanelArt({
             className="absolute inset-0 flex items-center justify-center"
             style={{ filter: `drop-shadow(0 0 8px ${glowColor}) drop-shadow(0 0 3px ${primaryColor}88)` }}
           >
-            <EntityArt size={size * 0.88} />
+            <EntityArt size={entitySize * 0.88} />
           </div>
         </>
       )}
@@ -1718,7 +1725,7 @@ export function LuminarySummonCutscene({
               }}
             >
               {/* Identical interior to LuminaryCard — same component, same props */}
-              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
+              <LuminaryPanelArt luminaryId={luminaryId} width={BOARD_CARD_W} height={BOARD_CARD_H} />
               {/* Same dark gradient the board card overlays for text legibility */}
               <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-black/90 pointer-events-none" />
 
@@ -2217,7 +2224,7 @@ export function LuminarySummonCutscene({
                 draggable={false}
               />
             ) : (
-              <LuminaryPanelArt luminaryId={luminaryId} size={BOARD_CARD_W} />
+              <LuminaryPanelArt luminaryId={luminaryId} width={BOARD_CARD_W} height={BOARD_CARD_H} />
             )}
             {/* Affinity-colour transmutation — the vessel material is consumed by the
                 Luminary's energy. Ramps to full opacity (solid affinity colour) before

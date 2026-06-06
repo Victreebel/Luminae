@@ -719,7 +719,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         <>
           {/* Background art layer — procedural entity portrait fills the card */}
           <div className="absolute inset-0 pointer-events-none">
-            <LuminaryPanelArt luminaryId={luminary.id} size={112} claimed={false} />
+            <LuminaryPanelArt luminaryId={luminary.id} width={112} height={160} claimed={false} />
           </div>
 
           {/* Same dark gradient as artifact cards */}

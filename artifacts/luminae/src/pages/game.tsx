@@ -4202,7 +4202,7 @@ export default function GameBoard() {
                         }}
                       >
                         <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 24, height: 24 }}>
-                          <LuminaryPanelArt luminaryId={lumId} size={24} claimed />
+                          <LuminaryPanelArt luminaryId={lumId} width={24} height={24} claimed />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] font-semibold text-white leading-tight truncate">{lum.name}</p>
@@ -4325,7 +4325,7 @@ export default function GameBoard() {
                   >
                     {/* Tiny panel art */}
                     <div className="shrink-0 rounded-md overflow-hidden" style={{ width: 32, height: 32 }}>
-                      <LuminaryPanelArt luminaryId={lum.id} size={32} claimed={!!claimedByPlayer} />
+                      <LuminaryPanelArt luminaryId={lum.id} width={32} height={32} claimed={!!claimedByPlayer} />
                     </div>
                     {/* Name + domain */}
                     <div className="flex-1 min-w-0">
@@ -5789,7 +5789,7 @@ export default function GameBoard() {
                   {/* Panel art column */}
                   <div className="flex flex-col items-center gap-2 sm:shrink-0">
                     <div style={{ width: 'var(--card-w)', height: 'var(--card-h)' }} className="rounded-xl overflow-hidden shadow-xl">
-                      <LuminaryPanelArt luminaryId={selectedLuminary.id} size={112} claimed={false} />
+                      <LuminaryPanelArt luminaryId={selectedLuminary.id} width={112} height={160} claimed={false} />
                     </div>
                     <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/40">{selectedLuminary.domain ?? 'Luminary'}</span>
                     {/* Live aura animation preview — click to expand full-screen */}
@@ -7045,7 +7045,7 @@ export default function GameBoard() {
                         '--seal-glow-bright': `${accentColor}cc`,
                       } as React.CSSProperties}
                     >
-                      <LuminaryPanelArt luminaryId={lumId} size={80} claimed={false} />
+                      <LuminaryPanelArt luminaryId={lumId} width={80} height={80} claimed={false} />
                     </div>
                     <motion.p
                       initial={{ opacity: 0 }}

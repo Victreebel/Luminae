@@ -2927,7 +2927,7 @@ function TutorialLuminarySection({ beatIndex }: { beatIndex: number }) {
         {verdantRevealed ? (
           <div className="relative shrink-0">
             <div style={{ width: 112, height: 160, overflow: "hidden", borderRadius: 12 }}>
-              <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} size={160} />
+              <LuminaryPanelArt luminaryId={VERDANCE_LUMINARY_ID} width={112} height={160} />
             </div>
             <div className="absolute inset-0 rounded-xl pointer-events-none"
               style={{ background: "linear-gradient(to top, rgba(0,0,0,0.72) 40%, transparent 100%)" }}>
