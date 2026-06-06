@@ -152,6 +152,43 @@ function useScrollLock(
 }
 
 
+function ReturnResultsBanner({
+  bannerRef,
+  onReturn,
+}: {
+  bannerRef: React.RefObject<HTMLButtonElement | null>;
+  onReturn: () => void;
+}) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onReturn();
+      }
+    };
+    document.addEventListener('keydown', handler, true);
+    return () => document.removeEventListener('keydown', handler, true);
+  }, [onReturn]);
+
+  return (
+    <motion.button
+      ref={bannerRef}
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25 }}
+      onClick={onReturn}
+      role="button"
+      aria-label="Return to results"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold text-foreground/80 border border-white/15 bg-black/70 backdrop-blur-sm hover:bg-black/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 shadow-lg"
+    >
+      <span>←</span>
+      Results
+    </motion.button>
+  );
+}
+
 export default function GameBoard() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
@@ -375,6 +412,8 @@ export default function GameBoard() {
   // The win overlay and win audio are held back until the summon queue drains.
   const [pendingGameOver, setPendingGameOver] = useState(false);
   const [showCinematic, setShowCinematic] = useState(true);
+  const [showWinOverlay, setShowWinOverlay] = useState(true);
+  const returnBannerRef = useRef<HTMLButtonElement | null>(null);
   // summonColor of the Luminary that sealed the game (set when pendingGameOver goes
   // true). Read by the flush effect to play the affinity fanfare before playWin().
   const pendingGameOverLumColorRef = useRef<string>('');
@@ -1272,7 +1311,7 @@ export default function GameBoard() {
   // Only active after the victory cinematic has been dismissed.
   useFocusTrap(
     winOverlayContainerRef,
-    state?.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic,
+    state?.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && showWinOverlay,
     () => { /* terminal state — no dismiss action */ },
   );
 
@@ -7207,14 +7246,31 @@ export default function GameBoard() {
               cardsForged={winnerCards.length}
               accolades={accolades}
               onDismiss={() => setShowCinematic(false)}
+              onViewBoard={() => {
+                setShowCinematic(false);
+                setShowWinOverlay(false);
+                requestAnimationFrame(() => returnBannerRef.current?.focus());
+              }}
             />
           );
         })()}
       </AnimatePresence>
 
+      {/* ── Return-to-Results banner (shown when board is visible after game over) ── */}
+      {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && !showWinOverlay && (() => {
+        const onReturnToResults = () => setShowWinOverlay(true);
+        return (
+          <ReturnResultsBanner
+            key="return-banner"
+            bannerRef={returnBannerRef}
+            onReturn={onReturnToResults}
+          />
+        );
+      })()}
+
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && (
+        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && showWinOverlay && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
