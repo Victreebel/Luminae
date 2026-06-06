@@ -481,7 +481,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
         )}
       </div>
 
-      {/* Hold-to-info progress ring — centered over the luminary vortex at 50%/42% */}
+      {/* Hold-to-info progress ring — anchored over the vortex singularity at 50%/42% */}
       <AnimatePresence>
         {isHolding && onOpenSheet && (
           <motion.div
@@ -495,35 +495,43 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
               background: `radial-gradient(ellipse 72% 62% at 50% 42%, rgba(3,3,8,0.52) 0%, rgba(3,3,8,0.18) 65%, transparent 100%)`,
             }}
           >
-            <svg
-              width={78} height={78}
-              style={{
-                position: 'absolute',
-                left: '50%', top: '42%',
-                transform: 'translate(-50%, -50%)',
-                overflow: 'visible',
-                filter: `drop-shadow(0 0 6px ${g2}) drop-shadow(0 0 14px ${g1}88)`,
-              }}
-              aria-hidden="true"
-            >
-              {/* Track: faint outer halo ring */}
-              <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.1} strokeWidth={5} />
-              {/* Track: thin guide ring */}
-              <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.22} strokeWidth={1.5} />
-              {/* Animated fill arc — pathLength 0→1 over 700 ms */}
-              <motion.circle
-                cx={39} cy={39} r={34}
-                fill="none"
-                stroke={g1}
-                strokeOpacity={0.92}
-                strokeWidth={3}
-                strokeLinecap="round"
-                transform="rotate(-90 39 39)"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.7, ease: 'linear' }}
-              />
-            </svg>
+            <div style={{
+              position: 'absolute',
+              left: '50%', top: '42%',
+              transform: 'translate(-50%, -50%)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+            }}>
+              <svg
+                width={78} height={78}
+                style={{
+                  overflow: 'visible',
+                  filter: `drop-shadow(0 0 6px ${g2}) drop-shadow(0 0 14px ${g1}88)`,
+                }}
+                aria-hidden="true"
+              >
+                <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.1} strokeWidth={5} />
+                <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.22} strokeWidth={1.5} />
+                <motion.circle
+                  cx={39} cy={39} r={34}
+                  fill="none"
+                  stroke={g1}
+                  strokeOpacity={0.92}
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  transform="rotate(-90 39 39)"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.7, ease: 'linear' }}
+                />
+              </svg>
+              <span style={{
+                fontSize: 7, fontWeight: 700, letterSpacing: '0.14em',
+                textTransform: 'uppercase', color: `${g1}cc`,
+                textShadow: `0 0 10px ${g2}`,
+              }}>
+                loading...
+              </span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -846,32 +854,43 @@ export const LuminaryCard = React.memo(function LuminaryCard({
                 background: `radial-gradient(ellipse 72% 62% at 50% 42%, rgba(3,3,8,0.52) 0%, rgba(3,3,8,0.18) 65%, transparent 100%)`,
               }}
             >
-              <svg
-                width={78} height={78}
-                style={{
-                  position: 'absolute',
-                  left: '50%', top: '42%',
-                  transform: 'translate(-50%, -50%)',
-                  overflow: 'visible',
-                  filter: `drop-shadow(0 0 6px ${glowHex}) drop-shadow(0 0 14px ${glowHex}88)`,
-                }}
-                aria-hidden="true"
-              >
-                <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.1} strokeWidth={5} />
-                <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.22} strokeWidth={1.5} />
-                <motion.circle
-                  cx={39} cy={39} r={34}
-                  fill="none"
-                  stroke={glowHex}
-                  strokeOpacity={0.92}
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                  transform="rotate(-90 39 39)"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.7, ease: 'linear' }}
-                />
-              </svg>
+              <div style={{
+                position: 'absolute',
+                left: '50%', top: '42%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+              }}>
+                <svg
+                  width={78} height={78}
+                  style={{
+                    overflow: 'visible',
+                    filter: `drop-shadow(0 0 6px ${glowHex}) drop-shadow(0 0 14px ${glowHex}88)`,
+                  }}
+                  aria-hidden="true"
+                >
+                  <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.1} strokeWidth={5} />
+                  <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.22} strokeWidth={1.5} />
+                  <motion.circle
+                    cx={39} cy={39} r={34}
+                    fill="none"
+                    stroke={glowHex}
+                    strokeOpacity={0.92}
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    transform="rotate(-90 39 39)"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.7, ease: 'linear' }}
+                  />
+                </svg>
+                <span style={{
+                  fontSize: 7, fontWeight: 700, letterSpacing: '0.14em',
+                  textTransform: 'uppercase', color: `${glowHex}cc`,
+                  textShadow: `0 0 10px ${glowHex}`,
+                }}>
+                  loading...
+                </span>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
