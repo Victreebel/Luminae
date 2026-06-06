@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { getLuminaryVisuals } from '@/lib/luminaryAssets';
+import { gameAudio } from '@/lib/audio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,9 +77,10 @@ export function LuminaryActivationCinematic({
   const EntityArt      = vis?.EntityArt;
 
   useEffect(() => {
+    gameAudio.playActivationSting(effectType, primaryColor);
     const t = setTimeout(() => onCompleteRef.current(), TOTAL_MS);
     return () => clearTimeout(t);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fadeOutDelay = (SCRIM_IN_MS + HOLD_MS) / 1000;
 

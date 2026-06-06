@@ -415,6 +415,86 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /**
+   * Short activation sting for the LuminaryActivationCinematic overlay (~1–1.5 s).
+   * Three distinct tonal characters, one per effect type:
+   *
+   *   summon       — crystalline arrival burst: sub-bass impact + bright ascending
+   *                  4-note arpeggio + high shimmer tail.  Signals something has
+   *                  materialized.
+   *
+   *   end_of_turn  — outward energy release: mid-range thud + broad sweep expanding
+   *                  outward + warm resolving fifth chord.  Signals energy discharging.
+   *
+   *   start_of_turn — soft awakening bloom: gentle rising sweep + warm pad chord +
+   *                   bell overtone.  Signals an entity rousing for its turn.
+   *
+   * `primaryColor` is the Luminary's hex color; it is mapped to a GEM_FREQ root so
+   * each affinity has a distinct pitch center.  Falls back to neutral 523 Hz (C5)
+   * when the color is not in the map.
+   */
+  playActivationSting(
+    effectType: 'summon' | 'end_of_turn' | 'start_of_turn',
+    primaryColor?: string,
+  ) {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      // Resolve a pitch root from the Luminary's primary color (best-effort).
+      const gem: GemKey = primaryColor
+        ? (FANFARE_COLOR_MAP[primaryColor.toLowerCase()] ?? 'sapphire')
+        : 'sapphire';
+      const base = GEM_FREQS[gem];
+
+      if (effectType === 'summon') {
+        // ── Arrival burst ───────────────────────────────────────────────────
+        // Sub-bass bloom — grounding impact on appearance
+        this.osc(ctx, base * 0.25, 'sine', t,        t + 1.10, 0.14, 0.006);
+        this.osc(ctx, base * 0.5,  'sine', t,        t + 0.80, 0.09, 0.005);
+        // Crystalline shockwave burst
+        this.noiseBlip(ctx, t,       0.10, 0.11, base * 2.0, 4);
+        this.noiseBlip(ctx, t + 0.04, 0.08, 0.07, base * 3.5, 6);
+        // 4-note ascending arpeggio on the affinity voice
+        const notes = [base * 0.5, base * 0.75, base, base * 1.5];
+        notes.forEach((f, i) => {
+          const at = t + 0.06 + i * 0.13;
+          this.osc(ctx, f, 'sine', at, at + 0.50, 0.08 - i * 0.012, 0.005);
+        });
+        // High shimmer tail — iridescent sparkle lingers after arrival
+        this.osc(ctx, base * 2.5, 'sine', t + 0.45, t + 1.30, 0.035, 0.015);
+        this.noiseBlip(ctx, t + 0.50, 0.55, 0.04, base * 4, 3);
+
+      } else if (effectType === 'end_of_turn') {
+        // ── Energy release / outward pulse ──────────────────────────────────
+        // Mid-range thud — stored energy discharging
+        this.osc(ctx, base * 0.5,  'sine', t, t + 0.70, 0.13, 0.004);
+        this.osc(ctx, base * 0.35, 'sine', t, t + 0.90, 0.07, 0.007);
+        // Broad outward sweep — energy expanding from the Luminary
+        this.noiseSweep(ctx, t,        0.40, 0.09, base * 1.2, base * 0.3);
+        this.noiseSweep(ctx, t + 0.05, 0.30, 0.06, base * 2.0, base * 0.5);
+        // Resolving fifth chord — warmth of effect completing
+        this.osc(ctx, base,        'sine', t + 0.12, t + 0.85, 0.06, 0.018);
+        this.osc(ctx, base * 1.5,  'sine', t + 0.18, t + 0.75, 0.04, 0.020);
+        // Soft high sparkle punctuation
+        this.osc(ctx, base * 3.0,  'sine', t + 0.30, t + 0.65, 0.025, 0.010);
+
+      } else {
+        // ── Soft awakening bloom (start_of_turn) ───────────────────────────
+        // Gentle rising sweep — entity stirring
+        this.noiseSweep(ctx, t, 0.50, 0.07, base * 0.4, base * 1.6);
+        // Warm pad chord blooming open — major third + fifth
+        this.osc(ctx, base,       'sine', t + 0.08, t + 1.10, 0.07, 0.045);
+        this.osc(ctx, base * 1.25,'sine', t + 0.14, t + 1.00, 0.05, 0.050);
+        this.osc(ctx, base * 1.5, 'sine', t + 0.20, t + 0.90, 0.04, 0.055);
+        // Bell overtone — crystalline awakening ring
+        this.osc(ctx, base * 2.0, 'sine', t + 0.18, t + 0.80, 0.03, 0.008);
+        this.osc(ctx, base * 4.0, 'sine', t + 0.24, t + 0.55, 0.018, 0.004);
+      }
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Metallic coin spin — rapid decelerating clicks + resonant ring. */
   playFluxCoin() {
     if (this.muted) return;
