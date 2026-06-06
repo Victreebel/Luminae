@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Info } from 'lucide-react';
 import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { LuminaryPanelArt, getLuminaryVisuals } from '@/lib/luminaryAssets';
@@ -23,7 +24,7 @@ import { gameAudio } from '@/lib/audio';
 // remaining 3 cycle through the other requirement colours.
 export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false, isArmed = false,
+  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false, isArmed = false, onOpenSheet,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
@@ -34,6 +35,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   onToggle?: (affinity: string) => void;
   isNew?: boolean;
   isArmed?: boolean;
+  onOpenSheet?: () => void;
 }) {
   const fresh = useRef(isNew).current;
 
@@ -51,10 +53,19 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   const longPressActiveRef = useRef(false);
   const suppressClickRef = useRef(false);
 
+  // Info-mode hold escalation (700 ms)
+  const infoTimerRef = useRef<number | null>(null);
+  const infoModeActiveRef = useRef(false);
+  const [infoHintActive, setInfoHintActive] = useState(false);
+
   const clearLongPress = () => {
     if (longPressTimerRef.current !== null) {
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
+    }
+    if (infoTimerRef.current !== null) {
+      window.clearTimeout(infoTimerRef.current);
+      infoTimerRef.current = null;
     }
   };
 
@@ -172,17 +183,38 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   const handleMouseEnter = () => { if (nextKey) setPreviewKey(nextKey); };
   const handleMouseLeave = () => { setPreviewKey(null); };
 
-  // Mobile long-press: hold 350ms → show preview; release → commit toggle
+  // Mobile long-press: hold 350ms → show affinity preview; hold 700ms → info mode
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === 'mouse' || !nextKey) return;
-    longPressTimerRef.current = window.setTimeout(() => {
-      longPressActiveRef.current = true;
-      setPreviewKey(nextKey);
-    }, 350);
+    if (e.pointerType === 'mouse') return;
+    // 350 ms → affinity preview (only when toggle is available)
+    if (nextKey && canToggle) {
+      longPressTimerRef.current = window.setTimeout(() => {
+        longPressActiveRef.current = true;
+        setPreviewKey(nextKey);
+      }, 350);
+    }
+    // 700 ms → info mode (whenever a sheet callback is provided)
+    if (onOpenSheet) {
+      infoTimerRef.current = window.setTimeout(() => {
+        // Cancel any pending affinity preview — info mode takes priority
+        longPressActiveRef.current = false;
+        setPreviewKey(null);
+        infoModeActiveRef.current = true;
+        setInfoHintActive(true);
+      }, 700);
+    }
   };
   const handlePointerUp = (e: React.PointerEvent) => {
     if (e.pointerType === 'mouse') return;
     clearLongPress();
+    // Info mode takes priority over affinity toggle
+    if (infoModeActiveRef.current) {
+      infoModeActiveRef.current = false;
+      setInfoHintActive(false);
+      suppressClickRef.current = true;
+      onOpenSheet?.();
+      return;
+    }
     if (longPressActiveRef.current) {
       longPressActiveRef.current = false;
       setPreviewKey(null);
@@ -194,7 +226,9 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
     if (e.pointerType === 'mouse') return;
     clearLongPress();
     longPressActiveRef.current = false;
+    infoModeActiveRef.current = false;
     setPreviewKey(null);
+    setInfoHintActive(false);
   };
 
   const previewMeta = previewKey ? GEM_META[previewKey] : null;
@@ -212,9 +246,9 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
       onClick={canToggle ? handleClick : undefined}
       onMouseEnter={canToggle ? handleMouseEnter : undefined}
       onMouseLeave={canToggle ? handleMouseLeave : undefined}
-      onPointerDown={canToggle ? handlePointerDown : undefined}
-      onPointerUp={canToggle ? handlePointerUp : undefined}
-      onPointerCancel={canToggle ? handlePointerCancel : undefined}
+      onPointerDown={(canToggle || onOpenSheet) ? handlePointerDown : undefined}
+      onPointerUp={(canToggle || onOpenSheet) ? handlePointerUp : undefined}
+      onPointerCancel={(canToggle || onOpenSheet) ? handlePointerCancel : undefined}
       {...(canToggle ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
     >
       {/* ── Opening spiral burst ── */}
@@ -453,6 +487,55 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
         )}
       </div>
 
+      {/* ⓘ Info badge — desktop: click to open sheet; touch: pulses when 700 ms hold threshold crossed */}
+      {onOpenSheet && (
+        <motion.button
+          type="button"
+          className="absolute z-[28] rounded-full flex items-center justify-center pointer-events-auto"
+          style={{
+            bottom: 28, right: 5,
+            width: 18, height: 18,
+            background: 'rgba(3,3,8,0.72)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            backdropFilter: 'blur(4px)',
+            cursor: 'pointer',
+          }}
+          animate={infoHintActive
+            ? { scale: [1, 1.4, 1.25], opacity: [0.7, 1, 1], filter: ['brightness(1)', 'brightness(2)', 'brightness(1.6)'] }
+            : { scale: 1, opacity: 0.55, filter: 'brightness(1)' }}
+          transition={{ duration: 0.25 }}
+          title="View Luminary details"
+          onClick={(e) => { e.stopPropagation(); onOpenSheet(); }}
+        >
+          <Info size={10} className="text-white/80" />
+        </motion.button>
+      )}
+
+      {/* Info-mode hold overlay — dims the portal and shows an info cue at the 700 ms threshold */}
+      <AnimatePresence>
+        {infoHintActive && (
+          <motion.div
+            className="absolute inset-0 pointer-events-none z-[27] rounded-xl flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{ background: 'rgba(3,3,8,0.42)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col items-center gap-0.5"
+            >
+              <Info size={18} className="text-white/90" style={{ filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.7))' }} />
+              <span className="text-[7px] font-semibold tracking-wider text-white/70 uppercase">Details</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* AI affinity indicator — shown for medium/hard AI players only */}
       {isAIPortal && activeKey && (
         <div className="absolute z-20 pointer-events-none" style={{ top: '22%', right: 6 }}>
@@ -617,7 +700,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
-      onClick={!isHidden && onOpenSheet ? onOpenSheet : undefined}
+      onClick={!isHidden && !isClaimed && onOpenSheet ? onOpenSheet : undefined}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal
@@ -630,6 +713,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
           onToggle={onToggle}
           isNew={portalIsNew}
           isArmed={isArmed}
+          onOpenSheet={onOpenSheet}
         />
       ) : (
         <>
