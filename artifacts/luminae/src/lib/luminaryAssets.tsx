@@ -2860,6 +2860,10 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   const hiddenRef = useRef(hidden);
   useEffect(() => { hiddenRef.current = hidden; }, [hidden]);
 
+  // Exposed so the unhide effect below can force a single measurement that
+  // bypasses the hiddenRef early-return guard (before hiddenRef updates).
+  const forceMeasureRef = useRef<() => void>(() => {});
+
   // Latest [data-game-board] bounding rect — updated on every measure() call.
   // Stored as a ref (not state) so scroll events don't trigger extra re-renders;
   // the clip-path is recomputed inline whenever cardPos causes a re-render.
@@ -2877,15 +2881,9 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     // when multiple overlay instances are all listening to the same scroll events.
     const lastMeasuredRef = { x: -9999, y: -9999, within: true };
 
-    const measure = () => {
-      // While a cutscene is playing for another luminary, do not re-measure.
-      // A position update would recalculate initX/initY and re-trigger the
-      // return-flight animation, causing this entity to fly away mid-idle.
-      if (frozenRef.current) return;
-      // Skip measurement when the overlay is hidden (off-tab or during summon).
-      // The scroll listener is still attached but the callback returns early,
-      // reducing DOM API load during the most common high-lag scenarios.
-      if (hiddenRef.current) return;
+    // measureCore: raw measurement without any guards. Extracted so both the
+    // normal (gated) path and the forced unhide path share the same logic.
+    const measureCore = () => {
       const el = luminaryCardRef.current ?? document.querySelector(
         `[data-luminary-id="${luminaryId}"]`
       ) as HTMLElement | null;
@@ -2926,6 +2924,26 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       });
     };
 
+    const measure = () => {
+      // While a cutscene is playing for another luminary, do not re-measure.
+      // A position update would recalculate initX/initY and re-trigger the
+      // return-flight animation, causing this entity to fly away mid-idle.
+      if (frozenRef.current) return;
+      // Skip measurement when the overlay is hidden (off-tab or during summon).
+      // The scroll listener is still attached but the callback returns early,
+      // reducing DOM API load during the most common high-lag scenarios.
+      if (hiddenRef.current) return;
+      measureCore();
+    };
+
+    // forceMeasure: skips hiddenRef so the unhide effect can snap the entity to
+    // the correct position before hiddenRef's own effect has had a chance to run.
+    const forceMeasure = () => {
+      if (frozenRef.current) return;
+      measureCore();
+    };
+    forceMeasureRef.current = forceMeasure;
+
     // Throttle scroll measurements to 200ms max per overlay.
     // The old requestAnimationFrame pattern caused a storm: every scroll event
     // on every overlay scheduled a new RAF, each forcing getBoundingClientRect
@@ -2939,16 +2957,58 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       }, 200);
     };
 
+    // Shared throttled handler for ResizeObserver — same 200ms budget as scroll.
+    const onResize = () => {
+      if (frozenRef.current || hiddenRef.current) return;
+      if (throttleTimer) return;
+      throttleTimer = setTimeout(() => {
+        throttleTimer = null;
+        measure();
+      }, 200);
+    };
+
     measure();
     const t = setTimeout(measure, 60); // re-check after render flush
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
-    // Also watch the horizontal Luminary row scroller ([data-luminary-scroll])
-    // so entities track their panel cards when the row scrolls sideways.
+
+    // Watch [data-game-board], main, and the horizontal Luminary row scroller.
+    // Track whether [data-luminary-scroll] was found so we can retry below.
+    let luminaryScrollAttached = false;
     document.querySelectorAll('[data-game-board], main, [data-luminary-scroll]').forEach(el => {
       el.addEventListener('scroll', onScroll, { passive: true });
       scrollTargets.push(el);
+      if (el.matches('[data-luminary-scroll]')) luminaryScrollAttached = true;
     });
+
+    // ResizeObserver on [data-game-board]: catches layout reflows that produce
+    // no scroll event — opponent panel resize, action-log expansion, window
+    // chrome changes. Throttled to the same 200ms budget as scroll listeners.
+    // No framer-motion loops involved; this runs entirely outside React render.
+    let resizeObserver: ResizeObserver | null = null;
+    const boardEl = mainElRef.current ?? document.querySelector('[data-game-board]') as HTMLElement | null;
+    if (boardEl) {
+      resizeObserver = new ResizeObserver(onResize);
+      resizeObserver.observe(boardEl);
+    }
+
+    // MutationObserver: if [data-luminary-scroll] wasn't in the DOM at mount
+    // time (conditionally rendered), watch for it to appear, attach the scroll
+    // listener once, then disconnect — the element never re-mounts so one-shot
+    // is sufficient.
+    let mutationObserver: MutationObserver | null = null;
+    if (!luminaryScrollAttached) {
+      mutationObserver = new MutationObserver(() => {
+        const lumScrollEl = document.querySelector('[data-luminary-scroll]');
+        if (lumScrollEl) {
+          lumScrollEl.addEventListener('scroll', onScroll, { passive: true });
+          scrollTargets.push(lumScrollEl);
+          mutationObserver?.disconnect();
+          mutationObserver = null;
+        }
+      });
+      mutationObserver.observe(document.body, { childList: true, subtree: true });
+    }
 
     return () => {
       clearTimeout(t);
@@ -2956,6 +3016,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       scrollTargets.forEach(el => el.removeEventListener('scroll', onScroll));
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
     };
   }, [luminaryId]);
 
@@ -2968,6 +3030,18 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   useEffect(() => () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
   }, []);
+
+  // Remeasure immediately whenever the overlay transitions from hidden → visible.
+  // The hiddenRef guard in the scroll listener skips all measurements while we
+  // are away (Bonuses / Cards tab), so any layout shift that happened off-tab
+  // would leave the entity offset until the next scroll. Calling forceMeasure
+  // here (which bypasses hiddenRef) snaps the entity to the correct position
+  // within one frame of the tab becoming visible again.
+  useEffect(() => {
+    if (!hidden) {
+      forceMeasureRef.current();
+    }
+  }, [hidden]);
 
   if (!cardPos || !startViewRef.current) return null;
 
