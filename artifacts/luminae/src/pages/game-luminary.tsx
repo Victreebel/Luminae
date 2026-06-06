@@ -481,33 +481,44 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
         )}
       </div>
 
-      {/* Hold-to-info circular progress ring — appears on pointer-down, fills over 700 ms */}
+      {/* Hold-to-info progress ring — centered over the luminary vortex at 50%/42% */}
       <AnimatePresence>
         {isHolding && onOpenSheet && (
           <motion.div
             key={holdKeyRef.current}
-            className="absolute inset-0 pointer-events-none z-[27] flex items-center justify-center"
+            className="absolute inset-0 pointer-events-none z-[27]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
-            style={{ background: 'rgba(3,3,8,0.38)' }}
+            transition={{ duration: 0.12 }}
+            style={{
+              background: `radial-gradient(ellipse 72% 62% at 50% 42%, rgba(3,3,8,0.52) 0%, rgba(3,3,8,0.18) 65%, transparent 100%)`,
+            }}
           >
             <svg
-              width={52} height={52}
-              style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.45))' }}
+              width={78} height={78}
+              style={{
+                position: 'absolute',
+                left: '50%', top: '42%',
+                transform: 'translate(-50%, -50%)',
+                overflow: 'visible',
+                filter: `drop-shadow(0 0 6px ${g2}) drop-shadow(0 0 14px ${g1}88)`,
+              }}
               aria-hidden="true"
             >
-              {/* Track ring */}
-              <circle cx={26} cy={26} r={21} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth={3} />
-              {/* Animated fill ring — framer-motion pathLength 0→1 over 700 ms */}
+              {/* Track: faint outer halo ring */}
+              <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.1} strokeWidth={5} />
+              {/* Track: thin guide ring */}
+              <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.22} strokeWidth={1.5} />
+              {/* Animated fill arc — pathLength 0→1 over 700 ms */}
               <motion.circle
-                cx={26} cy={26} r={21}
+                cx={39} cy={39} r={34}
                 fill="none"
-                stroke="rgba(255,255,255,0.88)"
+                stroke={g1}
+                strokeOpacity={0.92}
                 strokeWidth={3}
                 strokeLinecap="round"
-                transform="rotate(-90 26 26)"
+                transform="rotate(-90 39 39)"
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
                 transition={{ duration: 0.7, ease: 'linear' }}
