@@ -6440,7 +6440,7 @@ export default function GameBoard() {
       {/* ── Deal-from-Deck overlay — card flies from deck tile to empty slot ── */}
       {dealingCard && (() => {
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 55, pointerEvents: 'none', perspective: '1200px' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9050, pointerEvents: 'none', perspective: '1200px' }}>
             <motion.div
               key={dealingCard.card.id}
               style={{
@@ -6514,7 +6514,7 @@ export default function GameBoard() {
         {purchaseBurst && (
           <motion.div
             key={purchaseBurst.key}
-            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            className="pointer-events-none fixed inset-0 z-[9050] flex items-center justify-center"
             initial={{ opacity: 1 }}
             animate={{ opacity: 0 }}
             transition={{ duration: 1.3, ease: 'easeOut' }}
@@ -6561,7 +6561,7 @@ export default function GameBoard() {
           return (
           <motion.div
             key={gemBurst.key}
-            className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center"
+            className="pointer-events-none fixed inset-0 z-[9050] flex items-center justify-center"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
@@ -7749,7 +7749,7 @@ export default function GameBoard() {
         {handTabAbsorbFlash && (
           <motion.div
             key={handTabAbsorbFlash.key}
-            className="pointer-events-none fixed z-[60]"
+            className="pointer-events-none fixed z-[9050]"
             style={{
               left: handTabAbsorbFlash.pos.x,
               top: handTabAbsorbFlash.pos.y,
