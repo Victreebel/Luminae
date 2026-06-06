@@ -10,6 +10,57 @@ import { PlayerAvatar } from './game-player';
 import { ArmedSigil } from './game-luminary-effects';
 import { gameAudio } from '@/lib/audio';
 
+// ── Hold-hint helpers ─────────────────────────────────────────────────────────
+// Tracks whether the "Hold to view info" hint has been dismissed.
+// Module-scoped so all card instances share state; backed by localStorage so it
+// survives a page refresh and only appears until the player discovers the gesture.
+const HOLD_HINT_KEY = 'luminae.holdHint.v1';
+let _holdHintDismissed: boolean | null = null;
+function holdHintDismissed(): boolean {
+  if (_holdHintDismissed === null) {
+    try { _holdHintDismissed = localStorage.getItem(HOLD_HINT_KEY) === '1'; } catch { _holdHintDismissed = false; }
+  }
+  return _holdHintDismissed;
+}
+function dismissHoldHint() {
+  _holdHintDismissed = true;
+  try { localStorage.setItem(HOLD_HINT_KEY, '1'); } catch {}
+}
+
+// Small "Hold to view info" badge rendered while the hint is active and the
+// progress ring is NOT yet visible (so they never overlap).
+function HoldHint({ visible, isHolding, color }: { visible: boolean; isHolding: boolean; color: string }) {
+  return (
+    <AnimatePresence>
+      {visible && !isHolding && (
+        <motion.div
+          key="hold-hint"
+          className="absolute pointer-events-none z-[28]"
+          style={{ left: '50%', top: '50%' }}
+          initial={{ opacity: 0, y: 6, x: '-50%' }}
+          animate={{ opacity: 1, y: '-50%', x: '-50%' }}
+          exit={{ opacity: 0, y: 2, x: '-50%' }}
+          transition={{ duration: 0.22 }}
+        >
+          <div
+            className="flex items-center gap-1 rounded-full px-2 py-1 select-none whitespace-nowrap"
+            style={{
+              background: 'rgba(3,3,8,0.84)',
+              backdropFilter: 'blur(5px)',
+              border: `1px solid ${color}33`,
+              boxShadow: `0 2px 10px rgba(0,0,0,0.7), 0 0 8px ${color}22`,
+            }}
+          >
+            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.55)' }}>
+              Hold to view info
+            </span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
 // Fits the same BOARD_CARD_W × BOARD_CARD_H footprint.
@@ -57,6 +108,20 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   const infoTimerRef = useRef<number | null>(null);
   const [isHolding, setIsHolding] = useState(false);
   const holdKeyRef = useRef(0);
+
+  // Hold-hint state
+  const [showHoldHint, setShowHoldHint] = useState(false);
+  const hintAutoHideRef = useRef<number | null>(null);
+  const clearHoldHint = () => {
+    setShowHoldHint(false);
+    if (hintAutoHideRef.current !== null) { window.clearTimeout(hintAutoHideRef.current); hintAutoHideRef.current = null; }
+  };
+  const triggerHoldHint = (duration: number) => {
+    if (holdHintDismissed() || !onOpenSheet) return;
+    setShowHoldHint(true);
+    if (hintAutoHideRef.current !== null) window.clearTimeout(hintAutoHideRef.current);
+    hintAutoHideRef.current = window.setTimeout(() => setShowHoldHint(false), duration);
+  };
 
   const clearLongPress = () => {
     if (longPressTimerRef.current !== null) {
@@ -180,20 +245,29 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   };
 
   // Desktop hover: show next-affinity preview while cursor is over the portal
-  const handleMouseEnter = () => { if (nextKey) setPreviewKey(nextKey); };
-  const handleMouseLeave = () => { setPreviewKey(null); };
+  const handleMouseEnter = () => {
+    if (nextKey) setPreviewKey(nextKey);
+    // Show hint on first hover if sheet is available
+    triggerHoldHint(2500);
+  };
+  const handleMouseLeave = () => {
+    setPreviewKey(null);
+    clearHoldHint();
+  };
 
   // Pointer down — start hold-to-info timer (all devices) + affinity preview (touch only)
   const handlePointerDown = (e: React.PointerEvent) => {
     if (onOpenSheet) {
       holdKeyRef.current += 1;
       setIsHolding(true);
+      clearHoldHint(); // hide hint — progress ring takes over
       infoTimerRef.current = window.setTimeout(() => {
         // Ring completes — cancel any pending affinity preview, open info sheet
         longPressActiveRef.current = false;
         setPreviewKey(null);
         setIsHolding(false);
         suppressClickRef.current = true;
+        dismissHoldHint(); // player discovered the gesture
         onOpenSheet();
       }, 700);
     }
@@ -215,11 +289,15 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
       setPreviewKey(null);
       suppressClickRef.current = true;
       fireToggle();
+    } else {
+      // Short touch tap — didn't complete the hold; show hint briefly
+      triggerHoldHint(1800);
     }
   };
   const handlePointerCancel = () => {
     setIsHolding(false);
     clearLongPress();
+    clearHoldHint();
     longPressActiveRef.current = false;
     setPreviewKey(null);
   };
@@ -237,8 +315,8 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
       onClick={handleClick}
-      onMouseEnter={canToggle ? handleMouseEnter : undefined}
-      onMouseLeave={canToggle ? handleMouseLeave : undefined}
+      onMouseEnter={(canToggle || onOpenSheet) ? handleMouseEnter : undefined}
+      onMouseLeave={(canToggle || onOpenSheet) ? handleMouseLeave : undefined}
       onPointerDown={(canToggle || onOpenSheet) ? handlePointerDown : undefined}
       onPointerUp={(canToggle || onOpenSheet) ? handlePointerUp : undefined}
       onPointerCancel={(canToggle || onOpenSheet) ? handlePointerCancel : undefined}
@@ -535,6 +613,9 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
         )}
       </AnimatePresence>
 
+      {/* Hold-hint — shown on first hover/touch before the progress ring appears */}
+      <HoldHint visible={showHoldHint} isHolding={isHolding} color={g1} />
+
       {/* AI affinity indicator — shown for medium/hard AI players only */}
       {isAIPortal && activeKey && (
         <div className="absolute z-20 pointer-events-none" style={{ top: '22%', right: 6 }}>
@@ -683,23 +764,46 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   const [idleIsHolding, setIdleIsHolding] = useState(false);
   const idleTimerRef = useRef<number | null>(null);
   const idleSuppressClickRef = useRef(false);
+
+  // Hint for the unclaimed face
+  const [showIdleHint, setShowIdleHint] = useState(false);
+  const idleHintTimerRef = useRef<number | null>(null);
+  const clearIdleHint = () => {
+    setShowIdleHint(false);
+    if (idleHintTimerRef.current !== null) { window.clearTimeout(idleHintTimerRef.current); idleHintTimerRef.current = null; }
+  };
+  const triggerIdleHint = (duration: number) => {
+    if (holdHintDismissed() || !onOpenSheet || isHidden || isClaimed) return;
+    setShowIdleHint(true);
+    if (idleHintTimerRef.current !== null) window.clearTimeout(idleHintTimerRef.current);
+    idleHintTimerRef.current = window.setTimeout(() => setShowIdleHint(false), duration);
+  };
+
   const handleIdlePointerDown = (_e: React.PointerEvent) => {
     if (!onOpenSheet || isHidden || isClaimed) return;
+    clearIdleHint(); // hint gives way to the progress ring
     idleHoldKeyRef.current += 1;
     setIdleIsHolding(true);
     idleTimerRef.current = window.setTimeout(() => {
       setIdleIsHolding(false);
       idleSuppressClickRef.current = true;
+      dismissHoldHint(); // player discovered the gesture
       onOpenSheet();
     }, 700);
   };
-  const handleIdlePointerUpOrCancel = () => {
+  const handleIdlePointerUpOrCancel = (e?: React.PointerEvent) => {
+    const wasTouch = e?.pointerType !== 'mouse';
     setIdleIsHolding(false);
     if (idleTimerRef.current !== null) { window.clearTimeout(idleTimerRef.current); idleTimerRef.current = null; }
+    // Short touch tap that didn't complete the hold — show hint briefly
+    if (wasTouch) { triggerIdleHint(1800); }
   };
   const handleIdleClick = () => {
     if (idleSuppressClickRef.current) { idleSuppressClickRef.current = false; return; }
   };
+
+  const handleMouseEnterCard = () => { triggerIdleHint(2500); };
+  const handleMouseLeaveCard = () => { clearIdleHint(); };
 
   return (
     <motion.div
@@ -723,9 +827,11 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
       onClick={!isHidden && !isClaimed ? handleIdleClick : undefined}
+      onMouseEnter={!isHidden && !isClaimed ? handleMouseEnterCard : undefined}
+      onMouseLeave={!isHidden && !isClaimed ? handleMouseLeaveCard : undefined}
       onPointerDown={!isHidden && !isClaimed ? handleIdlePointerDown : undefined}
-      onPointerUp={!isHidden && !isClaimed ? handleIdlePointerUpOrCancel : undefined}
-      onPointerCancel={!isHidden && !isClaimed ? handleIdlePointerUpOrCancel : undefined}
+      onPointerUp={!isHidden && !isClaimed ? (e) => handleIdlePointerUpOrCancel(e) : undefined}
+      onPointerCancel={!isHidden && !isClaimed ? (e) => handleIdlePointerUpOrCancel(e) : undefined}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal
@@ -834,6 +940,11 @@ export const LuminaryCard = React.memo(function LuminaryCard({
             </div>
           </div>
         </>
+      )}
+
+      {/* Hold-hint — unclaimed face only, shown on first hover/touch before the ring */}
+      {!isClaimed && (
+        <HoldHint visible={showIdleHint} isHolding={idleIsHolding} color={glowHex} />
       )}
 
       {/* Hold-to-info progress ring — idle card face only */}
