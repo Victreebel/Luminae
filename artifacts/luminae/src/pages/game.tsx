@@ -5058,7 +5058,7 @@ export default function GameBoard() {
         data-game-board="true"
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         tabIndex={-1}
-        className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none"
+        className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none relative"
         onPointerDown={() => {
           // Fallback for non-iOS (Android Chrome, desktop): blur any focused
           // panel element as soon as a pointer gesture starts in the board.

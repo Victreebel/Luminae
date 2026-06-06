@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -2843,6 +2844,13 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   // area (e.g. user scrolled down and the Luminary row is above the fold).
   // The overlay is hidden while out-of-bounds so it doesn't paint over the header.
   const [isWithinScroller, setIsWithinScroller] = useState(true);
+  // Container-relative position for the idle portal path. Updated by measureCore
+  // alongside cardPos, but only meaningfully consumed once isIdle is true.
+  const [absCardPos, setAbsCardPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Tracks isIdle without stale closures — read inside the scroll handler.
+  const isIdleRef = useRef(false);
+  useEffect(() => { isIdleRef.current = isIdle; }, [isIdle]);
 
   // Viewport centre captured the moment cardPos first becomes non-null.
   // This is where the cutscene entity was sitting, so it's the correct
@@ -2875,6 +2883,9 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   useEffect(() => {
     const scrollTargets: Element[] = [];
     let throttleTimer: ReturnType<typeof setTimeout> | null = null;
+    // RAF handle used by the Luminary-row horizontal scroll handler.
+    // RAF cancellation ensures at most one pending frame per scroll event.
+    let rowScrollRaf: ReturnType<typeof requestAnimationFrame> | null = null;
 
     // Track last measured values so we can skip setState when nothing moved.
     // Even a 1px threshold prevents cascading React renders on every scroll tick
@@ -2913,6 +2924,14 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       lastMeasuredRef.y = newY;
       lastMeasuredRef.within = withinScroller;
       if (visChanged) setIsWithinScroller(withinScroller);
+      // Compute container-relative position for the portal/absolute idle rendering.
+      // This coordinate is stable during scroll (the card moves with the container),
+      // so it only needs updating on layout reflows — not on user scroll events.
+      if (mainEl && mainRect) {
+        const absX = r.left - mainRect.left + mainEl.scrollLeft + r.width  / 2;
+        const absY = r.top  - mainRect.top  + mainEl.scrollTop  + r.height / 2;
+        setAbsCardPos({ x: absX, y: absY });
+      }
       setCardPos(prev => {
         if (!prev && !startViewRef.current) {
           startViewRef.current = {
@@ -2949,12 +2968,32 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     // on every overlay scheduled a new RAF, each forcing getBoundingClientRect
     // (layout recalc). With 5+ overlays this produced 300+ forced layouts/sec.
     const onScroll = () => {
+      // [data-game-board] vertical scroll: idle entities are portal-rendered as
+      // position: absolute inside the scroll container and track the card natively.
+      // No measurement needed for vertical board scroll.
+      if (isIdleRef.current) return;
       if (frozenRef.current || hiddenRef.current) return;
       if (throttleTimer) return;
       throttleTimer = setTimeout(() => {
         throttleTimer = null;
         measure();
       }, 200);
+    };
+
+    // [data-luminary-scroll] horizontal scroll: the Luminary row scrolls inside
+    // [data-game-board], so the card's position within the board content area
+    // changes. absCardPos must be refreshed even in idle/portal mode so the
+    // absolutely-positioned entity tracks the card horizontally.
+    // RAF-based (no 200ms throttle) so the overlay follows every scroll frame
+    // with no visible lag — the 200ms throttle on onScroll was the original
+    // drift cause, so we must not repeat it here.
+    const onLuminaryRowScroll = () => {
+      if (frozenRef.current || hiddenRef.current) return;
+      if (rowScrollRaf !== null) cancelAnimationFrame(rowScrollRaf);
+      rowScrollRaf = requestAnimationFrame(() => {
+        rowScrollRaf = null;
+        measureCore();
+      });
     };
 
     // Shared throttled handler for ResizeObserver — same 200ms budget as scroll.
@@ -2972,14 +3011,19 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
 
-    // Watch [data-game-board], main, and the horizontal Luminary row scroller.
-    // Track whether [data-luminary-scroll] was found so we can retry below.
-    let luminaryScrollAttached = false;
-    document.querySelectorAll('[data-game-board], main, [data-luminary-scroll]').forEach(el => {
+    // Watch [data-game-board] and main for vertical scroll.
+    // [data-luminary-scroll] gets its own handler (onLuminaryRowScroll) that
+    // runs measureCore even in idle mode — horizontal card movement requires it.
+    let luminaryScrollEl: Element | null = null;
+    document.querySelectorAll('[data-game-board], main').forEach(el => {
       el.addEventListener('scroll', onScroll, { passive: true });
       scrollTargets.push(el);
-      if (el.matches('[data-luminary-scroll]')) luminaryScrollAttached = true;
     });
+    const existingLumScrollEl = document.querySelector('[data-luminary-scroll]');
+    if (existingLumScrollEl) {
+      existingLumScrollEl.addEventListener('scroll', onLuminaryRowScroll, { passive: true });
+      luminaryScrollEl = existingLumScrollEl;
+    }
 
     // ResizeObserver on [data-game-board]: catches layout reflows that produce
     // no scroll event — opponent panel resize, action-log expansion, window
@@ -2995,14 +3039,16 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     // MutationObserver: if [data-luminary-scroll] wasn't in the DOM at mount
     // time (conditionally rendered), watch for it to appear, attach the scroll
     // listener once, then disconnect — the element never re-mounts so one-shot
-    // is sufficient.
+    // is sufficient. Call measureCore() synchronously after attachment so the
+    // initial absCardPos is correct even before the first scroll event fires.
     let mutationObserver: MutationObserver | null = null;
-    if (!luminaryScrollAttached) {
+    if (!luminaryScrollEl) {
       mutationObserver = new MutationObserver(() => {
-        const lumScrollEl = document.querySelector('[data-luminary-scroll]');
-        if (lumScrollEl) {
-          lumScrollEl.addEventListener('scroll', onScroll, { passive: true });
-          scrollTargets.push(lumScrollEl);
+        const el = document.querySelector('[data-luminary-scroll]');
+        if (el) {
+          el.addEventListener('scroll', onLuminaryRowScroll, { passive: true });
+          luminaryScrollEl = el;
+          measureCore(); // snap initial position immediately on discovery
           mutationObserver?.disconnect();
           mutationObserver = null;
         }
@@ -3013,9 +3059,11 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
     return () => {
       clearTimeout(t);
       if (throttleTimer) clearTimeout(throttleTimer);
+      if (rowScrollRaf !== null) cancelAnimationFrame(rowScrollRaf);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       scrollTargets.forEach(el => el.removeEventListener('scroll', onScroll));
+      luminaryScrollEl?.removeEventListener('scroll', onLuminaryRowScroll);
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
     };
@@ -3035,9 +3083,10 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   // The hiddenRef guard in the scroll listener skips all measurements while we
   // are away (Bonuses / Cards tab), so any layout shift that happened off-tab
   // would leave the entity offset until the next scroll. Calling forceMeasure
-  // here (which bypasses hiddenRef) snaps the entity to the correct position
-  // within one frame of the tab becoming visible again.
-  useEffect(() => {
+  // in useLayoutEffect (not useEffect) snaps the entity to the correct position
+  // synchronously before the browser paints the first visible frame, eliminating
+  // the single-frame stale-position flash that useEffect could produce.
+  useLayoutEffect(() => {
     if (!hidden) {
       forceMeasureRef.current();
     }
@@ -3045,20 +3094,6 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
 
   if (!cardPos || !startViewRef.current) return null;
 
-  // Outer div is fixed, centred on the card so the entity sits directly over it.
-  const destX = cardPos.x - IDLE_W / 2;
-  const destY = cardPos.y - IDLE_H / 2;
-
-  // Inner motion.div initial offset: visually centres the entity at the
-  // viewport centre (where the cutscene entity was), relative to the outer div.
-  const initX = startViewRef.current.x - destX - IDLE_W / 2;
-  const initY = startViewRef.current.y - destY - IDLE_H / 2;
-  const initScale = ENT_W / IDLE_W; // ≈ 2.86 — matches cutscene entity visual size
-
-  // Ambient board glow — centred on the same card position as the idle overlay.
-  // Rendered only once idle and visible; uses a CSS-only opacity animation so it
-  // costs zero JS budget even when several Luminaries are idle simultaneously.
-  //
   // Glow intensity scales with the Luminary's claim-cost tier so triple-color
   // (4L) Luminaries cast a visibly more imposing halo than mono-color (2L) ones.
   //   tier 1 (mono)  → 1.00× base opacity  (stops: 0x14, 0x0b, 0x07)
@@ -3067,18 +3102,250 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
   const tierMult = vis.tier === 3 ? 1.45 : vis.tier === 2 ? 1.2 : 1.0;
   const scaledHex = (base: number) =>
     Math.min(255, Math.round(base * tierMult)).toString(16).padStart(2, '0');
-  const ambientStop1 = scaledHex(0x14); // outer centre
-  const ambientStop2 = scaledHex(0x0b); // mid ring
-  const ambientStop3 = scaledHex(0x07); // feather edge
+  const ambientStop1 = scaledHex(0x14);
+  const ambientStop2 = scaledHex(0x0b);
+  const ambientStop3 = scaledHex(0x07);
 
+  // Aura inner element — shared between return-flight and idle portal paths so
+  // CSS animation classes are applied consistently regardless of render mode.
+  const auraEl = (
+    <motion.div
+      style={{
+        position: 'absolute',
+        inset: -20,
+        borderRadius: 22,
+        background: activeAffinityColor
+          ? `radial-gradient(${auraVariant.gradientShape}, ${activeAffinityColor}3a 0%, ${activeAffinityColor}1c 42%, ${activeAffinityColor}0d 66%, transparent 84%)`
+          : `radial-gradient(${auraVariant.gradientShape}, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
+        transition: 'background 0.8s ease',
+      }}
+      className={isIdle ? auraVariant.idleClass : undefined}
+      animate={!isIdle ? { opacity: 0.75 } : {}}
+      transition={!isIdle ? { duration: 0.4 } : {}}
+    />
+  );
+
+  // Entity art — computed once, referenced in both the idle portal and the
+  // return-flight paths.  Aura animation classes and float classes all read
+  // isIdle from closure so they self-select correctly in either context.
+  //
+  // Aura class table (CSS animation, compositor thread):
+  //   fire/oracle  → lum-aura-fire  (irregular upward flicker, 2.6 s)
+  //   storm/astral → lum-aura-storm (electric rapid flicker, 1.8 s)
+  //   tide/compass → lum-aura-tide  (slow rolling wave, 5.4 s)
+  //   void         → lum-aura-void  (imploding dark pulse, 4.2 s)
+  //   bloom/verdant/radiant → lum-aura-bloom (organic swell, 6.0 s)
+  //   null         → lum-aura-null  (entropy stillness, 7.2 s)
+  //   pale         → lum-aura-pale  (silver starburst shimmer, 4.8 s)
+  //   fallback     → lum-idle-aura  (generic pulse)
+  const entityArt = (() => {
+    const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
+    const entScale = ov.scale ?? 1;
+    const objPos   = ov.objectPosition ?? 'center top';
+    const objFit   = ov.objectFit ?? 'contain';
+    const cyFactor = ov.idleCyFactor;
+    // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
+    // factor via CSS custom property) so CSS transform and scale never conflict.
+    const idleClass = isIdle && !ov.noFloat
+      ? (entScale !== 1 ? 'lum-idle-float-scaled' : 'lum-idle-float')
+      : undefined;
+
+    // ── lum_radiant: three-layer ring / body / core animation ──────────
+    if (luminaryId === 'lum_radiant') {
+      const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
+      const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
+      const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+      if (ring && body && core) {
+        const layerImg: React.CSSProperties = {
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'contain', display: 'block',
+          mixBlendMode: 'screen',
+        };
+        const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
+        return (
+          <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+            <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
+              <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}>
+                <img src={ring} draggable={false} alt="" className="lum-radiant-ring" style={layerImg} />
+              </div>
+            </div>
+            <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
+              <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
+                <img src={body} draggable={false} alt="" style={layerImg} />
+              </div>
+              <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}>
+                <img src={core} draggable={false} alt="" className="lum-radiant-core" style={layerImg} />
+              </div>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // ── lum_compass: illustrated cosmic background + heat-haze shimmer ──
+    if (luminaryId === 'lum_compass') {
+      const bg = _getLuminaryImage('lum_compass', 'background');
+      const fill: React.CSSProperties = {
+        position: 'absolute', inset: 0, width: '100%', height: '100%',
+        display: 'block',
+      };
+      return (
+        <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+          {bg && (
+            <img src={bg} alt="" draggable={false} className="lum-compass-bg-fade" style={{ ...fill, objectFit: 'cover' }} />
+          )}
+          {entityCutout && (
+            <div className={isIdle ? 'lum-compass-heat-haze' : undefined} style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+              <img
+                src={entityCutout} alt="" draggable={false}
+                style={{
+                  ...fill,
+                  objectFit: 'cover', objectPosition: 'center center',
+                  mixBlendMode: 'screen',
+                  maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                  WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                }}
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── lum_hunger: entity only — backgrounds removed for performance ──
+    if (luminaryId === 'lum_hunger') {
+      const hEnt = _getLuminaryImage('lum_hunger', 'entity');
+      return (
+        <div className={isIdle ? 'lum-idle-float' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+          {hEnt && (
+            <img src={hEnt} alt="" draggable={false}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <motion.div
+        style={{
+          position: 'relative', width: IDLE_W, height: IDLE_H,
+          // Base static scale for non-1 entities — CSS animation keyframes also
+          // include scale so there's no fight between framer-motion and CSS.
+          ...(entScale !== 1 && !isIdle
+            ? { transform: `scale(${entScale})`, transformOrigin: 'center top' }
+            : entScale !== 1 && isIdle
+            ? { transformOrigin: 'center top', ['--lum-ent-scale' as string]: entScale }
+            : {}),
+        }}
+        className={idleClass}
+        animate={!isIdle && entScale !== 1 ? { scale: entScale } : {}}
+        transition={!isIdle ? { duration: 0 } : {}}
+      >
+        {entityCutout ? (
+          <>
+            <img
+              src={entityCutout} alt="" draggable={false}
+              style={{
+                width: IDLE_W,
+                height: IDLE_H,
+                objectFit: objFit as React.CSSProperties['objectFit'],
+                objectPosition: objPos,
+                display: 'block',
+                transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
+                ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
+                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+              }}
+            />
+            {luminaryId === 'lum_tide' && (
+              <TideEyeOverlay width={IDLE_W} height={IDLE_H} {...(cyFactor !== undefined ? { cyFactor } : {})} />
+            )}
+          </>
+        ) : (
+          <EntityArt size={IDLE_W} />
+        )}
+      </motion.div>
+    );
+  })();
+
+  // ── Idle phase: portal into [data-game-board] (position: absolute) ──────────
+  // Once the return-flight animation completes, we move the entity into a React
+  // portal that is a child of the scrollable board container. position: absolute
+  // inside overflow: auto tracks the card natively — zero scroll drift and no
+  // measurement needed on scroll events. absCardPos is container-relative and
+  // only changes on layout reflows (ResizeObserver), not on scroll events.
+  if (isIdle) {
+    const portalTarget = mainElRef.current
+      ?? (document.querySelector('[data-game-board]') as HTMLElement | null);
+    if (portalTarget && absCardPos) {
+      const absEntityLeft = absCardPos.x - IDLE_W  / 2;
+      const absEntityTop  = absCardPos.y - IDLE_H  / 2;
+      const absAmbLeft    = absCardPos.x - AMBIENT_W / 2;
+      const absAmbTop     = absCardPos.y - AMBIENT_H / 2;
+      const idleAmbientBg = activeAffinityColor
+        ? `radial-gradient(ellipse at 50% 50%, ${activeAffinityColor}${scaledHex(0x18)} 0%, ${activeAffinityColor}${scaledHex(0x0e)} 38%, ${activeAffinityColor}${ambientStop3} 62%, transparent 78%)`
+        : `radial-gradient(ellipse at 50% 50%, ${glowColor}${ambientStop1} 0%, ${primaryColor}${ambientStop2} 38%, ${glowColor}${ambientStop3} 62%, transparent 78%)`;
+      return createPortal(
+        <>
+          {/* ── Ambient board glow — 2.5× card-size, behind the idle overlay (z 17) ──
+              Absolutely positioned inside the scroll container so it scrolls
+              naturally with the board. No clip-path needed — the container's
+              overflow: auto clips content that scrolls out of view. */}
+          {!hidden && (
+            <div
+              className={`absolute pointer-events-none ${tieredAmbientClass}`}
+              style={{
+                zIndex: 17,
+                left: absAmbLeft,
+                top: absAmbTop,
+                width: AMBIENT_W,
+                height: AMBIENT_H,
+                background: idleAmbientBg,
+                transition: 'background 0.8s ease',
+              }}
+            />
+          )}
+          {/* ── Entity idle overlay — absolutely positioned, scrolls with board ── */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              zIndex: 18,
+              left: absEntityLeft,
+              top: absEntityTop,
+              width: IDLE_W,
+              height: IDLE_H,
+              opacity: hidden ? 0 : 1,
+              transition: hidden ? 'none' : 'opacity 0.4s ease-in',
+            }}
+          >
+            <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
+              {auraEl}
+              {entityArt}
+            </div>
+          </div>
+        </>,
+        portalTarget
+      );
+    }
+  }
+
+  // ── Return-flight phase: position: fixed + entrance animation ─────────────
+  // Used during the 1.2 s window before isIdle is true (entity flies from the
+  // viewport centre to the card). Also serves as the idle fallback when
+  // absCardPos or portalTarget are not yet available (e.g. first render).
+  const destX = cardPos.x - IDLE_W / 2;
+  const destY = cardPos.y - IDLE_H / 2;
+  // Inner motion.div initial offset: visually centres the entity at the
+  // viewport centre (where the cutscene entity was), relative to the outer div.
+  const initX = startViewRef.current.x - destX - IDLE_W / 2;
+  const initY = startViewRef.current.y - destY - IDLE_H / 2;
+  const initScale = ENT_W / IDLE_W; // ≈ 2.86 — matches cutscene entity visual size
+
+  // Ambient glow is only relevant in the idle phase (already handled above),
+  // but keep a fixed fallback for when isIdle is true yet the portal isn't ready.
   const ambientVisible = isIdle && !hidden && isWithinScroller;
   const ambientLeft = cardPos.x - AMBIENT_W / 2;
   const ambientTop  = cardPos.y - AMBIENT_H / 2;
-
-  // Clip the ambient glow to [data-game-board] so it never bleeds over the
-  // header, side panels, or opponent areas.  clip-path: inset() trims each
-  // edge of the fixed div to the board bounding rect using pixel offsets
-  // relative to the element itself — zero re-render cost (ref-based rect).
   const br = boardRectRef.current;
   const ambientClipPath = br
     ? `inset(${Math.max(0, br.top    - ambientTop )}px ${
@@ -3089,10 +3356,6 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
 
   return (
     <>
-      {/* ── Ambient board glow — 2.5× card-size, behind the idle overlay (z 17) ──
-          Conditionally rendered only when idle and within the scroller so
-          off-screen Luminaries mount zero extra DOM nodes.
-          clip-path: inset() keeps the glow inside [data-game-board] bounds. */}
       {ambientVisible && (
         <div
           className={`fixed pointer-events-none ${tieredAmbientClass}`}
@@ -3110,242 +3373,29 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
           }}
         />
       )}
-    <div
-      className="fixed pointer-events-none"
-      style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
-               opacity: (hidden || !isWithinScroller) ? 0 : 1,
-               transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in',
-               display: (hidden || !isWithinScroller) ? 'none' : undefined }}
-    >
-      {/* ── Return flight: centre of viewport → card position ── */}
-      <motion.div
-        style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
-        initial={{ x: initX, y: initY, scale: initScale, opacity: 0 }}
-        animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
-        transition={{
-          x:       { duration: 1.15, ease: [0.16, 1, 0.3, 1] },
-          y:       { duration: 1.15, ease: [0.16, 1, 0.3, 1] },
-          scale:   { duration: 1.20, ease: [0.16, 1, 0.3, 1] },
-          opacity: { duration: 0.40, ease: 'easeOut' },
-        }}
+      <div
+        className="fixed pointer-events-none"
+        style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
+                 opacity: (hidden || !isWithinScroller) ? 0 : 1,
+                 transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in',
+                 display: (hidden || !isWithinScroller) ? 'none' : undefined }}
       >
-        {/* Colored aura — pulses once idle via CSS animation (compositor thread).
-            Gradient-only (no filter:blur) so the browser does NOT force a
-            separate GPU compositing layer for each of the 5 possible overlays.
-            The CSS class and gradient shape are selected by auraStyle via
-            AURA_VARIANTS so each Luminary has a distinct animation character:
-              fire/oracle  → lum-aura-fire  (irregular upward flicker, 2.6 s)
-              storm/astral → lum-aura-storm (electric rapid flicker, 1.8 s)
-              tide/compass → lum-aura-tide  (slow rolling wave, 5.4 s)
-              void         → lum-aura-void  (imploding dark pulse, 4.2 s)
-              bloom/verdant/radiant → lum-aura-bloom (organic swell, 6.0 s)
-              null         → lum-aura-null  (entropy stillness, 7.2 s)
-              pale         → lum-aura-pale  (silver starburst shimmer, 4.8 s)
-            Fallback (AURA_VARIANT_FALLBACK): 'lum-idle-aura' generic pulse.  */}
+        {/* ── Return flight: centre of viewport → card position ── */}
         <motion.div
-          style={{
-            position: 'absolute',
-            inset: -20,
-            borderRadius: 22,
-            background: activeAffinityColor
-              ? `radial-gradient(${auraVariant.gradientShape}, ${activeAffinityColor}3a 0%, ${activeAffinityColor}1c 42%, ${activeAffinityColor}0d 66%, transparent 84%)`
-              : `radial-gradient(${auraVariant.gradientShape}, ${glowColor}3a 0%, ${primaryColor}1c 42%, ${glowColor}0d 66%, transparent 84%)`,
-            transition: 'background 0.8s ease',
+          style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
+          initial={{ x: initX, y: initY, scale: initScale, opacity: 0 }}
+          animate={{ x: 0, y: 0, scale: 1, opacity: 1 }}
+          transition={{
+            x:       { duration: 1.15, ease: [0.16, 1, 0.3, 1] },
+            y:       { duration: 1.15, ease: [0.16, 1, 0.3, 1] },
+            scale:   { duration: 1.20, ease: [0.16, 1, 0.3, 1] },
+            opacity: { duration: 0.40, ease: 'easeOut' },
           }}
-          className={isIdle ? auraVariant.idleClass : undefined}
-          animate={!isIdle ? { opacity: 0.75 } : {}}
-          transition={!isIdle ? { duration: 0.4 } : {}}
-        />
-
-        {/* Entity art — floats and breathes once idle via CSS animation (compositor thread) */}
-        {(() => {
-          const ov = IDLE_ENTITY_OVERRIDES[luminaryId] ?? {};
-          const entScale = ov.scale ?? 1;
-          const objPos   = ov.objectPosition ?? 'center top';
-          const objFit   = ov.objectFit ?? 'contain';
-          const cyFactor = ov.idleCyFactor;
-          // When entScale !== 1 we use the scaled variant keyframe (embeds the scale
-          // factor via CSS custom property) so CSS transform and scale never conflict.
-          const idleClass = isIdle && !ov.noFloat
-            ? (entScale !== 1 ? 'lum-idle-float-scaled' : 'lum-idle-float')
-            : undefined;
-
-          // ── lum_radiant: three-layer ring / body / core animation ──────────
-          // Structure: RingFloatGroup (bounce) → RingLayer (scale + glow + CCW rotation)
-          //            BouncingEntityGroup (bounce) → BodyLayer + CoreLayer (CW rotation)
-          // All three layers bounce together via the same lum-idle-float class.
-          // Scale and rotation are on inner divs/imgs so they don't conflict with the
-          // float transform.
-          if (luminaryId === 'lum_radiant') {
-            const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
-            const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
-            const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
-            if (ring && body && core) {
-              // The three Radiant layers have dark/black backgrounds — they are
-              // compositing layers, not RGBA cutouts. screen blend mode treats
-              // black as fully transparent and additively composites the bright
-              // pixels of each layer. No mask needed (and a mask would clip the
-              // outer ring which extends to the image edges).
-              const layerImg: React.CSSProperties = {
-                position: 'absolute', inset: 0, width: '100%', height: '100%',
-                objectFit: 'contain', display: 'block',
-                mixBlendMode: 'screen',
-              };
-              const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
-              return (
-                <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-                  {/* Outer ring — float wrapper syncs bounce; inner div handles scale + glow */}
-                  <div className={isIdle ? 'lum-idle-float' : undefined} style={absfill}>
-                    <div className="lum-radiant-ring-pulse" style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}>
-                      <img src={ring} draggable={false} alt=""
-                        className="lum-radiant-ring"
-                        style={layerImg}
-                      />
-                    </div>
-                  </div>
-                  {/* Bouncing group: body + core travel together */}
-                  <div
-                    className={isIdle ? 'lum-idle-float' : undefined}
-                    style={absfill}
-                  >
-                    {/* Body — scaled up */}
-                    <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
-                      <img src={body} draggable={false} alt="" style={layerImg} />
-                    </div>
-                    {/* Core — wrapper holds fixed small size + glow pulse; img rotates CW */}
-                    <div className="lum-radiant-core-pulse" style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}>
-                      <img src={core} draggable={false} alt=""
-                        className="lum-radiant-core"
-                        style={layerImg}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-          }
-
-          // ── lum_compass: illustrated cosmic background + heat-haze shimmer on entity ──
-          // Uses the real background.png star-field image as the backdrop. The entity
-          // uses screen blend mode so the stars show through the dark indigo robes.
-          // The entity itself gets a subtle mirage-like distortion to suggest cosmic
-          // motion while the illustrated background stays fixed.
-          if (luminaryId === 'lum_compass') {
-            const bg = _getLuminaryImage('lum_compass', 'background');
-            const fill: React.CSSProperties = {
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
-              display: 'block',
-            };
-            return (
-              <div
-                style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
-              >
-                {/* Illustrated cosmic background — actual star-field image, faded radially */}
-                {bg && (
-                  <img
-                    src={bg}
-                    alt=""
-                    draggable={false}
-                    className="lum-compass-bg-fade"
-                    style={{ ...fill, objectFit: 'cover' }}
-                  />
-                )}
-                {/* Entity with heat-haze shimmer — subtle distortion suggesting living motion */}
-                {entityCutout && (
-                  <div
-                    className={isIdle ? 'lum-compass-heat-haze' : undefined}
-                    style={{ position: 'absolute', inset: 0, zIndex: 1 }}
-                  >
-                    <img
-                      src={entityCutout}
-                      alt=""
-                      draggable={false}
-                      style={{
-                        ...fill,
-                        objectFit: 'cover',
-                        objectPosition: 'center center',
-                        mixBlendMode: 'screen',
-                        // Fade to transparent at the bottom so the card name row stays legible
-                        maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                        WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // ── lum_hunger: entity only — backgrounds removed for performance ──
-          if (luminaryId === 'lum_hunger') {
-            const hEnt = _getLuminaryImage('lum_hunger', 'entity');
-            return (
-              <div
-                className={isIdle ? 'lum-idle-float' : undefined}
-                style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}
-              >
-                {hEnt && (
-                  <img src={hEnt} alt="" draggable={false}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1, display: 'block', border: 'none', WebkitMaskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)', maskImage: 'radial-gradient(ellipse at center, black 70%, transparent 95%)' }} />
-                )}
-              </div>
-            );
-          }
-
-          return (
-            <motion.div
-              style={{
-                position: 'relative', width: IDLE_W, height: IDLE_H,
-                // Base static scale for non-1 entities — CSS animation keyframes also
-                // include scale so there's no fight between framer-motion and CSS.
-                ...(entScale !== 1 && !isIdle
-                  ? { transform: `scale(${entScale})`, transformOrigin: 'center top' }
-                  : entScale !== 1 && isIdle
-                  ? { transformOrigin: 'center top', ['--lum-ent-scale' as string]: entScale }
-                  : {}),
-              }}
-              className={idleClass}
-              animate={!isIdle && entScale !== 1 ? { scale: entScale } : {}}
-              transition={!isIdle ? { duration: 0 } : {}}
-            >
-              {entityCutout ? (
-                <>
-                  <img
-                    src={entityCutout}
-                    alt=""
-                    draggable={false}
-                    style={{
-                      width: IDLE_W,
-                      height: IDLE_H,
-                      objectFit: objFit as React.CSSProperties['objectFit'],
-                      objectPosition: objPos,
-                      display: 'block',
-                      // Stretch wide landscape entities vertically so they fill
-                      // the tall portrait card without letterboxing.
-                      transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
-                      ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                      // Fade to transparent in the lower third so the card's name /
-                      // requirements row stays legible underneath the entity.
-                      maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                      WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                    }}
-                  />
-                  {luminaryId === 'lum_tide' && (
-                    <TideEyeOverlay
-                      width={IDLE_W}
-                      height={IDLE_H}
-                      {...(cyFactor !== undefined ? { cyFactor } : {})}
-                    />
-                  )}
-                </>
-              ) : (
-                <EntityArt size={IDLE_W} />
-              )}
-            </motion.div>
-          );
-        })()}
-      </motion.div>
-    </div>
+        >
+          {auraEl}
+          {entityArt}
+        </motion.div>
+      </div>
     </>
   );
 });
