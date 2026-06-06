@@ -4826,10 +4826,19 @@ export default function GameBoard() {
             .map(opponent => {
               const crystalTotals: Partial<Record<GemKey, number>> = {};
               const artifactTotals: Partial<Record<GemKey, number>> = {};
+              const effectiveTotals: Partial<Record<GemKey, number>> = {};
+              const luminaryAffinities: LuminaryActiveState[] = state.luminaryAffinities ?? [];
+              const turnCount: number = state.turnCount ?? 0;
               for (const k of CRYSTALS) {
                 if (k === 'flux') continue;
-                crystalTotals[k] = opponent.crystals[k as keyof CrystalCounts] ?? 0;
-                artifactTotals[k] = opponent.purchasedCards.filter(c => c.bonusColor === k).length;
+                const raw = opponent.crystals[k as keyof CrystalCounts] ?? 0;
+                const cardBonus = opponent.purchasedCards.filter(c => c.bonusColor === k).length;
+                const lumBonus = luminaryAffinities.filter(
+                  la => la.ownerId === opponent.playerId && la.activeAffinity === k && turnCount > la.summonedAtTurnCount
+                ).length;
+                crystalTotals[k] = raw;
+                artifactTotals[k] = cardBonus;
+                effectiveTotals[k] = raw + cardBonus + lumBonus;
               }
               const isExpanded = expandedOpponents.has(opponent.playerId);
               const onToggle = () => {
@@ -4850,6 +4859,7 @@ export default function GameBoard() {
                   isLocalTurn={isMyTurn}
                   affinityTotals={crystalTotals}
                   artifactTotals={artifactTotals}
+                  effectiveTotals={effectiveTotals}
                   isExpanded={isExpanded}
                   onToggle={onToggle}
                 />
