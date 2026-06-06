@@ -58,11 +58,11 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_RIPPLE_DELAY_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
-import { CompactCardGhost, ChipAbsorbRipple, LumensGainFlyer } from './game-animation';
+import { CompactCardGhost } from './game-animation';
 import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 
@@ -282,8 +282,6 @@ export default function GameBoard() {
     spentColors?: GemKey[];
   } | null>(null);
   const opponentForgeAbsorbKeyRef = useRef(0);
-  /** Per-opponent chip absorption pulse key — increment to flash the chip ring. */
-  const [chipAbsorbPulse, setChipAbsorbPulse] = useState<Record<string, number>>({});
   /** Hand-tab absorb flash — fires when an abridged-mode local forge card arrives at the Civilization tab. */
   const [handTabAbsorbFlash, setHandTabAbsorbFlash] = useState<{
     key: number; pos: { x: number; y: number }; color: string;
@@ -298,13 +296,6 @@ export default function GameBoard() {
   const gemBurstKeyRef = useRef(0);
   const gemBurstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTakeBurstActionRef = useRef<string | null>(null);
-  const lumensBurstKeyRef = useRef(0);
-  const prevLumensRef = useRef<Record<string, number>>({});
-  const [lumensBursts, setLumensBursts] = useState<Array<{
-    key: number; playerId: string; playerName: string; delta: number;
-    target: 'self' | 'opponent';
-  }>>([]);
-  const [myLumensPulse, setMyLumensPulse] = useState(0);
   // True when the optimistic token-flip already fired from a click-path harvest.
   // Lets the WS handler skip re-firing for normal harvests while still firing
   // for planned harvests (which skip the click path entirely).
@@ -463,10 +454,6 @@ export default function GameBoard() {
     id: string;
     cardViewProps: React.ComponentProps<typeof ArtifactCardView>;
     chipRect: DOMRect;
-  } | null>(null);
-  // Absorb ripple — fires when the ghost card lands in the chip, independent of flippingCards.
-  const [chipAbsorbRipple, setChipAbsorbRipple] = useState<{
-    id: string; chipRect: DOMRect; color: string;
   } | null>(null);
   // v0.8 Luminary animation state
   const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect }>>([]);
@@ -864,37 +851,6 @@ export default function GameBoard() {
   useEffect(() => {
     setCoreActionSubmitted(false);
   }, [state?.currentPlayerIndex]);
-
-  // ── Eminence gain burst — fires whenever any player's lumens increases ──
-  useEffect(() => {
-    if (!state?.players) return;
-    const prev = prevLumensRef.current;
-    const isInit = Object.keys(prev).length === 0;
-    if (!isInit) {
-      for (const p of state.players) {
-        const prevVal = prev[p.playerId] ?? p.lumens;
-        const delta = p.lumens - prevVal;
-        if (delta > 0) {
-          const key = ++lumensBurstKeyRef.current;
-          const isMe = p.playerId === session?.playerId;
-          const target: 'self' | 'opponent' = isMe ? 'self' : 'opponent';
-          setLumensBursts(bs => [...bs, { key, playerId: p.playerId, playerName: p.playerName, delta, target }]);
-          // Trigger absorption pulse on the target eminence display
-          if (isMe) {
-            setMyLumensPulse(n => n + 1);
-          } else {
-            setChipAbsorbPulse(prev => ({ ...prev, [p.playerId]: (prev[p.playerId] ?? 0) + 1 }));
-          }
-          const tBurst = setTimeout(() => setLumensBursts(bs => bs.filter(b => b.key !== key)), 1400);
-          cardAnimTimersRef.current.push(tBurst);
-        }
-      }
-    }
-    for (const p of state.players) {
-      prev[p.playerId] = p.lumens;
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state?.players]);
 
   // v0.8 — which Luminaries currently have a pending delayed effect.
   // Drives the ArmedSigil on the Luminary portal.
@@ -1518,8 +1474,6 @@ export default function GameBoard() {
                 const tOpponent = setTimeout(() => {
                   if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
                   setOpponentForgeAbsorb(null);
-                  // Flash the chip with an absorption pulse ring.
-                  setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
 
                   if (newCard) {
                     const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
@@ -1556,8 +1510,6 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          const tRipple = setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
-                          cardAnimTimersRef.current.push(tRipple);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -1654,8 +1606,6 @@ export default function GameBoard() {
                         const slotR = slotEl?.getBoundingClientRect();
                         if (slotR) {
                           setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                          const tRipple = setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[newCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
-                          cardAnimTimersRef.current.push(tRipple);
                         }
                       }
                       const t2 = setTimeout(() => {
@@ -1715,9 +1665,6 @@ export default function GameBoard() {
               const cipherNewCard = marketsNew[tier][idx];
               const tCipherDeal = setTimeout(() => {
                 if (cipherBurstKeyRef.current !== cipherSeq) return;
-                if (!isLocalReserve) {
-                  setChipAbsorbPulse(prev => ({ ...prev, [reserveActorId]: (prev[reserveActorId] ?? 0) + 1 }));
-                }
                 if (cipherNewCard) {
                   const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
                   const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
@@ -1753,8 +1700,6 @@ export default function GameBoard() {
                       const slotR = slotEl?.getBoundingClientRect();
                       if (slotR) {
                         setCompactGhost({ id: `${cipherNewCard.id}-${Date.now()}`, cardViewProps: { card: cipherNewCard, tier }, chipRect: slotR });
-                        const tRipple = setTimeout(() => setChipAbsorbRipple({ id: `ripple-${Date.now()}`, chipRect: slotR, color: GEM_META[cipherNewCard.bonusColor as GemKey]?.glowHex ?? '#C0A472' }), FALLBACK_FLIP_RIPPLE_DELAY_MS);
-                        cardAnimTimersRef.current.push(tRipple);
                       }
                     }
                     const t2 = setTimeout(() => {
@@ -1833,7 +1778,6 @@ export default function GameBoard() {
           const tAbsorb = setTimeout(() => {
             if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
             setOpponentForgeAbsorb(null);
-            setChipAbsorbPulse(prev => ({ ...prev, [actingPlayerId]: (prev[actingPlayerId] ?? 0) + 1 }));
           }, abridgedAnims ? 450 : 1250);
           cardAnimTimersRef.current.push(tAbsorb);
         }
@@ -2097,16 +2041,6 @@ export default function GameBoard() {
             });
             if (gotFlux) gameAudio.playFluxCoin();
             gameAudio.playCipherSeal();
-            // Fire the opponent chip-absorb pulse after the cipher aperture animation clears,
-            // using the same timing as the market-card reserve path.
-            const deckCipherSeq = cipherBurstKeyRef.current;
-            const tCipherDeal = setTimeout(() => {
-              if (cipherBurstKeyRef.current !== deckCipherSeq) return;
-              if (!isLocalReserve) {
-                setChipAbsorbPulse(prev => ({ ...prev, [playerId as string]: (prev[playerId as string] ?? 0) + 1 }));
-              }
-            }, abridgedAnims ? ABRIDGED_SHRINK_MS : CIPHER_DEAL_FIRE_DELAY_MS);
-            cardAnimTimersRef.current.push(tCipherDeal);
           }
         }
       }
@@ -4115,23 +4049,12 @@ export default function GameBoard() {
           )}
         </div>
         <div className="text-center">
-          <motion.div
+          <div
             className="relative flex items-center justify-center gap-1.5"
-            data-my-lumens
-            animate={myLumensPulse > 0 ? {
-              scale: [1, 1.12, 1],
-              textShadow: [
-                '0 0 0px rgba(255,255,255,0)',
-                '0 0 18px rgba(255,255,255,0.45)',
-                '0 0 0px rgba(255,255,255,0)',
-              ],
-            } : {}}
-            transition={{ duration: 0.45, ease: 'easeOut' }}
-            key={myLumensPulse}
           >
             <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
             <EminenceDiamond size={22} />
-          </motion.div>
+          </div>
           <div className="text-xs text-white/50 mt-0.5">eminence</div>
         </div>
       </div>
@@ -4891,7 +4814,6 @@ export default function GameBoard() {
                     state.players[state.currentPlayerIndex]?.playerId === opponent.playerId
                   }
                   isLocalTurn={isMyTurn}
-                  absorbPulse={chipAbsorbPulse[opponent.playerId] ?? 0}
                   affinityTotals={affinityTotals}
                 />
               );
@@ -7462,15 +7384,6 @@ export default function GameBoard() {
           onDone={() => setCompactGhost(null)}
         />
       )}
-      {/* Chip absorb ripple — fires when the ghost card lands */}
-      {chipAbsorbRipple && (
-        <ChipAbsorbRipple
-          key={chipAbsorbRipple.id}
-          chipRect={chipAbsorbRipple.chipRect}
-          color={chipAbsorbRipple.color}
-          onDone={() => setChipAbsorbRipple(null)}
-        />
-      )}
       {/* ── v0.8 Burn flashes ── */}
       {burnFlashes.map(f => (
         <BurnFlash
@@ -7513,17 +7426,6 @@ export default function GameBoard() {
           onDone={() => setSummonOverlays(pf => pf.filter(x => x.id !== o.id))}
         />
       ))}
-      {/* ── Eminence Gain Burst — condenses into white balls that fly to target eminence display ── */}
-      <AnimatePresence>
-        {lumensBursts.map((burst) => (
-          <LumensGainFlyer
-            key={burst.key}
-            burst={burst}
-            onDone={() => setLumensBursts(bs => bs.filter(b => b.key !== burst.key))}
-          />
-        ))}
-      </AnimatePresence>
-
       {/* Aura preview modal — full-screen entity + aura animation */}
       <AnimatePresence>
         {auraPreviewLuminaryId && selectedLuminary && (

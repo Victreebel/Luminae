@@ -29,13 +29,11 @@ export function OpponentChip({
   player,
   isActive,
   isLocalTurn,
-  absorbPulse = 0,
   affinityTotals,
 }: {
   player: { playerId: string; playerName: string; avatarId?: string | null; lumens: number; isAi?: boolean };
   isActive: boolean;
   isLocalTurn: boolean;
-  absorbPulse?: number;
   affinityTotals?: Partial<Record<GemKey, number>>;
 }) {
   const dimmed = !isActive && !isLocalTurn;
@@ -54,18 +52,6 @@ export function OpponentChip({
             : 'bg-secondary/60 text-muted-foreground'
         }`}
       >
-        <AnimatePresence>
-          {absorbPulse > 0 && (
-            <motion.span
-              key={absorbPulse}
-              className="pointer-events-none absolute inset-[-2px] rounded-full"
-              initial={{ boxShadow: '0 0 0 2px rgba(99,102,241,0.75), 0 0 14px 5px rgba(99,102,241,0.45)' }}
-              animate={{ boxShadow: '0 0 0 5px rgba(99,102,241,0), 0 0 20px 10px rgba(99,102,241,0)' }}
-              exit={{}}
-              transition={{ duration: 0.45, ease: 'easeOut' }}
-            />
-          )}
-        </AnimatePresence>
         <PlayerAvatar avatarId={player.avatarId} name={player.playerName} size={20} />
         {isActive && player.isAi ? (
           <svg className="h-2.5 w-2.5 animate-spin text-violet-400 shrink-0" fill="none" viewBox="0 0 24 24">
