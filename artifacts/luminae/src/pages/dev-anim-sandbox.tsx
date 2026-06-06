@@ -8,8 +8,9 @@ import {
   getLuminaryImageAssets,
 } from '@/lib/luminaryAssets';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
-import { CipherApertureAnimation } from '@/components/CipherApertureAnimation';
-import { ForgeAnimation, OpponentForgeAnimation } from './game-forge-animation';
+import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
+import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
+import { CIPHER_GAME_TOTAL_MS, DEAL_ANIM_MS } from './game-constants';
 import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
@@ -185,6 +186,59 @@ function ControlRow({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+// ─── TimingBar ────────────────────────────────────────────────────────────────
+// Displays a proportional phase bar + per-phase labels sourced directly from
+// the animation constants so they stay in sync automatically.
+
+interface PhaseSegment {
+  label: string;
+  ms: number;
+}
+
+const TIMING_COLORS = [
+  '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185',
+];
+
+function TimingBar({ totalMs, phases }: { totalMs: number; phases: PhaseSegment[] }) {
+  return (
+    <div className="flex flex-col gap-1.5 pt-3 border-t border-border/10">
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">timing</span>
+        <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums">
+          {totalMs} ms total
+        </span>
+      </div>
+      {/* Proportional phase bar */}
+      <div className="flex h-2.5 w-full rounded overflow-hidden gap-px">
+        {phases.map((p, i) => (
+          <div
+            key={p.label}
+            title={`${p.label}: ${p.ms} ms`}
+            style={{
+              width: `${(p.ms / totalMs) * 100}%`,
+              background: TIMING_COLORS[i % TIMING_COLORS.length],
+              opacity: 0.65,
+              minWidth: 1,
+            }}
+          />
+        ))}
+      </div>
+      {/* Per-phase labels */}
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {phases.map((p, i) => (
+          <span
+            key={p.label}
+            className="text-[9px] font-mono tabular-nums"
+            style={{ color: TIMING_COLORS[i % TIMING_COLORS.length], opacity: 0.85 }}
+          >
+            {p.label}&nbsp;{p.ms}ms
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── CardFxPreviewShell ───────────────────────────────────────────────────────
 // Two-section layout: top = controls, bottom = bounded preview area.
 // Full-screen animations mount on top of the page with a floating Skip button.
@@ -348,6 +402,16 @@ function CipherReservePreview() {
           <div className="flex justify-center pt-1">
             <ReplayButton onClick={play} accentHex={meta.hex} />
           </div>
+          <TimingBar
+            totalMs={CIPHER_GAME_TOTAL_MS}
+            phases={[
+              { label: 'forefront', ms: PHASE_DUR.game.forefront },
+              { label: 'circuit',   ms: PHASE_DUR.game.circuit   },
+              { label: 'compress',  ms: PHASE_DUR.game.compress  },
+              { label: 'travel',    ms: PHASE_DUR.game.travel    },
+              { label: 'arrive',    ms: PHASE_DUR.game.arrive    },
+            ]}
+          />
         </>
       }
       previewArea={
@@ -451,6 +515,16 @@ function ForgeBurstPreview() {
           <div className="flex justify-center pt-1">
             <ReplayButton onClick={play} accentHex={meta.hex} />
           </div>
+          <TimingBar
+            totalMs={FORGE_PHASE_MS.total}
+            phases={[
+              { label: 'lift',    ms: FORGE_PHASE_MS.lift    },
+              { label: 'streams', ms: FORGE_PHASE_MS.streams },
+              { label: 'stamp',   ms: FORGE_PHASE_MS.stamp   },
+              { label: 'hold',    ms: FORGE_PHASE_MS.hold    },
+              { label: 'arc',     ms: FORGE_PHASE_MS.arc     },
+            ]}
+          />
         </>
       }
       previewArea={
@@ -538,6 +612,16 @@ function OpponentForgePreview() {
           <div className="flex justify-center pt-1">
             <ReplayButton onClick={play} accentHex={meta.hex} />
           </div>
+          <TimingBar
+            totalMs={FORGE_PHASE_MS.total}
+            phases={[
+              { label: 'lift',    ms: FORGE_PHASE_MS.lift    },
+              { label: 'streams', ms: FORGE_PHASE_MS.streams },
+              { label: 'stamp',   ms: FORGE_PHASE_MS.stamp   },
+              { label: 'hold',    ms: FORGE_PHASE_MS.hold    },
+              { label: 'arc',     ms: FORGE_PHASE_MS.arc     },
+            ]}
+          />
         </>
       }
       previewArea={
@@ -563,6 +647,13 @@ function OpponentForgePreview() {
 // ─── Reserved Forge Ring Preview ──────────────────────────────────────────────
 // Rendered inside a bounded container — no fixed/viewport overlay.
 
+// Ring animation layer durations (ms) — extracted here so TimingBar and setTimeout stay in sync.
+const RING_OUTER_MS   = 800;   // outer ring expand + fade
+const RING_INNER_MS   = 730;   // inner ring (650 ms + 80 ms delay)
+const RING_LABEL_MS   = 1100;  // "Forged!" label float + fade
+const RING_FADE_MS    = 1300;  // full container opacity fade
+const RING_DISMISS_MS = 1700;  // setTimeout dismiss guard (matches RESERVED_FORGE_FULL_MS + buffer)
+
 function ReservedForgeRingPreview() {
   const [eminence, setEminence] = useState(2);
   const [animKey, setAnimKey]   = useState(0);
@@ -573,7 +664,7 @@ function ReservedForgeRingPreview() {
     setAnimKey(k => k + 1);
     setPlaying(true);
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = setTimeout(() => setPlaying(false), 1700);
+    dismissTimerRef.current = setTimeout(() => setPlaying(false), RING_DISMISS_MS);
   }
   useEffect(() => () => { if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current); }, []);
 
@@ -604,6 +695,16 @@ function ReservedForgeRingPreview() {
           <div className="flex justify-center pt-1">
             <ReplayButton onClick={play} accentHex="#a78bfa" />
           </div>
+          <TimingBar
+            totalMs={RING_DISMISS_MS}
+            phases={[
+              { label: 'outer ring', ms: RING_OUTER_MS   },
+              { label: 'inner ring', ms: RING_INNER_MS   },
+              { label: 'label float',ms: RING_LABEL_MS   },
+              { label: 'fade',       ms: RING_FADE_MS    },
+              { label: 'guard',      ms: RING_DISMISS_MS - RING_FADE_MS },
+            ]}
+          />
         </>
       }
       previewArea={
@@ -667,6 +768,12 @@ function ReservedForgeRingPreview() {
 
 // ─── Market Deal Flip Preview ─────────────────────────────────────────────────
 
+// Flip animation durations (ms) — extracted so TimingBar and setTimeout share the same source.
+const FLIP_SETTLE_MS = 60;    // brief settle before the rotateY starts
+const FLIP_DUR_MS    = 1500;  // rotateY duration (1.5 s)
+// DEAL_ANIM_MS (imported from game-constants) is the full game-side lock (1700 ms),
+// which includes FLIP_SETTLE_MS + FLIP_DUR_MS plus a trailing settle buffer.
+
 function MarketDealFlipPreview() {
   const [tier, setTier]       = useState<1 | 2 | 3>(1);
   const [flipKey, setFlipKey] = useState(0);
@@ -679,8 +786,8 @@ function MarketDealFlipPreview() {
     setFlipKey(k => k + 1);
     timerRef.current = setTimeout(() => {
       setPhase('flipping');
-      timerRef.current = setTimeout(() => setPhase('face'), 1500);
-    }, 60);
+      timerRef.current = setTimeout(() => setPhase('face'), FLIP_DUR_MS);
+    }, FLIP_SETTLE_MS);
   }
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
@@ -697,6 +804,14 @@ function MarketDealFlipPreview() {
           <div className="flex justify-center pt-1">
             <ReplayButton onClick={play} accentHex="#a78bfa" />
           </div>
+          <TimingBar
+            totalMs={DEAL_ANIM_MS}
+            phases={[
+              { label: 'settle',       ms: FLIP_SETTLE_MS },
+              { label: 'flip',         ms: FLIP_DUR_MS    },
+              { label: 'trail buffer', ms: DEAL_ANIM_MS - FLIP_SETTLE_MS - FLIP_DUR_MS },
+            ]}
+          />
         </>
       }
       previewArea={

@@ -32,6 +32,17 @@ const ARC_END     = 1.15;
 
 // OpponentForgeAnimation shares all timing constants with ForgeAnimation — no separate OP_* needed.
 
+/** Phase durations derived from the timing constants above, in milliseconds.
+ *  Exported so the dev sandbox can display them without duplicating magic numbers. */
+export const FORGE_PHASE_MS = {
+  lift:    Math.round(LIFT_END * 1000),
+  streams: Math.round((STREAMS_END - LIFT_END) * 1000),
+  stamp:   Math.round((STAMP_HIT  - STREAMS_END) * 1000),
+  hold:    Math.round((STAMP_HOLD - STAMP_HIT)   * 1000),
+  arc:     Math.round((ARC_END    - STAMP_HOLD)  * 1000),
+  total:   Math.round(ARC_END * 1000),
+} as const;
+
 // ── Viewport-relative sizing ─────────────────────────────────────────────────
 function vmin(f: number) {
   return Math.min(window.innerWidth, window.innerHeight) * f;
