@@ -75,6 +75,11 @@ export function CipherApertureAnimation({
   const cy   = window.innerHeight / 2;
   const dest = destPos ?? { x: window.innerWidth / 2, y: window.innerHeight * 0.90 };
 
+  // Sigil forms over the card itself in full-board view (skipForefront), otherwise screen centre.
+  const sigilX = skipForefront ? sourceRect.x + sourceRect.w / 2 : cx;
+  // sigil center = sigilY - 64 + 40 = sigilY - 24, so add 24 to align with card centre.
+  const sigilY = skipForefront ? sourceRect.y + sourceRect.h / 2 + 24 : cy;
+
   useEffect(() => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
@@ -170,7 +175,7 @@ export function CipherApertureAnimation({
       {/* Sigil-draw overlay — stays at full opacity through compress; colour transition is the compress visual */}
       {showSigilDraw && (
         <motion.div
-          style={{ position: "fixed", width: 80, height: 80, left: cx - 40, top: cy - 64 }}
+          style={{ position: "fixed", width: 80, height: 80, left: sigilX - 40, top: sigilY - 64 }}
           initial={{ opacity: 0, rotate: 0 }}
           animate={{ opacity: 1, rotate: at("compress") ? 8 : 0 }}
           transition={{
@@ -192,7 +197,7 @@ export function CipherApertureAnimation({
       {showSigil && (
         <motion.div
           style={{ position: "fixed", width: 80, height: 80 }}
-          initial={{ x: cx - 40, y: cy - 64, scale: 1, opacity: 1, rotate: 8 }}
+          initial={{ x: sigilX - 40, y: sigilY - 64, scale: 1, opacity: 1, rotate: 8 }}
           animate={{
             x:       dest.x - 40,
             y:       dest.y - 40,
