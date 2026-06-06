@@ -66,6 +66,8 @@ import { LuminaryCard } from './game-luminary';
 import { CompactCardGhost } from './game-animation';
 import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
+import { VictoryCinematic } from '@/components/VictoryCinematic';
+import { deriveAccolades } from '@/lib/accolades';
 
 // Reverse of the server-side COLOR_LABEL table — maps affinity display name → GemKey.
 // Used to parse the trailing affinity label out of action-log "switched …" summaries
@@ -369,6 +371,7 @@ export default function GameBoard() {
   // True when status just became 'finished' but summons are still in flight.
   // The win overlay and win audio are held back until the summon queue drains.
   const [pendingGameOver, setPendingGameOver] = useState(false);
+  const [showCinematic, setShowCinematic] = useState(true);
   // summonColor of the Luminary that sealed the game (set when pendingGameOver goes
   // true). Read by the flush effect to play the affinity fanfare before playWin().
   const pendingGameOverLumColorRef = useRef<string>('');
@@ -1241,9 +1244,10 @@ export default function GameBoard() {
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
   // Focus-trap: win overlay (game over screen — Escape is a no-op since there is nothing to dismiss)
+  // Only active after the victory cinematic has been dismissed.
   useFocusTrap(
     winOverlayContainerRef,
-    state?.status === 'finished' && !pendingGameOver && summonQueue.length === 0,
+    state?.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic,
     () => { /* terminal state — no dismiss action */ },
   );
 
@@ -1372,6 +1376,7 @@ export default function GameBoard() {
       stateQueueRef.current = [];
       gameFinishedRef.current = false;
       setClaimedThisSession([]);
+      setShowCinematic(true);
     }
       const action = newState.lastAction;
 
@@ -6935,9 +6940,42 @@ export default function GameBoard() {
       </AnimatePresence>
 
 
+      {/* ── Victory Cinematic ── */}
+      <AnimatePresence>
+        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && showCinematic && (() => {
+          const winnerId = state.winnerId;
+          if (!winnerId) return null;
+          const winnerPlayer = (state.players as GamePlayerState[]).find(p => p.playerId === winnerId);
+          if (!winnerPlayer) return null;
+          const winnerCards = (winnerPlayer.purchasedCards ?? []) as ArtifactCard[];
+          const winnerDiscountedIds = (winnerPlayer.discountedForgeIds ?? []) as string[];
+          const winnerTier = getKardashevTier(winnerCards, winnerDiscountedIds);
+          const winnerPalette = getDominantAffinityPalette(winnerCards);
+          const winnerCivName = getCivilizationName(winnerPalette, winnerTier);
+          const isLocalWinner = winnerId === session.playerId;
+          const isSpectator = !state.players.some(p => p.playerId === session.playerId);
+          const accolades = deriveAccolades(state, winnerId);
+          return (
+            <VictoryCinematic
+              key="victory-cinematic"
+              winnerName={winnerPlayer.playerName}
+              isLocalWinner={isLocalWinner}
+              isSpectator={isSpectator}
+              civName={isLocalWinner ? civLabel : winnerCivName}
+              tier={winnerTier}
+              palette={winnerPalette}
+              lumens={winnerPlayer.lumens}
+              cardsForged={winnerCards.length}
+              accolades={accolades}
+              onDismiss={() => setShowCinematic(false)}
+            />
+          );
+        })()}
+      </AnimatePresence>
+
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && (
+        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
