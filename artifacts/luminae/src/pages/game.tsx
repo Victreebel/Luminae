@@ -3600,6 +3600,15 @@ export default function GameBoard() {
                   >
                     {row.deck > 0 ? row.deck : '∅'}
                   </div>
+                  {state?.avatarSeedDeckSeeds && state.avatarSeedDeckSeeds.length > 0 && (
+                    <div
+                      className="pointer-events-none absolute bottom-1 left-1 w-[14px] h-[14px] flex items-center justify-center rounded-full"
+                      style={{ background: 'rgba(4,12,8,0.90)', border: '1px solid #4ade80', boxShadow: '0 0 6px #4ade8066' }}
+                      title="Avatar Seeds seeded in this deck"
+                    >
+                      <span style={{ fontSize: 8, lineHeight: 1 }}>🌿</span>
+                    </div>
+                  )}
                 </button>
               ) : (
                 <button
@@ -3624,6 +3633,15 @@ export default function GameBoard() {
                   >
                     {row.deck > 0 ? row.deck : 'Empty'}
                   </div>
+                  {state?.avatarSeedDeckSeeds && state.avatarSeedDeckSeeds.length > 0 && (
+                    <div
+                      className="pointer-events-none absolute bottom-1.5 left-1.5 w-[16px] h-[16px] flex items-center justify-center rounded-full"
+                      style={{ background: 'rgba(4,12,8,0.90)', border: '1px solid #4ade80', boxShadow: '0 0 8px #4ade8066' }}
+                      title="Avatar Seeds seeded in this deck"
+                    >
+                      <span style={{ fontSize: 9, lineHeight: 1 }}>🌿</span>
+                    </div>
+                  )}
                 </button>
               ))}
               {row.cards.map((c, i) => {
@@ -3881,6 +3899,15 @@ export default function GameBoard() {
                   title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
                 >
                   <CardBack size="compact" tier={row.tier as 1 | 2 | 3} />
+                  {state?.avatarSeedDeckSeeds && state.avatarSeedDeckSeeds.length > 0 && (
+                    <div
+                      className="pointer-events-none absolute bottom-1 left-1 w-[14px] h-[14px] flex items-center justify-center rounded-full"
+                      style={{ background: 'rgba(4,12,8,0.90)', border: '1px solid #4ade80', boxShadow: '0 0 6px #4ade8066' }}
+                      title="Avatar Seeds seeded in this deck"
+                    >
+                      <span style={{ fontSize: 8, lineHeight: 1 }}>🌿</span>
+                    </div>
+                  )}
                   <div
                     className="absolute top-1 right-1 min-w-[16px] h-[16px] flex items-center justify-center rounded-full text-[8px] font-bold tabular-nums px-0.5"
                     style={row.deck > 0
@@ -3914,6 +3941,15 @@ export default function GameBoard() {
                   >
                     {row.deck > 0 ? row.deck : 'Empty'}
                   </div>
+                  {state?.avatarSeedDeckSeeds && state.avatarSeedDeckSeeds.length > 0 && (
+                    <div
+                      className="pointer-events-none absolute bottom-1.5 left-1.5 w-[16px] h-[16px] flex items-center justify-center rounded-full"
+                      style={{ background: 'rgba(4,12,8,0.90)', border: '1px solid #4ade80', boxShadow: '0 0 8px #4ade8066' }}
+                      title="Avatar Seeds seeded in this deck"
+                    >
+                      <span style={{ fontSize: 9, lineHeight: 1 }}>🌿</span>
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -7589,6 +7625,11 @@ export default function GameBoard() {
             effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
             luminaryName={lum?.name ?? evt.luminaryId}
             triggeringPlayerName={triggeringPlayer?.playerName}
+            seedCardIds={
+              evt.luminaryId === 'lum_seed' && evt.effectType === 'summon'
+                ? (state?.avatarSeedDeckSeeds ?? [])
+                : undefined
+            }
             onComplete={() => {
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
