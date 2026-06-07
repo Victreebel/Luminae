@@ -2544,34 +2544,6 @@ export function LuminarySummonCutscene({
                 {/* Portal layers extend beyond via overflow:visible on each parent. */}
                 <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'visible', flexShrink: 0 }}>
 
-                  {/* Backlight flash — black → white → primary color before portal bloom settles */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={isFlashing || isFading
-                      ? { opacity: 0, backgroundColor: '#000000' }
-                      : {
-                          opacity:         [0, 1,         1,         0.60],
-                          backgroundColor: ['#000000', '#ffffff', '#ffffff', primaryColor],
-                        }
-                    }
-                    transition={{
-                      opacity:         { duration: 2.0, delay: 0.08, times: [0, 0.18, 0.36, 1.0], ease: 'easeOut' },
-                      backgroundColor: { duration: 2.0, delay: 0.08, times: [0, 0.18, 0.36, 1.0], ease: 'easeOut' },
-                    }}
-                    style={{
-                      position: 'absolute',
-                      width: 640,
-                      height: 720,
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -52%)',
-                      borderRadius: '50%',
-                      filter: 'blur(55px)',
-                      zIndex: -1,
-                      pointerEvents: 'none',
-                    }}
-                  />
-
                   {/* Outer portal bloom (680×740) — blooms from flash via spring */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.22 }}
