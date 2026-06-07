@@ -1863,9 +1863,10 @@ export function LuminarySummonCutscene({
                   {/* L1 white fracture */}
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
-                    stroke="white" strokeWidth="1.5" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
+                    stroke="white" strokeWidth="1.5" fill="none"
+                    filter={isMobile ? undefined : "url(#cgb)"}
+                    initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                    animate={isMobile ? { opacity: [0, 1.0, 0.95] } : { pathLength: 1, opacity: [0, 1.0, 0.95] }}
                     transition={{ duration: 0.10, ease: 'easeOut' }}
                   />
                   {/* L2 chasing glow + L3 residual wound glow — skipped on mobile
@@ -1894,17 +1895,18 @@ export function LuminarySummonCutscene({
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
                     stroke={primaryColor} strokeWidth="3.5" fill="none"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.32, 0.52, 0.45] }}
-                    transition={{ duration: 0.58, delay: 0.16, ease: 'easeOut' }}
+                    initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                    animate={isMobile ? { opacity: 0.45 } : { pathLength: 1, opacity: [0, 0, 0.32, 0.52, 0.45] }}
+                    transition={{ duration: isMobile ? 0.18 : 0.58, delay: 0.16, ease: 'easeOut' }}
                   />
 
                   {/* ── Branch: P→K2→RA (right edge) ─────────────────────── */}
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
-                    stroke="white" strokeWidth="1.2" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.90, 0.84] }}
+                    stroke="white" strokeWidth="1.2" fill="none"
+                    filter={isMobile ? undefined : "url(#cgb)"}
+                    initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                    animate={isMobile ? { opacity: [0, 0.90, 0.84] } : { pathLength: 1, opacity: [0, 0.90, 0.84] }}
                     transition={{ duration: 0.10, delay: 0.06, ease: 'easeOut' }}
                   />
                   {!isMobile && (<>
@@ -1929,17 +1931,18 @@ export function LuminarySummonCutscene({
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
                     stroke={primaryColor} strokeWidth="2.8" fill="none"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.26, 0.44, 0.38] }}
-                    transition={{ duration: 0.50, delay: 0.18, ease: 'easeOut' }}
+                    initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                    animate={isMobile ? { opacity: 0.38 } : { pathLength: 1, opacity: [0, 0, 0.26, 0.44, 0.38] }}
+                    transition={{ duration: isMobile ? 0.18 : 0.50, delay: 0.18, ease: 'easeOut' }}
                   />
 
                   {/* ── Branch: P→K3a→K3b→LA2 (left edge) ─────────────── */}
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
-                    stroke="white" strokeWidth="1.0" fill="none" filter="url(#cgb)"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0.85, 0.78] }}
+                    stroke="white" strokeWidth="1.0" fill="none"
+                    filter={isMobile ? undefined : "url(#cgb)"}
+                    initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                    animate={isMobile ? { opacity: [0, 0.85, 0.78] } : { pathLength: 1, opacity: [0, 0.85, 0.78] }}
                     transition={{ duration: 0.12, delay: 0.07, ease: 'easeOut' }}
                   />
                   {!isMobile && (<>
@@ -1964,18 +1967,20 @@ export function LuminarySummonCutscene({
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
                     stroke={primaryColor} strokeWidth="2.5" fill="none"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: [0, 0, 0.24, 0.40, 0.34] }}
-                    transition={{ duration: 0.48, delay: 0.19, ease: 'easeOut' }}
+                    initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                    animate={isMobile ? { opacity: 0.34 } : { pathLength: 1, opacity: [0, 0, 0.24, 0.40, 0.34] }}
+                    transition={{ duration: isMobile ? 0.18 : 0.48, delay: 0.19, ease: 'easeOut' }}
                   />
 
                   {/* ── Fine detail: tiny branch off K1 toward top-left corner */}
+                  {!isMobile && (
                   <motion.path d={`M${K1X},${K1Y} L22,14 L12,5`}
                     stroke="white" strokeWidth="0.60" fill="none" filter="url(#cgb)"
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: [0, 0.70, 0.60] }}
                     transition={{ duration: 0.08, delay: 0.09, ease: 'easeOut' }}
                   />
+                  )}
 
                   {/* ── Light leaking through first crack (leaking+) ─────────── */}
                   {(isLeaking || isSecondCrack || isCracking) && (
@@ -2022,9 +2027,10 @@ export function LuminarySummonCutscene({
                       {/* ── Main: P→K4→Q→K8→BA ─────────────────────────── */}
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
-                        stroke="white" strokeWidth="1.6" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 1.0, 0.94] }}
+                        stroke="white" strokeWidth="1.6" fill="none"
+                        filter={isMobile ? undefined : "url(#cgb)"}
+                        initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={isMobile ? { opacity: [0, 1.0, 0.94] } : { pathLength: 1, opacity: [0, 1.0, 0.94] }}
                         transition={{ duration: 0.14, ease: 'easeOut' }}
                       />
                       {!isMobile && (<>
@@ -2049,17 +2055,18 @@ export function LuminarySummonCutscene({
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke={primaryColor} strokeWidth="4.0" fill="none"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0, 0.30, 0.50, 0.44] }}
-                        transition={{ duration: 0.64, delay: 0.14, ease: 'easeOut' }}
+                        initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={isMobile ? { opacity: 0.44 } : { pathLength: 1, opacity: [0, 0, 0.30, 0.50, 0.44] }}
+                        transition={{ duration: isMobile ? 0.18 : 0.64, delay: 0.14, ease: 'easeOut' }}
                       />
 
                       {/* ── Branch: Q→K5→K6→RB (right edge) ────────────── */}
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
-                        stroke="white" strokeWidth="1.0" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.80, 0.72] }}
+                        stroke="white" strokeWidth="1.0" fill="none"
+                        filter={isMobile ? undefined : "url(#cgb)"}
+                        initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={isMobile ? { opacity: [0, 0.80, 0.72] } : { pathLength: 1, opacity: [0, 0.80, 0.72] }}
                         transition={{ duration: 0.12, delay: 0.22, ease: 'easeOut' }}
                       />
                       {!isMobile && (<>
@@ -2084,17 +2091,18 @@ export function LuminarySummonCutscene({
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
                         stroke={primaryColor} strokeWidth="2.6" fill="none"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0, 0.24, 0.42, 0.36] }}
-                        transition={{ duration: 0.52, delay: 0.32, ease: 'easeOut' }}
+                        initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={isMobile ? { opacity: 0.36 } : { pathLength: 1, opacity: [0, 0, 0.24, 0.42, 0.36] }}
+                        transition={{ duration: isMobile ? 0.18 : 0.52, delay: 0.32, ease: 'easeOut' }}
                       />
 
                       {/* ── Branch: Q→K7→LA (left edge) ─────────────────── */}
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
-                        stroke="white" strokeWidth="0.85" fill="none" filter="url(#cgb)"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0.76, 0.68] }}
+                        stroke="white" strokeWidth="0.85" fill="none"
+                        filter={isMobile ? undefined : "url(#cgb)"}
+                        initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={isMobile ? { opacity: [0, 0.76, 0.68] } : { pathLength: 1, opacity: [0, 0.76, 0.68] }}
                         transition={{ duration: 0.11, delay: 0.25, ease: 'easeOut' }}
                       />
                       {!isMobile && (<>
@@ -2119,18 +2127,20 @@ export function LuminarySummonCutscene({
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
                         stroke={primaryColor} strokeWidth="2.0" fill="none"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: [0, 0, 0.20, 0.36, 0.30] }}
-                        transition={{ duration: 0.44, delay: 0.35, ease: 'easeOut' }}
+                        initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+                        animate={isMobile ? { opacity: 0.30 } : { pathLength: 1, opacity: [0, 0, 0.20, 0.36, 0.30] }}
+                        transition={{ duration: isMobile ? 0.18 : 0.44, delay: 0.35, ease: 'easeOut' }}
                       />
 
                       {/* ── Fine detail: tiny branch off K4 toward upper-left */}
+                      {!isMobile && (
                       <motion.path d={`M${K4X},${K4Y} L38,84 L28,82`}
                         stroke="white" strokeWidth="0.55" fill="none" filter="url(#cgb)"
                         initial={{ pathLength: 0, opacity: 0 }}
                         animate={{ pathLength: 1, opacity: [0, 0.62, 0.52] }}
                         transition={{ duration: 0.08, delay: 0.20, ease: 'easeOut' }}
                       />
+                      )}
 
                       {/* ── Light pools and motes along second crack ─────── */}
                       <circle cx={QX} cy={QY} r="16" fill={primaryColor}
@@ -2178,7 +2188,7 @@ export function LuminarySummonCutscene({
                   )}
 
                   {/* ── Cracking phase: energy burst at P and Q ───────────────── */}
-                  {isCracking && (
+                  {isCracking && !isMobile && (
                     <>
                       <motion.circle cx={PX} cy={PY} r="18" fill={primaryColor}
                         filter="url(#cgw)"

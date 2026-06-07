@@ -1,6 +1,6 @@
 ---
 name: Mobile perf — framer-motion CSS migration
-description: Pattern for converting repeat:Infinity JS animation loops to CSS keyframes; what was converted, what remains, and SVG-specific gotchas.
+description: Pattern for converting repeat:Infinity JS animation loops to CSS keyframes; SVG pathLength elimination on mobile; what was converted, what remains.
 ---
 
 ## The rule
@@ -39,13 +39,35 @@ Then in JSX: `style={{ '--lum-glow-dim': '...', '--lum-glow-bright': '...', '--l
 
 **Total eliminated: ~80 JS loops**
 
-## SVG pathLength mobile optimization (crack SVG overlay)
+## SVG pathLength mobile optimization — COMPLETE (crack SVG overlay)
 
-`motion.path` with `pathLength` requires `getTotalLength()` DOM calls + JS interpolation per frame. With 24 paths simultaneous during the crack phases, this is heavy on mobile.
+`motion.path` with `pathLength` requires `getTotalLength()` DOM calls + JS interpolation per frame. With 24 paths simultaneous during the crack phases (plus blur filters), this was the primary mobile lag source.
 
-**Fix:** L2 (chasing glow, ~16-24px strokeWidth, blur filter) and L3 (residual wound glow, ~8-16px strokeWidth, blur filter) are skipped on mobile via `{!isMobile && (<>...</>)}`. Applied to all 6 crack segments (3 in first crack + 3 in second crack).
+**Critical insight:** `#cgb` (`feGaussianBlur stdDeviation="1.5"`) is ALSO a blur filter — not just a color filter. All L1 white-snap paths were still compositing through a blur on mobile even after L2/L3 were removed.
 
-**Mobile result:** 24 concurrent pathLength animations → 12. All 12 remaining paths have no blur filter and thin strokes (≤4px). Desktop is unchanged.
+**Final mobile state (0 pathLength, 0 blur from crack sequence):**
+
+| Layer | Desktop | Mobile |
+|---|---|---|
+| L1 white snap | `pathLength` + `filter="url(#cgb)"` | opacity flash, no filter |
+| L2 chasing glow | `pathLength` + `filter="url(#cgw)"` | **skipped** |
+| L3 residual wound | `pathLength` + `filter="url(#cgw)"` | **skipped** |
+| L4 tinted seam | `pathLength`, no filter | opacity flash |
+| Fine detail branches | `pathLength` + `filter="url(#cgb)"` | **skipped** |
+| isCracking burst circles | `scale` + `filter="url(#cgw)"` | **skipped** |
+
+**Pattern for L1/L4 opacity flash on mobile:**
+```jsx
+<motion.path
+  d={...}
+  stroke="white" strokeWidth="1.5" fill="none"
+  filter={isMobile ? undefined : "url(#cgb)"}
+  initial={isMobile ? { opacity: 0 } : { pathLength: 0, opacity: 0 }}
+  animate={isMobile ? { opacity: [0, 1.0, 0.95] } : { pathLength: 1, opacity: [0, 1.0, 0.95] }}
+  transition={{ duration: 0.10, ease: 'easeOut' }}
+/>
+```
+Key: `pathLength` must be absent from BOTH `initial` AND `animate` on mobile — framer-motion activates `getTotalLength()` if `pathLength` appears in either.
 
 ## SVG-specific gotchas
 
