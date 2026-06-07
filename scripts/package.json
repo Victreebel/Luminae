@@ -16,7 +16,8 @@
     "test:luminary-files": "tsx ./src/check-luminary-files.test.ts",
     "audit:overlays": "node overlay-audit/audit-overlays.cjs",
     "test:overlays": "playwright test --config=playwright.config.ts overlay-audit/overlay-centering.spec.ts",
-    "test:dialog-keyboard": "playwright test --config=dialog-keyboard.config.ts"
+    "test:dialog-keyboard": "playwright test --config=dialog-keyboard.config.ts",
+    "test:ws-keepalive": "playwright test --config=connection-stability.config.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
