@@ -534,6 +534,54 @@ function RadiantEntity({ size = 140, className = '' }: { size?: number; classNam
   );
 }
 
+/**
+ * Living three-layer animated composite for the Concordance Mandala — renders
+ * the ring / body / core layers with their CSS spin + pulse + float animations,
+ * suitable for embedding in the activation cinematic at full screen scale.
+ *
+ * `size` is a CSS length string applied to both width and height of the square
+ * container (e.g. '75vmin').  Returns null if the layer images aren't loaded.
+ */
+export function RadiantLivingEntityComposite({ size = '75vmin' }: { size?: string }) {
+  const ring = _luminaryImageMap['lum_radiant/Radiant 1'] ?? null;
+  const body = _luminaryImageMap['lum_radiant/Radiant 2'] ?? null;
+  const core = _luminaryImageMap['lum_radiant/Radiant 3'] ?? null;
+
+  if (!ring || !body || !core) return null;
+
+  const layerImg: React.CSSProperties = {
+    position: 'absolute', inset: 0, width: '100%', height: '100%',
+    objectFit: 'contain', display: 'block', mixBlendMode: 'screen',
+  };
+  const absfill: React.CSSProperties = { position: 'absolute', inset: 0 };
+
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      {/* Single float wrapper so all layers bob in sync */}
+      <div className="lum-idle-float" style={absfill}>
+        {/* Ring — slow CCW spin, permanent glow */}
+        <div
+          className="lum-radiant-ring-pulse"
+          style={{ ...absfill, transform: 'scale(1.25) translateY(-3px)', transformOrigin: 'center center' }}
+        >
+          <img src={ring} draggable={false} alt="" className="lum-radiant-ring" style={layerImg} />
+        </div>
+        {/* Body */}
+        <div style={{ ...absfill, transform: 'scale(1.1)', transformOrigin: 'center center' }}>
+          <img src={body} draggable={false} alt="" style={layerImg} />
+        </div>
+        {/* Core orb — slow CW spin, glow pulse */}
+        <div
+          className="lum-radiant-core-pulse"
+          style={{ ...absfill, transform: 'translateY(-5px) scale(0.20)', transformOrigin: 'center center' }}
+        >
+          <img src={core} draggable={false} alt="" className="lum-radiant-core" style={layerImg} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Astral Weaver ──────────────────────────────────────────────────────────────
 // Astral weaver: six crystal arms in exact hexagonal star pattern, star-cluster head.
 function AstralEntity({ size = 140, className = '' }: { size?: number; className?: string }) {

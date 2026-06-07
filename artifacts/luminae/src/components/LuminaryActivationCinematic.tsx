@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import { getLuminaryVisuals, getLuminaryImageAssets } from '@/lib/luminaryAssets';
+import { getLuminaryVisuals, getLuminaryImageAssets, RadiantLivingEntityComposite } from '@/lib/luminaryAssets';
 import { gameAudio } from '@/lib/audio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -154,8 +154,9 @@ export function LuminaryActivationCinematic({
                 : { duration: REVEAL_MS / 1000, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] },
             }}
           >
-            {/* Colored glow bloom behind the entity */}
+            {/* Colored glow bloom behind the entity — animated for lum_radiant */}
             <div
+              className={luminaryId === 'lum_radiant' ? 'lum-aura-bloom' : undefined}
               style={{
                 position: 'absolute',
                 inset: '-20%',
@@ -165,7 +166,12 @@ export function LuminaryActivationCinematic({
               }}
             />
 
-            {imageUrl ? (
+            {/* lum_radiant: living three-layer animated composite instead of static PNG */}
+            {luminaryId === 'lum_radiant' ? (
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <RadiantLivingEntityComposite size="78vmin" />
+              </div>
+            ) : imageUrl ? (
               <img
                 src={imageUrl}
                 alt=""
