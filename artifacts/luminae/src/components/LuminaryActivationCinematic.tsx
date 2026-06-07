@@ -30,16 +30,17 @@ interface LuminaryActivationCinematicProps {
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
 
-const ZOOM_OUT_MS  = 720;   // board scales down, dim fades in
-const REVEAL_MS    = 1100;  // entity fades + scales in from above
-const HOLD_MS      = 1200;  // linger at full opacity
-const PAN_OUT_MS   = 980;   // entity drifts + fades, board restores
+const ZOOM_OUT_MS  = 280;   // board scales down, dim fades in
+const REVEAL_MS    = 460;   // entity fades + scales in from above
+const HOLD_MS      = 760;   // linger at full opacity
+const PAN_OUT_MS   = 500;   // entity drifts + fades, board restores
+// Total: 2000ms
 
 // Effect beats fire within the hold phase (must all complete before HOLD_MS)
 const BEAT_SIGIL_MS  = 0;    // relative to hold start
-const BEAT_TARGET_MS = 360;
-const BEAT_SNAP_MS   = 760;
-const BEAT_DONE_MS   = 1160;
+const BEAT_TARGET_MS = 180;
+const BEAT_SNAP_MS   = 380;
+const BEAT_DONE_MS   = 620;
 
 // CSS scale applied to [data-game-board] during the cinematic
 const BOARD_SCALE = 0.50;
