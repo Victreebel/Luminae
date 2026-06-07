@@ -10,7 +10,7 @@ import {
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
 import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
-import { CIPHER_GAME_TOTAL_MS, DEAL_ANIM_MS } from './game-constants';
+import { CIPHER_MODE_TOTAL_MS, type CipherApertureMode, DEAL_ANIM_MS } from './game-constants';
 import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
@@ -348,11 +348,12 @@ function ScaledViewportContainer({
 type CipherDestSide = 'left' | 'center' | 'right';
 
 function CipherReservePreview() {
-  const [affinity, setAffinity]   = useState<GemKey>('ruby');
-  const [tier, setTier]           = useState<1 | 2 | 3>(1);
-  const [destSide, setDestSide]   = useState<CipherDestSide>('center');
-  const [animKey, setAnimKey]     = useState(0);
-  const [playing, setPlaying]     = useState(false);
+  const [affinity, setAffinity]         = useState<GemKey>('ruby');
+  const [tier, setTier]                 = useState<1 | 2 | 3>(1);
+  const [destSide, setDestSide]         = useState<CipherDestSide>('center');
+  const [cipherMode, setCipherMode]     = useState<CipherApertureMode>('game');
+  const [animKey, setAnimKey]           = useState(0);
+  const [playing, setPlaying]           = useState(false);
 
   const meta = GEM_META[affinity];
   const card = makeMockCard(tier, affinity);
@@ -375,6 +376,8 @@ function CipherReservePreview() {
     right:  { x: Math.round(window.innerWidth * 0.85), y: Math.round(window.innerHeight * 0.88) },
   };
 
+  const modeTotalMs = CIPHER_MODE_TOTAL_MS[cipherMode];
+
   return (
     <CardFxPreviewShell
       note="Cipher sigil forms over the card then collapses to the chosen hand slot. Contained in the preview area below via CSS stacking-context scaling."
@@ -382,6 +385,23 @@ function CipherReservePreview() {
         <>
           <ControlRow label="Affinity"><AffinityPicker value={affinity} onChange={setAffinity} /></ControlRow>
           <ControlRow label="Tier"><TierPicker value={tier} onChange={setTier} /></ControlRow>
+          <ControlRow label="Mode">
+            {(['game', 'tutorial'] as CipherApertureMode[]).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setCipherMode(m)}
+                className="text-[10px] font-mono px-3 py-0.5 rounded border transition-colors capitalize"
+                style={{
+                  borderColor: cipherMode === m ? meta.hex : 'rgba(255,255,255,0.15)',
+                  background:  cipherMode === m ? `${meta.hex}18` : 'transparent',
+                  color:       cipherMode === m ? meta.hex : '#64748b',
+                }}
+              >
+                {m}
+              </button>
+            ))}
+          </ControlRow>
           <ControlRow label="Destination">
             {(['left', 'center', 'right'] as CipherDestSide[]).map(s => (
               <button
@@ -403,13 +423,13 @@ function CipherReservePreview() {
             <ReplayButton onClick={play} accentHex={meta.hex} />
           </div>
           <TimingBar
-            totalMs={CIPHER_GAME_TOTAL_MS}
+            totalMs={modeTotalMs}
             phases={[
-              { label: 'forefront', ms: PHASE_DUR.game.forefront },
-              { label: 'circuit',   ms: PHASE_DUR.game.circuit   },
-              { label: 'compress',  ms: PHASE_DUR.game.compress  },
-              { label: 'travel',    ms: PHASE_DUR.game.travel    },
-              { label: 'arrive',    ms: PHASE_DUR.game.arrive    },
+              { label: 'forefront', ms: PHASE_DUR[cipherMode].forefront },
+              { label: 'circuit',   ms: PHASE_DUR[cipherMode].circuit   },
+              { label: 'compress',  ms: PHASE_DUR[cipherMode].compress  },
+              { label: 'travel',    ms: PHASE_DUR[cipherMode].travel    },
+              { label: 'arrive',    ms: PHASE_DUR[cipherMode].arrive    },
             ]}
           />
         </>
@@ -419,7 +439,7 @@ function CipherReservePreview() {
           <CipherApertureAnimation
             key={animKey}
             animKey={animKey}
-            mode="game"
+            mode={cipherMode}
             sourceRect={sourceRect}
             affinityHex={meta.hex}
             cardName={card.name}
