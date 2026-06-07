@@ -2512,19 +2512,25 @@ export function LuminarySummonCutscene({
             <motion.div
               className="relative flex flex-col items-center"
               style={{ overflow: 'visible', perspective: '800px' }}
-              initial={{ scale: 0.18, y: 42, opacity: 0, rotateY: 32, z: -200 }}
+              initial={{ scale: 0.16, y: -90, opacity: 0, rotateY: 14, z: -240 }}
               animate={isFading
-                ? { scale: 1.14, y: -38, opacity: 0, rotateY: 0 }
-                : { scale: 1.0, y: 0, opacity: 1, rotateY: 0 }
+                ? { scale: 1.14, y: -38, opacity: 0, rotateY: 0, z: 0 }
+                : {
+                    scale:   [0.16, 0.86, 1.0],
+                    y:       [-90, 54, 0],
+                    opacity: 1,
+                    rotateY: [14, 3, 0],
+                    z:       [-240, -28, 0],
+                  }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 2.2, delay: 0.15, ease: 'easeOut' },
-                    y:       { duration: 2.2, delay: 0.15, ease: 'easeOut' },
-                    opacity: { duration: 0.80, delay: 0.15, ease: 'easeOut' },
-                    rotateY: { duration: 2.2, delay: 0.15, ease: 'easeOut' },
-                    z:       { duration: 2.2, delay: 0.15, ease: 'easeOut' },
+                    scale:   { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    y:       { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    rotateY: { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    z:       { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    opacity: { duration: 0.75, delay: 0.12, ease: 'easeOut' },
                   }
               }
             >
