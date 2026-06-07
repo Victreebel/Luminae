@@ -5,7 +5,6 @@ import {
   LuminarySummonCutscene,
   LuminaryIdleOverlay,
   getLuminaryVisuals,
-  getLuminaryImageAssets,
 } from '@/lib/luminaryAssets';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
@@ -47,13 +46,12 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
 
 // ─── Luminary Mode ────────────────────────────────────────────────────────────
 
-type SandboxMode = 'summon' | 'idle' | 'aura' | 'activation';
+type SandboxMode = 'summon' | 'idle' | 'activation';
 
 const MODES: { id: SandboxMode; label: string }[] = [
   { id: 'summon',     label: 'Summon Flash' },
   { id: 'activation', label: 'Activation' },
   { id: 'idle',       label: 'Idle Portal' },
-  { id: 'aura',       label: 'Aura Layer' },
 ];
 
 // ─── Card FX Mode ─────────────────────────────────────────────────────────────
@@ -1096,68 +1094,6 @@ function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: nu
   );
 }
 
-// ─── Aura Layer Preview ───────────────────────────────────────────────────────
-
-function AuraLayerPreview({ lum }: { lum: SandboxLuminary }) {
-  const vis = getLuminaryVisuals(lum.id);
-  const { auraLayer: auraUrl } = getLuminaryImageAssets(lum.id);
-
-  return (
-    <div className="flex flex-col items-center gap-4 px-4 py-6">
-      <p className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
-        Aura PNG · screen blend · mid-tone swatch
-      </p>
-
-      <div className="flex gap-4 items-start flex-wrap justify-center">
-        {(['#1e1e2e', '#2d2d45', '#3a3a5c'] as const).map((bg, i) => (
-          <div key={bg} className="flex flex-col items-center gap-1">
-            <div
-              style={{
-                width: 160, height: 160, borderRadius: 10, background: bg,
-                position: 'relative', overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              {auraUrl ? (
-                <img
-                  src={auraUrl} alt="" draggable={false}
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', mixBlendMode: 'screen' }}
-                />
-              ) : (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 10, color: '#64748b', textAlign: 'center', padding: 8 }}>No aura asset</span>
-                </div>
-              )}
-            </div>
-            <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#475569' }}>
-              {bg} {i === 0 ? '(dark)' : i === 1 ? '(mid)' : '(lighter)'}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-col items-center gap-1 mt-2">
-        <p className="text-[10px] text-muted-foreground/40">Procedural radial glow (in-engine fallback)</p>
-        <div
-          style={{
-            width: 160, height: 160, borderRadius: 10, background: '#1e1e2e',
-            position: 'relative', border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute', inset: -20, borderRadius: 22,
-              background: `radial-gradient(ellipse at 50% 42%, ${vis.glowColor}3a 0%, ${vis.primaryColor}1c 42%, ${vis.glowColor}0d 66%, transparent 84%)`,
-            }}
-          />
-        </div>
-        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#475569' }}>
-          {vis.glowColor} / {vis.primaryColor}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 // ─── Luminary Grid Card ───────────────────────────────────────────────────────
 
@@ -1254,7 +1190,6 @@ export default function DevAnimSandbox() {
     summon:     'Click any Luminary to preview its full summon cutscene with its correct flash tint.',
     activation: 'Click any Luminary to preview the ~4 s activation cinematic (arrival / end-of-turn / start-of-turn effect).',
     idle:       'Click any Luminary to preview its idle portal overlay — entity return-flight + looping aura glow.',
-    aura:       'Click any Luminary to preview its aura PNG asset on mid-tone backgrounds to check fringing.',
   };
 
   const cardFxInstructions: Record<CardFxMode, string> = {
@@ -1391,16 +1326,6 @@ export default function DevAnimSandbox() {
                 </p>
               )}
 
-              {mode === 'aura' && selected && (
-                <div className="max-w-3xl mx-auto mt-6 border-t border-border/20 pt-4">
-                  <AuraLayerPreview lum={selected} />
-                </div>
-              )}
-              {mode === 'aura' && !selected && (
-                <p className="text-center text-[11px] text-muted-foreground/30 mt-8">
-                  ↑ select a Luminary above to preview its aura layer
-                </p>
-              )}
             </>
           )}
 

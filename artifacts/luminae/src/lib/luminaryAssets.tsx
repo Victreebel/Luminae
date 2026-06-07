@@ -152,21 +152,18 @@ function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura' | 'back
   return _luminaryImageMap[`${id}/${slot}`] ?? null;
 }
 
-/** All three illustrated image slots for one Luminary. null = not yet available → fallback to procedural art. */
+/** Illustrated image slots for one Luminary. null = not yet available → fallback to procedural art. */
 export interface LuminaryImageAssets {
   /** Sealed board panel art. Displayed in the objective tile and as the shattering vessel. */
   panelArt: string | null;
   /** Freed entity transparent cutout. No card border or square portrait edges. */
   entityCutout: string | null;
-  /** Cosmic aura / light layer. Rendered behind the entity with screen blend during reveal. */
-  auraLayer: string | null;
 }
 
 export function getLuminaryImageAssets(id: string): LuminaryImageAssets {
   return {
     panelArt:     _getLuminaryImage(id, 'panel'),
     entityCutout: _getLuminaryImage(id, 'entity'),
-    auraLayer:    _getLuminaryImage(id, 'aura'),
   };
 }
 
