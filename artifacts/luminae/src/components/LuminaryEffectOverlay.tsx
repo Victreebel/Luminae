@@ -109,15 +109,12 @@ export const LUMINARY_EFFECT_MAP: Record<string, Omit<LuminaryEffectAnimation, '
 };
 
 // ─── Beat 3: Aura expansion ───────────────────────────────────────────────────
-// Replaces the old circle-ring approach.  Uses outward rays + borderless
-// ambient glow — no geometric border/ring shapes that clash with irregular
-// Luminary silhouettes.  Rendered BEFORE the entity in DOM order (paints behind).
+// Borderless ambient radial glow centered on the entity.  No geometric shapes,
+// no rays, no circles — just colored light that expands outward.
+// Rendered BEFORE the entity in DOM order (paints behind).
 //
-// Entry: rays grow outward (scaleY 0→1) from entity center, glow expands.
-// Exit:  rays continue extending past full length while fading (dissipate
-//        outward) — never collapse inward.
-
-const RAY_COUNT = 10;
+// Entry: glow expands outward from entity center (scale 0.2 → 1.0).
+// Exit:  continues expanding while fading (scale → 1.7) — never collapses.
 
 export function AuraExpansion({
   affinities,
@@ -139,71 +136,51 @@ export function AuraExpansion({
       className="absolute inset-0 flex items-center justify-center"
       style={{ pointerEvents: 'none' }}
     >
-      {/* Ambient aura glow — borderless radial light, no visible circle outline.
-          Starts collapsed at entity center, expands outward on entry.
-          Exit: continues expanding while fading (never pulls back). */}
+      {/* Outer wash — large, very soft, mostly transparent */}
       <motion.div
         style={{
           position: 'absolute',
-          width: '110vmin',
-          height: '110vmin',
+          width: '140vmin',
+          height: '140vmin',
           background: `radial-gradient(ellipse at center,
-            ${c1}26 0%,
-            ${c2}12 42%,
-            transparent 68%)`,
+            ${c1}10 0%,
+            ${c2}08 38%,
+            transparent 62%)`,
+          filter: 'blur(24px)',
         }}
-        initial={{ scale: 0.22, opacity: 0 }}
+        initial={{ scale: 0.3, opacity: 0 }}
         animate={{
-          scale:   visible ? 1.0 : 1.75,
+          scale:   visible ? 1.0 : 1.7,
           opacity: visible ? 1   : 0,
         }}
         transition={{
-          duration: visible ? 0.55 : 0.62,
+          duration: visible ? 0.62 : 0.68,
           ease: visible ? entryEase : 'easeOut',
         }}
       />
 
-      {/* Radial rays — thin gradient beams that shoot outward from entity center.
-          transformOrigin: 'top center' means scaleY grows downward (away from center).
-          framer-motion merges `rotate` in style with animated scaleY correctly. */}
-      {Array.from({ length: RAY_COUNT }, (_, i) => {
-        const angle = (i / RAY_COUNT) * 360;
-        const color = colors[i % colors.length] ?? c1;
-        // Alternate between two widths for organic variety
-        const width = i % 2 === 0 ? 1.5 : 1;
-        return (
-          <motion.div
-            key={i}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width,
-              height: '34vmin',
-              marginLeft: -(width / 2),
-              transformOrigin: 'top center',
-              rotate: angle,          // framer-motion rotate (degrees) — combined with scaleY
-              background: `linear-gradient(
-                to bottom,
-                ${color}cc 0%,
-                ${color}66 45%,
-                transparent 100%
-              )`,
-            }}
-            initial={{ scaleY: 0, opacity: 0 }}
-            animate={{
-              // Exit: scaleY > 1 so rays keep extending outward as they fade
-              scaleY:  visible ? 1    : 1.55,
-              opacity: visible ? 0.82 : 0,
-            }}
-            transition={{
-              duration: visible ? 0.50 : 0.55,
-              delay:    visible ? i * 0.022 : 0,
-              ease:     visible ? entryEase : 'easeOut',
-            }}
-          />
-        );
-      })}
+      {/* Inner core bloom — brighter, tighter, entity-center glow */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          width: '72vmin',
+          height: '72vmin',
+          background: `radial-gradient(ellipse at center,
+            ${c1}30 0%,
+            ${c1}14 44%,
+            transparent 70%)`,
+          filter: 'blur(18px)',
+        }}
+        initial={{ scale: 0.2, opacity: 0 }}
+        animate={{
+          scale:   visible ? 1.0 : 1.7,
+          opacity: visible ? 1   : 0,
+        }}
+        transition={{
+          duration: visible ? 0.50 : 0.58,
+          ease: visible ? entryEase : 'easeOut',
+        }}
+      />
     </div>
   );
 }
