@@ -155,10 +155,19 @@ export function useGameWebsocket({
       }
     };
 
-    ws.onclose = () => {
+    ws.onclose = (event: CloseEvent) => {
       setIsConnected(false);
       wsRef.current = null;
-      
+
+      // Emit a warning so Playwright / DevTools can detect the drop
+      // immediately — before the reconnect attempt opens a new socket.
+      // This handler only fires for unexpected closes; intentional cleanup
+      // in the useEffect teardown nullifies ws.onclose before calling
+      // ws.close(), so it never triggers this path.
+      console.warn(
+        `[luminae] game WebSocket closed unexpectedly (code=${event.code}, wasClean=${event.wasClean}) — reconnecting`,
+      );
+
       reconnectTimeoutRef.current = setTimeout(() => {
         connect();
         reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, MAX_RECONNECT_DELAY);

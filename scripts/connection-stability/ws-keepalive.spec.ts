@@ -4,20 +4,26 @@
  * Verifies that neither the Vite HMR WebSocket nor the game WebSocket
  * drop and reconnect during a 60-second idle session.
  *
- * Two independent failure signals are detected:
+ * Three independent failure signals are detected:
  *
  *  1. HMR socket — browser console "[vite] connecting" after page load.
  *     Vite's client logs this every time the HMR socket re-establishes.
  *     The keepalive plugin (hmrPongReply + hmr.timeout:10000 in vite.config.ts)
  *     prevents the Replit proxy from closing the HMR socket after 30 s idle.
  *
- *  2. Game socket — Playwright's page.on('websocket') intercepts every /ws
- *     WebSocket open at the browser level.  If the game socket closes and
- *     reconnects during the idle period, a second open will be detected even
- *     for clean proxy-idle drops that trigger onclose (not onerror), without
- *     requiring any console.log in the application code.
+ *  2. Game socket (immediate) — use-game-websocket.ts emits a
+ *     console.warn("[luminae] game WebSocket closed unexpectedly …") inside
+ *     onclose.  This fires as soon as the socket drops — before the reconnect
+ *     attempt opens a new WebSocket — giving the earliest possible signal.
+ *     Because intentional cleanup nullifies ws.onclose before calling
+ *     ws.close(), this handler only fires for unexpected drops.
  *
- * Both failures indicate a proxy-idle timeout regression: Replit's reverse
+ *  3. Game socket (CDP) — Playwright's page.on('websocket') intercepts every
+ *     /ws WebSocket open at the browser level.  If the game socket closes and
+ *     reconnects during the idle period, a second open will be detected even
+ *     for clean proxy-idle drops that trigger onclose (not onerror).
+ *
+ * All three signals indicate a proxy-idle timeout regression: Replit's reverse
  * proxy drops WebSocket connections after ~30 s of bidirectional silence.
  * The keepalive mechanisms (10-second bidirectional ping/pong on both sockets)
  * prevent this.  If either breaks, this test will catch it within 30–90 s.
@@ -46,6 +52,20 @@ const IDLE_MS = 60_000;
  */
 const HMR_BAD_PATTERNS: ReadonlyArray<RegExp> = [
   /\[vite\] connecting/i,
+];
+
+/**
+ * Game WS console patterns emitted by use-game-websocket.ts whenever
+ * the game socket closes unexpectedly (i.e. via onclose, not via the
+ * intentional cleanup path that nullifies the handler first).
+ *
+ * This gives an IMMEDIATE signal — logged as soon as onclose fires, before
+ * the reconnect attempt opens a new WebSocket.  Together with the CDP
+ * page.on('websocket') reconnect counter it provides two independent
+ * detection paths for unexpected game socket drops.
+ */
+const GAME_WS_BAD_PATTERNS: ReadonlyArray<RegExp> = [
+  /\[luminae\] game WebSocket closed unexpectedly/i,
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -211,11 +231,36 @@ test('game and HMR WebSockets stay connected for 60 s with no idle reconnect', a
     ].join('\n'),
   ).toHaveLength(0);
 
-  // 2. Game socket: no /ws reconnect detected via WebSocket lifecycle events.
+  // 2. Game socket (immediate signal): no unexpected onclose warning logged by
+  //    use-game-websocket.ts.  This fires as soon as the socket drops — before
+  //    the reconnect attempt opens a new WebSocket — giving earlier detection
+  //    than the CDP reconnect counter below.
+  const gameWsBadMessages = consoleMessages.filter((msg) =>
+    GAME_WS_BAD_PATTERNS.some((pat) => pat.test(msg)),
+  );
+  expect(
+    gameWsBadMessages,
+    [
+      `Game socket (console): detected ${gameWsBadMessages.length} unexpected close(s) during the ${IDLE_MS / 1000}s idle period.`,
+      'use-game-websocket.ts emitted a warning immediately on onclose.',
+      'This indicates the game WebSocket keepalive (10-second ping/pong) failed',
+      'and the Replit proxy dropped the connection after its idle timeout.',
+      '',
+      'Close messages:',
+      ...gameWsBadMessages.map((m) => `  • ${m}`),
+      '',
+      'Check the ping interval in artifacts/luminae/src/hooks/use-game-websocket.ts',
+      'and the pong handler in artifacts/api-server/src/lib/websocket.ts.',
+    ].join('\n'),
+  ).toHaveLength(0);
+
+  // 3. Game socket (CDP signal): no /ws reconnect detected via WebSocket
+  //    lifecycle events.  A new socket opening during the idle period confirms
+  //    a drop-and-reconnect cycle completed.
   expect(
     gameWsReconnectsDuringIdle,
     [
-      `Game socket: detected ${gameWsReconnectsDuringIdle} /ws reconnect(s) during the ${IDLE_MS / 1000}s idle period.`,
+      `Game socket (CDP): detected ${gameWsReconnectsDuringIdle} /ws reconnect(s) during the ${IDLE_MS / 1000}s idle period.`,
       'This indicates the game WebSocket keepalive (10-second ping/pong) failed',
       'and the Replit proxy dropped the connection after its idle timeout.',
       '',
