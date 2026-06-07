@@ -12,10 +12,11 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Phase = 'zoom_out' | 'reveal' | 'hold' | 'pan_out' | 'done';
+// anticipate → reveal → hold → pan_out → done
+type Phase = 'anticipate' | 'reveal' | 'hold' | 'pan_out' | 'done';
 
 // Internal beat sequence that fires during the hold phase.
-// beat 3: sigil  — affinity rings appear
+// beat 3: sigil  — aura glow expands
 // beat 4: target — target claim badge appears
 // beat 5: snap   — consequence flash fires once then fades
 type EffectBeat = 'idle' | 'sigil' | 'target' | 'snap' | 'done';
@@ -29,18 +30,46 @@ interface LuminaryActivationCinematicProps {
 }
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
+//
+// Total: 2100ms
+//
+// 0.00s–0.15s  ANTICIPATE  board dims, anticipation pulse — no entity yet
+// 0.15s–0.70s  REVEAL      entity grows + fades in (opacity 0→1, scale 0.88→1.0)
+// 0.70s–1.25s  HOLD        peak bloom + effect beats fire (opacity 1.0, short linger)
+// 1.25s–2.10s  PAN_OUT     dissolve outward (opacity 1.0→0.75→0, scale →1.12)
 
-const ZOOM_OUT_MS  = 280;   // board scales down, dim fades in
-const REVEAL_MS    = 460;   // entity fades + scales in from above
-const HOLD_MS      = 760;   // linger at full opacity
-const PAN_OUT_MS   = 500;   // entity drifts + fades, board restores
-// Total: 2000ms
+const ANTICIPATE_MS = 150;   // 0.00–0.15s
+const REVEAL_MS     = 550;   // 0.15–0.70s
+const HOLD_MS       = 550;   // 0.70–1.25s
+const PAN_OUT_MS    = 850;   // 1.25–2.10s
+// Total: 2100ms
 
-// Effect beats fire within the hold phase (must all complete before HOLD_MS)
-const BEAT_SIGIL_MS  = 0;    // relative to hold start
-const BEAT_TARGET_MS = 180;
-const BEAT_SNAP_MS   = 380;
-const BEAT_DONE_MS   = 620;
+// ── Entity keyframe animation ─────────────────────────────────────────────────
+// The entity runs a single continuous framer-motion keyframe sequence from mount
+// (at ANTICIPATE_MS) through the end of PAN_OUT.  No phase-driven transitions.
+//
+// Duration: REVEAL_MS + HOLD_MS + PAN_OUT_MS = 1950ms
+//
+// Opacity spec:    0% → 70% → 100% → 100% → 75% → 0%
+// Scale spec:   0.88 → 0.93 → 1.00 → 1.00 → 1.04 → 1.12
+//
+// Absolute times:  0.15s  0.35s  0.70s  1.05s  1.25s  2.10s
+// Entity-relative: 0ms    200ms  550ms  900ms  1100ms 1950ms
+// Normalized [0,1]: 0.000  0.103  0.282  0.462  0.564  1.000
+
+const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.95
+
+const ENTITY_OPACITY = [0,    0.70, 1.0,  1.0,  0.75, 0   ];
+const ENTITY_SCALE   = [0.88, 0.93, 1.00, 1.00, 1.04, 1.12];
+const ENTITY_Y       = ['-2vh', '-1vh', '0', '0', '0.5vh', '3vh'];
+const ENTITY_TIMES   = [0, 0.103, 0.282, 0.462, 0.564, 1];
+
+// ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
+// All must complete before HOLD_MS expires.
+const BEAT_SIGIL_MS  = 0;    // relative to hold phase start
+const BEAT_TARGET_MS = 150;
+const BEAT_SNAP_MS   = 300;
+const BEAT_DONE_MS   = 460;
 
 // CSS scale applied to [data-game-board] during the cinematic
 const BOARD_SCALE = 0.50;
@@ -65,7 +94,7 @@ export function LuminaryActivationCinematic({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  const [phase, setPhase] = useState<Phase>('zoom_out');
+  const [phase, setPhase] = useState<Phase>('anticipate');
   const [effectBeat, setEffectBeat] = useState<EffectBeat>('idle');
 
   const vis = getLuminaryVisuals(luminaryId);
@@ -82,15 +111,13 @@ export function LuminaryActivationCinematic({
   useEffect(() => {
     gameAudio.playActivationSting(effectType, primaryColor);
 
-    const totalMs = ZOOM_OUT_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS;
-
-    const t1 = setTimeout(() => setPhase('reveal'),  ZOOM_OUT_MS);
-    const t2 = setTimeout(() => setPhase('hold'),    ZOOM_OUT_MS + REVEAL_MS);
-    const t3 = setTimeout(() => setPhase('pan_out'), ZOOM_OUT_MS + REVEAL_MS + HOLD_MS);
+    const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
+    const t2 = setTimeout(() => setPhase('hold'),    ANTICIPATE_MS + REVEAL_MS);
+    const t3 = setTimeout(() => setPhase('pan_out'), ANTICIPATE_MS + REVEAL_MS + HOLD_MS);
     const t4 = setTimeout(() => {
       setPhase('done');
       onCompleteRef.current();
-    }, totalMs);
+    }, ANTICIPATE_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS);
 
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
@@ -98,8 +125,7 @@ export function LuminaryActivationCinematic({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Effect beat chain (within hold phase) ─────────────────────────────────
-  // Beats 3-5 fire sequentially during HOLD_MS.  They are skipped if there is
-  // no effect descriptor for this Luminary (e.g. passive effects).
+  // Beats 3-5 fire sequentially during HOLD_MS.  Skipped when no effectDef.
   useEffect(() => {
     if (phase !== 'hold' || !effectDef) {
       setEffectBeat('idle');
@@ -110,8 +136,8 @@ export function LuminaryActivationCinematic({
     if (BEAT_TARGET_MS > BEAT_SIGIL_MS) {
       timers.push(setTimeout(() => setEffectBeat('target'), BEAT_TARGET_MS - BEAT_SIGIL_MS));
     }
-    timers.push(setTimeout(() => setEffectBeat('snap'),   BEAT_SNAP_MS   - BEAT_SIGIL_MS));
-    timers.push(setTimeout(() => setEffectBeat('done'),   BEAT_DONE_MS   - BEAT_SIGIL_MS));
+    timers.push(setTimeout(() => setEffectBeat('snap'), BEAT_SNAP_MS - BEAT_SIGIL_MS));
+    timers.push(setTimeout(() => setEffectBeat('done'), BEAT_DONE_MS - BEAT_SIGIL_MS));
     return () => timers.forEach(clearTimeout);
   }, [phase, effectDef]);
 
@@ -120,9 +146,9 @@ export function LuminaryActivationCinematic({
     const board = document.querySelector('[data-game-board]') as HTMLElement | null;
     if (!board) return;
 
-    if (phase === 'zoom_out') {
+    if (phase === 'anticipate') {
       board.scrollTop = 0;
-      board.style.transition      = `transform ${ZOOM_OUT_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+      board.style.transition      = `transform ${ANTICIPATE_MS}ms cubic-bezier(0.16, 1, 0.3, 1)`;
       board.style.transformOrigin = '50% 50%';
       board.style.transform       = `scale(${BOARD_SCALE})`;
     } else if (phase === 'reveal' || phase === 'hold') {
@@ -142,19 +168,21 @@ export function LuminaryActivationCinematic({
   }, [phase]);
 
   // ── Derived state ─────────────────────────────────────────────────────────
+  // Entity mounts on 'reveal' and stays mounted through 'pan_out'.
+  // Its keyframe animation handles the full opacity/scale lifecycle — no
+  // external phase-driven animate targets needed.
   const showEntity = phase === 'reveal' || phase === 'hold' || phase === 'pan_out';
+  // Text appears during reveal + hold, exits cleanly before pan_out fades out.
   const showText   = phase === 'reveal' || phase === 'hold';
   const isPanOut   = phase === 'pan_out';
 
-  const entityOpacity  = isPanOut ? 0 : 1;
-  const entityScale    = isPanOut ? 1.08 : 1.0;
-  const entityY        = isPanOut ? '6vh' : '0';
-
+  // Dark overlay dims the board.  Fades in quickly during anticipate, held
+  // through reveal+hold, then fades out during pan_out.
   const overlayOpacity =
-    phase === 'zoom_out' ? 0.60 :
-    phase === 'reveal'   ? 0.72 :
-    phase === 'hold'     ? 0.75 :
-    0;
+    phase === 'anticipate' ? 0.68 :
+    phase === 'reveal'     ? 0.75 :
+    phase === 'hold'       ? 0.78 :
+    0; // pan_out + done
 
   // Beat visibility flags
   const sigilVisible  = effectDef !== null && (effectBeat === 'sigil' || effectBeat === 'target' || effectBeat === 'snap');
@@ -168,12 +196,13 @@ export function LuminaryActivationCinematic({
       className="fixed inset-0"
       style={{ zIndex: 8900, pointerEvents: 'none' }}
     >
-      {/* ── Beat 1: Dark board dim ──────────────────────────────────────────── */}
+      {/* ── Board dim overlay ────────────────────────────────────────────────
+           Fades in over ANTICIPATE_MS, fades out over PAN_OUT_MS.          */}
       <motion.div
         className="absolute inset-0"
         animate={{ opacity: overlayOpacity }}
         transition={{
-          duration: isPanOut ? PAN_OUT_MS / 1000 * 0.65 : ZOOM_OUT_MS / 1000,
+          duration: isPanOut ? PAN_OUT_MS / 1000 * 0.65 : ANTICIPATE_MS / 1000,
           ease: 'easeInOut',
         }}
         style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
@@ -189,80 +218,82 @@ export function LuminaryActivationCinematic({
         />
       )}
 
-      {/* ── Beat 2: Luminary entity ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showEntity && (
-          <motion.div
-            key="entity"
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ pointerEvents: 'none' }}
-            initial={{ opacity: 0, scale: 0.82, y: '-3vh' }}
-            animate={{
-              opacity: entityOpacity,
-              scale:   entityScale,
-              y:       entityY,
-              transition: isPanOut
-                ? { duration: PAN_OUT_MS / 1000, ease: [0.4, 0, 1, 1] as [number,number,number,number] }
-                : { duration: REVEAL_MS / 1000, ease: [0.22, 1, 0.36, 1] as [number,number,number,number] },
+      {/* ── Luminary entity ──────────────────────────────────────────────────
+           Single continuous keyframe sequence from mount.  Opacity/scale
+           follow the spec curve exactly — no per-phase animate overrides.
+           Entity mounts at ANTICIPATE_MS (0.15s), runs 1.95s total.       */}
+      {showEntity && (
+        <motion.div
+          key="entity"
+          className="absolute inset-0 flex items-center justify-center"
+          style={{ pointerEvents: 'none' }}
+          animate={{
+            opacity: ENTITY_OPACITY,
+            scale:   ENTITY_SCALE,
+            y:       ENTITY_Y,
+          }}
+          transition={{
+            duration: ENTITY_DUR_S,
+            times:    ENTITY_TIMES,
+            ease:     'easeInOut',
+          }}
+        >
+          {/* Colored glow bloom behind the entity — animated for lum_radiant */}
+          <div
+            className={luminaryId === 'lum_radiant' ? 'lum-aura-bloom' : undefined}
+            style={{
+              position: 'absolute',
+              inset: '-20%',
+              background: `radial-gradient(ellipse at center, ${primaryColor}25 0%, transparent 60%)`,
+              filter: 'blur(60px)',
+              pointerEvents: 'none',
             }}
-          >
-            {/* Colored glow bloom behind the entity — animated for lum_radiant */}
-            <div
-              className={luminaryId === 'lum_radiant' ? 'lum-aura-bloom' : undefined}
+          />
+
+          {/* lum_radiant: living three-layer animated composite instead of static PNG */}
+          {luminaryId === 'lum_radiant' ? (
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <RadiantLivingEntityComposite size="78vmin" />
+            </div>
+          ) : imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              draggable={false}
               style={{
-                position: 'absolute',
-                inset: '-20%',
-                background: `radial-gradient(ellipse at center, ${primaryColor}25 0%, transparent 60%)`,
-                filter: 'blur(60px)',
-                pointerEvents: 'none',
+                height: '92vh',
+                width: 'auto',
+                maxWidth: '92vw',
+                objectFit: 'contain',
+                display: 'block',
+                position: 'relative',
+                zIndex: 1,
+                filter: `drop-shadow(0 0 52px ${primaryColor}72) drop-shadow(0 0 100px ${primaryColor}38)`,
               }}
             />
-
-            {/* lum_radiant: living three-layer animated composite instead of static PNG */}
-            {luminaryId === 'lum_radiant' ? (
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <RadiantLivingEntityComposite size="78vmin" />
-              </div>
-            ) : imageUrl ? (
-              <img
-                src={imageUrl}
-                alt=""
-                draggable={false}
-                style={{
-                  height: '92vh',
-                  width: 'auto',
-                  maxWidth: '92vw',
-                  objectFit: 'contain',
-                  display: 'block',
-                  position: 'relative',
-                  zIndex: 1,
-                  filter: `drop-shadow(0 0 52px ${primaryColor}72) drop-shadow(0 0 100px ${primaryColor}38)`,
-                }}
+          ) : (
+            <div
+              style={{
+                width: '72vmin',
+                height: '72vmin',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                zIndex: 1,
+                filter: `drop-shadow(0 0 52px ${primaryColor}88)`,
+              }}
+            >
+              <EntityArt
+                size={Math.round(Math.min(
+                  typeof window !== 'undefined' ? window.innerWidth  : 400,
+                  typeof window !== 'undefined' ? window.innerHeight : 667,
+                ) * 0.68)}
               />
-            ) : (
-              <div
-                style={{
-                  width: '72vmin',
-                  height: '72vmin',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  zIndex: 1,
-                  filter: `drop-shadow(0 0 52px ${primaryColor}88)`,
-                }}
-              >
-                <EntityArt
-                  size={Math.round(Math.min(
-                    typeof window !== 'undefined' ? window.innerWidth  : 400,
-                    typeof window !== 'undefined' ? window.innerHeight : 667,
-                  ) * 0.68)}
-                />
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* ── Beat 4 + text: Effect label, target badge, Luminary name ────────── */}
       <AnimatePresence>
@@ -287,7 +318,7 @@ export function LuminaryActivationCinematic({
               {label}
             </div>
 
-            {/* Beat 4 — Target claim badge (appears 360ms into hold) */}
+            {/* Beat 4 — Target claim badge (appears BEAT_TARGET_MS into hold) */}
             <AnimatePresence>
               {targetVisible && effectDef && (
                 <TargetBadge

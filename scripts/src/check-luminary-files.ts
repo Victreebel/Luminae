@@ -10,17 +10,14 @@
  *
  *   panel  — REQUIRED  (exits 1 if missing)
  *   entity — REQUIRED  (exits 1 if missing)
- *   aura   — REQUIRED  (exits 1 if missing)
  *
- * All three slots are required. If a Luminary is listed in ILLUSTRATED_IDS it
+ * Both slots are required. If a Luminary is listed in ILLUSTRATED_IDS it
  * must have all declared image files on disk. Missing any slot causes a
  * non-zero exit with a clear per-file diagnostic.
- * Add a placeholder aura.png (e.g. 1×1 transparent PNG) if real aura art
- * is not yet ready, rather than omitting the file entirely.
  *
  * ## Source of truth derivation
  *
- * The slot names (panel | entity | aura) and the asset base directory are
+ * The slot names (panel | entity) and the asset base directory are
  * parsed from luminaryAssets.tsx at runtime — not hardcoded — so the script
  * stays in sync if the source file changes its glob path or adds new slots.
  *
@@ -65,7 +62,7 @@ export interface MissingFile {
 }
 
 export interface FileCheckResult {
-  /** All declared slots (panel, entity, aura) that are missing — causes exit 1. */
+  /** All declared slots (panel, entity) that are missing — causes exit 1. */
   missing: MissingFile[];
   checkedIds: string[];
 }
@@ -115,10 +112,10 @@ export function parseIllustratedIds(source: string): string[] {
  * in luminaryAssets.tsx.
  *
  * Expected source shape:
- *   function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura')
+ *   function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background')
  *
  * Returns the union members in declaration order.
- * Falls back to the canonical default ['panel', 'entity', 'aura'] if the
+ * Falls back to the canonical default ['panel', 'entity'] if the
  * signature cannot be located, so the script still runs on refactored sources.
  */
 export function parseSlotNames(source: string): string[] {
@@ -128,9 +125,9 @@ export function parseSlotNames(source: string): string[] {
   if (!fnMatch) {
     console.warn(
       'check-luminary-files: could not parse slot names from _getLuminaryImage — ' +
-        "using canonical default ['panel', 'entity', 'aura'].",
+        "using canonical default ['panel', 'entity'].",
     );
-    return ['panel', 'entity', 'aura'];
+    return ['panel', 'entity'];
   }
 
   const unionStr = fnMatch[1];
@@ -141,9 +138,9 @@ export function parseSlotNames(source: string): string[] {
     slots.push(m[1]);
   }
 
-  // Only the canonical three slots are required for every illustrated Luminary.
+  // Only the canonical slots are required for every illustrated Luminary.
   // 'background' is optional and may be missing during asset generation.
-  const canonical = ['panel', 'entity', 'aura'];
+  const canonical = ['panel', 'entity'];
   return slots.length > 0 ? slots.filter((s) => canonical.includes(s)) : canonical;
 }
 
@@ -199,7 +196,7 @@ export function findSlotFile(
 
 /**
  * Check that every illustrated Luminary has all declared image slots on disk.
- * All slots (panel, entity, aura) are required — a missing slot causes exit 1.
+ * All slots (panel, entity) are required — a missing slot causes exit 1.
  *
  * @param illustratedIds  IDs from ILLUSTRATED_IDS
  * @param allSlots        All slot names derived from _getLuminaryImage signature
@@ -207,7 +204,7 @@ export function findSlotFile(
  */
 export function checkLuminaryFiles(
   illustratedIds: string[],
-  allSlots: string[] = ['panel', 'entity', 'aura'],
+  allSlots: string[] = ['panel', 'entity'],
   luminariesDir: string = DEFAULT_LUMINARIES_DIR,
 ): FileCheckResult {
   const missing: MissingFile[] = [];

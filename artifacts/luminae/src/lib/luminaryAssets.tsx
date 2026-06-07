@@ -147,7 +147,7 @@ for (const [path, mod] of Object.entries(_luminaryImageModules)) {
   }
 }
 
-function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'aura' | 'background'): string | null {
+function _getLuminaryImage(id: string, slot: 'panel' | 'entity' | 'background'): string | null {
   if (!ILLUSTRATED_IDS.has(id)) return null;
   return _luminaryImageMap[`${id}/${slot}`] ?? null;
 }
