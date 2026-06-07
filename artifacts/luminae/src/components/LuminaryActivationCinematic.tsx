@@ -3,10 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { getLuminaryVisuals, getLuminaryImageAssets, RadiantLivingEntityComposite } from '@/lib/luminaryAssets';
 import { gameAudio } from '@/lib/audio';
+import {
+  LUMINARY_EFFECT_MAP,
+  SigilRings,
+  TargetBadge,
+  ConsequenceSnap,
+} from '@/components/LuminaryEffectOverlay';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Phase = 'zoom_out' | 'reveal' | 'hold' | 'pan_out' | 'done';
+
+// Internal beat sequence that fires during the hold phase.
+// beat 3: sigil  — affinity rings appear
+// beat 4: target — target claim badge appears
+// beat 5: snap   — consequence flash fires once then fades
+type EffectBeat = 'idle' | 'sigil' | 'target' | 'snap' | 'done';
 
 interface LuminaryActivationCinematicProps {
   luminaryId: string;
@@ -22,6 +34,12 @@ const ZOOM_OUT_MS  = 720;   // board scales down, dim fades in
 const REVEAL_MS    = 680;   // entity fades + scales in from above
 const HOLD_MS      = 1900;  // linger at full opacity
 const PAN_OUT_MS   = 980;   // entity drifts + fades, board restores
+
+// Effect beats fire within the hold phase (must all complete before HOLD_MS)
+const BEAT_SIGIL_MS  = 0;    // relative to hold start
+const BEAT_TARGET_MS = 360;
+const BEAT_SNAP_MS   = 760;
+const BEAT_DONE_MS   = 1160;
 
 // CSS scale applied to [data-game-board] during the cinematic
 const BOARD_SCALE = 0.50;
@@ -47,6 +65,7 @@ export function LuminaryActivationCinematic({
   onCompleteRef.current = onComplete;
 
   const [phase, setPhase] = useState<Phase>('zoom_out');
+  const [effectBeat, setEffectBeat] = useState<EffectBeat>('idle');
 
   const vis = getLuminaryVisuals(luminaryId);
   const { primaryColor, EntityArt } = vis;
@@ -56,6 +75,7 @@ export function LuminaryActivationCinematic({
   const imageUrl = entityCutout ?? panelArt;
 
   const label = EFFECT_TYPE_LABELS[effectType] ?? 'EFFECT';
+  const effectDef = LUMINARY_EFFECT_MAP[luminaryId] ?? null;
 
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -76,9 +96,25 @@ export function LuminaryActivationCinematic({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Effect beat chain (within hold phase) ─────────────────────────────────
+  // Beats 3-5 fire sequentially during HOLD_MS.  They are skipped if there is
+  // no effect descriptor for this Luminary (e.g. passive effects).
+  useEffect(() => {
+    if (phase !== 'hold' || !effectDef) {
+      setEffectBeat('idle');
+      return;
+    }
+    setEffectBeat('sigil');
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    if (BEAT_TARGET_MS > BEAT_SIGIL_MS) {
+      timers.push(setTimeout(() => setEffectBeat('target'), BEAT_TARGET_MS - BEAT_SIGIL_MS));
+    }
+    timers.push(setTimeout(() => setEffectBeat('snap'),   BEAT_SNAP_MS   - BEAT_SIGIL_MS));
+    timers.push(setTimeout(() => setEffectBeat('done'),   BEAT_DONE_MS   - BEAT_SIGIL_MS));
+    return () => timers.forEach(clearTimeout);
+  }, [phase, effectDef]);
+
   // ── Board DOM zoom-out ────────────────────────────────────────────────────
-  // Applies a CSS scale transform to [data-game-board] so the full board
-  // shrinks into view (matching the summon cutscene's pan approach).
   useEffect(() => {
     const board = document.querySelector('[data-game-board]') as HTMLElement | null;
     if (!board) return;
@@ -119,6 +155,11 @@ export function LuminaryActivationCinematic({
     phase === 'hold'     ? 0.75 :
     0;
 
+  // Beat visibility flags
+  const sigilVisible  = effectDef !== null && (effectBeat === 'sigil' || effectBeat === 'target' || effectBeat === 'snap');
+  const targetVisible = effectDef !== null && (effectBeat === 'target' || effectBeat === 'snap');
+  const snapVisible   = effectDef !== null && effectBeat === 'snap';
+
   if (phase === 'done') return null;
 
   const content = (
@@ -126,7 +167,7 @@ export function LuminaryActivationCinematic({
       className="fixed inset-0"
       style={{ zIndex: 8900, pointerEvents: 'none' }}
     >
-      {/* ── Dark board dim ─────────────────────────────────────────────────── */}
+      {/* ── Beat 1: Dark board dim ──────────────────────────────────────────── */}
       <motion.div
         className="absolute inset-0"
         animate={{ opacity: overlayOpacity }}
@@ -137,7 +178,17 @@ export function LuminaryActivationCinematic({
         style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
       />
 
-      {/* ── Luminary entity ────────────────────────────────────────────────── */}
+      {/* ── Beat 3: Affinity sigil rings ────────────────────────────────────
+           Rendered BEFORE the entity in DOM order so it paints behind it.   */}
+      {showEntity && effectDef && (
+        <SigilRings
+          affinities={effectDef.affinities}
+          primaryColor={primaryColor}
+          visible={sigilVisible}
+        />
+      )}
+
+      {/* ── Beat 2: Luminary entity ─────────────────────────────────────────── */}
       <AnimatePresence>
         {showEntity && (
           <motion.div
@@ -212,7 +263,7 @@ export function LuminaryActivationCinematic({
         )}
       </AnimatePresence>
 
-      {/* ── Effect label + luminary name ───────────────────────────────────── */}
+      {/* ── Beat 4 + text: Effect label, target badge, Luminary name ────────── */}
       <AnimatePresence>
         {showText && (
           <motion.div
@@ -223,6 +274,7 @@ export function LuminaryActivationCinematic({
             animate={{ opacity: 1, y: 0, transition: { duration: 0.45, delay: 0.28, ease: 'easeOut' as const } }}
             exit={{ opacity: 0, transition: { duration: 0.25 } }}
           >
+            {/* Effect-type label pill */}
             <div
               className="px-3 py-0.5 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase"
               style={{
@@ -234,6 +286,19 @@ export function LuminaryActivationCinematic({
               {label}
             </div>
 
+            {/* Beat 4 — Target claim badge (appears 360ms into hold) */}
+            <AnimatePresence>
+              {targetVisible && effectDef && (
+                <TargetBadge
+                  key="target-badge"
+                  tone={effectDef.tone}
+                  target={effectDef.target}
+                  isLingering={effectDef.isLingering}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* Luminary name */}
             <div
               className="text-2xl font-bold tracking-wide text-center"
               style={{
@@ -254,6 +319,13 @@ export function LuminaryActivationCinematic({
               </div>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Beat 5: Consequence snap flash ──────────────────────────────────── */}
+      <AnimatePresence>
+        {snapVisible && effectDef && (
+          <ConsequenceSnap key="snap" tone={effectDef.tone} />
         )}
       </AnimatePresence>
     </div>

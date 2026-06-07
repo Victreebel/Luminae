@@ -1823,3 +1823,9 @@ id = "40j1sDyYfvl4LpMyigEpo"
 uri = "file://attached_assets/luminaries_chatgpt_handoff.md"
 type = "text"
 title = "Luminae — Luminary Handoff for ChatGPT"
+
+[[outputs]]
+id = "EUy_p2jSmVMOM-8z6l4Wt"
+uri = "file://.local/tasks/chatgpt-animation-prompt-brief.md"
+type = "text"
+title = "Luminae — Animation Prompt Design Brief"

@@ -1,0 +1,114 @@
+Implement a reusable Luminary Effect activation animation layer.
+
+Goal:
+Luminary effects should feel like a mythic command pulse:
+Awaken → declare target → impose consequence → leave residue.
+
+Do NOT change Luminary mechanics, costs, scoring, affinities, turn logic, tutorial order, or balance. This is visual/UI behavior only.
+
+Core design:
+A Luminary activation animation has these beats:
+
+1. Board hush
+- Briefly dim the board/background.
+- Slightly reduce attention on non-target UI.
+- Duration ~200ms.
+
+2. Luminary awakening
+- The active Luminary card/cutout pulses from its core.
+- Use that Luminary’s affinity colors.
+- Duration ~400ms.
+
+3. Affinity sigil
+- Show a circular/arcane/cosmic glyph or ring around the Luminary.
+- Glyph color should derive from the Luminary’s affinities.
+- Duration ~500ms.
+
+4. Target claim
+- Visually connect the Luminary to the affected target:
+  - affinity row
+  - score area
+  - artifact card
+  - player board
+  - global board
+  - pending action button
+- Use a beam, ripple, particle stream, or line depending on target type.
+- Duration ~400–800ms.
+
+5. Consequence snap
+- The mechanical result should become visually obvious:
+  - boon: brighten/add glow
+  - curse: drain/darken
+  - negation: seal/veil target
+  - consumption: dissolve/pull fragments inward
+  - global: board-wide ripple
+- Duration ~250ms.
+
+6. Residue
+- If the effect is ongoing or pending, leave a small persistent visual marker.
+- If the effect is one-time and resolved, fade fully.
+
+Add a reusable animation descriptor:
+
+type LuminaryEffectTone =
+  | "boon"
+  | "curse"
+  | "negation"
+  | "consumption"
+  | "global";
+
+type LuminaryEffectTarget =
+  | "player"
+  | "artifact"
+  | "affinityRow"
+  | "score"
+  | "board"
+  | "pendingAction";
+
+type LuminaryEffectAnimation = {
+  luminaryId: string;
+  affinities: Affinity[];
+  tone: LuminaryEffectTone;
+  target: LuminaryEffectTarget;
+  targetId?: string;
+  isLingering: boolean;
+};
+
+Implementation requirements:
+- Create one reusable animation component/controller rather than bespoke animation code per Luminary.
+- Trigger it whenever a Luminary effect activates or creates a pending one-shot action.
+- Make the animation skippable or fast enough that it does not block play for long.
+- Respect existing animation/action locks. Do not introduce new permanent locks.
+- The animation must not obscure what changed.
+- The target of the effect must be visually clear.
+
+For The First Hunger specifically:
+- This is NOT an immediate on-summon effect.
+- It creates a lingering one-shot action/button called “Assimilate.”
+- On creation of the Assimilate button, use:
+  tone: "consumption"
+  target: "pendingAction"
+  isLingering: true
+- The button should appear as a dangerous Luminary-granted command, visually connected to The First Hunger.
+- Eligible artifacts may receive a subtle predatory outline while Assimilate is available.
+- When Assimilate is used:
+  - the selected artifact visually dissolves into red, green, and white-gold fragments
+  - fragments are pulled into The First Hunger
+  - show Eminence gain as printed Eminence +2
+  - make clear the artifact was consumed/burned, not forged
+  - do not show it entering the forged artifact area
+
+Tone mappings:
+- boon: bright affinity stream into player assets
+- curse: dark ripple or draining pulse
+- negation: seal/veil over target artifact or score source
+- consumption: fragment/dissolve/pull inward
+- global: board-wide cosmic weather ripple
+
+Acceptance criteria:
+- A Luminary activation visibly follows the command-pulse sequence.
+- The effect target is readable.
+- The actual mechanical change is easier to understand, not harder.
+- The First Hunger creates a clear Assimilate pending-action visual instead of firing immediately.
+- No gameplay mechanics are changed.
+- Existing tests/typecheck should continue passing.
