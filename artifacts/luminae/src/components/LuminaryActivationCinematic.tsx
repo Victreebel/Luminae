@@ -146,7 +146,7 @@ export function LuminaryActivationCinematic({
   const isPanOut   = phase === 'pan_out';
 
   const entityOpacity  = isPanOut ? 0 : 1;
-  const entityScale    = isPanOut ? 0.78 : 1.0;
+  const entityScale    = isPanOut ? 1.08 : 1.0;
   const entityY        = isPanOut ? '6vh' : '0';
 
   const overlayOpacity =
