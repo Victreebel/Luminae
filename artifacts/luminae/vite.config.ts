@@ -5,34 +5,63 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { VitePWA } from "vite-plugin-pwa";
 
-// Replit's reverse proxy drops idle WebSocket connections after ~30 s.
-// The game's /ws WebSocket avoids this with 10 s bidirectional ping/pong.
-// The Vite HMR socket needs the same treatment.
+// Replit's reverse proxy force-closes WebSocket connections after ~25 s on a
+// fixed lease — regardless of traffic.  No keepalive can prevent this.
 //
-// Vite's client sends {type:"ping"} every `hmr.timeout` ms, but the Vite
-// server never responds.  Without a server→client reply the proxy sees only
-// one-directional traffic and still drops after 30 s.
+// When the HMR WS drops, Vite 7 calls location.reload() via:
+//   handleMessage("custom" / "vite:ws:disconnect")
+//     → notifyListeners("vite:ws:disconnect", ...)   ← our listener fires here
+//     → if (!willUnload) { waitForSuccessfulPing → location.reload() }
 //
-// Fix (two parts):
-//   1. server.hmr.timeout:10000 — client sends {type:"ping"} every 10 s.
-//   2. hmrPongReply plugin — for each connected HMR WebSocket, listens for
-//      {type:"ping"} TEXT messages and immediately replies {type:"pong"}.
-//      This mirrors exactly what the game WS does, giving the proxy
-//      bidirectional traffic every ~10 s on both halves of the connection.
+// Fix: inject a tiny inline script into index.html (dev only) that registers
+// a vite:ws:disconnect listener via import.meta.hot BEFORE Vite's own reload
+// check runs.  The listener dispatches a "beforeunload" event, which sets
+// Vite's module-level `willUnload = true`, so the reload branch is skipped.
+// The HMR socket reconnects in ~200 ms; hot-module updates still work normally.
 //
-// NOTE: In Vite 7, "connection" is listed in wsServerEvents, so
-// server.ws.on("connection", fn) routes to the underlying ws.Server and
-// delivers a raw ws.WebSocket instance — the correct public API for
-// per-socket listeners.  The old (server.ws as any).wss path was removed.
-function hmrPongReply(): Plugin {
+// The hmrPongReply plugin is kept for bidirectional ping/pong which reduces
+// visible "[vite] connecting..." banner flashes to users.
+function hmrNoReload(): Plugin {
+  // Vite 7 calls location.reload() whenever the HMR WebSocket closes
+  // (case "vite:ws:disconnect" in handleMessage → waitForSuccessfulPing → reload).
+  // On Replit the proxy force-closes every WS connection on a ~25 s fixed lease,
+  // so this triggers a full page reload every ~25 s regardless of keepalive traffic.
+  //
+  // Fix: patch location.reload in the injected script. We replace location.reload
+  // with a no-op for a short window after each vite:ws:disconnect event. Since the
+  // HMR socket reconnects in ~200 ms and real navigations (user clicking links) take
+  // >25 ms to fire a reload, a 1000 ms suppression window safely covers only the
+  // proxy-forced drop cycles without blocking intentional reloads.
+  const script = `
+if (import.meta.hot) {
+  const _reload = location.reload.bind(location);
+  let _suppressUntil = 0;
+  import.meta.hot.on('vite:ws:disconnect', () => {
+    // Suppress the imminent Vite location.reload() for 1 s.
+    // This covers the waitForSuccessfulPing → reload path while leaving
+    // intentional reloads (triggered well after navigation) unaffected.
+    _suppressUntil = Date.now() + 1000;
+  });
+  Object.defineProperty(location, 'reload', {
+    configurable: true,
+    value: function patchedReload() {
+      if (Date.now() < _suppressUntil) return; // swallow proxy-drop reload
+      _reload();
+    }
+  });
+}
+`.trim();
+
   return {
-    name: 'hmr-pong-reply',
+    name: 'hmr-no-reload',
     apply: 'serve',
+    transformIndexHtml(html) {
+      // Inject before </head> so it runs before any app code.
+      return html.replace('</head>', `<script type="module">\n${script}\n</script>\n</head>`);
+    },
     configureServer(server) {
-      // Each new HMR client connection gets a raw ws.WebSocket socket.
-      // We attach a message listener that answers every {type:"ping"} with
-      // {type:"pong"}.  The Vite client silently ignores unknown message
-      // types, so this has no side-effect on hot-reload behavior.
+      // Keep bidirectional ping/pong to minimize "[vite] connecting..." banner flashes.
+      // "connection" is in wsServerEvents in Vite 7 so this routes to the underlying ws.Server.
       server.ws.on('connection', (socket: import('ws').WebSocket) => {
         socket.on('message', (data: import('ws').RawData) => {
           try {
@@ -40,9 +69,7 @@ function hmrPongReply(): Plugin {
             if (msg?.type === 'ping') {
               socket.send(JSON.stringify({ type: 'pong' }));
             }
-          } catch {
-            // non-JSON frame (binary or raw ping) — ignore
-          }
+          } catch { /* non-JSON frame — ignore */ }
         });
       });
     },
@@ -74,7 +101,7 @@ const basePath = process.env.BASE_PATH ?? "/";
 export default defineConfig({
   base: basePath,
   plugins: [
-    hmrPongReply(),
+    hmrNoReload(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
