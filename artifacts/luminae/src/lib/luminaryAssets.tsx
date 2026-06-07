@@ -2501,8 +2501,8 @@ export function LuminarySummonCutscene({
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
               : {
-                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.14, 0.58, 0.82, 1.0], ease: 'easeOut' },
-                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.14, 0.58, 0.82, 1.0], ease: 'easeOut' },
+                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.12, 0.38, 0.62, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.12, 0.38, 0.62, 1.0], ease: 'easeOut' },
                 }
             }
           >
@@ -2526,11 +2526,11 @@ export function LuminarySummonCutscene({
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
-                    y:       { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
-                    rotateY: { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
-                    z:       { duration: 2.3, delay: 0.12, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
-                    opacity: { duration: 0.75, delay: 0.12, ease: 'easeOut' },
+                    scale:   { duration: 1.5, delay: 0.10, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    y:       { duration: 1.5, delay: 0.10, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    rotateY: { duration: 1.5, delay: 0.10, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    z:       { duration: 1.5, delay: 0.10, times: [0, 0.55, 1.0], ease: ['easeIn', 'easeOut'] },
+                    opacity: { duration: 0.55, delay: 0.10, ease: 'easeOut' },
                   }
               }
             >
