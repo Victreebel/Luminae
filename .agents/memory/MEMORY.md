@@ -1,5 +1,5 @@
 - [Win overlay keyboard tests](win-overlay-keyboard-tests.md) — surrender is turn-gated; filtered locators collapse to 0 inside getFocusables for framer-motion dialogs; use direct locators instead.
 - [Card tapped ring — no outline](card-tapped-ring.md) — outline-color: transparent flashes white on mount; use inset box-shadow with rgba() instead.
-- [WS ref guard pattern](ws-ref-guard.md) — to gate a useEffect on "our action landed", check lastAction.playerId+type, not state.version (opponents also advance version)
 - [Mobile perf: framer-motion CSS migration](mobile-perf-css-migration.md) — repeat:Infinity JS loops are the primary mobile lag/crash cause; migration pattern and what remains.
 - [pendingLuminaryChoice turn suspension](pending-luminary-choice-turn.md) — interactive multi-Luminary gate requires suspending advanceTurn in tail code; choose_luminary_order must break (not return) so tail code runs advanceTurn.
+- [framer-motion v12 WAAPI rules](framer-motion-v12-waapi-rules.md) — keyframe arrays need consistent units ('0vh' not '0'), initial prop required, exit prop needed when AnimatePresence may remove mid-animation.

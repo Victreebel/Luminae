@@ -61,7 +61,7 @@ const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.95
 
 const ENTITY_OPACITY = [0,    0.70, 1.0,  1.0,  0.75, 0   ];
 const ENTITY_SCALE   = [0.88, 0.93, 1.00, 1.00, 1.04, 1.12];
-const ENTITY_Y       = ['-2vh', '-1vh', '0', '0', '0.5vh', '3vh'];
+const ENTITY_Y       = ['-2vh', '-1vh', '0vh', '0vh', '0.5vh', '3vh'];
 const ENTITY_TIMES   = [0, 0.103, 0.282, 0.462, 0.564, 1];
 
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
@@ -227,6 +227,7 @@ export function LuminaryActivationCinematic({
           key="entity"
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: 'none' }}
+          initial={{ opacity: 0, scale: 0.88, y: '-2vh' }}
           animate={{
             opacity: ENTITY_OPACITY,
             scale:   ENTITY_SCALE,

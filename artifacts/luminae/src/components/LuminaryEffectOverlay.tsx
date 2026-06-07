@@ -1,3 +1,4 @@
+// @refresh reset
 import React from 'react';
 import { motion } from 'framer-motion';
 
@@ -246,12 +247,19 @@ export function ConsequenceSnap({ tone }: { tone: LuminaryEffectTone }) {
       style={{ background: conf.snapGradient, pointerEvents: 'none' }}
       // Scale expands outward during the flash (wave reaches the board edges)
       // then continues expanding while fading — never collapses inward.
+      //
+      // The snap beat is only visible for ~160ms (BEAT_DONE_MS - BEAT_SNAP_MS),
+      // but the animation needs ~182ms to reach peak opacity.  The `exit` prop
+      // tells AnimatePresence to keep the element alive and play the fade-out
+      // rather than abruptly removing it mid-animation (which cancels the WAAPI
+      // animation and causes a one-frame snap-back to opacity:0).
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{
         opacity: [0, 1, 0],
         scale:   [0.85, 1.0, 1.10],
       }}
       transition={{ duration: 0.70, times: [0, 0.26, 1], ease: 'easeOut' }}
+      exit={{ opacity: 0, scale: 1.15, transition: { duration: 0.30, ease: 'easeOut' } }}
     />
   );
 }
