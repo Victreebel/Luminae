@@ -189,6 +189,9 @@ function ControlRow({ label, children }: { label: string; children: React.ReactN
 // ─── TimingBar ────────────────────────────────────────────────────────────────
 // Displays a proportional phase bar + per-phase labels sourced directly from
 // the animation constants so they stay in sync automatically.
+// When `playing` is true a RAF loop drives a cursor that moves proportional to
+// elapsed time, and the active phase segment pulses at full opacity while
+// inactive segments dim. The cursor resets when `playing` goes false.
 
 interface PhaseSegment {
   label: string;
@@ -199,41 +202,137 @@ const TIMING_COLORS = [
   '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185',
 ];
 
-function TimingBar({ totalMs, phases }: { totalMs: number; phases: PhaseSegment[] }) {
+function TimingBar({
+  totalMs,
+  phases,
+  playing = false,
+  playKey = 0,
+}: {
+  totalMs: number;
+  phases: PhaseSegment[];
+  playing?: boolean;
+  playKey?: number;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const startTsRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (!playing) {
+      setElapsed(0);
+      return;
+    }
+    startTsRef.current = performance.now();
+    function tick() {
+      const e = Math.min(performance.now() - startTsRef.current, totalMs);
+      setElapsed(e);
+      if (e < totalMs) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        rafRef.current = null;
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, playKey, totalMs]);
+
+  const cursorPct = totalMs > 0 ? (elapsed / totalMs) * 100 : 0;
+
+  // Determine which phase is currently active based on cumulative ms
+  let cumulative = 0;
+  let activePhaseIdx = -1;
+  for (let i = 0; i < phases.length; i++) {
+    const start = cumulative;
+    cumulative += phases[i].ms;
+    if (elapsed >= start && elapsed < cumulative) {
+      activePhaseIdx = i;
+      break;
+    }
+  }
+  // After the last phase completes keep highlighting it briefly
+  if (activePhaseIdx === -1 && elapsed >= totalMs && phases.length > 0) {
+    activePhaseIdx = phases.length - 1;
+  }
+
   return (
     <div className="flex flex-col gap-1.5 pt-3 border-t border-border/10">
       <div className="flex items-center justify-between">
         <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">timing</span>
         <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums">
-          {totalMs} ms total
+          {playing
+            ? <span>{Math.round(elapsed)}&thinsp;<span className="opacity-40">/</span>&thinsp;{totalMs} ms</span>
+            : `${totalMs} ms total`
+          }
         </span>
       </div>
-      {/* Proportional phase bar */}
-      <div className="flex h-2.5 w-full rounded overflow-hidden gap-px">
-        {phases.map((p, i) => (
+      {/* Proportional phase bar with live cursor */}
+      <div className="relative flex h-2.5 w-full rounded overflow-hidden gap-px">
+        {phases.map((p, i) => {
+          const isActive = playing && i === activePhaseIdx;
+          return (
+            <div
+              key={p.label}
+              title={`${p.label}: ${p.ms} ms`}
+              style={{
+                width: `${(p.ms / totalMs) * 100}%`,
+                background: TIMING_COLORS[i % TIMING_COLORS.length],
+                opacity: playing ? (isActive ? 1 : 0.22) : 0.65,
+                minWidth: 1,
+                transition: playing ? 'opacity 80ms linear' : 'opacity 0.3s',
+                boxShadow: isActive
+                  ? `0 0 6px 1px ${TIMING_COLORS[i % TIMING_COLORS.length]}99`
+                  : 'none',
+              }}
+            />
+          );
+        })}
+        {/* Playhead cursor */}
+        {playing && (
           <div
-            key={p.label}
-            title={`${p.label}: ${p.ms} ms`}
             style={{
-              width: `${(p.ms / totalMs) * 100}%`,
-              background: TIMING_COLORS[i % TIMING_COLORS.length],
-              opacity: 0.65,
-              minWidth: 1,
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: `${cursorPct}%`,
+              width: 2,
+              background: 'rgba(255,255,255,0.95)',
+              transform: 'translateX(-50%)',
+              borderRadius: 1,
+              boxShadow: '0 0 5px rgba(255,255,255,0.7)',
+              pointerEvents: 'none',
             }}
           />
-        ))}
+        )}
       </div>
-      {/* Per-phase labels */}
+      {/* Per-phase labels — active label brightens */}
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        {phases.map((p, i) => (
-          <span
-            key={p.label}
-            className="text-[9px] font-mono tabular-nums"
-            style={{ color: TIMING_COLORS[i % TIMING_COLORS.length], opacity: 0.85 }}
-          >
-            {p.label}&nbsp;{p.ms}ms
-          </span>
-        ))}
+        {phases.map((p, i) => {
+          const isActive = playing && i === activePhaseIdx;
+          return (
+            <span
+              key={p.label}
+              className="text-[9px] font-mono tabular-nums"
+              style={{
+                color: TIMING_COLORS[i % TIMING_COLORS.length],
+                opacity: playing ? (isActive ? 1 : 0.3) : 0.85,
+                fontWeight: isActive ? 700 : 400,
+                transition: 'opacity 80ms linear, font-weight 0ms',
+              }}
+            >
+              {p.label}&nbsp;{p.ms}ms
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -431,6 +530,8 @@ function CipherReservePreview() {
               { label: 'travel',    ms: PHASE_DUR[cipherMode].travel    },
               { label: 'arrive',    ms: PHASE_DUR[cipherMode].arrive    },
             ]}
+            playing={playing}
+            playKey={animKey}
           />
         </>
       }
@@ -544,6 +645,8 @@ function ForgeBurstPreview() {
               { label: 'hold',    ms: FORGE_PHASE_MS.hold    },
               { label: 'arc',     ms: FORGE_PHASE_MS.arc     },
             ]}
+            playing={playing}
+            playKey={animKey}
           />
         </>
       }
@@ -641,6 +744,8 @@ function OpponentForgePreview() {
               { label: 'hold',    ms: FORGE_PHASE_MS.hold    },
               { label: 'arc',     ms: FORGE_PHASE_MS.arc     },
             ]}
+            playing={playing}
+            playKey={animKey}
           />
         </>
       }
@@ -724,6 +829,8 @@ function ReservedForgeRingPreview() {
               { label: 'fade',       ms: RING_FADE_MS    },
               { label: 'guard',      ms: RING_DISMISS_MS - RING_FADE_MS },
             ]}
+            playing={playing}
+            playKey={animKey}
           />
         </>
       }
@@ -798,15 +905,20 @@ function MarketDealFlipPreview() {
   const [tier, setTier]       = useState<1 | 2 | 3>(1);
   const [flipKey, setFlipKey] = useState(0);
   const [phase, setPhase]     = useState<'back' | 'flipping' | 'face'>('back');
+  const [playing, setPlaying] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function play() {
     if (timerRef.current) clearTimeout(timerRef.current);
     setPhase('back');
+    setPlaying(true);
     setFlipKey(k => k + 1);
     timerRef.current = setTimeout(() => {
       setPhase('flipping');
-      timerRef.current = setTimeout(() => setPhase('face'), FLIP_DUR_MS);
+      timerRef.current = setTimeout(() => {
+        setPhase('face');
+        setPlaying(false);
+      }, FLIP_DUR_MS);
     }, FLIP_SETTLE_MS);
   }
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
@@ -831,6 +943,8 @@ function MarketDealFlipPreview() {
               { label: 'flip',         ms: FLIP_DUR_MS    },
               { label: 'trail buffer', ms: DEAL_ANIM_MS - FLIP_SETTLE_MS - FLIP_DUR_MS },
             ]}
+            playing={playing}
+            playKey={flipKey}
           />
         </>
       }
