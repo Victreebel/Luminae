@@ -878,6 +878,18 @@ function MarketDealFlipPreview() {
   );
 }
 
+// ─── Card FX total durations ──────────────────────────────────────────────────
+// Single source of truth for the comparison strip — sourced from the same
+// constants used by each preview component's TimingBar so they stay in sync.
+
+const CARD_FX_TOTALS: Record<CardFxMode, number> = {
+  cipher_reserve:      CIPHER_GAME_TOTAL_MS,
+  forge_burst:         FORGE_PHASE_MS.total,
+  opponent_forge:      FORGE_PHASE_MS.total,
+  reserved_forge_ring: RING_DISMISS_MS,
+  market_deal_flip:    DEAL_ANIM_MS,
+};
+
 // ─── Mock card dimensions ─────────────────────────────────────────────────────
 
 const MOCK_CARD_W = 112;
@@ -1261,6 +1273,28 @@ export default function DevAnimSandbox() {
           {/* ════════════════ CARD FX GROUP ════════════════ */}
           {group === 'cardFx' && (
             <>
+              {/* ── Comparison strip ────────────────────────────────────────── */}
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mb-5 px-1">
+                {CARD_FX_MODES.map((m, i) => (
+                  <span key={m.id} className="flex items-center gap-x-1">
+                    {i > 0 && (
+                      <span className="text-[10px] font-mono text-muted-foreground/25 select-none mx-0.5">·</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setCardFxMode(m.id)}
+                      className="text-[10px] font-mono tabular-nums transition-colors"
+                      style={{
+                        color:      cardFxMode === m.id ? '#e2e8f0' : '#64748b',
+                        fontWeight: cardFxMode === m.id ? 600 : 400,
+                      }}
+                    >
+                      {m.label}&nbsp;<span style={{ opacity: 0.7 }}>{CARD_FX_TOTALS[m.id]}ms</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+
               {cardFxMode === 'cipher_reserve'       && <CipherReservePreview />}
               {cardFxMode === 'forge_burst'           && <ForgeBurstPreview />}
               {cardFxMode === 'opponent_forge'        && <OpponentForgePreview />}
