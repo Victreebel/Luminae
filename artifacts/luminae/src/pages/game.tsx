@@ -153,6 +153,41 @@ function useScrollLock(
 }
 
 
+function ConnectionLostBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+      role="status"
+      aria-live="polite"
+      className="fixed top-0 left-0 right-0 z-[500] flex items-center justify-between gap-3 px-4 py-2.5"
+      style={{
+        background: 'rgba(15, 6, 30, 0.97)',
+        borderBottom: '1px solid rgba(139, 92, 246, 0.35)',
+        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.6)',
+        paddingTop: 'calc(0.625rem + env(safe-area-inset-top, 0px))',
+      }}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin text-violet-400" aria-hidden="true" />
+        <span className="text-xs font-semibold text-violet-200 truncate">
+          Connection lost — reconnecting…
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss connection warning"
+        className="shrink-0 text-violet-400/70 hover:text-violet-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50 rounded"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </motion.div>
+  );
+}
+
 function ReturnResultsBanner({
   bannerRef,
   onReturn,
@@ -2265,7 +2300,8 @@ export default function GameBoard() {
   const [hasVoted, setHasVoted] = useState(false);
   const [votePending, setVotePending] = useState(false);
 
-  const { sendChatMessage, isConnected } = useGameWebsocket({
+  const [reconnectBannerDismissed, setReconnectBannerDismissed] = useState(false);
+  const { sendChatMessage, isConnected, isReconnecting } = useGameWebsocket({
     roomId: roomId!,
     sessionToken: session?.sessionToken || '',
     onStateUpdate: (newState) => {
@@ -2365,6 +2401,12 @@ export default function GameBoard() {
   // refetchInterval callback always sees the latest WS health without
   // needing to be inside this render's closure.
   wsConnectedRef.current = isConnected;
+
+  // Reset the manual dismiss whenever a new disconnect cycle begins so the
+  // banner reappears for each fresh drop (not just the first one).
+  useEffect(() => {
+    if (isReconnecting) setReconnectBannerDismissed(false);
+  }, [isReconnecting]);
 
   const submitAction = useSubmitAction();
 
@@ -4992,6 +5034,16 @@ export default function GameBoard() {
             'radial-gradient(ellipse 42% 30% at 100% 100%, #2ECC710B 0%, transparent 65%)',
         }}
       />
+
+      {/* ── Connection lost banner ── */}
+      <AnimatePresence>
+        {isReconnecting && !reconnectBannerDismissed && (
+          <ConnectionLostBanner
+            key="connection-lost-banner"
+            onDismiss={() => setReconnectBannerDismissed(true)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Header ── */}
       <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">

@@ -45,10 +45,12 @@ export function useGameWebsocket({
   onChatMessage,
 }: WebSocketHookParams) {
   const [isConnected, setIsConnected] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectDelayRef = useRef(1000);
   const MAX_RECONNECT_DELAY = 16000;
+  const hasEverConnectedRef = useRef(false);
 
   const onStateUpdateRef = useRef(onStateUpdate);
   const onGameStartedRef = useRef(onGameStarted);
@@ -88,6 +90,8 @@ export function useGameWebsocket({
 
     ws.onopen = () => {
       setIsConnected(true);
+      setIsReconnecting(false);
+      hasEverConnectedRef.current = true;
       reconnectDelayRef.current = 1000;
       // Keep the connection alive through Replit's proxy by sending a ping
       // every 20 s.  The server responds with a pong (no-op on the client).
@@ -168,6 +172,12 @@ export function useGameWebsocket({
         `[luminae] game WebSocket closed unexpectedly (code=${event.code}, wasClean=${event.wasClean}) — reconnecting`,
       );
 
+      // Only show the reconnecting banner for unexpected drops, not the
+      // initial connection attempt (hasEverConnectedRef guards this).
+      if (hasEverConnectedRef.current) {
+        setIsReconnecting(true);
+      }
+
       reconnectTimeoutRef.current = setTimeout(() => {
         connect();
         reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, MAX_RECONNECT_DELAY);
@@ -201,5 +211,5 @@ export function useGameWebsocket({
     }
   }, []);
 
-  return { isConnected, sendChatMessage };
+  return { isConnected, isReconnecting, sendChatMessage };
 }
