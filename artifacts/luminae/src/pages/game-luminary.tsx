@@ -606,7 +606,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
                 textTransform: 'uppercase', color: `${g1}cc`,
                 textShadow: `0 0 10px ${g2}`,
               }}>
-                loading...
+                Investigating anomaly...
               </span>
             </div>
           </motion.div>
@@ -996,7 +996,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
                   textTransform: 'uppercase', color: `${glowHex}cc`,
                   textShadow: `0 0 10px ${glowHex}`,
                 }}>
-                  loading...
+                  Investigating anomaly...
                 </span>
               </div>
             </motion.div>
