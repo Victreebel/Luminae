@@ -195,7 +195,7 @@ export function LuminaryActivationCinematic({
             key="entity"
             className="absolute inset-0 flex items-center justify-center"
             style={{ pointerEvents: 'none' }}
-            initial={{ opacity: 0, scale: 1.22, y: '-3vh' }}
+            initial={{ opacity: 0, scale: 0.82, y: '-3vh' }}
             animate={{
               opacity: entityOpacity,
               scale:   entityScale,
