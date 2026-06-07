@@ -15,35 +15,45 @@ import { VitePWA } from "vite-plugin-pwa";
 // reply the proxy sees only one-directional traffic and still drops at 30 s.
 //
 // Fix (two parts):
-//   1. server.hmr.timeout:10000 — client sends {type:"ping"} every 10 s.
-//   2. hmrPongReply plugin — server hooks into the underlying ws socket and
-//      immediately echoes {type:"pong"} for each {type:"ping"} it receives,
-//      mirroring the game WS ping/pong contract that the proxy accepts.
-function hmrPongReply(): Plugin {
+//   1. server.hmr.timeout:10000 — client sends {type:"ping"} every 10 s
+//      (client→server direction, keeps that half of the proxy alive).
+//   2. hmrServerKeepalive plugin — broadcasts a server→client frame every 8 s
+//      via the supported server.ws.send() API (the server→client direction).
+//
+// NOTE: Vite 7 does NOT expose the underlying ws.Server as a property on
+// server.ws — it is a local closure variable — so hooking per-socket message
+// listeners via (server.ws as any).wss does not work in Vite 7.  Use the
+// documented server.ws.send() broadcast instead.
+function hmrServerKeepalive(): Plugin {
   return {
-    name: 'hmr-pong-reply',
+    name: 'hmr-server-keepalive',
     apply: 'serve',
     configureServer(server) {
-      // Access the underlying ws.WebSocketServer to intercept raw messages.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const wss = (server.ws as any).wss;
-      if (!wss) return;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      wss.on('connection', (socket: any) => {
-        socket.on('message', (raw: Buffer) => {
+      // Send WS protocol-level PING frames (RFC 6455 opcode 0x9) to every
+      // connected HMR client every 8 s.  The browser must respond with a PONG
+      // (opcode 0xA) automatically — creating guaranteed bidirectional traffic
+      // that resets the Replit proxy idle timer in both directions.
+      //
+      // Why not server.ws.send() / broadcast?
+      //   server.ws.send() sends application-level JSON messages that the proxy
+      //   may or may not count as keepalive traffic depending on its config.
+      //   Protocol-level ping/pong is handled at the WS framing layer and is
+      //   the standard keepalive mechanism across all proxy software.
+      //
+      // Vite 7 exposes the raw ws.WebSocket as client.socket on each
+      // HotChannelClient in server.ws.clients (verified in Vite 7.3.2 source).
+      const interval = setInterval(() => {
+        for (const client of server.ws.clients) {
           try {
-            const data = JSON.parse(raw.toString());
-            if (data.type === 'ping') {
-              // Mirror the game WS contract: client {type:"ping"} →
-              // server {type:"pong"}.  Creates server→client traffic that
-              // resets the proxy idle timer in the server→client direction.
-              if (socket.readyState === 1 /* OPEN */) {
-                socket.send(JSON.stringify({ type: 'pong' }));
-              }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rawSocket = (client as any).socket;
+            if (rawSocket?.readyState === 1 /* OPEN */) {
+              rawSocket.ping();
             }
-          } catch { /* ignore non-JSON frames */ }
-        });
-      });
+          } catch { /* socket may be closing */ }
+        }
+      }, 8000);
+      server.httpServer?.once('close', () => clearInterval(interval));
     },
   };
 }
@@ -73,7 +83,7 @@ const basePath = process.env.BASE_PATH ?? "/";
 export default defineConfig({
   base: basePath,
   plugins: [
-    hmrPongReply(),
+    hmrServerKeepalive(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),

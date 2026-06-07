@@ -6,29 +6,47 @@ description: How to keep the Vite HMR WebSocket alive through Replit's ~30s prox
 ## The problem
 Replit's reverse proxy drops WebSocket connections after ~30 s of idle. The game's `/ws` socket
 avoids this with 10 s bidirectional ping/pong. The Vite HMR socket (path `/`) dropped every ~30 s,
-making the dev banner briefly flash "reconnecting" — visible as an apparent page refresh.
+making the dev banner briefly flash "reconnecting" — visible as an apparent page refresh or crash
+mid-game.
 
 ## Root cause
-Vite 7 already has a built-in client-side ping: the browser sends `{type:"ping"}` every `hmr.timeout`
-ms (default 30 000 ms). The Vite server **never responds**, so only the client→server direction has
-traffic. Replit's proxy requires **bidirectional** activity — if either direction is idle for 30 s,
-the connection is dropped. Client-only pings are not enough.
+Vite 7 sends `{type:"ping"}` from the client every `hmr.timeout` ms (default 30 000 ms). The Vite
+server **never responds**, so only the client→server direction has traffic. Replit's proxy requires
+**bidirectional** activity — if either direction is idle for 30 s, the connection is dropped.
 
-## What was tried and failed
-- Server-side `socket.ping()` and `server.ws.send` broadcast: server→client frames alone don't reset the proxy timer.
-- `window.WebSocket` patch sending raw `"ping"` strings: caused server `"pong"` response → client
-  tried `JSON.parse("pong")` → SyntaxError → Vite reconnected more aggressively (intervals shortened to ~12 s).
-- `server.hmr.timeout: 15000` alone (client ping at 15 s, no server response): still dropped at ~30 s.
+## What was tried and FAILED
 
-## What works
-Two-part fix in `vite.config.ts`:
-1. `server.hmr.timeout: 10000` — client sends `{type:"ping"}` every 10 s (same as game WS)
-2. `hmrPongReply` plugin (`apply: 'serve'`) — hooks into `server.ws.wss` via `configureServer`,
-   listens for `{type:"ping"}` TEXT messages from each client, immediately replies with
-   `{type:"pong"}` TEXT message. Creates bidirectional 10 s traffic identical to the game WS.
+1. **`(server.ws as any).wss`** — Vite 7 does NOT expose the underlying ws.Server as a property on
+   `server.ws`. The `wss` variable is a local closure inside `createWebSocketServer`, NOT a property
+   of the returned HotChannel object. The plugin silently returned early every time.
 
-**Why:** The `{type:"pong"}` message from the server is an unrecognized type in Vite's client
-`handleMessage` switch — it falls through silently. No client-side error.
+2. **`server.ws.send('__hmr_keepalive__', {})` broadcast** — Does call `wss.clients.forEach()`
+   correctly internally, BUT the application-level JSON message was NOT treated as keepalive traffic
+   by the proxy. Connections still dropped at 13-25 s intervals.
 
-**How to apply:** Any future change to `vite.config.ts` must preserve both the `hmr.timeout`
-setting and the `hmrPongReply` plugin. Removing either part breaks the keepalive.
+3. **`window.WebSocket` patch sending raw `"ping"` strings** — caused server `"pong"` response →
+   client tried `JSON.parse("pong")` → SyntaxError → Vite reconnected MORE aggressively (~12 s).
+
+## What WORKS — two-part fix in `vite.config.ts`
+
+1. `server.hmr.timeout: 10000` — Vite client sends `{type:"ping"}` every 10 s (client→server).
+
+2. `hmrServerKeepalive` plugin (`apply: 'serve'`) — iterates `server.ws.clients` and calls
+   `(client as any).socket.ping()` on each raw ws.WebSocket every 8 s.
+   This sends WS **protocol-level PING frames** (RFC 6455 opcode 0x9). The browser responds with a
+   PONG (opcode 0xA) automatically — creating **guaranteed bidirectional** traffic that resets the
+   proxy idle timer on both halves of the connection.
+
+**Why protocol-level, not application messages:**
+Protocol-level ping/pong is handled at the WS framing layer by all proxy software. Application-level
+JSON blobs may not be treated as "keepalive traffic" by the proxy.
+
+**Vite 7 socket access:** `server.ws.clients` is a `Set<HotChannelClient>`. Each HotChannelClient
+exposes the raw `ws.WebSocket` as `client.socket` (confirmed in Vite 7.3.2 source:
+`clientsMap.set(socket, { send(...) {...}, socket })`). Access via `(client as any).socket`.
+
+**Result:** After the initial ~45 s startup warmup, the connection stayed alive for **5+ minutes**
+in testing, vs. drops every 10-25 s before the fix.
+
+**How to apply:** Any future change to `vite.config.ts` must preserve both `server.hmr.timeout: 10000`
+and the `hmrServerKeepalive` plugin. The plugin is safe: per-socket try/catch, `apply: 'serve'` only.
