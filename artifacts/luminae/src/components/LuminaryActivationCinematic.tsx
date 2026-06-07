@@ -59,10 +59,31 @@ const PAN_OUT_MS    = 850;   // 1.25–2.10s
 
 const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.95
 
-const ENTITY_OPACITY = [0,    0.70, 1.0,  1.0,  0.75, 0   ];
+// Bump times[1] opacity to 0.90 so the silhouette reads as a solid dark shape
+// rather than a translucent ghost — the filter below keeps it near-black anyway.
+const ENTITY_OPACITY = [0,    0.90, 1.0,  1.0,  0.75, 0   ];
 const ENTITY_SCALE   = [0.88, 0.93, 1.00, 1.00, 1.04, 1.12];
 const ENTITY_Y       = ['-2vh', '-1vh', '0vh', '0vh', '0.5vh', '3vh'];
 const ENTITY_TIMES   = [0, 0.103, 0.282, 0.462, 0.564, 1];
+
+// ── Silhouette veil filter ─────────────────────────────────────────────────────
+// Entity appears as a dark, blurry, desaturated silhouette during the REVEAL
+// build-up.  At the audio "boom" (HOLD start, ~700ms absolute), the filter
+// snaps to overbright + crisp in a single near-instantaneous keyframe jump
+// (0.279 → 0.285 = ~11ms), then settles to normal colour for the HOLD phase.
+//
+// Uses its own 7-keyframe times array so the snap window is independent of the
+// 6-keyframe opacity/scale/y curve.
+const ENTITY_FILTER_TIMES = [0, 0.103, 0.279, 0.285, 0.462, 0.564, 1];
+const ENTITY_FILTER = [
+  'brightness(0.05) saturate(0) blur(5px)',    // 0      — pure dark silhouette
+  'brightness(0.07) saturate(0) blur(5px)',    // 0.103  — still shadowed
+  'brightness(0.07) saturate(0) blur(5px)',    // 0.279  — just before boom
+  'brightness(1.50) saturate(1.15) blur(0px)', // 0.285  — BOOM: overbright snap
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.462  — settle to natural colour
+  'brightness(0.75) saturate(1.0)  blur(0px)', // 0.564  — begin fade-out
+  'brightness(0)    saturate(1.0)  blur(0px)', // 1      — gone
+];
 
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
 // All must complete before HOLD_MS expires.
@@ -227,16 +248,22 @@ export function LuminaryActivationCinematic({
           key="entity"
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: 'none' }}
-          initial={{ opacity: 0, scale: 0.88, y: '-2vh' }}
+          initial={{ opacity: 0, scale: 0.88, y: '-2vh', filter: ENTITY_FILTER[0] }}
           animate={{
             opacity: ENTITY_OPACITY,
             scale:   ENTITY_SCALE,
             y:       ENTITY_Y,
+            filter:  ENTITY_FILTER,
           }}
           transition={{
             duration: ENTITY_DUR_S,
             times:    ENTITY_TIMES,
             ease:     'easeInOut',
+            filter: {
+              duration: ENTITY_DUR_S,
+              times:    ENTITY_FILTER_TIMES,
+              ease:     'linear',
+            },
           }}
         >
           {/* Colored glow bloom behind the entity — animated for lum_radiant */}
