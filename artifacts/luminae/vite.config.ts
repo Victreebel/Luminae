@@ -1,9 +1,52 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { VitePWA } from "vite-plugin-pwa";
+
+// Replit's reverse proxy drops idle WebSocket connections after ~30 s.
+// The game's /ws WebSocket avoids this by having both the client AND server
+// exchange pings every 10 s — creating bidirectional traffic in both
+// directions of the proxy.
+//
+// Vite's HMR WS sends {type:"ping"} from the CLIENT every `hmr.timeout` ms
+// (default 30 s), but the Vite server never responds.  Without a server→client
+// reply the proxy sees only one-directional traffic and still drops at 30 s.
+//
+// Fix (two parts):
+//   1. server.hmr.timeout:10000 — client sends {type:"ping"} every 10 s.
+//   2. hmrPongReply plugin — server hooks into the underlying ws socket and
+//      immediately echoes {type:"pong"} for each {type:"ping"} it receives,
+//      mirroring the game WS ping/pong contract that the proxy accepts.
+function hmrPongReply(): Plugin {
+  return {
+    name: 'hmr-pong-reply',
+    apply: 'serve',
+    configureServer(server) {
+      // Access the underlying ws.WebSocketServer to intercept raw messages.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const wss = (server.ws as any).wss;
+      if (!wss) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      wss.on('connection', (socket: any) => {
+        socket.on('message', (raw: Buffer) => {
+          try {
+            const data = JSON.parse(raw.toString());
+            if (data.type === 'ping') {
+              // Mirror the game WS contract: client {type:"ping"} →
+              // server {type:"pong"}.  Creates server→client traffic that
+              // resets the proxy idle timer in the server→client direction.
+              if (socket.readyState === 1 /* OPEN */) {
+                socket.send(JSON.stringify({ type: 'pong' }));
+              }
+            }
+          } catch { /* ignore non-JSON frames */ }
+        });
+      });
+    },
+  };
+}
 
 // PORT and BASE_PATH are required at runtime (dev server / preview), but the
 // production build is a pure static asset emit and doesn't need them. The
@@ -30,6 +73,7 @@ const basePath = process.env.BASE_PATH ?? "/";
 export default defineConfig({
   base: basePath,
   plugins: [
+    hmrPongReply(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
@@ -149,6 +193,11 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    // Vite's built-in client-side ping fires every `hmr.timeout` ms.
+    // Default is 30 000 ms — exactly the Replit proxy idle timeout, so
+    // the ping races against the drop and loses.  15 s keeps the HMR
+    // WebSocket alive without flooding the connection.
+    hmr: { timeout: 10000 },
     fs: {
       strict: true,
     },

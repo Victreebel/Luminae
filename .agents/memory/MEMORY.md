@@ -3,3 +3,4 @@
 - [Mobile perf: framer-motion CSS migration](mobile-perf-css-migration.md) — repeat:Infinity JS loops are the primary mobile lag/crash cause; migration pattern and what remains.
 - [pendingLuminaryChoice turn suspension](pending-luminary-choice-turn.md) — interactive multi-Luminary gate requires suspending advanceTurn in tail code; choose_luminary_order must break (not return) so tail code runs advanceTurn.
 - [framer-motion v12 WAAPI rules](framer-motion-v12-waapi-rules.md) — keyframe arrays need consistent units ('0vh' not '0'), initial prop required, exit prop needed when AnimatePresence may remove mid-animation.
+- [Vite HMR keepalive — Replit proxy](vite-hmr-keepalive.md) — proxy needs bidirectional traffic; client-only pings insufficient; hmrPongReply plugin + hmr.timeout:10000 is the fix.
