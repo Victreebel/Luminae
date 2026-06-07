@@ -2484,14 +2484,26 @@ export function LuminarySummonCutscene({
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'blur(6px)' }}
+            initial={{ opacity: 0, filter: 'blur(26px) brightness(0.10)' }}
             animate={isFading
-              ? { opacity: 0, filter: 'blur(0px)' }
-              : { opacity: 1, filter: 'blur(0px)' }
+              ? { opacity: 0, filter: 'blur(0px) brightness(1.0)' }
+              : {
+                  opacity: [0, 0.88, 0.90, 0.94, 1.0],
+                  filter: [
+                    'blur(26px) brightness(0.10)',
+                    'blur(24px) brightness(0.16)',
+                    'blur(22px) brightness(0.20)',
+                    'blur(6px)  brightness(0.68)',
+                    'blur(0px)  brightness(1.0)',
+                  ],
+                }
             }
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
-              : { duration: 2.0, delay: 0.20, ease: 'easeOut' }
+              : {
+                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.14, 0.58, 0.82, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.14, 0.58, 0.82, 1.0], ease: 'easeOut' },
+                }
             }
           >
             {/* 3D portal break-through — entity starts deep behind the portal     */}
@@ -2508,11 +2520,11 @@ export function LuminarySummonCutscene({
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 2.0, delay: 0.20, ease: 'easeOut' },
-                    y:       { duration: 2.0, delay: 0.20, ease: 'easeOut' },
-                    opacity: { duration: 2.0, delay: 0.20, ease: 'easeOut' },
-                    rotateY: { duration: 2.0, delay: 0.20, ease: 'easeOut' },
-                    z:       { duration: 2.0, delay: 0.20, ease: 'easeOut' },
+                    scale:   { duration: 2.2, delay: 0.15, ease: 'easeOut' },
+                    y:       { duration: 2.2, delay: 0.15, ease: 'easeOut' },
+                    opacity: { duration: 0.80, delay: 0.15, ease: 'easeOut' },
+                    rotateY: { duration: 2.2, delay: 0.15, ease: 'easeOut' },
+                    z:       { duration: 2.2, delay: 0.15, ease: 'easeOut' },
                   }
               }
             >
