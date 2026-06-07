@@ -31,8 +31,8 @@ interface LuminaryActivationCinematicProps {
 // ─── Timing ───────────────────────────────────────────────────────────────────
 
 const ZOOM_OUT_MS  = 720;   // board scales down, dim fades in
-const REVEAL_MS    = 680;   // entity fades + scales in from above
-const HOLD_MS      = 1900;  // linger at full opacity
+const REVEAL_MS    = 1100;  // entity fades + scales in from above
+const HOLD_MS      = 1200;  // linger at full opacity
 const PAN_OUT_MS   = 980;   // entity drifts + fades, board restores
 
 // Effect beats fire within the hold phase (must all complete before HOLD_MS)
