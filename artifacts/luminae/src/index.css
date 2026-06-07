@@ -1106,6 +1106,20 @@ button,
 }
 .lum-vessel-shake-5 { animation: lum-vessel-shake-5 0.08s linear infinite; }
 
+/* ── Vessel glow pulse — CSS replaces framer-motion repeat:Infinity boxShadow ──
+   primaryColor varies per Luminary so the dim/bright values are passed as CSS
+   custom properties (--lum-glow-dim / --lum-glow-bright) set inline on the
+   element.  Duration is passed as --lum-glow-dur.
+   This eliminates one continuous JS animation loop during the entire crack
+   sequence (pressure → firstCrack → leaking → secondCrack → cracking).       */
+@keyframes lum-vessel-glow {
+  0%, 100% { box-shadow: var(--lum-glow-dim); }
+  50%       { box-shadow: var(--lum-glow-bright); }
+}
+.lum-vessel-glow {
+  animation: lum-vessel-glow var(--lum-glow-dur, 0.80s) ease-in-out infinite;
+}
+
 /* ── Radiant Keeper idle — layered ring/core rotation + pulse ────────────
    Ring (radiant1): CCW rotation applied to img; scale-up via wrapper div.
    Core (radiant3): CW rotation on img; scale-down + pulse on wrapper div.

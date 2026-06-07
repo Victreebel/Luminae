@@ -1664,19 +1664,29 @@ export function LuminarySummonCutscene({
   const camScale = isShattering ? 1 : (camZoomed ? targetScale : 1);
 
   // ── Vessel glow (ramps through crack phases) ─────────────────────────────
-  // NOTE: shake/tremble animation is now handled via CSS keyframes
-  // (lum-vessel-shake-0 through lum-vessel-shake-5 in index.css) to avoid
-  // JS frame budget burn from framer-motion repeat:Infinity loops.
+  // NOTE: shake/tremble animation is handled via CSS keyframes
+  // (lum-vessel-shake-0 through lum-vessel-shake-5 in index.css).
+  // NOTE: the glow pulse is also CSS now (lum-vessel-glow + CSS custom props)
+  // to avoid JS frame budget burn from framer-motion repeat:Infinity loops.
   const glowDur = isCracking ? 0.40 : isSecondCrack ? 0.48 : isLeaking ? 0.55 : isFirstCrack ? 0.65 : isPressure ? 0.75 : 0.80;
-  const vesselGlow: [string, string, string] = isPressure
-    ? [`0 0 10px ${primaryColor}60`, `0 0 24px ${primaryColor}90`, `0 0 10px ${primaryColor}60`]
+  const glowDim = isPressure
+    ? `0 0 10px ${primaryColor}60`
     : isFirstCrack
-      ? [`0 0 14px ${primaryColor}80`, `0 0 32px ${primaryColor}b0`, `0 0 14px ${primaryColor}80`]
+      ? `0 0 14px ${primaryColor}80`
       : isLeaking
-        ? [`0 0 20px ${primaryColor}a0`, `0 0 42px ${primaryColor}d0, 0 0 12px ${primaryColor}50`, `0 0 20px ${primaryColor}a0`]
+        ? `0 0 20px ${primaryColor}a0`
         : isSecondCrack
-          ? [`0 0 22px ${primaryColor}b0`, `0 0 48px ${primaryColor}e0, 0 0 16px ${primaryColor}68`, `0 0 22px ${primaryColor}b0`]
-          : [`0 0 26px ${primaryColor}c0`, `0 0 52px ${primaryColor}f0, 0 0 18px ${primaryColor}80`, `0 0 26px ${primaryColor}c0`];
+          ? `0 0 22px ${primaryColor}b0`
+          : `0 0 26px ${primaryColor}c0`;
+  const glowBright = isPressure
+    ? `0 0 24px ${primaryColor}90`
+    : isFirstCrack
+      ? `0 0 32px ${primaryColor}b0`
+      : isLeaking
+        ? `0 0 42px ${primaryColor}d0, 0 0 12px ${primaryColor}50`
+        : isSecondCrack
+          ? `0 0 48px ${primaryColor}e0, 0 0 16px ${primaryColor}68`
+          : `0 0 52px ${primaryColor}f0, 0 0 18px ${primaryColor}80`;
 
   // Vessel is positioned at viewport centre — the board pan brings the card
   // there before the vessel appears, so they perfectly overlap.
@@ -1765,7 +1775,7 @@ export function LuminarySummonCutscene({
                   : isFirstCrack ? 'lum-vessel-shake-2'
                   : isPressure ? 'lum-vessel-shake-1'
                   : 'lum-vessel-shake-0'
-                }`
+                }${(isPressure || hasCracks) ? ' lum-vessel-glow' : ''}`
               }
               style={{
                 left: vesselLeft,
@@ -1773,21 +1783,24 @@ export function LuminarySummonCutscene({
                 width:  BOARD_CARD_W,
                 height: BOARD_CARD_H,
                 borderRadius: 12,
-              }}
+                // Static shadow when not glowing; CSS animation takes over during crack phases.
+                ...( !(isPressure || hasCracks) && {
+                  boxShadow: '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                }),
+                // CSS custom props for lum-vessel-glow keyframe (see index.css).
+                '--lum-glow-dim':    glowDim,
+                '--lum-glow-bright': glowBright,
+                '--lum-glow-dur':    `${glowDur}s`,
+              } as React.CSSProperties}
               initial={{ opacity: 0 }}
               animate={{
                 opacity: isShattering ? 0 : 1,
                 scale: 1,
-                boxShadow: (isPressure || hasCracks)
-                  // eslint-disable-next-line no-restricted-syntax -- vesselGlow is a framer-motion MotionValue<string>; boxShadow accepts string | MotionValue<string> at runtime but the TS overload only accepts string, so the double-cast is required to satisfy framer-motion's type definitions.
-                  ? (vesselGlow as unknown as string)
-                  : '0 0 0 1px rgba(0,0,0,0.3), 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
               }}
               exit={{ opacity: 0, transition: { duration: 0.06, ease: 'linear' } }}
               transition={{
-                scale:     { duration: 0.26 },
-                opacity:   { duration: 0.28 },
-                boxShadow: { repeat: Infinity, duration: glowDur, ease: 'easeInOut' },
+                scale:   { duration: 0.26 },
+                opacity: { duration: 0.28 },
               }}
             >
               {/* Identical interior to LuminaryCard — same component, same props */}
@@ -1855,7 +1868,10 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 1.0, 0.95] }}
                     transition={{ duration: 0.10, ease: 'easeOut' }}
                   />
-                  {/* L2 chasing glow */}
+                  {/* L2 chasing glow + L3 residual wound glow — skipped on mobile
+                      (each requires pathLength+getTotalLength+blur filter; 12 paths
+                       total across both cracks, too expensive for mobile main thread) */}
+                  {!isMobile && (<>
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
                     stroke={primaryColor} strokeWidth="22" fill="none" filter="url(#cgw)"
@@ -1866,7 +1882,6 @@ export function LuminarySummonCutscene({
                       opacity:    { duration: 0.56, delay: 0.04, times: [0, 0.14, 0.55, 1.0] },
                     }}
                   />
-                  {/* L3 residual wound glow */}
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
                     stroke={primaryColor} strokeWidth="14" fill="none" filter="url(#cgw)"
@@ -1874,6 +1889,7 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
                     transition={{ duration: 0.62, delay: 0.14, ease: 'easeOut' }}
                   />
+                  </>)}
                   {/* L4 tinted seam */}
                   <motion.path
                     d={`M${TAX},0 L${K1X},${K1Y} L${PX},${PY}`}
@@ -1891,6 +1907,7 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 0.90, 0.84] }}
                     transition={{ duration: 0.10, delay: 0.06, ease: 'easeOut' }}
                   />
+                  {!isMobile && (<>
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
                     stroke={primaryColor} strokeWidth="18" fill="none" filter="url(#cgw)"
@@ -1908,6 +1925,7 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 0, 0.38, 0.54, 0.46] }}
                     transition={{ duration: 0.52, delay: 0.16, ease: 'easeOut' }}
                   />
+                  </>)}
                   <motion.path
                     d={`M${PX},${PY} L${K2X},${K2Y} L${BOARD_CARD_W},${RAY}`}
                     stroke={primaryColor} strokeWidth="2.8" fill="none"
@@ -1924,6 +1942,7 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 0.85, 0.78] }}
                     transition={{ duration: 0.12, delay: 0.07, ease: 'easeOut' }}
                   />
+                  {!isMobile && (<>
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
                     stroke={primaryColor} strokeWidth="16" fill="none" filter="url(#cgw)"
@@ -1941,6 +1960,7 @@ export function LuminarySummonCutscene({
                     animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.50, 0.42] }}
                     transition={{ duration: 0.50, delay: 0.17, ease: 'easeOut' }}
                   />
+                  </>)}
                   <motion.path
                     d={`M${PX},${PY} L${K3aX},${K3aY} L${K3bX},${K3bY} L0,${LA2Y}`}
                     stroke={primaryColor} strokeWidth="2.5" fill="none"
@@ -2007,6 +2027,7 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 1.0, 0.94] }}
                         transition={{ duration: 0.14, ease: 'easeOut' }}
                       />
+                      {!isMobile && (<>
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke={primaryColor} strokeWidth="24" fill="none" filter="url(#cgw)"
@@ -2024,6 +2045,7 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 0, 0.46, 0.64, 0.56] }}
                         transition={{ duration: 0.68, delay: 0.12, ease: 'easeOut' }}
                       />
+                      </>)}
                       <motion.path
                         d={`M${PX},${PY} L${K4X},${K4Y} L${QX},${QY} L${K8X},${K8Y} L${BAX},${BOARD_CARD_H}`}
                         stroke={primaryColor} strokeWidth="4.0" fill="none"
@@ -2040,6 +2062,7 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 0.80, 0.72] }}
                         transition={{ duration: 0.12, delay: 0.22, ease: 'easeOut' }}
                       />
+                      {!isMobile && (<>
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
                         stroke={primaryColor} strokeWidth="14" fill="none" filter="url(#cgw)"
@@ -2057,6 +2080,7 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 0, 0.34, 0.50, 0.42] }}
                         transition={{ duration: 0.54, delay: 0.30, ease: 'easeOut' }}
                       />
+                      </>)}
                       <motion.path
                         d={`M${QX},${QY} L${K5X},${K5Y} L${K6X},${K6Y} L${BOARD_CARD_W},${RBY}`}
                         stroke={primaryColor} strokeWidth="2.6" fill="none"
@@ -2073,6 +2097,7 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 0.76, 0.68] }}
                         transition={{ duration: 0.11, delay: 0.25, ease: 'easeOut' }}
                       />
+                      {!isMobile && (<>
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
                         stroke={primaryColor} strokeWidth="11" fill="none" filter="url(#cgw)"
@@ -2090,6 +2115,7 @@ export function LuminarySummonCutscene({
                         animate={{ pathLength: 1, opacity: [0, 0, 0.28, 0.44, 0.36] }}
                         transition={{ duration: 0.46, delay: 0.33, ease: 'easeOut' }}
                       />
+                      </>)}
                       <motion.path
                         d={`M${QX},${QY} L${K7X},${K7Y} L0,${LAY}`}
                         stroke={primaryColor} strokeWidth="2.0" fill="none"

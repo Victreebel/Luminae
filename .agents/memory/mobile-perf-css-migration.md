@@ -10,7 +10,20 @@ description: Pattern for converting repeat:Infinity JS animation loops to CSS ke
 
 **How to apply:** Write a `@keyframes` block in `index.css`, add a class with `animation: name duration easing infinite` + `animation-fill-mode: backwards` (for delayed starts), then replace `motion.div/circle/line` with the plain element + `className`. Use inline `animationDuration`/`animationDelay` style props to vary timing per instance without extra classes.
 
-## What was converted (both sessions)
+## CSS custom properties for color-dependent glow animations
+When the glow color varies per Luminary instance (e.g. vessel glow), pass values as CSS custom properties set inline on the element:
+```css
+@keyframes lum-vessel-glow {
+  0%, 100% { box-shadow: var(--lum-glow-dim); }
+  50%       { box-shadow: var(--lum-glow-bright); }
+}
+.lum-vessel-glow {
+  animation: lum-vessel-glow var(--lum-glow-dur, 0.80s) ease-in-out infinite;
+}
+```
+Then in JSX: `style={{ '--lum-glow-dim': '...', '--lum-glow-bright': '...', '--lum-glow-dur': '0.75s' } as React.CSSProperties}`
+
+## What was converted (all sessions)
 
 **Portal idle (game-luminary.tsx / LuminaryClaimedPortal):**
 - 7 loops per portal instance → CSS: `lum-portal-ring-cw/ccw`, `lum-portal-aura-pulse`, `lum-portal-mote-center`, `lum-portal-drift`, `lum-portal-gem-float`, `lum-portal-badge-pulse`
@@ -21,8 +34,18 @@ description: Pattern for converting repeat:Infinity JS animation loops to CSS ke
 - 8 second-crack motes/pools/rays → same classes; energy rays drop scaleY (CSS SVG compat)
 - Breathing hover (2 loops) → `lum-cs-hover`
 - Entity glow `filter` animation → removed, replaced with static midpoint filter value
+- Vessel shake (4 loops during crack phases) → `lum-vessel-shake-0` through `lum-vessel-shake-5`
+- **Vessel glow pulse (boxShadow repeat:Infinity during all crack phases)** → `lum-vessel-glow` CSS class + CSS custom props for per-Luminary color
 
-**Total eliminated: ~78 JS loops**
+**Total eliminated: ~80 JS loops**
+
+## SVG pathLength mobile optimization (crack SVG overlay)
+
+`motion.path` with `pathLength` requires `getTotalLength()` DOM calls + JS interpolation per frame. With 24 paths simultaneous during the crack phases, this is heavy on mobile.
+
+**Fix:** L2 (chasing glow, ~16-24px strokeWidth, blur filter) and L3 (residual wound glow, ~8-16px strokeWidth, blur filter) are skipped on mobile via `{!isMobile && (<>...</>)}`. Applied to all 6 crack segments (3 in first crack + 3 in second crack).
+
+**Mobile result:** 24 concurrent pathLength animations → 12. All 12 remaining paths have no blur filter and thin strokes (≤4px). Desktop is unchanged.
 
 ## SVG-specific gotchas
 
@@ -32,10 +55,9 @@ description: Pattern for converting repeat:Infinity JS animation loops to CSS ke
 - SVG presentation attribute `opacity="0"` can also be used as an alternative initial state; CSS animations override presentation attributes.
 - `animationDuration`/`animationDelay` inline style props override the shorthand `animation:` duration/delay from the class — clean way to vary per-instance timing.
 
-## Remaining JS loops (7 total — acceptable)
+## Remaining JS loops (5 total — acceptable)
 
-- `TideEyeOverlay` (2 loops, lines ~291/298): iris glow halo + drift; only renders when Tide Luminary is on screen.
+- `TideEyeOverlay` (2 loops, iris glow halo + drift): only renders when Tide Luminary is on screen.
 - Establish-phase glow (1 loop, 0.28s duration): fires for ~1–2s during `isEstablish` summon phase; complex multi-property (opacity, x, y, rotate) with MotionValues.
-- Vessel shake (4 loops): fires only during `isPressure`/`hasCracks` summon phases (brief).
-- `game-luminary.tsx:414`: summon-button pulse; only when `canAffordLuminary`.
+- `game-luminary.tsx`: summon-button pulse; only when `canAffordLuminary`.
 - `AffinityWell.tsx` (3 loops): conditional on `forgeDed > 0 || pending > 0`.
