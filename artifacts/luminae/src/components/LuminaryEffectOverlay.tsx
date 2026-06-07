@@ -136,11 +136,18 @@ export function SigilRings({
     <motion.div
       className="absolute inset-0 flex items-center justify-center"
       style={{ pointerEvents: 'none' }}
-      initial={{ opacity: 0, scale: 0.45 }}
-      animate={{ opacity: visible ? 1 : 0, scale: visible ? 1 : 0.6 }}
+      initial={{ opacity: 0, scale: 0.68 }}
+      animate={{
+        opacity: visible ? 1 : 0,
+        // Entry: expand outward from 0.68→1.0.
+        // Exit: continue expanding past 1.0 (waves dissipate outward, never collapse).
+        scale: visible ? 1 : 1.22,
+      }}
       transition={{
-        duration: visible ? 0.45 : 0.40,
-        ease: visible ? [0.22, 1, 0.36, 1] as [number,number,number,number] : 'easeIn',
+        duration: visible ? 0.50 : 0.58,
+        ease: visible
+          ? ([0.22, 1, 0.36, 1] as [number, number, number, number])
+          : 'easeOut',
       }}
     >
       {/* Outer dashed ring — slow CCW */}
@@ -247,10 +254,12 @@ export function TargetBadge({
         color: conf.snapColor,
         backdropFilter: 'blur(4px)',
       }}
-      initial={{ opacity: 0, scale: 0.88, y: 5 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.88 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
+      // Drifts in from entity (above), expands outward toward board (below).
+      // No scale-shrink on entry or exit — only directional flow.
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 6 }}
+      transition={{ duration: 0.38, ease: 'easeOut' }}
     >
       <span style={{ opacity: 0.72 }}>{conf.toneLabel}</span>
       <span style={{ opacity: 0.32 }}>·</span>
@@ -271,13 +280,20 @@ export function TargetBadge({
 
 export function ConsequenceSnap({ tone }: { tone: LuminaryEffectTone }) {
   const conf = TONE_CONFIG[tone];
+  // Consumption (First Hunger's initial grant) still expands outward — the
+  // inward dissolve only applies to the artifact being consumed, not here.
   return (
     <motion.div
       className="absolute inset-0"
       style={{ background: conf.snapGradient, pointerEvents: 'none' }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: [0, 1, 0] }}
-      transition={{ duration: 0.65, times: [0, 0.28, 1], ease: 'easeInOut' }}
+      // Scale expands outward during the flash (wave reaches the board edges)
+      // then continues expanding while fading — never collapses inward.
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{
+        opacity: [0, 1, 0],
+        scale:   [0.85, 1.0, 1.10],
+      }}
+      transition={{ duration: 0.70, times: [0, 0.26, 1], ease: 'easeOut' }}
     />
   );
 }
