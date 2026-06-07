@@ -5,7 +5,7 @@ import { getLuminaryVisuals, getLuminaryImageAssets, RadiantLivingEntityComposit
 import { gameAudio } from '@/lib/audio';
 import {
   LUMINARY_EFFECT_MAP,
-  SigilRings,
+  AuraExpansion,
   TargetBadge,
   ConsequenceSnap,
 } from '@/components/LuminaryEffectOverlay';
@@ -178,10 +178,10 @@ export function LuminaryActivationCinematic({
         style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
       />
 
-      {/* ── Beat 3: Affinity sigil rings ────────────────────────────────────
+      {/* ── Beat 3: Aura expansion ──────────────────────────────────────────
            Rendered BEFORE the entity in DOM order so it paints behind it.   */}
       {showEntity && effectDef && (
-        <SigilRings
+        <AuraExpansion
           affinities={effectDef.affinities}
           primaryColor={primaryColor}
           visible={sigilVisible}

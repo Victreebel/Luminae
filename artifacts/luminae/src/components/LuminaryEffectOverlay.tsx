@@ -108,11 +108,18 @@ export const LUMINARY_EFFECT_MAP: Record<string, Omit<LuminaryEffectAnimation, '
   lum_scholar: { affinities: ['sapphire', 'pearl'],         tone: 'global',      target: 'artifact',      isLingering: false },
 };
 
-// ─── Beat 3: Affinity sigil rings ─────────────────────────────────────────────
-// Concentric rotating rings in the Luminary's affinity colors, centered on the
-// entity.  Rendered BEFORE the entity in DOM order so it paints behind it.
+// ─── Beat 3: Aura expansion ───────────────────────────────────────────────────
+// Replaces the old circle-ring approach.  Uses outward rays + borderless
+// ambient glow — no geometric border/ring shapes that clash with irregular
+// Luminary silhouettes.  Rendered BEFORE the entity in DOM order (paints behind).
+//
+// Entry: rays grow outward (scaleY 0→1) from entity center, glow expands.
+// Exit:  rays continue extending past full length while fading (dissipate
+//        outward) — never collapse inward.
 
-export function SigilRings({
+const RAY_COUNT = 10;
+
+export function AuraExpansion({
   affinities,
   primaryColor,
   visible,
@@ -124,80 +131,46 @@ export function SigilRings({
   const colors = affinities.slice(0, 3).map(a => GEM_COLORS[a] ?? primaryColor);
   const c1 = colors[0] ?? primaryColor;
   const c2 = colors[1] ?? c1;
-  const c3 = colors[2] ?? c1;
 
-  // Compute orb positions in pixels at render time (vmin → px)
-  const vmin = typeof window !== 'undefined'
-    ? Math.min(window.innerWidth, window.innerHeight)
-    : 400;
-  const rPx = vmin * 0.32; // 32 vmin radius
+  const entryEase = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
   return (
-    <motion.div
+    <div
       className="absolute inset-0 flex items-center justify-center"
       style={{ pointerEvents: 'none' }}
-      initial={{ opacity: 0, scale: 0.68 }}
-      animate={{
-        opacity: visible ? 1 : 0,
-        // Entry: expand outward from 0.68→1.0.
-        // Exit: continue expanding past 1.0 (waves dissipate outward, never collapse).
-        scale: visible ? 1 : 1.22,
-      }}
-      transition={{
-        duration: visible ? 0.50 : 0.58,
-        ease: visible
-          ? ([0.22, 1, 0.36, 1] as [number, number, number, number])
-          : 'easeOut',
-      }}
     >
-      {/* Outer dashed ring — slow CCW */}
+      {/* Ambient aura glow — borderless radial light, no visible circle outline.
+          Starts collapsed at entity center, expands outward on entry.
+          Exit: continues expanding while fading (never pulls back). */}
       <motion.div
         style={{
           position: 'absolute',
-          width: '64vmin',
-          height: '64vmin',
-          borderRadius: '50%',
-          border: `1.5px dashed ${c1}`,
-          boxShadow: `0 0 14px ${c1}55, inset 0 0 14px ${c1}18`,
+          width: '110vmin',
+          height: '110vmin',
+          background: `radial-gradient(ellipse at center,
+            ${c1}26 0%,
+            ${c2}12 42%,
+            transparent 68%)`,
         }}
-        animate={{ rotate: -360 }}
-        transition={{ duration: 22, ease: 'linear', repeat: Infinity }}
+        initial={{ scale: 0.22, opacity: 0 }}
+        animate={{
+          scale:   visible ? 1.0 : 1.75,
+          opacity: visible ? 1   : 0,
+        }}
+        transition={{
+          duration: visible ? 0.55 : 0.62,
+          ease: visible ? entryEase : 'easeOut',
+        }}
       />
 
-      {/* Middle ring — CW */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          width: '52vmin',
-          height: '52vmin',
-          borderRadius: '50%',
-          border: `1px solid ${c2}88`,
-          boxShadow: `0 0 10px ${c2}44`,
-        }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 15, ease: 'linear', repeat: Infinity }}
-      />
-
-      {/* Inner bright ring — glow pulse, no rotation */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          width: '40vmin',
-          height: '40vmin',
-          borderRadius: '50%',
-          border: `2px solid ${c3}cc`,
-          boxShadow: `0 0 22px ${c3}77, 0 0 44px ${c3}33`,
-        }}
-        animate={{ opacity: [0.55, 1, 0.55], scale: [0.97, 1.03, 0.97] }}
-        transition={{ duration: 2.5, ease: 'easeInOut', repeat: Infinity }}
-      />
-
-      {/* Affinity orbs — small glowing gems at even positions on the outer ring */}
-      {colors.map((color, i) => {
-        const angleDeg = (i / colors.length) * 360 - 90;
-        const angleRad = (angleDeg * Math.PI) / 180;
-        const x = Math.cos(angleRad) * rPx - 4;
-        const y = Math.sin(angleRad) * rPx - 4;
+      {/* Radial rays — thin gradient beams that shoot outward from entity center.
+          transformOrigin: 'top center' means scaleY grows downward (away from center).
+          framer-motion merges `rotate` in style with animated scaleY correctly. */}
+      {Array.from({ length: RAY_COUNT }, (_, i) => {
+        const angle = (i / RAY_COUNT) * 360;
+        const color = colors[i % colors.length] ?? c1;
+        // Alternate between two widths for organic variety
+        const width = i % 2 === 0 ? 1.5 : 1;
         return (
           <motion.div
             key={i}
@@ -205,25 +178,33 @@ export function SigilRings({
               position: 'absolute',
               top: '50%',
               left: '50%',
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: color,
-              boxShadow: `0 0 8px ${color}, 0 0 18px ${color}88`,
-              x,
-              y,
+              width,
+              height: '34vmin',
+              marginLeft: -(width / 2),
+              transformOrigin: 'top center',
+              rotate: angle,          // framer-motion rotate (degrees) — combined with scaleY
+              background: `linear-gradient(
+                to bottom,
+                ${color}cc 0%,
+                ${color}66 45%,
+                transparent 100%
+              )`,
             }}
-            animate={{ scale: [1, 1.55, 1], opacity: [0.75, 1, 0.75] }}
+            initial={{ scaleY: 0, opacity: 0 }}
+            animate={{
+              // Exit: scaleY > 1 so rays keep extending outward as they fade
+              scaleY:  visible ? 1    : 1.55,
+              opacity: visible ? 0.82 : 0,
+            }}
             transition={{
-              duration: 1.8,
-              ease: 'easeInOut',
-              repeat: Infinity,
-              delay: i * 0.4,
+              duration: visible ? 0.50 : 0.55,
+              delay:    visible ? i * 0.022 : 0,
+              ease:     visible ? entryEase : 'easeOut',
             }}
           />
         );
       })}
-    </motion.div>
+    </div>
   );
 }
 
