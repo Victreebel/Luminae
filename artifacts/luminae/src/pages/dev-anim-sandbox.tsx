@@ -1017,7 +1017,7 @@ function MarketDealFlipPreview() {
 // constants used by each preview component's TimingBar so they stay in sync.
 
 const CARD_FX_TOTALS: Record<CardFxMode, number> = {
-  cipher_reserve:      CIPHER_GAME_TOTAL_MS,
+  cipher_reserve:      CIPHER_MODE_TOTAL_MS['game'],
   forge_burst:         FORGE_PHASE_MS.total,
   opponent_forge:      FORGE_PHASE_MS.total,
   reserved_forge_ring: RING_DISMISS_MS,
