@@ -17,6 +17,7 @@ import type {
   LuminaryActiveState,
   ActionRequest,
   PendingLuminaryActivationEvent,
+  BurnEvent,
 } from '@workspace/api-client-react';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
@@ -7401,6 +7402,15 @@ export default function GameBoard() {
         )}
         {showBurnPileOverlay && (() => {
           const burnedIds: string[] = state.burnPile ?? [];
+          const burnEvents: BurnEvent[] = state.burnEvents ?? [];
+          const useBurnEvents = burnEvents.length > 0;
+          const displayCount = useBurnEvents ? burnEvents.length : burnedIds.length;
+          const tierLabel = (tier: number) => `T${tier}`;
+          const tierColors: Record<number, string> = {
+            1: 'text-amber-700/90 border-amber-700/40 bg-amber-900/20',
+            2: 'text-slate-300/80 border-slate-400/40 bg-slate-700/20',
+            3: 'text-yellow-300/90 border-yellow-500/40 bg-yellow-900/20',
+          };
           return (
             <motion.div
               key="burn-pile-sheet"
@@ -7425,7 +7435,7 @@ export default function GameBoard() {
                 <div className="flex items-center gap-2">
                   <span className="text-base leading-none">🔥</span>
                   <span className="text-sm font-bold text-orange-300/90">Burned Artifacts</span>
-                  <span className="text-xs text-muted-foreground">({burnedIds.length})</span>
+                  <span className="text-xs text-muted-foreground">({displayCount})</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
@@ -7436,9 +7446,31 @@ export default function GameBoard() {
               </div>
               {/* body */}
               <div {...burnPileSheetScrollableProps} className="overflow-y-auto px-5 py-3 flex flex-col gap-0 divide-y divide-border/20">
-                {burnedIds.length === 0 ? (
+                {displayCount === 0 ? (
                   <p className="text-xs text-muted-foreground italic py-2">No cards have been burned yet.</p>
-                ) : burnedIds.map((cardId, idx) => {
+                ) : useBurnEvents ? burnEvents.map((evt, idx) => {
+                  const name = loreCatalog?.[evt.cardId]?.name ?? evt.cardId;
+                  const sourceLum = (state.luminaries as Luminary[]).find(l => l.id === evt.sourceLuminaryId);
+                  const tc = tierColors[evt.tier] ?? tierColors[1];
+                  return (
+                    <div key={`${evt.cardId}-${idx}`} className="flex items-center gap-2.5 py-2.5 min-w-0">
+                      <span className="text-[11px] text-muted-foreground w-5 text-right shrink-0 tabular-nums">{idx + 1}</span>
+                      <span className={`shrink-0 inline-flex items-center px-1 py-0.5 rounded text-[9px] font-bold border leading-none tabular-nums ${tc}`}>
+                        {tierLabel(evt.tier)}
+                      </span>
+                      <span className="text-xs font-semibold text-orange-200/80 leading-tight truncate min-w-0 flex-1">{name}</span>
+                      {sourceLum && (
+                        <span className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground/70 leading-none max-w-[40%] truncate">
+                          <span
+                            className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ background: sourceLum.summonColor }}
+                          />
+                          <span className="truncate">{sourceLum.name}</span>
+                        </span>
+                      )}
+                    </div>
+                  );
+                }) : burnedIds.map((cardId, idx) => {
                   const name = loreCatalog?.[cardId]?.name ?? cardId;
                   return (
                     <div key={`${cardId}-${idx}`} className="flex items-center gap-3 py-2.5">
