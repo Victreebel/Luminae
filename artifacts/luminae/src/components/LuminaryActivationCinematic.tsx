@@ -57,7 +57,9 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
     case 'scoreChange': {
       const sign = step.amount >= 0 ? '+' : '';
       const color = step.amount >= 0 ? '#fbbf24' : '#ef4444';
-      return { icon: '◆', label: `${sign}${step.amount} EMN`, color };
+      // "ALL" suffix when more than one player is affected — makes global effects legible.
+      const scope = step.playerIds.length > 1 ? ' ALL' : '';
+      return { icon: '◆', label: `${sign}${step.amount} EMN${scope}`, color };
     }
     case 'crystalReturn': return { icon: '◇', label: 'RETURN',     color: '#60a5fa' };
     case 'deckScry':      return { icon: '◉', label: 'SCRY',       color: '#a78bfa' };

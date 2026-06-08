@@ -62,11 +62,11 @@ function resolveTide(): AnimationProcedureStep[] {
 }
 
 // 3. Verdant Oracle / Early Bloom (lum_verdant)
-//    luminaryPulse → owner affinity-row targetClaim → persistent living aura
-function resolveVerdant(_s: GameState, ownerId: string): AnimationProcedureStep[] {
+//    luminaryPulse only — TargetBadge fallback ("BOON · AFFINITIES · LINGERING")
+//    is clearer for a living-affinity bonus than a bare ⬡ CLAIM [playerId] pill.
+function resolveVerdant(_s: GameState, _ownerId: string): AnimationProcedureStep[] {
   return [
     pulse('lum_verdant'),
-    { type: 'targetClaim', targetIds: [ownerId] },
   ];
 }
 
@@ -148,8 +148,10 @@ function resolveSeed(): AnimationProcedureStep[] {
 }
 
 // 11. Glass Orchard / Perfect Replication (lum_orchard)
-//     luminaryPulse → cheapest Tier I targetClaim → replication shimmer → copy acquired
-function resolveOrchard(s: GameState, ownerId: string): AnimationProcedureStep[] {
+//     luminaryPulse → cheapest Tier I targetClaim → boon ConsequenceSnap
+//     No scoreChange step — +0 EMN was actively misleading ("nothing happened").
+//     The CLAIM pill + golden boon flash communicates "you received something good."
+function resolveOrchard(s: GameState, _ownerId: string): AnimationProcedureStep[] {
   const tier1Cards = t1(s);
   const cheapest = tier1Cards.reduce<ArtifactCard | null>((min, c) => {
     if (!min) return c;
@@ -160,7 +162,6 @@ function resolveOrchard(s: GameState, ownerId: string): AnimationProcedureStep[]
   return [
     pulse('lum_orchard'),
     { type: 'targetClaim', targetIds: cheapest ? [cheapest.id] : [] },
-    { type: 'scoreChange', playerIds: [ownerId], amount: 0 },  // card copy, not direct eminence
   ];
 }
 

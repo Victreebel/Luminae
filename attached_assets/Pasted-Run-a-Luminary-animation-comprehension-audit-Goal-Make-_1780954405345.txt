@@ -1,0 +1,56 @@
+Run a Luminary animation comprehension audit.
+
+Goal:
+Make sure every Luminary animation clearly communicates:
+1. Source — which Luminary caused this?
+2. Target — what card/player/zone was affected?
+3. Keyword/result — burn, forgotten, nullified, condemned, seeded, score loss/gain, crystal return, or pending action.
+4. Aftermath — what changed on the board?
+
+Do not change mechanics, costs, scoring, turn order, tutorial order, or card data.
+
+Audit these active Luminaries:
+
+- Red Moth
+- Tide Architect
+- Verdant Oracle
+- Void Warden
+- Concordance Mandala
+- Phoenix Paradox
+- Catalyst Bloom
+- Iron Harbinger
+- lum_compass / ???
+- Seed Beyond Seasons
+- Glass Orchard
+- Pale Merchant
+- Ember Sovereign
+- First Hunger
+- Null Sovereign
+
+For each Luminary, verify:
+- The Luminary source visibly pulses first.
+- The affected target is highlighted before the effect resolves.
+- The keyword/result animation is distinct.
+- The board state after animation matches the mechanical result.
+- Any persistent state has a visible marker.
+- Any temporary state clears visibly when expired.
+- The animation does not obscure card names/costs/Eminence long enough to confuse play.
+- The animation does not use generic shrink-in/collapse-in motion.
+
+Specific checks:
+- Burn cards visibly move toward or register with the Burn Pile.
+- Forgotten and Nullified both suppress Eminence visually, but Nullified feels colder/more final.
+- Condemned clearly reads as “will burn later.”
+- Seeded remains trackable when the seeded card appears.
+- Assimilate reads as a replacement core action, not a bonus action.
+- Void Warden shows all players losing Eminence, including the summoner.
+- Catalyst Bloom shows Eminence gain based on prior Burn events without replaying all burns.
+
+Return a table:
+Luminary | Source clear? | Target clear? | Result clear? | Persistent marker correct? | Issues | Fix applied
+
+Acceptance criteria:
+- Every Luminary has readable source, target, result, and aftermath.
+- Any confusing animation is adjusted.
+- No mechanics are changed.
+- Existing tests/typecheck pass.
