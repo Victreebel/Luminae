@@ -2508,9 +2508,9 @@ export function LuminarySummonCutscene({
                   filter: (prefersReducedMotion || isMobile)
                     ? 'blur(0px) brightness(1.0)'
                     : [
-                        'blur(20px) brightness(0.25)',
-                        'blur(12px) brightness(0.50)',
-                        'blur(4px)  brightness(0.80)',
+                        'blur(20px) brightness(0.22)',
+                        'blur(18px) brightness(0.25)',
+                        'blur(8px)  brightness(0.60)',
                         'blur(0px)  brightness(1.0)',
                       ],
                 }
@@ -2519,7 +2519,7 @@ export function LuminarySummonCutscene({
               ? { duration: 0.55, ease: 'easeIn' }
               : {
                   opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
-                  filter:  { duration: 2.3,  delay: 0.15, times: [0, 0.35, 0.70, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 2.3,  delay: 0.15, times: [0, 0.68, 0.86, 1.0], ease: 'easeOut' },
                 }
             }
           >
