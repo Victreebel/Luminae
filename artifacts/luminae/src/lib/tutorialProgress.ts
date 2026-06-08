@@ -1,3 +1,11 @@
+import { apiUpdatePreferences } from "./cinematicPrefs";
+
+// Module-level token set by AccountContext alongside setPreferencesSyncToken.
+let _token: string | null = null;
+export function setTutorialToken(token: string | null): void {
+  _token = token;
+}
+
 const PROGRESS_KEY = "luminae_tutorial_progress";
 const PROGRESS_ID_KEY = "luminae_tutorial_progress_id";
 const PROGRESS_VERSION_KEY = "luminae_tutorial_progress_ver";
@@ -13,6 +21,9 @@ export function markTutorialSeen(): void {
   try {
     localStorage.setItem(SEEN_KEY, "1");
   } catch {
+  }
+  if (_token) {
+    void apiUpdatePreferences(_token, { tutorialSeen: true }).catch(() => undefined);
   }
 }
 
@@ -76,6 +87,9 @@ export function markTutorialComplete(): void {
   try {
     localStorage.setItem(COMPLETED_KEY, "1");
   } catch {
+  }
+  if (_token) {
+    void apiUpdatePreferences(_token, { tutorialCompleted: true }).catch(() => undefined);
   }
 }
 

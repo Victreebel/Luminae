@@ -12,6 +12,8 @@ export const accountsTable = pgTable("accounts", {
   hintsEnabled: boolean("hints_enabled").notNull().default(true),
   muted: boolean("muted").notNull().default(false),
   hintsSeen: text("hints_seen").array().notNull().default([]),
+  tutorialSeen: boolean("tutorial_seen").notNull().default(false),
+  tutorialCompleted: boolean("tutorial_completed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

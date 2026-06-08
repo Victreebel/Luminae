@@ -48,6 +48,8 @@ export interface AccountPreferences {
   hintsEnabled: boolean;
   muted: boolean;
   hintsSeen: string[];
+  tutorialSeen: boolean;
+  tutorialCompleted: boolean;
 }
 
 export async function apiGetPreferences(token: string): Promise<AccountPreferences> {
@@ -183,17 +185,24 @@ export function markHintSeen(key: string): void {
 
 /**
  * Clear all known hint-seen flags from localStorage and push the empty array
- * to the server (if a token is provided).
+ * to the server (if a token is provided). Also resets tutorial state locally
+ * and server-side.
  */
 export function clearHintsSeen(token?: string): void {
   try {
     HINT_KEYS.forEach((k) => localStorage.removeItem(k));
+    localStorage.removeItem("luminae_tutorial_seen");
+    localStorage.removeItem("luminae_tutorial_completed");
+    localStorage.removeItem("luminae_tutorial_progress");
+    localStorage.removeItem("luminae_tutorial_progress_id");
+    localStorage.removeItem("luminae_tutorial_progress_ver");
+    localStorage.removeItem("luminae_intro_seen_beat");
   } catch {
     // ignore storage errors
   }
   const tok = token ?? _prefsToken;
   if (tok) {
-    void apiUpdatePreferences(tok, { hintsSeen: [] }).catch(() => undefined);
+    void apiUpdatePreferences(tok, { hintsSeen: [], tutorialSeen: false, tutorialCompleted: false }).catch(() => undefined);
   }
 }
 
@@ -211,6 +220,17 @@ export async function syncAccountPreferences(
     const seen = prefs.hintsSeen ?? [];
     for (const key of seen) {
       localStorage.setItem(key, "1");
+    }
+    // Restore tutorial flags — server is authoritative (remove local flags when server says false)
+    if (prefs.tutorialSeen) {
+      localStorage.setItem("luminae_tutorial_seen", "1");
+    } else {
+      localStorage.removeItem("luminae_tutorial_seen");
+    }
+    if (prefs.tutorialCompleted) {
+      localStorage.setItem("luminae_tutorial_completed", "1");
+    } else {
+      localStorage.removeItem("luminae_tutorial_completed");
     }
   } catch {
     // ignore storage errors
