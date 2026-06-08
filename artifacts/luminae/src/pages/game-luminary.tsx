@@ -25,6 +25,7 @@ import { gameAudio } from '@/lib/audio';
 export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
   isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false, isArmed = false, onOpenSheet,
+  burnCount,
 }: {
   luminary: Luminary;
   claimedByPlayer?: GamePlayerState | null;
@@ -36,6 +37,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
   isNew?: boolean;
   isArmed?: boolean;
   onOpenSheet?: () => void;
+  burnCount?: number;
 }) {
   const fresh = useRef(isNew).current;
 
@@ -516,6 +518,33 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
         </div>
       )}
 
+      {/* Burn-count badge — lum_bloom only; shows total burned cards = Bloom's Eminence score */}
+      {luminary.id === 'lum_bloom' && typeof burnCount === 'number' && (
+        <div
+          className="absolute z-[22] pointer-events-none"
+          style={{ bottom: claimedByPlayer ? 30 : 6, right: 6 }}
+          title={`Burn pile: ${burnCount} card${burnCount === 1 ? '' : 's'} — Bloom scores ${burnCount} Eminence`}
+        >
+          <div
+            className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 select-none"
+            style={{
+              background: 'linear-gradient(135deg, rgba(34,197,94,0.18) 0%, rgba(239,68,68,0.18) 100%)',
+              border: '1px solid rgba(34,197,94,0.45)',
+              boxShadow: '0 0 6px rgba(34,197,94,0.25), 0 1px 3px rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <span className="text-[9px] leading-none" style={{ lineHeight: 1 }}>🔥</span>
+            <span
+              className="text-[9px] font-bold tabular-nums leading-none"
+              style={{ color: '#86efac', textShadow: '0 0 6px rgba(34,197,94,0.7)' }}
+            >
+              {burnCount}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Armed sigil — shown when this Luminary has a pending delayed effect */}
       <ArmedSigil isVisible={isArmed} color={g1} />
 
@@ -527,7 +556,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
   costMode, playerBonuses, isMyTurn, onOpenSheet, isArmed = false,
-  isFlashing = false,
+  isFlashing = false, burnCount,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -544,6 +573,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   onOpenSheet?: () => void;
   isArmed?: boolean;
   isFlashing?: boolean;
+  burnCount?: number;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -615,6 +645,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
           isNew={portalIsNew}
           isArmed={isArmed}
           onOpenSheet={onOpenSheet}
+          burnCount={burnCount}
         />
       ) : (
         <>
