@@ -71,7 +71,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
@@ -605,6 +605,7 @@ export default function GameBoard() {
   const [boardDimKey, setBoardDimKey] = useState(0);
   const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
   const [burnPileParticles, setBurnPileParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
+  const [burnChipSparks, setBurnChipSparks] = useState<Array<{ id: string; chipRect: DOMRect }>>([]);
   const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
   const [showSeedBoardEffect, setShowSeedBoardEffect] = useState(false);
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
@@ -1317,13 +1318,17 @@ export default function GameBoard() {
                         ...pf,
                         { id: `bpart-${tier}-${slotIndex}-${Date.now()}`, from: fromRect, to: toRect },
                       ]);
-                      // Arrival flash: fires when the fragment reaches the chip (~780 ms travel)
+                      // Arrival flash + landing sparks: fires when fragment reaches chip (~780 ms travel)
                       setTimeout(() => {
                         void burnChipArrivalAnim.start({
                           scale: [1.45, 1],
                           opacity: [0.9, 0],
                           transition: { duration: 0.18, ease: 'easeOut' },
                         });
+                        setBurnChipSparks(pf => [
+                          ...pf,
+                          { id: `bspark-${tier}-${slotIndex}-${Date.now()}`, chipRect: toRect },
+                        ]);
                       }, 780);
                     }, 380);
                   }
@@ -8290,6 +8295,14 @@ export default function GameBoard() {
           from={p.from}
           to={p.to}
           onDone={() => setBurnPileParticles(pf => pf.filter(x => x.id !== p.id))}
+        />
+      ))}
+      {/* ── Landing sparks — tiny orange burst when fragment arrives at chip ── */}
+      {burnChipSparks.map(s => (
+        <BurnChipLandingSpark
+          key={s.id}
+          chipRect={s.chipRect}
+          onDone={() => setBurnChipSparks(pf => pf.filter(x => x.id !== s.id))}
         />
       ))}
       {/* ── v0.8 The Glass Orchard copy pulse ── */}

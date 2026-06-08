@@ -713,6 +713,75 @@ export function BurnPileParticle({
   );
 }
 
+// ── BurnChipLandingSpark ──────────────────────────────────────────────────────
+// 3–4 tiny orange/amber sparks that explode outward from the burn-pile chip
+// center at the moment the BurnPileParticle fragment arrives (~1480 ms total).
+// Portal-based (fixed position) so it escapes overflow containers.
+// Self-destructs after ~250 ms.
+
+const SPARK_COUNT = 4;
+
+export function BurnChipLandingSpark({
+  chipRect,
+  onDone,
+}: {
+  chipRect: DOMRect;
+  onDone: () => void;
+}) {
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    const t = setTimeout(() => onDoneRef.current(), 260);
+    return () => clearTimeout(t);
+  }, []);
+
+  const cx = chipRect.left + chipRect.width  / 2;
+  const cy = chipRect.top  + chipRect.height / 2;
+
+  // Pre-compute deterministic scatter vectors so the component is stable
+  const sparks = Array.from({ length: SPARK_COUNT }, (_, i) => {
+    const angle = (i / SPARK_COUNT) * Math.PI * 2 + (i % 2 === 0 ? 0.3 : -0.3);
+    const dist  = 13 + (i % 2) * 6; // 13 or 19 px
+    return {
+      dx: Math.cos(angle) * dist,
+      dy: Math.sin(angle) * dist,
+      size: i % 2 === 0 ? 3 : 2.5,
+    };
+  });
+
+  return createPortal(
+    <>
+      {sparks.map((s, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'fixed',
+            left: cx - s.size / 2,
+            top:  cy - s.size / 2,
+            width:  s.size,
+            height: s.size,
+            borderRadius: '50%',
+            background: i % 2 === 0
+              ? 'radial-gradient(circle, #ffcc44 0%, #ff7700 80%)'
+              : 'radial-gradient(circle, #ffffff 0%, #ff9900 60%, transparent 100%)',
+            boxShadow: '0 0 4px 1px #ff660088',
+            pointerEvents: 'none',
+            zIndex: 9995,
+          }}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          animate={{
+            x: s.dx,
+            y: s.dy,
+            opacity: 0,
+            scale: 0.2,
+          }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        />
+      ))}
+    </>,
+    document.body,
+  );
+}
+
 // ── OrchardCopyPulse ─────────────────────────────────────────────────────────
 // Mirrored-copy sigil that radiates outward from The Glass Orchard portal
 // when the Perfect Replication trigger fires.
