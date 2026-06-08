@@ -177,7 +177,7 @@ export function LuminaryActivationCinematic({
   const holdRafRef   = useRef<number | null>(null);
 
   const vis = getLuminaryVisuals(luminaryId);
-  const { primaryColor, EntityArt } = vis;
+  const { primaryColor, EntityArt, entityBlendMode } = vis;
   const { entityCutout, panelArt } = getLuminaryImageAssets(luminaryId);
 
   // Best available image: transparent entity cutout > panel art > EntityArt component
@@ -401,14 +401,15 @@ export function LuminaryActivationCinematic({
               alt=""
               draggable={false}
               style={{
-                height: '92vh',
-                width: 'auto',
-                maxWidth: '92vw',
+                ...(luminaryId === 'lum_compass'
+                  ? { width: '100vw', height: 'auto', maxHeight: '100vh' }
+                  : { height: '92vh', width: 'auto', maxWidth: '92vw' }),
                 objectFit: 'contain',
                 display: 'block',
                 position: 'relative',
                 zIndex: 1,
                 filter: `drop-shadow(0 0 52px ${primaryColor}72) drop-shadow(0 0 100px ${primaryColor}38)`,
+                ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
               }}
             />
           ) : (
