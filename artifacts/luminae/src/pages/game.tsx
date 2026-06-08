@@ -7493,7 +7493,7 @@ export default function GameBoard() {
               <div {...burnPileSheetScrollableProps} className="overflow-y-auto px-5 py-3 flex flex-col gap-0 divide-y divide-border/20">
                 {displayCount === 0 ? (
                   <p className="text-xs text-muted-foreground italic py-2">No cards have been burned yet.</p>
-                ) : useBurnEvents ? burnEvents.map((evt, idx) => {
+                ) : useBurnEvents ? [...burnEvents].reverse().map((evt, idx) => {
                   const name = loreCatalog?.[evt.cardId]?.name ?? evt.cardId;
                   const sourceLum = (state.luminaries as Luminary[]).find(l => l.id === evt.sourceLuminaryId);
                   const tc = tierColors[evt.tier] ?? tierColors[1];
@@ -7504,8 +7504,11 @@ export default function GameBoard() {
                         {tierLabel(evt.tier)}
                       </span>
                       <span className="text-xs font-semibold text-orange-200/80 leading-tight truncate min-w-0 flex-1">{name}</span>
+                      {evt.turn != null && (
+                        <span className="shrink-0 text-[10px] text-muted-foreground/40 leading-none tabular-nums">T{evt.turn}</span>
+                      )}
                       {sourceLum && (
-                        <span className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground/70 leading-none max-w-[40%] truncate">
+                        <span className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground/70 leading-none max-w-[36%] truncate">
                           <span
                             className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
                             style={{ background: sourceLum.summonColor }}
