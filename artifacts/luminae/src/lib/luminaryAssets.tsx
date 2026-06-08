@@ -2500,7 +2500,7 @@ export function LuminarySummonCutscene({
               ? { duration: 0.55, ease: 'easeIn' }
               : {
                   opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
-                  filter:  { duration: 2.0,  delay: 0.15, times: [0, 0.08, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 2.8,  delay: 0.15, times: [0, 0.80, 1.0], ease: 'easeOut' },
                 }
             }
           >
