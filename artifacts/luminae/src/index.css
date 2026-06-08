@@ -1333,12 +1333,11 @@ button,
    distortion on the entity itself. The background stays fixed; only the
    entity seems to shimmer with cosmic motion.                                */
 
-/* Radial fade on the real background image — fades outward to transparent so it
-   blends into the cosmic portal or card background without a hard square edge.
-   Expanded to 72% so the dense cosmic background is more visible. */
+/* Radial fade on the real background image — fills the full frame and fades
+   softly outward only at the very edges, no hard circular border. */
 .lum-compass-bg-fade {
-  mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, black 50%, transparent 76%);
-  -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, black 50%, transparent 76%);
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 55%, rgba(0,0,0,0.6) 75%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 55%, rgba(0,0,0,0.6) 75%, transparent 100%);
 }
 
 @keyframes lum-compass-haze {
