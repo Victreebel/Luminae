@@ -223,6 +223,12 @@ function drawStars(
   }
 }
 
+const MOON_PALETTE: AffinityPalette = {
+  primary:   '#b8cce8',
+  secondary: '#7a9abf',
+  accent:    '#ddeaff',
+};
+
 function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
   const mx = w * 0.74;
   const my = h * 0.19;
@@ -238,18 +244,27 @@ function drawMoon(ctx: CanvasRenderingContext2D, w: number, h: number, t: number
   ctx.arc(mx, my, mr * 3.2, 0, Math.PI * 2);
   ctx.fill();
 
-  // Moon disc
+  // Clip to moon disc so banding stays inside
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(mx, my, mr, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Moon disc base gradient
   const disc = ctx.createRadialGradient(mx - mr * 0.25, my - mr * 0.25, mr * 0.05, mx, my, mr);
   disc.addColorStop(0, 'rgba(235,245,255,0.96)');
   disc.addColorStop(0.6, 'rgba(200,220,245,0.92)');
   disc.addColorStop(0.9, 'rgba(150,170,210,0.85)');
   disc.addColorStop(1, 'rgba(100,120,170,0.7)');
-  ctx.beginPath();
-  ctx.arc(mx, my, mr, 0, Math.PI * 2);
   ctx.fillStyle = disc;
-  ctx.fill();
+  ctx.fill(); // fills the already-clipped disc path
 
-  // Subtle craters
+  // Banding + specular (same helper as Tier-1 planets, bandCount=2)
+  drawPlanetBandingAndHighlight(ctx, mx, my, mr, t, MOON_PALETTE, 2);
+
+  ctx.restore(); // remove disc clip
+
+  // Subtle craters layered on top of banding
   const craterAlpha = 0.09 + 0.03 * Math.sin(t * 0.05);
   ctx.fillStyle = `rgba(80,100,140,${craterAlpha.toFixed(3)})`;
   ctx.beginPath();
