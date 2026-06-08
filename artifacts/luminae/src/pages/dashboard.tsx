@@ -374,6 +374,16 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
   };
 
   const [hintsJustReset, setHintsJustReset] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => setDismissedCount(countDismissed());
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
   const resetHints = () => {
     clearHintsSeen(token ?? undefined);
     setHintsJustReset(true);
