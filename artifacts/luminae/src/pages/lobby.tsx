@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation, useParams } from "wouter";
+import { getSkipCinematics, setSkipCinematics } from "@/lib/cinematicPrefs";
 import {
   useStartGame,
   useKickPlayer,
@@ -58,6 +59,17 @@ export default function Lobby() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [invitedUsernames, setInvitedUsernames] = useState<Set<string>>(new Set());
   const [invitingUsername, setInvitingUsername] = useState<string | null>(null);
+  const [skipCinematics, setSkipCinematicsState] = useState(() => getSkipCinematics(account?.id));
+
+  useEffect(() => {
+    setSkipCinematicsState(getSkipCinematics(account?.id));
+  }, [account?.id]);
+
+  const handleToggleSkipCinematics = () => {
+    const next = !skipCinematics;
+    setSkipCinematicsState(next);
+    setSkipCinematics(next, account?.id);
+  };
 
   const handleChallengeCreated = (cRoomId: string, cInviteCode: string, cSessionToken: string, cPlayerId: string) => {
     saveSession({
@@ -434,6 +446,25 @@ export default function Lobby() {
             </Button>
           </div>
         )}
+
+        {/* My preferences */}
+        <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur px-4 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold">Skip cinematics</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Skip intro animations during play</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={skipCinematics}
+            onClick={handleToggleSkipCinematics}
+            className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring shrink-0 ${skipCinematics ? "bg-primary" : "bg-muted-foreground/30"}`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${skipCinematics ? "translate-x-5" : "translate-x-0"}`}
+            />
+          </button>
+        </div>
       </main>
 
       {/* Bottom action */}
