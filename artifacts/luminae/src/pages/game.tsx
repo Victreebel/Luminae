@@ -598,6 +598,7 @@ export default function GameBoard() {
   } | null>(null);
   // v0.8 Luminary animation state
   const burnChipAnim = useAnimation();
+  const burnChipArrivalAnim = useAnimation();
   const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect; sourceLuminaryId?: string }>>([]);
   const [burnBadgeOverlays, setBurnBadgeOverlays] = useState<Array<{ id: string; slotRect: DOMRect }>>([]);
   const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
@@ -1316,6 +1317,14 @@ export default function GameBoard() {
                         ...pf,
                         { id: `bpart-${tier}-${slotIndex}-${Date.now()}`, from: fromRect, to: toRect },
                       ]);
+                      // Arrival flash: fires when the fragment reaches the chip (~780 ms travel)
+                      setTimeout(() => {
+                        void burnChipArrivalAnim.start({
+                          scale: [1.45, 1],
+                          opacity: [0.9, 0],
+                          transition: { duration: 0.18, ease: 'easeOut' },
+                        });
+                      }, 780);
                     }, 380);
                   }
                 }
@@ -3756,7 +3765,21 @@ export default function GameBoard() {
           </div>
           <div className="flex items-center gap-1.5">
             {(state.burnPile ?? []).length > 0 && (
-              <motion.div animate={burnChipAnim} style={{ display: 'inline-flex' }}>
+              <motion.div animate={burnChipAnim} style={{ display: 'inline-flex', position: 'relative' }}>
+                {/* Arrival flash ring — pulses when a BurnPileParticle lands on the chip */}
+                <motion.div
+                  animate={burnChipArrivalAnim}
+                  initial={{ scale: 1, opacity: 0 }}
+                  style={{
+                    position: 'absolute',
+                    inset: -4,
+                    borderRadius: 6,
+                    border: '2px solid #ff6600',
+                    boxShadow: '0 0 10px 3px #ff660099',
+                    pointerEvents: 'none',
+                    zIndex: 10,
+                  }}
+                />
                 <button
                   type="button"
                   onClick={() => setShowBurnPileOverlay(true)}
