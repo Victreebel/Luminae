@@ -630,6 +630,89 @@ export function BloomSeedParticle({
   );
 }
 
+// ── BurnPileParticle ──────────────────────────────────────────────────────────
+// A small charred-card fragment that flies in an arc from the burned market slot
+// toward the burn pile chip after BurnFlash completes.
+// Portal-based (fixed position) so it escapes overflow containers.
+// Self-destructs after ~0.85 s. Non-blocking — game proceeds during flight.
+
+export function BurnPileParticle({
+  from,
+  to,
+  onDone,
+}: {
+  from: DOMRect;
+  to: DOMRect;
+  onDone: () => void;
+}) {
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    const t = setTimeout(() => onDoneRef.current(), 950);
+    return () => clearTimeout(t);
+  }, []);
+
+  const x0 = from.left + from.width  / 2;
+  const y0 = from.top  + from.height / 2;
+  const x1 = to.left  + to.width    / 2;
+  const y1 = to.top   + to.height   / 2;
+
+  // Arc apex — curve upward (or away from the direct line) for a natural lob
+  const mx = (x0 + x1) / 2 + (y0 - y1) * 0.18;
+  const my = Math.min(y0, y1) - 55;
+
+  return createPortal(
+    <>
+      {/* Trailing ember glow — fades behind the fragment */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          left: x0 - 4,
+          top:  y0 - 4,
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #ff8833cc 0%, #ff440055 60%, transparent 100%)',
+          filter: 'blur(2px)',
+          pointerEvents: 'none',
+          zIndex: 9993,
+        }}
+        animate={{
+          left: [x0 - 4, mx - 4, x1 - 4],
+          top:  [y0 - 4, my - 4, y1 - 4],
+          scale: [1.2, 0.8, 0.2],
+          opacity: [0.7, 0.4, 0],
+        }}
+        transition={{ duration: 0.78, ease: 'easeInOut', times: [0, 0.45, 1] }}
+      />
+      {/* Charred card fragment — tiny dark rectangle with ember border */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          left: x0 - 5,
+          top:  y0 - 6,
+          width: 10,
+          height: 13,
+          borderRadius: 2,
+          background: 'linear-gradient(160deg, #3d1500 0%, #1a0800 100%)',
+          border: '1px solid #ff5500bb',
+          boxShadow: '0 0 5px 2px #ff440055',
+          pointerEvents: 'none',
+          zIndex: 9994,
+        }}
+        animate={{
+          left: [x0 - 5, mx - 5, x1 - 5],
+          top:  [y0 - 6, my - 6, y1 - 6],
+          rotate: [0, 38, 75],
+          scale:  [1, 0.85, 0.4],
+          opacity: [0.95, 0.88, 0],
+        }}
+        transition={{ duration: 0.78, ease: 'easeInOut', times: [0, 0.45, 1] }}
+      />
+    </>,
+    document.body,
+  );
+}
+
 // ── OrchardCopyPulse ─────────────────────────────────────────────────────────
 // Mirrored-copy sigil that radiates outward from The Glass Orchard portal
 // when the Perfect Replication trigger fires.

@@ -71,7 +71,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
@@ -603,6 +603,7 @@ export default function GameBoard() {
   const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
   const [boardDimKey, setBoardDimKey] = useState(0);
   const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
+  const [burnPileParticles, setBurnPileParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
   const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
   const [showSeedBoardEffect, setShowSeedBoardEffect] = useState(false);
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
@@ -1291,6 +1292,10 @@ export default function GameBoard() {
             // Phase 2: after 320 ms (badge animation completes), trigger BurnFlash.
             // The badge calls onDone to remove itself; the flash runs independently.
             setTimeout(() => {
+              // Capture the burn pile chip rect once — it should be visible now
+              // since the new state has ≥1 card in burnPile.
+              const chipEl = document.querySelector('[data-burn-pile-chip]');
+              const chipRect = chipEl?.getBoundingClientRect() ?? null;
               for (const { tier, slotIndex, sourceLuminaryId } of resolvedEntries) {
                 const slotEl2 = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
                 const rect2 = slotEl2?.getBoundingClientRect();
@@ -1299,6 +1304,19 @@ export default function GameBoard() {
                     ...pf,
                     { id: `burn-${tier}-${slotIndex}-${Date.now()}`, slotRect: rect2, sourceLuminaryId },
                   ]);
+                  // Launch a charred-card fragment toward the burn pile chip.
+                  // Fires ~400 ms into BurnFlash (phase 3 ash-scatter) so it
+                  // feels like a fragment breaking off and flying away.
+                  if (chipRect) {
+                    const fromRect = rect2;
+                    const toRect = chipRect;
+                    setTimeout(() => {
+                      setBurnPileParticles(pf => [
+                        ...pf,
+                        { id: `bpart-${tier}-${slotIndex}-${Date.now()}`, from: fromRect, to: toRect },
+                      ]);
+                    }, 380);
+                  }
                 }
               }
             }, 320);
@@ -3744,6 +3762,7 @@ export default function GameBoard() {
                   className="flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground hover:text-orange-400/80 transition-colors"
                   title="View burned Artifacts"
                   aria-label={`View ${(state.burnPile ?? []).length} burned Artifact${(state.burnPile ?? []).length === 1 ? '' : 's'}`}
+                  data-burn-pile-chip
                 >
                   <span className="text-[11px] leading-none">🔥</span>
                   <span className="text-[9px] font-bold tabular-nums leading-none">{(state.burnPile ?? []).length}</span>
@@ -8238,6 +8257,15 @@ export default function GameBoard() {
           from={p.from}
           to={p.to}
           onDone={() => setBloomSeedParticles(pf => pf.filter(x => x.id !== p.id))}
+        />
+      ))}
+      {/* ── Burn pile particles — charred card fragment arcs to the 🔥 chip ── */}
+      {burnPileParticles.map(p => (
+        <BurnPileParticle
+          key={p.id}
+          from={p.from}
+          to={p.to}
+          onDone={() => setBurnPileParticles(pf => pf.filter(x => x.id !== p.id))}
         />
       ))}
       {/* ── v0.8 The Glass Orchard copy pulse ── */}
