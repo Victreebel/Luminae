@@ -42,6 +42,9 @@ const HOLD_MS       = 550;   // 0.70–1.25s
 const PAN_OUT_MS    = 850;   // 1.25–2.10s
 // Total: 2100ms
 
+// Hold-to-skip duration in ms
+const HOLD_TO_SKIP_MS = 350;
+
 // ── Entity keyframe animation ─────────────────────────────────────────────────
 // The entity runs a single continuous framer-motion keyframe sequence from mount
 // (at ANTICIPATE_MS) through the end of PAN_OUT.  No phase-driven transitions.
@@ -100,6 +103,51 @@ const EFFECT_TYPE_LABELS: Record<string, string> = {
   start_of_turn: 'START OF TURN EFFECT',
 };
 
+// ─── Skip progress ring ───────────────────────────────────────────────────────
+
+const RING_RADIUS = 14;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+interface SkipRingProps {
+  progress: number; // 0–1
+  color: string;
+}
+
+function SkipRing({ progress, color }: SkipRingProps) {
+  const offset = RING_CIRCUMFERENCE * (1 - progress);
+  return (
+    <svg
+      width={40}
+      height={40}
+      viewBox="0 0 40 40"
+      style={{ display: 'block', transform: 'rotate(-90deg)' }}
+    >
+      {/* Track */}
+      <circle
+        cx={20}
+        cy={20}
+        r={RING_RADIUS}
+        fill="none"
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth={2.5}
+      />
+      {/* Fill arc */}
+      <circle
+        cx={20}
+        cy={20}
+        r={RING_RADIUS}
+        fill="none"
+        stroke={progress > 0 ? color : 'rgba(255,255,255,0.35)'}
+        strokeWidth={2.5}
+        strokeDasharray={RING_CIRCUMFERENCE}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 30ms linear, stroke 150ms ease' }}
+      />
+    </svg>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function LuminaryActivationCinematic({
@@ -123,6 +171,11 @@ export function LuminaryActivationCinematic({
   const [phase, setPhase] = useState<Phase>('anticipate');
   const [effectBeat, setEffectBeat] = useState<EffectBeat>('idle');
 
+  // ── Hold-to-skip state ─────────────────────────────────────────────────────
+  const [holdProgress, setHoldProgress] = useState(0); // 0–1
+  const holdStartRef = useRef<number | null>(null);
+  const holdRafRef   = useRef<number | null>(null);
+
   const vis = getLuminaryVisuals(luminaryId);
   const { primaryColor, EntityArt } = vis;
   const { entityCutout, panelArt } = getLuminaryImageAssets(luminaryId);
@@ -133,7 +186,7 @@ export function LuminaryActivationCinematic({
   const label = EFFECT_TYPE_LABELS[effectType] ?? 'EFFECT';
   const effectDef = LUMINARY_EFFECT_MAP[luminaryId] ?? null;
 
-  // ── Skip handler — called when the player taps/clicks the overlay ─────────
+  // ── Skip handler — called when hold completes ──────────────────────────────
   const handleSkip = () => {
     if (completedRef.current) return;
     completedRef.current = true;
@@ -142,6 +195,45 @@ export function LuminaryActivationCinematic({
     setPhase('done');
     onCompleteRef.current();
   };
+
+  // ── Hold gesture handlers ──────────────────────────────────────────────────
+
+  const cancelHold = () => {
+    holdStartRef.current = null;
+    if (holdRafRef.current !== null) {
+      cancelAnimationFrame(holdRafRef.current);
+      holdRafRef.current = null;
+    }
+    setHoldProgress(0);
+  };
+
+  const startHold = (e: React.PointerEvent) => {
+    // Only respond to primary button / touch
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Guard against re-entrant pointerdowns (multitouch, browser edge cases)
+    if (holdStartRef.current !== null) return;
+    e.preventDefault();
+    holdStartRef.current = performance.now();
+
+    const tick = () => {
+      if (holdStartRef.current === null) return;
+      const elapsed  = performance.now() - holdStartRef.current;
+      const progress = Math.min(elapsed / HOLD_TO_SKIP_MS, 1);
+      setHoldProgress(progress);
+      if (progress >= 1) {
+        cancelHold();
+        handleSkip();
+      } else {
+        holdRafRef.current = requestAnimationFrame(tick);
+      }
+    };
+    holdRafRef.current = requestAnimationFrame(tick);
+  };
+
+  // Cleanup hold RAF on unmount
+  useEffect(() => () => {
+    if (holdRafRef.current !== null) cancelAnimationFrame(holdRafRef.current);
+  }, []);
 
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -231,13 +323,18 @@ export function LuminaryActivationCinematic({
   const targetVisible = effectDef !== null && (effectBeat === 'target' || effectBeat === 'snap');
   const snapVisible   = effectDef !== null && effectBeat === 'snap';
 
+  const showSkipHint = phase === 'reveal' || phase === 'hold' || phase === 'pan_out';
+
   if (phase === 'done') return null;
 
   const content = (
     <div
       className="fixed inset-0"
-      style={{ zIndex: 8900, pointerEvents: 'auto', cursor: 'pointer' }}
-      onClick={handleSkip}
+      style={{ zIndex: 8900, pointerEvents: 'auto', cursor: 'pointer', userSelect: 'none' }}
+      onPointerDown={startHold}
+      onPointerUp={cancelHold}
+      onPointerLeave={cancelHold}
+      onPointerCancel={cancelHold}
     >
       {/* ── Board dim overlay ────────────────────────────────────────────────
            Fades in over ANTICIPATE_MS, fades out over PAN_OUT_MS.          */}
@@ -401,19 +498,26 @@ export function LuminaryActivationCinematic({
         )}
       </AnimatePresence>
 
-      {/* ── Skip hint ────────────────────────────────────────────────────────
-           Appears after ANTICIPATE_MS so it doesn't flash on instant skips. */}
+      {/* ── Hold-to-skip hint ─────────────────────────────────────────────────
+           Appears after ANTICIPATE_MS. Shows a progress ring that fills as
+           the player holds. Releasing early resets the ring to zero.       */}
       <AnimatePresence>
-        {(phase === 'reveal' || phase === 'hold' || phase === 'pan_out') && (
+        {showSkipHint && (
           <motion.div
             key="skip-hint"
-            className="absolute bottom-4 right-4 text-[10px] tracking-[0.14em] uppercase select-none"
-            style={{ color: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }}
+            className="absolute bottom-4 right-4 flex items-center gap-2 select-none"
+            style={{ pointerEvents: 'none' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.1 } }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
           >
-            tap to skip
+            <span
+              className="text-[10px] tracking-[0.14em] uppercase"
+              style={{ color: holdProgress > 0 ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.35)', transition: 'color 150ms ease' }}
+            >
+              hold to skip
+            </span>
+            <SkipRing progress={holdProgress} color={primaryColor} />
           </motion.div>
         )}
       </AnimatePresence>
