@@ -10,6 +10,9 @@ export type KeywordAnimationEvent =
   | 'condemned'
   | 'seeded';
 
+/** Persistent keyword states that sit on a card (as opposed to one-shot events like burn). */
+export type KeywordMarker = Exclude<KeywordAnimationEvent, 'burn'>;
+
 export type AnimationProcedureStep =
   | { type: 'luminaryPulse'; luminaryId: string }
   | { type: 'targetClaim'; targetIds: string[] }

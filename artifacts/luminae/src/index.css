@@ -290,6 +290,53 @@ button,
   }
 }
 
+/* ── Keyword marker badge animations ──────────────────────────────────────── */
+/* CSS-based to avoid framer-motion repeat:Infinity overhead on mobile.        */
+
+@keyframes kw-condemned-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(139,28,28,0.55); }
+  50%       { box-shadow: 0 0 13px rgba(204,34,0,0.70), 0 0 5px rgba(255,68,0,0.40); }
+}
+.kw-condemned { animation: kw-condemned-pulse 1.7s ease-in-out infinite; }
+
+@keyframes kw-forgotten-flicker {
+  0%, 100% { opacity: 1; }
+  10%      { opacity: 0.50; }
+  12%      { opacity: 0.88; }
+  26%      { opacity: 0.65; }
+  28%      { opacity: 1; }
+  70%      { opacity: 0.80; }
+  72%      { opacity: 1; }
+}
+.kw-forgotten { animation: kw-forgotten-flicker 4s ease-in-out infinite; }
+
+@keyframes kw-seeded-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(26,92,58,0.55); }
+  50%       { box-shadow: 0 0 11px rgba(44,140,88,0.70), 0 0 4px rgba(76,200,138,0.38); }
+}
+.kw-seeded { animation: kw-seeded-pulse 2.5s ease-in-out infinite; }
+
+/* ── Keyword card overlay animations ──────────────────────────────────────── */
+
+@keyframes kw-overlay-condemned {
+  0%, 100% { opacity: 0.50; }
+  50%       { opacity: 0.82; }
+}
+.kw-overlay-condemned { animation: kw-overlay-condemned 1.7s ease-in-out infinite; }
+
+@keyframes kw-overlay-seeded {
+  0%, 100% { opacity: 0.18; }
+  50%       { opacity: 0.34; }
+}
+.kw-overlay-seeded { animation: kw-overlay-seeded 2.5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kw-condemned, .kw-forgotten, .kw-seeded,
+  .kw-overlay-condemned, .kw-overlay-seeded {
+    animation: none;
+  }
+}
+
 @layer utilities {
   .gem-glow {
     box-shadow: 0 0 15px currentColor;

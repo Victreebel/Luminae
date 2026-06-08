@@ -70,7 +70,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
@@ -4001,7 +4001,10 @@ export default function GameBoard() {
                       </motion.div>
                       {isQueued && <QueuedOverlay />}
                       {state?.marketMarkers?.[c.id] && (
-                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        <>
+                          <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        </>
                       )}
                     </div>
                   );
@@ -4040,9 +4043,12 @@ export default function GameBoard() {
                       </div>
                       {/* Subtle dark scrim to ease card art brightness in compact view */}
                       <div className="pointer-events-none absolute inset-0" style={{ background: 'rgba(0,0,0,0.28)' }} />
-                      {/* Marker badge (v0.8) — rendered above all chip art layers */}
+                      {/* Marker badge + overlay (v0.8) — rendered above all chip art layers */}
                       {state?.marketMarkers?.[c.id] && (
-                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        <>
+                          <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        </>
                       )}
                       {/* Native-resolution info overlay — sized for the 56×80 chip */}
                       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1">
@@ -4490,7 +4496,10 @@ export default function GameBoard() {
                     />
                     {isQueued && <QueuedOverlay />}
                     {state?.marketMarkers?.[c.id] && (
-                      <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                      <>
+                        <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                      </>
                     )}
                     <div
                       className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/55 backdrop-blur-sm px-1 py-0.5 transition-opacity duration-500"
@@ -7228,7 +7237,10 @@ export default function GameBoard() {
                               hideStrike={costMode === 'needed_now'}
                             />
                             {state?.marketMarkers?.[c.id] && (
-                              <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                              <>
+                                <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                                <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                              </>
                             )}
                           </div>
                           <div className="flex-1 flex flex-col gap-1.5 min-w-0">

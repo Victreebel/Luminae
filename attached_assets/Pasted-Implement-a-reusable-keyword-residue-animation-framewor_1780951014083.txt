@@ -1,0 +1,69 @@
+Implement a reusable keyword residue animation framework for Luminary effects.
+
+Goal:
+Some Luminary effects do not immediately remove cards. They mark cards with a temporary or persistent keyword state. These keyword markers should be visually readable and reusable inside larger animation procedures.
+
+Do not change mechanics, costs, scoring, turn order, tutorial order, or balance.
+
+Add reusable visual keyword markers for:
+
+1. Condemned
+- Meaning: This Artifact is marked to Burn later.
+- Visual: ember-red judgment seal, cinder cracks, delayed-burn aura.
+- Should feel like a sentence has been placed on the card.
+- Used by Ember Sovereign / Cinder Mandate.
+- When the delayed burn resolves, call the shared Burn animation module.
+
+2. Forgotten
+- Meaning: Artifact awards 0 Eminence when forged until duration expires.
+- Visual: blue-black memory haze, faded Eminence icon, soft temporal static.
+- Should feel like value was erased from memory, not physically destroyed.
+- Used by lum_compass / The Forgotten Hour.
+- Marker should clear at end of the correct duration.
+
+3. Nullified
+- Meaning: Artifact awards 0 Eminence when forged.
+- Visual: cold black-white seal, silent void overlay, Eminence icon muted.
+- Should feel absolute, colder, and more permanent than Forgotten.
+- Used by Null Sovereign / Black Domain.
+
+4. Seeded
+- Meaning: Artifact/deck card carries an Avatar Seed claim.
+- Visual: small blue-green seed glyph, future-growth shimmer, subtle pulse.
+- Used by The Seed Beyond Seasons / Avatar Seeds.
+- Marker should be visible when the seeded card appears or is inspectable.
+
+Architecture:
+Create reusable keyword marker components rather than bespoke Luminary overlays.
+
+Suggested structure:
+
+type KeywordMarker =
+  | "condemned"
+  | "forgotten"
+  | "nullified"
+  | "seeded";
+
+Each marker should support:
+- target artifact/card id
+- source luminary id
+- optional duration
+- optional owner/player id
+- visual state active/clearing/resolved
+
+Animation integration:
+Luminary procedures should be able to call:
+
+{ type: "residue", keyword: "condemned", targetIds: [...] }
+{ type: "residue", keyword: "forgotten", targetIds: [...] }
+{ type: "residue", keyword: "nullified", targetIds: [...] }
+{ type: "residue", keyword: "seeded", targetIds: [...] }
+
+Acceptance criteria:
+- Condemned, Forgotten, Nullified, and Seeded have distinct visual markers.
+- Markers do not obscure card identity or cost.
+- Eminence suppression markers visibly affect the Eminence icon/value.
+- Condemned later resolves through the shared Burn animation.
+- Seeded cards remain visually trackable.
+- No duplicate bespoke marker code per Luminary.
+- Existing tests/typecheck pass.

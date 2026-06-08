@@ -63,6 +63,10 @@ export function CardMarkerBadge({
   isNew?: boolean;
 }) {
   const meta = MARKER_META[type];
+  const animClass =
+    type === 'condemned'  ? 'kw-condemned'  :
+    type === 'forgotten'  ? 'kw-forgotten'  :
+    type === 'avatar_seed'? 'kw-seeded'     : '';
   return (
     <motion.div
       className="absolute top-1 left-1 z-30 pointer-events-none"
@@ -77,7 +81,7 @@ export function CardMarkerBadge({
       title={meta.label}
     >
       <div
-        className="flex items-center justify-center rounded-full text-[9px] font-bold leading-none"
+        className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none${animClass ? ` ${animClass}` : ''}`}
         style={{
           width: 16,
           height: 16,
@@ -91,6 +95,72 @@ export function CardMarkerBadge({
       </div>
     </motion.div>
   );
+}
+
+// ── CardKeywordOverlay ────────────────────────────────────────────────────────
+// Thin card-level aura/haze overlay rendered inside the same relative container
+// as the card.  Communicates the keyword state visually across the entire card
+// face — not just the corner badge.
+//
+// Condemned  — ember-red pulsing vignette at card edges; implies burning imminence.
+// Forgotten  — blue-black haze + CSS backdrop desaturation; Eminence muted visually.
+// Nullified  — cold grey full-card desaturation overlay; void/silent, no animation.
+// Seeded     — soft green edge shimmer; implies a future claim.
+
+export function CardKeywordOverlay({
+  type,
+}: {
+  type: 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
+}) {
+  if (type === 'condemned') {
+    return (
+      <div
+        className="kw-overlay-condemned absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(120,18,0,0.28) 0%, transparent 32%, transparent 62%, rgba(140,22,0,0.36) 100%)',
+          boxShadow: 'inset 0 0 0 1.5px rgba(180,38,0,0.55)',
+        }}
+      />
+    );
+  }
+  if (type === 'forgotten') {
+    return (
+      <div
+        className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+        style={{
+          background: 'rgba(12,6,40,0.22)',
+          backdropFilter: 'saturate(0.48) brightness(0.80)',
+          WebkitBackdropFilter: 'saturate(0.48) brightness(0.80)',
+        }}
+      />
+    );
+  }
+  if (type === 'nullified') {
+    return (
+      <div
+        className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+        style={{
+          background: 'rgba(8,10,22,0.24)',
+          backdropFilter: 'saturate(0) brightness(0.76) contrast(0.88)',
+          WebkitBackdropFilter: 'saturate(0) brightness(0.76) contrast(0.88)',
+        }}
+      />
+    );
+  }
+  if (type === 'avatar_seed') {
+    return (
+      <div
+        className="kw-overlay-seeded absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+        style={{
+          background:
+            'linear-gradient(to bottom, transparent 45%, rgba(26,92,58,0.28) 100%)',
+          boxShadow: 'inset 0 0 0 1px rgba(44,140,80,0.38)',
+        }}
+      />
+    );
+  }
+  return null;
 }
 
 // ── ArmedSigil ───────────────────────────────────────────────────────────────
