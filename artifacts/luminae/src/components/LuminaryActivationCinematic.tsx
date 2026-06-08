@@ -79,9 +79,9 @@ const ENTITY_FILTER_TIMES = [0, 0.103, 0.279, 0.285, 0.462, 0.564, 1];
 const ENTITY_FILTER = [
   'brightness(0.05) saturate(0) blur(5px)',    // 0      — pure dark silhouette
   'brightness(0.07) saturate(0) blur(5px)',    // 0.103  — still shadowed
-  'brightness(0.07) saturate(0) blur(5px)',    // 0.279  — just before boom
-  'brightness(1.50) saturate(1.15) blur(0px)', // 0.285  — BOOM: overbright snap
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.462  — settle to natural colour
+  'brightness(0.07) saturate(0) blur(5px)',    // 0.279  — just before reveal
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.285  — snap to natural
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.462  — hold natural colour
   'brightness(0.75) saturate(1.0)  blur(0px)', // 0.564  — begin fade-out
   'brightness(0)    saturate(1.0)  blur(0px)', // 1      — gone
 ];
