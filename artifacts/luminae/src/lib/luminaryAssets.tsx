@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import cardTier3Bg from '@assets/generated_images/card_tier3.png';
 import { gameAudio } from './audio';
@@ -1441,6 +1441,7 @@ export function LuminarySummonCutscene({
   // button can both call it without capturing stale closures.
   const dismissRef = useRef<(() => void) | null>(null);
   const isMobile = useIsMobile();
+  const prefersReducedMotion = useReducedMotion() ?? false;
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   // AURA_VARIANTS[auraStyle] intentionally not used — all flash elements now use
@@ -2408,11 +2409,18 @@ export function LuminarySummonCutscene({
         {isFlashing && (
           <>
             {/* White core — immediate bright flash, then fades fast */}
+            {/* prefers-reduced-motion: dim slow crossfade, no rapid brightness spike */}
             <motion.div key="flash-core" className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 1, scale: 0.5 }}
-              animate={{ opacity: [1, 1, 0.6, 0.1, 0], scale: [0.5, 1.2, 1.8, 2.2, 2.6] }}
-              transition={{ duration: 0.55, times: [0, 0.15, 0.45, 0.75, 1], ease: 'easeOut' }}
-              exit={{ opacity: 0, transition: { duration: 0.2, ease: 'easeOut' } }}
+              initial={{ opacity: prefersReducedMotion ? 0 : 1, scale: prefersReducedMotion ? 1 : 0.5 }}
+              animate={prefersReducedMotion
+                ? { opacity: [0, 0.20, 0], scale: [1, 1, 1] }
+                : { opacity: [1, 1, 0.6, 0.1, 0], scale: [0.5, 1.2, 1.8, 2.2, 2.6] }
+              }
+              transition={prefersReducedMotion
+                ? { duration: 1.4, times: [0, 0.25, 1.0], ease: 'easeInOut' }
+                : { duration: 0.55, times: [0, 0.15, 0.45, 0.75, 1], ease: 'easeOut' }
+              }
+              exit={{ opacity: 0, transition: { duration: prefersReducedMotion ? 0.6 : 0.2, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 55% 55% at 50% 42%, #ffffff 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.2) 70%, transparent 100%)`,
                 filter: isMobile ? 'blur(2px)' : 'blur(4px)',
@@ -2420,31 +2428,39 @@ export function LuminarySummonCutscene({
             />
             {/* Affinity haze — quick burst of the luminary's color */}
             <motion.div key="flash-haze" className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 0, scale: 0.4 }}
-              animate={{ opacity: [0, 0.7, 0.35, 0.1, 0], scale: [0.4, 1.0, 1.4, 1.8, 2.2] }}
-              transition={{ duration: 0.8, times: [0, 0.15, 0.40, 0.70, 1], ease: 'easeOut' }}
-              exit={{ opacity: 0, transition: { duration: 0.25, ease: 'easeOut' } }}
+              initial={{ opacity: 0, scale: prefersReducedMotion ? 1 : 0.4 }}
+              animate={prefersReducedMotion
+                ? { opacity: [0, 0.35, 0], scale: [1, 1, 1] }
+                : { opacity: [0, 0.7, 0.35, 0.1, 0], scale: [0.4, 1.0, 1.4, 1.8, 2.2] }
+              }
+              transition={prefersReducedMotion
+                ? { duration: 1.6, times: [0, 0.30, 1.0], ease: 'easeInOut' }
+                : { duration: 0.8, times: [0, 0.15, 0.40, 0.70, 1], ease: 'easeOut' }
+              }
+              exit={{ opacity: 0, transition: { duration: prefersReducedMotion ? 0.6 : 0.25, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse at 50% 42%, rgba(${pRgb},0.9) 0%, rgba(${pRgb},0.5) 35%, rgba(${sRgb},0.2) 60%, transparent 85%)`,
                 filter: isMobile ? 'blur(4px)' : 'blur(8px)',
               }}
             />
-            {/* Shock ring — expanding ring burst */}
-            <motion.div key="flash-ring" className="absolute pointer-events-none"
-              initial={{ opacity: 0, scale: 0.3 }}
-              animate={{ opacity: [0, 0.8, 0.4, 0], scale: [0.3, 1.0, 1.6, 2.2] }}
-              transition={{ duration: 0.6, times: [0, 0.2, 0.55, 1], ease: 'easeOut' }}
-              exit={{ opacity: 0 }}
-              style={{
-                width: isMobile ? BOARD_CARD_W * 2.0 : BOARD_CARD_W * 3.2,
-                height: isMobile ? BOARD_CARD_H * 2.0 : BOARD_CARD_H * 3.2,
-                left: vesselLeft + BOARD_CARD_W / 2 - (isMobile ? BOARD_CARD_W * 1.0 : BOARD_CARD_W * 1.6),
-                top:  vesselTop  + BOARD_CARD_H / 2 - (isMobile ? BOARD_CARD_H * 1.0 : BOARD_CARD_H * 1.6),
-                borderRadius: '50%',
-                border: '2px solid rgba(255,255,255,0.55)',
-                transformOrigin: '50% 50%',
-              }}
-            />
+            {/* Shock ring — expanding ring burst; hidden under prefers-reduced-motion */}
+            {!prefersReducedMotion && (
+              <motion.div key="flash-ring" className="absolute pointer-events-none"
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{ opacity: [0, 0.8, 0.4, 0], scale: [0.3, 1.0, 1.6, 2.2] }}
+                transition={{ duration: 0.6, times: [0, 0.2, 0.55, 1], ease: 'easeOut' }}
+                exit={{ opacity: 0 }}
+                style={{
+                  width: isMobile ? BOARD_CARD_W * 2.0 : BOARD_CARD_W * 3.2,
+                  height: isMobile ? BOARD_CARD_H * 2.0 : BOARD_CARD_H * 3.2,
+                  left: vesselLeft + BOARD_CARD_W / 2 - (isMobile ? BOARD_CARD_W * 1.0 : BOARD_CARD_W * 1.6),
+                  top:  vesselTop  + BOARD_CARD_H / 2 - (isMobile ? BOARD_CARD_H * 1.0 : BOARD_CARD_H * 1.6),
+                  borderRadius: '50%',
+                  border: '2px solid rgba(255,255,255,0.55)',
+                  transformOrigin: '50% 50%',
+                }}
+              />
+            )}
           </>
         )}
       </AnimatePresence>
@@ -2489,11 +2505,13 @@ export function LuminarySummonCutscene({
               ? { opacity: 0, filter: 'blur(0px) brightness(1.0)' }
               : {
                   opacity: 1,
-                  filter: [
-                    'blur(26px) brightness(0.10)',
-                    'blur(25px) brightness(0.11)',
-                    'blur(0px)  brightness(1.0)',
-                  ],
+                  filter: prefersReducedMotion
+                    ? 'blur(0px) brightness(1.0)'
+                    : [
+                        'blur(26px) brightness(0.10)',
+                        'blur(25px) brightness(0.11)',
+                        'blur(0px)  brightness(1.0)',
+                      ],
                 }
             }
             transition={isFading
@@ -2546,8 +2564,8 @@ export function LuminarySummonCutscene({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.18 }}
                     animate={{
-                      opacity: isFading ? 0 : [0, 0.92, 0.78],
-                      scale:   isFading ? 1.18 : [0.18, 1.38, 1.0],
+                      opacity: isFading ? 0 : prefersReducedMotion ? 0.78 : [0, 0.92, 0.78],
+                      scale:   isFading ? 1.18 : prefersReducedMotion ? 1.0 : [0.18, 1.38, 1.0],
                     }}
                     transition={{
                       opacity: { duration: 4.2, delay: 0.5, times: [0, 0.22, 1.0], ease: 'easeOut' },

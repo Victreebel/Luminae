@@ -317,6 +317,14 @@ button,
   100% { opacity: 0; }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .screen-flash,
+  [style*="screen-flash"] {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
+
 @keyframes forge-eject {
   0%   { transform: translateY(0)    scale(1);    opacity: 1; filter: brightness(1); }
   25%  { transform: translateY(0)    scale(1);    opacity: 1; filter: brightness(2.2); }
