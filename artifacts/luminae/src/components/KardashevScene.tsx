@@ -351,6 +351,42 @@ function drawHorizonGlow(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fillRect(0, h * 0.65, w, h * 0.35);
 }
 
+function drawPlanetClouds(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  radius: number,
+  t: number,
+) {
+  // Cloud layer scrolls ~1.4× faster than the surface (higher altitude)
+  const cloudScroll = (t * 0.22 * 1.4) % (radius * 2);
+  // Deterministic streak layout seeded from planet center coords
+  const seed = (cx * 3571 + cy * 4999) | 0;
+  const rng = (n: number) => {
+    const x = Math.sin(seed + n * 127.1) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  const count = 5;
+  for (let i = 0; i < count; i++) {
+    // Vertical spread: keep streaks roughly in the upper/mid hemisphere
+    const dy = (rng(i * 3) - 0.5) * 1.4 * radius;
+    // Horizontal offset (scrolling)
+    const dx = (rng(i * 3 + 1) - 0.5) * radius * 0.4 + cloudScroll;
+    // Streak dimensions: very wide, very thin
+    const rx = radius * (0.55 + rng(i * 3 + 2) * 0.45);
+    const ry = radius * (0.022 + rng(i * 3 + 2) * 0.018);
+    const alpha = 0.12 + rng(i * 3 + 1) * 0.06;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+    // Draw streak + two wrapped copies so scrolling is seamless
+    for (const xoff of [-radius * 2, 0, radius * 2]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + dx + xoff, cy + dy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawPlanet(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
@@ -412,6 +448,9 @@ function drawPlanet(
   // Surface detail: terrain blobs + craters (inside clip, above patches)
   // Seed from cx/cy which are fixed for the main planet (it doesn't orbit)
   drawPlanetSurfaceDetail(ctx, cx, cy, radius, palette, 3, 10, (cx * 7919 + cy * 6271) | 0);
+
+  // Cloud streaks — wispy semi-transparent ellipses scrolling faster than surface
+  drawPlanetClouds(ctx, cx, cy, radius, t);
 
   // Hemisphere shading (terminator)
   const shad = ctx.createRadialGradient(
