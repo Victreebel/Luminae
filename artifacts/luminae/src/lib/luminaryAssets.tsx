@@ -2512,15 +2512,15 @@ export function LuminarySummonCutscene({
             <motion.div
               className="relative flex flex-col items-center"
               style={{ overflow: 'visible', perspective: '800px' }}
-              initial={{ scale: 0.16, y: -90, opacity: 0, rotateY: 14, z: -240 }}
+              initial={{ scale: 0.07, y: -90, opacity: 0, rotateY: 18, z: -480 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, opacity: 0, rotateY: 0, z: 0 }
                 : {
-                    scale:   [0.16, 0.86, 1.0],
+                    scale:   [0.07, 0.86, 1.0],
                     y:       [-90, 54, 0],
                     opacity: 1,
-                    rotateY: [14, 3, 0],
-                    z:       [-240, -28, 0],
+                    rotateY: [18, 3, 0],
+                    z:       [-480, -28, 0],
                   }
               }
               transition={isFading
