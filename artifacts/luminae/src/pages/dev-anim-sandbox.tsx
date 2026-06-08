@@ -9,6 +9,7 @@ import {
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
 import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
+import { BurnPileParticle } from './game-luminary-effects';
 import { CIPHER_MODE_TOTAL_MS, type CipherApertureMode, DEAL_ANIM_MS } from './game-constants';
 import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
@@ -57,7 +58,7 @@ const MODES: { id: SandboxMode; label: string }[] = [
 
 // ─── Card FX Mode ─────────────────────────────────────────────────────────────
 
-type CardFxMode = 'cipher_reserve' | 'forge_burst' | 'opponent_forge' | 'reserved_forge_ring' | 'market_deal_flip';
+type CardFxMode = 'cipher_reserve' | 'forge_burst' | 'opponent_forge' | 'reserved_forge_ring' | 'market_deal_flip' | 'burn_pile_particle';
 
 const CARD_FX_MODES: { id: CardFxMode; label: string }[] = [
   { id: 'cipher_reserve',       label: 'Cipher Reserve' },
@@ -65,6 +66,7 @@ const CARD_FX_MODES: { id: CardFxMode; label: string }[] = [
   { id: 'opponent_forge',       label: 'Opponent Forge' },
   { id: 'reserved_forge_ring',  label: 'Reserved Ring' },
   { id: 'market_deal_flip',     label: 'Market Flip' },
+  { id: 'burn_pile_particle',   label: 'Burn → Pile' },
 ];
 
 // ─── Card FX Helpers ──────────────────────────────────────────────────────────
@@ -1011,6 +1013,78 @@ function MarketDealFlipPreview() {
   );
 }
 
+// ─── Burn Pile Particle Preview ───────────────────────────────────────────────
+// Uses ScaledViewportContainer because BurnPileParticle renders via a fixed-
+// position body portal.  Source rect = simulated market slot (center-upper
+// viewport); destination rect = simulated burn-pile chip (lower-right viewport).
+
+// Self-destructs after 950 ms (matches the setTimeout in BurnPileParticle).
+const BURN_PILE_PARTICLE_MS = 950;
+
+function BurnPileParticlePreview() {
+  const [animKey, setAnimKey]   = useState(0);
+  const [playing, setPlaying]   = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function play() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setAnimKey(k => k + 1);
+    setPlaying(true);
+    timerRef.current = setTimeout(() => setPlaying(false), BURN_PILE_PARTICLE_MS + 100);
+  }
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  // All coordinates in window.innerWidth/Height space — ScaledViewportContainer
+  // scales them to fit correctly inside the preview area.
+  const fromRect = {
+    left:   Math.round(window.innerWidth  * 0.50 - 56),
+    top:    Math.round(window.innerHeight * 0.35),
+    width:  112,
+    height: 160,
+  } as DOMRect;
+
+  const toRect = {
+    left:   Math.round(window.innerWidth  * 0.74 - 16),
+    top:    Math.round(window.innerHeight * 0.70 - 16),
+    width:  32,
+    height: 32,
+  } as DOMRect;
+
+  return (
+    <CardFxPreviewShell
+      note="Charred card fragment that arcs from the burned market slot (center) to the burn-pile chip (lower-right) after BurnFlash completes. Contained via CSS stacking-context scaling."
+      controls={
+        <>
+          <div className="flex justify-center pt-1">
+            <ReplayButton onClick={play} accentHex="#ff6820" />
+          </div>
+          <TimingBar
+            totalMs={BURN_PILE_PARTICLE_MS}
+            phases={[
+              { label: 'flight', ms: 780 },
+              { label: 'guard',  ms: BURN_PILE_PARTICLE_MS - 780 },
+            ]}
+            playing={playing}
+            playKey={animKey}
+          />
+        </>
+      }
+      previewArea={
+        <ScaledViewportContainer playing={playing} idleLabel="Press Play to preview">
+          {playing && (
+            <BurnPileParticle
+              key={animKey}
+              from={fromRect}
+              to={toRect}
+              onDone={() => setPlaying(false)}
+            />
+          )}
+        </ScaledViewportContainer>
+      }
+    />
+  );
+}
+
 // ─── Card FX total durations ──────────────────────────────────────────────────
 // Single source of truth for the comparison strip — sourced from the same
 // constants used by each preview component's TimingBar so they stay in sync.
@@ -1021,6 +1095,7 @@ const CARD_FX_TOTALS: Record<CardFxMode, number> = {
   opponent_forge:      FORGE_PHASE_MS.total,
   reserved_forge_ring: RING_DISMISS_MS,
   market_deal_flip:    DEAL_ANIM_MS,
+  burn_pile_particle:  BURN_PILE_PARTICLE_MS,
 };
 
 // ─── Mock card dimensions ─────────────────────────────────────────────────────
@@ -1199,6 +1274,7 @@ export default function DevAnimSandbox() {
     opponent_forge:      'Press Play to preview the Opponent Forge animation (stamp + streams from chip → arcs to avatar).',
     reserved_forge_ring: 'Press Play to preview the expanding-ring "Forged!" overlay shown for reserved-card purchases.',
     market_deal_flip:    'Press Play to preview the card-back → card-face flip when the market refills after a purchase.',
+    burn_pile_particle:  'Press Play to preview the BurnPileParticle — a charred fragment that arcs from the burned slot to the burn-pile chip.',
   };
 
   return (
@@ -1388,6 +1464,7 @@ export default function DevAnimSandbox() {
               {cardFxMode === 'opponent_forge'        && <OpponentForgePreview />}
               {cardFxMode === 'reserved_forge_ring'   && <ReservedForgeRingPreview />}
               {cardFxMode === 'market_deal_flip'      && <MarketDealFlipPreview />}
+              {cardFxMode === 'burn_pile_particle'    && <BurnPileParticlePreview />}
             </>
           )}
         </div>
