@@ -555,10 +555,16 @@ function drawOrbitPath(
 }
 
 /**
- * Draws the Tier-2 Dyson swarm: ~60 tiny satellite dots orbiting the star on
- * a tight elliptical path (orbitR ≈ 28), plus 3 partial arc segments suggesting
+ * Draws the Tier-2 Dyson swarm: satellite dots orbiting the star on a tight
+ * elliptical path (orbitR ≈ 28), plus 3 partial arc segments suggesting
  * incomplete megastructure panels.  All rendering uses the primary affinity
  * palette color at low alpha so it does not obscure the star glow.
+ *
+ * @param progressFraction  0–1 representing advancement within Tier 2.
+ *   0 → sparse (20 visible satellites, short arc spans);
+ *   1 → dense  (60 visible satellites, full arc spans).
+ *   The full 60-satellite array is always passed in; only the first
+ *   `visibleCount` entries are rendered so seeded positions stay stable.
  */
 function drawDysonSwarm(
   ctx: CanvasRenderingContext2D,
@@ -566,15 +572,19 @@ function drawDysonSwarm(
   t: number,
   swarm: DysonSatellite[],
   palette: AffinityPalette,
+  progressFraction: number,
 ) {
   const orbitR  = 28;
   const orbitRY = orbitR * 0.48; // same ellipse aspect ratio as planet orbits
 
+  // Arc span scale: short arcs at sparse end, longer arcs at dense end
+  const arcScale = 0.35 + 0.65 * progressFraction;
+
   // Partial arc segments — suggest incomplete megastructure panels
   const arcDefs: [number, number][] = [
-    [0.2 + t * 0.012, 0.65],  // panel A — rotates slowly
-    [2.0 + t * 0.009, 0.50],  // panel B
-    [3.9 + t * 0.015, 0.42],  // panel C
+    [0.2 + t * 0.012, 0.65 * arcScale],  // panel A — rotates slowly
+    [2.0 + t * 0.009, 0.50 * arcScale],  // panel B
+    [3.9 + t * 0.015, 0.42 * arcScale],  // panel C
   ];
   ctx.save();
   ctx.lineWidth = 1.2;
@@ -594,8 +604,15 @@ function drawDysonSwarm(
   }
   ctx.restore();
 
+  // Satellite count: interpolate 20 → 60 as progressFraction rises.
+  // Slicing the stable seeded array keeps positions consistent across frames.
+  const MIN_SATS = 20;
+  const MAX_SATS = swarm.length; // always generated at max count (60)
+  const visibleCount = Math.round(MIN_SATS + (MAX_SATS - MIN_SATS) * progressFraction);
+  const visibleSwarm = swarm.slice(0, visibleCount);
+
   // Satellite dots — tiny 1 px filled circles pulsing with alpha
-  for (const sat of swarm) {
+  for (const sat of visibleSwarm) {
     const angle = sat.angle0 + sat.angSpd * t;
     const x = cx + Math.cos(angle) * orbitR;
     const y = cy + Math.sin(angle) * orbitRY;
@@ -701,6 +718,7 @@ function renderTier2(
   dysonSwarm: DysonSatellite[],
   palette: AffinityPalette,
   secondaryColor: string | null,
+  progressFraction: number,
 ) {
   drawBackground(ctx, w, h, 2);
   drawStars(ctx, w, h, t, stars, 0.42);
@@ -709,7 +727,7 @@ function renderTier2(
   for (const o of orbits) drawOrbitPath(ctx, cx, cy, o);
   drawStar(ctx, cx, cy, t);
   // Dyson swarm sits just outside the star glow, inside the innermost planet orbit
-  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette);
+  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette, progressFraction);
   // Draw planets back-to-front (further first using y-sorted trick with orbit angle)
   const sortedOrbits = [...orbits].sort((a, b) => {
     const ay = Math.sin(a.angle0 + a.angSpd * t);
@@ -762,6 +780,10 @@ class SceneErrorBoundary extends React.Component<
 interface KardashevCanvasProps {
   tier: KardashevTier;
   palette: AffinityPalette;
+  /** 0–1 fraction of advancement within the current tier.  Only used at Tier 2
+   *  to interpolate Dyson swarm density (satellite count + arc span).
+   *  Ignored at Tiers 0, 1, and 3.  Defaults to 1 (full density). */
+  progressFraction?: number;
 }
 
 const TIER_LABELS: Record<KardashevTier, string> = {
@@ -771,10 +793,11 @@ const TIER_LABELS: Record<KardashevTier, string> = {
   3: 'Galactic',
 };
 
-function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
+function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Generate stable scene data (seeded, won't change between renders)
+  // Generate stable scene data (seeded, won't change between renders).
+  // dysonSwarm is always generated at max count (60); drawDysonSwarm slices it.
   const stars = useMemo(() => genStars(seededRng(42), 360), []);
   const galaxyPoints = useMemo(() => genGalaxy(seededRng(137)), []);
   const patches = useMemo(() => genPlanetPatches(seededRng(99)), []);
@@ -802,6 +825,7 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
     const startTime = performance.now();
 
     const secondaryColor = getSecondaryAffinityColor(palette);
+    const clampedFraction = Math.min(1, Math.max(0, progressFraction));
 
     const render = (now: number) => {
       syncSize();
@@ -814,7 +838,7 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
       else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor, clampedFraction);
       else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
 
       rafId = requestAnimationFrame(render);
@@ -822,7 +846,7 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
 
     rafId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(rafId);
-  }, [tier, palette, stars, galaxyPoints, patches, orbits, dysonSwarm]);
+  }, [tier, palette, progressFraction, stars, galaxyPoints, patches, orbits, dysonSwarm]);
 
   return (
     <>
@@ -847,9 +871,13 @@ export interface KardashevSceneProps {
   tier: KardashevTier;
   palette: AffinityPalette;
   className?: string;
+  /** 0–1 fraction of advancement within the current tier.  Only used at Tier 2
+   *  to interpolate Dyson swarm density (satellite count + arc span).
+   *  Ignored at Tiers 0, 1, and 3.  Defaults to 1 (full density). */
+  progressFraction?: number;
 }
 
-export function KardashevScene({ tier, palette, className }: KardashevSceneProps) {
+export function KardashevScene({ tier, palette, className, progressFraction }: KardashevSceneProps) {
   const civName = getCivilizationName(palette, tier);
   const civKey = `${tier}-${palette.primary}-${palette.secondary}`;
   const secondaryColor = getSecondaryAffinityColor(palette);
@@ -872,7 +900,7 @@ export function KardashevScene({ tier, palette, className }: KardashevSceneProps
             exit={{ opacity: 0, scale: 1.03 }}
             transition={{ duration: 0.75, ease: 'easeInOut' }}
           >
-            <KardashevCanvas tier={tier} palette={palette} />
+            <KardashevCanvas tier={tier} palette={palette} progressFraction={progressFraction} />
           </motion.div>
         </AnimatePresence>
 

@@ -1361,6 +1361,16 @@ export default function GameBoard() {
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 
+  // At Tier 2, grow the Dyson swarm density as Eminence climbs.
+  // Win threshold is 15 lumens; fraction is clamped to [0, 1].
+  // Other tiers leave progressFraction undefined (KardashevScene defaults to 1).
+  const kardashevProgressFraction = useMemo(() => {
+    if (kardashevTier !== 2) return undefined;
+    const WIN_THRESHOLD = 15;
+    const lumens = me?.lumens ?? 0;
+    return Math.min(1, Math.max(0, lumens / WIN_THRESHOLD));
+  }, [kardashevTier, me?.lumens]);
+
   const opponentData = useMemo(() => {
     const players = state?.players;
     if (!players) return {} as Record<string, { totalAffinity: number; cardCount: number; reservedCount: number; civPalette: AffinityPalette; civName: string }>;
@@ -4232,7 +4242,7 @@ export default function GameBoard() {
   const HandTab = () => (
     <div className="flex flex-col gap-5 p-4 pb-6">
       {/* Kardashev Observatory Scene */}
-      <KardashevScene tier={kardashevTier} palette={kardashevPalette} />
+      <KardashevScene tier={kardashevTier} palette={kardashevPalette} progressFraction={kardashevProgressFraction} />
 
       {/* Lumens + name */}
       <div className={`rounded-2xl border p-4 bg-card/80 backdrop-blur flex items-center justify-between ${isMyTurn ? 'border-primary/60 shadow-[0_0_20px_rgba(var(--primary),0.2)]' : 'border-border'}`}>
