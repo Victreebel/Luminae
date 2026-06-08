@@ -2727,7 +2727,7 @@ export function LuminarySummonCutscene({
                         };
                         return (
                           <div
-                            style={{ position: 'relative', width: ENT_W, height: ENT_H }}
+                            style={{ position: 'relative', width: ENT_W, height: ENT_H, transform: 'scale(1.9)', transformOrigin: 'center center' }}
                           >
                             {/* Entity with heat-haze shimmer */}
                             {entityCutout && (
