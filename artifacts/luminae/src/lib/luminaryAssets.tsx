@@ -1307,6 +1307,8 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   lum_seed: { objectPosition: 'center 55%' },
   // Wide horizontal Glass Orchard — scale up and center so it fills the panel.
   lum_orchard: { scale: 1.18, objectPosition: 'center 45%' },
+  // Landscape invasive growth organism — center it and stretch to fill the portrait frame.
+  lum_bloom: { objectPosition: 'center 50%' },
 };
 
 // ── Six-Chunk Crystal Shatter Geometry ───────────────────────────────────────
@@ -2761,8 +2763,8 @@ export function LuminarySummonCutscene({
                             display: 'block',
                             // Stretch wide landscape entities (seed, orchard) vertically
                             // so they fill the tall portrait panel without letterboxing.
-                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
-                            transformOrigin: luminaryId === 'lum_seed' || luminaryId === 'lum_orchard' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
+                            transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : luminaryId === 'lum_bloom' ? 'scale(1.12, 1.78)' : undefined,
+                            transformOrigin: luminaryId === 'lum_seed' || luminaryId === 'lum_orchard' || luminaryId === 'lum_bloom' ? 'center center' : luminaryId === 'lum_oracle' ? 'center center' : undefined,
                             ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                             maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
                             WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
@@ -3372,7 +3374,7 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
                 objectFit: objFit as React.CSSProperties['objectFit'],
                 objectPosition: objPos,
                 display: 'block',
-                transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : undefined,
+                transform: luminaryId === 'lum_seed' ? 'scale(1.15, 1.68)' : luminaryId === 'lum_oracle' ? 'scale(1.30)' : luminaryId === 'lum_orchard' ? 'scale(1.25, 1.45)' : luminaryId === 'lum_bloom' ? 'scale(1.12, 1.78)' : undefined,
                 ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
                 maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
                 WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
