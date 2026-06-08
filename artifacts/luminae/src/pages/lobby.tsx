@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation, useParams } from "wouter";
-import { getSkipCinematics, setSkipCinematics, syncSkipCinematics } from "@/lib/cinematicPrefs";
+import { getSkipCinematics, setSkipCinematics, syncAccountPreferences } from "@/lib/cinematicPrefs";
 import {
   useStartGame,
   useKickPlayer,
@@ -64,8 +64,8 @@ export default function Lobby() {
   useEffect(() => {
     const token = getAccountToken();
     if (account?.id && token) {
-      syncSkipCinematics(token, account.id)
-        .then((serverValue) => setSkipCinematicsState(serverValue))
+      syncAccountPreferences(token, account.id)
+        .then((prefs) => setSkipCinematicsState(prefs.skipCinematics))
         .catch(() => setSkipCinematicsState(getSkipCinematics(account.id)));
     } else {
       setSkipCinematicsState(getSkipCinematics(account?.id));
