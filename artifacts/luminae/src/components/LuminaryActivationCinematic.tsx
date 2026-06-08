@@ -24,6 +24,8 @@ interface LuminaryActivationCinematicProps {
   effectType: 'summon' | 'end_of_turn' | 'start_of_turn';
   luminaryName: string;
   triggeringPlayerName?: string;
+  /** When true the cinematic calls onComplete immediately on mount, skipping the full timer chain. */
+  autoSkip?: boolean;
   onComplete: () => void;
 }
 
@@ -155,6 +157,7 @@ export function LuminaryActivationCinematic({
   effectType,
   luminaryName,
   triggeringPlayerName,
+  autoSkip = false,
   onComplete,
 }: LuminaryActivationCinematicProps) {
   const onCompleteRef = useRef(onComplete);
@@ -239,8 +242,17 @@ export function LuminaryActivationCinematic({
     if (holdRafRef.current !== null) cancelAnimationFrame(holdRafRef.current);
   }, []);
 
+  // ── Auto-skip on mount when the player has opted out of cinematics ────────
+  useEffect(() => {
+    if (!autoSkip) return;
+    completedRef.current = true;
+    setPhase('done');
+    onCompleteRef.current();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
+    if (autoSkip) return; // already handled by the auto-skip effect above
     gameAudio.playActivationSting(effectType, primaryColor);
 
     const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
