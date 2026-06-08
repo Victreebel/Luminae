@@ -2488,12 +2488,10 @@ export function LuminarySummonCutscene({
             animate={isFading
               ? { opacity: 0, filter: 'blur(0px) brightness(1.0)' }
               : {
-                  opacity: [0, 0.88, 0.90, 0.94, 1.0],
+                  opacity: 1,
                   filter: [
                     'blur(26px) brightness(0.10)',
-                    'blur(24px) brightness(0.16)',
-                    'blur(22px) brightness(0.20)',
-                    'blur(6px)  brightness(0.68)',
+                    'blur(25px) brightness(0.11)',
                     'blur(0px)  brightness(1.0)',
                   ],
                 }
@@ -2501,8 +2499,8 @@ export function LuminarySummonCutscene({
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
               : {
-                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.12, 0.48, 0.65, 0.76], ease: 'easeOut' },
-                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.12, 0.48, 0.65, 0.76], ease: 'easeOut' },
+                  opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
+                  filter:  { duration: 3.6,  delay: 0.15, times: [0, 0.68, 1.0], ease: 'easeOut' },
                 }
             }
           >
