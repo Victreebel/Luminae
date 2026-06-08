@@ -75,6 +75,63 @@ export async function syncSkipCinematics(token: string, accountId: string): Prom
   return prefs.skipCinematics;
 }
 
+export function getAbridgedAnims(): boolean {
+  try {
+    return localStorage.getItem("luminae_abridged_anims") === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setAbridgedAnims(value: boolean, token?: string): void {
+  try {
+    localStorage.setItem("luminae_abridged_anims", value ? "1" : "0");
+  } catch {
+    // ignore storage errors
+  }
+  if (token) {
+    void apiUpdatePreferences(token, { abridgedAnims: value }).catch(() => undefined);
+  }
+}
+
+export function getHintsEnabled(): boolean {
+  try {
+    return localStorage.getItem("luminae_hints_enabled") !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setHintsEnabled(value: boolean, token?: string): void {
+  try {
+    localStorage.setItem("luminae_hints_enabled", value ? "1" : "0");
+  } catch {
+    // ignore storage errors
+  }
+  if (token) {
+    void apiUpdatePreferences(token, { hintsEnabled: value }).catch(() => undefined);
+  }
+}
+
+export function getMuted(): boolean {
+  try {
+    return localStorage.getItem("luminae_muted") === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setMuted(value: boolean, token?: string): void {
+  try {
+    localStorage.setItem("luminae_muted", String(value));
+  } catch {
+    // ignore storage errors
+  }
+  if (token) {
+    void apiUpdatePreferences(token, { muted: value }).catch(() => undefined);
+  }
+}
+
 export async function syncAccountPreferences(
   token: string,
   accountId: string,

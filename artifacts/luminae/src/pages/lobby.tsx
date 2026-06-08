@@ -1,7 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation, useParams } from "wouter";
-import { getSkipCinematics, setSkipCinematics, syncAccountPreferences } from "@/lib/cinematicPrefs";
+import {
+  getSkipCinematics, setSkipCinematics,
+  getAbridgedAnims, setAbridgedAnims,
+  getHintsEnabled, setHintsEnabled,
+  getMuted, setMuted,
+  syncAccountPreferences,
+} from "@/lib/cinematicPrefs";
 import {
   useStartGame,
   useKickPlayer,
@@ -60,15 +66,31 @@ export default function Lobby() {
   const [invitedUsernames, setInvitedUsernames] = useState<Set<string>>(new Set());
   const [invitingUsername, setInvitingUsername] = useState<string | null>(null);
   const [skipCinematics, setSkipCinematicsState] = useState(() => getSkipCinematics(account?.id));
+  const [abridgedAnims, setAbridgedAnimsState] = useState(() => getAbridgedAnims());
+  const [hintsEnabled, setHintsEnabledState] = useState(() => getHintsEnabled());
+  const [muted, setMutedState] = useState(() => getMuted());
 
   useEffect(() => {
     const token = getAccountToken();
     if (account?.id && token) {
       syncAccountPreferences(token, account.id)
-        .then((prefs) => setSkipCinematicsState(prefs.skipCinematics))
-        .catch(() => setSkipCinematicsState(getSkipCinematics(account.id)));
+        .then((prefs) => {
+          setSkipCinematicsState(prefs.skipCinematics);
+          setAbridgedAnimsState(prefs.abridgedAnims);
+          setHintsEnabledState(prefs.hintsEnabled);
+          setMutedState(prefs.muted);
+        })
+        .catch(() => {
+          setSkipCinematicsState(getSkipCinematics(account.id));
+          setAbridgedAnimsState(getAbridgedAnims());
+          setHintsEnabledState(getHintsEnabled());
+          setMutedState(getMuted());
+        });
     } else {
       setSkipCinematicsState(getSkipCinematics(account?.id));
+      setAbridgedAnimsState(getAbridgedAnims());
+      setHintsEnabledState(getHintsEnabled());
+      setMutedState(getMuted());
     }
   }, [account?.id]);
 
@@ -76,6 +98,25 @@ export default function Lobby() {
     const next = !skipCinematics;
     setSkipCinematicsState(next);
     setSkipCinematics(next, account?.id, getAccountToken() ?? undefined);
+  };
+
+  const handleToggleAbridgedAnims = () => {
+    const next = !abridgedAnims;
+    setAbridgedAnimsState(next);
+    setAbridgedAnims(next, getAccountToken() ?? undefined);
+  };
+
+  const handleToggleHints = () => {
+    const next = !hintsEnabled;
+    setHintsEnabledState(next);
+    setHintsEnabled(next, getAccountToken() ?? undefined);
+  };
+
+  const handleToggleMuted = () => {
+    const next = !muted;
+    setMutedState(next);
+    setMuted(next, getAccountToken() ?? undefined);
+    gameAudio.setMuted(next);
   };
 
   const handleChallengeCreated = (cRoomId: string, cInviteCode: string, cSessionToken: string, cPlayerId: string) => {
@@ -455,22 +496,33 @@ export default function Lobby() {
         )}
 
         {/* My preferences */}
-        <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur px-4 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold">Skip cinematics</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Skip intro animations during play</p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={skipCinematics}
-            onClick={handleToggleSkipCinematics}
-            className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring shrink-0 ${skipCinematics ? "bg-primary" : "bg-muted-foreground/30"}`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${skipCinematics ? "translate-x-5" : "translate-x-0"}`}
-            />
-          </button>
+        <div className="rounded-2xl bg-card/60 border border-border/50 backdrop-blur divide-y divide-border/40 overflow-hidden">
+          {(
+            [
+              { label: "Skip cinematics", desc: "Skip intro animations during play", value: skipCinematics, onToggle: handleToggleSkipCinematics },
+              { label: "Abridged animations", desc: "Use shorter card and action animations", value: abridgedAnims, onToggle: handleToggleAbridgedAnims },
+              { label: "Mute audio", desc: "Silence all in-game sounds", value: muted, onToggle: handleToggleMuted },
+              { label: "Hints", desc: "Show gameplay hints and tooltips", value: hintsEnabled, onToggle: handleToggleHints },
+            ] as const
+          ).map(({ label, desc, value, onToggle }) => (
+            <div key={label} className="px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">{label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={value}
+                onClick={onToggle}
+                className={`relative h-6 w-11 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring shrink-0 ${value ? "bg-primary" : "bg-muted-foreground/30"}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${value ? "translate-x-5" : "translate-x-0"}`}
+                />
+              </button>
+            </div>
+          ))}
         </div>
       </main>
 
