@@ -129,16 +129,27 @@ export function LuminaryActivationCinematic({
   useEffect(() => {
     gameAudio.playActivationSting(effectType, primaryColor);
 
+    // Track whether the cinematic reached its natural end so the cleanup can
+    // call onComplete as a fallback if the component unmounts mid-sequence
+    // (e.g. disconnect, fast WebSocket state update removing the overlay).
+    let completed = false;
+
     const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
     const t2 = setTimeout(() => setPhase('hold'),    ANTICIPATE_MS + REVEAL_MS);
     const t3 = setTimeout(() => setPhase('pan_out'), ANTICIPATE_MS + REVEAL_MS + HOLD_MS);
     const t4 = setTimeout(() => {
+      completed = true;
       setPhase('done');
       onCompleteRef.current();
     }, ANTICIPATE_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS);
 
     return () => {
       clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      // If unmounted before t4 fired, drain the event queue immediately so
+      // the animation state machine never stalls.
+      if (!completed) {
+        onCompleteRef.current();
+      }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
