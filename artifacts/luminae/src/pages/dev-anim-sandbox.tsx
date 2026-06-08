@@ -14,6 +14,7 @@ import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { type ArtifactCard, ArtifactCardBonusColor } from '@workspace/api-client-react';
+import { gameAudio } from '@/lib/audio';
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
 
@@ -1148,7 +1149,7 @@ function LuminaryGridCard({
 
 // ─── DevAnimSandbox ───────────────────────────────────────────────────────────
 
-type SandboxGroup = 'luminary' | 'cardFx';
+type SandboxGroup = 'luminary' | 'cardFx' | 'sfx';
 
 export default function DevAnimSandbox() {
   const [, setLocation] = useLocation();
@@ -1218,7 +1219,7 @@ export default function DevAnimSandbox() {
           <>
             {/* Group selector */}
             <div className="flex items-center gap-1 ml-2 bg-black/30 rounded-md p-0.5 border border-border/20">
-              {(['luminary', 'cardFx'] as SandboxGroup[]).map(g => (
+              {(['luminary', 'cardFx', 'sfx'] as SandboxGroup[]).map(g => (
                 <button
                   key={g}
                   type="button"
@@ -1229,7 +1230,7 @@ export default function DevAnimSandbox() {
                     color:      group === g ? '#e2e8f0' : '#64748b',
                   }}
                 >
-                  {g === 'luminary' ? 'Luminary FX' : 'Card FX'}
+                  {g === 'luminary' ? 'Luminary FX' : g === 'cardFx' ? 'Card FX' : 'Audio SFX'}
                 </button>
               ))}
             </div>
@@ -1289,7 +1290,7 @@ export default function DevAnimSandbox() {
       </div>
 
       {/* ── Instructions ──────────────────────────────────────────────────── */}
-      {!collapsed && (
+      {!collapsed && group !== 'sfx' && (
         <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
           {group === 'luminary' ? luminaryInstructions[mode] : cardFxInstructions[cardFxMode]}
         </p>
@@ -1327,6 +1328,34 @@ export default function DevAnimSandbox() {
               )}
 
             </>
+          )}
+
+          {/* ════════════════ AUDIO SFX GROUP ════════════════ */}
+          {group === 'sfx' && (
+            <div className="max-w-xl mx-auto py-6">
+              <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-4">
+                Sound Effects
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => { void gameAudio.playCardBurn(); }}
+                  className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                  style={{
+                    background:  'rgba(251,146,60,0.08)',
+                    borderColor: 'rgba(251,146,60,0.35)',
+                    color:       '#fb923c',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.16)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.08)'; }}
+                >
+                  🔥 Burn Sound
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground/30 mt-4">
+                Calls <span className="font-mono">gameAudio.playCardBurn()</span> directly — no game state required.
+              </p>
+            </div>
           )}
 
           {/* ════════════════ CARD FX GROUP ════════════════ */}
