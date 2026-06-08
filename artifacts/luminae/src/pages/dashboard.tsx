@@ -39,6 +39,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import {
+  apiGetPreferences,
   apiUpdatePreferences,
   getSkipCinematics,
   setSkipCinematics,
@@ -378,6 +379,33 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
     setSkipCinematics(next, accountId, token ?? undefined);
   };
 
+  const [loadingPrefs, setLoadingPrefs] = useState<boolean>(!!token);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    setLoadingPrefs(true);
+    apiGetPreferences(token)
+      .then((prefs) => {
+        if (cancelled) return;
+        try {
+          localStorage.setItem("luminae_muted", String(prefs.muted));
+          localStorage.setItem("luminae_abridged_anims", prefs.abridgedAnims ? "1" : "0");
+          localStorage.setItem("luminae_hints_enabled", prefs.hintsEnabled ? "1" : "0");
+          const acctKey = `luminae_skip_cinematics_${accountId}`;
+          localStorage.setItem(acctKey, prefs.skipCinematics ? "1" : "0");
+          localStorage.setItem("luminae_skip_cinematics", prefs.skipCinematics ? "1" : "0");
+        } catch { /* ignore storage errors */ }
+        setMutedState(prefs.muted);
+        setAbridgedAnimsState(prefs.abridgedAnims);
+        setHintsEnabledState(prefs.hintsEnabled);
+        setSkipCinematicsState(prefs.skipCinematics);
+      })
+      .catch(() => { /* silently fall back to localStorage values */ })
+      .finally(() => { if (!cancelled) setLoadingPrefs(false); });
+    return () => { cancelled = true; };
+  }, [token, accountId]);
+
   const prefToggle = (
     on: boolean,
     onToggle: () => void,
@@ -410,6 +438,31 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
       </span>
     </button>
   );
+
+  if (loadingPrefs) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+          <div className="h-4 w-36 rounded bg-muted/50 animate-pulse mb-2" />
+          <div className="h-3 w-56 rounded bg-muted/30 animate-pulse mb-5" />
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-14 rounded-xl bg-muted/30 animate-pulse" />
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+          <div className="h-4 w-32 rounded bg-muted/50 animate-pulse mb-2" />
+          <div className="h-3 w-64 rounded bg-muted/30 animate-pulse mb-5" />
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-14 rounded-xl bg-muted/30 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
