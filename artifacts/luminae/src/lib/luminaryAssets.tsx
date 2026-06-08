@@ -2700,7 +2700,6 @@ export function LuminarySummonCutscene({
                           </div>
                         );
                       })() : luminaryId === 'lum_compass' ? (() => {
-                        const bg = _getLuminaryImage('lum_compass', 'background');
                         const fill: React.CSSProperties = {
                           position: 'absolute', inset: 0, width: '100%', height: '100%',
                           display: 'block',
@@ -2709,17 +2708,7 @@ export function LuminarySummonCutscene({
                           <div
                             style={{ position: 'relative', width: ENT_W, height: ENT_H }}
                           >
-                            {/* Illustrated cosmic background — actual star-field image that fades radially into the portal */}
-                            {bg && (
-                              <img
-                                src={bg}
-                                alt=""
-                                draggable={false}
-                                className="lum-compass-bg-fade"
-                                style={{ ...fill, objectFit: 'cover' }}
-                              />
-                            )}
-                            {/* Entity with heat-haze shimmer — living motion while background stays fixed */}
+                            {/* Entity with heat-haze shimmer */}
                             {entityCutout && (
                               <div
                                 className="lum-compass-heat-haze"
