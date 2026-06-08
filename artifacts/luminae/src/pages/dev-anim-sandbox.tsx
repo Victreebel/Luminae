@@ -1244,6 +1244,9 @@ export default function DevAnimSandbox() {
   // ── Card FX group state ────────────────────────────────────────────────────
   const [cardFxMode, setCardFxMode] = useState<CardFxMode>('cipher_reserve');
 
+  // ── SFX group state ────────────────────────────────────────────────────────
+  const [sfxHarvestAffinity, setSfxHarvestAffinity] = useState<GemKey>('ruby');
+
   // ── Shared UI state ────────────────────────────────────────────────────────
   const [collapsed, setCollapsed] = useState(false);
 
@@ -1408,28 +1411,131 @@ export default function DevAnimSandbox() {
 
           {/* ════════════════ AUDIO SFX GROUP ════════════════ */}
           {group === 'sfx' && (
-            <div className="max-w-xl mx-auto py-6">
-              <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-4">
-                Sound Effects
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => { void gameAudio.playCardBurn(); }}
-                  className="text-sm font-mono px-4 py-2 rounded border transition-colors"
-                  style={{
-                    background:  'rgba(251,146,60,0.08)',
-                    borderColor: 'rgba(251,146,60,0.35)',
-                    color:       '#fb923c',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.16)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.08)'; }}
-                >
-                  🔥 Burn Sound
-                </button>
+            <div className="max-w-xl mx-auto py-6 space-y-6">
+
+              {/* ── Card actions ─────────────────────────────────── */}
+              <div>
+                <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-3">
+                  Card Actions
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {/* Purchase */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playCardPurchased(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(234,179,8,0.08)', borderColor: 'rgba(234,179,8,0.35)', color: '#eab308' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.08)'; }}
+                  >
+                    ✨ Purchase
+                  </button>
+
+                  {/* Reserve */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playCardReserved(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.35)', color: '#818cf8' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,102,241,0.08)'; }}
+                  >
+                    📌 Reserve
+                  </button>
+
+                  {/* Card Draw */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playCardDraw(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(148,163,184,0.08)', borderColor: 'rgba(148,163,184,0.3)', color: '#94a3b8' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.08)'; }}
+                  >
+                    🃏 Card Draw
+                  </button>
+
+                  {/* Burn */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playCardBurn(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(251,146,60,0.08)', borderColor: 'rgba(251,146,60,0.35)', color: '#fb923c' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251,146,60,0.08)'; }}
+                  >
+                    🔥 Burn
+                  </button>
+                </div>
               </div>
-              <p className="text-[10px] text-muted-foreground/30 mt-4">
-                Calls <span className="font-mono">gameAudio.playCardBurn()</span> directly — no game state required.
+
+              {/* ── Harvest sounds (affinity-pitched) ────────────── */}
+              <div>
+                <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-2">
+                  Harvest Sounds
+                </p>
+                {/* Affinity pill selector */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {GEM_KEYS.map(k => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSfxHarvestAffinity(k)}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
+                      style={{
+                        borderColor: sfxHarvestAffinity === k ? GEM_META[k].hex : 'rgba(255,255,255,0.12)',
+                        color:       sfxHarvestAffinity === k ? GEM_META[k].hex : '#64748b',
+                        background:  sfxHarvestAffinity === k ? `${GEM_META[k].hex}22` : 'transparent',
+                      }}
+                    >
+                      {GEM_META[k].name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {/* Harvest Land */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playHarvestLand(sfxHarvestAffinity); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(52,211,153,0.08)', borderColor: 'rgba(52,211,153,0.35)', color: '#34d399' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(52,211,153,0.08)'; }}
+                  >
+                    💎 Harvest Land
+                  </button>
+
+                  {/* Crystal Picked */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playCrystalPicked(sfxHarvestAffinity); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(34,211,238,0.08)', borderColor: 'rgba(34,211,238,0.35)', color: '#22d3ee' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,211,238,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(34,211,238,0.08)'; }}
+                  >
+                    🔮 Crystal Picked
+                  </button>
+
+                  {/* Harvest Blocked */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playHarvestBlocked(sfxHarvestAffinity); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.3)', color: '#f87171' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.08)'; }}
+                  >
+                    🚫 Harvest Blocked
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/30 mt-2">
+                  Pitch varies by selected affinity.
+                </p>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground/30">
+                All calls go to <span className="font-mono">gameAudio</span> directly — no game state required.
               </p>
             </div>
           )}
