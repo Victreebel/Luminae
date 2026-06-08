@@ -156,6 +156,7 @@ function drawPlanetSurfaceDetail(
   craterCount: number,
   blobCount: number,
   stableSeed: number,
+  scroll: number,  // horizontal scroll offset matching the banding rotation
 ) {
   // LCG seeded from caller-provided stable value (must NOT use animated cx/cy for moving planets)
   let seed = (stableSeed | 0) >>> 0;
@@ -169,16 +170,19 @@ function drawPlanetSurfaceDetail(
   for (let i = 0; i < blobCount; i++) {
     const angle = rng() * Math.PI * 2;
     const dist  = rng() * radius * 0.80;
-    const bx = cx + Math.cos(angle) * dist;
-    const by = cy + Math.sin(angle) * dist;
+    const baseX = cx + Math.cos(angle) * dist;
+    const by    = cy + Math.sin(angle) * dist;
     const rx = radius * (0.07 + rng() * 0.13);
     const ry = rx * (0.45 + rng() * 0.55);
     const rot = rng() * Math.PI;
     const col = rng() > 0.5 ? palette.accent : palette.secondary;
-    ctx.beginPath();
-    ctx.ellipse(bx, by, rx, ry, rot, 0, Math.PI * 2);
-    ctx.fillStyle = hexAlpha(col, 0.6);
-    ctx.fill();
+    // Three copies so blobs wrap seamlessly as the planet rotates
+    for (const xOff of [-(radius * 2), 0, radius * 2]) {
+      ctx.beginPath();
+      ctx.ellipse(baseX + scroll + xOff, by, rx, ry, rot, 0, Math.PI * 2);
+      ctx.fillStyle = hexAlpha(col, 0.6);
+      ctx.fill();
+    }
   }
   ctx.globalAlpha = 1;
 
@@ -186,25 +190,30 @@ function drawPlanetSurfaceDetail(
   for (let i = 0; i < craterCount; i++) {
     const angle = rng() * Math.PI * 2;
     const dist  = rng() * radius * 0.70;
-    const bx = cx + Math.cos(angle) * dist;
-    const by = cy + Math.sin(angle) * dist;
+    const baseX = cx + Math.cos(angle) * dist;
+    const by    = cy + Math.sin(angle) * dist;
     const cr = radius * (0.05 + rng() * 0.09);
     const rot = rng() * Math.PI;
 
-    // Dark crater bowl
-    ctx.globalAlpha = 0.15;
-    ctx.beginPath();
-    ctx.ellipse(bx, by, cr, cr * 0.62, rot, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.9)';
-    ctx.fill();
+    // Three copies so craters wrap seamlessly as the planet rotates
+    for (const xOff of [-(radius * 2), 0, radius * 2]) {
+      const bx = baseX + scroll + xOff;
 
-    // Faint bright ejecta rim (slightly offset toward the lit side)
-    ctx.globalAlpha = 0.09;
-    ctx.beginPath();
-    ctx.ellipse(bx - cr * 0.10, by - cr * 0.08, cr * 1.12, cr * 0.72, rot, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-    ctx.lineWidth = Math.max(0.5, radius * 0.011);
-    ctx.stroke();
+      // Dark crater bowl
+      ctx.globalAlpha = 0.15;
+      ctx.beginPath();
+      ctx.ellipse(bx, by, cr, cr * 0.62, rot, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.9)';
+      ctx.fill();
+
+      // Faint bright ejecta rim (slightly offset toward the lit side)
+      ctx.globalAlpha = 0.09;
+      ctx.beginPath();
+      ctx.ellipse(bx - cr * 0.10, by - cr * 0.08, cr * 1.12, cr * 0.72, rot, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = Math.max(0.5, radius * 0.011);
+      ctx.stroke();
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -446,8 +455,10 @@ function drawPlanet(
   ctx.globalAlpha = 1;
 
   // Surface detail: terrain blobs + craters (inside clip, above patches)
-  // Seed from cx/cy which are fixed for the main planet (it doesn't orbit)
-  drawPlanetSurfaceDetail(ctx, cx, cy, radius, palette, 3, 10, (cx * 7919 + cy * 6271) | 0);
+  // Seed from cx/cy which are fixed for the main planet (it doesn't orbit).
+  // Scroll matches the banding rate so craters move with the rotating surface.
+  const surfaceScroll = ((t * 0.05) % 1) * (radius * 2);
+  drawPlanetSurfaceDetail(ctx, cx, cy, radius, palette, 3, 10, (cx * 7919 + cy * 6271) | 0, surfaceScroll);
 
   // Cloud streaks — wispy semi-transparent ellipses scrolling faster than surface
   drawPlanetClouds(ctx, cx, cy, radius, t);
@@ -574,9 +585,11 @@ function drawOrbitPlanet(
   drawPlanetBandingAndHighlight(ctx, px, py, orbit.radius, t, palette, 2);
 
   // Surface detail: proportionally scaled for smaller disc (1–2 craters, 5 blobs)
-  // Seed from stable orbit params (NOT px/py — those change every frame and would cause jitter)
+  // Seed from stable orbit params (NOT px/py — those change every frame and would cause jitter).
+  // Scroll matches the banding rate so craters move with the rotating surface.
+  const orbitSurfaceScroll = ((t * 0.05) % 1) * (orbit.radius * 2);
   drawPlanetSurfaceDetail(ctx, px, py, orbit.radius, palette, 1, 5,
-    (orbit.angle0 * 9999 + orbit.orbitR * 6271 + orbit.colorIdx * 997) | 0);
+    (orbit.angle0 * 9999 + orbit.orbitR * 6271 + orbit.colorIdx * 997) | 0, orbitSurfaceScroll);
 
   ctx.restore();
 }
