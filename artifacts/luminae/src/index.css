@@ -1333,11 +1333,11 @@ button,
    distortion on the entity itself. The background stays fixed; only the
    entity seems to shimmer with cosmic motion.                                */
 
-/* Radial fade on the real background image — fills the full frame and fades
-   softly outward only at the very edges, no hard circular border. */
+/* Background fills the full frame — no mask here.
+   The entity layer above carries its own radial soft-edge mask,
+   so the background simply bleeds edge-to-edge with no visible border. */
 .lum-compass-bg-fade {
-  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 55%, rgba(0,0,0,0.6) 75%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 55%, rgba(0,0,0,0.6) 75%, transparent 100%);
+  opacity: 0.92;
 }
 
 @keyframes lum-compass-haze {
