@@ -55,6 +55,12 @@ interface OrbitPlanet {
   colorIdx: number; // 0=primary, 1=secondary, 2=accent
 }
 
+interface DysonSatellite {
+  angle0: number; // starting angle on the elliptical swarm path
+  angSpd: number; // rad/s (slight variance around a base speed)
+  alpha: number;  // base alpha for pulse animation
+}
+
 // ── Precomputed scene data ───────────────────────────────────────────────────
 function genStars(rng: () => number, count: number): Star[] {
   return Array.from({ length: count }, () => ({
@@ -122,7 +128,62 @@ function genOrbits(rng: () => number, count: number): OrbitPlanet[] {
   }));
 }
 
+function genDysonSwarm(rng: () => number, count: number): DysonSatellite[] {
+  return Array.from({ length: count }, () => ({
+    angle0: rng() * Math.PI * 2,
+    angSpd: 0.07 + rng() * 0.04, // slight variance around a base crawl speed
+    alpha:  0.35 + rng() * 0.45,
+  }));
+}
+
 // ── Drawing primitives ───────────────────────────────────────────────────────
+
+/**
+ * Shared helper: draws 2–3 scrolling latitude band stripes and a specular
+ * highlight inside whatever clip region is currently active.  Must be called
+ * while the canvas is already clipped to the planet disc.
+ */
+function drawPlanetBandingAndHighlight(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  radius: number,
+  t: number,
+  palette: AffinityPalette,
+  bandCount: number,
+) {
+  const scroll = ((t * 0.05) % 1) * (radius * 2); // scrolls one full diameter per 20s
+
+  ctx.globalAlpha = 0.32;
+  for (let i = 0; i < bandCount; i++) {
+    // Distribute bands evenly across the lit hemisphere, skip polar extremes
+    const yFrac = (i + 1) / (bandCount + 1);
+    const yOff  = (yFrac * 2 - 1) * radius * 0.68;
+    // Half-width of the band at this latitude (chord of the circle)
+    const bw = Math.sqrt(Math.max(0, radius * radius - yOff * yOff));
+    const bh = radius * (i % 2 === 0 ? 0.13 : 0.09);
+    const col = i % 2 === 0 ? palette.accent : palette.secondary;
+
+    // Three copies so horizontal scrolling wraps seamlessly inside the clip
+    for (const xOff of [-(radius * 2), 0, radius * 2]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + scroll + xOff, cy + yOff, bw, bh, 0, 0, Math.PI * 2);
+      ctx.fillStyle = hexAlpha(col, 0.6);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // Specular highlight — small bright gradient at the lit-hemisphere pole
+  const hx = cx - radius * 0.26;
+  const hy = cy - radius * 0.30;
+  const hr = radius * 0.40;
+  const spec = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+  spec.addColorStop(0,   'rgba(255,255,255,0.24)');
+  spec.addColorStop(0.4, 'rgba(255,255,255,0.09)');
+  spec.addColorStop(1,   'rgba(255,255,255,0)');
+  ctx.fillStyle = spec;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+}
 
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, tier: KardashevTier) {
   const g = ctx.createRadialGradient(w * 0.5, h * 0.4, h * 0.05, w * 0.5, h * 0.6, h * 1.1);
@@ -244,6 +305,9 @@ function drawPlanet(
   ctx.fillStyle = baseGrad;
   ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
 
+  // Latitude banding + specular highlight (inside clip)
+  drawPlanetBandingAndHighlight(ctx, cx, cy, radius, t, palette, 3);
+
   // Surface patches (scroll = rotation)
   // When dual-palette, even-index patches tint in the secondary affinity color
   const scroll = (t * 0.22) % (radius * 2);
@@ -364,7 +428,12 @@ function drawOrbitPlanet(
   ctx.fillStyle = glo;
   ctx.fill();
 
-  // Planet disc
+  // Planet disc + banding (clipped)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(px, py, orbit.radius, 0, Math.PI * 2);
+  ctx.clip();
+
   const disc = ctx.createRadialGradient(
     px - orbit.radius * 0.3, py - orbit.radius * 0.3, 0,
     px, py, orbit.radius,
@@ -376,6 +445,11 @@ function drawOrbitPlanet(
   ctx.arc(px, py, orbit.radius, 0, Math.PI * 2);
   ctx.fillStyle = disc;
   ctx.fill();
+
+  // 1–2 scrolling latitude bands + specular highlight (small planet, fewer bands)
+  drawPlanetBandingAndHighlight(ctx, px, py, orbit.radius, t, palette, 2);
+
+  ctx.restore();
 }
 
 function drawOrbitPath(
@@ -388,6 +462,59 @@ function drawOrbitPath(
   ctx.strokeStyle = 'rgba(180,200,255,0.055)';
   ctx.lineWidth = 0.5;
   ctx.stroke();
+}
+
+/**
+ * Draws the Tier-2 Dyson swarm: ~60 tiny satellite dots orbiting the star on
+ * a tight elliptical path (orbitR ≈ 28), plus 3 partial arc segments suggesting
+ * incomplete megastructure panels.  All rendering uses the primary affinity
+ * palette color at low alpha so it does not obscure the star glow.
+ */
+function drawDysonSwarm(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  t: number,
+  swarm: DysonSatellite[],
+  palette: AffinityPalette,
+) {
+  const orbitR  = 28;
+  const orbitRY = orbitR * 0.48; // same ellipse aspect ratio as planet orbits
+
+  // Partial arc segments — suggest incomplete megastructure panels
+  const arcDefs: [number, number][] = [
+    [0.2 + t * 0.012, 0.65],  // panel A — rotates slowly
+    [2.0 + t * 0.009, 0.50],  // panel B
+    [3.9 + t * 0.015, 0.42],  // panel C
+  ];
+  ctx.save();
+  ctx.lineWidth = 1.2;
+  for (const [startA, spanR] of arcDefs) {
+    const pulseA = 0.10 + 0.06 * Math.sin(t * 0.9 + startA);
+    ctx.beginPath();
+    const steps = 24;
+    for (let i = 0; i <= steps; i++) {
+      const a = startA + (i / steps) * spanR;
+      const x = cx + Math.cos(a) * orbitR;
+      const y = cy + Math.sin(a) * orbitRY;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = hexAlpha(palette.primary, pulseA);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Satellite dots — tiny 1 px filled circles pulsing with alpha
+  for (const sat of swarm) {
+    const angle = sat.angle0 + sat.angSpd * t;
+    const x = cx + Math.cos(angle) * orbitR;
+    const y = cy + Math.sin(angle) * orbitRY;
+    const a = sat.alpha * (0.55 + 0.45 * Math.sin(t * 1.4 + sat.angle0 * 3));
+    ctx.beginPath();
+    ctx.arc(x, y, 1, 0, Math.PI * 2);
+    ctx.fillStyle = hexAlpha(palette.primary, a);
+    ctx.fill();
+  }
 }
 
 function drawGalaxy(
@@ -481,6 +608,7 @@ function renderTier2(
   t: number,
   stars: Star[],
   orbits: OrbitPlanet[],
+  dysonSwarm: DysonSatellite[],
   palette: AffinityPalette,
   secondaryColor: string | null,
 ) {
@@ -490,6 +618,8 @@ function renderTier2(
   const cy = h * 0.5;
   for (const o of orbits) drawOrbitPath(ctx, cx, cy, o);
   drawStar(ctx, cx, cy, t);
+  // Dyson swarm sits just outside the star glow, inside the innermost planet orbit
+  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette);
   // Draw planets back-to-front (further first using y-sorted trick with orbit angle)
   const sortedOrbits = [...orbits].sort((a, b) => {
     const ay = Math.sin(a.angle0 + a.angSpd * t);
@@ -559,6 +689,7 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
   const galaxyPoints = useMemo(() => genGalaxy(seededRng(137)), []);
   const patches = useMemo(() => genPlanetPatches(seededRng(99)), []);
   const orbits = useMemo(() => genOrbits(seededRng(77), 3), []);
+  const dysonSwarm = useMemo(() => genDysonSwarm(seededRng(13), 60), []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -593,7 +724,7 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
       else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, palette, secondaryColor);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor);
       else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
 
       rafId = requestAnimationFrame(render);
@@ -601,7 +732,7 @@ function KardashevCanvas({ tier, palette }: KardashevCanvasProps) {
 
     rafId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(rafId);
-  }, [tier, palette, stars, galaxyPoints, patches, orbits]);
+  }, [tier, palette, stars, galaxyPoints, patches, orbits, dysonSwarm]);
 
   return (
     <>
