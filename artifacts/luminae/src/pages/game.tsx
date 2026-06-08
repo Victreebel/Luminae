@@ -20,6 +20,7 @@ import type {
   BurnEvent,
 } from '@workspace/api-client-react';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
+import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
@@ -8126,6 +8127,12 @@ export default function GameBoard() {
         const triggeringPlayer = (state?.players ?? []).find(
           (p: GamePlayerState) => p.playerId === evt.triggeringPlayerId
         );
+        const procedure = resolveLuminaryProcedure(
+          evt.luminaryId,
+          evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
+          state,
+          evt.triggeringPlayerId,
+        );
         return (
           <LuminaryActivationCinematic
             key={evt.eventId}
@@ -8133,6 +8140,7 @@ export default function GameBoard() {
             effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
             luminaryName={lum?.name ?? evt.luminaryId}
             triggeringPlayerName={triggeringPlayer?.playerName}
+            procedure={procedure.length > 0 ? procedure : undefined}
             onComplete={() => {
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });

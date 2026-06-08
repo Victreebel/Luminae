@@ -8,6 +8,7 @@ import {
   TargetBadge,
   ConsequenceSnap,
 } from '@/components/LuminaryEffectOverlay';
+import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,7 +25,87 @@ interface LuminaryActivationCinematicProps {
   effectType: 'summon' | 'end_of_turn' | 'start_of_turn';
   luminaryName: string;
   triggeringPlayerName?: string;
+  /** Optional resolved animation procedure — drives the ProcedureStrip. */
+  procedure?: AnimationProcedureStep[];
   onComplete: () => void;
+}
+
+// ─── ProcedureStrip ───────────────────────────────────────────────────────────
+// Compact ordered strip of step pills, shown during the HOLD phase when a
+// resolved procedure is available.  Replaces the generic TargetBadge.
+
+interface StepInfo { icon: string; label: string; color: string; }
+
+function stepInfo(step: AnimationProcedureStep): StepInfo | null {
+  switch (step.type) {
+    case 'luminaryPulse': return null;
+    case 'targetClaim':   return { icon: '⬡', label: 'CLAIM',      color: '#e2e8f0' };
+    case 'keywordEvent':
+      if (step.keyword === 'burn')
+        return { icon: '🔥', label: 'BURN', color: '#ef4444' };
+      return { icon: '◎', label: step.keyword.toUpperCase(), color: '#6366f1' };
+    case 'residue': {
+      const m: Record<string, StepInfo> = {
+        condemned: { icon: '⚑', label: 'CONDEMNED', color: '#ef4444' },
+        forgotten: { icon: '◎', label: 'FORGOTTEN',  color: '#6366f1' },
+        nullified: { icon: '✕', label: 'NULLIFIED',  color: '#94a3b8' },
+        seeded:    { icon: '⁕', label: 'SEEDED',     color: '#22c55e' },
+      };
+      return m[step.keyword] ?? { icon: '◎', label: step.keyword.toUpperCase(), color: '#94a3b8' };
+    }
+    case 'marketRedraw':  return { icon: '↺', label: 'REFRESH',    color: '#94a3b8' };
+    case 'scoreChange': {
+      const sign = step.amount >= 0 ? '+' : '';
+      const color = step.amount >= 0 ? '#fbbf24' : '#ef4444';
+      return { icon: '◆', label: `${sign}${step.amount} EMN`, color };
+    }
+    case 'crystalReturn': return { icon: '◇', label: 'RETURN',     color: '#60a5fa' };
+    case 'deckScry':      return { icon: '◉', label: 'SCRY',       color: '#a78bfa' };
+    case 'pendingAction': return { icon: '⊕', label: 'ASSIMILATE', color: '#f59e0b' };
+    default:              return null;
+  }
+}
+
+function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) {
+  const visible = procedure.filter(s => s.type !== 'luminaryPulse');
+  if (visible.length === 0) return null;
+  return (
+    <motion.div
+      className="flex items-center gap-1 flex-wrap justify-center"
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 4 }}
+      transition={{ duration: 0.38, ease: 'easeOut' }}
+    >
+      {visible.map((step, i) => {
+        const info = stepInfo(step);
+        if (!info) return null;
+        return (
+          <React.Fragment key={i}>
+            {i > 0 && (
+              <span style={{ color: 'rgba(255,255,255,0.22)', fontSize: 8 }}>→</span>
+            )}
+            <div
+              style={{
+                padding: '2px 7px',
+                borderRadius: 99,
+                fontSize: 8,
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                color: info.color,
+                background: `${info.color}18`,
+                border: `1px solid ${info.color}38`,
+                backdropFilter: 'blur(4px)',
+              }}
+            >
+              {info.icon} {info.label}
+            </div>
+          </React.Fragment>
+        );
+      })}
+    </motion.div>
+  );
 }
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
@@ -155,6 +236,7 @@ export function LuminaryActivationCinematic({
   effectType,
   luminaryName,
   triggeringPlayerName,
+  procedure,
   onComplete,
 }: LuminaryActivationCinematicProps) {
   const onCompleteRef = useRef(onComplete);
@@ -325,7 +407,8 @@ export function LuminaryActivationCinematic({
     0; // pan_out + done
 
   // Beat visibility flags
-  const targetVisible = effectDef !== null && (effectBeat === 'target' || effectBeat === 'snap');
+  const hasProcedureSteps = (procedure ?? []).some(s => s.type !== 'luminaryPulse');
+  const targetVisible = (effectDef !== null || hasProcedureSteps) && (effectBeat === 'target' || effectBeat === 'snap');
   const snapVisible   = effectDef !== null && effectBeat === 'snap';
 
   const showSkipHint = phase === 'reveal' || phase === 'hold' || phase === 'pan_out';
@@ -460,16 +543,18 @@ export function LuminaryActivationCinematic({
               {label}
             </div>
 
-            {/* Beat 4 — Target claim badge (appears BEAT_TARGET_MS into hold) */}
+            {/* Beat 4 — Procedure strip (or legacy target badge when no procedure) */}
             <AnimatePresence>
-              {targetVisible && effectDef && (
+              {targetVisible && procedure && hasProcedureSteps ? (
+                <ProcedureStrip key="proc-strip" procedure={procedure} />
+              ) : targetVisible && effectDef ? (
                 <TargetBadge
                   key="target-badge"
                   tone={effectDef.tone}
                   target={effectDef.target}
                   isLingering={effectDef.isLingering}
                 />
-              )}
+              ) : null}
             </AnimatePresence>
 
             {/* Luminary name */}

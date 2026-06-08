@@ -18,6 +18,10 @@ export type AnimationProcedureStep =
   | { type: 'targetClaim'; targetIds: string[] }
   | { type: 'keywordEvent'; keyword: KeywordAnimationEvent; targetIds: string[] }
   | { type: 'marketRedraw'; slotIds: string[] }
-  | { type: 'residue'; keyword: KeywordAnimationEvent; targetIds: string[] };
+  | { type: 'residue'; keyword: KeywordMarker; targetIds: string[] }
+  | { type: 'scoreChange'; playerIds: string[]; amount: number }
+  | { type: 'crystalReturn'; playerIds: string[]; crystalType?: string }
+  | { type: 'deckScry'; tierIds: string[]; affinityBias?: string }
+  | { type: 'pendingAction'; action: 'assimilate'; ownerId: string };
 
 export type AnimationProcedure = AnimationProcedureStep[];

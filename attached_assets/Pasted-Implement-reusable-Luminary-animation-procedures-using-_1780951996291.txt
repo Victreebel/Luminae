@@ -1,0 +1,97 @@
+Implement reusable Luminary animation procedures using the existing animation primitives.
+
+Goal:
+Each active Luminary should define a lightweight animation procedure composed from shared steps:
+- luminaryPulse
+- targetClaim
+- keywordEvent
+- residue
+- marketRedraw
+- scoreChange
+- crystalReturn
+- deckScry
+- pendingAction
+
+Do not create bespoke animation systems per Luminary.
+Do not change mechanics, costs, scoring, turn order, tutorial order, or balance.
+
+Use this procedure structure:
+
+type AnimationProcedureStep =
+  | { type: "luminaryPulse"; luminaryId: string }
+  | { type: "targetClaim"; targetIds: string[] }
+  | { type: "keywordEvent"; keyword: "burn"; targetIds: string[] }
+  | { type: "residue"; keyword: "condemned" | "forgotten" | "nullified" | "seeded"; targetIds: string[] }
+  | { type: "marketRedraw"; slotIds: string[] }
+  | { type: "scoreChange"; playerIds: string[]; amount: number }
+  | { type: "crystalReturn"; playerIds: string[]; crystalType?: string }
+  | { type: "deckScry"; tierIds: string[]; affinityBias?: string }
+  | { type: "pendingAction"; action: "assimilate"; ownerId: string };
+
+Define animation procedures for active Luminaries:
+
+1. Red Moth / Rupture of the Still
+luminaryPulse → targetClaim affected Tier III/Tier II artifacts → burn → marketRedraw
+
+2. Tide Architect / The Observer Effect
+luminaryPulse → deckScry Tier II/Tier III → blue-white Continuum reorder shimmer → subtle market/deck confirmation
+
+3. Verdant Oracle / Early Bloom
+luminaryPulse → owner affinity row glow → persistent Verdance living aura marker
+
+4. Void Warden / Oblivion
+luminaryPulse → board-wide dark ripple → scoreChange all players -4 → fade without reward burst
+
+5. Concordance Mandala / Perfect Coherence
+When threshold triggers:
+luminaryPulse or mandala pulse → Radiance artifact row targetClaim → scoreChange owner +2 → once-per-game residue mark used
+
+6. Phoenix Paradox / Ash-Seeking Recurrence
+luminaryPulse → repeated targetClaim face-up Tier III then Tier II → burn nonmatching cards → reveal/check until Flare or Continuum stays → marketRedraw as needed
+
+7. Catalyst Bloom / Aftergrowth
+At owner end turn:
+if burn count > 0, bloom pulse → ash-to-growth particles → scoreChange owner +burnCount
+
+8. Iron Harbinger / Impact Extinction
+luminaryPulse → targetClaim all face-up Tier III Artifacts → burn all → marketRedraw
+
+9. lum_compass / The Forgotten Hour
+luminaryPulse → targetClaim all face-up market Artifacts → forgotten residue → Eminence icons muted until duration clears
+
+10. Seed Beyond Seasons / Avatar Seeds
+luminaryPulse → deck tier targetClaim → seeded residue on top card of each deck tier → when seeded card appears/forged by opponent, show pending Eminence marker → payout at owner next end turn
+
+11. Glass Orchard / Perfect Replication
+On first owner forge:
+orchard pulse → cheapest Tier I Artifact targetClaim → replication shimmer → copied Artifact enters collection → mark once-per-game used
+
+12. Pale Merchant / Balance Due
+luminaryPulse → crystal supply/player crystal areas targetClaim → crystalReturn for players above threshold → bank receives returned crystals
+
+13. Ember Sovereign / Cinder Mandate
+On summon:
+luminaryPulse → targetClaim all face-up Artifacts lacking Flare/Abyss/Radiance → condemned residue
+Start of owner next turn:
+condemned residue flares → burn → marketRedraw
+
+14. First Hunger / Assimilate
+On summon:
+luminaryPulse → pendingAction Assimilate appears as replacement core action
+While available:
+Forge/Reserve/Harness should be visually secondary/disabled when Assimilate is chosen
+On Assimilate use:
+targetClaim chosen face-up market Artifact → burn → scoreChange owner printed Eminence +2 → marketRedraw
+Important: Assimilate replaces the normal core action. If used, player cannot Forge, Reserve, or Harness that turn.
+
+15. Null Sovereign / Black Domain
+luminaryPulse → targetClaim affected face-up Tier III Artifacts → nullified residue → Eminence icons muted to 0
+
+Acceptance criteria:
+- Each Luminary has a defined animation procedure.
+- Procedures reuse shared primitives.
+- Burn uses the shared Burn animation.
+- Condemned/Forgotten/Nullified/Seeded use shared residue markers.
+- Assimilate is visually shown as a replacement core action, not a bonus action.
+- No mechanics are changed except correcting First Hunger if needed.
+- Existing tests/typecheck pass.
