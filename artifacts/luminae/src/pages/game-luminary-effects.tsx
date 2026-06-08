@@ -737,6 +737,7 @@ export function SummonMarketOverlay({
   if (lumId === 'lum_compass') return createPortal(<ForgottenHourFx />, document.body);
   if (lumId === 'lum_verdant') return createPortal(<VerdantBloomFx />, document.body);
   if (lumId === 'lum_pale') return createPortal(<PaleMerchantFx />, document.body);
+  if (lumId === 'lum_tide') return createPortal(<TideScryFx />, document.body);
   return null;
 }
 
@@ -1025,6 +1026,143 @@ function PaleMerchantFx() {
           transition={{ duration: 1.8, times: [0, 0.2, 0.7, 1], ease: 'easeInOut' }}
         />
       ))}
+    </div>
+  );
+}
+
+// Tide Architect — left-to-right card-flip scry wave over Tier III then Tier II
+// Continuum/Sapphire palette: deep blue, ice-blue, cool cyan.
+// A vertical sweep bar travels L→R across the market zone; as it passes each
+// column a brief flip-shimmer panel lights up, suggesting card faces being
+// revealed.  Prismatic glints fire at each reveal point.
+// Total duration: ~2.0 s.
+const SCRY_COLS = 8 as const; // 4 Tier-III + 4 Tier-II columns
+function TideScryFx() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
+
+      {/* Ambient sapphire glow — broad ellipse across the market band */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: '30%', left: '50%',
+          translateX: '-50%', translateY: '-50%',
+          width: '85vw', height: '28vh',
+          borderRadius: '50%',
+          background:
+            'radial-gradient(ellipse, #1e3a8a55 0%, #1d4ed866 30%, #0ea5e933 58%, transparent 78%)',
+          filter: 'blur(18px)',
+          pointerEvents: 'none',
+          zIndex: 69,
+        }}
+        initial={{ scale: 0.55, opacity: 0 }}
+        animate={{ scale: [0.55, 1.08, 0.96, 0.7], opacity: [0, 0.72, 0.55, 0] }}
+        transition={{ duration: 2.0, times: [0, 0.18, 0.62, 1], ease: 'easeOut' }}
+      />
+
+      {/* Vertical sweep bar — the "scry cursor" moving left to right */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: '10%',
+          bottom: '42%',
+          width: 3,
+          background:
+            'linear-gradient(180deg, transparent 0%, #38bdf8cc 18%, #e0f2feee 50%, #38bdf8cc 82%, transparent 100%)',
+          boxShadow: '0 0 18px 7px #38bdf866, 0 0 5px 2px #bae6fdcc',
+          filter: 'blur(0.5px)',
+          pointerEvents: 'none',
+          zIndex: 71,
+        }}
+        initial={{ left: '4%', opacity: 0 }}
+        animate={{ left: ['4%', '96%', '96%'], opacity: [0, 0.92, 0] }}
+        transition={{ duration: 1.55, times: [0, 0.85, 1], ease: 'easeInOut' }}
+      />
+
+      {/* Card-flip shimmer panels — one per column, staggered L→R */}
+      {Array.from({ length: SCRY_COLS }).map((_, i) => {
+        const xPct = 5 + i * 11.5;
+        const delay = 0.06 + i * 0.155;
+        const isOdd = i % 2 === 1;
+        return (
+          <motion.div
+            key={i}
+            style={{
+              position: 'fixed',
+              top: '11%',
+              bottom: '43%',
+              left: `${xPct}%`,
+              width: '9vw',
+              borderRadius: 8,
+              background: isOdd
+                ? 'linear-gradient(90deg, transparent 0%, #1e40af1a 28%, #60a5fa55 50%, #1e40af1a 72%, transparent 100%)'
+                : 'linear-gradient(90deg, transparent 0%, #0c4a6e22 28%, #38bdf866 50%, #0c4a6e22 72%, transparent 100%)',
+              boxShadow: isOdd
+                ? 'inset 0 0 0 1px #38bdf822'
+                : 'inset 0 0 0 1px #7dd3fc22',
+              pointerEvents: 'none',
+              zIndex: 69,
+            }}
+            initial={{ opacity: 0, scaleX: 0 }}
+            animate={{ opacity: [0, 0.88, 0.7, 0], scaleX: [0, 1, 1, 0] }}
+            transition={{
+              duration: 0.52,
+              delay,
+              times: [0, 0.22, 0.6, 1],
+              ease: 'easeOut',
+            }}
+          />
+        );
+      })}
+
+      {/* Prismatic glint dots — fire at the reveal point of each column */}
+      {Array.from({ length: SCRY_COLS }).map((_, i) => {
+        const xPct = 9 + i * 11.5;
+        const yPct = 13 + (i % 3) * 7;
+        const delay = 0.12 + i * 0.155;
+        const color =
+          i % 3 === 0 ? '#e0f2fe' : i % 3 === 1 ? '#7dd3fc' : '#38bdf8';
+        const glow =
+          i % 3 === 0 ? '#bae6fd99' : '#38bdf866';
+        return (
+          <motion.div
+            key={`g${i}`}
+            style={{
+              position: 'fixed',
+              top: `${yPct}%`,
+              left: `${xPct}%`,
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: color,
+              boxShadow: `0 0 8px 4px ${glow}`,
+              pointerEvents: 'none',
+              zIndex: 71,
+            }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: [0, 1, 0], scale: [0, 1.6, 0] }}
+            transition={{ duration: 0.38, delay, ease: 'easeOut' }}
+          />
+        );
+      })}
+
+      {/* Trailing sapphire edge line — briefly outlines the market zone */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: '10%',
+          left: '4%', right: '4%',
+          height: 1.5,
+          background:
+            'linear-gradient(90deg, transparent 0%, #38bdf8aa 20%, #7dd3fccc 50%, #38bdf8aa 80%, transparent 100%)',
+          boxShadow: '0 0 8px 3px #38bdf855',
+          pointerEvents: 'none',
+          zIndex: 70,
+        }}
+        initial={{ scaleX: 0, opacity: 0 }}
+        animate={{ scaleX: [0, 1, 1, 0], opacity: [0, 0.75, 0.55, 0] }}
+        transition={{ duration: 1.9, times: [0, 0.1, 0.82, 1], ease: 'easeInOut' }}
+      />
     </div>
   );
 }
