@@ -2550,7 +2550,7 @@ export function LuminarySummonCutscene({
                       scale:   isFading ? 1.18 : 1.0,
                     }}
                     transition={{
-                      opacity: { duration: 0.5, ease: 'easeOut' },
+                      opacity: { duration: 2.2, ease: 'easeOut' },
                       scale:   { type: 'spring', stiffness: 90, damping: 13, mass: 0.9 },
                     }}
                     style={{
