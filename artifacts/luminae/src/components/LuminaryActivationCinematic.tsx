@@ -215,6 +215,10 @@ export function LuminaryActivationCinematic({
     e.preventDefault();
     holdStartRef.current = performance.now();
 
+    // Capture the pointer so all subsequent pointer events (move, up, cancel)
+    // are delivered to this element even if the cursor leaves the overlay.
+    e.currentTarget.setPointerCapture(e.pointerId);
+
     const tick = () => {
       if (holdStartRef.current === null) return;
       const elapsed  = performance.now() - holdStartRef.current;
@@ -333,7 +337,6 @@ export function LuminaryActivationCinematic({
       style={{ zIndex: 8900, pointerEvents: 'auto', cursor: 'pointer', userSelect: 'none' }}
       onPointerDown={startHold}
       onPointerUp={cancelHold}
-      onPointerLeave={cancelHold}
       onPointerCancel={cancelHold}
     >
       {/* ── Board dim overlay ────────────────────────────────────────────────
