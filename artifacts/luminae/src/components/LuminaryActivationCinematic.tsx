@@ -5,7 +5,6 @@ import { getLuminaryVisuals, getLuminaryImageAssets, RadiantLivingEntityComposit
 import { gameAudio } from '@/lib/audio';
 import {
   LUMINARY_EFFECT_MAP,
-  AuraExpansion,
   TargetBadge,
   ConsequenceSnap,
 } from '@/components/LuminaryEffectOverlay';
@@ -206,7 +205,6 @@ export function LuminaryActivationCinematic({
     0; // pan_out + done
 
   // Beat visibility flags
-  const sigilVisible  = effectDef !== null && (effectBeat === 'sigil' || effectBeat === 'target' || effectBeat === 'snap');
   const targetVisible = effectDef !== null && (effectBeat === 'target' || effectBeat === 'snap');
   const snapVisible   = effectDef !== null && effectBeat === 'snap';
 
@@ -228,16 +226,6 @@ export function LuminaryActivationCinematic({
         }}
         style={{ background: 'rgba(4,2,16,1)', pointerEvents: 'none' }}
       />
-
-      {/* ── Beat 3: Aura expansion ──────────────────────────────────────────
-           Rendered BEFORE the entity in DOM order so it paints behind it.   */}
-      {showEntity && effectDef && (
-        <AuraExpansion
-          affinities={effectDef.affinities}
-          primaryColor={primaryColor}
-          visible={sigilVisible}
-        />
-      )}
 
       {/* ── Luminary entity ──────────────────────────────────────────────────
            Single continuous keyframe sequence from mount.  Opacity/scale
