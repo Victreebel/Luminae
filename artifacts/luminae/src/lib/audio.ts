@@ -633,12 +633,17 @@ class GameAudio {
    *               irregular intervals, centred 350–600 Hz (dry wood snapping).
    *   100–280 ms — brief high sizzle: bandpass burst at ~2 kHz (the momentary
    *               paper/fibre ignition pop).
+   * When multiple cards burn in the same batch, pass a 0-based `index` so
+   * each subsequent burn is offset by 80 ms, producing a staggered cluster
+   * crackle instead of overlapping sounds.  Single burns (index=0) are
+   * unaffected.
    */
-  playCardBurn() {
+  playCardBurn(index = 0) {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
-      const t = ctx.currentTime;
+      const stagger = index * 0.08;
+      const t = ctx.currentTime + stagger;
 
       // Ember rush — narrow noise sweep upward (fire catching)
       this.noiseSweep(ctx, t, 0.16, 0.055, 80, 300);

@@ -1298,11 +1298,11 @@ export default function GameBoard() {
               // since the new state has ≥1 card in burnPile.
               const chipEl = document.querySelector('[data-burn-pile-chip]');
               const chipRect = chipEl?.getBoundingClientRect() ?? null;
-              for (const { tier, slotIndex, sourceLuminaryId } of resolvedEntries) {
+              for (const [burnIdx, { tier, slotIndex, sourceLuminaryId }] of resolvedEntries.entries()) {
                 const slotEl2 = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
                 const rect2 = slotEl2?.getBoundingClientRect();
                 if (rect2) {
-                  gameAudio.playCardBurn();
+                  gameAudio.playCardBurn(burnIdx);
                   setBurnFlashes(pf => [
                     ...pf,
                     { id: `burn-${tier}-${slotIndex}-${Date.now()}`, slotRect: rect2, sourceLuminaryId },
