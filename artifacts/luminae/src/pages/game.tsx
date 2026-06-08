@@ -28,7 +28,6 @@ import { getAccountSession } from '@/lib/accountSession';
 import { useGameWebsocket } from '@/hooks/use-game-websocket';
 import { useToast } from '@/hooks/use-toast';
 import { gameAudio } from '@/lib/audio';
-import { getSkipCinematics, setSkipCinematics } from '@/lib/cinematicPrefs';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
 import { ForgeButton, EncryptButton, AssimilateButton } from '@/components/ForgeEncryptButton';
 
@@ -38,7 +37,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Hammer, Droplets, MoreVertical, Zap, RefreshCw, Film
+  Hammer, Droplets, MoreVertical, Zap, RefreshCw
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -261,17 +260,6 @@ export default function GameBoard() {
     const next = !abridgedAnims;
     setAbridgedAnims(next);
     localStorage.setItem('luminae_abridged_anims', next ? '1' : '0');
-  };
-
-  const [skipCinematics, setSkipCinematicsState] = useState<boolean>(() => {
-    const stored = getAccountSession();
-    return getSkipCinematics(stored?.account.id);
-  });
-  const toggleSkipCinematics = () => {
-    const next = !skipCinematics;
-    setSkipCinematicsState(next);
-    const stored = getAccountSession();
-    setSkipCinematics(next, stored?.account.id);
   };
 
   const [muted, setMuted] = useState(gameAudio.isMuted());
@@ -5156,10 +5144,6 @@ export default function GameBoard() {
               <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
               Abridged animations
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={toggleSkipCinematics}>
-              <Film className={`h-4 w-4 ${skipCinematics ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
-              Skip cinematics
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
               Return to Menu
@@ -7881,7 +7865,6 @@ export default function GameBoard() {
             effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
             luminaryName={lum?.name ?? evt.luminaryId}
             triggeringPlayerName={triggeringPlayer?.playerName}
-            autoSkip={skipCinematics}
             onComplete={() => {
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
