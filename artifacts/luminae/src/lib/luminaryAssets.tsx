@@ -2501,8 +2501,8 @@ export function LuminarySummonCutscene({
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
               : {
-                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.10, 0.30, 0.55, 1.0], ease: 'easeOut' },
-                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.10, 0.30, 0.55, 1.0], ease: 'easeOut' },
+                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.12, 0.48, 0.65, 0.76], ease: 'easeOut' },
+                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.12, 0.48, 0.65, 0.76], ease: 'easeOut' },
                 }
             }
           >
