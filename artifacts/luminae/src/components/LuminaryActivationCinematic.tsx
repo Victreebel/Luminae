@@ -192,6 +192,7 @@ export function LuminaryActivationCinematic({
     completedRef.current = true;
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
+    gameAudio.stopActivationSting();
     setPhase('done');
     onCompleteRef.current();
   };

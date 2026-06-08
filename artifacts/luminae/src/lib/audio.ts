@@ -61,6 +61,10 @@ class GameAudio {
   private _summonMasterGain: GainNode | null = null;
   private _summonCtx: AudioContext | null = null;
 
+  // ── Activation sting mute state ──────────────────────────────────────────
+  private _activationGain: GainNode | null = null;
+  private _activationCtx: AudioContext | null = null;
+
   constructor() {
     this.muted = localStorage.getItem('luminae_muted') === 'true';
   }
@@ -452,6 +456,13 @@ class GameAudio {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
 
+      // Shared gain node — lets stopActivationSting() silence all nodes at once.
+      const ag = ctx.createGain();
+      ag.gain.setValueAtTime(1, t);
+      ag.connect(ctx.destination);
+      this._activationGain = ag;
+      this._activationCtx  = ctx;
+
       // Resolve a pitch root from the Luminary's primary color (best-effort).
       const gem: GemKey = primaryColor
         ? (FANFARE_COLOR_MAP[primaryColor.toLowerCase()] ?? 'sapphire')
@@ -461,48 +472,62 @@ class GameAudio {
       if (effectType === 'summon') {
         // ── Arrival burst ───────────────────────────────────────────────────
         // Sub-bass bloom — grounding impact on appearance
-        this.osc(ctx, base * 0.25, 'sine', t,        t + 1.10, 0.14, 0.006);
-        this.osc(ctx, base * 0.5,  'sine', t,        t + 0.80, 0.09, 0.005);
+        this.osc(ctx, base * 0.25, 'sine', t,        t + 1.10, 0.14, 0.006, ag);
+        this.osc(ctx, base * 0.5,  'sine', t,        t + 0.80, 0.09, 0.005, ag);
         // Crystalline shockwave burst
-        this.noiseBlip(ctx, t,       0.10, 0.11, base * 2.0, 4);
-        this.noiseBlip(ctx, t + 0.04, 0.08, 0.07, base * 3.5, 6);
+        this.noiseBlip(ctx, t,       0.10, 0.11, base * 2.0, 4, ag);
+        this.noiseBlip(ctx, t + 0.04, 0.08, 0.07, base * 3.5, 6, ag);
         // 4-note ascending arpeggio on the affinity voice
         const notes = [base * 0.5, base * 0.75, base, base * 1.5];
         notes.forEach((f, i) => {
           const at = t + 0.06 + i * 0.13;
-          this.osc(ctx, f, 'sine', at, at + 0.50, 0.08 - i * 0.012, 0.005);
+          this.osc(ctx, f, 'sine', at, at + 0.50, 0.08 - i * 0.012, 0.005, ag);
         });
         // High shimmer tail — iridescent sparkle lingers after arrival
-        this.osc(ctx, base * 2.5, 'sine', t + 0.45, t + 1.30, 0.035, 0.015);
-        this.noiseBlip(ctx, t + 0.50, 0.55, 0.04, base * 4, 3);
+        this.osc(ctx, base * 2.5, 'sine', t + 0.45, t + 1.30, 0.035, 0.015, ag);
+        this.noiseBlip(ctx, t + 0.50, 0.55, 0.04, base * 4, 3, ag);
 
       } else if (effectType === 'end_of_turn') {
         // ── Energy release / outward pulse ──────────────────────────────────
         // Mid-range thud — stored energy discharging
-        this.osc(ctx, base * 0.5,  'sine', t, t + 0.70, 0.13, 0.004);
-        this.osc(ctx, base * 0.35, 'sine', t, t + 0.90, 0.07, 0.007);
+        this.osc(ctx, base * 0.5,  'sine', t, t + 0.70, 0.13, 0.004, ag);
+        this.osc(ctx, base * 0.35, 'sine', t, t + 0.90, 0.07, 0.007, ag);
         // Broad outward sweep — energy expanding from the Luminary
-        this.noiseSweep(ctx, t,        0.40, 0.09, base * 1.2, base * 0.3);
-        this.noiseSweep(ctx, t + 0.05, 0.30, 0.06, base * 2.0, base * 0.5);
+        this.noiseSweep(ctx, t,        0.40, 0.09, base * 1.2, base * 0.3, ag);
+        this.noiseSweep(ctx, t + 0.05, 0.30, 0.06, base * 2.0, base * 0.5, ag);
         // Resolving fifth chord — warmth of effect completing
-        this.osc(ctx, base,        'sine', t + 0.12, t + 0.85, 0.06, 0.018);
-        this.osc(ctx, base * 1.5,  'sine', t + 0.18, t + 0.75, 0.04, 0.020);
+        this.osc(ctx, base,        'sine', t + 0.12, t + 0.85, 0.06, 0.018, ag);
+        this.osc(ctx, base * 1.5,  'sine', t + 0.18, t + 0.75, 0.04, 0.020, ag);
         // Soft high sparkle punctuation
-        this.osc(ctx, base * 3.0,  'sine', t + 0.30, t + 0.65, 0.025, 0.010);
+        this.osc(ctx, base * 3.0,  'sine', t + 0.30, t + 0.65, 0.025, 0.010, ag);
 
       } else {
         // ── Soft awakening bloom (start_of_turn) ───────────────────────────
         // Gentle rising sweep — entity stirring
-        this.noiseSweep(ctx, t, 0.50, 0.07, base * 0.4, base * 1.6);
+        this.noiseSweep(ctx, t, 0.50, 0.07, base * 0.4, base * 1.6, ag);
         // Warm pad chord blooming open — major third + fifth
-        this.osc(ctx, base,       'sine', t + 0.08, t + 1.10, 0.07, 0.045);
-        this.osc(ctx, base * 1.25,'sine', t + 0.14, t + 1.00, 0.05, 0.050);
-        this.osc(ctx, base * 1.5, 'sine', t + 0.20, t + 0.90, 0.04, 0.055);
+        this.osc(ctx, base,       'sine', t + 0.08, t + 1.10, 0.07, 0.045, ag);
+        this.osc(ctx, base * 1.25,'sine', t + 0.14, t + 1.00, 0.05, 0.050, ag);
+        this.osc(ctx, base * 1.5, 'sine', t + 0.20, t + 0.90, 0.04, 0.055, ag);
         // Bell overtone — crystalline awakening ring
-        this.osc(ctx, base * 2.0, 'sine', t + 0.18, t + 0.80, 0.03, 0.008);
-        this.osc(ctx, base * 4.0, 'sine', t + 0.24, t + 0.55, 0.018, 0.004);
+        this.osc(ctx, base * 2.0, 'sine', t + 0.18, t + 0.80, 0.03, 0.008, ag);
+        this.osc(ctx, base * 4.0, 'sine', t + 0.24, t + 0.55, 0.018, 0.004, ag);
       }
     } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  /** Immediately silence any in-progress activation sting (called on skip). */
+  stopActivationSting() {
+    if (this._activationGain && this._activationCtx) {
+      try {
+        const t = this._activationCtx.currentTime;
+        this._activationGain.gain.cancelScheduledValues(t);
+        this._activationGain.gain.setValueAtTime(this._activationGain.gain.value, t);
+        this._activationGain.gain.linearRampToValueAtTime(0, t + 0.08);
+      } catch {}
+      this._activationGain = null;
+      this._activationCtx  = null;
+    }
   }
 
   /** Metallic coin spin — rapid decelerating clicks + resonant ring. */

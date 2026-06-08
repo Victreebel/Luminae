@@ -47,6 +47,7 @@ import {
   getHintsEnabled,
   getMuted,
   clearHintsSeen,
+  HINT_KEYS,
 } from "@/lib/cinematicPrefs";
 import { useToast } from "@/hooks/use-toast";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
@@ -375,6 +376,9 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
 
   const [hintsJustReset, setHintsJustReset] = useState(false);
 
+  const countDismissed = () => HINT_KEYS.filter((k) => localStorage.getItem(k) === "1").length;
+  const [dismissedCount, setDismissedCount] = useState(() => countDismissed());
+
   useEffect(() => {
     const refresh = () => setDismissedCount(countDismissed());
     document.addEventListener("visibilitychange", refresh);
@@ -532,7 +536,9 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             <span className="flex-1">
               {hintsJustReset
                 ? "Hints reset — tips will reappear in-game"
-                : "Reset hints"}
+                : dismissedCount > 0
+                  ? `Reset hints (${dismissedCount} dismissed)`
+                  : "Reset hints"}
             </span>
             {hintsJustReset && <Check className="h-4 w-4 text-green-400 flex-shrink-0" />}
           </button>
