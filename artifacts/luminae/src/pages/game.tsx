@@ -32,7 +32,7 @@ import { gameAudio } from '@/lib/audio';
 import { CipherApertureAnimation, CipherSigil } from '@/components/CipherApertureAnimation';
 import { ForgeButton, EncryptButton, AssimilateButton } from '@/components/ForgeEncryptButton';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
@@ -595,6 +595,7 @@ export default function GameBoard() {
     chipRect: DOMRect;
   } | null>(null);
   // v0.8 Luminary animation state
+  const burnChipAnim = useAnimation();
   const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect; sourceLuminaryId?: string }>>([]);
   const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
   const [boardDimKey, setBoardDimKey] = useState(0);
@@ -1223,42 +1224,56 @@ export default function GameBoard() {
       lastAction?.type === 'purchase_reserved' ||
       lastAction?.type === 'reserve_card';
 
-    if (!isPurchaseOrReserve) {
-      // Build a lookup of newly arrived burn events (not present in prev state).
-      const prevBurnEvents = prev.burnEvents ?? [];
-      const nextBurnEvents = state.burnEvents ?? [];
-      const addedBurnIds = new Set(
-        nextBurnEvents
-          .filter(e => !prevBurnEvents.some(p => p.cardId === e.cardId))
-          .map(e => e.cardId),
-      );
-      const sourceLuminaryByCardId = new Map<string, string>(
-        nextBurnEvents
-          .filter(e => addedBurnIds.has(e.cardId))
-          .map(e => [e.cardId, e.sourceLuminaryId]),
-      );
+    // ── BurnPile diff → slot flash + chip pulse ────────────────────────────
+    // Detect cards that newly appeared in burnPile since the last state update.
+    // For each newly burned card, find the market slot it occupied in prev and
+    // trigger a BurnFlash there. This handles both "burn+replace" (card swapped
+    // in same slot) and "burn+empty" (slot left vacant) without double-firing.
+    // sourceLuminaryId is resolved from burnEvents for richer flash metadata.
+    {
+      const prevBurned = new Set<string>(prev.burnPile ?? []);
+      const newBurnedIds = (state.burnPile ?? []).filter(id => !prevBurned.has(id));
+      if (newBurnedIds.length > 0) {
+        // Build sourceLuminaryId lookup from newly arrived burnEvents
+        const prevBurnEvents = prev.burnEvents ?? [];
+        const nextBurnEvents = state.burnEvents ?? [];
+        const sourceLuminaryByCardId = new Map<string, string>(
+          nextBurnEvents
+            .filter(e => !prevBurnEvents.some(p => p.cardId === e.cardId))
+            .map(e => [e.cardId, e.sourceLuminaryId]),
+        );
 
-      const tiers = [
-        { tier: 1 as const, oldCards: prev.marketTier1, newCards: state.marketTier1 },
-        { tier: 2 as const, oldCards: prev.marketTier2, newCards: state.marketTier2 },
-        { tier: 3 as const, oldCards: prev.marketTier3, newCards: state.marketTier3 },
-      ] as const;
-      for (const { tier, oldCards, newCards } of tiers) {
-        const len = Math.min(oldCards.length, newCards.length);
-        for (let i = 0; i < len; i++) {
-          const o = oldCards[i], n = newCards[i];
-          if (o && n && o.id !== n.id) {
-            const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
-            if (slotEl) {
-              const rect = slotEl.getBoundingClientRect();
-              const sourceLuminaryId = sourceLuminaryByCardId.get(o.id);
-              setBurnFlashes(pf => [
-                ...pf,
-                { id: `burn-${tier}-${i}-${Date.now()}`, slotRect: rect, sourceLuminaryId },
-              ]);
+        const prevTiers = [
+          { tier: 1 as const, cards: prev.marketTier1 },
+          { tier: 2 as const, cards: prev.marketTier2 },
+          { tier: 3 as const, cards: prev.marketTier3 },
+        ] as const;
+        for (const burnedId of newBurnedIds) {
+          let found = false;
+          for (const { tier, cards } of prevTiers) {
+            if (found) break;
+            for (let i = 0; i < cards.length; i++) {
+              if (cards[i]?.id === burnedId) {
+                const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
+                if (slotEl) {
+                  const rect = slotEl.getBoundingClientRect();
+                  const sourceLuminaryId = sourceLuminaryByCardId.get(burnedId);
+                  setBurnFlashes(pf => [
+                    ...pf,
+                    { id: `burn-${tier}-${i}-${Date.now()}`, slotRect: rect, sourceLuminaryId },
+                  ]);
+                }
+                found = true;
+                break;
+              }
             }
           }
         }
+        // Pulse the 🔥 chip to signal the burn pile count changed
+        void burnChipAnim.start({
+          filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
+          transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
+        });
       }
     }
 
@@ -3686,16 +3701,18 @@ export default function GameBoard() {
           </div>
           <div className="flex items-center gap-1.5">
             {(state.burnPile ?? []).length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowBurnPileOverlay(true)}
-                className="flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground hover:text-orange-400/80 transition-colors"
-                title="View burned Artifacts"
-                aria-label={`View ${(state.burnPile ?? []).length} burned Artifact${(state.burnPile ?? []).length === 1 ? '' : 's'}`}
-              >
-                <span className="text-[11px] leading-none">🔥</span>
-                <span className="text-[9px] font-bold tabular-nums leading-none">{(state.burnPile ?? []).length}</span>
-              </button>
+              <motion.div animate={burnChipAnim} style={{ display: 'inline-flex' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBurnPileOverlay(true)}
+                  className="flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground hover:text-orange-400/80 transition-colors"
+                  title="View burned Artifacts"
+                  aria-label={`View ${(state.burnPile ?? []).length} burned Artifact${(state.burnPile ?? []).length === 1 ? '' : 's'}`}
+                >
+                  <span className="text-[11px] leading-none">🔥</span>
+                  <span className="text-[9px] font-bold tabular-nums leading-none">{(state.burnPile ?? []).length}</span>
+                </button>
+              </motion.div>
             )}
             <button
               type="button"
