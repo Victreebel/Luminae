@@ -371,4 +371,35 @@ router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<voi
   });
 });
 
+// GET /api/auth/me/preferences
+router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
+  const account = req.account!;
+  res.json({ skipCinematics: account.skipCinematics });
+});
+
+// PATCH /api/auth/me/preferences
+const PreferencesBody = z.object({
+  skipCinematics: z.boolean().optional(),
+});
+
+router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
+  const parsed = PreferencesBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+
+  const account = req.account!;
+  const { skipCinematics } = parsed.data;
+
+  if (skipCinematics !== undefined) {
+    await db
+      .update(accountsTable)
+      .set({ skipCinematics })
+      .where(eq(accountsTable.id, account.id));
+  }
+
+  res.json({ ok: true });
+});
+
 export default router;

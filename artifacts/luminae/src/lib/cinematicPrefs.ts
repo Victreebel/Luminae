@@ -1,25 +1,73 @@
-const BASE_KEY = 'luminae_skip_cinematics';
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
 
-function storageKey(accountId?: string | null): string {
-  return accountId ? `${BASE_KEY}_${accountId}` : BASE_KEY;
+function apiUrl(path: string): string {
+  const base = BASE_URL.replace(/\/$/, "");
+  return `${base}/api${path}`;
 }
 
-export function getSkipCinematics(accountId?: string | null): boolean {
+const GLOBAL_KEY = "luminae_skip_cinematics";
+
+function accountKey(accountId: string): string {
+  return `luminae_skip_cinematics_${accountId}`;
+}
+
+export function getSkipCinematics(accountId?: string): boolean {
   try {
-    const perAccount = accountId
-      ? localStorage.getItem(storageKey(accountId))
-      : null;
-    const value = perAccount ?? localStorage.getItem(BASE_KEY);
-    return value === '1';
+    if (accountId) {
+      const val = localStorage.getItem(accountKey(accountId));
+      if (val !== null) return val === "1";
+    }
+    const val = localStorage.getItem(GLOBAL_KEY);
+    return val === "1";
   } catch {
     return false;
   }
 }
 
-export function setSkipCinematics(value: boolean, accountId?: string | null): void {
+function writeLocal(value: boolean, accountId?: string): void {
   try {
-    localStorage.setItem(storageKey(accountId), value ? '1' : '0');
+    if (accountId) {
+      localStorage.setItem(accountKey(accountId), value ? "1" : "0");
+    }
+    localStorage.setItem(GLOBAL_KEY, value ? "1" : "0");
   } catch {
-    // localStorage unavailable — silently ignore
+    // ignore storage errors
   }
+}
+
+export function setSkipCinematics(value: boolean, accountId?: string, token?: string): void {
+  writeLocal(value, accountId);
+  if (token) {
+    void apiUpdatePreferences(token, { skipCinematics: value }).catch(() => undefined);
+  }
+}
+
+export async function syncSkipCinematics(token: string, accountId: string): Promise<boolean> {
+  const prefs = await apiGetPreferences(token);
+  writeLocal(prefs.skipCinematics, accountId);
+  return prefs.skipCinematics;
+}
+
+export interface AccountPreferences {
+  skipCinematics: boolean;
+}
+
+export async function apiGetPreferences(token: string): Promise<AccountPreferences> {
+  const res = await fetch(apiUrl("/auth/me/preferences"), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch preferences");
+  return res.json() as Promise<AccountPreferences>;
+}
+
+export async function apiUpdatePreferences(
+  token: string,
+  prefs: Partial<AccountPreferences>,
+): Promise<void> {
+  const res = await fetch(apiUrl("/auth/me/preferences"), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(prefs),
+  });
+  if (!res.ok) throw new Error("Failed to update preferences");
 }

@@ -22,6 +22,7 @@ import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCine
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
+import { getSkipCinematics, setSkipCinematics } from '@/lib/cinematicPrefs';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadingScreen } from '@/components/AccountLoadingScreen';
 import { getAccountSession } from '@/lib/accountSession';
@@ -262,6 +263,14 @@ export default function GameBoard() {
     localStorage.setItem('luminae_abridged_anims', next ? '1' : '0');
   };
 
+  const [skipCinematics, setSkipCinematicsState] = useState<boolean>(() => getSkipCinematics());
+  const toggleSkipCinematics = () => {
+    const next = !skipCinematics;
+    setSkipCinematicsState(next);
+    const acctSession = getAccountSession();
+    setSkipCinematics(next, acctSession?.account.id, acctSession?.token ?? undefined);
+  };
+
   const [muted, setMuted] = useState(gameAudio.isMuted());
   const [selectedCrystals, setSelectedCrystals] = useState<Partial<CrystalCounts>>({});
   const [harvestBurstKeys, setHarvestBurstKeys] = useState<Partial<Record<GemKey, number>>>({});
@@ -448,7 +457,7 @@ export default function GameBoard() {
   // True when status just became 'finished' but summons are still in flight.
   // The win overlay and win audio are held back until the summon queue drains.
   const [pendingGameOver, setPendingGameOver] = useState(false);
-  const [showCinematic, setShowCinematic] = useState(true);
+  const [showCinematic, setShowCinematic] = useState(() => !getSkipCinematics());
   const [showWinOverlay, setShowWinOverlay] = useState(true);
   const returnBannerRef = useRef<HTMLButtonElement | null>(null);
   // summonColor of the Luminary that sealed the game (set when pendingGameOver goes
@@ -5143,6 +5152,10 @@ export default function GameBoard() {
             <DropdownMenuItem onClick={toggleAbridgedAnims}>
               <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
               Abridged animations
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleSkipCinematics}>
+              <Sparkles className={`h-4 w-4 ${skipCinematics ? 'text-muted-foreground opacity-50' : 'text-yellow-400'}`} />
+              {skipCinematics ? 'Cinematics off' : 'Cinematics on'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />

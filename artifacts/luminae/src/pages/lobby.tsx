@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useEscapeToClose } from "@/hooks/use-escape-to-close";
 import { useLocation, useParams } from "wouter";
-import { getSkipCinematics, setSkipCinematics } from "@/lib/cinematicPrefs";
+import { getSkipCinematics, setSkipCinematics, syncSkipCinematics } from "@/lib/cinematicPrefs";
 import {
   useStartGame,
   useKickPlayer,
@@ -62,13 +62,20 @@ export default function Lobby() {
   const [skipCinematics, setSkipCinematicsState] = useState(() => getSkipCinematics(account?.id));
 
   useEffect(() => {
-    setSkipCinematicsState(getSkipCinematics(account?.id));
+    const token = getAccountToken();
+    if (account?.id && token) {
+      syncSkipCinematics(token, account.id)
+        .then((serverValue) => setSkipCinematicsState(serverValue))
+        .catch(() => setSkipCinematicsState(getSkipCinematics(account.id)));
+    } else {
+      setSkipCinematicsState(getSkipCinematics(account?.id));
+    }
   }, [account?.id]);
 
   const handleToggleSkipCinematics = () => {
     const next = !skipCinematics;
     setSkipCinematicsState(next);
-    setSkipCinematics(next, account?.id);
+    setSkipCinematics(next, account?.id, getAccountToken() ?? undefined);
   };
 
   const handleChallengeCreated = (cRoomId: string, cInviteCode: string, cSessionToken: string, cPlayerId: string) => {
