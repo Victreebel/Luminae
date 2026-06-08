@@ -143,6 +143,72 @@ function genDysonSwarm(rng: () => number, count: number): DysonSatellite[] {
  * highlight inside whatever clip region is currently active.  Must be called
  * while the canvas is already clipped to the planet disc.
  */
+/**
+ * Draws subtle terrain variation (noise blobs) and small crater marks inside
+ * the current canvas clip region (expected: a planet disc clip is already active).
+ * Uses a seeded LCG so positions are deterministic per planet and don't jitter.
+ */
+function drawPlanetSurfaceDetail(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  radius: number,
+  palette: AffinityPalette,
+  craterCount: number,
+  blobCount: number,
+  stableSeed: number,
+) {
+  // LCG seeded from caller-provided stable value (must NOT use animated cx/cy for moving planets)
+  let seed = (stableSeed | 0) >>> 0;
+  const rng = () => {
+    seed = ((seed * 1664525 + 1013904223) >>> 0);
+    return seed / 0xffffffff;
+  };
+
+  // --- Terrain noise blobs (highlands / plains variation) ---
+  ctx.globalAlpha = 0.11;
+  for (let i = 0; i < blobCount; i++) {
+    const angle = rng() * Math.PI * 2;
+    const dist  = rng() * radius * 0.80;
+    const bx = cx + Math.cos(angle) * dist;
+    const by = cy + Math.sin(angle) * dist;
+    const rx = radius * (0.07 + rng() * 0.13);
+    const ry = rx * (0.45 + rng() * 0.55);
+    const rot = rng() * Math.PI;
+    const col = rng() > 0.5 ? palette.accent : palette.secondary;
+    ctx.beginPath();
+    ctx.ellipse(bx, by, rx, ry, rot, 0, Math.PI * 2);
+    ctx.fillStyle = hexAlpha(col, 0.6);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- Crater marks: dark filled ellipse + faint bright ejecta rim ---
+  for (let i = 0; i < craterCount; i++) {
+    const angle = rng() * Math.PI * 2;
+    const dist  = rng() * radius * 0.70;
+    const bx = cx + Math.cos(angle) * dist;
+    const by = cy + Math.sin(angle) * dist;
+    const cr = radius * (0.05 + rng() * 0.09);
+    const rot = rng() * Math.PI;
+
+    // Dark crater bowl
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    ctx.ellipse(bx, by, cr, cr * 0.62, rot, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.fill();
+
+    // Faint bright ejecta rim (slightly offset toward the lit side)
+    ctx.globalAlpha = 0.09;
+    ctx.beginPath();
+    ctx.ellipse(bx - cr * 0.10, by - cr * 0.08, cr * 1.12, cr * 0.72, rot, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = Math.max(0.5, radius * 0.011);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawPlanetBandingAndHighlight(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
@@ -343,6 +409,10 @@ function drawPlanet(
   }
   ctx.globalAlpha = 1;
 
+  // Surface detail: terrain blobs + craters (inside clip, above patches)
+  // Seed from cx/cy which are fixed for the main planet (it doesn't orbit)
+  drawPlanetSurfaceDetail(ctx, cx, cy, radius, palette, 3, 10, (cx * 7919 + cy * 6271) | 0);
+
   // Hemisphere shading (terminator)
   const shad = ctx.createRadialGradient(
     cx + radius * 0.35, cy + radius * 0.3, radius * 0.1,
@@ -463,6 +533,11 @@ function drawOrbitPlanet(
 
   // 1–2 scrolling latitude bands + specular highlight (small planet, fewer bands)
   drawPlanetBandingAndHighlight(ctx, px, py, orbit.radius, t, palette, 2);
+
+  // Surface detail: proportionally scaled for smaller disc (1–2 craters, 5 blobs)
+  // Seed from stable orbit params (NOT px/py — those change every frame and would cause jitter)
+  drawPlanetSurfaceDetail(ctx, px, py, orbit.radius, palette, 1, 5,
+    (orbit.angle0 * 9999 + orbit.orbitR * 6271 + orbit.colorIdx * 997) | 0);
 
   ctx.restore();
 }
