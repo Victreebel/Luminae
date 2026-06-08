@@ -723,9 +723,11 @@ const SPARK_COUNT = 4;
 
 export function BurnChipLandingSpark({
   chipRect,
+  angleSeed = 0,
   onDone,
 }: {
   chipRect: DOMRect;
+  angleSeed?: number;
   onDone: () => void;
 }) {
   const onDoneRef = useRef(onDone);
@@ -737,9 +739,10 @@ export function BurnChipLandingSpark({
   const cx = chipRect.left + chipRect.width  / 2;
   const cy = chipRect.top  + chipRect.height / 2;
 
-  // Pre-compute deterministic scatter vectors so the component is stable
+  // Pre-compute scatter vectors; angleSeed rotates the whole burst so each
+  // landing looks unique without changing overall visual weight.
   const sparks = Array.from({ length: SPARK_COUNT }, (_, i) => {
-    const angle = (i / SPARK_COUNT) * Math.PI * 2 + (i % 2 === 0 ? 0.3 : -0.3);
+    const angle = (i / SPARK_COUNT) * Math.PI * 2 + (i % 2 === 0 ? 0.3 : -0.3) + angleSeed;
     const dist  = 13 + (i % 2) * 6; // 13 or 19 px
     return {
       dx: Math.cos(angle) * dist,

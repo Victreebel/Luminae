@@ -605,7 +605,7 @@ export default function GameBoard() {
   const [boardDimKey, setBoardDimKey] = useState(0);
   const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
   const [burnPileParticles, setBurnPileParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
-  const [burnChipSparks, setBurnChipSparks] = useState<Array<{ id: string; chipRect: DOMRect }>>([]);
+  const [burnChipSparks, setBurnChipSparks] = useState<Array<{ id: string; chipRect: DOMRect; angleSeed: number }>>([]);
   const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
   const [showSeedBoardEffect, setShowSeedBoardEffect] = useState(false);
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
@@ -1327,7 +1327,7 @@ export default function GameBoard() {
                         });
                         setBurnChipSparks(pf => [
                           ...pf,
-                          { id: `bspark-${tier}-${slotIndex}-${Date.now()}`, chipRect: toRect },
+                          { id: `bspark-${tier}-${slotIndex}-${Date.now()}`, chipRect: toRect, angleSeed: Math.random() * Math.PI * 2 },
                         ]);
                       }, 780);
                     }, 380);
@@ -8302,6 +8302,7 @@ export default function GameBoard() {
         <BurnChipLandingSpark
           key={s.id}
           chipRect={s.chipRect}
+          angleSeed={s.angleSeed}
           onDone={() => setBurnChipSparks(pf => pf.filter(x => x.id !== s.id))}
         />
       ))}
