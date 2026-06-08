@@ -10,6 +10,7 @@ import {
   type AccountInfo,
   type AccountSession,
 } from "@/lib/accountSession";
+import { syncAccountPreferences } from "@/lib/cinematicPrefs";
 
 interface AccountContextValue {
   account: AccountInfo | null;
@@ -33,16 +34,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = getAccountSession();
-    setSession(stored);
-    _currentToken = stored?.token ?? null;
-    setIsLoading(false);
+    const restore = async () => {
+      const stored = getAccountSession();
+      _currentToken = stored?.token ?? null;
+      if (stored) {
+        await syncAccountPreferences(stored.token, stored.account.id).catch(() => undefined);
+      }
+      setSession(stored);
+    };
+    void restore().finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const s = await apiLogin({ username, password });
     saveAccountSession(s);
     _currentToken = s.token;
+    await syncAccountPreferences(s.token, s.account.id).catch(() => undefined);
     setSession(s);
   }, []);
 
@@ -50,6 +57,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const s = await apiRegister({ username, password, email });
     saveAccountSession(s);
     _currentToken = s.token;
+    await syncAccountPreferences(s.token, s.account.id).catch(() => undefined);
     setSession(s);
   }, []);
 
