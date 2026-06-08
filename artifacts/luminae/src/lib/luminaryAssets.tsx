@@ -2423,7 +2423,7 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: prefersReducedMotion ? 0.6 : 0.2, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse 55% 55% at 50% 42%, #ffffff 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.2) 70%, transparent 100%)`,
-                filter: isMobile ? 'blur(2px)' : 'blur(4px)',
+                filter: isMobile ? undefined : 'blur(4px)',
               }}
             />
             {/* Affinity haze — quick burst of the luminary's color */}
@@ -2440,7 +2440,7 @@ export function LuminarySummonCutscene({
               exit={{ opacity: 0, transition: { duration: prefersReducedMotion ? 0.6 : 0.25, ease: 'easeOut' } }}
               style={{
                 background: `radial-gradient(ellipse at 50% 42%, rgba(${pRgb},0.9) 0%, rgba(${pRgb},0.5) 35%, rgba(${sRgb},0.2) 60%, transparent 85%)`,
-                filter: isMobile ? 'blur(4px)' : 'blur(8px)',
+                filter: isMobile ? undefined : 'blur(8px)',
               }}
             />
             {/* Shock ring — expanding ring burst; hidden under prefers-reduced-motion */}
@@ -2527,36 +2527,27 @@ export function LuminarySummonCutscene({
             {/* perspective=800px gives the depth illusion; easeOut keeps it slow.    */}
             <motion.div
               className="relative flex flex-col items-center"
-              style={{ overflow: 'visible', perspective: isMobile ? undefined : '800px' }}
-              initial={isMobile
-                ? { opacity: 0, scale: 0.92 }
-                : { scale: 0.02, y: -90, opacity: 0, rotateY: 18, z: -480 }
-              }
+              style={{ overflow: 'visible', perspective: '800px' }}
+              initial={{ scale: 0.02, y: -90, opacity: 0, rotateY: 18, z: -480 }}
               animate={isFading
-                ? (isMobile
-                    ? { opacity: 0, scale: 1.06 }
-                    : { scale: 1.14, y: -38, opacity: 0, rotateY: 0, z: 0 })
-                : (isMobile
-                    ? { opacity: 1, scale: 1.0 }
-                    : {
-                        scale:   [0.02, 0.86, 1.0],
-                        y:       [-90, 54, 0],
-                        opacity: 1,
-                        rotateY: [18, 3, 0],
-                        z:       [-480, -28, 0],
-                      })
+                ? { scale: 1.14, y: -38, opacity: 0, rotateY: 0, z: 0 }
+                : {
+                    scale:   [0.02, 0.86, 1.0],
+                    y:       [-90, 54, 0],
+                    opacity: 1,
+                    rotateY: [18, 3, 0],
+                    z:       [-480, -28, 0],
+                  }
               }
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
-                : (isMobile
-                    ? { opacity: { duration: 0.7, ease: 'easeOut' }, scale: { duration: 0.7, ease: 'easeOut' } }
-                    : {
-                        scale:   { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                        y:       { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                        rotateY: { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                        z:       { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                        opacity: { duration: 0.55, delay: 0.08, ease: 'easeOut' },
-                      })
+                : {
+                    scale:   { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    y:       { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    rotateY: { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    z:       { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    opacity: { duration: 0.55, delay: 0.08, ease: 'easeOut' },
+                  }
               }
             >
               {/* Breathing hover — CSS animation replaces framer-motion repeat:Infinity y+scale */}
@@ -2573,16 +2564,13 @@ export function LuminarySummonCutscene({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.18 }}
                     animate={{
-                      opacity: isFading ? 0 : (prefersReducedMotion || isMobile) ? 0.78 : [0, 0.92, 0.78],
-                      scale:   isFading ? 1.18 : (prefersReducedMotion || isMobile) ? 1.0 : [0.18, 1.38, 1.0],
+                      opacity: isFading ? 0 : prefersReducedMotion ? 0.78 : [0, 0.92, 0.78],
+                      scale:   isFading ? 1.18 : prefersReducedMotion ? 1.0 : [0.18, 1.38, 1.0],
                     }}
-                    transition={isMobile
-                      ? { opacity: { duration: 0.9, delay: 0.3, ease: 'easeOut' }, scale: { duration: 0.9, delay: 0.3, ease: 'easeOut' } }
-                      : {
-                          opacity: { duration: 4.2, delay: 0.5, times: [0, 0.22, 1.0], ease: 'easeOut' },
-                          scale:   { duration: 4.2, delay: 0.5, times: [0, 0.28, 1.0], ease: ['easeOut', 'easeInOut'] },
-                        }
-                    }
+                    transition={{
+                      opacity: { duration: 4.2, delay: 0.5, times: [0, 0.22, 1.0], ease: 'easeOut' },
+                      scale:   { duration: 4.2, delay: 0.5, times: [0, 0.28, 1.0], ease: ['easeOut', 'easeInOut'] },
+                    }}
                     style={{
                       position: 'absolute',
                       width: 680, height: 740,
@@ -2590,7 +2578,7 @@ export function LuminarySummonCutscene({
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 48%, ${primaryColor}ff 0%, ${primaryColor}cc 12%, ${primaryColor}77 34%, ${secondaryColor}33 58%, transparent 76%)`,
-                      filter: 'blur(12px)',
+                      filter: isMobile ? undefined : 'blur(12px)',
                       zIndex: 0,
                     }}
                   />
@@ -2599,16 +2587,13 @@ export function LuminarySummonCutscene({
                   <motion.div
                     initial={{ opacity: 0, scale: 0.22 }}
                     animate={{
-                      opacity: isFading ? 0 : (prefersReducedMotion || isMobile) ? 0.90 : [0, 1.0, 0.90],
-                      scale:   isFading ? 1.12 : (prefersReducedMotion || isMobile) ? 1.0 : [0.22, 1.22, 1.0],
+                      opacity: isFading ? 0 : prefersReducedMotion ? 0.90 : [0, 1.0, 0.90],
+                      scale:   isFading ? 1.12 : prefersReducedMotion ? 1.0 : [0.22, 1.22, 1.0],
                     }}
-                    transition={isMobile
-                      ? { opacity: { duration: 0.7, delay: 0.3, ease: 'easeOut' }, scale: { duration: 0.7, delay: 0.3, ease: 'easeOut' } }
-                      : {
-                          opacity: { duration: 3.2, delay: 0.5, times: [0, 0.24, 1.0], ease: 'easeOut' },
-                          scale:   { duration: 3.2, delay: 0.5, times: [0, 0.28, 1.0], ease: ['easeOut', 'easeInOut'] },
-                        }
-                    }
+                    transition={{
+                      opacity: { duration: 3.2, delay: 0.5, times: [0, 0.24, 1.0], ease: 'easeOut' },
+                      scale:   { duration: 3.2, delay: 0.5, times: [0, 0.28, 1.0], ease: ['easeOut', 'easeInOut'] },
+                    }}
                     style={{
                       position: 'absolute',
                       width: 400, height: 500,
@@ -2616,7 +2601,7 @@ export function LuminarySummonCutscene({
                       x: '-50%', y: '-52%',
                       borderRadius: '50%',
                       background: `radial-gradient(ellipse at 50% 46%, ${glowColor}88 0%, ${glowColor}55 18%, ${glowColor}22 36%, ${primaryColor}11 56%, transparent 76%)`,
-                      filter: 'blur(8px)',
+                      filter: isMobile ? undefined : 'blur(8px)',
                       zIndex: 2,
                       mixBlendMode: 'screen',
                     }}
