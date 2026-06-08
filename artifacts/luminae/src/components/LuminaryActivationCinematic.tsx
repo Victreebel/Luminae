@@ -112,6 +112,14 @@ export function LuminaryActivationCinematic({
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
+  // Shared completed flag — readable by both the timer chain cleanup and the
+  // skip handler.  Using a ref avoids stale-closure issues.
+  const completedRef = useRef(false);
+
+  // Timer handles held in refs so the skip handler can cancel them without
+  // needing access to the useEffect closure.
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   const [phase, setPhase] = useState<Phase>('anticipate');
   const [effectBeat, setEffectBeat] = useState<EffectBeat>('idle');
 
@@ -125,29 +133,38 @@ export function LuminaryActivationCinematic({
   const label = EFFECT_TYPE_LABELS[effectType] ?? 'EFFECT';
   const effectDef = LUMINARY_EFFECT_MAP[luminaryId] ?? null;
 
+  // ── Skip handler — called when the player taps/clicks the overlay ─────────
+  const handleSkip = () => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    setPhase('done');
+    onCompleteRef.current();
+  };
+
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
     gameAudio.playActivationSting(effectType, primaryColor);
-
-    // Track whether the cinematic reached its natural end so the cleanup can
-    // call onComplete as a fallback if the component unmounts mid-sequence
-    // (e.g. disconnect, fast WebSocket state update removing the overlay).
-    let completed = false;
 
     const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
     const t2 = setTimeout(() => setPhase('hold'),    ANTICIPATE_MS + REVEAL_MS);
     const t3 = setTimeout(() => setPhase('pan_out'), ANTICIPATE_MS + REVEAL_MS + HOLD_MS);
     const t4 = setTimeout(() => {
-      completed = true;
+      completedRef.current = true;
       setPhase('done');
       onCompleteRef.current();
     }, ANTICIPATE_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS);
 
+    timersRef.current = [t1, t2, t3, t4];
+
     return () => {
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
       // If unmounted before t4 fired, drain the event queue immediately so
       // the animation state machine never stalls.
-      if (!completed) {
+      if (!completedRef.current) {
+        completedRef.current = true;
         onCompleteRef.current();
       }
     };
@@ -219,7 +236,8 @@ export function LuminaryActivationCinematic({
   const content = (
     <div
       className="fixed inset-0"
-      style={{ zIndex: 8900, pointerEvents: 'none' }}
+      style={{ zIndex: 8900, pointerEvents: 'auto', cursor: 'pointer' }}
+      onClick={handleSkip}
     >
       {/* ── Board dim overlay ────────────────────────────────────────────────
            Fades in over ANTICIPATE_MS, fades out over PAN_OUT_MS.          */}
@@ -380,6 +398,23 @@ export function LuminaryActivationCinematic({
       <AnimatePresence>
         {snapVisible && effectDef && (
           <ConsequenceSnap key="snap" tone={effectDef.tone} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Skip hint ────────────────────────────────────────────────────────
+           Appears after ANTICIPATE_MS so it doesn't flash on instant skips. */}
+      <AnimatePresence>
+        {(phase === 'reveal' || phase === 'hold' || phase === 'pan_out') && (
+          <motion.div
+            key="skip-hint"
+            className="absolute bottom-4 right-4 text-[10px] tracking-[0.14em] uppercase select-none"
+            style={{ color: 'rgba(255,255,255,0.35)', pointerEvents: 'none' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.4, delay: 0.1 } }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          >
+            tap to skip
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
