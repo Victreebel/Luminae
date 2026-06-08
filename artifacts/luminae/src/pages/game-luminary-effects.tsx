@@ -141,81 +141,177 @@ export function ArmedSigil({
   );
 }
 
-// ── BurnFlash ────────────────────────────────────────────────────────────────
-// Brief amber/fire flash on a market slot when a burn effect replaces a card.
-// Renders as a document.body portal to escape overflow containers.
-// Self-destructs after animation completes.
+// ── BurnFlash ─────────────────────────────────────────────────────────────────
+// Reusable 5-phase Burn keyword animation.  Plays over the affected market slot
+// and self-destructs after completion.  Renders as a document.body portal to
+// escape overflow containers.
+//
+// Phase 1 (  0–150 ms): Target claim — ember outline ring + inset glow.
+// Phase 2 (150–420 ms): Heat fracture — crack lines radiate from card centre.
+// Phase 3 (400–750 ms): Burn release — ash fragments scatter + central flare.
+// Phase 4 (700–850 ms): Burn pile confirmation — handled by state update (🔥 chip).
+// Phase 5 (800–1180ms): Scorched residue — char rectangle fades out.
+//
+// Callable as { type: 'keywordEvent', keyword: 'burn', targetIds: [...] } inside
+// any AnimationProcedure (see lib/animationProcedure.ts).
+
+// Ash fragment vectors — precomputed, stable across renders.
+const ASH_FRAGMENTS = [
+  { dx: -58, dy: -72, delay: 0.39, size: 5 },
+  { dx:  62, dy: -68, delay: 0.41, size: 6 },
+  { dx: -78, dy: -18, delay: 0.43, size: 4 },
+  { dx:  74, dy:  -8, delay: 0.37, size: 5 },
+  { dx: -42, dy:  62, delay: 0.45, size: 4 },
+  { dx:  48, dy:  68, delay: 0.42, size: 6 },
+  { dx: -22, dy: -88, delay: 0.40, size: 3 },
+  { dx:  28, dy: -82, delay: 0.44, size: 4 },
+] as const;
+
+// Crack line descriptors — angle in degrees, half-length as a fraction of the
+// shorter slot dimension.
+const CRACK_LINES = [
+  { angle: -38, frac: 0.46 },
+  { angle:  22, frac: 0.39 },
+  { angle: 148, frac: 0.43 },
+  { angle: 202, frac: 0.36 },
+  { angle:  82, frac: 0.31 },
+] as const;
 
 export function BurnFlash({
   slotRect,
   onDone,
+  sourceLuminaryId: _sourceLuminaryId,
 }: {
   slotRect: DOMRect;
   onDone: () => void;
+  /** Which Luminary triggered this burn — reserved for future per-Luminary theming. */
+  sourceLuminaryId?: string;
 }) {
   const onDoneRef = useRef(onDone);
   useEffect(() => {
-    const t = setTimeout(() => onDoneRef.current(), 900);
+    const t = setTimeout(() => onDoneRef.current(), 1200);
     return () => clearTimeout(t);
   }, []);
 
-  const cx = slotRect.left + slotRect.width / 2;
-  const cy = slotRect.top + slotRect.height / 2;
+  const cx = slotRect.left + slotRect.width  / 2;
+  const cy = slotRect.top  + slotRect.height / 2;
+  const shortSide = Math.min(slotRect.width, slotRect.height);
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9995 }}>
-      {/* Radial ember flare at slot centre */}
+
+      {/* ── Phase 1: Target claim — ember outline ring ── */}
       <motion.div
         style={{
           position: 'absolute',
-          left: cx - slotRect.width * 0.65,
-          top: cy - slotRect.height * 0.65,
-          width:  slotRect.width  * 1.3,
-          height: slotRect.height * 1.3,
+          left: slotRect.left - 3,
+          top:  slotRect.top  - 3,
+          width:  slotRect.width  + 6,
+          height: slotRect.height + 6,
+          borderRadius: 14,
+          border: '2px solid #ff6820',
+          boxShadow: '0 0 10px 3px #ff6820aa, inset 0 0 16px 2px #ff330044',
+        }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: [0, 1, 0.85, 0], scale: [0.92, 1.0, 1.0, 1.02] }}
+        transition={{ duration: 0.42, ease: 'easeOut', times: [0, 0.18, 0.6, 1] }}
+      />
+
+      {/* ── Phase 2: Heat fracture — crack lines radiating from centre ── */}
+      {CRACK_LINES.map((crack, i) => {
+        const halfLen = crack.frac * shortSide;
+        return (
+          <motion.div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: cx - halfLen,
+              top:  cy,
+              width:  halfLen * 2,
+              height: 1.5,
+              background: 'linear-gradient(90deg, transparent 0%, #ff8833cc 40%, #ffcc7788 70%, transparent 100%)',
+              transformOrigin: '50% 50%',
+              transform: `rotate(${crack.angle}deg)`,
+            }}
+            initial={{ scaleX: 0, opacity: 0 }}
+            animate={{ scaleX: [0, 1, 1, 0.3], opacity: [0, 0.9, 0.7, 0] }}
+            transition={{ duration: 0.55, delay: 0.13 + i * 0.028, ease: 'easeOut', times: [0, 0.25, 0.6, 1] }}
+          />
+        );
+      })}
+
+      {/* ── Phase 3a: Central ember flare ── */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          left: cx - slotRect.width  * 0.6,
+          top:  cy - slotRect.height * 0.6,
+          width:  slotRect.width  * 1.2,
+          height: slotRect.height * 1.2,
           borderRadius: 12,
-          background:
-            'radial-gradient(ellipse at center, #ff9a2aee 0%, #ff5500cc 30%, #cc220088 60%, transparent 80%)',
+          background: 'radial-gradient(ellipse at center, #ff9a2aee 0%, #ff5500cc 28%, #cc220088 55%, transparent 78%)',
           filter: 'blur(2.5px)',
         }}
-        initial={{ scale: 0.15, opacity: 0 }}
-        animate={{ scale: [0.15, 1.05, 1.25], opacity: [0, 0.88, 0] }}
-        transition={{ duration: 0.75, ease: 'easeOut', times: [0, 0.22, 1] }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.1, 1.35], opacity: [0, 0.92, 0] }}
+        transition={{ duration: 0.62, delay: 0.24, ease: 'easeOut', times: [0, 0.2, 1] }}
       />
-      {/* Char ring */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          left: slotRect.left - 4,
-          top:  slotRect.top  - 4,
-          width:  slotRect.width  + 8,
-          height: slotRect.height + 8,
-          borderRadius: 14,
-          border: '1.5px solid #ff7a2acc',
-          boxShadow: '0 0 12px 4px #ff7a2a55',
-        }}
-        initial={{ opacity: 0, scale: 0.88 }}
-        animate={{ opacity: [0, 0.9, 0], scale: [0.88, 1.04, 1.0] }}
-        transition={{ duration: 0.7, ease: 'easeOut', times: [0, 0.16, 1] }}
-      />
-      {/* Rising smoke wisps */}
+
+      {/* ── Phase 3b: Ash fragments scatter outward ── */}
+      {ASH_FRAGMENTS.map((f, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: cx - f.size / 2,
+            top:  cy - f.size / 2,
+            width:  f.size,
+            height: f.size,
+            borderRadius: i % 2 === 0 ? '50%' : 2,
+            background: i % 3 === 0 ? '#ff8833' : i % 3 === 1 ? '#ffaa55' : '#8a7a6a',
+          }}
+          initial={{ x: 0, y: 0, opacity: 0.9, scale: 1 }}
+          animate={{ x: f.dx, y: f.dy, opacity: 0, scale: 0.15 }}
+          transition={{ duration: 0.44, delay: f.delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+        />
+      ))}
+
+      {/* ── Phase 3c: Rising smoke wisps ── */}
       {([0, 1, 2, 3] as const).map(i => (
         <motion.div
           key={i}
           style={{
             position: 'absolute',
-            left: slotRect.left + slotRect.width * (0.18 + i * 0.22),
-            top:  slotRect.top  + slotRect.height * 0.35,
+            left: slotRect.left + slotRect.width  * (0.18 + i * 0.21),
+            top:  slotRect.top  + slotRect.height * 0.38,
             width:  4 + i,
             height: 4 + i,
             borderRadius: '50%',
-            background: i % 2 === 0 ? '#ffaa5566' : '#ff660055',
+            background: i % 2 === 0 ? '#ffaa5555' : '#ff660044',
             filter: 'blur(2px)',
           }}
-          initial={{ y: 0, opacity: 0.8, scale: 1 }}
-          animate={{ y: -28 - i * 9, opacity: 0, scale: 0 }}
-          transition={{ duration: 0.55, delay: 0.08 + i * 0.06, ease: 'easeOut' }}
+          initial={{ y: 0, opacity: 0.75, scale: 1 }}
+          animate={{ y: -30 - i * 10, opacity: 0, scale: 0 }}
+          transition={{ duration: 0.52, delay: 0.32 + i * 0.06, ease: 'easeOut' }}
         />
       ))}
+
+      {/* ── Phase 5: Scorched residue — char overlay fades out after fragments clear ── */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          left: slotRect.left,
+          top:  slotRect.top,
+          width:  slotRect.width,
+          height: slotRect.height,
+          borderRadius: 12,
+          background: 'radial-gradient(ellipse at center, rgba(55,18,0,0.48) 0%, rgba(28,8,0,0.28) 55%, transparent 82%)',
+          border: '1px solid rgba(110,40,0,0.32)',
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.88, 0.65, 0] }}
+        transition={{ duration: 0.52, delay: 0.75, ease: 'easeOut', times: [0, 0.1, 0.45, 1] }}
+      />
     </div>,
     document.body,
   );

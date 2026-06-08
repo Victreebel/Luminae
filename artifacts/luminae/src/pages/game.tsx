@@ -595,7 +595,7 @@ export default function GameBoard() {
     chipRect: DOMRect;
   } | null>(null);
   // v0.8 Luminary animation state
-  const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect }>>([]);
+  const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect; sourceLuminaryId?: string }>>([]);
   const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
   const [boardDimKey, setBoardDimKey] = useState(0);
   const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
@@ -1212,9 +1212,11 @@ export default function GameBoard() {
     prevStateForAnimRef.current = state;
     if (!prev) return;
 
-    // ── Card burn replacements (Void Warden / Bloom burn) ──────────────────
+    // ── Card burn replacements ──────────────────────────────────────────────
     // A slot is a "burn" when its card ID changes on a non-purchase/non-reserve
     // action (i.e. the engine replaced the card as a side-effect).
+    // burnEvents carries { cardId, tier, turn, sourceLuminaryId } for each burn
+    // so we can attribute each flash to the correct Luminary for future theming.
     const lastAction = state.lastAction;
     const isPurchaseOrReserve =
       lastAction?.type === 'purchase_card' ||
@@ -1222,6 +1224,20 @@ export default function GameBoard() {
       lastAction?.type === 'reserve_card';
 
     if (!isPurchaseOrReserve) {
+      // Build a lookup of newly arrived burn events (not present in prev state).
+      const prevBurnEvents = prev.burnEvents ?? [];
+      const nextBurnEvents = state.burnEvents ?? [];
+      const addedBurnIds = new Set(
+        nextBurnEvents
+          .filter(e => !prevBurnEvents.some(p => p.cardId === e.cardId))
+          .map(e => e.cardId),
+      );
+      const sourceLuminaryByCardId = new Map<string, string>(
+        nextBurnEvents
+          .filter(e => addedBurnIds.has(e.cardId))
+          .map(e => [e.cardId, e.sourceLuminaryId]),
+      );
+
       const tiers = [
         { tier: 1 as const, oldCards: prev.marketTier1, newCards: state.marketTier1 },
         { tier: 2 as const, oldCards: prev.marketTier2, newCards: state.marketTier2 },
@@ -1235,7 +1251,11 @@ export default function GameBoard() {
             const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
             if (slotEl) {
               const rect = slotEl.getBoundingClientRect();
-              setBurnFlashes(pf => [...pf, { id: `burn-${tier}-${i}-${Date.now()}`, slotRect: rect }]);
+              const sourceLuminaryId = sourceLuminaryByCardId.get(o.id);
+              setBurnFlashes(pf => [
+                ...pf,
+                { id: `burn-${tier}-${i}-${Date.now()}`, slotRect: rect, sourceLuminaryId },
+              ]);
             }
           }
         }
@@ -8076,11 +8096,12 @@ export default function GameBoard() {
           onDone={() => setCompactGhost(null)}
         />
       )}
-      {/* ── v0.8 Burn flashes ── */}
+      {/* ── v0.8 Burn animations (reusable keyword event) ── */}
       {burnFlashes.map(f => (
         <BurnFlash
           key={f.id}
           slotRect={f.slotRect}
+          sourceLuminaryId={f.sourceLuminaryId}
           onDone={() => setBurnFlashes(pf => pf.filter(x => x.id !== f.id))}
         />
       ))}
