@@ -61,7 +61,7 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
     }
     case 'crystalReturn': return { icon: '◇', label: 'RETURN',     color: '#60a5fa' };
     case 'deckScry':      return { icon: '◉', label: 'SCRY',       color: '#a78bfa' };
-    case 'pendingAction': return { icon: '⊕', label: 'ASSIMILATE', color: '#f59e0b' };
+    case 'pendingAction': return { icon: '✦', label: 'ASSIMILATE', color: '#fb923c' };
     default:              return null;
   }
 }
@@ -110,18 +110,18 @@ function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) 
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
 //
-// Total: 2100ms
+// Total: 1860ms
 //
 // 0.00s–0.15s  ANTICIPATE  board dims, anticipation pulse — no entity yet
-// 0.15s–0.70s  REVEAL      entity grows + fades in (opacity 0→1, scale 0.88→1.0)
-// 0.70s–1.25s  HOLD        peak bloom + effect beats fire (opacity 1.0, short linger)
-// 1.25s–2.10s  PAN_OUT     dissolve outward (opacity 1.0→0.75→0, scale →1.12)
+// 0.15s–0.63s  REVEAL      entity grows + fades in (opacity 0→1, scale 0.88→1.0)
+// 0.63s–1.18s  HOLD        peak bloom + effect beats fire (opacity 1.0, short linger)
+// 1.18s–1.86s  PAN_OUT     dissolve outward (opacity 1.0→0.75→0, scale →1.12)
 
 const ANTICIPATE_MS = 150;   // 0.00–0.15s
-const REVEAL_MS     = 550;   // 0.15–0.70s
-const HOLD_MS       = 550;   // 0.70–1.25s
-const PAN_OUT_MS    = 850;   // 1.25–2.10s
-// Total: 2100ms
+const REVEAL_MS     = 480;   // 0.15–0.63s
+const HOLD_MS       = 550;   // 0.63–1.18s
+const PAN_OUT_MS    = 680;   // 1.18–1.86s
+// Total: 1860ms
 
 // Hold-to-skip duration in ms
 const HOLD_TO_SKIP_MS = 350;
@@ -135,18 +135,21 @@ const HOLD_TO_SKIP_MS = 350;
 // Opacity spec:    0% → 70% → 100% → 100% → 75% → 0%
 // Scale spec:   0.88 → 0.93 → 1.00 → 1.00 → 1.04 → 1.12
 //
-// Absolute times:  0.15s  0.35s  0.70s  1.05s  1.25s  2.10s
-// Entity-relative: 0ms    200ms  550ms  900ms  1100ms 1950ms
-// Normalized [0,1]: 0.000  0.103  0.282  0.462  0.564  1.000
+// Absolute times:  0.15s  0.35s  0.63s  0.98s  1.18s  1.86s
+// Entity-relative: 0ms    200ms  480ms  830ms  1030ms 1710ms
+// Normalized [0,1]: 0.000  0.117  0.281  0.485  0.602  1.000
 
-const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.95
+const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.71
 
 // Bump times[1] opacity to 0.90 so the silhouette reads as a solid dark shape
 // rather than a translucent ghost — the filter below keeps it near-black anyway.
 const ENTITY_OPACITY = [0,    0.90, 1.0,  1.0,  0.75, 0   ];
 const ENTITY_SCALE   = [0.88, 0.93, 1.00, 1.00, 1.04, 1.12];
 const ENTITY_Y       = ['-2vh', '-1vh', '0vh', '0vh', '0.5vh', '3vh'];
-const ENTITY_TIMES   = [0, 0.103, 0.282, 0.462, 0.564, 1];
+// Normalized times for 6-keyframe entity sequence.
+// Absolute: 0.15s  0.35s  0.63s  0.98s  1.18s  1.86s
+// Entity-relative: 0ms  200ms  480ms  830ms  1030ms  1710ms
+const ENTITY_TIMES   = [0, 0.117, 0.281, 0.485, 0.602, 1];
 
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
 // Entity appears as a dark, blurry, desaturated silhouette during the REVEAL
@@ -156,7 +159,8 @@ const ENTITY_TIMES   = [0, 0.103, 0.282, 0.462, 0.564, 1];
 //
 // Uses its own 7-keyframe times array so the snap window is independent of the
 // 6-keyframe opacity/scale/y curve.
-const ENTITY_FILTER_TIMES = [0, 0.103, 0.279, 0.285, 0.462, 0.564, 1];
+// 7-keyframe filter sequence — snap window sits at hold start (480ms entity-rel).
+const ENTITY_FILTER_TIMES = [0, 0.117, 0.279, 0.285, 0.485, 0.602, 1];
 const ENTITY_FILTER = [
   'brightness(0.05) saturate(0) blur(5px)',    // 0      — pure dark silhouette
   'brightness(0.07) saturate(0) blur(5px)',    // 0.103  — still shadowed
@@ -173,8 +177,9 @@ const BEAT_TARGET_MS = 150;
 const BEAT_SNAP_MS   = 300;
 const BEAT_DONE_MS   = 460;
 
-// CSS scale applied to [data-game-board] during the cinematic
-const BOARD_SCALE = 0.50;
+// CSS scale applied to [data-game-board] during the cinematic.
+// 0.62 keeps the board legible so players can identify target cards.
+const BOARD_SCALE = 0.62;
 
 // ─── Effect-type labels ───────────────────────────────────────────────────────
 

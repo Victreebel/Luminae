@@ -125,25 +125,28 @@ export function CardKeywordOverlay({
     );
   }
   if (type === 'forgotten') {
+    // Edge-biased tint (darker top/bottom, clear centre) so card art + cost remain
+    // readable while Eminence area is visibly muted.
     return (
       <div
         className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(12,6,40,0.22)',
-          backdropFilter: 'saturate(0.48) brightness(0.80)',
-          WebkitBackdropFilter: 'saturate(0.48) brightness(0.80)',
+          background: 'linear-gradient(to bottom, rgba(8,4,28,0.32) 0%, rgba(8,4,28,0.10) 28%, rgba(8,4,28,0.10) 70%, rgba(8,4,28,0.34) 100%)',
+          backdropFilter: 'saturate(0.50) brightness(0.88)',
+          WebkitBackdropFilter: 'saturate(0.50) brightness(0.88)',
         }}
       />
     );
   }
   if (type === 'nullified') {
+    // Full desaturation — void/silent state.  brightness(0.82) keeps card readable.
     return (
       <div
         className="absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(8,10,22,0.24)',
-          backdropFilter: 'saturate(0) brightness(0.76) contrast(0.88)',
-          WebkitBackdropFilter: 'saturate(0) brightness(0.76) contrast(0.88)',
+          background: 'rgba(8,10,22,0.18)',
+          backdropFilter: 'saturate(0) brightness(0.82) contrast(0.90)',
+          WebkitBackdropFilter: 'saturate(0) brightness(0.82) contrast(0.90)',
         }}
       />
     );

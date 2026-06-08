@@ -64,8 +64,8 @@ export const TONE_CONFIG: Record<LuminaryEffectTone, LuminaryToneConfig> = {
     toneLabel: 'SEALED',
   },
   consumption: {
-    snapGradient: 'radial-gradient(ellipse 80% 80% at 50% 60%, rgba(220,38,38,0.34) 0%, rgba(0,0,0,0.22) 44%, transparent 70%)',
-    snapColor: '#dc2626',
+    snapGradient: 'radial-gradient(ellipse 80% 80% at 50% 60%, rgba(255,100,0,0.42) 0%, rgba(120,20,0,0.26) 44%, transparent 70%)',
+    snapColor: '#fb923c',
     toneLabel: 'CONSUMED',
   },
   global: {
@@ -155,7 +155,7 @@ export function AuraExpansion({
           opacity: visible ? 1   : 0,
         }}
         transition={{
-          duration: visible ? 0.62 : 0.68,
+          duration: visible ? 0.50 : 0.60,
           ease: visible ? entryEase : 'easeOut',
         }}
       />
@@ -178,7 +178,7 @@ export function AuraExpansion({
           opacity: visible ? 1   : 0,
         }}
         transition={{
-          duration: visible ? 0.50 : 0.58,
+          duration: visible ? 0.42 : 0.50,
           ease: visible ? entryEase : 'easeOut',
         }}
       />
@@ -239,27 +239,31 @@ export function TargetBadge({
 
 export function ConsequenceSnap({ tone }: { tone: LuminaryEffectTone }) {
   const conf = TONE_CONFIG[tone];
-  // Consumption (First Hunger's initial grant) still expands outward — the
-  // inward dissolve only applies to the artifact being consumed, not here.
+  // Burn-adjacent tones (curse = condemned, consumption = assimilate/burn) peak
+  // faster and exit crisper — reads as destruction.  Other tones are more gentle.
+  const isBurnTone = tone === 'curse' || tone === 'consumption';
+  const dur  = isBurnTone ? 0.52 : 0.68;
+  const peak = isBurnTone ? 0.22 : 0.28;   // fraction of dur when opacity peaks
+  const exitDur = isBurnTone ? 0.20 : 0.30;
+  // Scale expands outward during the flash (wave reaches the board edges)
+  // then continues expanding while fading — never collapses inward.
+  //
+  // The snap beat is only visible for ~160ms (BEAT_DONE_MS - BEAT_SNAP_MS),
+  // but the animation needs time to reach peak opacity.  The `exit` prop tells
+  // AnimatePresence to keep the element alive and play the fade-out rather than
+  // abruptly removing it mid-animation (which cancels the WAAPI animation and
+  // causes a one-frame snap-back to opacity:0).
   return (
     <motion.div
       className="absolute inset-0"
       style={{ background: conf.snapGradient, pointerEvents: 'none' }}
-      // Scale expands outward during the flash (wave reaches the board edges)
-      // then continues expanding while fading — never collapses inward.
-      //
-      // The snap beat is only visible for ~160ms (BEAT_DONE_MS - BEAT_SNAP_MS),
-      // but the animation needs ~182ms to reach peak opacity.  The `exit` prop
-      // tells AnimatePresence to keep the element alive and play the fade-out
-      // rather than abruptly removing it mid-animation (which cancels the WAAPI
-      // animation and causes a one-frame snap-back to opacity:0).
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{
         opacity: [0, 1, 0],
         scale:   [0.85, 1.0, 1.10],
       }}
-      transition={{ duration: 0.70, times: [0, 0.26, 1], ease: 'easeOut' }}
-      exit={{ opacity: 0, scale: 1.15, transition: { duration: 0.30, ease: 'easeOut' } }}
+      transition={{ duration: dur, times: [0, peak, 1], ease: 'easeOut' }}
+      exit={{ opacity: 0, scale: 1.15, transition: { duration: exitDur, ease: 'easeOut' } }}
     />
   );
 }
