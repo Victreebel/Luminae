@@ -1,0 +1,160 @@
+Create a single source-of-truth reference table for active Luminary animation configs.
+
+Goal:
+All Luminary animation procedures should read from one canonical table/config instead of scattered hardcoded values.
+
+Do not change mechanics, costs, scoring, turn order, tutorial order, or card data.
+
+Create or consolidate a config table with these fields:
+
+type LuminaryAnimationConfig = {
+  luminaryId: string;
+  displayName: string;
+  domain: string;
+  affinities: Affinity[];
+  primaryColor: string;
+  secondaryColor: string;
+  animationArchetype:
+    | "burn"
+    | "scry"
+    | "passiveBoon"
+    | "globalDisruption"
+    | "thresholdPayoff"
+    | "suppression"
+    | "seeded"
+    | "replication"
+    | "crystalReturn"
+    | "condemned"
+    | "assimilate";
+  effectName: string;
+  procedureSteps: AnimationProcedureStep[];
+  residueType?: "condemned" | "forgotten" | "nullified" | "seeded";
+  flavorLine: string;
+};
+
+Use these active Luminaries:
+
+1. lum_moth — Red Moth
+Domain: Rupture
+Affinities: Flare
+Colors: #ef4444 / #7f1d1d
+Effect: Rupture of the Still
+Archetype: burn
+
+2. lum_tide — The Tide Architect
+Domain: Tides
+Affinities: Continuum
+Colors: #60a5fa / #e2e8f0
+Effect: The Observer Effect
+Archetype: scry
+
+3. lum_verdant — The Verdant Oracle
+Domain: Verdance
+Affinities: Verdance
+Colors: #4ade80 / #166534
+Effect: Early Bloom
+Archetype: passiveBoon
+
+4. lum_void — The Void Warden
+Domain: Void
+Affinities: Abyss
+Colors: #4c1d95 / #0a0a14
+Effect: Oblivion
+Archetype: globalDisruption
+
+5. lum_radiant — Concordance Mandala
+Domain: Coherence
+Affinities: Radiance
+Colors: #fef9c3 / #2ecc71
+Effect: Perfect Coherence
+Archetype: thresholdPayoff
+
+6. lum_astral — Phoenix Paradox
+Domain: Recurrence
+Affinities: Flare + Continuum
+Colors: #f43f5e / #3d6bff
+Effect: Ash-Seeking Recurrence
+Archetype: burn
+
+7. lum_bloom — Catalyst Bloom
+Domain: Aftergrowth
+Affinities: Flare + Verdance
+Colors: #86efac / #7f1d1d
+Effect: Aftergrowth
+Archetype: thresholdPayoff
+
+8. lum_forge — The Iron Harbinger
+Domain: Ruin
+Affinities: Flare + Abyss
+Colors: #f97316 / #1c1917
+Effect: Impact Extinction
+Archetype: burn
+
+9. lum_compass — The Hourless Compass
+Domain: Erasure
+Affinities: Continuum + Abyss
+Colors: #38bdf8 / #0a0a14
+Effect: The Forgotten Hour
+Archetype: suppression
+Residue: forgotten
+
+10. lum_seed — The Seed Beyond Seasons
+Domain: Propagation
+Affinities: Continuum + Verdance
+Colors: #38bdf8 / #4ade80
+Effect: Avatar Seeds
+Archetype: seeded
+Residue: seeded
+
+11. lum_orchard — The Glass Orchard
+Domain: Replication
+Affinities: Verdance + Radiance
+Colors: #4ade80 / #fef9c3
+Effect: Perfect Replication
+Archetype: replication
+
+12. lum_pale — The Pale Merchant
+Domain: Balance
+Affinities: Abyss + Radiance
+Colors: #cbd5e1 / #0a0a14
+Effect: Balance Due
+Archetype: crystalReturn
+
+13. lum_ember — The Ember Sovereign
+Domain: Flame
+Affinities: Flare + Abyss + Radiance
+Colors: #ff5a3c / #7b1fa2
+Effect: Cinder Mandate
+Archetype: condemned
+Residue: condemned
+
+14. lum_hunger — The First Hunger
+Domain: Assimilation
+Affinities: Flare + Verdance + Radiance
+Colors: #fbbf24 / #4ade80
+Effect: Assimilate
+Archetype: assimilate
+
+15. lum_null — The Null Sovereign
+Domain: Transcendence
+Affinities: Continuum + Abyss + Radiance
+Colors: #ffffff / #0a0a14
+Effect: Black Domain
+Archetype: suppression
+Residue: nullified
+
+Important rules:
+- This table is for animation/config reference.
+- Do not duplicate display names, colors, archetypes, or procedure metadata elsewhere unless imported from this table.
+- Deferred Luminaries lum_oracle and lum_scholar should not appear in active animation rotation.
+- Assimilate is a replacement core action, not an additional action.
+- Burn is a reusable keyword event and sends cards to the public Burn Pile.
+
+Acceptance criteria:
+- One canonical active Luminary animation config exists.
+- All 15 active Luminaries are represented.
+- lum_compass is named The Hourless Compass, not “???”.
+- Deferred Luminaries are excluded.
+- Animation procedures can reference this table.
+- No mechanics are changed.
+- Existing tests/typecheck pass.
