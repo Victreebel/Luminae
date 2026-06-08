@@ -619,6 +619,49 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /**
+   * Soft crackle + ember whoosh for a card burn event (~320 ms).
+   * Plays at the moment BurnFlash fires so it lands in sync with the
+   * visual heat-fracture phase.  Volume is intentionally low (~0.06 peak)
+   * so it blends under ambient music without dominating.
+   *
+   * Sound anatomy:
+   *   0–160 ms  — ember rush: low-pass noise sweep from 80→300 Hz (the fire
+   *               catching, a warm airy whoosh rather than a harsh crack).
+   *   0–320 ms  — sub-bass ember thud: sine at ~68 Hz anchors the energy.
+   *   20–300 ms — crackle pops: 4 short bandpass noise blips staggered at
+   *               irregular intervals, centred 350–600 Hz (dry wood snapping).
+   *   100–280 ms — brief high sizzle: bandpass burst at ~2 kHz (the momentary
+   *               paper/fibre ignition pop).
+   */
+  playCardBurn() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      // Ember rush — narrow noise sweep upward (fire catching)
+      this.noiseSweep(ctx, t, 0.16, 0.055, 80, 300);
+
+      // Sub-bass ember thud — brief sine anchor
+      this.osc(ctx, 68, 'sine', t, t + 0.32, 0.05, 0.006);
+
+      // Crackle pops — 4 irregular bandpass noise blips
+      const crackles: [number, number, number][] = [
+        [0.022, 350, 8],
+        [0.075, 480, 10],
+        [0.140, 420, 9],
+        [0.215, 560, 11],
+      ];
+      for (const [offset, freq, q] of crackles) {
+        this.noiseBlip(ctx, t + offset, 0.028, 0.055, freq, q);
+      }
+
+      // Brief high sizzle — ignition pop
+      this.noiseBlip(ctx, t + 0.10, 0.06, 0.035, 2100, 5);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Physical card flip — plays the Card_Flip_Over.wav asset. */
   playCardFlip() {
     if (this.muted) return;
