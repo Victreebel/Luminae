@@ -3305,31 +3305,21 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       }
     }
 
-    // ── lum_compass: illustrated cosmic background + heat-haze shimmer ──
+    // ── lum_compass: transparent entity — no background needed ──
     if (luminaryId === 'lum_compass') {
-      const bg = _getLuminaryImage('lum_compass', 'background');
-      const fill: React.CSSProperties = {
-        position: 'absolute', inset: 0, width: '100%', height: '100%',
-        display: 'block',
-      };
       return (
-        <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
-          {bg && (
-            <img src={bg} alt="" draggable={false} className="lum-compass-bg-fade" style={{ ...fill, objectFit: 'cover' }} />
-          )}
+        <div className={isIdle ? 'lum-compass-heat-haze lum-idle-float' : undefined} style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
           {entityCutout && (
-            <div className={isIdle ? 'lum-compass-heat-haze' : undefined} style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-              <img
-                src={entityCutout} alt="" draggable={false}
-                style={{
-                  ...fill,
-                  objectFit: 'cover', objectPosition: 'center center',
-                  mixBlendMode: 'screen',
-                  maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                  WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
-                }}
-              />
-            </div>
+            <img
+              src={entityCutout} alt="" draggable={false}
+              style={{
+                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                display: 'block',
+                objectFit: 'contain', objectPosition: 'center center',
+                maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+                WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
+              }}
+            />
           )}
         </div>
       );
