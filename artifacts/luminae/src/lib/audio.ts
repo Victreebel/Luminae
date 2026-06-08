@@ -637,19 +637,30 @@ class GameAudio {
    * each subsequent burn is offset by 80 ms, producing a staggered cluster
    * crackle instead of overlapping sounds.  Single burns (index=0) are
    * unaffected.
+   *
+   * Pass `total` (cluster size) alongside `index` so the volume of each
+   * subsequent burn scales up modestly — a 3-card cluster feels noticeably
+   * heftier than a single burn.  Scale factor: Math.min(1 + index * 0.12, 1.5),
+   * capping at 1.5× so the last card in a large batch never clips.
+   * Single burns (total=1 or index=0) produce scale=1.0 and are unaffected.
    */
-  playCardBurn(index = 0) {
+  playCardBurn(index = 0, total = 1) {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
       const stagger = index * 0.08;
       const t = ctx.currentTime + stagger;
 
+      // Volume scale: each card in a cluster is slightly louder than the last.
+      // index=0 → 1.0×, index=1 → 1.12×, index=2 → 1.24×, index≥5 → 1.5× (cap).
+      // total=1 short-circuits to 1.0 so isolated burns are completely unchanged.
+      const volScale = total > 1 ? Math.min(1 + index * 0.12, 1.5) : 1.0;
+
       // Ember rush — narrow noise sweep upward (fire catching)
-      this.noiseSweep(ctx, t, 0.16, 0.055, 80, 300);
+      this.noiseSweep(ctx, t, 0.16, 0.055 * volScale, 80, 300);
 
       // Sub-bass ember thud — brief sine anchor
-      this.osc(ctx, 68, 'sine', t, t + 0.32, 0.05, 0.006);
+      this.osc(ctx, 68, 'sine', t, t + 0.32, 0.05 * volScale, 0.006);
 
       // Crackle pops — 4 irregular bandpass noise blips
       const crackles: [number, number, number][] = [
@@ -659,11 +670,11 @@ class GameAudio {
         [0.215, 560, 11],
       ];
       for (const [offset, freq, q] of crackles) {
-        this.noiseBlip(ctx, t + offset, 0.028, 0.055, freq, q);
+        this.noiseBlip(ctx, t + offset, 0.028, 0.055 * volScale, freq, q);
       }
 
       // Brief high sizzle — ignition pop
-      this.noiseBlip(ctx, t + 0.10, 0.06, 0.035, 2100, 5);
+      this.noiseBlip(ctx, t + 0.10, 0.06, 0.035 * volScale, 2100, 5);
     } catch (e) { console.warn('SFX failed', e); }
   }
 

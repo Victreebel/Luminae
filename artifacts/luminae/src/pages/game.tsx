@@ -1302,7 +1302,7 @@ export default function GameBoard() {
                 const slotEl2 = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
                 const rect2 = slotEl2?.getBoundingClientRect();
                 if (rect2) {
-                  gameAudio.playCardBurn(burnIdx);
+                  gameAudio.playCardBurn(burnIdx, resolvedEntries.length);
                   setBurnFlashes(pf => [
                     ...pf,
                     { id: `burn-${tier}-${slotIndex}-${Date.now()}`, slotRect: rect2, sourceLuminaryId },
