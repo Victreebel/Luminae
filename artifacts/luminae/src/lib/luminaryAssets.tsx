@@ -2526,11 +2526,11 @@ export function LuminarySummonCutscene({
               transition={isFading
                 ? { duration: 0.55, ease: 'easeIn' }
                 : {
-                    scale:   { duration: 1.1, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                    y:       { duration: 1.1, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                    rotateY: { duration: 1.1, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                    z:       { duration: 1.1, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
-                    opacity: { duration: 0.40, delay: 0.08, ease: 'easeOut' },
+                    scale:   { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    y:       { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    rotateY: { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    z:       { duration: 1.7, delay: 0.08, times: [0, 0.36, 1.0], ease: ['easeIn', 'easeOut'] },
+                    opacity: { duration: 0.55, delay: 0.08, ease: 'easeOut' },
                   }
               }
             >
