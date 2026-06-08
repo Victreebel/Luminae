@@ -61,6 +61,12 @@ interface DysonSatellite {
   alpha: number;  // base alpha for pulse animation
 }
 
+// Satellite count limits — shared between the render loop (for bornAt stamping)
+// and drawDysonSwarm so both always agree on which slots are visible.
+const SWARM_MIN = 20;
+const SWARM_MAX = 60; // must match genDysonSwarm count
+const SWARM_FADE_DURATION = 1.5; // seconds
+
 // ── Precomputed scene data ───────────────────────────────────────────────────
 function genStars(rng: () => number, count: number): Star[] {
   return Array.from({ length: count }, () => ({
@@ -631,6 +637,7 @@ function drawDysonSwarm(
   swarm: DysonSatellite[],
   palette: AffinityPalette,
   progressFraction: number,
+  bornAt: Float32Array,
 ) {
   const orbitR  = 28;
   const orbitRY = orbitR * 0.48; // same ellipse aspect ratio as planet orbits
@@ -662,19 +669,22 @@ function drawDysonSwarm(
   }
   ctx.restore();
 
-  // Satellite count: interpolate 20 → 60 as progressFraction rises.
+  // Satellite count: interpolate SWARM_MIN → SWARM_MAX as progressFraction rises.
   // Slicing the stable seeded array keeps positions consistent across frames.
-  const MIN_SATS = 20;
-  const MAX_SATS = swarm.length; // always generated at max count (60)
-  const visibleCount = Math.round(MIN_SATS + (MAX_SATS - MIN_SATS) * progressFraction);
-  const visibleSwarm = swarm.slice(0, visibleCount);
+  const visibleCount = Math.round(SWARM_MIN + (SWARM_MAX - SWARM_MIN) * progressFraction);
 
-  // Satellite dots — tiny 1 px filled circles pulsing with alpha
-  for (const sat of visibleSwarm) {
+  // Satellite dots — tiny 1 px filled circles pulsing with alpha.
+  // Each satellite fades in over SWARM_FADE_DURATION seconds from the moment its
+  // slot index crossed the visible boundary (recorded in bornAt by the render loop).
+  // Slots stamped long before t (bornAt ≪ t) resolve to fadeAlpha = 1 immediately.
+  for (let i = 0; i < visibleCount; i++) {
+    const sat = swarm[i]!;
+    const fadeAlpha = Math.min(1, Math.max(0, (t - bornAt[i]!) / SWARM_FADE_DURATION));
+    if (fadeAlpha < 0.01) continue;
     const angle = sat.angle0 + sat.angSpd * t;
     const x = cx + Math.cos(angle) * orbitR;
     const y = cy + Math.sin(angle) * orbitRY;
-    const a = sat.alpha * (0.55 + 0.45 * Math.sin(t * 1.4 + sat.angle0 * 3));
+    const a = sat.alpha * (0.55 + 0.45 * Math.sin(t * 1.4 + sat.angle0 * 3)) * fadeAlpha;
     ctx.beginPath();
     ctx.arc(x, y, 1, 0, Math.PI * 2);
     ctx.fillStyle = hexAlpha(palette.primary, a);
@@ -777,6 +787,7 @@ function renderTier2(
   palette: AffinityPalette,
   secondaryColor: string | null,
   progressFraction: number,
+  bornAt: Float32Array,
 ) {
   drawBackground(ctx, w, h, 2);
   drawStars(ctx, w, h, t, stars, 0.42);
@@ -785,7 +796,7 @@ function renderTier2(
   for (const o of orbits) drawOrbitPath(ctx, cx, cy, o);
   drawStar(ctx, cx, cy, t);
   // Dyson swarm sits just outside the star glow, inside the innermost planet orbit
-  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette, progressFraction);
+  drawDysonSwarm(ctx, cx, cy, t, dysonSwarm, palette, progressFraction, bornAt);
   // Draw planets back-to-front (further first using y-sorted trick with orbit angle)
   const sortedOrbits = [...orbits].sort((a, b) => {
     const ay = Math.sin(a.angle0 + a.angSpd * t);
@@ -862,6 +873,14 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
   const orbits = useMemo(() => genOrbits(seededRng(77), 3), []);
   const dysonSwarm = useMemo(() => genDysonSwarm(seededRng(13), 60), []);
 
+  // Per-slot born-timestamps for Dyson swarm fade-in.
+  // Initialized to a large negative value so all pre-existing satellites resolve
+  // to fadeAlpha = 1 immediately (no fade on first render).
+  // When progressFraction increases and new slots cross the visibility boundary,
+  // the render loop stamps those indices with the current animation time `t`.
+  const bornAtRef = useRef<Float32Array>(new Float32Array(SWARM_MAX).fill(-1000));
+  const prevVisibleCountRef = useRef<number>(-1);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -882,6 +901,15 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
     let rafId = 0;
     const startTime = performance.now();
 
+    // Guard: bornAt is sized to SWARM_MAX; assert it matches the generated array
+    // so a future change to genDysonSwarm's count is caught immediately in dev.
+    if (import.meta.env.DEV && dysonSwarm.length !== SWARM_MAX) {
+      console.error(
+        `[KardashevScene] dysonSwarm.length (${dysonSwarm.length}) !== SWARM_MAX (${SWARM_MAX})` +
+        ' — update SWARM_MAX to match genDysonSwarm count or bornAt will be incorrectly sized',
+      );
+    }
+
     const secondaryColor = getSecondaryAffinityColor(palette);
     const clampedFraction = Math.min(1, Math.max(0, progressFraction));
 
@@ -891,12 +919,26 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
       const h = canvas.height / dpr;
       const t = (now - startTime) / 1000;
 
+      // Track which satellite slots are newly visible and stamp their born-time.
+      // On the first frame (prevVisibleCountRef = -1) we skip stamping so all
+      // initially-visible satellites appear at full alpha without a fade-in.
+      if (tier === 2) {
+        const visibleNow = Math.round(SWARM_MIN + (SWARM_MAX - SWARM_MIN) * clampedFraction);
+        const prev = prevVisibleCountRef.current;
+        if (prev >= 0 && visibleNow > prev) {
+          for (let i = prev; i < visibleNow; i++) {
+            bornAtRef.current[i] = t;
+          }
+        }
+        prevVisibleCountRef.current = visibleNow;
+      }
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
       else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor, clampedFraction);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor, clampedFraction, bornAtRef.current);
       else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
 
       rafId = requestAnimationFrame(render);
