@@ -10,64 +10,13 @@ import { PlayerAvatar } from './game-player';
 import { ArmedSigil } from './game-luminary-effects';
 import { gameAudio } from '@/lib/audio';
 
-// ── Hold-hint helpers ─────────────────────────────────────────────────────────
-// Tracks whether the "Hold to view info" hint has been dismissed.
-// Module-scoped so all card instances share state; backed by localStorage so it
-// survives a page refresh and only appears until the player discovers the gesture.
-const HOLD_HINT_KEY = 'luminae.holdHint.v1';
-let _holdHintDismissed: boolean | null = null;
-function holdHintDismissed(): boolean {
-  if (_holdHintDismissed === null) {
-    try { _holdHintDismissed = localStorage.getItem(HOLD_HINT_KEY) === '1'; } catch { _holdHintDismissed = false; }
-  }
-  return _holdHintDismissed;
-}
-function dismissHoldHint() {
-  _holdHintDismissed = true;
-  try { localStorage.setItem(HOLD_HINT_KEY, '1'); } catch {}
-}
-
-// Small "Hold to view info" badge rendered while the hint is active and the
-// progress ring is NOT yet visible (so they never overlap).
-function HoldHint({ visible, isHolding, color }: { visible: boolean; isHolding: boolean; color: string }) {
-  return (
-    <AnimatePresence>
-      {visible && !isHolding && (
-        <motion.div
-          key="hold-hint"
-          className="absolute pointer-events-none z-[28]"
-          style={{ left: '50%', top: '50%' }}
-          initial={{ opacity: 0, y: 6, x: '-50%' }}
-          animate={{ opacity: 1, y: '-50%', x: '-50%' }}
-          exit={{ opacity: 0, y: 2, x: '-50%' }}
-          transition={{ duration: 0.22 }}
-        >
-          <div
-            className="flex items-center gap-1 rounded-full px-2 py-1 select-none whitespace-nowrap"
-            style={{
-              background: 'rgba(3,3,8,0.84)',
-              backdropFilter: 'blur(5px)',
-              border: `1px solid ${color}33`,
-              boxShadow: `0 2px 10px rgba(0,0,0,0.7), 0 0 8px ${color}22`,
-            }}
-          >
-            <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.55)' }}>
-              Hold to view info
-            </span>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 // ── LuminaryClaimedPortal ─────────────────────────────────────────────────────
 // Replaces the Luminary panel card after it has been claimed by any player.
 // Fits the same BOARD_CARD_W × BOARD_CARD_H footprint.
 //
 // isLive=true   → bonus is currently active (turnCount > summonedAtTurnCount)
 // isNew=true    → 900ms entrance: collapses from center, spiral burst, spring-settle.
-// canToggle=true → entire card is a button cycling eligible affinities.
+// canToggle=true → shows a ↻ badge button that cycles eligible affinities on click.
 //
 // Vortex design: outer ring uses conicActive (active ~55%, others ~45%).
 // Inner counter-swirl uses conicAll (all colours equal) so every requirement
@@ -98,41 +47,8 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
     ? eligibleKeys[(eligibleKeys.indexOf(activeKey) + 1) % eligibleKeys.length] as GemKey
     : null;
 
-  // Preview state — set on hover (desktop) or long-press hold (mobile)
+  // Preview state — set on hover (desktop only)
   const [previewKey, setPreviewKey] = useState<GemKey | null>(null);
-  const longPressTimerRef = useRef<number | null>(null);
-  const longPressActiveRef = useRef(false);
-  const suppressClickRef = useRef(false);
-
-  // Hold-to-info: circular progress ring
-  const infoTimerRef = useRef<number | null>(null);
-  const [isHolding, setIsHolding] = useState(false);
-  const holdKeyRef = useRef(0);
-
-  // Hold-hint state
-  const [showHoldHint, setShowHoldHint] = useState(false);
-  const hintAutoHideRef = useRef<number | null>(null);
-  const clearHoldHint = () => {
-    setShowHoldHint(false);
-    if (hintAutoHideRef.current !== null) { window.clearTimeout(hintAutoHideRef.current); hintAutoHideRef.current = null; }
-  };
-  const triggerHoldHint = (duration: number) => {
-    if (holdHintDismissed() || !onOpenSheet) return;
-    setShowHoldHint(true);
-    if (hintAutoHideRef.current !== null) window.clearTimeout(hintAutoHideRef.current);
-    hintAutoHideRef.current = window.setTimeout(() => setShowHoldHint(false), duration);
-  };
-
-  const clearLongPress = () => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-    if (infoTimerRef.current !== null) {
-      window.clearTimeout(infoTimerRef.current);
-      infoTimerRef.current = null;
-    }
-  };
 
   // Detect affinity switches on any claimed portal and trigger a flash animation
   const isAIPortal = claimedByPlayer?.aiDifficulty === 'medium' || claimedByPlayer?.aiDifficulty === 'hard';
@@ -238,89 +154,29 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
     onToggle(next);
   };
 
-  // Click handler — suppressed after a long-press/hold-info release to avoid double-fire
-  const handleClick = () => {
-    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
-    if (canToggle) { fireToggle(); return; }
-  };
+  // Click handler — opens info sheet; toggle is exclusively via the ↻ badge button
+  const handleClick = () => { onOpenSheet?.(); };
 
   // Desktop hover: show next-affinity preview while cursor is over the portal
-  const handleMouseEnter = () => {
-    if (nextKey) setPreviewKey(nextKey);
-    // Show hint on first hover if sheet is available
-    triggerHoldHint(2500);
-  };
-  const handleMouseLeave = () => {
-    setPreviewKey(null);
-    clearHoldHint();
-  };
-
-  // Pointer down — start hold-to-info timer (all devices) + affinity preview (touch only)
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (onOpenSheet) {
-      holdKeyRef.current += 1;
-      setIsHolding(true);
-      clearHoldHint(); // hide hint — progress ring takes over
-      infoTimerRef.current = window.setTimeout(() => {
-        // Ring completes — cancel any pending affinity preview, open info sheet
-        longPressActiveRef.current = false;
-        setPreviewKey(null);
-        setIsHolding(false);
-        suppressClickRef.current = true;
-        dismissHoldHint(); // player discovered the gesture
-        onOpenSheet();
-      }, 700);
-    }
-    if (e.pointerType === 'mouse') return;
-    // Touch only: 350 ms → show affinity preview before potential toggle
-    if (nextKey && canToggle) {
-      longPressTimerRef.current = window.setTimeout(() => {
-        longPressActiveRef.current = true;
-        setPreviewKey(nextKey);
-      }, 350);
-    }
-  };
-  const handlePointerUp = (e: React.PointerEvent) => {
-    setIsHolding(false);
-    clearLongPress();
-    if (e.pointerType === 'mouse') return; // mouse clicks handled by onClick
-    if (longPressActiveRef.current) {
-      longPressActiveRef.current = false;
-      setPreviewKey(null);
-      suppressClickRef.current = true;
-      fireToggle();
-    } else {
-      // Short touch tap — didn't complete the hold; show hint briefly
-      triggerHoldHint(1800);
-    }
-  };
-  const handlePointerCancel = () => {
-    setIsHolding(false);
-    clearLongPress();
-    clearHoldHint();
-    longPressActiveRef.current = false;
-    setPreviewKey(null);
-  };
+  const handleMouseEnter = () => { if (nextKey) setPreviewKey(nextKey); };
+  const handleMouseLeave = () => { setPreviewKey(null); };
 
   const previewMeta = previewKey ? GEM_META[previewKey] : null;
   const ownerName = claimedByPlayer?.playerName ?? '';
 
-  const Tag = ((canToggle || onOpenSheet) ? motion.button : motion.div) as typeof motion.div;
+  const Tag = (onOpenSheet ? motion.button : motion.div) as typeof motion.div;
 
   return (
     <Tag
       className="absolute inset-0 bg-[#030308]"
-      style={{ transformOrigin: '50% 42%', cursor: (canToggle || onOpenSheet) ? 'pointer' : 'default' }}
+      style={{ transformOrigin: '50% 42%', cursor: onOpenSheet ? 'pointer' : 'default' }}
       initial={fresh ? { scale: 0.04, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
-      onClick={handleClick}
-      onMouseEnter={(canToggle || onOpenSheet) ? handleMouseEnter : undefined}
-      onMouseLeave={(canToggle || onOpenSheet) ? handleMouseLeave : undefined}
-      onPointerDown={(canToggle || onOpenSheet) ? handlePointerDown : undefined}
-      onPointerUp={(canToggle || onOpenSheet) ? handlePointerUp : undefined}
-      onPointerCancel={(canToggle || onOpenSheet) ? handlePointerCancel : undefined}
-      {...((canToggle || onOpenSheet) ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
+      onClick={onOpenSheet ? handleClick : undefined}
+      onMouseEnter={(onOpenSheet && nextKey) ? handleMouseEnter : undefined}
+      onMouseLeave={(onOpenSheet && nextKey) ? handleMouseLeave : undefined}
+      {...(onOpenSheet ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
     >
       {/* ── Opening spiral burst ── */}
       {fresh && (
@@ -558,63 +414,24 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
         )}
       </div>
 
-      {/* Hold-to-info progress ring — anchored over the vortex singularity at 50%/42% */}
-      <AnimatePresence>
-        {isHolding && onOpenSheet && (
-          <motion.div
-            key={holdKeyRef.current}
-            className="absolute inset-0 pointer-events-none z-[27]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
-            style={{
-              background: `radial-gradient(ellipse 72% 62% at 50% 42%, rgba(3,3,8,0.52) 0%, rgba(3,3,8,0.18) 65%, transparent 100%)`,
-            }}
-          >
-            <div style={{
-              position: 'absolute',
-              left: '50%', top: '42%',
-              transform: 'translate(-50%, -50%)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-            }}>
-              <svg
-                width={78} height={78}
-                style={{
-                  overflow: 'visible',
-                  filter: `drop-shadow(0 0 6px ${g2}) drop-shadow(0 0 14px ${g1}88)`,
-                }}
-                aria-hidden="true"
-              >
-                <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.1} strokeWidth={5} />
-                <circle cx={39} cy={39} r={34} fill="none" stroke={g1} strokeOpacity={0.22} strokeWidth={1.5} />
-                <motion.circle
-                  cx={39} cy={39} r={34}
-                  fill="none"
-                  stroke={g1}
-                  strokeOpacity={0.92}
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                  transform="rotate(-90 39 39)"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 0.7, ease: 'linear' }}
-                />
-              </svg>
-              <span style={{
-                fontSize: 7, fontWeight: 700, letterSpacing: '0.14em',
-                textTransform: 'uppercase', color: `${g1}cc`,
-                textShadow: `0 0 10px ${g2}`,
-              }}>
-                Investigating anomaly...
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Hold-hint — shown on first hover/touch before the progress ring appears */}
-      <HoldHint visible={showHoldHint} isHolding={isHolding} color={g1} />
+      {/* ↻ toggle button — dedicated tap target for cycling the active affinity */}
+      {canToggle && nextKey && (
+        <button
+          type="button"
+          className="absolute z-[28] flex items-center justify-center rounded-full"
+          style={{
+            right: 5, top: 5, width: 20, height: 20,
+            background: `rgba(3,3,8,0.80)`,
+            border: `1px solid ${g1}55`,
+            boxShadow: `0 0 6px ${g1}44`,
+            cursor: 'pointer',
+          }}
+          title="Cycle active affinity"
+          onClick={(e) => { e.stopPropagation(); fireToggle(); }}
+        >
+          <span style={{ color: g1, fontSize: 11, lineHeight: 1, fontWeight: 700 }}>↻</span>
+        </button>
+      )}
 
       {/* AI affinity indicator — shown for medium/hard AI players only */}
       {isAIPortal && activeKey && (
@@ -759,51 +576,9 @@ export const LuminaryCard = React.memo(function LuminaryCard({
 
   const summonColor = getLuminaryVisuals(luminary.id).summonColor;
 
-  // Hold-to-info for the unclaimed (idle) card face
-  const idleHoldKeyRef = useRef(0);
-  const [idleIsHolding, setIdleIsHolding] = useState(false);
-  const idleTimerRef = useRef<number | null>(null);
-  const idleSuppressClickRef = useRef(false);
-
-  // Hint for the unclaimed face
-  const [showIdleHint, setShowIdleHint] = useState(false);
-  const idleHintTimerRef = useRef<number | null>(null);
-  const clearIdleHint = () => {
-    setShowIdleHint(false);
-    if (idleHintTimerRef.current !== null) { window.clearTimeout(idleHintTimerRef.current); idleHintTimerRef.current = null; }
-  };
-  const triggerIdleHint = (duration: number) => {
-    if (holdHintDismissed() || !onOpenSheet || isHidden || isClaimed) return;
-    setShowIdleHint(true);
-    if (idleHintTimerRef.current !== null) window.clearTimeout(idleHintTimerRef.current);
-    idleHintTimerRef.current = window.setTimeout(() => setShowIdleHint(false), duration);
-  };
-
-  const handleIdlePointerDown = (_e: React.PointerEvent) => {
-    if (!onOpenSheet || isHidden || isClaimed) return;
-    clearIdleHint(); // hint gives way to the progress ring
-    idleHoldKeyRef.current += 1;
-    setIdleIsHolding(true);
-    idleTimerRef.current = window.setTimeout(() => {
-      setIdleIsHolding(false);
-      idleSuppressClickRef.current = true;
-      dismissHoldHint(); // player discovered the gesture
-      onOpenSheet();
-    }, 700);
-  };
-  const handleIdlePointerUpOrCancel = (e?: React.PointerEvent) => {
-    const wasTouch = e?.pointerType !== 'mouse';
-    setIdleIsHolding(false);
-    if (idleTimerRef.current !== null) { window.clearTimeout(idleTimerRef.current); idleTimerRef.current = null; }
-    // Short touch tap that didn't complete the hold — show hint briefly
-    if (wasTouch) { triggerIdleHint(1800); }
-  };
   const handleIdleClick = () => {
-    if (idleSuppressClickRef.current) { idleSuppressClickRef.current = false; return; }
+    onOpenSheet?.();
   };
-
-  const handleMouseEnterCard = () => { triggerIdleHint(2500); };
-  const handleMouseLeaveCard = () => { clearIdleHint(); };
 
   return (
     <motion.div
@@ -827,11 +602,6 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
       onClick={!isHidden && !isClaimed ? handleIdleClick : undefined}
-      onMouseEnter={!isHidden && !isClaimed ? handleMouseEnterCard : undefined}
-      onMouseLeave={!isHidden && !isClaimed ? handleMouseLeaveCard : undefined}
-      onPointerDown={!isHidden && !isClaimed ? handleIdlePointerDown : undefined}
-      onPointerUp={!isHidden && !isClaimed ? (e) => handleIdlePointerUpOrCancel(e) : undefined}
-      onPointerCancel={!isHidden && !isClaimed ? (e) => handleIdlePointerUpOrCancel(e) : undefined}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal
@@ -940,68 +710,6 @@ export const LuminaryCard = React.memo(function LuminaryCard({
             </div>
           </div>
         </>
-      )}
-
-      {/* Hold-hint — unclaimed face only, shown on first hover/touch before the ring */}
-      {!isClaimed && (
-        <HoldHint visible={showIdleHint} isHolding={idleIsHolding} color={glowHex} />
-      )}
-
-      {/* Hold-to-info progress ring — idle card face only */}
-      {!isClaimed && (
-        <AnimatePresence>
-          {idleIsHolding && onOpenSheet && (
-            <motion.div
-              key={idleHoldKeyRef.current}
-              className="absolute inset-0 pointer-events-none z-[27]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              style={{
-                background: `radial-gradient(ellipse 72% 62% at 50% 42%, rgba(3,3,8,0.52) 0%, rgba(3,3,8,0.18) 65%, transparent 100%)`,
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                left: '50%', top: '42%',
-                transform: 'translate(-50%, -50%)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-              }}>
-                <svg
-                  width={78} height={78}
-                  style={{
-                    overflow: 'visible',
-                    filter: `drop-shadow(0 0 6px ${glowHex}) drop-shadow(0 0 14px ${glowHex}88)`,
-                  }}
-                  aria-hidden="true"
-                >
-                  <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.1} strokeWidth={5} />
-                  <circle cx={39} cy={39} r={34} fill="none" stroke={glowHex} strokeOpacity={0.22} strokeWidth={1.5} />
-                  <motion.circle
-                    cx={39} cy={39} r={34}
-                    fill="none"
-                    stroke={glowHex}
-                    strokeOpacity={0.92}
-                    strokeWidth={3}
-                    strokeLinecap="round"
-                    transform="rotate(-90 39 39)"
-                    initial={{ pathLength: 0 }}
-                    animate={{ pathLength: 1 }}
-                    transition={{ duration: 0.7, ease: 'linear' }}
-                  />
-                </svg>
-                <span style={{
-                  fontSize: 7, fontWeight: 700, letterSpacing: '0.14em',
-                  textTransform: 'uppercase', color: `${glowHex}cc`,
-                  textShadow: `0 0 10px ${glowHex}`,
-                }}>
-                  Investigating anomaly...
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       )}
 
       {/* Flash overlay — triggered when Luminary activates its on-summon effect */}
