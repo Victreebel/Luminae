@@ -2550,8 +2550,8 @@ export function LuminarySummonCutscene({
                       scale:   isFading ? 1.18 : [0.18, 1.38, 1.0],
                     }}
                     transition={{
-                      opacity: { duration: 2.8, delay: 0.5, times: [0, 0.28, 1.0], ease: 'easeOut' },
-                      scale:   { duration: 2.8, delay: 0.5, times: [0, 0.36, 1.0], ease: ['easeOut', 'easeInOut'] },
+                      opacity: { duration: 4.2, delay: 0.5, times: [0, 0.22, 1.0], ease: 'easeOut' },
+                      scale:   { duration: 4.2, delay: 0.5, times: [0, 0.28, 1.0], ease: ['easeOut', 'easeInOut'] },
                     }}
                     style={{
                       position: 'absolute',
@@ -2573,8 +2573,8 @@ export function LuminarySummonCutscene({
                       scale:   isFading ? 1.12 : [0.22, 1.22, 1.0],
                     }}
                     transition={{
-                      opacity: { duration: 2.0, delay: 0.5, times: [0, 0.26, 1.0], ease: 'easeOut' },
-                      scale:   { duration: 2.0, delay: 0.5, times: [0, 0.32, 1.0], ease: ['easeOut', 'easeInOut'] },
+                      opacity: { duration: 3.2, delay: 0.5, times: [0, 0.24, 1.0], ease: 'easeOut' },
+                      scale:   { duration: 3.2, delay: 0.5, times: [0, 0.28, 1.0], ease: ['easeOut', 'easeInOut'] },
                     }}
                     style={{
                       position: 'absolute',
