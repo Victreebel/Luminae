@@ -2542,16 +2542,16 @@ export function LuminarySummonCutscene({
                 {/* Portal layers extend beyond via overflow:visible on each parent. */}
                 <div style={{ position: 'relative', width: ENT_W, height: ENT_H, overflow: 'visible', flexShrink: 0 }}>
 
-                  {/* Outer portal bloom (680×740) — blooms from flash via spring */}
+                  {/* Outer portal bloom (680×740) — disperses outward from tight core */}
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.22 }}
+                    initial={{ opacity: 0, scale: 0.18 }}
                     animate={{
-                      opacity: isFading ? 0 : 0.78,
-                      scale:   isFading ? 1.18 : 1.0,
+                      opacity: isFading ? 0 : [0, 0.92, 0.78],
+                      scale:   isFading ? 1.18 : [0.18, 1.38, 1.0],
                     }}
                     transition={{
-                      opacity: { duration: 2.2, delay: 1.4, ease: 'easeOut' },
-                      scale:   { type: 'spring', stiffness: 90, damping: 13, mass: 0.9 },
+                      opacity: { duration: 1.6, delay: 1.4, times: [0, 0.28, 1.0], ease: 'easeOut' },
+                      scale:   { duration: 1.6, delay: 1.4, times: [0, 0.36, 1.0], ease: ['easeOut', 'easeInOut'] },
                     }}
                     style={{
                       position: 'absolute',
@@ -2565,16 +2565,16 @@ export function LuminarySummonCutscene({
                     }}
                   />
 
-                  {/* Inner portal halo (400×500) — tighter saturated core */}
+                  {/* Inner portal halo (400×500) — tight core erupts first */}
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.28 }}
+                    initial={{ opacity: 0, scale: 0.22 }}
                     animate={{
-                      opacity: isFading ? 0 : 0.90,
-                      scale:   isFading ? 1.12 : 1.0,
+                      opacity: isFading ? 0 : [0, 1.0, 0.90],
+                      scale:   isFading ? 1.12 : [0.22, 1.22, 1.0],
                     }}
                     transition={{
-                      opacity: { duration: 0.35, delay: 1.4, ease: 'easeOut' },
-                      scale:   { type: 'spring', stiffness: 120, damping: 11, mass: 0.7 },
+                      opacity: { duration: 1.1, delay: 1.4, times: [0, 0.26, 1.0], ease: 'easeOut' },
+                      scale:   { duration: 1.1, delay: 1.4, times: [0, 0.32, 1.0], ease: ['easeOut', 'easeInOut'] },
                     }}
                     style={{
                       position: 'absolute',
