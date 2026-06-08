@@ -15,10 +15,9 @@ import {
 type Phase = 'anticipate' | 'reveal' | 'hold' | 'pan_out' | 'done';
 
 // Internal beat sequence that fires during the hold phase.
-// beat 3: sigil  — aura glow expands
-// beat 4: target — target claim badge appears
-// beat 5: snap   — consequence flash fires once then fades
-type EffectBeat = 'idle' | 'sigil' | 'target' | 'snap' | 'done';
+// beat 1: target — target claim badge appears
+// beat 2: snap   — consequence flash fires once then fades
+type EffectBeat = 'idle' | 'target' | 'snap' | 'done';
 
 interface LuminaryActivationCinematicProps {
   luminaryId: string;
@@ -85,8 +84,7 @@ const ENTITY_FILTER = [
 ];
 
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
-// All must complete before HOLD_MS expires.
-const BEAT_SIGIL_MS  = 0;    // relative to hold phase start
+// All offsets are absolute from hold-phase start.  All must complete before HOLD_MS expires.
 const BEAT_TARGET_MS = 150;
 const BEAT_SNAP_MS   = 300;
 const BEAT_DONE_MS   = 460;
@@ -145,19 +143,16 @@ export function LuminaryActivationCinematic({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Effect beat chain (within hold phase) ─────────────────────────────────
-  // Beats 3-5 fire sequentially during HOLD_MS.  Skipped when no effectDef.
+  // Beats fire sequentially during HOLD_MS.  Skipped when no effectDef.
   useEffect(() => {
     if (phase !== 'hold' || !effectDef) {
       setEffectBeat('idle');
       return;
     }
-    setEffectBeat('sigil');
     const timers: ReturnType<typeof setTimeout>[] = [];
-    if (BEAT_TARGET_MS > BEAT_SIGIL_MS) {
-      timers.push(setTimeout(() => setEffectBeat('target'), BEAT_TARGET_MS - BEAT_SIGIL_MS));
-    }
-    timers.push(setTimeout(() => setEffectBeat('snap'), BEAT_SNAP_MS - BEAT_SIGIL_MS));
-    timers.push(setTimeout(() => setEffectBeat('done'), BEAT_DONE_MS - BEAT_SIGIL_MS));
+    timers.push(setTimeout(() => setEffectBeat('target'), BEAT_TARGET_MS));
+    timers.push(setTimeout(() => setEffectBeat('snap'),   BEAT_SNAP_MS));
+    timers.push(setTimeout(() => setEffectBeat('done'),   BEAT_DONE_MS));
     return () => timers.forEach(clearTimeout);
   }, [phase, effectDef]);
 
