@@ -32,7 +32,20 @@ import {
   Settings,
   Copy,
   Check,
+  Volume2,
+  VolumeX,
+  Zap,
+  Sparkles,
+  Lightbulb,
 } from "lucide-react";
+import {
+  apiUpdatePreferences,
+  getSkipCinematics,
+  setSkipCinematics,
+  getAbridgedAnims,
+  getHintsEnabled,
+  getMuted,
+} from "@/lib/cinematicPrefs";
 import { useToast } from "@/hooks/use-toast";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
 import logoLuminae from "@assets/generated_images/logo_luminae.png";
@@ -310,7 +323,7 @@ function HistoryTab({ stats, isLoading }: { stats: PlayerStats | null; isLoading
 
 type CostModePref = "printed" | "after_bonuses" | "needed_now" | "remember";
 
-function SettingsTab({ accountId }: { accountId: string }) {
+function SettingsTab({ accountId, token }: { accountId: string; token: string | null }) {
   const prefKey = `luminae_cost_mode_pref_${accountId}`;
   const [pref, setPref] = useState<CostModePref>(() => {
     const stored = localStorage.getItem(prefKey);
@@ -334,8 +347,109 @@ function SettingsTab({ accountId }: { accountId: string }) {
     { value: "needed_now", label: "Needed", desc: "Always show what you still need to pay right now" },
   ];
 
+  const [muted, setMutedState] = useState<boolean>(() => getMuted());
+  const toggleMuted = () => {
+    const next = !muted;
+    setMutedState(next);
+    try { localStorage.setItem("luminae_muted", String(next)); } catch { /* ignore */ }
+    if (token) void apiUpdatePreferences(token, { muted: next }).catch(() => undefined);
+  };
+
+  const [abridgedAnims, setAbridgedAnimsState] = useState<boolean>(() => getAbridgedAnims());
+  const toggleAbridgedAnims = () => {
+    const next = !abridgedAnims;
+    setAbridgedAnimsState(next);
+    try { localStorage.setItem("luminae_abridged_anims", next ? "1" : "0"); } catch { /* ignore */ }
+    if (token) void apiUpdatePreferences(token, { abridgedAnims: next }).catch(() => undefined);
+  };
+
+  const [hintsEnabled, setHintsEnabledState] = useState<boolean>(() => getHintsEnabled());
+  const toggleHintsEnabled = () => {
+    const next = !hintsEnabled;
+    setHintsEnabledState(next);
+    try { localStorage.setItem("luminae_hints_enabled", next ? "1" : "0"); } catch { /* ignore */ }
+    if (token) void apiUpdatePreferences(token, { hintsEnabled: next }).catch(() => undefined);
+  };
+
+  const [skipCinematics, setSkipCinematicsState] = useState<boolean>(() => getSkipCinematics(accountId));
+  const toggleSkipCinematics = () => {
+    const next = !skipCinematics;
+    setSkipCinematicsState(next);
+    setSkipCinematics(next, accountId, token ?? undefined);
+  };
+
+  const prefToggle = (
+    on: boolean,
+    onToggle: () => void,
+    icon: React.ReactNode,
+    label: string,
+    desc: string,
+  ) => (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+        on
+          ? "border-primary/60 bg-primary/10 text-foreground"
+          : "border-border/40 bg-secondary/20 text-muted-foreground hover:border-border/70 hover:text-foreground"
+      }`}
+    >
+      <span className={`flex-shrink-0 ${on ? "text-primary" : "text-muted-foreground opacity-50"}`}>
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold leading-none mb-1 ${on ? "text-foreground" : ""}`}>{label}</p>
+        <p className="text-xs text-muted-foreground leading-snug">{desc}</p>
+      </div>
+      <span
+        className={`ml-auto h-5 w-9 rounded-full flex-shrink-0 relative transition-colors ${on ? "bg-primary" : "bg-muted/60"}`}
+      >
+        <span
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${on ? "translate-x-4" : "translate-x-0.5"}`}
+        />
+      </span>
+    </button>
+  );
+
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+      <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
+        <h3 className="text-sm font-semibold mb-1">Audio &amp; animations</h3>
+        <p className="text-xs text-muted-foreground mb-4">
+          These settings sync across devices when you're signed in.
+        </p>
+        <div className="space-y-2">
+          {prefToggle(
+            !muted,
+            toggleMuted,
+            muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />,
+            muted ? "Sound off" : "Sound on",
+            "Toggle in-game audio and affinity sound effects",
+          )}
+          {prefToggle(
+            abridgedAnims,
+            toggleAbridgedAnims,
+            <Zap className="h-4 w-4" />,
+            "Abridged animations",
+            "Shorten forge and harvest animations for a faster game feel",
+          )}
+          {prefToggle(
+            !skipCinematics,
+            toggleSkipCinematics,
+            <Sparkles className="h-4 w-4" />,
+            skipCinematics ? "Cinematics off" : "Cinematics on",
+            "Show or skip victory and Luminary cinematic sequences",
+          )}
+          {prefToggle(
+            hintsEnabled,
+            toggleHintsEnabled,
+            <Lightbulb className="h-4 w-4" />,
+            "Gameplay hints",
+            "Show contextual tips while learning the game",
+          )}
+        </div>
+      </div>
+
       <div className="rounded-2xl border border-border/50 bg-card/60 backdrop-blur p-5">
         <h3 className="text-sm font-semibold mb-1">Default cost view</h3>
         <p className="text-xs text-muted-foreground mb-4">
@@ -657,7 +771,7 @@ function DashboardContent() {
         ) : activeTab === "history" ? (
           <HistoryTab stats={stats} isLoading={isLoadingStats} />
         ) : (
-          <SettingsTab accountId={account.id} />
+          <SettingsTab accountId={account.id} token={token} />
         )}
       </div>
 

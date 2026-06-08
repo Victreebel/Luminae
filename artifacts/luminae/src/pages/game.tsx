@@ -38,7 +38,7 @@ import {
   Volume2, VolumeX, AlertCircle, Sparkles, Clock,
   Gavel, Eye, Package, LayoutGrid, Hand, Landmark, List,
   ChevronDown, ChevronUp, ChevronRight, Flag, X, HelpCircle, CalendarX, Undo2, Check, SendHorizontal, DoorOpen, Pencil,
-  Hammer, Droplets, MoreVertical, Zap, RefreshCw
+  Hammer, Droplets, MoreVertical, Zap, RefreshCw, Lightbulb
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -5196,6 +5196,10 @@ export default function GameBoard() {
             <DropdownMenuItem onClick={toggleSkipCinematics}>
               <Sparkles className={`h-4 w-4 ${skipCinematics ? 'text-muted-foreground opacity-50' : 'text-yellow-400'}`} />
               {skipCinematics ? 'Cinematics off' : 'Cinematics on'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggleHints}>
+              <Lightbulb className={`h-4 w-4 ${hintsEnabled ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
+              {hintsEnabled ? 'Hints on' : 'Hints off'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { setHeaderMenuOpen(false); setTimeout(handleReturnToMenu, 0); }}>
               <DoorOpen className="h-4 w-4" />
