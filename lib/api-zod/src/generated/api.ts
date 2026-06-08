@@ -690,6 +690,29 @@ export const StartGameResponse = zod.object({
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
     ),
+  burnPile: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+    ),
+  burnEvents: zod
+    .array(
+      zod
+        .object({
+          cardId: zod.string(),
+          tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceLuminaryId: zod.string(),
+        })
+        .describe(
+          "A single Artifact card removed from the market by a Luminary burn effect",
+        ),
+    )
+    .optional()
+    .describe(
+      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+    ),
   pendingLuminaryChoice: zod
     .object({
       playerId: zod.string(),
@@ -1153,6 +1176,29 @@ export const RematchResponse = zod.object({
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
     ),
+  burnPile: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+    ),
+  burnEvents: zod
+    .array(
+      zod
+        .object({
+          cardId: zod.string(),
+          tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceLuminaryId: zod.string(),
+        })
+        .describe(
+          "A single Artifact card removed from the market by a Luminary burn effect",
+        ),
+    )
+    .optional()
+    .describe(
+      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+    ),
   pendingLuminaryChoice: zod
     .object({
       playerId: zod.string(),
@@ -1615,6 +1661,29 @@ export const GetGameStateResponse = zod.object({
     .optional()
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
+  burnPile: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+    ),
+  burnEvents: zod
+    .array(
+      zod
+        .object({
+          cardId: zod.string(),
+          tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceLuminaryId: zod.string(),
+        })
+        .describe(
+          "A single Artifact card removed from the market by a Luminary burn effect",
+        ),
+    )
+    .optional()
+    .describe(
+      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
     ),
   pendingLuminaryChoice: zod
     .object({
@@ -2148,6 +2217,29 @@ export const SubmitActionResponse = zod.object({
     .optional()
     .describe(
       "True once The Glass Orchard Perfect Replication has fired (v0.8)",
+    ),
+  burnPile: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Ordered list of card IDs removed from the market by Luminary burn effects (never reused)",
+    ),
+  burnEvents: zod
+    .array(
+      zod
+        .object({
+          cardId: zod.string(),
+          tier: zod.union([zod.literal(1), zod.literal(2), zod.literal(3)]),
+          turn: zod.number().describe("turnCount at the time of the burn"),
+          sourceLuminaryId: zod.string(),
+        })
+        .describe(
+          "A single Artifact card removed from the market by a Luminary burn effect",
+        ),
+    )
+    .optional()
+    .describe(
+      "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
     ),
   pendingLuminaryChoice: zod
     .object({

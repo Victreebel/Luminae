@@ -132,6 +132,14 @@ interface ActionLogEntry {
   turn: number;
 }
 
+/** A single Artifact card removed from the market by a Luminary burn effect. */
+export interface BurnEvent {
+  cardId: string;
+  tier: 1 | 2 | 3;
+  turn: number;
+  sourceLuminaryId: string;
+}
+
 export interface GameStateData {
   currentPlayerIndex: number;
   roundNumber: number;
@@ -190,6 +198,10 @@ export interface GameStateData {
     candidates: string[];
     createdAt: number;
   } | null;
+  /** Ordered list of card IDs removed from the market by Luminary burn effects (never reused). */
+  burnPile: string[];
+  /** Per-card burn event log — one entry per card burned, carries tier and source Luminary. */
+  burnEvents: BurnEvent[];
 }
 
 const ACTION_LOG_MAX = 100;
@@ -754,6 +766,8 @@ export function initializeGame(
     turnTimerSeconds: null,
     turnDeadline: null,
     version: 1,
+    burnPile: [],
+    burnEvents: [],
   };
 }
 
@@ -1184,6 +1198,7 @@ function burnLowestCostWithout(
   state: GameStateData,
   tier: 1 | 2 | 3,
   excludeColors: CrystalColor[],
+  sourceLuminaryId: string,
 ): string | null {
   const market = getMarketForTier(state, tier);
   let bestId: string | null = null;
@@ -1196,7 +1211,7 @@ function burnLowestCostWithout(
     if (tc < bestCost) { bestCost = tc; bestId = id; }
   }
   if (!bestId) return null;
-  drawIntoMarket(state, getMarketForTier(state, tier), getDeckForTier(state, tier), bestId);
+  burnCard(state, bestId, tier, sourceLuminaryId);
   return bestId;
 }
 
@@ -1206,13 +1221,13 @@ function burnLowestCostWithout(
  * replacement cards drawn from the deck are NOT re-burned.
  * Returns the count of cards that were burned.
  */
-function burnAllInTier(state: GameStateData, tier: 1 | 2 | 3): number {
+function burnAllInTier(state: GameStateData, tier: 1 | 2 | 3, sourceLuminaryId: string): number {
   const snapshot = [...getMarketForTier(state, tier)];
   let count = 0;
   for (const id of snapshot) {
     const market = getMarketForTier(state, tier);
     if (market.includes(id)) {
-      drawIntoMarket(state, market, getDeckForTier(state, tier), id);
+      burnCard(state, id, tier, sourceLuminaryId);
       count++;
     }
   }
@@ -1251,10 +1266,12 @@ function phoenixParadoxCascade(
   while (true) {
     const cardId = market[targetIdx];
     if (!cardId) break;
-    if (state.marketMarkers) delete state.marketMarkers[cardId];
 
-    if (deck.length === 0) {
-      market.splice(targetIdx, 1);
+    const deckHadCard = deck.length > 0;
+    burnCard(state, cardId, tier, "lum_astral");
+
+    if (!deckHadCard) {
+      // Slot was spliced out by burnCard → drawIntoMarket path.
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
         summary: `Phoenix Paradox — T${tier} reveal: ${cardId} burned (deck empty — no replacement)`,
@@ -1262,22 +1279,9 @@ function phoenixParadoxCascade(
       });
       break;
     }
-    const replacement = deck.shift()!;
-    market[targetIdx] = replacement;
 
-    // Transfer Avatar Seed if needed.
-    if (state.avatarSeedState && !state.avatarSeedState.payoutDone) {
-      const si = state.avatarSeedState.deckSeeds.indexOf(replacement);
-      if (si !== -1) {
-        state.avatarSeedState.deckSeeds.splice(si, 1);
-        if (!state.marketMarkers) state.marketMarkers = {};
-        state.marketMarkers[replacement] = {
-          type: "avatar_seed",
-          ownerId: state.avatarSeedState.ownerId,
-          summonedAtTurnCount: state.avatarSeedState.summonedAtTurnCount,
-        };
-      }
-    }
+    const replacement = market[targetIdx];
+    if (!replacement) break;
 
     const replCard = CARD_MAP.get(replacement);
     const replQualifies = !!replCard && (replCard.cost.ruby > 0 || replCard.cost.sapphire > 0);
@@ -1328,6 +1332,52 @@ function incrementBloomCount(state: GameStateData): void {
   if (bloomClaimed) {
     state.catalystBloomBurnCount = (state.catalystBloomBurnCount ?? 0) + 1;
   }
+}
+
+/**
+ * Shared "burn" primitive — the single authoritative path for all Luminary burn effects.
+ *
+ * Records the card in `state.burnPile` and emits one `BurnEvent` entry in
+ * `state.burnEvents`, increments the Catalyst Bloom accumulator (every card burn
+ * feeds Bloom regardless of which Luminary triggered it), pushes a per-card
+ * action-log entry, then delegates to `drawIntoMarket` for slot-refill.
+ *
+ * Callers are responsible for pushing their own effect-level summary log and
+ * any activation events AFTER calling burnCard (or the burn loop helpers).
+ */
+function burnCard(
+  state: GameStateData,
+  cardId: string,
+  tier: 1 | 2 | 3,
+  sourceLuminaryId: string,
+): void {
+  if (!Array.isArray(state.burnPile)) state.burnPile = [];
+  if (!Array.isArray(state.burnEvents)) state.burnEvents = [];
+  if (!state.burnPile.includes(cardId)) {
+    state.burnPile.push(cardId);
+  }
+  state.burnEvents.push({
+    cardId,
+    tier,
+    turn: state.turnCount,
+    sourceLuminaryId,
+  });
+
+  // Increment Catalyst Bloom accumulator — each individual card burn counts.
+  incrementBloomCount(state);
+
+  // Push a per-card burn log entry attributed to the Luminary owner.
+  const burntLore = getCardLore(cardId);
+  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
+  const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
+  pushLog(state, {
+    playerId: owner?.playerId ?? "",
+    playerName: owner?.playerName ?? "",
+    summary: `${lum?.name ?? sourceLuminaryId} — Burn: ${burntLore.name} (Tier ${tier}) removed from market`,
+    turn: state.roundNumber,
+  });
+
+  drawIntoMarket(state, getMarketForTier(state, tier), getDeckForTier(state, tier), cardId);
 }
 
 // ─── v0.8 On-Summon Effect Helpers ────────────────────────────────────────────
@@ -1494,10 +1544,9 @@ function applySummonEffect(
   switch (lumId) {
     case "lum_moth": {
       // Rupture of the Still: burn lowest-cost T3 without Flare, then T2 without Flare.
-      const b3 = burnLowestCostWithout(state, 3, ["ruby"]);
-      const b2 = burnLowestCostWithout(state, 2, ["ruby"]);
+      const b3 = burnLowestCostWithout(state, 3, ["ruby"], "lum_moth");
+      const b2 = burnLowestCostWithout(state, 2, ["ruby"], "lum_moth");
       if (b3 || b2) {
-        incrementBloomCount(state);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `Red Moth — Rupture of the Still: burned lowest-cost Artifacts without Flare`,
@@ -1521,9 +1570,8 @@ function applySummonEffect(
     }
     case "lum_forge": {
       // Impact Extinction: burn all face-up T3 Artifacts.
-      const count = burnAllInTier(state, 3);
+      const count = burnAllInTier(state, 3, "lum_forge");
       if (count > 0) {
-        incrementBloomCount(state);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `Iron Harbinger — Impact Extinction: burned all ${count} Tier III Artifact(s)`,
@@ -1539,7 +1587,6 @@ function applySummonEffect(
       const did3 = phoenixParadoxCascade(state, 3, player);
       const did2 = phoenixParadoxCascade(state, 2, player);
       if (did3 || did2) {
-        incrementBloomCount(state);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `Phoenix Paradox — Ash-Seeking Recurrence: burned and revealed until Flare/Continuum`,
@@ -1754,15 +1801,14 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
         for (const tier of [1, 2, 3] as const) {
           const market = getMarketForTier(state, tier);
           if (market.includes(cardId)) {
-            drawIntoMarket(state, market, getDeckForTier(state, tier), cardId);
+            burnCard(state, cardId, tier, "lum_ember");
             burnCount++;
             break;
           }
         }
-        // Marker already removed by drawIntoMarket.
+        // Marker already removed by burnCard → drawIntoMarket.
       }
       if (burnCount > 0) {
-        incrementBloomCount(state);
         pushLog(state, {
           playerId: player.playerId, playerName: player.playerName,
           summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
@@ -2127,6 +2173,9 @@ export function applyAction(
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Card not found" };
 
+      if ((state.burnPile ?? []).includes(action.cardId))
+        return { success: false, error: "Card has been burned" };
+
       const market = getMarketForTier(state, card.tier as 1 | 2 | 3);
       if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
@@ -2156,6 +2205,10 @@ export function applyAction(
       if (!action.cardId) return { success: false, error: "cardId required" };
       const card = CARD_MAP.get(action.cardId);
       if (!card) return { success: false, error: "Card not found" };
+
+      if ((state.burnPile ?? []).includes(action.cardId))
+        return { success: false, error: "Card has been burned" };
+
       const market = getMarketForTier(state, card.tier as 1 | 2 | 3);
       if (!market.includes(action.cardId))
         return { success: false, error: "Card not in market" };
@@ -2815,6 +2868,13 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!("firstHungerAvailable" in state)) {
     state.firstHungerAvailable = null;
   }
+  // ensure burnPile and burnEvents exist (added in Burn keyword feature)
+  if (!Array.isArray(state.burnPile)) {
+    state.burnPile = [];
+  }
+  if (!Array.isArray(state.burnEvents)) {
+    state.burnEvents = [];
+  }
   // avatarSeedState: leave undefined if not set (it's truly optional)
 
   // migrate old action log summaries: "Glass Orchard — Perfect Replication" → "The Glass Orchard — Perfect Replication"
@@ -2973,5 +3033,7 @@ export function formatGameState(
     catalystBloomBurnCount: stateData.catalystBloomBurnCount ?? 0,
     concordanceMandalaTriggered: stateData.concordanceMandalaTriggered ?? false,
     glassOrchardTriggered: stateData.glassOrchardTriggered ?? false,
+    burnPile: stateData.burnPile ?? [],
+    burnEvents: stateData.burnEvents ?? [],
   };
 }

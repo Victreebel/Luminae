@@ -397,6 +397,25 @@ export interface ArtifactCard {
   bonusesAtForge?: CrystalCounts;
 }
 
+export type BurnEventTier = (typeof BurnEventTier)[keyof typeof BurnEventTier];
+
+export const BurnEventTier = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
+  NUMBER_3: 3,
+} as const;
+
+/**
+ * A single Artifact card removed from the market by a Luminary burn effect
+ */
+export interface BurnEvent {
+  cardId: string;
+  tier: BurnEventTier;
+  /** turnCount at the time of the burn */
+  turn: number;
+  sourceLuminaryId: string;
+}
+
 export interface ActionLogEntry {
   playerId: string;
   playerName: string;
@@ -663,6 +682,10 @@ export interface GameState {
   concordanceMandalaTriggered?: boolean;
   /** True once The Glass Orchard Perfect Replication has fired (v0.8) */
   glassOrchardTriggered?: boolean;
+  /** Ordered list of card IDs removed from the market by Luminary burn effects (never reused) */
+  burnPile?: string[];
+  /** Ordered list of individual burn events (one per card burned) including tier and source Luminary */
+  burnEvents?: BurnEvent[];
   /** Set when the current player must choose the order to claim multiple simultaneous Luminaries */
   pendingLuminaryChoice?: GameStatePendingLuminaryChoice;
 }

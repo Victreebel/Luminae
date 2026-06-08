@@ -1249,6 +1249,26 @@ components:
         - name
         - flavor
 
+    BurnEvent:
+      type: object
+      description: A single Artifact card removed from the market by a Luminary burn effect
+      properties:
+        cardId:
+          type: string
+        tier:
+          type: integer
+          enum: [1, 2, 3]
+        turn:
+          type: integer
+          description: turnCount at the time of the burn
+        sourceLuminaryId:
+          type: string
+      required:
+        - cardId
+        - tier
+        - turn
+        - sourceLuminaryId
+
     ActionLogEntry:
       type: object
       properties:
@@ -1580,6 +1600,16 @@ components:
         glassOrchardTriggered:
           type: boolean
           description: True once The Glass Orchard Perfect Replication has fired (v0.8)
+        burnPile:
+          type: array
+          items:
+            type: string
+          description: Ordered list of card IDs removed from the market by Luminary burn effects (never reused)
+        burnEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/BurnEvent"
+          description: Ordered list of individual burn events (one per card burned) including tier and source Luminary
         pendingLuminaryChoice:
           type: object
           nullable: true

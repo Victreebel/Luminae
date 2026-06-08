@@ -1203,6 +1203,42 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
   });
 });
 
+// ─── normalizeState — burnPile / burnEvents defaults ──────────────────────────
+
+describe("normalizeState — burnPile and burnEvents defaults", () => {
+  it("initialises burnPile to [] when absent", () => {
+    const raw = initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2);
+    // Simulate old saved state missing burnPile
+    const oldState = { ...raw } as Record<string, unknown>;
+    delete oldState.burnPile;
+    const state = normalizeState(oldState);
+    expect(Array.isArray(state.burnPile)).toBe(true);
+    expect(state.burnPile).toHaveLength(0);
+  });
+
+  it("initialises burnEvents to [] when absent", () => {
+    const raw = initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2);
+    const oldState = { ...raw } as Record<string, unknown>;
+    delete oldState.burnEvents;
+    const state = normalizeState(oldState);
+    expect(Array.isArray(state.burnEvents)).toBe(true);
+    expect(state.burnEvents).toHaveLength(0);
+  });
+
+  it("preserves non-empty burnPile from saved state", () => {
+    const raw = initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2);
+    const savedState = { ...raw, burnPile: ["t3r01", "t2s04"] };
+    const state = normalizeState(savedState);
+    expect(state.burnPile).toEqual(["t3r01", "t2s04"]);
+  });
+
+  it("initializeGame starts with empty burnPile and burnEvents", () => {
+    const state = initializeGame([{ id: "p1", name: "P1" }, { id: "p2", name: "P2" }], 2);
+    expect(state.burnPile).toEqual([]);
+    expect(state.burnEvents).toEqual([]);
+  });
+});
+
 // ─── LUMINARIES catalogue ─────────────────────────────────────────────────────
 
 describe("LUMINARIES catalogue", () => {

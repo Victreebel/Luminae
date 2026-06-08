@@ -428,6 +428,7 @@ export default function GameBoard() {
   const deckSheetContainerRef = useRef<HTMLElement | null>(null);
   const rulesSheetContainerRef = useRef<HTMLElement | null>(null);
   const forgedOverlayContainerRef = useRef<HTMLElement | null>(null);
+  const burnPileOverlayContainerRef = useRef<HTMLElement | null>(null);
   const luminarySheetContainerRef = useRef<HTMLElement | null>(null);
   const winOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
@@ -443,6 +444,7 @@ export default function GameBoard() {
   const [showEminenceBreakdown, setShowEminenceBreakdown] = useState(false);
   const [showForgedOverlay, setShowForgedOverlay] = useState(false);
   const [forgedFilter, setForgedFilter] = useState<GemKey | null>(null);
+  const [showBurnPileOverlay, setShowBurnPileOverlay] = useState(false);
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [testPanelCollapsed, setTestPanelCollapsed] = useState(false);
@@ -724,7 +726,7 @@ export default function GameBoard() {
   // IMPORTANT — when adding a new overlay, add its boolean here.
   // useScrollLock below reads this same array, so you only need to update
   // this one list; no separately wired scroll-lock effect is required.
-  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, !!selectedLuminary, !!auraPreviewLuminaryId] as const;
+  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, showBurnPileOverlay, !!selectedLuminary, !!auraPreviewLuminaryId] as const;
   const isAnyOverlayOpen = overlayStates.some(Boolean);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
@@ -786,6 +788,14 @@ export default function GameBoard() {
     { handleEscape: false },
   );
 
+  // Focus-trap: burn pile overlay
+  useFocusTrap(
+    burnPileOverlayContainerRef,
+    showBurnPileOverlay,
+    () => setShowBurnPileOverlay(false),
+    { handleEscape: false },
+  );
+
   // Escape-to-close: closes whichever sheet is open when Esc is pressed.
   // Priority order — most contextual/recently-opened first so that nested
   // sheets close inner-to-outer (e.g. card sheet before reserved overlay).
@@ -795,6 +805,7 @@ export default function GameBoard() {
     { isOpen: !!selectedLuminary,       onClose: () => setSelectedLuminary(null) },
     { isOpen: selectedDeckTier !== null, onClose: () => { setSelectedDeckTier(null); setPendingDeckConfirm(false); } },
     { isOpen: showForgedOverlay,        onClose: () => { setShowForgedOverlay(false); setForgedFilter(null); } },
+    { isOpen: showBurnPileOverlay,      onClose: () => setShowBurnPileOverlay(false) },
     { isOpen: showReservedOverlay,      onClose: () => setShowReservedOverlay(false) },
     { isOpen: showRules,                onClose: () => setShowRules(false) },
     { isOpen: showEminenceBreakdown,    onClose: () => setShowEminenceBreakdown(false) },
@@ -848,6 +859,8 @@ export default function GameBoard() {
     useSwipeToDismiss(reservedOverlayContainerRef, () => setShowReservedOverlay(false), { isOpen: showReservedOverlay, peekHeight: 0.4 });
   const { dragProps: forgedSheetDragProps, handleBarProps: forgedSheetHandleBarProps, makeScrollableAreaProps: forgedSheetMakeScrollableAreaProps, backdropOpacity: forgedSheetBackdropOpacity, sheetScale: forgedSheetScale, peekProgress: forgedSheetPeekProgress } =
     useSwipeToDismiss(forgedOverlayContainerRef, () => { setShowForgedOverlay(false); setForgedFilter(null); }, { isOpen: showForgedOverlay, peekHeight: 0.4 });
+  const { dragProps: burnPileSheetDragProps, handleBarProps: burnPileSheetHandleBarProps, scrollableAreaProps: burnPileSheetScrollableProps, backdropOpacity: burnPileSheetBackdropOpacity, sheetScale: burnPileSheetScale } =
+    useSwipeToDismiss(burnPileOverlayContainerRef, () => setShowBurnPileOverlay(false), { isOpen: showBurnPileOverlay });
   // Two separate scrollable areas in the forged sheet: the filter-pill header row
   // (overflow-x-auto, single line) and the card grid body (overflow-y-auto).
   // Each area gets its own makeScrollableAreaProps() instance so both scroll positions
@@ -3651,18 +3664,32 @@ export default function GameBoard() {
             </div>
             <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(192,140,60,0.5), transparent)' }} />
           </div>
-          <button
-            type="button"
-            onClick={() => setMarketCompact(v => !v)}
-            className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
-            title={marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
-            aria-pressed={marketCompact}
-          >
-            <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
-            <span className="text-[9px] font-bold uppercase tracking-wide leading-none">
-              {marketCompact ? 'Compact' : 'Full'}
-            </span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {(state.burnPile ?? []).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowBurnPileOverlay(true)}
+                className="flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground hover:text-orange-400/80 transition-colors"
+                title="View burned Artifacts"
+                aria-label={`View ${(state.burnPile ?? []).length} burned Artifact${(state.burnPile ?? []).length === 1 ? '' : 's'}`}
+              >
+                <span className="text-[11px] leading-none">🔥</span>
+                <span className="text-[9px] font-bold tabular-nums leading-none">{(state.burnPile ?? []).length}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setMarketCompact(v => !v)}
+              className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
+              title={marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
+              aria-pressed={marketCompact}
+            >
+              <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-[9px] font-bold uppercase tracking-wide leading-none">
+                {marketCompact ? 'Compact' : 'Full'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* ── COST filter strip — above Tier 3 ── */}
@@ -7321,6 +7348,73 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
+
+      {/* ── Burn Pile Overlay ── */}
+      <AnimatePresence>
+        {showBurnPileOverlay && (
+          <motion.div
+            key="burn-pile-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ opacity: burnPileSheetBackdropOpacity }}
+            className="fixed inset-0 z-[95] bg-black/60"
+            onClick={() => setShowBurnPileOverlay(false)}
+          />
+        )}
+        {showBurnPileOverlay && (() => {
+          const burnedIds: string[] = state.burnPile ?? [];
+          return (
+            <motion.div
+              key="burn-pile-sheet"
+              ref={(el) => { burnPileOverlayContainerRef.current = el; }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Burn Pile"
+              initial={{ y: '100%' }}
+              animate={{ y: '0%' }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 32, stiffness: 340, mass: 0.9 }}
+              className="fixed bottom-0 left-0 right-0 z-[96] rounded-t-2xl flex flex-col"
+              style={{ background: 'rgba(10,8,20,0.97)', border: '1px solid rgba(255,100,0,0.25)', maxHeight: '70vh', scale: burnPileSheetScale }}
+              {...burnPileSheetDragProps}
+            >
+              {/* drag handle */}
+              <div {...burnPileSheetHandleBarProps} className="flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+              {/* header */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-orange-500/15">
+                <div className="flex items-center gap-2">
+                  <span className="text-base leading-none">🔥</span>
+                  <span className="text-sm font-bold text-orange-300/90">Burned Artifacts</span>
+                  <span className="text-xs text-muted-foreground">({burnedIds.length})</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="hidden [@media(pointer:fine)]:inline-flex items-center px-1 py-0.5 rounded text-[10px] font-mono text-muted-foreground/40 border border-border/30 bg-muted/10 leading-none select-none">Esc</kbd>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 focus-visible:outline-none focus-visible:ring-0" aria-label="Close burn pile" onClick={() => setShowBurnPileOverlay(false)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+              {/* body */}
+              <div {...burnPileSheetScrollableProps} className="overflow-y-auto px-5 py-3 flex flex-col gap-0 divide-y divide-border/20">
+                {burnedIds.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic py-2">No cards have been burned yet.</p>
+                ) : burnedIds.map((cardId, idx) => {
+                  const name = loreCatalog?.[cardId]?.name ?? cardId;
+                  return (
+                    <div key={`${cardId}-${idx}`} className="flex items-center gap-3 py-2.5">
+                      <span className="text-[11px] text-muted-foreground w-5 text-right shrink-0 tabular-nums">{idx + 1}</span>
+                      <span className="text-xs font-semibold text-orange-200/80 leading-tight">{name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* ── Luminary Claim Order Picker ── */}
       {/* Shown whenever a player qualifies for multiple Luminaries simultaneously.
