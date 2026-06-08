@@ -2500,7 +2500,7 @@ export function LuminarySummonCutscene({
             key="entity"
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             style={{ overflow: 'visible' }}
-            initial={{ opacity: 0, filter: 'blur(0px) brightness(0.10)' }}
+            initial={{ opacity: 0, filter: 'blur(20px) brightness(0.25)' }}
             animate={isFading
               ? { opacity: 0, filter: 'blur(0px) brightness(1.0)' }
               : {
@@ -2508,9 +2508,9 @@ export function LuminarySummonCutscene({
                   filter: (prefersReducedMotion || isMobile)
                     ? 'blur(0px) brightness(1.0)'
                     : [
-                        'blur(0px)  brightness(0.10)',
-                        'blur(0px)  brightness(0.10)',
-                        'blur(14px) brightness(0.55)',
+                        'blur(20px) brightness(0.25)',
+                        'blur(12px) brightness(0.50)',
+                        'blur(4px)  brightness(0.80)',
                         'blur(0px)  brightness(1.0)',
                       ],
                 }
@@ -2519,7 +2519,7 @@ export function LuminarySummonCutscene({
               ? { duration: 0.55, ease: 'easeIn' }
               : {
                   opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
-                  filter:  { duration: 2.3,  delay: 0.15, times: [0, 0.72, 0.86, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 2.3,  delay: 0.15, times: [0, 0.35, 0.70, 1.0], ease: 'easeOut' },
                 }
             }
           >
