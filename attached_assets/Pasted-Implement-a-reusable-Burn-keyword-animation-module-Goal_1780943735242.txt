@@ -1,0 +1,87 @@
+Implement a reusable Burn keyword animation module.
+
+Goal:
+Burn should have one shared visual animation that can be inserted inside larger Luminary procedures.
+
+Do not hardcode Burn animation separately for each Luminary.
+
+Burn animation definition:
+Burn = Artifact leaves the market and enters the public Burn Pile.
+
+Animation sequence:
+1. Target claim
+- Highlight the Artifact(s) being burned.
+- Use a brief red/orange ember outline or fracture mark.
+- Duration ~150ms.
+
+2. Heat fracture
+- Card surface develops ember cracks or glowing edges.
+- The Artifact should feel destabilized, not simply faded.
+- Duration ~250ms.
+
+3. Burn release
+- Card breaks into ash/sparks/flame fragments.
+- Fragments lift away, scatter outward, or stream toward the Burn Pile.
+- Duration ~300ms.
+
+4. Burn Pile confirmation
+- Burn Pile count increments.
+- Optional: tiny spark/ash trail lands on Burn Pile icon.
+- Duration ~150ms.
+
+5. Market aftermath
+- Burned slot briefly shows scorched residue.
+- Then slot redraws normally if the effect calls for immediate refill.
+- Duration ~300ms.
+
+Important visual rules:
+- Burn is not discard.
+- Burn is not normal market cycling.
+- Burn should feel like permanent removal.
+- Do not use a shrink-in/collapse-in animation.
+- The dominant motion should be fracture, flare, ash release, and removal to Burn Pile.
+- Keep the target readable throughout.
+- Keep the animation brief and non-blocking.
+
+Architecture:
+Create a reusable animation event/module, for example:
+
+type KeywordAnimationEvent = "burn" | "forgotten" | "nullified" | "condemned" | "seeded";
+
+type AnimationProcedureStep =
+  | { type: "luminaryPulse"; luminaryId: string }
+  | { type: "targetClaim"; targetIds: string[] }
+  | { type: "keywordEvent"; keyword: KeywordAnimationEvent; targetIds: string[] }
+  | { type: "marketRedraw"; slotIds: string[] }
+  | { type: "residue"; keyword: KeywordAnimationEvent; targetIds: string[] };
+
+Burn should be callable as:
+{ type: "keywordEvent", keyword: "burn", targetIds: [...] }
+
+Integration:
+Use the shared Burn animation inside these larger procedures:
+- Red Moth: luminaryPulse → targetClaim → burn → marketRedraw
+- Phoenix Paradox: luminaryPulse → repeated targetClaim → burn → reveal/check → continue until match
+- Iron Harbinger: luminaryPulse → targetClaim all Tier III → burn → marketRedraw
+- Ember Sovereign: luminaryPulse → targetClaim → condemned residue; next turn condemned → burn → marketRedraw
+- First Hunger / Assimilate: replacement action selected → targetClaim chosen Artifact → burn → Eminence gain
+- Catalyst Bloom should listen to Burn events but does not need to visually replay every burn itself unless gaining Eminence
+
+Do not change:
+- Burn rules
+- Burn Pile behavior
+- Artifact costs
+- Artifact Eminence
+- Luminary costs
+- Luminary Eminence
+- Turn order
+- Tutorial order
+- Non-burn effects
+
+Acceptance criteria:
+- Burn animation is reusable.
+- Burned cards visibly leave market and are associated with the Burn Pile.
+- Burn Pile count visibly updates.
+- Burn animation can be embedded inside Luminary procedures.
+- No Luminary has a duplicate bespoke burn-removal implementation.
+- Existing tests/typecheck pass.

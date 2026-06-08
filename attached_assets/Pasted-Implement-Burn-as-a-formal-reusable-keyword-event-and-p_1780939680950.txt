@@ -1,0 +1,54 @@
+Implement Burn as a formal reusable keyword event and public removed-from-game zone.
+
+Goal:
+Burned cards should not silently disappear or return to the deck. Burn should be a clear game event that other effects and animations can reference.
+
+Definition:
+Burn:
+Remove the Artifact from the market and place it in the public Burn Pile.
+A burned Artifact cannot be forged, reserved, copied, redrawn, or returned to the deck unless a future card explicitly says otherwise.
+Then refill the market slot from the appropriate deck.
+
+Do not treat Burn as discard.
+Do not put burned cards on the bottom of the deck.
+Do not reshuffle burned cards.
+Do not count burned cards as owned or forged.
+Do not trigger forge effects when a card is burned.
+
+Implementation requirements:
+- Add a public Burn Pile / burnedArtifacts zone to game state.
+- Track burned Artifact card IDs.
+- Track each burn as a discrete burn event for effects like Catalyst Bloom.
+- Make burn events reusable by Luminary effects and future keyword procedures.
+- Existing Luminary burn effects should call the shared Burn event logic rather than duplicating removal/redraw behavior.
+- Market slots burned from should refill normally from the correct tier deck unless the effect explicitly delays refill.
+- The Burn Pile should be visible or inspectable in the UI.
+- The UI should show a count, e.g. “Burned Artifacts: 3.”
+- Clicking or opening it should show burned cards if an inspect modal/list already exists or can be minimally reused.
+
+Apply to these effects:
+- Red Moth / Rupture of the Still
+- Phoenix Paradox / Ash-Seeking Recurrence
+- Catalyst Bloom burn tracking
+- Iron Harbinger / Impact Extinction
+- Ember Sovereign / Cinder Mandate delayed burn
+- First Hunger / Assimilate, if implemented
+
+Do not change:
+- Artifact costs
+- Artifact Eminence
+- Luminary costs
+- Luminary Eminence
+- Turn order
+- Tutorial order
+- Non-burn Luminary effects
+- Visual styling beyond minimal Burn Pile visibility
+
+Acceptance criteria:
+- Burned cards enter a public Burn Pile.
+- Burned cards do not return to decks.
+- Burned cards are not forgeable/reservable after burning.
+- Burn events are tracked for Catalyst Bloom.
+- Existing burn Luminaries use shared Burn logic.
+- Market redraw still works correctly.
+- Existing tests/typecheck pass.
