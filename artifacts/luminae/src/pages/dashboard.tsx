@@ -380,11 +380,21 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
     "luminae_swipe_hint_seen",
   ];
 
+  const countDismissed = () => {
+    try {
+      return HINT_SEEN_KEYS.filter((key) => localStorage.getItem(key) !== null).length;
+    } catch {
+      return 0;
+    }
+  };
+
+  const [dismissedCount, setDismissedCount] = useState<number>(countDismissed);
   const [hintsJustReset, setHintsJustReset] = useState(false);
   const resetHints = () => {
     try {
       HINT_SEEN_KEYS.forEach((key) => localStorage.removeItem(key));
     } catch { /* ignore */ }
+    setDismissedCount(0);
     setHintsJustReset(true);
     setTimeout(() => setHintsJustReset(false), 2000);
   };
@@ -528,7 +538,13 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             }`}
           >
             <RotateCcw className={`h-4 w-4 flex-shrink-0 ${hintsEnabled ? "text-muted-foreground" : "opacity-30"}`} />
-            <span className="flex-1">{hintsJustReset ? "Hints reset — tips will reappear in-game" : "Reset hints"}</span>
+            <span className="flex-1">
+              {hintsJustReset
+                ? "Hints reset — tips will reappear in-game"
+                : dismissedCount > 0
+                  ? `Reset hints (${dismissedCount} dismissed)`
+                  : "Reset hints"}
+            </span>
             {hintsJustReset && <Check className="h-4 w-4 text-green-400 flex-shrink-0" />}
           </button>
         </div>
