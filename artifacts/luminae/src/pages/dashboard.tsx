@@ -372,6 +372,23 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
     if (token) void apiUpdatePreferences(token, { hintsEnabled: next }).catch(() => undefined);
   };
 
+  const HINT_SEEN_KEYS = [
+    "luminae_undo_hint_seen",
+    "luminae_reserve_hint_seen",
+    "luminae_deck_reserve_hint_seen",
+    "luminae_forge_hint_seen",
+    "luminae_swipe_hint_seen",
+  ];
+
+  const [hintsJustReset, setHintsJustReset] = useState(false);
+  const resetHints = () => {
+    try {
+      HINT_SEEN_KEYS.forEach((key) => localStorage.removeItem(key));
+    } catch { /* ignore */ }
+    setHintsJustReset(true);
+    setTimeout(() => setHintsJustReset(false), 2000);
+  };
+
   const [skipCinematics, setSkipCinematicsState] = useState<boolean>(() => getSkipCinematics(accountId));
   const toggleSkipCinematics = () => {
     const next = !skipCinematics;
@@ -500,6 +517,20 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             "Gameplay hints",
             "Show contextual tips while learning the game",
           )}
+          <button
+            type="button"
+            disabled={!hintsEnabled}
+            onClick={resetHints}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border text-left transition-all text-sm ${
+              hintsEnabled
+                ? "border-border/50 bg-secondary/20 text-muted-foreground hover:border-border/70 hover:text-foreground cursor-pointer"
+                : "border-border/20 bg-secondary/10 text-muted-foreground/30 cursor-not-allowed"
+            }`}
+          >
+            <RotateCcw className={`h-4 w-4 flex-shrink-0 ${hintsEnabled ? "text-muted-foreground" : "opacity-30"}`} />
+            <span className="flex-1">{hintsJustReset ? "Hints reset — tips will reappear in-game" : "Reset hints"}</span>
+            {hintsJustReset && <Check className="h-4 w-4 text-green-400 flex-shrink-0" />}
+          </button>
         </div>
       </div>
 
