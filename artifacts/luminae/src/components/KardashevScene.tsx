@@ -67,6 +67,14 @@ const SWARM_MIN = 20;
 const SWARM_MAX = 60; // must match genDysonSwarm count
 const SWARM_FADE_DURATION = 1.5; // seconds
 
+interface CityLight {
+  dx: number;    // relative to planet center, -1..1; positive = shadow hemisphere
+  dy: number;
+  size: number;  // base dot radius (scales with planet radius)
+  alpha: number; // base opacity
+  phase: number; // individual twinkle phase offset
+}
+
 // ── Precomputed scene data ───────────────────────────────────────────────────
 function genStars(rng: () => number, count: number): Star[] {
   return Array.from({ length: count }, () => ({
@@ -140,6 +148,32 @@ function genDysonSwarm(rng: () => number, count: number): DysonSatellite[] {
     angSpd: 0.07 + rng() * 0.04, // slight variance around a base crawl speed
     alpha:  0.35 + rng() * 0.45,
   }));
+}
+
+/**
+ * Generates stable city-light positions pre-screened to the shadow hemisphere
+ * (dx > 0.10, within 80% of planet radius).  Uses rejection sampling so all
+ * `count` entries are valid shadow-side positions.
+ */
+function genCityLights(rng: () => number, count: number): CityLight[] {
+  const lights: CityLight[] = [];
+  while (lights.length < count) {
+    const angle = rng() * Math.PI * 2;
+    const dist  = Math.sqrt(rng()) * 0.80; // sqrt → uniform disc distribution
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    // Accept only shadow-side points (positive x) inside the planet disc
+    if (dx > 0.10 && dx * dx + dy * dy < 0.64) {
+      lights.push({
+        dx,
+        dy,
+        size:  0.35 + rng() * 0.75,
+        alpha: 0.50 + rng() * 0.50,
+        phase: rng() * Math.PI * 2,
+      });
+    }
+  }
+  return lights;
 }
 
 // ── Drawing primitives ───────────────────────────────────────────────────────
@@ -403,6 +437,49 @@ function drawPlanetClouds(
   ctx.globalAlpha = 1;
 }
 
+/**
+ * Draws warm city-light specks on the shadow hemisphere of the planet.
+ * Must be called while the canvas clip is already restricted to the planet disc.
+ * Renders 0 → MAX lights as progressFraction rises from 0 → 1.
+ */
+function drawCityLights(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  radius: number,
+  t: number,
+  lights: CityLight[],
+  progressFraction: number,
+) {
+  if (progressFraction <= 0) return;
+  const visibleCount = Math.round(lights.length * progressFraction);
+  if (visibleCount === 0) return;
+
+  for (let i = 0; i < visibleCount; i++) {
+    const light = lights[i]!;
+    const lx = cx + light.dx * radius;
+    const ly = cy + light.dy * radius;
+    const pulse = 0.72 + 0.28 * Math.sin(t * 0.9 + light.phase);
+    const a = light.alpha * pulse;
+    // Dot radius scales proportionally with the planet
+    const r = Math.max(0.5, light.size * (radius / 90));
+
+    // Warm amber/white dot
+    ctx.beginPath();
+    ctx.arc(lx, ly, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,232,140,${a.toFixed(3)})`;
+    ctx.fill();
+
+    // Faint warm glow halo around each light cluster
+    const glo = ctx.createRadialGradient(lx, ly, 0, lx, ly, r * 4);
+    glo.addColorStop(0, `rgba(255,210,90,${(a * 0.35).toFixed(3)})`);
+    glo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath();
+    ctx.arc(lx, ly, r * 4, 0, Math.PI * 2);
+    ctx.fillStyle = glo;
+    ctx.fill();
+  }
+}
+
 function drawPlanet(
   ctx: CanvasRenderingContext2D,
   cx: number, cy: number,
@@ -411,6 +488,8 @@ function drawPlanet(
   palette: AffinityPalette,
   patches: PlanetPatch[],
   secondaryColor: string | null,
+  cityLights: CityLight[],
+  progressFraction: number,
 ) {
   ctx.save();
 
@@ -480,6 +559,9 @@ function drawPlanet(
   shad.addColorStop(1, 'rgba(0,0,0,0.72)');
   ctx.fillStyle = shad;
   ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+  // City lights: drawn on top of the shadow, inside the planet disc clip
+  drawCityLights(ctx, cx, cy, radius, t, cityLights, progressFraction);
 
   ctx.restore();
 
@@ -770,11 +852,13 @@ function renderTier1(
   patches: PlanetPatch[],
   palette: AffinityPalette,
   secondaryColor: string | null,
+  cityLights: CityLight[],
+  progressFraction: number,
 ) {
   drawBackground(ctx, w, h, 1);
   drawStars(ctx, w, h, t, stars, 0.55);
   const pr = Math.min(w, h) * 0.265;
-  drawPlanet(ctx, w * 0.5, h * 0.52, pr, t, palette, patches, secondaryColor);
+  drawPlanet(ctx, w * 0.5, h * 0.52, pr, t, palette, patches, secondaryColor, cityLights, progressFraction);
 }
 
 function renderTier2(
@@ -849,9 +933,11 @@ class SceneErrorBoundary extends React.Component<
 interface KardashevCanvasProps {
   tier: KardashevTier;
   palette: AffinityPalette;
-  /** 0–1 fraction of advancement within the current tier.  Only used at Tier 2
-   *  to interpolate Dyson swarm density (satellite count + arc span).
-   *  Ignored at Tiers 0, 1, and 3.  Defaults to 1 (full density). */
+  /** 0–1 fraction of advancement within the current tier.
+   *  - Tier 1: interpolates night-side city-light dot count (0 → ~80).
+   *  - Tier 2: interpolates Dyson swarm density (satellite count + arc span).
+   *  - Tiers 0 and 3: ignored.
+   *  Defaults to 1 (full density / fully lit). */
   progressFraction?: number;
 }
 
@@ -872,6 +958,8 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
   const patches = useMemo(() => genPlanetPatches(seededRng(99)), []);
   const orbits = useMemo(() => genOrbits(seededRng(77), 3), []);
   const dysonSwarm = useMemo(() => genDysonSwarm(seededRng(13), 60), []);
+  // Always generated at max count (80); drawCityLights slices based on progressFraction
+  const cityLights = useMemo(() => genCityLights(seededRng(55), 80), []);
 
   // Per-slot born-timestamps for Dyson swarm fade-in.
   // Initialized to a large negative value so all pre-existing satellites resolve
@@ -937,7 +1025,7 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
       ctx.clearRect(0, 0, w, h);
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
-      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor);
+      else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor, cityLights, clampedFraction);
       else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor, clampedFraction, bornAtRef.current);
       else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
 
@@ -946,7 +1034,7 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
 
     rafId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(rafId);
-  }, [tier, palette, progressFraction, stars, galaxyPoints, patches, orbits, dysonSwarm]);
+  }, [tier, palette, progressFraction, stars, galaxyPoints, patches, orbits, dysonSwarm, cityLights]);
 
   return (
     <>
@@ -971,9 +1059,11 @@ export interface KardashevSceneProps {
   tier: KardashevTier;
   palette: AffinityPalette;
   className?: string;
-  /** 0–1 fraction of advancement within the current tier.  Only used at Tier 2
-   *  to interpolate Dyson swarm density (satellite count + arc span).
-   *  Ignored at Tiers 0, 1, and 3.  Defaults to 1 (full density). */
+  /** 0–1 fraction of advancement within the current tier.
+   *  - Tier 1: interpolates night-side city-light dot count (0 → ~80).
+   *  - Tier 2: interpolates Dyson swarm density (satellite count + arc span).
+   *  - Tiers 0 and 3: ignored.
+   *  Defaults to 1 (full density / fully lit). */
   progressFraction?: number;
 }
 

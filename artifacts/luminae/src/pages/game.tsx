@@ -1361,11 +1361,12 @@ export default function GameBoard() {
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 
+  // At Tier 1, grow city-light count as Eminence climbs (0 → ~80 lights).
   // At Tier 2, grow the Dyson swarm density as Eminence climbs.
   // Win threshold is 15 lumens; fraction is clamped to [0, 1].
-  // Other tiers leave progressFraction undefined (KardashevScene defaults to 1).
+  // Tiers 0 and 3 leave progressFraction undefined (KardashevScene defaults to 1).
   const kardashevProgressFraction = useMemo(() => {
-    if (kardashevTier !== 2) return undefined;
+    if (kardashevTier !== 1 && kardashevTier !== 2) return undefined;
     const WIN_THRESHOLD = 15;
     const lumens = me?.lumens ?? 0;
     return Math.min(1, Math.max(0, lumens / WIN_THRESHOLD));
