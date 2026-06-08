@@ -662,6 +662,24 @@ function ForgeEntity({ size = 140, className = '' }: { size?: number; className?
 // ── Bloom Tyrant ──────────────────────────────────────────────────────────────
 // Bloom tyrant: asymmetric — LEFT crystal petals blooming, RIGHT flame spikes.
 function BloomEntity({ size = 140, className = '' }: { size?: number; className?: string }) {
+  const src = _getLuminaryImage('lum_bloom', 'entity');
+  if (src) {
+    const w = size;
+    const h = Math.round(size * 1.5);
+    return (
+      <img
+        src={src}
+        alt=""
+        draggable={false}
+        className={className}
+        style={{ width: w, height: h, objectFit: 'contain', display: 'block', flexShrink: 0 }}
+      />
+    );
+  }
+  return <BloomEntityFallback size={size} className={className} />;
+}
+
+function BloomEntityFallback({ size = 140, className = '' }: { size?: number; className?: string }) {
   return (
     <svg viewBox="0 0 100 140" width={size} height={size * 1.4} className={className}>
       <defs>
