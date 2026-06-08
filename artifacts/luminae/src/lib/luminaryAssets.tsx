@@ -2731,13 +2731,11 @@ export function LuminarySummonCutscene({
                                   draggable={false}
                                   style={{
                                     ...fill,
-                                    objectFit: 'cover',
+                                    objectFit: 'contain',
                                     objectPosition: 'center center',
-                                    transform: 'scale(1.35)',
-                                    transformOrigin: 'center center',
                                     ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
-                                    maskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
-                                    WebkitMaskImage: 'radial-gradient(ellipse 66% 72% at 50% 44%, black 24%, rgba(0,0,0,0.88) 42%, rgba(0,0,0,0.40) 58%, transparent 76%)',
+                                    maskImage: 'radial-gradient(ellipse 80% 90% at 50% 50%, black 45%, rgba(0,0,0,0.88) 64%, rgba(0,0,0,0.35) 82%, transparent 96%)',
+                                    WebkitMaskImage: 'radial-gradient(ellipse 80% 90% at 50% 50%, black 45%, rgba(0,0,0,0.88) 64%, rgba(0,0,0,0.35) 82%, transparent 96%)',
                                   }}
                                 />
                               </div>
