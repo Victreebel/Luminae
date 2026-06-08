@@ -1,0 +1,137 @@
+Create a Luminary animation prompt/config table for all active Luminaries.
+
+Goal:
+Each Luminary should have a readable animation identity while still using shared animation primitives:
+- luminaryPulse
+- targetClaim
+- Burn
+- Condemned
+- Forgotten
+- Nullified
+- Seeded
+- scoreChange
+- crystalReturn
+- deckScry
+- marketRedraw
+- pendingAction
+
+Do not create bespoke animation systems.
+Do not change mechanics, costs, scoring, turn order, tutorial order, or card data.
+
+For each Luminary, define:
+- luminaryId
+- displayName
+- primaryColor
+- secondaryColor
+- animationArchetype
+- procedureSteps
+- sourceMotion
+- targetMotion
+- residueType if any
+- short flavor flourish
+
+Use the following active Luminaries:
+
+1. lum_moth — Red Moth
+Archetype: Burn / rupture
+Colors: #ef4444 / #7f1d1d
+Procedure: luminaryPulse → targetClaim lowest-cost Tier III and Tier II non-Flare Artifacts → Burn → marketRedraw
+Flourish: red wing-shadow passes over market; affected cards split into “before/after” fracture.
+
+2. lum_tide — The Tide Architect
+Archetype: Scry / reorder
+Colors: #60a5fa / #e2e8f0
+Procedure: luminaryPulse → deckScry Tier II/Tier III → Continuum-biased reorder shimmer
+Flourish: deck tops ripple like tidewater; Continuum cards surface through pale blue light.
+
+3. lum_verdant — The Verdant Oracle
+Archetype: Living passive boon
+Colors: #4ade80 / #166534
+Procedure: luminaryPulse → owner affinity row glow → persistent Verdance aura marker
+Flourish: roots quietly grow around the owner’s purchase affordance, beginning next turn.
+
+4. lum_void — The Void Warden
+Archetype: Global disruption
+Colors: #4c1d95 / #0a0a14
+Procedure: luminaryPulse → board-wide dark ripple → scoreChange all players -4
+Flourish: Eminence counters dim as if watched by something behind the board.
+
+5. lum_radiant — Concordance Mandala
+Archetype: Threshold passive payoff
+Colors: #fef9c3 / #2ecc71
+Procedure on trigger: mandala pulse → targetClaim owner Radiance Artifacts → scoreChange owner +2 → once-used marker
+Flourish: Radiance artifacts align into a brief geometric mandala.
+
+6. lum_astral — Phoenix Paradox
+Archetype: Recursive Burn / reveal
+Colors: #f43f5e / #3d6bff
+Procedure: luminaryPulse → repeated targetClaim Tier III then Tier II → Burn nonmatching cards → reveal until Flare or Continuum remains
+Flourish: burned cards leave a blue-red afterimage before the surviving card locks into place.
+
+7. lum_bloom — Catalyst Bloom
+Archetype: Ash-to-growth passive payoff
+Colors: #86efac / #7f1d1d
+Procedure on owner end turn if burnCount > 0: bloom pulse → ash particles become growth → scoreChange owner +burnCount
+Flourish: cinders from prior Burns sprout into small green sparks.
+
+8. lum_forge — The Iron Harbinger
+Archetype: Mass Burn / ruin
+Colors: #f97316 / #1c1917
+Procedure: luminaryPulse → targetClaim all face-up Tier III Artifacts → Burn all → marketRedraw
+Flourish: hammer-shadow falls over Tier III row before the shared Burn animation fires.
+
+9. lum_compass — ???
+Archetype: Forgotten suppression
+Colors: #38bdf8 / #0a0a14
+Procedure: luminaryPulse → targetClaim all face-up market Artifacts → Forgotten residue
+Flourish: a missing hour sweeps over the market; Eminence icons become hazy and unreadable.
+
+10. lum_seed — The Seed Beyond Seasons
+Archetype: Future claim / Seeded
+Colors: #38bdf8 / #4ade80
+Procedure: luminaryPulse → targetClaim deck tops by tier → Seeded residue → pending Eminence marker when opponent forges seeded card
+Flourish: blue-green seeds appear where tomorrow’s cards will surface.
+
+11. lum_orchard — The Glass Orchard
+Archetype: Replication payoff
+Colors: #4ade80 / #fef9c3
+Procedure on first owner forge: orchard pulse → targetClaim cheapest Tier I Artifact → replication shimmer → copied Artifact enters collection
+Flourish: glass fruit refracts the copied Artifact briefly before it settles.
+
+12. lum_pale — The Pale Merchant
+Archetype: Balance / crystal return
+Colors: #cbd5e1 / #0a0a14
+Procedure: luminaryPulse → targetClaim overloaded crystal pools → crystalReturn → bank confirmation
+Flourish: pale scales appear over excess crystals, then the debt is paid back to the bank.
+
+13. lum_ember — The Ember Sovereign
+Archetype: Condemned delayed Burn
+Colors: #ff5a3c / #7b1fa2
+Procedure on summon: luminaryPulse → targetClaim Artifacts lacking Flare/Abyss/Radiance → Condemned residue
+Procedure next owner turn: Condemned flares → Burn → marketRedraw
+Flourish: violet-orange mandate seal brands the doomed cards.
+
+14. lum_hunger — The First Hunger
+Archetype: Assimilate replacement action / Burn
+Colors: #fbbf24 / #4ade80
+Procedure on summon: luminaryPulse → pendingAction Assimilate appears as replacement core action
+Procedure on use: targetClaim chosen face-up market Artifact → Burn → scoreChange owner printed Eminence +2 → marketRedraw
+Flourish: normal core actions dim when Assimilate is chosen; the selected market Artifact burns into hunger-colored fragments.
+
+Important:
+Assimilate is a replacement core action, not an additional action. If used, player cannot Forge, Reserve, or Harness that turn.
+
+15. lum_null — The Null Sovereign
+Archetype: Nullified suppression
+Colors: #ffffff / #0a0a14
+Procedure: luminaryPulse → targetClaim affected Tier III Artifacts → Nullified residue
+Flourish: affected Eminence icons fall silent under a cold black-white domain seal.
+
+Acceptance criteria:
+- All 15 active Luminaries have animation config entries.
+- Each entry uses shared primitives.
+- Burn effects call shared Burn animation.
+- Forgotten, Nullified, Condemned, and Seeded use shared residue markers.
+- Assimilate is represented as a replacement core action.
+- No mechanics are changed.
+- Existing tests/typecheck pass.
