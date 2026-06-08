@@ -77,6 +77,18 @@ Key: `pathLength` must be absent from BOTH `initial` AND `animate` on mobile —
 - SVG presentation attribute `opacity="0"` can also be used as an alternative initial state; CSS animations override presentation attributes.
 - `animationDuration`/`animationDelay` inline style props override the shorthand `animation:` duration/delay from the class — clean way to vary per-instance timing.
 
+## Mobile reveal simplifications (isRevealed phase)
+
+4 complex simultaneous JS animations at reveal were causing mobile lag. On `isMobile`:
+- **Entity filter sweep** (`blur/brightness` keyframe array, 2.3s) → skipped; entity appears immediately at full clarity.
+- **3D swing-in** (`scale/y/rotateY/z` keyframe arrays + `perspective:800px`) → replaced with simple `opacity: 0→1, scale: 0.92→1.0` in 0.7s.
+- **Outer bloom** (opacity/scale keyframe arrays, 4.2s) → plain `opacity:0.78, scale:1.0` transition in 0.9s.
+- **Inner halo** (opacity/scale keyframe arrays, 3.2s) → plain `opacity:0.90, scale:1.0` transition in 0.7s.
+
+**Why:** Simultaneous multi-keyframe JS animations + 3D perspective transforms on mobile exhaust the main thread at the reveal moment.
+
+**How to apply:** Use `isMobile` (from `useIsMobile()`) to branch animate/transition. Single-value animate targets with plain `duration` are cheap; keyframe arrays are expensive.
+
 ## Remaining JS loops (5 total — acceptable)
 
 - `TideEyeOverlay` (2 loops, iris glow halo + drift): only renders when Tide Luminary is on screen.
