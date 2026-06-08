@@ -251,7 +251,7 @@ export function BurnBadgeOverlay({
       onAnimationComplete={onDone}
       title={meta.label}
     >
-      <div
+      <motion.div
         className="flex items-center justify-center rounded-full text-[9px] font-bold leading-none"
         style={{
           width: 16,
@@ -259,11 +259,20 @@ export function BurnBadgeOverlay({
           background: meta.bg,
           border: `1px solid ${meta.border}`,
           color: meta.text,
-          boxShadow: `0 0 8px ${meta.border}cc`,
         }}
+        animate={{
+          boxShadow: [
+            '0 0 5px 1px #cc440066',
+            '0 0 14px 5px #ff6820cc, 0 0 6px 2px #ff8833aa, inset 0 0 5px #ff440099',
+            '0 0 7px 2px #dd550088',
+            '0 0 16px 6px #ff7830ee, 0 0 8px 3px #ffaa44cc, inset 0 0 6px #ff5500bb',
+            '0 0 5px 1px #cc440066',
+          ],
+        }}
+        transition={{ duration: 0.3, times: [0, 0.22, 0.48, 0.74, 1], ease: 'easeInOut' }}
       >
         {meta.icon}
-      </div>
+      </motion.div>
     </motion.div>,
     document.body,
   );
