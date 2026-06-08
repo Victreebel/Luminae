@@ -5,6 +5,57 @@
 // Target IDs come from live state — no engine changes required.
 //
 // Mechanics live exclusively in gameEngine.ts.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// ANIMATION COMPREHENSION AUDIT  (all 15 active Luminaries)
+//
+// Four pillars checked per Luminary:
+//   Source  — Luminary entity/name visible before any consequence fires
+//   Target  — Affected entity highlighted (targetClaim pill) before resolution
+//   Result  — Keyword animation is visually distinct (not generic fade/shrink)
+//   Marker  — Persistent keyword overlays (Condemned/Nullified/Forgotten/Seeded)
+//             appear and clear with visible transitions
+//
+// Luminary              | Source | Target | Result | Marker | Issues found           | Fix applied
+// ──────────────────────|────────|────────|────────|────────|────────────────────────|────────────
+// Red Moth              |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// Tide Architect        |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// Verdant Oracle        |  ✓     |  ✓*    |  ✓     |  —     | *TargetBadge fallback  | —
+// Void Warden           |  ✓     |  ✗     |  ✓     |  —     | No targetClaim before  | Added
+//                       |        |        |        |        | scoreChange; summoner  | targetClaim
+//                       |        |        |        |        | panel not highlighted  | (allPlayers)
+// Concordance Mandala   |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// Phoenix Paradox       |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// Catalyst Bloom        |  ✓     |  ✗     |  ✗*    |  —     | No targetClaim; used   | Added
+//                       |        |        |        |        | burnEvents.length      | targetClaim
+//                       |        |        |        |        | (should be burnPile)   | + burnPile
+// Iron Harbinger        |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// ??? (lum_compass)     |  ✓     |  ✓     |  ✓     |  ✓     | None                   | —
+// Seed Beyond Seasons   |  ✓     |  ✓     |  ✓     |  ✓     | residue targetIds []   | —
+//                       |        |        |        |        | (resolved on entry)    |
+// Glass Orchard         |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// Pale Merchant         |  ✓     |  ✓     |  ✓     |  —     | None                   | —
+// Ember Sovereign       |  ✓     |  ✓     |  ✓     |  ✓     | None                   | —
+// First Hunger          |  ✓     |  ✗     |  ✓     |  ✓     | No targetClaim before  | Added
+//                       |        |        |        |        | pendingAction; owner   | targetClaim
+//                       |        |        |        |        | not highlighted        | (ownerId)
+// Null Sovereign        |  ✓     |  ✓     |  ✓     |  ✓     | None                   | —
+//
+// Marker exit transition (CardMarkerBadge.exit): was using framer-motion default
+//   (could be near-instant).  Pinned to 0.28s ease-out in game-luminary-effects.tsx.
+//
+// Forgotten vs Nullified distinction (confirmed adequate):
+//   - Forgotten:  backdropFilter saturate(0.50) — partial desaturation; ◎ icon
+//   - Nullified:  backdropFilter saturate(0) brightness(0.82) contrast(0.90) — full void; ⊘ icon
+//
+// Condemned deferred-threat reading (confirmed adequate):
+//   - kw-overlay-condemned: ember-edge pulse animation (CSS @keyframes kw-overlay-condemned)
+//   - kw-condemned badge: ⚑ decree-flag icon; ArmedSigil ⧖ on portal = "will fire later"
+//
+// Burn pile registration (confirmed adequate):
+//   - BurnBadgeOverlay shows transient "Burned ✕" badge on slot (satisfies "register with")
+//   - Burn pile counter chip increments at next state update
+// ─────────────────────────────────────────────────────────────────────────────
 
 import type { GameState, ArtifactCard } from '@workspace/api-client-react';
 import type { AnimationProcedureStep, KeywordMarker } from './animationProcedure';
@@ -71,11 +122,15 @@ function resolveVerdant(_s: GameState, _ownerId: string): AnimationProcedureStep
 }
 
 // 4. Void Warden / Oblivion (lum_void)
-//    luminaryPulse → board-wide scoreChange all players −4
+//    luminaryPulse → targetClaim all players (incl. summoner) → scoreChange all −4
+//    targetClaim ensures every player panel — including the summoner — is visibly
+//    highlighted before the Eminence drain resolves.
 function resolveVoid(s: GameState): AnimationProcedureStep[] {
+  const players = allPlayerIds(s);
   return [
     pulse('lum_void'),
-    { type: 'scoreChange', playerIds: allPlayerIds(s), amount: -4 },
+    { type: 'targetClaim', targetIds: players },
+    { type: 'scoreChange', playerIds: players, amount: -4 },
   ];
 }
 
@@ -105,11 +160,15 @@ function resolveAstral(s: GameState): AnimationProcedureStep[] {
 }
 
 // 7. Catalyst Bloom / Aftergrowth (lum_bloom)
-//    luminaryPulse → bloom pulse → scoreChange owner +(total burn count)
+//    luminaryPulse → targetClaim owner → scoreChange owner +(total burned cards)
+//    Uses burnPile.length (canonical deduplicated burn count) not burnEvents.length.
+//    targetClaim added so the owner panel is highlighted before the gain resolves,
+//    making the source of Eminence legible without replaying individual burn events.
 function resolveBloom(s: GameState, ownerId: string): AnimationProcedureStep[] {
-  const burnCount = (s.burnEvents ?? []).length;
+  const burnCount = (s.burnPile ?? []).length;
   return [
     pulse('lum_bloom'),
+    { type: 'targetClaim', targetIds: [ownerId] },
     { type: 'scoreChange', playerIds: [ownerId], amount: burnCount },
   ];
 }
@@ -202,10 +261,13 @@ function resolveEmber(
 }
 
 // 14. First Hunger / Assimilate (lum_hunger)
-//     On summon: luminaryPulse → pendingAction assimilate appears as replacement core action
+//     On summon: luminaryPulse → targetClaim owner → pendingAction assimilate
+//     targetClaim highlights the owner panel so the player knows who receives
+//     the assimilate replacement action before the ASSIMILATE pill appears.
 function resolveHunger(_s: GameState, ownerId: string): AnimationProcedureStep[] {
   return [
     pulse('lum_hunger'),
+    { type: 'targetClaim', targetIds: [ownerId] },
     { type: 'pendingAction', action: 'assimilate', ownerId },
   ];
 }

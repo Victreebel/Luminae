@@ -72,7 +72,7 @@ export function CardMarkerBadge({
       className="absolute top-1 left-1 z-30 pointer-events-none"
       initial={isNew ? { scale: 0, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.5, opacity: 0 }}
+      exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.28, ease: 'easeOut' } }}
       transition={
         isNew
           ? { type: 'spring', stiffness: 420, damping: 22, delay: 0.06 }
