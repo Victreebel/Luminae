@@ -2519,7 +2519,7 @@ export function LuminarySummonCutscene({
               ? { duration: 0.55, ease: 'easeIn' }
               : {
                   opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
-                  filter:  { duration: 2.3,  delay: 0.15, times: [0, 0.68, 0.86, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 1.9,  delay: 0.15, times: [0, 0.75, 0.92, 1.0], ease: 'easeOut' },
                 }
             }
           >
