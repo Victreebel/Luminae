@@ -10,8 +10,9 @@ import { useEffect, useRef } from 'react';
 // Condemned   — red-black decree seal
 // Nullified   — black-blue-white domain marker
 // Avatar Seed — blue-green seed sigil
+// Burned      — transient fire-orange burn label (~300 ms, fades as BurnFlash ramps up)
 
-type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
+type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'burned';
 
 const MARKER_META: Record<
   MarkerType,
@@ -45,6 +46,13 @@ const MARKER_META: Record<
     text:   '#4cc88a',
     icon:   '⁕',
   },
+  burned: {
+    label: 'Burned',
+    bg:     'rgba(48,12,0,0.96)',
+    border: '#cc4400',
+    text:   '#ff7040',
+    icon:   '✕',
+  },
 };
 
 export function CardMarkerBadge({
@@ -60,6 +68,7 @@ export function CardMarkerBadge({
       className="absolute top-1 left-1 z-30 pointer-events-none"
       initial={isNew ? { scale: 0, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0.5, opacity: 0 }}
       transition={
         isNew
           ? { type: 'spring', stiffness: 420, damping: 22, delay: 0.06 }
@@ -138,6 +147,55 @@ export function ArmedSigil({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+// ── BurnBadgeOverlay ──────────────────────────────────────────────────────────
+// Short-lived "Burned" badge rendered as a document.body portal at the slot's
+// top-left corner.  Appears immediately when a burn is detected, holds for
+// ~200 ms, then fades out just as the BurnFlash ramps up.
+//
+// Portal-based (position: fixed) so it is visible even after the burned card
+// has been replaced in the render tree.  Calls onDone when the animation ends.
+
+export function BurnBadgeOverlay({
+  slotRect,
+  onDone,
+}: {
+  slotRect: DOMRect;
+  onDone: () => void;
+}) {
+  const meta = MARKER_META['burned'];
+  return createPortal(
+    <motion.div
+      style={{
+        position: 'fixed',
+        top: slotRect.top + 4,
+        left: slotRect.left + 4,
+        zIndex: 9994,
+        pointerEvents: 'none',
+      }}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: [0, 1, 1, 0.5], opacity: [0, 1, 1, 0] }}
+      transition={{ duration: 0.32, times: [0, 0.18, 0.72, 1], ease: 'easeOut' }}
+      onAnimationComplete={onDone}
+      title={meta.label}
+    >
+      <div
+        className="flex items-center justify-center rounded-full text-[9px] font-bold leading-none"
+        style={{
+          width: 16,
+          height: 16,
+          background: meta.bg,
+          border: `1px solid ${meta.border}`,
+          color: meta.text,
+          boxShadow: `0 0 8px ${meta.border}cc`,
+        }}
+      >
+        {meta.icon}
+      </div>
+    </motion.div>,
+    document.body,
   );
 }
 

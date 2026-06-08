@@ -70,7 +70,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
@@ -598,6 +598,7 @@ export default function GameBoard() {
   // v0.8 Luminary animation state
   const burnChipAnim = useAnimation();
   const [burnFlashes, setBurnFlashes] = useState<Array<{ id: string; slotRect: DOMRect; sourceLuminaryId?: string }>>([]);
+  const [burnBadgeOverlays, setBurnBadgeOverlays] = useState<Array<{ id: string; slotRect: DOMRect }>>([]);
   const [delayedEffectFloats, setDelayedEffectFloats] = useState<Array<{ id: string; amount: number; color: string; originRect: DOMRect }>>([]);
   const [boardDimKey, setBoardDimKey] = useState(0);
   const [bloomSeedParticles, setBloomSeedParticles] = useState<Array<{ id: string; from: DOMRect; to: DOMRect }>>([]);
@@ -1249,25 +1250,57 @@ export default function GameBoard() {
           { tier: 2 as const, cards: prev.marketTier2 },
           { tier: 3 as const, cards: prev.marketTier3 },
         ] as const;
+        // Collect (cardId, slot element, sourceLuminaryId) for every newly burned card
+        // so we can show the "Burned" badge first, then fire the flash 300 ms later.
+        type BurnEntry = { burnedId: string; tier: number; slotIndex: number; sourceLuminaryId?: string };
+        const burnEntries: BurnEntry[] = [];
         for (const burnedId of newBurnedIds) {
           let found = false;
           for (const { tier, cards } of prevTiers) {
             if (found) break;
             for (let i = 0; i < cards.length; i++) {
               if (cards[i]?.id === burnedId) {
-                const slotEl = document.querySelector(`[data-slot-key="${tier}-${i}"]`);
-                if (slotEl) {
-                  const rect = slotEl.getBoundingClientRect();
-                  const sourceLuminaryId = sourceLuminaryByCardId.get(burnedId);
-                  setBurnFlashes(pf => [
-                    ...pf,
-                    { id: `burn-${tier}-${i}-${Date.now()}`, slotRect: rect, sourceLuminaryId },
-                  ]);
-                }
+                const sourceLuminaryId = sourceLuminaryByCardId.get(burnedId);
+                burnEntries.push({ burnedId, tier, slotIndex: i, sourceLuminaryId });
                 found = true;
                 break;
               }
             }
+          }
+        }
+
+        if (burnEntries.length > 0) {
+          // Phase 1: capture slot rects NOW (slot DOM element persists even after
+          // card replacement) and show a fixed-position "Burned" badge portal at
+          // each slot's top-left corner.  The badge is visible regardless of
+          // whether the burned card is still in the render tree.
+          const resolvedEntries = burnEntries.flatMap(({ tier, slotIndex, sourceLuminaryId }) => {
+            const slotEl = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
+            if (!slotEl) return [];
+            const rect = slotEl.getBoundingClientRect();
+            return [{ id: `burn-badge-${tier}-${slotIndex}-${Date.now()}`, rect, tier, slotIndex, sourceLuminaryId }];
+          });
+
+          if (resolvedEntries.length > 0) {
+            setBurnBadgeOverlays(pf => [
+              ...pf,
+              ...resolvedEntries.map(e => ({ id: e.id, slotRect: e.rect })),
+            ]);
+
+            // Phase 2: after 320 ms (badge animation completes), trigger BurnFlash.
+            // The badge calls onDone to remove itself; the flash runs independently.
+            setTimeout(() => {
+              for (const { tier, slotIndex, sourceLuminaryId } of resolvedEntries) {
+                const slotEl2 = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
+                const rect2 = slotEl2?.getBoundingClientRect();
+                if (rect2) {
+                  setBurnFlashes(pf => [
+                    ...pf,
+                    { id: `burn-${tier}-${slotIndex}-${Date.now()}`, slotRect: rect2, sourceLuminaryId },
+                  ]);
+                }
+              }
+            }, 320);
           }
         }
         // Pulse the 🔥 chip to signal the burn pile count changed
@@ -8145,6 +8178,14 @@ export default function GameBoard() {
           onDone={() => setCompactGhost(null)}
         />
       )}
+      {/* ── Burn badge overlays — brief "Burned" label on departing card slot ── */}
+      {burnBadgeOverlays.map(b => (
+        <BurnBadgeOverlay
+          key={b.id}
+          slotRect={b.slotRect}
+          onDone={() => setBurnBadgeOverlays(pf => pf.filter(x => x.id !== b.id))}
+        />
+      ))}
       {/* ── v0.8 Burn animations (reusable keyword event) ── */}
       {burnFlashes.map(f => (
         <BurnFlash
