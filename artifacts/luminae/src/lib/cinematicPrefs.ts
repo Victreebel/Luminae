@@ -47,6 +47,7 @@ export interface AccountPreferences {
   abridgedAnims: boolean;
   hintsEnabled: boolean;
   muted: boolean;
+  hintsSeen: string[];
 }
 
 export async function apiGetPreferences(token: string): Promise<AccountPreferences> {
@@ -132,6 +133,70 @@ export function setMuted(value: boolean, token?: string): void {
   }
 }
 
+// ── Hint-seen sync ────────────────────────────────────────────────────────────
+
+/**
+ * All known dismissible hint keys. Any key listed here will be included in
+ * the server-side hintsSeen array and restored to localStorage on login.
+ */
+export const HINT_KEYS = [
+  "luminae_swipe_hint_seen",
+  "luminae_undo_hint_seen",
+  "luminae_reserve_hint_seen",
+  "luminae_deck_reserve_hint_seen",
+  "luminae_forge_hint_seen",
+] as const;
+
+export type HintKey = (typeof HINT_KEYS)[number];
+
+/** Module-level token set by AccountContext so hint helpers can sync without prop drilling. */
+let _prefsToken: string | null = null;
+
+export function setPreferencesSyncToken(token: string | null): void {
+  _prefsToken = token;
+}
+
+/** Returns the subset of HINT_KEYS currently marked as seen in localStorage. */
+function localSeenKeys(): string[] {
+  try {
+    return HINT_KEYS.filter((k) => localStorage.getItem(k) === "1");
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Mark a hint key as seen in localStorage and push the full seen-set to the
+ * server (if a sync token is available).
+ */
+export function markHintSeen(key: string): void {
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    // ignore storage errors
+  }
+  if (_prefsToken) {
+    const seen = localSeenKeys();
+    void apiUpdatePreferences(_prefsToken, { hintsSeen: seen }).catch(() => undefined);
+  }
+}
+
+/**
+ * Clear all known hint-seen flags from localStorage and push the empty array
+ * to the server (if a token is provided).
+ */
+export function clearHintsSeen(token?: string): void {
+  try {
+    HINT_KEYS.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore storage errors
+  }
+  const tok = token ?? _prefsToken;
+  if (tok) {
+    void apiUpdatePreferences(tok, { hintsSeen: [] }).catch(() => undefined);
+  }
+}
+
 export async function syncAccountPreferences(
   token: string,
   accountId: string,
@@ -142,6 +207,11 @@ export async function syncAccountPreferences(
     localStorage.setItem("luminae_abridged_anims", prefs.abridgedAnims ? "1" : "0");
     localStorage.setItem("luminae_hints_enabled", prefs.hintsEnabled ? "1" : "0");
     localStorage.setItem("luminae_muted", String(prefs.muted));
+    // Restore each hint key that the server reports as seen
+    const seen = prefs.hintsSeen ?? [];
+    for (const key of seen) {
+      localStorage.setItem(key, "1");
+    }
   } catch {
     // ignore storage errors
   }

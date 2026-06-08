@@ -379,6 +379,7 @@ router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promi
     abridgedAnims: account.abridgedAnims,
     hintsEnabled: account.hintsEnabled,
     muted: account.muted,
+    hintsSeen: account.hintsSeen ?? [],
   });
 });
 
@@ -388,6 +389,7 @@ const PreferencesBody = z.object({
   abridgedAnims: z.boolean().optional(),
   hintsEnabled: z.boolean().optional(),
   muted: z.boolean().optional(),
+  hintsSeen: z.array(z.string()).optional(),
 });
 
 router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
@@ -398,13 +400,14 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
   }
 
   const account = req.account!;
-  const { skipCinematics, abridgedAnims, hintsEnabled, muted } = parsed.data;
+  const { skipCinematics, abridgedAnims, hintsEnabled, muted, hintsSeen } = parsed.data;
 
   const updates: Partial<typeof accountsTable.$inferInsert> = {};
   if (skipCinematics !== undefined) updates.skipCinematics = skipCinematics;
   if (abridgedAnims !== undefined) updates.abridgedAnims = abridgedAnims;
   if (hintsEnabled !== undefined) updates.hintsEnabled = hintsEnabled;
   if (muted !== undefined) updates.muted = muted;
+  if (hintsSeen !== undefined) updates.hintsSeen = hintsSeen;
 
   if (Object.keys(updates).length > 0) {
     await db

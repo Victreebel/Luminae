@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { MotionValue } from 'framer-motion';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { markHintSeen } from '@/lib/cinematicPrefs';
 
 const STORAGE_KEY = 'luminae_swipe_hint_seen';
 
@@ -35,7 +36,7 @@ export function SwipeHintBar({ peekProgress }: SwipeHintBarProps) {
 
   useEffect(() => {
     if (localStorage.getItem(STORAGE_KEY)) return;
-    localStorage.setItem(STORAGE_KEY, '1');
+    markHintSeen(STORAGE_KEY);
     setDismissVisible(true);
     const t = setTimeout(() => setDismissVisible(false), 2800);
     return () => clearTimeout(t);

@@ -10,7 +10,7 @@ import {
   type AccountInfo,
   type AccountSession,
 } from "@/lib/accountSession";
-import { syncAccountPreferences, type AccountPreferences } from "@/lib/cinematicPrefs";
+import { syncAccountPreferences, setPreferencesSyncToken, type AccountPreferences } from "@/lib/cinematicPrefs";
 
 const PREFS_POLL_INTERVAL_MS = 30_000;
 
@@ -41,6 +41,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const restore = async () => {
       const stored = getAccountSession();
       _currentToken = stored?.token ?? null;
+      setPreferencesSyncToken(_currentToken);
       if (stored) {
         const p = await syncAccountPreferences(stored.token, stored.account.id).catch(() => null);
         if (p) setPrefs(p);
@@ -69,6 +70,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const s = await apiLogin({ username, password });
     saveAccountSession(s);
     _currentToken = s.token;
+    setPreferencesSyncToken(s.token);
     const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
     if (p) setPrefs(p);
     setSession(s);
@@ -78,6 +80,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const s = await apiRegister({ username, password, email });
     saveAccountSession(s);
     _currentToken = s.token;
+    setPreferencesSyncToken(s.token);
     const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
     if (p) setPrefs(p);
     setSession(s);
@@ -89,6 +92,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     }
     clearAccountSession();
     _currentToken = null;
+    setPreferencesSyncToken(null);
     setSession(null);
     setPrefs(null);
   }, [session]);

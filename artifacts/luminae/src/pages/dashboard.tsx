@@ -46,6 +46,7 @@ import {
   getAbridgedAnims,
   getHintsEnabled,
   getMuted,
+  clearHintsSeen,
 } from "@/lib/cinematicPrefs";
 import { useToast } from "@/hooks/use-toast";
 import backgroundCosmos from "@assets/generated_images/background_cosmos.png";
@@ -372,29 +373,9 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
     if (token) void apiUpdatePreferences(token, { hintsEnabled: next }).catch(() => undefined);
   };
 
-  const HINT_SEEN_KEYS = [
-    "luminae_undo_hint_seen",
-    "luminae_reserve_hint_seen",
-    "luminae_deck_reserve_hint_seen",
-    "luminae_forge_hint_seen",
-    "luminae_swipe_hint_seen",
-  ];
-
-  const countDismissed = () => {
-    try {
-      return HINT_SEEN_KEYS.filter((key) => localStorage.getItem(key) !== null).length;
-    } catch {
-      return 0;
-    }
-  };
-
-  const [dismissedCount, setDismissedCount] = useState<number>(countDismissed);
   const [hintsJustReset, setHintsJustReset] = useState(false);
   const resetHints = () => {
-    try {
-      HINT_SEEN_KEYS.forEach((key) => localStorage.removeItem(key));
-    } catch { /* ignore */ }
-    setDismissedCount(0);
+    clearHintsSeen(token ?? undefined);
     setHintsJustReset(true);
     setTimeout(() => setHintsJustReset(false), 2000);
   };
@@ -541,9 +522,7 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             <span className="flex-1">
               {hintsJustReset
                 ? "Hints reset — tips will reappear in-game"
-                : dismissedCount > 0
-                  ? `Reset hints (${dismissedCount} dismissed)`
-                  : "Reset hints"}
+                : "Reset hints"}
             </span>
             {hintsJustReset && <Check className="h-4 w-4 text-green-400 flex-shrink-0" />}
           </button>

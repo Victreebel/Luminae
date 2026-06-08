@@ -22,7 +22,7 @@ import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCine
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
-import { getSkipCinematics, setSkipCinematics, syncAccountPreferences, apiUpdatePreferences } from '@/lib/cinematicPrefs';
+import { getSkipCinematics, setSkipCinematics, syncAccountPreferences, apiUpdatePreferences, markHintSeen } from '@/lib/cinematicPrefs';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadingScreen } from '@/components/AccountLoadingScreen';
 import { getAccountSession } from '@/lib/accountSession';
@@ -1354,7 +1354,7 @@ export default function GameBoard() {
       return;
     }
     if (hintsEnabled && !localStorage.getItem('luminae_undo_hint_seen')) {
-      localStorage.setItem('luminae_undo_hint_seen', '1');
+      markHintSeen('luminae_undo_hint_seen');
       setShowUndoHint(true);
       const timer = setTimeout(() => setShowUndoHint(false), 4000);
       return () => clearTimeout(timer);
@@ -1526,7 +1526,7 @@ export default function GameBoard() {
   useEffect(() => {
     if (pendingSheetAction === 'reserve') {
       if (hintsEnabled && !localStorage.getItem('luminae_reserve_hint_seen')) {
-        localStorage.setItem('luminae_reserve_hint_seen', '1');
+        markHintSeen('luminae_reserve_hint_seen');
         setShowReserveHint(true);
       }
     } else {
@@ -1541,7 +1541,7 @@ export default function GameBoard() {
       return;
     }
     if (hintsEnabled && !localStorage.getItem('luminae_deck_reserve_hint_seen')) {
-      localStorage.setItem('luminae_deck_reserve_hint_seen', '1');
+      markHintSeen('luminae_deck_reserve_hint_seen');
       setShowDeckReserveHint(true);
     }
   }, [selectedDeckTier, hintsEnabled]);
@@ -1551,7 +1551,7 @@ export default function GameBoard() {
     const affordable = isMyTurn && selectedCard && me && canAffordCard(selectedCard.card, me);
     if (affordable) {
       if (hintsEnabled && !localStorage.getItem('luminae_forge_hint_seen')) {
-        localStorage.setItem('luminae_forge_hint_seen', '1');
+        markHintSeen('luminae_forge_hint_seen');
         setShowForgeHint(true);
       }
     } else {
