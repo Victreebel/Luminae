@@ -2501,8 +2501,8 @@ export function LuminarySummonCutscene({
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
               : {
-                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.10, 0.32, 0.58, 1.0], ease: 'easeOut' },
-                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.10, 0.32, 0.58, 1.0], ease: 'easeOut' },
+                  opacity: { duration: 3.6, delay: 0.15, times: [0, 0.09, 0.25, 0.46, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 3.6, delay: 0.15, times: [0, 0.09, 0.25, 0.46, 1.0], ease: 'easeOut' },
                 }
             }
           >
@@ -2512,11 +2512,11 @@ export function LuminarySummonCutscene({
             <motion.div
               className="relative flex flex-col items-center"
               style={{ overflow: 'visible', perspective: '800px' }}
-              initial={{ scale: 0.07, y: -90, opacity: 0, rotateY: 18, z: -480 }}
+              initial={{ scale: 0.04, y: -90, opacity: 0, rotateY: 18, z: -480 }}
               animate={isFading
                 ? { scale: 1.14, y: -38, opacity: 0, rotateY: 0, z: 0 }
                 : {
-                    scale:   [0.07, 0.86, 1.0],
+                    scale:   [0.04, 0.86, 1.0],
                     y:       [-90, 54, 0],
                     opacity: 1,
                     rotateY: [18, 3, 0],
