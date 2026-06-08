@@ -1239,6 +1239,122 @@ describe("normalizeState — burnPile and burnEvents defaults", () => {
   });
 });
 
+// ─── burnCard() helper and burn-pile eligibility guards ───────────────────────
+
+describe("burnPile eligibility guards and burnCard() invariants", () => {
+  let state: GameStateData;
+
+  beforeEach(() => {
+    state = makeGame();
+    enrichPlayer(state, 0);
+  });
+
+  // ── Guard: purchase_card ───────────────────────────────────────────────────
+
+  it("purchase_card returns 'Card has been burned' when the target card is in burnPile", () => {
+    const cardId = state.marketTier1[0];
+    expect(cardId).toBeTruthy();
+    // Simulate a Luminary burn effect having already fired — card is recorded in
+    // burnPile but the slot has been refilled, so the cardId is no longer in the
+    // market.  We keep it in the market here to isolate only the guard check.
+    state.burnPile = [cardId!];
+    const r = applyAction(state, "p1", { type: "purchase_card", cardId: cardId! });
+    expect(r.success).toBe(false);
+    expect(r.error).toBe("Card has been burned");
+  });
+
+  it("purchase_card succeeds for a Tier 2 card that is NOT in burnPile", () => {
+    const cardId = state.marketTier2[0];
+    expect(cardId).toBeTruthy();
+    state.burnPile = [];
+    const r = applyAction(state, "p1", { type: "purchase_card", cardId: cardId! });
+    expect(r.success).toBe(true);
+  });
+
+  // ── Guard: reserve_card ───────────────────────────────────────────────────
+
+  it("reserve_card returns 'Card has been burned' when the target card is in burnPile", () => {
+    const cardId = state.marketTier1[0];
+    expect(cardId).toBeTruthy();
+    state.burnPile = [cardId!];
+    // Card is technically still listed in the market at this point; the guard
+    // must fire before the "Card not in market" check would.
+    const r = applyAction(state, "p1", { type: "reserve_card", cardId: cardId! });
+    expect(r.success).toBe(false);
+    expect(r.error).toBe("Card has been burned");
+  });
+
+  it("reserve_card succeeds for a Tier 1 card that is NOT in burnPile", () => {
+    const cardId = state.marketTier1[0];
+    expect(cardId).toBeTruthy();
+    state.burnPile = [];
+    const r = applyAction(state, "p1", { type: "reserve_card", cardId: cardId! });
+    expect(r.success).toBe(true);
+  });
+
+  // ── drawIntoMarket: slot refill after burn ────────────────────────────────
+
+  it("burned market slot is refilled from the deck after Iron Harbinger (lum_forge) fires", () => {
+    // Iron Harbinger's Impact Extinction burns every face-up Tier III card on
+    // summon.  drawIntoMarket should replace each burned slot with a fresh card
+    // from deckTier3 (if available).
+    const t3Before = [...state.marketTier3];
+    expect(t3Before.length).toBeGreaterThan(0);
+    const deck3LengthBefore = state.deckTier3.length;
+
+    claimLuminary(state, "lum_forge");
+
+    // Every originally-visible T3 card must now be absent from the market.
+    for (const id of t3Before) {
+      expect(state.marketTier3).not.toContain(id);
+    }
+
+    // All burned cards must be recorded in burnPile.
+    for (const id of t3Before) {
+      expect(state.burnPile).toContain(id);
+    }
+
+    // If the deck had enough cards to cover every burned slot, each position
+    // must now hold a fresh (different) card ID.
+    if (deck3LengthBefore >= t3Before.length) {
+      expect(state.marketTier3).toHaveLength(t3Before.length);
+      for (const freshId of state.marketTier3) {
+        expect(t3Before).not.toContain(freshId);
+      }
+    }
+  });
+
+  // ── burnPile growth: one entry per burnCard() call ────────────────────────
+
+  it("burnPile grows by exactly the number of cards burned (one entry per call)", () => {
+    const t3Count = state.marketTier3.length;
+    expect(t3Count).toBeGreaterThan(0);
+
+    // Claim lum_forge → burnAllInTier burns every current T3 slot.
+    claimLuminary(state, "lum_forge");
+
+    expect(state.burnPile.length).toBe(t3Count);
+  });
+
+  // ── burnPile deduplication: same card ID appears at most once ─────────────
+
+  it("burnPile does not gain a duplicate when burnCard is called twice with the same card ID", () => {
+    // Pre-seed burnPile with one T3 card that is still physically in the market.
+    // When lum_forge fires, burnAllInTier will find the card in the market and
+    // call burnCard with it again.  The deduplication guard must prevent a second
+    // entry from appearing in burnPile (burnEvents may still have two entries —
+    // that is intentional and is not tested here).
+    const cardId = state.marketTier3[0];
+    expect(cardId).toBeTruthy();
+    state.burnPile = [cardId!];
+
+    claimLuminary(state, "lum_forge");
+
+    const occurrences = state.burnPile.filter((id) => id === cardId).length;
+    expect(occurrences).toBe(1);
+  });
+});
+
 // ─── LUMINARIES catalogue ─────────────────────────────────────────────────────
 
 describe("LUMINARIES catalogue", () => {
