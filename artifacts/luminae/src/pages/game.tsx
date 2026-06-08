@@ -22,7 +22,7 @@ import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCine
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
-import { getSkipCinematics, setSkipCinematics } from '@/lib/cinematicPrefs';
+import { getSkipCinematics, setSkipCinematics, syncAccountPreferences, apiUpdatePreferences } from '@/lib/cinematicPrefs';
 import { useAccount } from '@/contexts/AccountContext';
 import { AccountLoadingScreen } from '@/components/AccountLoadingScreen';
 import { getAccountSession } from '@/lib/accountSession';
@@ -252,6 +252,10 @@ export default function GameBoard() {
     const next = !hintsEnabled;
     setHintsEnabled(next);
     localStorage.setItem('luminae_hints_enabled', next ? '1' : '0');
+    const session = getAccountSession();
+    if (session?.token) {
+      void apiUpdatePreferences(session.token, { hintsEnabled: next }).catch(() => undefined);
+    }
   };
 
   const [abridgedAnims, setAbridgedAnims] = useState<boolean>(
@@ -261,6 +265,10 @@ export default function GameBoard() {
     const next = !abridgedAnims;
     setAbridgedAnims(next);
     localStorage.setItem('luminae_abridged_anims', next ? '1' : '0');
+    const session = getAccountSession();
+    if (session?.token) {
+      void apiUpdatePreferences(session.token, { abridgedAnims: next }).catch(() => undefined);
+    }
   };
 
   const [skipCinematics, setSkipCinematicsState] = useState<boolean>(() => getSkipCinematics());
@@ -333,6 +341,21 @@ export default function GameBoard() {
     if (!account) return;
     localStorage.setItem(`luminae_civ_name_${account.id}`, civLabel);
   }, [civLabel, account]);
+
+  // Sync all account preferences from the server on mount
+  useEffect(() => {
+    const session = getAccountSession();
+    if (!session?.token || !session?.account?.id) return;
+    syncAccountPreferences(session.token, session.account.id)
+      .then((prefs) => {
+        setHintsEnabled(prefs.hintsEnabled);
+        setAbridgedAnims(prefs.abridgedAnims);
+        setSkipCinematicsState(prefs.skipCinematics);
+        gameAudio.setMuted(prefs.muted);
+        setMuted(prefs.muted);
+      })
+      .catch(() => undefined);
+  }, []);
 
   // Scroll the highlighted tutorial zone into view whenever it changes
   useEffect(() => {
@@ -600,7 +623,14 @@ export default function GameBoard() {
   // replaying historical log entries that were already present on page load.
   const aiAffinityLogInitializedRef = useRef(false);
 
-  const toggleMute = () => setMuted(gameAudio.toggleMute());
+  const toggleMute = () => {
+    const next = gameAudio.toggleMute();
+    setMuted(next);
+    const session = getAccountSession();
+    if (session?.token) {
+      void apiUpdatePreferences(session.token, { muted: next }).catch(() => undefined);
+    }
+  };
 
 
   // Start ambient music when the game board mounts (user has already

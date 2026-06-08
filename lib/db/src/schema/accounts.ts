@@ -8,6 +8,9 @@ export const accountsTable = pgTable("accounts", {
   email: text("email").unique(),
   passwordHash: text("password_hash").notNull(),
   skipCinematics: boolean("skip_cinematics").notNull().default(false),
+  abridgedAnims: boolean("abridged_anims").notNull().default(false),
+  hintsEnabled: boolean("hints_enabled").notNull().default(true),
+  muted: boolean("muted").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

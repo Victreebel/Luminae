@@ -78,6 +78,16 @@ class GameAudio {
     return this.muted;
   }
 
+  setMuted(value: boolean) {
+    this.muted = value;
+    localStorage.setItem('luminae_muted', String(this.muted));
+    if (this.masterMusicGain && this.ctx) {
+      this.masterMusicGain.gain.setTargetAtTime(
+        this.muted ? 0 : this.MUSIC_GAIN, this.ctx.currentTime, 0.4,
+      );
+    }
+  }
+
   private initCtx(): AudioContext {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();

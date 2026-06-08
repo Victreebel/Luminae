@@ -24,7 +24,7 @@ export function getSkipCinematics(accountId?: string): boolean {
   }
 }
 
-function writeLocal(value: boolean, accountId?: string): void {
+function writeSkipLocal(value: boolean, accountId?: string): void {
   try {
     if (accountId) {
       localStorage.setItem(accountKey(accountId), value ? "1" : "0");
@@ -36,20 +36,17 @@ function writeLocal(value: boolean, accountId?: string): void {
 }
 
 export function setSkipCinematics(value: boolean, accountId?: string, token?: string): void {
-  writeLocal(value, accountId);
+  writeSkipLocal(value, accountId);
   if (token) {
     void apiUpdatePreferences(token, { skipCinematics: value }).catch(() => undefined);
   }
 }
 
-export async function syncSkipCinematics(token: string, accountId: string): Promise<boolean> {
-  const prefs = await apiGetPreferences(token);
-  writeLocal(prefs.skipCinematics, accountId);
-  return prefs.skipCinematics;
-}
-
 export interface AccountPreferences {
   skipCinematics: boolean;
+  abridgedAnims: boolean;
+  hintsEnabled: boolean;
+  muted: boolean;
 }
 
 export async function apiGetPreferences(token: string): Promise<AccountPreferences> {
@@ -70,4 +67,26 @@ export async function apiUpdatePreferences(
     body: JSON.stringify(prefs),
   });
   if (!res.ok) throw new Error("Failed to update preferences");
+}
+
+export async function syncSkipCinematics(token: string, accountId: string): Promise<boolean> {
+  const prefs = await apiGetPreferences(token);
+  writeSkipLocal(prefs.skipCinematics, accountId);
+  return prefs.skipCinematics;
+}
+
+export async function syncAccountPreferences(
+  token: string,
+  accountId: string,
+): Promise<AccountPreferences> {
+  const prefs = await apiGetPreferences(token);
+  try {
+    writeSkipLocal(prefs.skipCinematics, accountId);
+    localStorage.setItem("luminae_abridged_anims", prefs.abridgedAnims ? "1" : "0");
+    localStorage.setItem("luminae_hints_enabled", prefs.hintsEnabled ? "1" : "0");
+    localStorage.setItem("luminae_muted", String(prefs.muted));
+  } catch {
+    // ignore storage errors
+  }
+  return prefs;
 }

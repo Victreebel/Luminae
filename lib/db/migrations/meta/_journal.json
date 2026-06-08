@@ -8,6 +8,13 @@
       "when": 1778412933133,
       "tag": "0000_living_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1749379200000,
+      "tag": "0001_account_prefs",
+      "breakpoints": true
     }
   ]
 }

@@ -374,12 +374,20 @@ router.get("/auth/me/stats", accountAuth, async (req: Request, res): Promise<voi
 // GET /api/auth/me/preferences
 router.get("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
   const account = req.account!;
-  res.json({ skipCinematics: account.skipCinematics });
+  res.json({
+    skipCinematics: account.skipCinematics,
+    abridgedAnims: account.abridgedAnims,
+    hintsEnabled: account.hintsEnabled,
+    muted: account.muted,
+  });
 });
 
 // PATCH /api/auth/me/preferences
 const PreferencesBody = z.object({
   skipCinematics: z.boolean().optional(),
+  abridgedAnims: z.boolean().optional(),
+  hintsEnabled: z.boolean().optional(),
+  muted: z.boolean().optional(),
 });
 
 router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Promise<void> => {
@@ -390,12 +398,18 @@ router.patch("/auth/me/preferences", accountAuth, async (req: Request, res): Pro
   }
 
   const account = req.account!;
-  const { skipCinematics } = parsed.data;
+  const { skipCinematics, abridgedAnims, hintsEnabled, muted } = parsed.data;
 
-  if (skipCinematics !== undefined) {
+  const updates: Partial<typeof accountsTable.$inferInsert> = {};
+  if (skipCinematics !== undefined) updates.skipCinematics = skipCinematics;
+  if (abridgedAnims !== undefined) updates.abridgedAnims = abridgedAnims;
+  if (hintsEnabled !== undefined) updates.hintsEnabled = hintsEnabled;
+  if (muted !== undefined) updates.muted = muted;
+
+  if (Object.keys(updates).length > 0) {
     await db
       .update(accountsTable)
-      .set({ skipCinematics })
+      .set(updates)
       .where(eq(accountsTable.id, account.id));
   }
 
