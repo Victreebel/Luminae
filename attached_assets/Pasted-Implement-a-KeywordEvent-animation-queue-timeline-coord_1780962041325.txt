@@ -1,0 +1,68 @@
+Implement a KeywordEvent animation queue / timeline coordinator.
+
+Goal:
+KeywordEvents should animate in readable order, especially when multiple cards are burned, condemned, forgotten, nullified, or seeded by the same Luminary effect.
+
+Do not change mechanics, costs, scoring, turn order, tutorial order, or card data.
+
+Problem to solve:
+Some Luminary effects affect multiple targets. If all animations fire simultaneously, players may not understand:
+- which Luminary caused it
+- which cards were affected
+- whether cards were Burned, Condemned, Forgotten, Nullified, or Seeded
+- when market redraw happened
+
+Create a lightweight animation queue that can sequence procedure steps:
+
+type AnimationTimelineStep =
+  | { type: "luminaryPulse"; luminaryId: string }
+  | { type: "targetClaim"; targetIds: string[]; keyword?: KeywordEventType }
+  | { type: "keywordEvents"; events: KeywordEvent[] }
+  | { type: "marketRedraw"; slotIds: string[] }
+  | { type: "scoreChange"; playerIds: string[]; amount: number }
+  | { type: "crystalReturn"; playerIds: string[]; crystalType?: string }
+  | { type: "deckScry"; tierIds: string[]; affinityBias?: string }
+  | { type: "pendingAction"; action: "assimilate"; ownerId: string };
+
+Timing behavior:
+- Always show luminaryPulse first.
+- Then show targetClaim before keyword resolution.
+- Then animate KeywordEvents.
+- Then show marketRedraw or score/crystal changes.
+- For multiple Burn events, batch if needed but keep targets readable.
+- Market redraw should occur only after Burn is legible.
+- Condemned/Forgotten/Nullified/Seeded residue should settle after targetClaim.
+- Score changes should occur after the causal keyword event when applicable.
+
+Examples:
+Red Moth:
+luminaryPulse → targetClaim affected cards → keywordEvents Burn → marketRedraw
+
+Iron Harbinger:
+luminaryPulse → targetClaim all Tier III → keywordEvents Burn batch → marketRedraw
+
+Ember Sovereign:
+On summon:
+luminaryPulse → targetClaim affected cards → keywordEvents Condemned
+Start next owner turn:
+keywordEvents Condemned flare → keywordEvents Burn → marketRedraw
+
+First Hunger:
+On summon:
+luminaryPulse → pendingAction Assimilate
+On Assimilate use:
+targetClaim chosen Artifact → keywordEvents Burn → scoreChange printed Eminence +2 → marketRedraw
+
+Void Warden:
+luminaryPulse → board targetClaim/global ripple → scoreChange all players -4
+
+Pale Merchant:
+luminaryPulse → targetClaim overloaded crystal pools → crystalReturn → bank confirmation
+
+Acceptance criteria:
+- Animations play in a readable sequence.
+- Multiple keyword events do not visually collide.
+- Burn always visibly precedes market redraw.
+- Score/crystal changes happen after their cause is shown.
+- Assimilate still reads as a replacement core action.
+- Existing tests/typecheck pass.
