@@ -2500,7 +2500,7 @@ export function LuminarySummonCutscene({
               ? { duration: 0.55, ease: 'easeIn' }
               : {
                   opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
-                  filter:  { duration: 3.6,  delay: 0.15, times: [0, 0.22, 1.0], ease: 'easeOut' },
+                  filter:  { duration: 3.6,  delay: 0.15, times: [0, 0.10, 1.0], ease: 'easeOut' },
                 }
             }
           >
@@ -2550,7 +2550,7 @@ export function LuminarySummonCutscene({
                       scale:   isFlashing ? 0.22 : isFading ? 1.18 : 1.0,
                     }}
                     transition={{
-                      opacity: { duration: 1.8, ease: 'easeOut' },
+                      opacity: { duration: 0.7, ease: 'easeOut' },
                       scale:   { type: 'spring', stiffness: 90, damping: 13, mass: 0.9 },
                     }}
                     style={{
@@ -2573,7 +2573,7 @@ export function LuminarySummonCutscene({
                       scale:   isFlashing ? 0.28 : isFading ? 1.12 : 1.0,
                     }}
                     transition={{
-                      opacity: { duration: 1.3, ease: 'easeOut' },
+                      opacity: { duration: 0.5, ease: 'easeOut' },
                       scale:   { type: 'spring', stiffness: 120, damping: 11, mass: 0.7 },
                     }}
                     style={{
