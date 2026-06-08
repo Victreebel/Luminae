@@ -10,11 +10,14 @@ import {
   type AccountInfo,
   type AccountSession,
 } from "@/lib/accountSession";
-import { syncAccountPreferences } from "@/lib/cinematicPrefs";
+import { syncAccountPreferences, type AccountPreferences } from "@/lib/cinematicPrefs";
+
+const PREFS_POLL_INTERVAL_MS = 30_000;
 
 interface AccountContextValue {
   account: AccountInfo | null;
   token: string | null;
+  prefs: AccountPreferences | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, email?: string) => Promise<void>;
@@ -32,24 +35,42 @@ setAuthTokenGetter(() => _currentToken);
 export function AccountProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AccountSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [prefs, setPrefs] = useState<AccountPreferences | null>(null);
 
   useEffect(() => {
     const restore = async () => {
       const stored = getAccountSession();
       _currentToken = stored?.token ?? null;
       if (stored) {
-        await syncAccountPreferences(stored.token, stored.account.id).catch(() => undefined);
+        const p = await syncAccountPreferences(stored.token, stored.account.id).catch(() => null);
+        if (p) setPrefs(p);
       }
       setSession(stored);
     };
     void restore().finally(() => setIsLoading(false));
   }, []);
 
+  // Poll preferences every 30 s while logged in so other open sessions stay current.
+  useEffect(() => {
+    if (!session?.token || !session?.account?.id) return;
+    const { token, account } = session;
+    const id = setInterval(async () => {
+      try {
+        const p = await syncAccountPreferences(token, account.id);
+        setPrefs(p);
+      } catch {
+        // network errors are non-fatal; next poll will retry
+      }
+    }, PREFS_POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [session?.token, session?.account?.id]);
+
   const login = useCallback(async (username: string, password: string) => {
     const s = await apiLogin({ username, password });
     saveAccountSession(s);
     _currentToken = s.token;
-    await syncAccountPreferences(s.token, s.account.id).catch(() => undefined);
+    const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
+    if (p) setPrefs(p);
     setSession(s);
   }, []);
 
@@ -57,7 +78,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const s = await apiRegister({ username, password, email });
     saveAccountSession(s);
     _currentToken = s.token;
-    await syncAccountPreferences(s.token, s.account.id).catch(() => undefined);
+    const p = await syncAccountPreferences(s.token, s.account.id).catch(() => null);
+    if (p) setPrefs(p);
     setSession(s);
   }, []);
 
@@ -68,6 +90,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     clearAccountSession();
     _currentToken = null;
     setSession(null);
+    setPrefs(null);
   }, [session]);
 
   return (
@@ -75,6 +98,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       value={{
         account: session?.account ?? null,
         token: session?.token ?? null,
+        prefs,
         isLoading,
         login,
         register,

@@ -231,7 +231,7 @@ export default function GameBoard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { account, isLoading: accountLoading } = useAccount();
+  const { account, isLoading: accountLoading, prefs: accountPrefs } = useAccount();
   const session = getSession();
 
   const isTutorial = useMemo(() => {
@@ -356,6 +356,16 @@ export default function GameBoard() {
       })
       .catch(() => undefined);
   }, []);
+
+  // React to preference updates pushed from AccountContext polling (cross-device sync)
+  useEffect(() => {
+    if (!accountPrefs) return;
+    setHintsEnabled(accountPrefs.hintsEnabled);
+    setAbridgedAnims(accountPrefs.abridgedAnims);
+    setSkipCinematicsState(accountPrefs.skipCinematics);
+    gameAudio.setMuted(accountPrefs.muted);
+    setMuted(accountPrefs.muted);
+  }, [accountPrefs]);
 
   // Scroll the highlighted tutorial zone into view whenever it changes
   useEffect(() => {

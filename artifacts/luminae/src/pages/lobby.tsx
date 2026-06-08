@@ -55,7 +55,7 @@ export default function Lobby() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { account, isLoading } = useAccount();
+  const { account, isLoading, prefs: accountPrefs } = useAccount();
 
   const session = getSession();
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -93,6 +93,16 @@ export default function Lobby() {
       setMutedState(getMuted());
     }
   }, [account?.id]);
+
+  // React to preference updates pushed from AccountContext polling (cross-device sync)
+  useEffect(() => {
+    if (!accountPrefs) return;
+    setSkipCinematicsState(accountPrefs.skipCinematics);
+    setAbridgedAnimsState(accountPrefs.abridgedAnims);
+    setHintsEnabledState(accountPrefs.hintsEnabled);
+    setMutedState(accountPrefs.muted);
+    gameAudio.setMuted(accountPrefs.muted);
+  }, [accountPrefs]);
 
   const handleToggleSkipCinematics = () => {
     const next = !skipCinematics;
