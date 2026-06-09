@@ -185,6 +185,11 @@ export function useGameWebsocket({
       // so the banner never appears for them.  Only a genuinely stuck reconnect
       // (server down, network loss) surfaces the banner after the grace window.
       if (hasEverConnectedRef.current) {
+        // Clear any prior timer before scheduling a new one so rapid successive
+        // drops don't stack timers with stale closures.
+        if (reconnectBannerTimerRef.current !== null) {
+          clearTimeout(reconnectBannerTimerRef.current);
+        }
         reconnectBannerTimerRef.current = setTimeout(() => {
           reconnectBannerTimerRef.current = null;
           setIsReconnecting(true);
