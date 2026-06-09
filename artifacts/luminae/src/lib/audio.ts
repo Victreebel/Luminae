@@ -678,6 +678,39 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
+  /**
+   * Soft market-refill chime — plays at the moment a replacement card slides
+   * into the burned slot (~1520 ms after burn detection).
+   *
+   * Sonic character: light, bright, hopeful.  Contrasts with playCardBurn
+   * (low crackle/fire) by using a short ascending three-note arpeggio at
+   * C5→E5→G5 with a very soft attack, a gentle rising noise sweep, and a
+   * brief high shimmer tail.  Volume is intentionally kept lower than burn
+   * so it reads as a quiet completion rather than a new event.
+   *
+   * Total audible duration ~0.55 s.
+   */
+  playMarketRefill() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+
+      // Gentle upward sweep — card materialising into the slot
+      this.noiseSweep(ctx, t, 0.22, 0.038, 400, 1600);
+
+      // Ascending crystal ting: C5 → E5 → G5
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((f, i) => {
+        const at = t + i * 0.10;
+        this.osc(ctx, f, 'sine', at, at + 0.38, 0.045 - i * 0.004, 0.004);
+      });
+
+      // Soft high shimmer tail — crystalline arrival confirmation
+      this.osc(ctx, 1568, 'sine', t + 0.28, t + 0.55, 0.022, 0.010);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
   /** Physical card flip — plays the Card_Flip_Over.wav asset. */
   playCardFlip() {
     if (this.muted) return;

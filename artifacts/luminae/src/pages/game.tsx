@@ -1382,6 +1382,7 @@ export default function GameBoard() {
         if (slotKeys.length > 0) {
           setTimeout(() => {
             setRefillingSlots(new Set(slotKeys));
+            gameAudio.playMarketRefill();
             setTimeout(() => setRefillingSlots(new Set()), 700);
           }, 1520);
         }
