@@ -172,12 +172,19 @@ function resolveAstral(s: GameState): AnimationTimelineStep[] {
 //    Uses burnPile.length (canonical deduplicated burn count) not burnEvents.length.
 //    targetClaim added so the owner panel is highlighted before the gain resolves,
 //    making the source of Eminence legible without replaying individual burn events.
+//
+//    Zero-burn guard: if burnPile is empty the scoreChange step is omitted entirely.
+//    This prevents "+0 EMN" appearing in the ProcedureStrip, which implies something
+//    happened when nothing did. The targetClaim still fires (owner panel is highlighted
+//    so the player can see why the cinematic played at all).
 function resolveBloom(s: GameState, ownerId: string): AnimationTimelineStep[] {
   const burnCount = (s.burnPile ?? []).length;
   return [
     pulse('lum_bloom'),
     { type: 'targetClaim', targetIds: [ownerId] },
-    { type: 'scoreChange', playerIds: [ownerId], amount: burnCount },
+    ...(burnCount > 0
+      ? [{ type: 'scoreChange' as const, playerIds: [ownerId], amount: burnCount }]
+      : []),
   ];
 }
 
