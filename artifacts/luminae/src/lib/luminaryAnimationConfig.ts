@@ -177,6 +177,9 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'luminaryPulse', luminaryId: 'lum_astral' },
       { type: 'targetClaim', targetIds: [], keyword: 'burn' },
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
+      // Survivor lock-in beat — second targetClaim (no keyword) highlights Flare/Continuum
+      // cards that survived the burn; reads as CLAIM (resolution) not TARGET (pre-warn).
+      { type: 'targetClaim', targetIds: [] },
       { type: 'marketRedraw', slotIds: [] },
     ],
     flavorLine: 'Non-Flare/Continuum cards burn in a blue-red afterimage flash; surviving Flare and Continuum cards lock into place last with a paradox pulse before the market refreshes.',
@@ -195,7 +198,9 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_bloom' },
       { type: 'targetClaim', targetIds: [] },
-      // amount is dynamic (burnPile.length at payout time); 0 is a template placeholder
+      // amount is dynamic (burnPile.length at payout time); scoreChange is omitted
+      // entirely when burnCount === 0 (see resolveBloom in luminaryAnimationProcedures.ts)
+      // to avoid showing "+0 EMN" when the Burn Pile is empty.
       { type: 'scoreChange', playerIds: [], amount: 0 },
     ],
     flavorLine: 'Prior burn cinders transform into green growth sparks — the owner gains Eminence proportional to the accumulated burn pile without replaying individual burns.',

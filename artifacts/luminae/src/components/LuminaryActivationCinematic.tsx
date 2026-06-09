@@ -45,7 +45,18 @@ interface StepInfo { icon: string; label: string; color: string; }
 function stepInfo(step: AnimationProcedureStep): StepInfo | null {
   switch (step.type) {
     case 'luminaryPulse': return null;
-    case 'targetClaim':   return { icon: '⬡', label: 'CLAIM',      color: '#e2e8f0' };
+    case 'targetClaim': {
+      // Keyword-bearing claims signal pre-targeting (warn before the keyword fires).
+      // Keyword-free claims signal the actual resolution beat (lock-in, copy, etc.).
+      // This distinction makes "TARGET → BURN → CLAIM" legible in Phoenix Paradox,
+      // Iron Harbinger, Red Moth (burn pre-tint vs. survivor lock-in) and Ember
+      // Sovereign (condemned mark vs. later burn sequence).
+      if (step.keyword === 'burn')
+        return { icon: '⬡', label: 'TARGET', color: '#fca5a5' };
+      if (step.keyword === 'condemned')
+        return { icon: '⬡', label: 'MARK',   color: '#fca5a5' };
+      return { icon: '⬡', label: 'CLAIM', color: '#e2e8f0' };
+    }
     case 'keywordEvent':
       if (step.keyword === 'burn')
         return { icon: '🔥', label: 'BURN', color: '#ef4444' };
@@ -74,7 +85,11 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
       const scope = step.playerIds.length > 1 ? ' ALL' : '';
       return { icon: '◆', label: `${sign}${step.amount} EMN${scope}`, color };
     }
-    case 'crystalReturn': return { icon: '◇', label: 'RETURN',     color: '#60a5fa' };
+    case 'crystalReturn': {
+      // Mirror the scoreChange "ALL" scope indicator — Pale Merchant targets all players.
+      const scope = step.playerIds.length > 1 ? ' ALL' : '';
+      return { icon: '◇', label: `RETURN${scope}`, color: '#60a5fa' };
+    }
     case 'deckScry':      return { icon: '◉', label: 'SCRY',       color: '#a78bfa' };
     case 'pendingAction': return { icon: '✦', label: 'ASSIMILATE', color: '#fb923c' };
     default:              return null;
