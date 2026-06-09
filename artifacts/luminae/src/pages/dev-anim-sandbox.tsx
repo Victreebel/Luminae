@@ -55,9 +55,9 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
 type SandboxMode = 'summon' | 'idle' | 'activation';
 
 const MODES: { id: SandboxMode; label: string }[] = [
-  { id: 'summon',     label: 'Summon Flash' },
   { id: 'activation', label: 'Activation' },
   { id: 'idle',       label: 'Idle Portal' },
+  { id: 'summon',     label: 'Summon Flash' },
 ];
 
 // ─── Card FX Mode ─────────────────────────────────────────────────────────────
