@@ -282,18 +282,44 @@ export function BurnBadgeOverlay({
 }
 
 // ── BurnFlash ─────────────────────────────────────────────────────────────────
-// Reusable 5-phase Burn keyword animation.  Plays over the affected market slot
-// and self-destructs after completion.  Renders as a document.body portal to
+// Reusable Burn keyword animation.  Plays over the affected market slot and
+// self-destructs after completion.  Renders as a document.body portal to
 // escape overflow containers.
 //
-// Phase 1 (  0–150 ms): Target claim — ember outline ring + inset glow.
-// Phase 2 (150–420 ms): Heat fracture — crack lines radiate from card centre.
-// Phase 3 (400–750 ms): Burn release — ash fragments scatter + central flare.
-// Phase 4 (700–850 ms): Burn pile confirmation — handled by state update (🔥 chip).
-// Phase 5 (800–1180ms): Scorched residue — char rectangle fades out.
+// ── CANONICAL BURN ANIMATION RULES (do not regress) ──────────────────────────
+//
+// Visual principle: the burn MUST stay crisp and readable throughout.
+//   • No blur effects of any kind — no motion blur, no Gaussian blur (filter:blur()),
+//     no smeared card image, no blurry dissolve, no hazy fade masking the card.
+//   • The card must remain identifiable during the early and middle portions of the burn.
+//   • Do not hide the card with blur, smoke layers, or overbright wash effects.
+//
+// Forbidden CSS/style properties inside BurnFlash (and any burn-adjacent layer):
+//   filter: blur(...)   backdropFilter: blur(...)   WebkitFilter: blur(...)
+//
+// ── PHASE SEQUENCE ────────────────────────────────────────────────────────────
+//
+// Phase 1 (  0–150 ms): Target claim — crisp ember outline ring snaps onto the card.
+// Phase 2 (150–350 ms): Bottom edge ignites — a sharp ember/flame edge appears at the
+//                        bottom of the card slot; crack lines radiate from centre.
+// Phase 3 (300–700 ms): Flame line travels upward — a sharp horizontal burn front
+//                        advances from bottom to top.  The burned portion below the
+//                        line shows clean ash/scorch texture (no blur).  The unburned
+//                        portion above remains fully readable until the line reaches it.
+// Phase 4 (650–850 ms): Top edge burns away last — crisp spark points flare at the
+//                        top edge just before the card is consumed.
+// Phase 5 (750–1050ms): Ash/sparks fly toward the Burn Pile icon — charred fragments
+//                        arc across the board.
+// Phase 6 (handled by state): Burn Pile count increments (🔥 chip).
+// Phase 7 (after animation): Market redraw fires ONLY after the burn animation is
+//                        complete and readable — never overlap with a blur mask.
 //
 // Callable as { type: 'keywordEvent', keyword: 'burn', targetIds: [...] } inside
 // any AnimationProcedure (see lib/animationProcedure.ts).
+//
+// NOTE: The current implementation (below) pre-dates this crisp-burn spec and uses
+// blur() on Phase 3a/3c layers.  Those layers are flagged for replacement with
+// sharp flame-front and scorch-texture equivalents in a dedicated rework task.
 
 // Ash fragment vectors — precomputed, stable across renders.
 const ASH_FRAGMENTS = [
