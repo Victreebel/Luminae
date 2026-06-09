@@ -57,28 +57,6 @@ Luminaries are cosmic survival intelligences and post-civilizational archetypes 
 - **Abyss** — entropy, silence, absence, information death, boundary-of-being intelligence.
 - **Radiance** — coherence, stabilized artificial or crystalline order, machine-like pattern consciousness.
 
-### Null Sovereign — updated direction
-- Primarily Abyss + Continuum emotionally, with Radiance as stabilizing structure.
-- Mostly black, headless, seated on a throne, roughly humanoid seated silhouette.
-- Rulership through absence — a sovereign-shaped void, not a villain.
-- **Body material (critical):** Deep void-black body with a highly polished, glossy, obsidian-like or lacquered-black surface — NOT matte black, NOT flat dark gray, NOT uniform shadow. The black body should catch sharp white/pearl specular highlights on the shoulders, clavicle, chest, upper arms, forearms, knees, and throne-facing contours. Think polished black armor, wet obsidian, black lacquer, or black oil reflecting studio light. The white specular streaks make the silhouette readable without turning the body gray or silver.
-- **Radiance expression:** Expressed through white/pearl specular highlights on the glossy body surface, subtle crystalline coherence lines as restraints — not by making the body gray or metallic.
-- **Continuum expression:** Subtle deep-blue recursive arc rings framing the figure or throne area — present but not overpowering the main glossy-black body read.
-- **Do not make Null:** wizard, demon, skull king, generic shadow lord, purple smoke villain, sci-fi body-scan figure, cyberpunk diagram, matte black blob, flat dark silhouette with no surface detail.
-- **Panel:** throne and body visibly sealed within a dark crystalline reliquary — entity embedded, suspended, refracted, or restrained within the containment, not sitting in front of a background crystal.
-- **Entity:** roughly humanoid seated/throne-associated silhouette, headless, deep glossy-black obsidian-like body with white specular highlights, alive and intentional, complete silhouette (not cropped), transparent background.
-
-### ??? — canonical direction (updated from CNS-organism to astral navigator)
-- Full-body cosmic navigator / astral guide. Humanoid silhouette beneath deep indigo-navy robes.
-- Robe fabric IS the star chart — living constellation maps, glowing star paths, and orbital arc lines embedded directly into the cloth.
-- 2–4 armillary spheres / celestial orrery rings float around the figure (brass and starlight-blue, etched orbital paths).
-- Face partially concealed by deep hood, two calm luminous cyan eyes visible.
-- One arm extended in a guiding gesture — pointing toward an unseen horizon.
-- Lower robe fans out and intentionally dissolves into star-dust trails / constellation lines — not a crop.
-- Coloring: deep navy/indigo body, glowing ice-blue and cyan star-map markings, warm brass armillary rings, soft teal-green nebula accents.
-- **Do not make Stellar Guide:** generic fantasy mage, CNS diagram, old traveler, compass-holding wizard, star-chart flat diagram, sci-fi astronaut.
-- **Entity:** full-body, complete readable silhouette from crown to dissolved base, transparent background, no text or labels.
-
 ### General entity rules (all Luminaries)
 - Isolated entity on transparent background.
 - Complete readable silhouette — no torso cutoffs, no clipped edges.
@@ -99,19 +77,12 @@ Each Luminary represents a distinct form of cosmic living/intelligent existence.
 
 If a generation pass produces a humanoid figure for a Luminary that should be nonhumanoid, that is a failure to capture the concept. Ask for clarification if the intended form is not clear before generating.
 
-### Asset review status (current — supersedes all earlier commit notes)
-- **Panels accepted (do not overwrite):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale, lum_astral — 12 panels locked.
-- **lum_pale notes (fully illustrated, animated entity):** All three slots accepted. Panel regenerated (May 2026): large irregular pearl/silver crystal facets filling the interior, improved border with sunburst-set pearl corner gems, multi-tiered gold diamond crest, richer filigree on all edges, scales medallion at bottom-center. Entity replaced (May 2026): shrouded seraph with tattered white/silver veil robes, dark void face with single hollow eye, large feathered wings, holding brass balance scales on chains — dark castle in left pan, glowing light in right pan; crystal diamond pendants; 1024×1536 RGBA PNG (2:3 portrait). `PaleEntity` renders as a static image (no animation). Aura: soft radial silver/pearl starburst glow, alpha=0 at corners.
-- **lum_astral notes (panel accepted May 2026):** Cosmic arachnid entity embedded in dark crystal facets. Large irregular triangular/trapezoidal crystal planes fill the interior — no readable sphere silhouette, no geodesic net. Fire-ice gradient (ruby/sapphire) internal fracture coloring. Dual ruby corner gems top, dual sapphire/ruby bottom, fire medallion at bottom-center. Constellation line overlay across crystal facets. Entity fully embedded/refracted within crystal volume.
-- **lum_bloom notes (entity accepted June 2026):** Verdance/Flare invasive growth organism — sourced from `regen_bloom.png`, background removed. 1404×1120 RGBA PNG (landscape). `BloomEntity` renders as a static image; SVG fallback retained as `BloomEntityFallback`. Slot is locked — do not regenerate.
-- **lum_oracle notes (entity replaced May 2026):** Cosmic serpent/dragon — swirling dark feathered form with teal/cyan bioluminescence and amber glowing nodes, coiled against a deep space field. 1024×1536 RGBA PNG (2:3 portrait), background removed. `OracleEntity` renders as a static image; SVG fallback retained as `OracleEntityFallback`.
-- **lum_null notes (entity replaced May 2026):** Headless void-black humanoid seated on an ornate gothic throne. Glossy obsidian-like body with white/silver specular highlights on shoulders, chest, arms, knees. Crystal gothic arch and white light shaft in background, full scene including feet and throne base. User-provided background-removed PNG (`7AC0A86F-151B-4D56-BFC6-CF5396EB53A5_1780026391944.png`). 1024×1461 RGBA PNG (≈2:3 portrait), transparent background. `NullEntity` renders as a static image; SVG fallback retained as `NullEntityFallback`.
-- **Panels needing regeneration:** None — all 12 panels accepted.
-- **lum_radiant notes (entity replaced May 2026):** Sensual luminous goddess — strapless crystalline pearl/gold breastplate baring midriff, flowing split silk skirt, sun crown, golden staff with star gem, soft internal pearl glow. 896×1280 RGBA PNG (≈7:10 portrait), background removed. `RadiantEntity` renders as static PNG; SVG fallback retained as `RadiantEntityFallback`.
-- **Entities needing regeneration:** None — all 12 entities accepted.
-- **Auras regenerated (transparent background):** lum_void (soft radial purple void glow, alpha=0 at corners), lum_pale (soft silver/pearl starburst glow, alpha=0 at corners) — both pass screen-blend check, no opaque rectangle visible.
-- **Open concept questions:** None.
-- **ILLUSTRATED_IDS** in `luminaryAssets.tsx` contains all 12 IDs. lum_pale, lum_oracle, lum_null, lum_radiant, and lum_bloom use fully illustrated entity PNGs (SVG fallbacks retained). All 12 Luminaries use illustrated assets; no Luminary falls back to procedural SVG art.
+### Asset status — all locked
+All 12 Luminary panels and entities are accepted and locked. Do not regenerate any asset without explicit user approval.
+- **Panels locked (12):** lum_ember, lum_forge, lum_verdant, lum_void, lum_radiant, lum_null, lum_compass, lum_oracle, lum_bloom, lum_tide, lum_pale, lum_astral
+- **Entities locked (12):** all use illustrated PNG assets; no Luminary falls back to procedural SVG. SVG fallbacks are retained in code but not displayed.
+- **Auras:** lum_void (purple radial) and lum_pale (silver/pearl starburst) — both use transparent backgrounds, screen-blend safe.
+- **`ILLUSTRATED_IDS`** in `luminaryAssets.tsx` contains all 12 IDs.
 
 ## System Architecture
 
@@ -178,7 +149,7 @@ Safe alternatives for hover feedback inside constrained panels:
 
 Scale-up transforms are acceptable **only** when the element being scaled is itself the `overflow-hidden` root and no ancestor clips it. (Example: a top-level card that scales up on hover and is its own clipping boundary is fine.)
 
-Tasks 665, 671, and 672 audited and removed the original regressions. The ESLint config enforces a warning for `hover:scale-[1.` Tailwind classes as an additional guardrail.
+The ESLint config enforces a warning for `hover:scale-[1.` Tailwind classes as an additional guardrail.
 
 ### Keyboard Focus Trap — Lint Enforcement
 Every JSX element with `role="dialog"` must be rendered by a component that calls `useFocusTrap()` (from `artifacts/luminae/src/hooks/use-focus-trap.ts`). Without the hook, keyboard focus leaks into the background while the dialog is open.
