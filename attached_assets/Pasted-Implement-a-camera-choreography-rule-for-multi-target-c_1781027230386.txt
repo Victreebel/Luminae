@@ -1,0 +1,90 @@
+Implement a camera choreography rule for multi-target card and Luminary effects.
+
+Goal:
+When an effect affects more than one card or more than one board zone, the camera should smoothly move to a view where the player can see the whole effect resolve.
+
+Do not change mechanics, costs, scoring, turn order, tutorial order, card data, or effect targeting.
+
+Camera rule:
+Whenever a card/Luminary effect affects more than one card, or multiple visible board zones, do the following:
+
+1. Capture current camera/view state
+- Save the player’s current board view, zoom, pan, selected mode, and focus.
+- This must allow the UI to return to the exact prior view after the animation.
+
+2. Smoothly transition to full-board view
+- If not already in full-board view, smoothly pan/zoom out.
+- No abrupt cuts.
+- No instant snapping.
+- The transition should feel like the camera is pulling back to reveal the whole board.
+- Target duration: ~300–500ms.
+- Respect reduced-motion settings by shortening the transition but still avoiding abrupt cuts.
+
+3. Ensure all affected targets are visible
+- Zoom out enough that every affected card/zone is visible.
+- If the entire board is too large, prioritize showing:
+  a. source Luminary/card
+  b. affected targets
+  c. relevant destination zone, such as Burn Pile or bank
+- Do not crop out affected cards during resolution.
+
+4. Play source activation
+- Play the generic Luminary/card activation animation.
+- Source should be clear before targets resolve.
+
+5. Apply specific effect animations
+- Then play the effect-specific animation primitives:
+  - Burn
+  - Condemned
+  - Forgotten
+  - Nullified
+  - Seeded
+  - scoreChange
+  - crystalReturn
+  - deckScry
+  - marketRedraw
+- Multi-target effects should resolve in readable batches or staggered waves.
+
+6. Smoothly return to prior view
+- After the effect completes, restore the player’s previous camera/view state.
+- Return transition should also be smooth.
+- No abrupt cuts.
+- Target duration: ~300–500ms.
+- If the user manually changes view during or immediately after the animation, do not fight the user; avoid snapping back unexpectedly.
+
+Apply this rule especially to:
+- Red Moth / Rupture of the Still if it burns multiple cards
+- Phoenix Paradox / Ash-Seeking Recurrence
+- Iron Harbinger / Impact Extinction
+- The Hourless Compass / The Forgotten Hour
+- Seed Beyond Seasons / Avatar Seeds
+- Pale Merchant / Balance Due if multiple crystal pools are affected
+- Ember Sovereign / Cinder Mandate
+- Null Sovereign / Black Domain
+- Any future effect affecting multiple market cards
+
+Do not force full-board camera takeover for simple single-target actions unless the target is off-screen.
+
+Motion rules:
+- Camera movement must be smooth.
+- No abrupt cuts.
+- No hard jumps.
+- No disorienting zoom snap.
+- Avoid blur.
+- Keep affected cards readable.
+- Generic activation should still expand outward, not shrink inward.
+
+Accessibility:
+- Reduced motion mode should use a shorter, simpler pan/zoom transition.
+- Skip/fast-forward should complete the camera transition and effect state safely.
+- Skipping must not leave the camera stuck in full-board view.
+- Animation locks must release reliably.
+
+Acceptance criteria:
+- Multi-card effects smoothly shift to full-board visibility before resolving.
+- All affected targets are visible during the animation.
+- Luminary/source activation plays before effect-specific animations.
+- The board returns smoothly to the prior view after completion.
+- There are no abrupt camera cuts.
+- Reduced-motion and skip behavior remain safe.
+- Existing tests/typecheck pass.
