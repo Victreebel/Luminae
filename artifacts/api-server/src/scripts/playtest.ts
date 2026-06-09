@@ -18,11 +18,9 @@
 import {
   initializeGame,
   applyAction,
-  LUMINARIES,
   LUMINARY_MAP,
   CRYSTAL_COLORS,
   type GameStateData,
-  type PlayerGameState,
   type CrystalColor,
 } from "../lib/gameEngine.js";
 import { chooseAiAction } from "../lib/aiPlayer.js";
@@ -117,7 +115,7 @@ function drainEvents(state: GameStateData, anyId: string): void {
     if (!ch) break;
     applyAction(state, ch.playerId, {
       type: "choose_luminary_order",
-      order: ch.candidates,
+      orderedIds: ch.candidates,
     });
   }
   // Summon cutscene events
@@ -157,7 +155,7 @@ function runGame(gameId: string, playerCount: number): GameRecord {
     if (state.phase === "finished") break;
 
     drainEvents(state, state.players[state.currentPlayerIndex]?.playerId ?? "p0");
-    if (state.phase === "finished") break;
+    if ((state.phase as string) === "finished") break;
 
     const cp = state.players[state.currentPlayerIndex];
     if (!cp) break;
@@ -351,7 +349,6 @@ function powerVerdict(s: LumStats): Verdict {
   if (s.summonCount < 3) return "No Data";
   const sd = s.avgSummonerDelta;
   const od = s.avgOpponentDelta;
-  const wr = s.summonerWinRate;
   // Swing = big positive self AND big negative opponents
   if (sd >= 4 && od <= -2) return "Very Strong";
   if (sd >= 3 || (sd >= 2 && od <= -1.5)) return "Strong";
