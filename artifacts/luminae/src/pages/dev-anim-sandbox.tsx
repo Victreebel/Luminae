@@ -16,6 +16,10 @@ import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/Artifa
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { type ArtifactCard, ArtifactCardBonusColor } from '@workspace/api-client-react';
 import { gameAudio } from '@/lib/audio';
+import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
+import { LUMINARY_ANIMATION_CONFIG } from '@/lib/luminaryAnimationConfig';
+import type { AnimationTimelineStep } from '@/lib/animationProcedure';
+import { MOCK_PROCEDURE_STATES } from './mockProcedureStates';
 
 // ─── Sandbox Luminary Catalog ─────────────────────────────────────────────────
 
@@ -1171,6 +1175,359 @@ function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: nu
 }
 
 
+// ─── Aftermath description helper ────────────────────────────────────────────
+
+interface AftermathLine {
+  label: string;
+  color: string;
+}
+
+function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
+  const lines: AftermathLine[] = [];
+  for (const step of steps) {
+    switch (step.type) {
+      case 'luminaryPulse':
+        break;
+      case 'targetClaim': {
+        const n = step.targetIds.length;
+        if (n === 0) break;
+        const kwNote = step.keyword ? ` · ${step.keyword} pre-tint` : '';
+        lines.push({ label: `${n} target${n !== 1 ? 's' : ''} claimed${kwNote}`, color: '#e2e8f0' });
+        break;
+      }
+      case 'keywordEvents': {
+        for (const ev of step.events) {
+          const n = ev.targetIds.length;
+          const kwColor = ev.keyword === 'burn' ? '#ef4444' : '#6366f1';
+          lines.push({ label: `${ev.keyword.toUpperCase()}: ${n} card${n !== 1 ? 's' : ''}`, color: kwColor });
+        }
+        break;
+      }
+      case 'keywordEvent': {
+        const n = step.targetIds.length;
+        const kwColor = step.keyword === 'burn' ? '#ef4444' : '#6366f1';
+        lines.push({ label: `${step.keyword.toUpperCase()}: ${n} card${n !== 1 ? 's' : ''}`, color: kwColor });
+        break;
+      }
+      case 'residue': {
+        const n = step.targetIds.length;
+        const target = n > 0 ? `${n} card${n !== 1 ? 's' : ''}` : 'deck tops (deferred)';
+        const kwColors: Record<string, string> = {
+          condemned: '#ef4444',
+          forgotten:  '#6366f1',
+          nullified:  '#94a3b8',
+          seeded:     '#22c55e',
+        };
+        lines.push({ label: `${step.keyword.toUpperCase()} residue → ${target}`, color: kwColors[step.keyword] ?? '#94a3b8' });
+        break;
+      }
+      case 'marketRedraw':
+        lines.push({ label: 'Market refreshes', color: '#94a3b8' });
+        break;
+      case 'scoreChange': {
+        const n = step.playerIds.length;
+        const sign = step.amount >= 0 ? '+' : '';
+        const who = n > 1 ? 'all players' : 'owner';
+        const col = step.amount >= 0 ? '#fbbf24' : '#ef4444';
+        lines.push({ label: `${sign}${step.amount} Eminence → ${who}`, color: col });
+        break;
+      }
+      case 'crystalReturn': {
+        const n = step.playerIds.length;
+        lines.push({ label: `Crystals returned from ${n} player${n !== 1 ? 's' : ''}`, color: '#60a5fa' });
+        break;
+      }
+      case 'deckScry': {
+        const tiers = step.tierIds.map(t => t.replace('tier', 'T')).join('+');
+        const bias = step.affinityBias ? ` · ${step.affinityBias} bias` : '';
+        lines.push({ label: `Deck scry — ${tiers}${bias}`, color: '#a78bfa' });
+        break;
+      }
+      case 'pendingAction':
+        lines.push({ label: 'Assimilate pending action granted to owner', color: '#fb923c' });
+        break;
+      default:
+        break;
+    }
+  }
+  return lines;
+}
+
+// ─── ProcedureReviewSection ───────────────────────────────────────────────────
+// Self-contained Procedure Review tab.  All state is local; the
+// LuminaryActivationCinematic renders via createPortal (full-screen overlay).
+
+const PROCEDURE_REVIEW_LUMINARIES = Object.values(LUMINARY_ANIMATION_CONFIG);
+
+function ProcedureReviewSection() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [procKey, setProcKey]           = useState(0);
+  const [isActive, setIsActive]         = useState(false);
+  const [effectType, setEffectType]     = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon');
+  const [currentSteps, setCurrentSteps] = useState<AnimationTimelineStep[] | null>(null);
+  const [aftermath, setAftermath]       = useState<AftermathLine[] | null>(null);
+
+  const config    = selectedId ? LUMINARY_ANIMATION_CONFIG[selectedId]  : null;
+  const mockEntry = selectedId ? MOCK_PROCEDURE_STATES[selectedId]      : null;
+  const sandbox   = selectedId ? SANDBOX_LUMINARIES.find(l => l.id === selectedId) : null;
+  const vis       = selectedId ? getLuminaryVisuals(selectedId)         : null;
+
+  function triggerPlay(forceReducedMotion: boolean) {
+    if (!selectedId || !mockEntry) return;
+    const steps = resolveLuminaryProcedure(selectedId, effectType, mockEntry.state, mockEntry.ownerId);
+    setCurrentSteps(steps);
+    setAftermath(null);
+    setProcKey(k => k + 1);
+    setIsActive(true);
+    // Store reducedMotion in a ref so the cinematic reads it at mount.
+    // We pass it as a prop directly via the active flag state below.
+    _reducedMotionForNextRun.current = forceReducedMotion;
+  }
+  const _reducedMotionForNextRun = useRef(false);
+
+  function handleSkip() {
+    // Unmounting the cinematic triggers its cleanup which calls onComplete.
+    setIsActive(false);
+  }
+
+  function handleComplete() {
+    setIsActive(false);
+    _reducedMotionForNextRun.current = false;
+    if (currentSteps) {
+      setAftermath(describeAftermath(currentSteps));
+    }
+  }
+
+  // Determine the reducedMotion prop value for the currently-mounted cinematic.
+  // We read the ref at render time so it reflects the value set during triggerPlay.
+  const mountedReducedMotion = _reducedMotionForNextRun.current || undefined;
+
+  const primaryColor = vis?.primaryColor ?? '#a78bfa';
+
+  return (
+    <div className="max-w-3xl mx-auto">
+
+      {/* ── Luminary selector grid ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mb-6">
+        {PROCEDURE_REVIEW_LUMINARIES.map(cfg => {
+          const v = getLuminaryVisuals(cfg.luminaryId);
+          const isSelected = selectedId === cfg.luminaryId;
+          return (
+            <button
+              key={cfg.luminaryId}
+              type="button"
+              onClick={() => {
+                setSelectedId(cfg.luminaryId);
+                setAftermath(null);
+                setCurrentSteps(null);
+                setEffectType('summon');
+              }}
+              className="relative rounded-lg overflow-hidden border transition-colors text-left"
+              style={{
+                background:  '#0a0a14',
+                borderColor: isSelected ? v.primaryColor : 'rgba(255,255,255,0.12)',
+              }}
+            >
+              <div className="h-1 w-full" style={{ background: v.primaryColor }} />
+              <div className="p-2.5 flex flex-col gap-0.5">
+                <span className="text-[9px] font-mono" style={{ color: v.primaryColor, opacity: 0.7 }}>
+                  {cfg.luminaryId}
+                </span>
+                <span className="text-[11px] font-semibold text-foreground leading-tight line-clamp-2">
+                  {cfg.displayName}
+                </span>
+                <span className="text-[9px] text-muted-foreground/60">{cfg.animationArchetype}</span>
+              </div>
+              {isSelected && (
+                <div
+                  className="absolute inset-0 pointer-events-none rounded-lg"
+                  style={{ boxShadow: `inset 0 0 0 2px ${v.primaryColor}` }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Selected Luminary detail panel ─────────────────────────────────── */}
+      {selectedId && config && sandbox && mockEntry && vis ? (
+        <div className="rounded-xl border border-border/20 bg-black/30 p-5 flex flex-col gap-4">
+
+          {/* Header */}
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className="text-xs font-mono px-2 py-0.5 rounded"
+                style={{ background: `${primaryColor}22`, color: primaryColor, border: `1px solid ${primaryColor}44` }}
+              >
+                {config.effectName}
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">
+                {config.animationArchetype}
+              </span>
+              {config.residueType && (
+                <span className="text-[9px] font-mono text-muted-foreground/40">
+                  residue: {config.residueType}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
+              {mockEntry.description}
+            </p>
+            <p
+              className="text-[10px] italic leading-relaxed"
+              style={{ color: `${primaryColor}99` }}
+            >
+              {config.flavorLine}
+            </p>
+          </div>
+
+          {/* Effect-type selector */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest min-w-[72px]">
+              Effect type
+            </span>
+            <div className="flex gap-1">
+              {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => (
+                <button
+                  key={et}
+                  type="button"
+                  onClick={() => setEffectType(et)}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
+                  style={{
+                    borderColor: effectType === et ? primaryColor : 'rgba(255,255,255,0.12)',
+                    background:  effectType === et ? `${primaryColor}18` : 'transparent',
+                    color:       effectType === et ? primaryColor : '#64748b',
+                  }}
+                >
+                  {et}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Control buttons */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border/10">
+            {/* Play */}
+            <button
+              type="button"
+              onClick={() => triggerPlay(false)}
+              className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
+              style={{
+                background:  `${primaryColor}22`,
+                borderColor: `${primaryColor}60`,
+                color:       primaryColor,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}38`; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${primaryColor}22`; }}
+            >
+              ▶ Play
+            </button>
+
+            {/* Replay */}
+            <button
+              type="button"
+              onClick={() => triggerPlay(false)}
+              className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
+              style={{
+                background:  'rgba(255,255,255,0.04)',
+                borderColor: `${primaryColor}44`,
+                color:       primaryColor,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.09)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
+            >
+              ↺ Replay
+            </button>
+
+            {/* Skip */}
+            <button
+              type="button"
+              onClick={handleSkip}
+              disabled={!isActive}
+              className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
+              style={{
+                background:  isActive ? 'rgba(239,68,68,0.12)' : 'transparent',
+                borderColor: isActive ? 'rgba(239,68,68,0.45)' : 'rgba(255,255,255,0.10)',
+                color:       isActive ? '#ef4444' : '#334155',
+                cursor:      isActive ? 'pointer' : 'default',
+              }}
+              onMouseEnter={e => { if (isActive) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.22)'; }}
+              onMouseLeave={e => { if (isActive) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.12)'; }}
+            >
+              ✕ Skip
+            </button>
+
+            {/* Reduced Motion Preview */}
+            <button
+              type="button"
+              onClick={() => triggerPlay(true)}
+              className="text-[11px] font-mono px-4 py-1.5 rounded border transition-colors"
+              style={{
+                background:  'rgba(148,163,184,0.08)',
+                borderColor: 'rgba(148,163,184,0.30)',
+                color:       '#94a3b8',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.16)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(148,163,184,0.08)'; }}
+              title="Play with prefers-reduced-motion override enabled"
+            >
+              ♿ Reduced Motion Preview
+            </button>
+          </div>
+
+          {/* Aftermath metadata strip */}
+          {aftermath !== null && (
+            <div className="flex flex-col gap-2 pt-3 border-t border-border/10">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">
+                  aftermath
+                </span>
+                <span className="text-[9px] font-mono text-muted-foreground/30">
+                  {config.displayName} · {config.effectName} · {effectType}
+                </span>
+              </div>
+              {aftermath.length === 0 ? (
+                <span className="text-[10px] text-muted-foreground/40 italic">No resolved targets (empty mock state for this path)</span>
+              ) : (
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {aftermath.map((line, i) => (
+                    <span
+                      key={i}
+                      className="text-[10px] font-mono"
+                      style={{ color: line.color }}
+                    >
+                      {line.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-center text-[11px] text-muted-foreground/30 mt-4">
+          ↑ select a Luminary above to load its procedure review
+        </p>
+      )}
+
+      {/* ── Activation cinematic overlay ───────────────────────────────────── */}
+      {isActive && currentSteps && selectedId && sandbox && (
+        <LuminaryActivationCinematic
+          key={procKey}
+          luminaryId={selectedId}
+          effectType={effectType}
+          luminaryName={sandbox.name}
+          triggeringPlayerName="Procedure Review"
+          procedure={currentSteps}
+          reducedMotion={mountedReducedMotion}
+          onComplete={handleComplete}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Luminary Grid Card ───────────────────────────────────────────────────────
 
 function LuminaryGridCard({
@@ -1224,7 +1581,7 @@ function LuminaryGridCard({
 
 // ─── DevAnimSandbox ───────────────────────────────────────────────────────────
 
-type SandboxGroup = 'luminary' | 'cardFx' | 'sfx';
+type SandboxGroup = 'luminary' | 'cardFx' | 'sfx' | 'procedure';
 
 export default function DevAnimSandbox() {
   const [, setLocation] = useLocation();
@@ -1310,7 +1667,7 @@ export default function DevAnimSandbox() {
           <>
             {/* Group selector */}
             <div className="flex items-center gap-1 ml-2 bg-black/30 rounded-md p-0.5 border border-border/20">
-              {(['luminary', 'cardFx', 'sfx'] as SandboxGroup[]).map(g => (
+              {(['luminary', 'cardFx', 'sfx', 'procedure'] as SandboxGroup[]).map(g => (
                 <button
                   key={g}
                   type="button"
@@ -1321,7 +1678,10 @@ export default function DevAnimSandbox() {
                     color:      group === g ? '#e2e8f0' : '#64748b',
                   }}
                 >
-                  {g === 'luminary' ? 'Luminary FX' : g === 'cardFx' ? 'Card FX' : 'Audio SFX'}
+                  {g === 'luminary' ? 'Luminary FX'
+                    : g === 'cardFx' ? 'Card FX'
+                    : g === 'sfx' ? 'Audio SFX'
+                    : 'Procedure Review'}
                 </button>
               ))}
             </div>
@@ -1381,9 +1741,14 @@ export default function DevAnimSandbox() {
       </div>
 
       {/* ── Instructions ──────────────────────────────────────────────────── */}
-      {!collapsed && group !== 'sfx' && (
+      {!collapsed && group !== 'sfx' && group !== 'procedure' && (
         <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
           {group === 'luminary' ? luminaryInstructions[mode] : cardFxInstructions[cardFxMode]}
+        </p>
+      )}
+      {!collapsed && group === 'procedure' && (
+        <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
+          Select a Luminary to preview its full animation procedure with mock GameState. Play / Replay / Skip / Reduced Motion controls are available after selecting.
         </p>
       )}
 
@@ -1707,6 +2072,9 @@ export default function DevAnimSandbox() {
               {cardFxMode === 'burn_pile_particle'    && <BurnPileParticlePreview />}
             </>
           )}
+          {/* ════════════════ PROCEDURE REVIEW GROUP ════════════════ */}
+          {group === 'procedure' && <ProcedureReviewSection />}
+
         </div>
       )}
 
