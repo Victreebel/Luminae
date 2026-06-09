@@ -1230,17 +1230,35 @@ function burnLowestCostWithout(
  * Burn (refresh) all face-up cards currently in `tier`'s market.
  * Only the cards present at the moment this function is called are burned;
  * replacement cards drawn from the deck are NOT re-burned.
+ * Pushes a single aggregate action-log entry (single-card or multi-card canonical
+ * format) instead of per-card entries — callers must NOT push a redundant summary.
  * Returns the count of cards that were burned.
  */
 function burnAllInTier(state: GameStateData, tier: 1 | 2 | 3, sourceLuminaryId: string): number {
   const snapshot = [...getMarketForTier(state, tier)];
-  let count = 0;
+  const burnedNames: string[] = [];
   for (const id of snapshot) {
     const market = getMarketForTier(state, tier);
     if (market.includes(id)) {
-      burnCard(state, id, tier, sourceLuminaryId);
-      count++;
+      const lore = getCardLore(id);
+      burnedNames.push(lore.name);
+      burnCard(state, id, tier, sourceLuminaryId, true); // suppressLog — aggregate below
     }
+  }
+  const count = burnedNames.length;
+  if (count > 0) {
+    const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
+    const lumName = lum?.name ?? sourceLuminaryId;
+    const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
+    const summary = count === 1
+      ? `${lumName} Burned ${burnedNames[0]}. ${burnedNames[0]} moved to the Burn Pile.`
+      : `${lumName} Burned ${count} Artifacts. They moved to the Burn Pile.`;
+    pushLog(state, {
+      playerId: owner?.playerId ?? "",
+      playerName: owner?.playerName ?? "",
+      summary,
+      turn: state.roundNumber,
+    });
   }
   return count;
 }
@@ -1350,8 +1368,11 @@ function incrementBloomCount(state: GameStateData): void {
  *
  * Records the card in `state.burnPile` and emits one `BurnEvent` entry in
  * `state.burnEvents`, increments the Catalyst Bloom accumulator (every card burn
- * feeds Bloom regardless of which Luminary triggered it), pushes a per-card
- * action-log entry, then delegates to `drawIntoMarket` for slot-refill.
+ * feeds Bloom regardless of which Luminary triggered it), optionally pushes a
+ * per-card action-log entry, then delegates to `drawIntoMarket` for slot-refill.
+ *
+ * Pass `suppressLog = true` when the caller (e.g. burnAllInTier) will push its
+ * own aggregate log entry instead of per-card entries.
  *
  * Callers are responsible for pushing their own effect-level summary log and
  * any activation events AFTER calling burnCard (or the burn loop helpers).
@@ -1361,6 +1382,7 @@ function burnCard(
   cardId: string,
   tier: 1 | 2 | 3,
   sourceLuminaryId: string,
+  suppressLog = false,
   opts?: { triggeredByPlayerId?: string },
 ): void {
   if (!Array.isArray(state.burnPile)) state.burnPile = [];
@@ -1390,13 +1412,18 @@ function burnCard(
   // Increment Catalyst Bloom accumulator — each individual card burn counts.
   incrementBloomCount(state);
 
-  // Push a per-card burn log entry attributed to the Luminary owner.
-  pushLog(state, {
-    playerId: owner?.playerId ?? "",
-    playerName: owner?.playerName ?? "",
-    summary: `${lum?.name ?? sourceLuminaryId} — Burn: ${burntLore.name} (Tier ${tier}) removed from market`,
-    turn: state.roundNumber,
-  });
+  if (!suppressLog) {
+    // Push a per-card burn log entry attributed to the Luminary owner.
+    const summary = lum
+      ? `${lum.name} Burned ${burntLore.name}. ${burntLore.name} moved to the Burn Pile.`
+      : `${burntLore.name} was Burned and moved to the Burn Pile.`;
+    pushLog(state, {
+      playerId: owner?.playerId ?? "",
+      playerName: owner?.playerName ?? "",
+      summary,
+      turn: state.roundNumber,
+    });
+  }
 
   drawIntoMarket(state, getMarketForTier(state, tier), getDeckForTier(state, tier), cardId);
 }
@@ -1591,14 +1618,8 @@ function applySummonEffect(
     }
     case "lum_forge": {
       // Impact Extinction: burn all face-up T3 Artifacts.
-      const count = burnAllInTier(state, 3, "lum_forge");
-      if (count > 0) {
-        pushLog(state, {
-          playerId: player.playerId, playerName: player.playerName,
-          summary: `Iron Harbinger — Impact Extinction: burned all ${count} Tier III Artifact(s)`,
-          turn: state.roundNumber,
-        });
-      }
+      // burnAllInTier pushes the canonical aggregate log — no redundant summary here.
+      burnAllInTier(state, 3, "lum_forge");
       pushActivationEvent(state, lumId, "summon", player.playerId);
       break;
     }
@@ -1653,7 +1674,7 @@ function applySummonEffect(
       state.firstHungerAvailable = player.playerId;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `First Hunger — Assimilation available: consume any Artifact for Eminence (one-time lingering ability)`,
+        summary: `First Hunger — Assimilation available: choose a face-up Artifact to Burn for Eminence`,
         turn: state.roundNumber,
       });
       pushActivationEvent(state, lumId, "summon", player.playerId);
@@ -2009,8 +2030,28 @@ export function applyAction(
     action.type !== "tutorial_fast_forward" &&
     action.type !== "set_civ_name" &&
     action.type !== "choose_luminary_order";
-  if (isTurnGated && state.currentPlayerIndex !== playerIdx)
+  if (isTurnGated && state.currentPlayerIndex !== playerIdx) {
+    // Provide specific messages for Assimilation-related race conditions so
+    // clients can surface helpful feedback instead of a generic "Not your turn."
+    const lastType = state.lastAction?.type as string | undefined;
+    const lastBy   = state.lastAction?.playerId as string | undefined;
+    if (
+      lastBy === playerId &&
+      lastType === "assimilate" &&
+      action.type !== "assimilate"
+    ) {
+      return { success: false, error: "You already used Assimilate as your core action this turn." };
+    }
+    if (
+      action.type === "assimilate" &&
+      lastBy === playerId &&
+      lastType != null &&
+      ["purchase_card", "purchase_reserved", "reserve_card", "take_three_crystals", "take_two_crystals"].includes(lastType)
+    ) {
+      return { success: false, error: "You already used your core action this turn." };
+    }
     return { success: false, error: "Not your turn" };
+  }
 
   const player = state.players[playerIdx];
 
@@ -2389,7 +2430,7 @@ export function applyAction(
       state.crystalBank.flux += fluxUsed;
 
       // Burn via shared burnCard — emits BurnEvent, increments Catalyst Bloom, refills slot.
-      burnCard(state, action.cardId, assimCard.tier as 1 | 2 | 3, "lum_hunger", { triggeredByPlayerId: playerId });
+      burnCard(state, action.cardId, assimCard.tier as 1 | 2 | 3, "lum_hunger", false, { triggeredByPlayerId: playerId });
 
       // Grant printed Eminence + 2 bonus.
       const assimLumens = assimCard.lumens + 2;
@@ -2398,9 +2439,10 @@ export function applyAction(
       // Assimilation is consumed.
       state.firstHungerAvailable = null;
 
+      const assimLore = getCardLore(action.cardId);
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `First Hunger — Assimilation: +${assimLumens} Eminence from ${getCardLore(action.cardId).name}`,
+        summary: `The First Hunger Assimilated ${assimLore.name}: it was Burned, and you gained ${assimLumens} Eminence.`,
         turn: state.roundNumber,
       });
       checkLuminaries(state, player);

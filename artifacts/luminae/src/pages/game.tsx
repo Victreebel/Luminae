@@ -49,6 +49,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/components/ui/tooltip';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
@@ -3785,17 +3790,23 @@ export default function GameBoard() {
                     zIndex: 10,
                   }}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowBurnPileOverlay(true)}
-                  className="flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground hover:text-orange-400/80 transition-colors"
-                  title="View burned Artifacts"
-                  aria-label={`View ${(state.burnPile ?? []).length} burned Artifact${(state.burnPile ?? []).length === 1 ? '' : 's'}`}
-                  data-burn-pile-chip
-                >
-                  <span className="text-[11px] leading-none">🔥</span>
-                  <span className="text-[9px] font-bold tabular-nums leading-none">{(state.burnPile ?? []).length}</span>
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setShowBurnPileOverlay(true)}
+                      className="flex items-center gap-1 rounded px-1.5 py-1 text-muted-foreground hover:text-orange-400/80 transition-colors"
+                      aria-label={`View ${(state.burnPile ?? []).length} burned Artifact${(state.burnPile ?? []).length === 1 ? '' : 's'}`}
+                      data-burn-pile-chip
+                    >
+                      <span className="text-[11px] leading-none">🔥</span>
+                      <span className="text-[9px] font-bold tabular-nums leading-none">{(state.burnPile ?? []).length}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[220px] text-center text-xs">
+                    Burned Artifacts are removed from the market and placed here. They do not return to decks unless an effect says otherwise.
+                  </TooltipContent>
+                </Tooltip>
               </motion.div>
             )}
             <button
@@ -6143,44 +6154,45 @@ export default function GameBoard() {
                           <span className="text-[8.5px] font-black uppercase tracking-widest text-red-400/70">First Hunger</span>
                           <div className="flex-1 h-px bg-red-900/40" />
                         </div>
-                        <div
-                          key={btnAnimTarget === 'assimilate' ? `assimilate-${btnAnimKey}` : 'assimilate'}
-                          className={`relative w-full${btnAnimTarget === 'assimilate' ? ` btn-${btnAnimType}-flash` : ''}`}
-                        >
-                          <AssimilateButton
-                            disabled={!canAffordAssim}
-                            isPending={pendingSheetAction === 'assimilate'}
-                            isSent={sentFlashBtn === 'assimilate'}
-                            eminenceReward={pendingSheetAction === 'assimilate' ? undefined : (selectedCard.card.lumens + 2)}
-                            label={pendingSheetAction === 'assimilate' ? 'CONFIRM' : 'ASSIMILATE'}
-                            subtitle={
-                              pendingSheetAction === 'assimilate'
-                                ? 'Tap to consume'
-                                : canAffordAssim
-                                  ? `+${selectedCard.card.lumens + 2} Eminence — one use`
-                                  : 'Cannot afford'
-                            }
-                            onClick={() => {
-                              if (pendingSheetAction === 'assimilate') {
-                                gameAudio.playButtonConfirm();
-                                triggerBtnAnim('assimilate', 'confirm');
-                                executeAction({ type: 'assimilate', cardId: selectedCard.card.id });
-                                setSelectedCard(null);
-                                setPendingSheetAction(null);
-                              } else {
-                                gameAudio.playButtonSelect();
-                                triggerBtnAnim('assimilate', 'select');
-                                setPendingSheetAction('assimilate');
-                              }
-                            }}
-                          />
-                        </div>
-                        {/* Tooltip: clarify the consume mechanic */}
-                        {pendingSheetAction !== 'assimilate' && (
-                          <p className="mt-1.5 text-[9.5px] text-red-300/50 text-center leading-snug px-1">
-                            Burns artifact · grants Eminence · no card acquired · cannot undo
-                          </p>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              key={btnAnimTarget === 'assimilate' ? `assimilate-${btnAnimKey}` : 'assimilate'}
+                              className={`relative w-full${btnAnimTarget === 'assimilate' ? ` btn-${btnAnimType}-flash` : ''}`}
+                            >
+                              <AssimilateButton
+                                disabled={!canAffordAssim}
+                                isPending={pendingSheetAction === 'assimilate'}
+                                isSent={sentFlashBtn === 'assimilate'}
+                                eminenceReward={pendingSheetAction === 'assimilate' ? undefined : (selectedCard.card.lumens + 2)}
+                                label={pendingSheetAction === 'assimilate' ? 'CONFIRM' : 'Assimilate'}
+                                subtitle={
+                                  pendingSheetAction === 'assimilate'
+                                    ? `Assimilate ${selectedCard.card.name}?`
+                                    : canAffordAssim
+                                      ? `+${selectedCard.card.lumens + 2} Eminence — one use`
+                                      : 'Cannot afford'
+                                }
+                                onClick={() => {
+                                  if (pendingSheetAction === 'assimilate') {
+                                    gameAudio.playButtonConfirm();
+                                    triggerBtnAnim('assimilate', 'confirm');
+                                    executeAction({ type: 'assimilate', cardId: selectedCard.card.id });
+                                    setSelectedCard(null);
+                                    setPendingSheetAction(null);
+                                  } else {
+                                    gameAudio.playButtonSelect();
+                                    triggerBtnAnim('assimilate', 'select');
+                                    setPendingSheetAction('assimilate');
+                                  }
+                                }}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-[260px] text-xs">
+                            Replace your core action this turn. Choose a face-up market Artifact, pay its cost reduced by -1 Flare, -1 Verdance, and -1 Radiance, Burn it, and gain its printed Eminence +2. You do not gain the Artifact, bonus affinity, or forge effects.
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     )}
                   </>

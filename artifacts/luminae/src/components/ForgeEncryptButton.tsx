@@ -616,7 +616,7 @@ export interface AssimilateButtonProps {
 
 export function AssimilateButton({
   onClick, disabled, isPending, isSent,
-  label, subtitle = 'Consume Artifact',
+  label, subtitle = 'Burn Artifact',
   eminenceReward,
 }: AssimilateButtonProps) {
   const nubColor = isPending ? 'rgba(240,90,50,0.95)' : 'rgba(195,40,18,0.88)';
@@ -736,7 +736,7 @@ export function AssimilateButton({
               style={{ fontSize: 14, letterSpacing: '0.06em' }}
               initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0, transition: { duration: 0.10 } }}
               exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}>
-              <Check className="h-4 w-4" />Consumed!
+              <Check className="h-4 w-4" />Burned!
             </motion.span>
           ) : (
             <motion.span key="label" className="flex flex-col items-start"
@@ -758,7 +758,7 @@ export function AssimilateButton({
                 color: '#FFD0C0',
                 textShadow: '0 1px 2px rgba(0,0,0,0.70)',
               }}>
-                {isPending ? '— Confirming… —' : `— ${subtitle} —`}
+                {`— ${subtitle} —`}
               </span>
             </motion.span>
           )}
