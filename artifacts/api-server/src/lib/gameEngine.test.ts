@@ -127,6 +127,113 @@ describe("normalizeState — v0.8 field defaults", () => {
     });
     expect(state.firstHungerAvailable).toBeNull();
   });
+
+  it("initialises coreActionUsed to false when absent", () => {
+    const state = normalizeState({
+      players: [],
+      activeLuminaries: [],
+      luminaryAffinities: [],
+      pendingSummonEvents: [],
+    });
+    expect(state.coreActionUsed).toBe(false);
+  });
+});
+
+// ─── Double-action exploit prevention ────────────────────────────────────────
+
+describe("coreActionUsed — one core action per turn", () => {
+  let state: GameStateData;
+
+  beforeEach(() => {
+    state = makeGame();
+    enrichPlayer(state, 0);
+  });
+
+  it("is false after initializeGame / normalizeState", () => {
+    expect(state.coreActionUsed).toBe(false);
+  });
+
+  it("is reset to false by advanceTurn after a successful core action", () => {
+    // A purchase succeeds (enrichPlayer gave us plenty of crystals).
+    // advanceTurn fires afterwards, resetting coreActionUsed for the new player.
+    const cardId = state.marketTier1[0];
+    if (!cardId) throw new Error("No Tier 1 card in market");
+    const r1 = applyAction(state, "p1", { type: "purchase_card", cardId });
+    expect(r1.success).toBe(true);
+    // advanceTurn ran; coreActionUsed must be false for the incoming player.
+    expect(state.coreActionUsed).toBe(false);
+  });
+
+  it("blocks a second core action when coreActionUsed is already true", () => {
+    // Directly set the flag (simulates the state immediately after a first core
+    // action when advanceTurn has not yet run, e.g. due to a concurrent request
+    // arriving before the turn advances, or any future code path that keeps the
+    // same player active after a core action).
+    state.coreActionUsed = true;
+
+    const cardId = state.marketTier1[0];
+    if (!cardId) throw new Error("No Tier 1 card in market");
+
+    // All core action types should be blocked.
+    const r1 = applyAction(state, "p1", { type: "purchase_card", cardId });
+    expect(r1.success).toBe(false);
+    expect(r1.error).toBe("You already used your core action this turn.");
+
+    const r2 = applyAction(state, "p1", {
+      type: "take_three_crystals",
+      crystals: { ruby: 1, sapphire: 1, emerald: 1 },
+    });
+    expect(r2.success).toBe(false);
+    expect(r2.error).toBe("You already used your core action this turn.");
+
+    const r3 = applyAction(state, "p1", {
+      type: "take_two_crystals",
+      crystal: "ruby",
+    });
+    expect(r3.success).toBe(false);
+    expect(r3.error).toBe("You already used your core action this turn.");
+
+    const r4 = applyAction(state, "p1", { type: "reserve_card", cardId, tier: 1 });
+    expect(r4.success).toBe(false);
+    expect(r4.error).toBe("You already used your core action this turn.");
+  });
+
+  it("does not block pass (non-core) when coreActionUsed is true", () => {
+    // pass ends the turn but is not a "core action" per the game rules.
+    state.coreActionUsed = true;
+    const r = applyAction(state, "p1", { type: "pass" });
+    expect(r.success).toBe(true);
+  });
+
+  it("does not block toggle_luminary_affinity (non-turn-gated) when coreActionUsed is true", () => {
+    const lumId = state.activeLuminaries[0];
+    if (!lumId) return;
+    const lum = LUMINARY_MAP.get(lumId);
+    if (!lum) return;
+
+    const player = state.players[0];
+    const eligibleColors = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
+    if (eligibleColors.length < 2) return; // need 2 eligible affinities to toggle
+
+    // Register the luminary as owned by p1.
+    state.luminaryAffinities.push({
+      luminaryId: lumId,
+      ownerId: "p1",
+      activeAffinity: eligibleColors[0],
+      eligibleAffinities: eligibleColors,
+      summonedAtTurnCount: 0,
+    });
+    player.luminaries = [lumId];
+    state.turnCount = 5; // past the summon turn so the toggle is allowed
+
+    state.coreActionUsed = true;
+    const r = applyAction(state, "p1", {
+      type: "toggle_luminary_affinity",
+      luminaryId: lumId,
+      affinity: eligibleColors[1],
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 // ─── Marker mechanics — zero-eminence forge ───────────────────────────────────

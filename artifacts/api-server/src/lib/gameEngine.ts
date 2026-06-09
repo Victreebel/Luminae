@@ -213,6 +213,13 @@ export interface GameStateData {
   burnPile: string[];
   /** Per-card burn event log — one entry per card burned, carries tier and source Luminary. */
   burnEvents: BurnEvent[];
+  /**
+   * Set to true when the current player has consumed their one core action this
+   * turn (purchase, reserve, harvest, assimilate).  Prevents a second core
+   * action from landing even when the turn has not yet advanced (e.g. while
+   * pendingLuminaryChoice suspends advanceTurn).  Reset to false by advanceTurn.
+   */
+  coreActionUsed?: boolean;
 }
 
 const ACTION_LOG_MAX = 100;
@@ -779,8 +786,19 @@ export function initializeGame(
     version: 1,
     burnPile: [],
     burnEvents: [],
+    coreActionUsed: false,
   };
 }
+
+/** Actions that consume the player's one core action per turn. */
+const CORE_ACTIONS = new Set([
+  "purchase_card",
+  "purchase_reserved",
+  "reserve_card",
+  "take_three_crystals",
+  "take_two_crystals",
+  "assimilate",
+]);
 
 // ─── Action Types ─────────────────────────────────────────────────────────────
 
@@ -1873,6 +1891,9 @@ function checkWin(state: GameStateData): boolean {
 // ─── Advance Turn ─────────────────────────────────────────────────────────────
 
 function advanceTurn(state: GameStateData): void {
+  // Reset the per-turn core-action gate so the incoming player starts fresh.
+  state.coreActionUsed = false;
+
   // Apply end-of-turn effects for the current player BEFORE incrementing the
   // turn counter.  Many timing conditions (Avatar Seeds, Forgotten Hour) check
   // state.turnCount > summonedAtTurnCount; doing this pre-increment means
@@ -2051,6 +2072,13 @@ export function applyAction(
       return { success: false, error: "You already used your core action this turn." };
     }
     return { success: false, error: "Not your turn" };
+  }
+
+  // Guard: only one core action is allowed per turn.  This fires even when
+  // advanceTurn has not yet run (e.g. while pendingLuminaryChoice suspends
+  // the turn), preventing a second core action from landing.
+  if (isTurnGated && state.coreActionUsed && CORE_ACTIONS.has(action.type)) {
+    return { success: false, error: "You already used your core action this turn." };
   }
 
   const player = state.players[playerIdx];
@@ -2735,6 +2763,12 @@ export function applyAction(
     summary: describeAction(action, player),
     turn: state.roundNumber,
   });
+  // Mark the core action slot as consumed so a second core action cannot land
+  // in the same turn even when advanceTurn hasn't run yet (e.g. while
+  // pendingLuminaryChoice suspends the turn).
+  if (CORE_ACTIONS.has(action.type)) {
+    state.coreActionUsed = true;
+  }
   state.version++;
   
   // Only advance turn if game hasn't ended and no interactive Luminary choice is
@@ -2936,6 +2970,10 @@ export function normalizeState(raw: unknown): GameStateData {
   }
   if (!Array.isArray(state.burnEvents)) {
     state.burnEvents = [];
+  }
+  // ensure coreActionUsed exists (added in double-action exploit prevention)
+  if (typeof state.coreActionUsed !== "boolean") {
+    state.coreActionUsed = false;
   }
   // Migrate legacy BurnEvents (pre-enriched-payload format) to the current shape.
   // New fields default to safe values so old game records remain playable.
