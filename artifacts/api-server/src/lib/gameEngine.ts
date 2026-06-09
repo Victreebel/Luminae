@@ -2052,25 +2052,6 @@ export function applyAction(
     action.type !== "set_civ_name" &&
     action.type !== "choose_luminary_order";
   if (isTurnGated && state.currentPlayerIndex !== playerIdx) {
-    // Provide specific messages for Assimilation-related race conditions so
-    // clients can surface helpful feedback instead of a generic "Not your turn."
-    const lastType = state.lastAction?.type as string | undefined;
-    const lastBy   = state.lastAction?.playerId as string | undefined;
-    if (
-      lastBy === playerId &&
-      lastType === "assimilate" &&
-      action.type !== "assimilate"
-    ) {
-      return { success: false, error: "You already used Assimilate as your core action this turn." };
-    }
-    if (
-      action.type === "assimilate" &&
-      lastBy === playerId &&
-      lastType != null &&
-      ["purchase_card", "purchase_reserved", "reserve_card", "take_three_crystals", "take_two_crystals"].includes(lastType)
-    ) {
-      return { success: false, error: "You already used your core action this turn." };
-    }
     return { success: false, error: "Not your turn" };
   }
 
