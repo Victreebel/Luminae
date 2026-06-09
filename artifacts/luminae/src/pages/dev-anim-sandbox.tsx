@@ -1634,6 +1634,40 @@ export default function DevAnimSandbox() {
                 </p>
               </div>
 
+              {/* ── Bonus sounds (one per affinity) ──────────────── */}
+              <div>
+                <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-3">
+                  Bonus Sounds
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {GEM_KEYS.map(k => {
+                    const hex = GEM_META[k].hex;
+                    const bg    = `${hex}14`;
+                    const bgHov = `${hex}28`;
+                    const border = `${hex}55`;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => {
+                          if (k === 'flux') { void gameAudio.playFluxCoin(); }
+                          else { gameAudio.playBonusSound(k); }
+                        }}
+                        className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                        style={{ background: bg, borderColor: border, color: hex }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = bgHov; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = bg; }}
+                      >
+                        {GEM_META[k].name}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground/30 mt-2">
+                  Fires <span className="font-mono">playBonusSound(key)</span> for each affinity; Singularity calls <span className="font-mono">playFluxCoin()</span>.
+                </p>
+              </div>
+
               <p className="text-[10px] text-muted-foreground/30">
                 All calls go to <span className="font-mono">gameAudio</span> directly — no game state required.
               </p>
