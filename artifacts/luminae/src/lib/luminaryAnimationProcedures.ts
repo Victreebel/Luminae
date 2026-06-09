@@ -1,6 +1,6 @@
 // Luminary animation procedures — UI-only, no game mechanic changes.
 //
-// Each Luminary activation resolves to an ordered AnimationProcedureStep[]
+// Each Luminary activation resolves to an ordered AnimationTimelineStep[]
 // driven by the current GameState at the time the cinematic plays.
 // Target IDs come from live state — no engine changes required.
 //
@@ -58,7 +58,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { GameState, ArtifactCard } from '@workspace/api-client-react';
-import type { AnimationProcedureStep, KeywordMarker } from './animationProcedure';
+import type { AnimationTimelineStep, KeywordMarker } from './animationProcedure';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -81,10 +81,10 @@ function byBonus(cards: ArtifactCard[], colors: string[]): ArtifactCard[] {
 function excludeBonus(cards: ArtifactCard[], excluded: string[]): ArtifactCard[] {
   return cards.filter(c => !excluded.includes(c.bonusColor));
 }
-function pulse(luminaryId: string): AnimationProcedureStep {
+function pulse(luminaryId: string): AnimationTimelineStep {
   return { type: 'luminaryPulse', luminaryId };
 }
-function residue(keyword: KeywordMarker, targetIds: string[]): AnimationProcedureStep {
+function residue(keyword: KeywordMarker, targetIds: string[]): AnimationTimelineStep {
   return { type: 'residue', keyword, targetIds };
 }
 
@@ -92,19 +92,19 @@ function residue(keyword: KeywordMarker, targetIds: string[]): AnimationProcedur
 
 // 1. Red Moth / Rupture of the Still (lum_moth)
 //    luminaryPulse → targetClaim Tier III+II → burn → marketRedraw
-function resolveMoth(s: GameState): AnimationProcedureStep[] {
+function resolveMoth(s: GameState): AnimationTimelineStep[] {
   const targets = [...t3Ids(s), ...t2Ids(s)];
   return [
     pulse('lum_moth'),
-    { type: 'targetClaim', targetIds: targets },
-    { type: 'keywordEvent', keyword: 'burn', targetIds: targets },
+    { type: 'targetClaim', targetIds: targets, keyword: 'burn' },
+    { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: targets }] },
     { type: 'marketRedraw', slotIds: [] },
   ];
 }
 
 // 2. Tide Architect / The Observer Effect (lum_tide)
 //    luminaryPulse → deckScry Tier II/III → marketRedraw
-function resolveTide(): AnimationProcedureStep[] {
+function resolveTide(): AnimationTimelineStep[] {
   return [
     pulse('lum_tide'),
     { type: 'deckScry', tierIds: ['tier2', 'tier3'] },
@@ -115,7 +115,7 @@ function resolveTide(): AnimationProcedureStep[] {
 // 3. Verdant Oracle / Early Bloom (lum_verdant)
 //    luminaryPulse only — TargetBadge fallback ("BOON · AFFINITIES · LINGERING")
 //    is clearer for a living-affinity bonus than a bare ⬡ CLAIM [playerId] pill.
-function resolveVerdant(_s: GameState, _ownerId: string): AnimationProcedureStep[] {
+function resolveVerdant(_s: GameState, _ownerId: string): AnimationTimelineStep[] {
   return [
     pulse('lum_verdant'),
   ];
@@ -125,7 +125,7 @@ function resolveVerdant(_s: GameState, _ownerId: string): AnimationProcedureStep
 //    luminaryPulse → targetClaim all players (incl. summoner) → scoreChange all −4
 //    targetClaim ensures every player panel — including the summoner — is visibly
 //    highlighted before the Eminence drain resolves.
-function resolveVoid(s: GameState): AnimationProcedureStep[] {
+function resolveVoid(s: GameState): AnimationTimelineStep[] {
   const players = allPlayerIds(s);
   return [
     pulse('lum_void'),
@@ -136,7 +136,7 @@ function resolveVoid(s: GameState): AnimationProcedureStep[] {
 
 // 5. Concordance Mandala / Perfect Coherence (lum_radiant)
 //    luminaryPulse → Radiance (pearl) artifact targetClaim → scoreChange owner +2
-function resolveRadiant(s: GameState, ownerId: string): AnimationProcedureStep[] {
+function resolveRadiant(s: GameState, ownerId: string): AnimationTimelineStep[] {
   const pearlIds = byBonus(allMarket(s), ['pearl']).map(c => c.id);
   return [
     pulse('lum_radiant'),
@@ -147,14 +147,14 @@ function resolveRadiant(s: GameState, ownerId: string): AnimationProcedureStep[]
 
 // 6. Phoenix Paradox / Ash-Seeking Recurrence (lum_astral)
 //    luminaryPulse → targetClaim Tier III+II → burn non-Flare/Continuum → marketRedraw
-function resolveAstral(s: GameState): AnimationProcedureStep[] {
+function resolveAstral(s: GameState): AnimationTimelineStep[] {
   const combined = [...t3(s), ...t2(s)];
   const allIds = combined.map(c => c.id);
   const burnIds = excludeBonus(combined, ['ruby', 'sapphire']).map(c => c.id);
   return [
     pulse('lum_astral'),
-    { type: 'targetClaim', targetIds: allIds },
-    { type: 'keywordEvent', keyword: 'burn', targetIds: burnIds },
+    { type: 'targetClaim', targetIds: allIds, keyword: 'burn' },
+    { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: burnIds }] },
     { type: 'marketRedraw', slotIds: [] },
   ];
 }
@@ -164,7 +164,7 @@ function resolveAstral(s: GameState): AnimationProcedureStep[] {
 //    Uses burnPile.length (canonical deduplicated burn count) not burnEvents.length.
 //    targetClaim added so the owner panel is highlighted before the gain resolves,
 //    making the source of Eminence legible without replaying individual burn events.
-function resolveBloom(s: GameState, ownerId: string): AnimationProcedureStep[] {
+function resolveBloom(s: GameState, ownerId: string): AnimationTimelineStep[] {
   const burnCount = (s.burnPile ?? []).length;
   return [
     pulse('lum_bloom'),
@@ -175,19 +175,19 @@ function resolveBloom(s: GameState, ownerId: string): AnimationProcedureStep[] {
 
 // 8. Iron Harbinger / Impact Extinction (lum_forge)
 //    luminaryPulse → targetClaim all face-up Tier III → burn all → marketRedraw
-function resolveForge(s: GameState): AnimationProcedureStep[] {
+function resolveForge(s: GameState): AnimationTimelineStep[] {
   const targets = t3Ids(s);
   return [
     pulse('lum_forge'),
-    { type: 'targetClaim', targetIds: targets },
-    { type: 'keywordEvent', keyword: 'burn', targetIds: targets },
+    { type: 'targetClaim', targetIds: targets, keyword: 'burn' },
+    { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: targets }] },
     { type: 'marketRedraw', slotIds: [] },
   ];
 }
 
 // 9. lum_compass / The Forgotten Hour
 //    luminaryPulse → targetClaim all face-up market → forgotten residue → Eminence muted
-function resolveCompass(s: GameState): AnimationProcedureStep[] {
+function resolveCompass(s: GameState): AnimationTimelineStep[] {
   const targets = allMarketIds(s);
   return [
     pulse('lum_compass'),
@@ -198,7 +198,7 @@ function resolveCompass(s: GameState): AnimationProcedureStep[] {
 
 // 10. Seed Beyond Seasons / Avatar Seeds (lum_seed)
 //     luminaryPulse → deckScry all tiers → seeded residue on top cards (appear on market entry)
-function resolveSeed(): AnimationProcedureStep[] {
+function resolveSeed(): AnimationTimelineStep[] {
   return [
     pulse('lum_seed'),
     { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'], affinityBias: 'seeded' },
@@ -210,7 +210,7 @@ function resolveSeed(): AnimationProcedureStep[] {
 //     luminaryPulse → cheapest Tier I targetClaim → boon ConsequenceSnap
 //     No scoreChange step — +0 EMN was actively misleading ("nothing happened").
 //     The CLAIM pill + golden boon flash communicates "you received something good."
-function resolveOrchard(s: GameState, _ownerId: string): AnimationProcedureStep[] {
+function resolveOrchard(s: GameState, _ownerId: string): AnimationTimelineStep[] {
   const tier1Cards = t1(s);
   const cheapest = tier1Cards.reduce<ArtifactCard | null>((min, c) => {
     if (!min) return c;
@@ -226,7 +226,7 @@ function resolveOrchard(s: GameState, _ownerId: string): AnimationProcedureStep[
 
 // 12. Pale Merchant / Balance Due (lum_pale)
 //     luminaryPulse → player crystal areas targetClaim → crystalReturn players above threshold
-function resolvePale(s: GameState): AnimationProcedureStep[] {
+function resolvePale(s: GameState): AnimationTimelineStep[] {
   const playerIds = allPlayerIds(s);
   return [
     pulse('lum_pale'),
@@ -241,13 +241,13 @@ function resolvePale(s: GameState): AnimationProcedureStep[] {
 function resolveEmber(
   s: GameState,
   effectType: 'summon' | 'end_of_turn' | 'start_of_turn',
-): AnimationProcedureStep[] {
+): AnimationTimelineStep[] {
   if (effectType === 'start_of_turn') {
     const condemnedIds = markedIds(s, 'condemned');
     return [
       pulse('lum_ember'),
-      { type: 'targetClaim', targetIds: condemnedIds },
-      { type: 'keywordEvent', keyword: 'burn', targetIds: condemnedIds },
+      { type: 'targetClaim', targetIds: condemnedIds, keyword: 'burn' },
+      { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: condemnedIds }] },
       { type: 'marketRedraw', slotIds: [] },
     ];
   }
@@ -264,7 +264,7 @@ function resolveEmber(
 //     On summon: luminaryPulse → targetClaim owner → pendingAction assimilate
 //     targetClaim highlights the owner panel so the player knows who receives
 //     the assimilate replacement action before the ASSIMILATE pill appears.
-function resolveHunger(_s: GameState, ownerId: string): AnimationProcedureStep[] {
+function resolveHunger(_s: GameState, ownerId: string): AnimationTimelineStep[] {
   return [
     pulse('lum_hunger'),
     { type: 'targetClaim', targetIds: [ownerId] },
@@ -274,7 +274,7 @@ function resolveHunger(_s: GameState, ownerId: string): AnimationProcedureStep[]
 
 // 15. Null Sovereign / Black Domain (lum_null)
 //     luminaryPulse → targetClaim face-up Tier III → nullified residue → Eminence muted
-function resolveNull(s: GameState): AnimationProcedureStep[] {
+function resolveNull(s: GameState): AnimationTimelineStep[] {
   const targets = t3Ids(s);
   return [
     pulse('lum_null'),
@@ -297,7 +297,7 @@ export function resolveLuminaryProcedure(
   effectType: EffectType,
   state: GameState | null | undefined,
   ownerId: string,
-): AnimationProcedureStep[] {
+): AnimationTimelineStep[] {
   if (!state) return [];
   try {
     switch (luminaryId) {

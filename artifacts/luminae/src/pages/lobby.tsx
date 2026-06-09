@@ -510,7 +510,7 @@ export default function Lobby() {
           {(
             [
               { label: "Skip cinematics", desc: "Skip intro animations during play", value: skipCinematics, onToggle: handleToggleSkipCinematics },
-              { label: "Abridged animations", desc: "Use shorter card and action animations", value: abridgedAnims, onToggle: handleToggleAbridgedAnims },
+              { label: "Reduced animations", desc: "Compact Luminary effects and shorter card animations", value: abridgedAnims, onToggle: handleToggleAbridgedAnims },
               { label: "Mute audio", desc: "Silence all in-game sounds", value: muted, onToggle: handleToggleMuted },
               { label: "Hints", desc: "Show gameplay hints and tooltips", value: hintsEnabled, onToggle: handleToggleHints },
             ] as const

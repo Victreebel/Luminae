@@ -5348,7 +5348,7 @@ export default function GameBoard() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleAbridgedAnims}>
               <Zap className={`h-4 w-4 ${abridgedAnims ? 'text-yellow-400' : 'text-muted-foreground opacity-50'}`} />
-              Abridged animations
+              Reduced animations
             </DropdownMenuItem>
             <DropdownMenuItem onClick={toggleSkipCinematics}>
               <Sparkles className={`h-4 w-4 ${skipCinematics ? 'text-muted-foreground opacity-50' : 'text-yellow-400'}`} />
@@ -8190,6 +8190,7 @@ export default function GameBoard() {
             luminaryName={lum?.name ?? evt.luminaryId}
             triggeringPlayerName={triggeringPlayer?.playerName}
             procedure={procedure.length > 0 ? procedure : undefined}
+            reducedMotion={abridgedAnims}
             onComplete={() => {
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });

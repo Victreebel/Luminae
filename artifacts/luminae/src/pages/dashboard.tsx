@@ -505,8 +505,8 @@ function SettingsTab({ accountId, token }: { accountId: string; token: string | 
             abridgedAnims,
             toggleAbridgedAnims,
             <Zap className="h-4 w-4" />,
-            "Abridged animations",
-            "Shorten forge and harvest animations for a faster game feel",
+            "Reduced animations",
+            "Compact Luminary effects and shorter forge and harvest animations",
           )}
           {prefToggle(
             !skipCinematics,

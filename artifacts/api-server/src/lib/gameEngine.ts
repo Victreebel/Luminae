@@ -134,10 +134,21 @@ interface ActionLogEntry {
 
 /** A single Artifact card removed from the market by a Luminary burn effect. */
 export interface BurnEvent {
+  /** Stable within a game session; correlates animation, log, and UI consumers. */
+  eventId: string;
   cardId: string;
+  /** Card name resolved at burn time via getCardLore — stored so consumers never need a second lookup. */
+  artifactName: string;
   tier: 1 | 2 | 3;
-  turn: number;
+  sourceType: 'luminary' | 'action' | 'system';
   sourceLuminaryId: string;
+  /** Display name of the Luminary that caused the burn. */
+  sourceName?: string;
+  /** Player who owns the Luminary that triggered the burn. */
+  ownerPlayerId?: string;
+  /** Player whose action caused the burn (e.g. the Assimilation actor). */
+  triggeredByPlayerId?: string;
+  turn: number;
 }
 
 export interface GameStateData {
@@ -1350,26 +1361,36 @@ function burnCard(
   cardId: string,
   tier: 1 | 2 | 3,
   sourceLuminaryId: string,
+  opts?: { triggeredByPlayerId?: string },
 ): void {
   if (!Array.isArray(state.burnPile)) state.burnPile = [];
   if (!Array.isArray(state.burnEvents)) state.burnEvents = [];
   if (!state.burnPile.includes(cardId)) {
     state.burnPile.push(cardId);
   }
+
+  // Resolve lookup values shared by the event payload and the log entry.
+  const burntLore = getCardLore(cardId);
+  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
+  const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
+
   state.burnEvents.push({
+    eventId: `${sourceLuminaryId}-${cardId}-${state.turnCount}`,
     cardId,
+    artifactName: burntLore.name,
     tier,
-    turn: state.turnCount,
+    sourceType: 'luminary',
     sourceLuminaryId,
+    sourceName: lum?.name,
+    ownerPlayerId: owner?.playerId,
+    triggeredByPlayerId: opts?.triggeredByPlayerId,
+    turn: state.turnCount,
   });
 
   // Increment Catalyst Bloom accumulator — each individual card burn counts.
   incrementBloomCount(state);
 
   // Push a per-card burn log entry attributed to the Luminary owner.
-  const burntLore = getCardLore(cardId);
-  const lum = LUMINARIES.find((l) => l.id === sourceLuminaryId);
-  const owner = state.players.find((p) => p.luminaries.includes(sourceLuminaryId));
   pushLog(state, {
     playerId: owner?.playerId ?? "",
     playerName: owner?.playerName ?? "",
@@ -2367,9 +2388,8 @@ export function applyAction(
       player.crystals.flux -= fluxUsed;
       state.crystalBank.flux += fluxUsed;
 
-      // Burn the card (not forged; no artifact bonus, no permanent card).
-      drawIntoMarket(state, assimMarket, getDeckForTier(state, assimCard.tier as 1 | 2 | 3), action.cardId);
-      incrementBloomCount(state);
+      // Burn via shared burnCard — emits BurnEvent, increments Catalyst Bloom, refills slot.
+      burnCard(state, action.cardId, assimCard.tier as 1 | 2 | 3, "lum_hunger", { triggeredByPlayerId: playerId });
 
       // Grant printed Eminence + 2 bonus.
       const assimLumens = assimCard.lumens + 2;
@@ -2380,7 +2400,7 @@ export function applyAction(
 
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
-        summary: `First Hunger — Assimilation: consumed ${action.cardId} for +${assimLumens} Eminence`,
+        summary: `First Hunger — Assimilation: +${assimLumens} Eminence from ${getCardLore(action.cardId).name}`,
         turn: state.roundNumber,
       });
       checkLuminaries(state, player);
@@ -2875,6 +2895,41 @@ export function normalizeState(raw: unknown): GameStateData {
   if (!Array.isArray(state.burnEvents)) {
     state.burnEvents = [];
   }
+  // Migrate legacy BurnEvents (pre-enriched-payload format) to the current shape.
+  // New fields default to safe values so old game records remain playable.
+  state.burnEvents = (state.burnEvents as unknown[]).map((raw: unknown, i: number) => {
+    const e = raw as Partial<BurnEvent> & Record<string, unknown>;
+    return {
+      eventId:
+        typeof e.eventId === "string"
+          ? e.eventId
+          : `legacy-${String(e.cardId ?? i)}-${String(e.turn ?? 0)}`,
+      cardId: typeof e.cardId === "string" ? e.cardId : "",
+      artifactName:
+        typeof e.artifactName === "string"
+          ? e.artifactName
+          : typeof e.cardId === "string"
+          ? e.cardId
+          : "",
+      tier: ([1, 2, 3] as unknown[]).includes(e.tier)
+        ? (e.tier as 1 | 2 | 3)
+        : (1 as 1 | 2 | 3),
+      sourceType: (["luminary", "action", "system"] as unknown[]).includes(e.sourceType)
+        ? (e.sourceType as "luminary" | "action" | "system")
+        : "luminary",
+      sourceLuminaryId:
+        typeof e.sourceLuminaryId === "string" ? e.sourceLuminaryId : "",
+      sourceName:
+        typeof e.sourceName === "string" ? e.sourceName : undefined,
+      ownerPlayerId:
+        typeof e.ownerPlayerId === "string" ? e.ownerPlayerId : undefined,
+      triggeredByPlayerId:
+        typeof e.triggeredByPlayerId === "string"
+          ? e.triggeredByPlayerId
+          : undefined,
+      turn: typeof e.turn === "number" ? e.turn : 0,
+    };
+  });
   // avatarSeedState: leave undefined if not set (it's truly optional)
 
   // migrate old action log summaries: "Glass Orchard — Perfect Replication" → "The Glass Orchard — Perfect Replication"

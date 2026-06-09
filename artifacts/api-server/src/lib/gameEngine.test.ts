@@ -1115,18 +1115,25 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     state.marketTier1 = state.marketTier1.filter((id) => id !== emeraldCard.id);
     state.deckTier1 = state.deckTier1.filter((id) => id !== emeraldCard.id);
 
-    // Place the emerald card at deckTier1[1].
-    // deckTier1[0] will be consumed by the market refill after the triggering purchase.
-    // After refill, emeraldCard is at deckTier1[0] — the slot lum_scholar draws.
-    const filler = state.deckTier1.shift()!; // take first card as the refill donor
-    state.deckTier1 = [filler, emeraldCard.id, ...state.deckTier1];
-
-    // Refill market to 4 if needed (we removed emeraldCard from market above).
+    // Deterministic deck setup:
+    // drawIntoMarket fires BEFORE checkLuminaries in the purchase_card path, so
+    // the purchase refill consumes deck[0]. emeraldCard must be at deck[1] so it
+    // lands at deck[0] AFTER the refill, where Selective Amnesia will draw it.
+    //
+    // Step 1: ensure the market is at exactly 4 (without emeraldCard) so the
+    // subsequent while loop is a no-op regardless of where emeraldCard was.
     while (state.marketTier1.length < 4 && state.deckTier1.length > 0) {
       state.marketTier1.push(state.deckTier1.shift()!);
     }
-    // After this, deckTier1[0] = filler (will be consumed by market refill),
-    // deckTier1[1] = emeraldCard.id (drawn by lum_scholar).
+
+    // Step 2: place [filler, emeraldCard] at the front of the deck.
+    // filler → consumed by purchase refill (drawIntoMarket)
+    // emeraldCard → becomes deck[0] after refill → drawn by Selective Amnesia
+    const filler = state.deckTier1.shift()!;
+    state.deckTier1 = [filler, emeraldCard.id, ...state.deckTier1];
+    // deck is now: [filler, emeraldCard, rest...]
+    // After purchase refill takes filler: deck = [emeraldCard, rest...]
+    // Selective Amnesia draws emeraldCard → emerald bonus +1 (4→5) → lum_verdant qualifies
 
     state.activeLuminaries = ["lum_scholar", "lum_verdant"];
 
@@ -1403,5 +1410,288 @@ describe("LUMINARIES catalogue", () => {
     for (const id of newIds) {
       expect(seen).toContain(id);
     }
+  });
+});
+
+// ─── BurnEvent — enriched payload ─────────────────────────────────────────────
+
+describe("BurnEvent — enriched payload (v2 format)", () => {
+  it("BurnEvent has a non-empty eventId after Iron Harbinger fires", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge");
+    expect(state.burnEvents.length).toBeGreaterThan(0);
+    for (const ev of state.burnEvents) {
+      expect(typeof ev.eventId).toBe("string");
+      expect(ev.eventId.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("BurnEvent.artifactName is a non-empty string for every burned card", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge");
+    expect(state.burnEvents.length).toBeGreaterThan(0);
+    for (const ev of state.burnEvents) {
+      expect(typeof ev.artifactName).toBe("string");
+      expect(ev.artifactName.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("BurnEvent.sourceType is 'luminary' for Luminary-triggered burns", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge");
+    for (const ev of state.burnEvents) {
+      expect(ev.sourceType).toBe("luminary");
+    }
+  });
+
+  it("BurnEvent.sourceLuminaryId identifies the burning Luminary", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge");
+    for (const ev of state.burnEvents) {
+      expect(ev.sourceLuminaryId).toBe("lum_forge");
+    }
+  });
+
+  it("BurnEvent.tier is 1, 2, or 3 for every burned card", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge");
+    for (const ev of state.burnEvents) {
+      expect([1, 2, 3]).toContain(ev.tier);
+    }
+  });
+
+  it("BurnEvent.ownerPlayerId is the summoning player's id", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge"); // p1 summons lum_forge
+    for (const ev of state.burnEvents) {
+      expect(ev.ownerPlayerId).toBe("p1");
+    }
+  });
+
+  it("multiple burns create distinct BurnEvents with distinct eventIds", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_forge");
+    const ids = state.burnEvents.map((e) => e.eventId);
+    const unique = new Set(ids);
+    expect(unique.size).toBe(ids.length);
+  });
+
+  it("forging a card normally does NOT emit a BurnEvent", () => {
+    const state = makeGame();
+    state.activeLuminaries = []; // no Luminaries — pure forge
+    enrichPlayer(state, 0);
+    const cardId = state.marketTier1[0]!;
+    const before = state.burnEvents.length;
+    const r = applyAction(state, "p1", { type: "purchase_card", cardId });
+    expect(r.success).toBe(true);
+    expect(state.burnEvents.length).toBe(before);
+  });
+
+  it("normalizeState migrates legacy BurnEvents to include all v2 fields", () => {
+    const raw = {
+      players: [],
+      activeLuminaries: [],
+      luminaryAffinities: [],
+      pendingSummonEvents: [],
+      burnEvents: [
+        { cardId: "old_card", tier: 2, turn: 3, sourceLuminaryId: "lum_moth" },
+      ],
+    };
+    const state = normalizeState(raw);
+    expect(state.burnEvents).toHaveLength(1);
+    const ev = state.burnEvents[0]!;
+    expect(typeof ev.eventId).toBe("string");
+    expect(ev.eventId.length).toBeGreaterThan(0);
+    expect(ev.artifactName).toBeTruthy();
+    expect(ev.sourceType).toBe("luminary");
+    expect(ev.cardId).toBe("old_card");
+    expect(ev.sourceLuminaryId).toBe("lum_moth");
+    expect(ev.tier).toBe(2);
+    expect(ev.turn).toBe(3);
+  });
+});
+
+// ─── First Hunger — Assimilation ──────────────────────────────────────────────
+
+describe("First Hunger — Assimilation (lum_hunger)", () => {
+  /** Claim lum_hunger for p1, then cycle back to p1's turn via p2 pass. */
+  function setupHunger(state: GameStateData): void {
+    claimLuminary(state, "lum_hunger"); // firstHungerAvailable='p1'; advances to p2
+    enrichPlayer(state, 1);
+    pass(state); // back to p1
+    enrichPlayer(state, 0); // ensure p1 has ample crystals
+  }
+
+  /** Find the first market card with at least one ruby/emerald/pearl cost unit. */
+  function findAssimTarget(state: GameStateData): string | undefined {
+    return [
+      ...state.marketTier1,
+      ...state.marketTier2,
+      ...state.marketTier3,
+    ].find((id) => {
+      const c = CARD_MAP.get(id);
+      return (
+        c &&
+        ((c.cost.ruby ?? 0) + (c.cost.emerald ?? 0) + (c.cost.pearl ?? 0)) > 0
+      );
+    });
+  }
+
+  it("firstHungerAvailable is set to the summoner's playerId on summon", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_hunger");
+    expect(state.firstHungerAvailable).toBe("p1");
+  });
+
+  it("assimilate burns the target card (card enters burnPile)", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+    const r = applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(r.success).toBe(true);
+    expect(state.burnPile).toContain(target);
+  });
+
+  it("assimilate grants printed Eminence + 2 to the owner", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+    const card = CARD_MAP.get(target)!;
+    const before = state.players[0]!.lumens;
+    applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(state.players[0]!.lumens).toBe(before + card.lumens + 2);
+  });
+
+  it("assimilated card does NOT appear in the owner's collection", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+    applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(state.players[0]!.purchasedCardIds ?? []).not.toContain(target);
+  });
+
+  it("firstHungerAvailable is cleared to null after a successful assimilate", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+    applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(state.firstHungerAvailable).toBeNull();
+  });
+
+  it("cannot assimilate twice — firstHungerAvailable is null after first use", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const targets = [
+      ...state.marketTier1,
+      ...state.marketTier2,
+      ...state.marketTier3,
+    ].filter((id) => {
+      const c = CARD_MAP.get(id);
+      return (
+        c &&
+        ((c.cost.ruby ?? 0) + (c.cost.emerald ?? 0) + (c.cost.pearl ?? 0)) > 0
+      );
+    });
+    if (targets.length < 1) return;
+    applyAction(state, "p1", { type: "assimilate", cardId: targets[0]! });
+    expect(state.firstHungerAvailable).toBeNull();
+  });
+
+  it("assimilate emits a BurnEvent for the consumed card with triggeredByPlayerId='p1'", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+    const before = state.burnEvents.length;
+    applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(state.burnEvents.length).toBe(before + 1);
+    const ev = state.burnEvents[state.burnEvents.length - 1]!;
+    expect(ev.cardId).toBe(target);
+    expect(ev.sourceLuminaryId).toBe("lum_hunger");
+    expect(ev.triggeredByPlayerId).toBe("p1");
+  });
+
+  it("assimilate increments Catalyst Bloom burn count by 1 (when lum_bloom is in play)", () => {
+    const state = makeGame();
+    setupHunger(state);
+    // Catalyst Bloom count only increments while lum_bloom is held by a player.
+    // Give p2 lum_bloom so the accumulator is active.
+    state.players[1]!.luminaries.push("lum_bloom");
+    const target = findAssimTarget(state);
+    if (!target) return;
+    const before = state.catalystBloomBurnCount ?? 0;
+    applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(state.catalystBloomBurnCount ?? 0).toBe(before + 1);
+  });
+
+  it("assimilate fails if the target card is not in the face-up market", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const r = applyAction(state, "p1", {
+      type: "assimilate",
+      cardId: "nonexistent_card_id_xyz",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("assimilate fails if the target has no Flare/Verdance/Radiance cost", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const pureNonFVR = [
+      ...state.marketTier1,
+      ...state.marketTier2,
+      ...state.marketTier3,
+    ].find((id) => {
+      const c = CARD_MAP.get(id);
+      return (
+        c &&
+        (c.cost.ruby ?? 0) === 0 &&
+        (c.cost.emerald ?? 0) === 0 &&
+        (c.cost.pearl ?? 0) === 0 &&
+        (c.cost.sapphire ?? 0) + (c.cost.onyx ?? 0) + (c.cost.flux ?? 0) > 0
+      );
+    });
+    if (!pureNonFVR) return; // Skip if no such card in this random market
+    const r = applyAction(state, "p1", {
+      type: "assimilate",
+      cardId: pureNonFVR,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("assimilate fails when firstHungerAvailable is null (regression)", () => {
+    const state = makeGame();
+    enrichPlayer(state, 0);
+    state.firstHungerAvailable = null;
+    const target = state.marketTier1[0];
+    if (!target) return;
+    const r = applyAction(state, "p1", { type: "assimilate", cardId: target });
+    expect(r.success).toBe(false);
+  });
+
+  it("wrong player cannot assimilate when firstHungerAvailable is set to another player (regression)", () => {
+    const state = makeGame();
+    claimLuminary(state, "lum_hunger"); // p1's summon; advances to p2's turn
+    enrichPlayer(state, 1);
+    // firstHungerAvailable='p1', but it is now p2's turn — p2 tries to claim it
+    const target = findAssimTarget(state);
+    if (!target) return;
+    const r = applyAction(state, "p2", { type: "assimilate", cardId: target });
+    expect(r.success).toBe(false);
+  });
+
+  it("assimilation BurnEvent.sourceName is the Luminary's display name", () => {
+    const state = makeGame();
+    setupHunger(state);
+    const target = findAssimTarget(state);
+    if (!target) return;
+    applyAction(state, "p1", { type: "assimilate", cardId: target });
+    const ev = state.burnEvents[state.burnEvents.length - 1]!;
+    expect(typeof ev.sourceName).toBe("string");
+    expect(ev.sourceName!.length).toBeGreaterThan(0);
   });
 });

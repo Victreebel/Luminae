@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { getLuminaryVisuals, getLuminaryImageAssets, RadiantLivingEntityComposite } from '@/lib/luminaryAssets';
 import { gameAudio } from '@/lib/audio';
@@ -27,6 +27,12 @@ interface LuminaryActivationCinematicProps {
   triggeringPlayerName?: string;
   /** Optional resolved animation procedure — drives the ProcedureStrip. */
   procedure?: AnimationProcedureStep[];
+  /**
+   * When true (abridgedAnims setting), use the compact 380ms reduced-motion
+   * overlay instead of the full 1860ms cinematic. System prefers-reduced-motion
+   * is checked independently inside the component and also triggers this path.
+   */
+  reducedMotion?: boolean;
   onComplete: () => void;
 }
 
@@ -44,6 +50,13 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
       if (step.keyword === 'burn')
         return { icon: '🔥', label: 'BURN', color: '#ef4444' };
       return { icon: '◎', label: step.keyword.toUpperCase(), color: '#6366f1' };
+    case 'keywordEvents': {
+      const first = step.events[0];
+      if (!first) return null;
+      if (first.keyword === 'burn')
+        return { icon: '🔥', label: 'BURN', color: '#ef4444' };
+      return { icon: '◎', label: first.keyword.toUpperCase(), color: '#6366f1' };
+    }
     case 'residue': {
       const m: Record<string, StepInfo> = {
         condemned: { icon: '⚑', label: 'CONDEMNED', color: '#ef4444' },
@@ -112,12 +125,18 @@ function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) 
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
 //
-// Total: 1860ms
+// Full variant — Total: 1860ms
 //
 // 0.00s–0.15s  ANTICIPATE  board dims, anticipation pulse — no entity yet
 // 0.15s–0.63s  REVEAL      entity grows + fades in (opacity 0→1, scale 0.88→1.0)
 // 0.63s–1.18s  HOLD        peak bloom + effect beats fire (opacity 1.0, short linger)
 // 1.18s–1.86s  PAN_OUT     dissolve outward (opacity 1.0→0.75→0, scale →1.12)
+//
+// Reduced-motion variant — Total: 380ms
+//
+// 0ms  Compact overlay appears immediately (no entity, no board zoom)
+//      Shows ProcedureStrip + Luminary name + effect label.
+//      Single click dismisses. Auto-completes at 380ms.
 
 const ANTICIPATE_MS = 150;   // 0.00–0.15s
 const REVEAL_MS     = 480;   // 0.15–0.63s
@@ -125,7 +144,10 @@ const HOLD_MS       = 550;   // 0.63–1.18s
 const PAN_OUT_MS    = 680;   // 1.18–1.86s
 // Total: 1860ms
 
-// Hold-to-skip duration in ms
+// Reduced-motion / abridged: compact overlay duration
+const REDUCED_HOLD_MS = 380;
+
+// Hold-to-skip duration in ms (full-motion mode only)
 const HOLD_TO_SKIP_MS = 350;
 
 // ── Entity keyframe animation ─────────────────────────────────────────────────
@@ -244,10 +266,15 @@ export function LuminaryActivationCinematic({
   luminaryName,
   triggeringPlayerName,
   procedure,
+  reducedMotion: reducedMotionProp,
   onComplete,
 }: LuminaryActivationCinematicProps) {
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+
+  // Respect system prefers-reduced-motion OR the caller's abridgedAnims flag.
+  const systemPrefersReduced = useReducedMotion();
+  const isReduced = reducedMotionProp || !!systemPrefersReduced;
 
   // Shared completed flag — readable by both the timer chain cleanup and the
   // skip handler.  Using a ref avoids stale-closure issues.
@@ -260,7 +287,7 @@ export function LuminaryActivationCinematic({
   const [phase, setPhase] = useState<Phase>('anticipate');
   const [effectBeat, setEffectBeat] = useState<EffectBeat>('idle');
 
-  // ── Hold-to-skip state ─────────────────────────────────────────────────────
+  // ── Hold-to-skip state (full-motion mode only) ─────────────────────────────
   const [holdProgress, setHoldProgress] = useState(0); // 0–1
   const holdStartRef = useRef<number | null>(null);
   const holdRafRef   = useRef<number | null>(null);
@@ -331,24 +358,38 @@ export function LuminaryActivationCinematic({
 
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
-    gameAudio.playActivationSting(effectType, primaryColor);
+    if (isReduced) {
+      // Reduced-motion path: skip straight to 'hold' (show text/procedure strip
+      // immediately) then auto-complete after REDUCED_HOLD_MS.
+      // No audio, no entity, no board zoom.
+      setPhase('hold');
+      const t1 = setTimeout(() => {
+        completedRef.current = true;
+        setPhase('done');
+        onCompleteRef.current();
+      }, REDUCED_HOLD_MS);
+      timersRef.current = [t1];
+    } else {
+      // Full-motion path: 1860ms phase chain.
+      gameAudio.playActivationSting(effectType, primaryColor);
 
-    const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
-    const t2 = setTimeout(() => setPhase('hold'),    ANTICIPATE_MS + REVEAL_MS);
-    const t3 = setTimeout(() => setPhase('pan_out'), ANTICIPATE_MS + REVEAL_MS + HOLD_MS);
-    const t4 = setTimeout(() => {
-      completedRef.current = true;
-      setPhase('done');
-      onCompleteRef.current();
-    }, ANTICIPATE_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS);
+      const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
+      const t2 = setTimeout(() => setPhase('hold'),    ANTICIPATE_MS + REVEAL_MS);
+      const t3 = setTimeout(() => setPhase('pan_out'), ANTICIPATE_MS + REVEAL_MS + HOLD_MS);
+      const t4 = setTimeout(() => {
+        completedRef.current = true;
+        setPhase('done');
+        onCompleteRef.current();
+      }, ANTICIPATE_MS + REVEAL_MS + HOLD_MS + PAN_OUT_MS);
 
-    timersRef.current = [t1, t2, t3, t4];
+      timersRef.current = [t1, t2, t3, t4];
+    }
 
     return () => {
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
-      // If unmounted before t4 fired, drain the event queue immediately so
-      // the animation state machine never stalls.
+      // If unmounted before the final timer fired, drain immediately so the
+      // animation state machine never stalls.
       if (!completedRef.current) {
         completedRef.current = true;
         onCompleteRef.current();
@@ -370,8 +411,11 @@ export function LuminaryActivationCinematic({
     return () => timers.forEach(clearTimeout);
   }, [phase, effectDef]);
 
-  // ── Board DOM zoom-out ────────────────────────────────────────────────────
+  // ── Board DOM zoom-out (full-motion only) ────────────────────────────────
+  // Reduced-motion path skips the zoom entirely so the board stays at rest.
   useEffect(() => {
+    if (isReduced) return;
+
     const board = document.querySelector('[data-game-board]') as HTMLElement | null;
     if (!board) return;
 
@@ -394,9 +438,107 @@ export function LuminaryActivationCinematic({
       board.style.transition      = '';
       board.style.transformOrigin = '';
     };
-  }, [phase]);
+  }, [phase, isReduced]);
 
   // ── Derived state ─────────────────────────────────────────────────────────
+
+  // Beat visibility flags (shared between full and reduced render paths)
+  const hasProcedureSteps = (procedure ?? []).some(s => s.type !== 'luminaryPulse');
+  const targetVisible = (effectDef !== null || hasProcedureSteps) && (effectBeat === 'target' || effectBeat === 'snap');
+  const snapVisible   = effectDef !== null && effectBeat === 'snap';
+
+  if (phase === 'done') return null;
+
+  // ── Reduced-motion render ─────────────────────────────────────────────────
+  // Compact 380ms overlay: dim + effect label + ProcedureStrip/badge + name.
+  // No entity, no board zoom, no slow phases. Single click to dismiss early.
+  if (isReduced) {
+    const reducedContent = (
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 8900, pointerEvents: 'auto', cursor: 'pointer', userSelect: 'none' }}
+        onClick={handleSkip}
+      >
+        {/* Dim overlay — appears instantly, no transition */}
+        <div
+          className="absolute inset-0"
+          style={{ background: 'rgba(4,2,16,0.72)', pointerEvents: 'none' }}
+        />
+
+        {/* Colored accent bar at top — quick visual anchor keyed to this Luminary */}
+        <div
+          className="absolute top-0 inset-x-0 h-[2px]"
+          style={{ background: `linear-gradient(90deg, transparent, ${primaryColor}88, transparent)`, pointerEvents: 'none' }}
+        />
+
+        {/* Compact info block — centered, no entry animation */}
+        <div
+          className="absolute inset-x-0 flex flex-col items-center gap-2 px-4"
+          style={{ top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 1 }}
+        >
+          {/* Effect-type label pill */}
+          <div
+            className="px-3 py-0.5 rounded-full text-[10px] font-bold tracking-[0.18em] uppercase"
+            style={{
+              background: `${primaryColor}22`,
+              border: `1px solid ${primaryColor}55`,
+              color: primaryColor,
+            }}
+          >
+            {label}
+          </div>
+
+          {/* Procedure strip — always visible immediately in reduced mode */}
+          {procedure && hasProcedureSteps ? (
+            <ProcedureStrip procedure={procedure} />
+          ) : effectDef ? (
+            <TargetBadge
+              tone={effectDef.tone}
+              target={effectDef.target}
+              isLingering={effectDef.isLingering}
+            />
+          ) : null}
+
+          {/* Luminary name */}
+          <div
+            className="text-xl font-bold tracking-wide text-center"
+            style={{
+              color: '#ffffff',
+              textShadow: `0 0 18px ${primaryColor}aa, 0 2px 6px rgba(0,0,0,0.8)`,
+              maxWidth: 320,
+            }}
+          >
+            {luminaryName}
+          </div>
+
+          {triggeringPlayerName && (
+            <div
+              className="text-xs tracking-wider"
+              style={{ color: `${primaryColor}cc` }}
+            >
+              {triggeringPlayerName}
+            </div>
+          )}
+        </div>
+
+        {/* Tap-to-dismiss hint */}
+        <div
+          className="absolute bottom-4 right-4 flex items-center select-none"
+          style={{ pointerEvents: 'none' }}
+        >
+          <span
+            className="text-[10px] tracking-[0.14em] uppercase"
+            style={{ color: 'rgba(255,255,255,0.32)' }}
+          >
+            tap to dismiss
+          </span>
+        </div>
+      </div>
+    );
+    return createPortal(reducedContent, document.body);
+  }
+
+  // ── Full-motion render ─────────────────────────────────────────────────────
   // Entity mounts on 'reveal' and stays mounted through 'pan_out'.
   // Its keyframe animation handles the full opacity/scale lifecycle — no
   // external phase-driven animate targets needed.
@@ -413,14 +555,7 @@ export function LuminaryActivationCinematic({
     phase === 'hold'       ? 0.78 :
     0; // pan_out + done
 
-  // Beat visibility flags
-  const hasProcedureSteps = (procedure ?? []).some(s => s.type !== 'luminaryPulse');
-  const targetVisible = (effectDef !== null || hasProcedureSteps) && (effectBeat === 'target' || effectBeat === 'snap');
-  const snapVisible   = effectDef !== null && effectBeat === 'snap';
-
   const showSkipHint = phase === 'reveal' || phase === 'hold' || phase === 'pan_out';
-
-  if (phase === 'done') return null;
 
   const content = (
     <div
