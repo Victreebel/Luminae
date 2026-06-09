@@ -9,12 +9,12 @@ import {
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
 import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
-import { BurnPileParticle } from './game-luminary-effects';
+import { BurnPileParticle, CardMarkerBadge, BurnFlash } from './game-luminary-effects';
 import { CIPHER_MODE_TOTAL_MS, type CipherApertureMode, DEAL_ANIM_MS } from './game-constants';
 import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
-import { type ArtifactCard, ArtifactCardBonusColor } from '@workspace/api-client-react';
+import { type ArtifactCard, type GameState, ArtifactCardBonusColor } from '@workspace/api-client-react';
 import { gameAudio } from '@/lib/audio';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { LUMINARY_ANIMATION_CONFIG } from '@/lib/luminaryAnimationConfig';
@@ -1175,6 +1175,419 @@ function IdlePortalPreview({ lum, idleKey }: { lum: SandboxLuminary; idleKey: nu
 }
 
 
+// ─── Board Effect Preview ─────────────────────────────────────────────────────
+// Types, sequencer hook, and card tile components for the inline board preview
+// rendered below the Play/Replay/Skip controls in Procedure Review.
+
+type BoardBadgeType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed';
+
+interface CardSlotEffect {
+  highlighted: boolean;
+  highlightKeyword?: 'burn' | 'condemned';
+  badge?: BoardBadgeType;
+  badgeIsNew: boolean;
+  burning: boolean;
+  burned: boolean;
+  refilling: boolean;
+}
+
+interface ActiveBurn {
+  key: string;
+  rect: DOMRect;
+}
+
+type SlotEffectMap = Record<string, CardSlotEffect>;
+
+function defaultSlotEffect(): CardSlotEffect {
+  return { highlighted: false, badgeIsNew: false, burning: false, burned: false, refilling: false };
+}
+
+// Detect whether the procedure steps contain any market-card targeting
+// (as opposed to player-panel targeting). Player IDs are 'mock-p...' in all mock states.
+function stepsHaveMarketEffect(steps: AnimationTimelineStep[]): boolean {
+  for (const step of steps) {
+    if (step.type === 'targetClaim' && step.targetIds.some(id => !id.startsWith('mock-p'))) return true;
+    if (step.type === 'residue' && step.targetIds.length > 0) return true;
+    if (step.type === 'keywordEvents') {
+      for (const ev of step.events) {
+        if (ev.targetIds.some(id => !id.startsWith('mock-p'))) return true;
+      }
+    }
+    if (step.type === 'marketRedraw') return true;
+  }
+  return false;
+}
+
+// ─── useBoardEffectSequencer ──────────────────────────────────────────────────
+// Plays an AnimationTimelineStep[] as timed card-level visual effects.
+// Returns per-card effect state (badges, highlights, burned/refilling flags)
+// and the list of active BurnFlash instances to render.
+
+function useBoardEffectSequencer(
+  steps: AnimationTimelineStep[] | null,
+  seqKey: number,
+  slotRefs: React.MutableRefObject<Map<string, HTMLElement>>,
+): {
+  effects: SlotEffectMap;
+  activeBurns: ActiveBurn[];
+  onBurnDone: (key: string) => void;
+  hasMarketEffect: boolean;
+} {
+  const [effects, setEffects] = useState<SlotEffectMap>({});
+  const [activeBurns, setActiveBurns] = useState<ActiveBurn[]>([]);
+  const timerRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  function clearTimers() {
+    timerRefs.current.forEach(t => clearTimeout(t));
+    timerRefs.current = [];
+  }
+
+  function schedule(fn: () => void, delay: number) {
+    timerRefs.current.push(setTimeout(fn, delay));
+  }
+
+  useEffect(() => {
+    clearTimers();
+    setEffects({});
+    setActiveBurns([]);
+    if (!steps || steps.length === 0) return;
+
+    const burnedCards = new Set<string>();
+    let cursor = 0;
+
+    for (const step of steps) {
+      switch (step.type) {
+
+        case 'luminaryPulse':
+          cursor += 50;
+          break;
+
+        case 'targetClaim': {
+          const ids = step.targetIds.filter(id => !id.startsWith('mock-p'));
+          if (ids.length === 0) { cursor += 50; break; }
+          const kw: CardSlotEffect['highlightKeyword'] =
+            step.keyword === 'burn' ? 'burn' :
+            step.keyword === 'condemned' ? 'condemned' : undefined;
+          const hStart = cursor;
+          const hEnd = cursor + 700;
+          cursor = hEnd;
+
+          schedule(() => {
+            setEffects(prev => {
+              const next = { ...prev };
+              for (const id of ids) {
+                next[id] = { ...(next[id] ?? defaultSlotEffect()), highlighted: true, highlightKeyword: kw };
+              }
+              return next;
+            });
+          }, hStart);
+
+          schedule(() => {
+            setEffects(prev => {
+              const next = { ...prev };
+              for (const id of ids) {
+                if (next[id]) next[id] = { ...next[id], highlighted: false, highlightKeyword: undefined };
+              }
+              return next;
+            });
+          }, hEnd);
+          break;
+        }
+
+        case 'residue': {
+          const ids = step.targetIds;
+          // 'seeded' is the procedure keyword for The Seed Beyond Seasons;
+          // CardMarkerBadge uses 'avatar_seed' — map explicitly rather than casting.
+          const kw: BoardBadgeType =
+            step.keyword === 'seeded' ? 'avatar_seed' : step.keyword;
+          const start = cursor;
+          cursor += 300;
+          schedule(() => {
+            setEffects(prev => {
+              const next = { ...prev };
+              for (const id of ids) {
+                next[id] = { ...(next[id] ?? defaultSlotEffect()), badge: kw, badgeIsNew: true };
+              }
+              return next;
+            });
+            timerRefs.current.push(setTimeout(() => {
+              setEffects(prev => {
+                const next = { ...prev };
+                for (const id of ids) {
+                  if (next[id]) next[id] = { ...next[id], badgeIsNew: false };
+                }
+                return next;
+              });
+            }, 600));
+          }, start);
+          break;
+        }
+
+        case 'keywordEvents': {
+          for (const ev of step.events) {
+            if (ev.keyword !== 'burn') continue;
+            const ids = ev.targetIds.filter(id => !id.startsWith('mock-p'));
+            if (ids.length === 0) continue;
+
+            const burnStart = cursor;
+            cursor += 1400;
+
+            ids.forEach((id, i) => {
+              schedule(() => {
+                const el = slotRefs.current.get(id);
+                if (!el) return;
+                const rect = el.getBoundingClientRect();
+                const burnKey = `burn-${id}-${burnStart}-${i}`;
+                setActiveBurns(prev => [...prev, { key: burnKey, rect }]);
+              }, burnStart + i * 90);
+            });
+
+            for (const id of ids) { burnedCards.add(id); }
+
+            const markBurnedAt = cursor;
+            schedule(() => {
+              setEffects(prev => {
+                const next = { ...prev };
+                for (const id of ids) {
+                  next[id] = { ...(next[id] ?? defaultSlotEffect()), burned: true, highlighted: false };
+                }
+                return next;
+              });
+            }, markBurnedAt);
+          }
+          break;
+        }
+
+        case 'marketRedraw': {
+          const redrawnIds = [...burnedCards];
+          const start = cursor;
+          cursor += 900;
+          schedule(() => {
+            setEffects(prev => {
+              const next = { ...prev };
+              for (const id of redrawnIds) {
+                next[id] = { ...(next[id] ?? defaultSlotEffect()), refilling: true, burned: false };
+              }
+              return next;
+            });
+            timerRefs.current.push(setTimeout(() => {
+              setEffects(prev => {
+                const next = { ...prev };
+                for (const id of redrawnIds) {
+                  if (next[id]) next[id] = { ...next[id], refilling: false };
+                }
+                return next;
+              });
+            }, 700));
+          }, start);
+          break;
+        }
+
+        default:
+          cursor += 50;
+      }
+    }
+
+    return () => clearTimers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seqKey]);
+
+  function onBurnDone(key: string) {
+    setActiveBurns(prev => prev.filter(b => b.key !== key));
+  }
+
+  const hasMarketEffect = steps ? stepsHaveMarketEffect(steps) : false;
+  return { effects, activeBurns, onBurnDone, hasMarketEffect };
+}
+
+// ─── MockMarketTile ───────────────────────────────────────────────────────────
+
+function MockMarketTile({
+  card,
+  effect,
+  slotRef,
+}: {
+  card: ArtifactCard;
+  effect: CardSlotEffect;
+  slotRef: (el: HTMLElement | null) => void;
+}) {
+  // Reverse-map bonusColor enum value → GemKey for affinity hex lookup
+  const affinityKey = GEM_KEYS.find(
+    k => k !== 'flux' && (ArtifactCardBonusColor as Record<string, string>)[k] === card.bonusColor
+  ) as GemKey | undefined;
+  const affHex = affinityKey ? GEM_META[affinityKey].hex : '#64748b';
+  const tierLabel = ['', 'I', 'II', 'III'][card.tier] ?? '';
+
+  const hlColor = effect.highlighted
+    ? effect.highlightKeyword === 'burn'      ? '#ff6820'
+    : effect.highlightKeyword === 'condemned' ? '#ef4444'
+    : affHex
+    : undefined;
+
+  const bgColor = effect.refilling ? 'rgba(8,30,8,0.85)' : effect.burned ? 'rgba(20,6,4,0.7)' : '#0d0d1a';
+
+  return (
+    <div
+      ref={slotRef}
+      style={{
+        position: 'relative',
+        width: 68,
+        height: 90,
+        borderRadius: 7,
+        background: bgColor,
+        border: hlColor
+          ? `2px solid ${hlColor}`
+          : `1px solid ${effect.badge ? `${affHex}66` : `${affHex}28`}`,
+        boxShadow: hlColor
+          ? `0 0 10px ${hlColor}55, inset 0 0 6px ${hlColor}18`
+          : undefined,
+        transition: 'border-color 0.18s, box-shadow 0.18s, background 0.28s',
+        overflow: 'visible',
+        flexShrink: 0,
+      }}
+    >
+      {/* Affinity color bar */}
+      <div
+        style={{
+          height: 3,
+          background: affHex,
+          borderRadius: '7px 7px 0 0',
+          opacity: effect.burned ? 0.18 : 1,
+          transition: 'opacity 0.3s',
+        }}
+      />
+
+      {/* Tier badge */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 6,
+          right: 4,
+          fontSize: 8,
+          fontWeight: 700,
+          fontFamily: 'monospace',
+          color: affHex,
+          opacity: effect.burned ? 0.2 : 0.75,
+          lineHeight: 1,
+        }}
+      >
+        {tierLabel}
+      </div>
+
+      {/* Card name */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 5,
+          left: 4,
+          right: 4,
+          fontSize: 7,
+          fontWeight: 500,
+          color: effect.burned ? '#334155' : '#94a3b8',
+          lineHeight: 1.2,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          transition: 'color 0.3s',
+        }}
+      >
+        {effect.burned ? '—' : card.name}
+      </div>
+
+      {/* Refill pulse */}
+      <AnimatePresence>
+        {effect.refilling && (
+          <motion.div
+            key="refill"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 7,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 14,
+              color: '#4ade80',
+            }}
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: [0, 1, 0.85, 0], scale: [0.7, 1.1, 1.05, 0.9] }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+          >
+            ↺
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Keyword badge */}
+      <AnimatePresence>
+        {effect.badge && !effect.burned && (
+          <CardMarkerBadge
+            key={effect.badge}
+            type={effect.badge}
+            isNew={effect.badgeIsNew}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── MockMarketBoard ──────────────────────────────────────────────────────────
+
+function MockMarketBoard({
+  state,
+  effects,
+  slotRefs,
+}: {
+  state: GameState;
+  effects: SlotEffectMap;
+  slotRefs: React.MutableRefObject<Map<string, HTMLElement>>;
+}) {
+  const tiers: Array<{ label: string; cards: ArtifactCard[] }> = [
+    { label: 'Tier III', cards: state.marketTier3 ?? [] },
+    { label: 'Tier II',  cards: state.marketTier2 ?? [] },
+    { label: 'Tier I',   cards: state.marketTier1 ?? [] },
+  ].filter(t => t.cards.length > 0);
+
+  if (tiers.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {tiers.map(({ label, cards }) => (
+        <div key={label} className="flex items-start gap-2">
+          <span
+            style={{
+              fontSize: 8,
+              fontFamily: 'monospace',
+              color: '#475569',
+              width: 38,
+              textAlign: 'right',
+              flexShrink: 0,
+              marginTop: 6,
+              lineHeight: 1,
+            }}
+          >
+            {label}
+          </span>
+          <div className="flex gap-1.5 flex-wrap">
+            {cards.map(card => (
+              <MockMarketTile
+                key={card.id}
+                card={card}
+                effect={effects[card.id] ?? defaultSlotEffect()}
+                slotRef={el => {
+                  if (el) slotRefs.current.set(card.id, el);
+                  else slotRefs.current.delete(card.id);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Aftermath description helper ────────────────────────────────────────────
 
 interface AftermathLine {
@@ -1262,22 +1675,39 @@ const PROCEDURE_REVIEW_LUMINARIES = Object.values(LUMINARY_ANIMATION_CONFIG);
 function ProcedureReviewSection() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [procKey, setProcKey]           = useState(0);
+  const [seqKey, setSeqKey]             = useState(0);
   const [isActive, setIsActive]         = useState(false);
   const [effectType, setEffectType]     = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon');
   const [currentSteps, setCurrentSteps] = useState<AnimationTimelineStep[] | null>(null);
   const [aftermath, setAftermath]       = useState<AftermathLine[] | null>(null);
+
+  // Board effect refs and board steps (resolved separately from cinematic steps).
+  const slotRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const [boardSteps, setBoardSteps] = useState<AnimationTimelineStep[] | null>(null);
 
   const config    = selectedId ? LUMINARY_ANIMATION_CONFIG[selectedId]  : null;
   const mockEntry = selectedId ? MOCK_PROCEDURE_STATES[selectedId]      : null;
   const sandbox   = selectedId ? SANDBOX_LUMINARIES.find(l => l.id === selectedId) : null;
   const vis       = selectedId ? getLuminaryVisuals(selectedId)         : null;
 
+  const { effects: boardEffects, activeBurns, onBurnDone, hasMarketEffect } =
+    useBoardEffectSequencer(boardSteps, seqKey, slotRefs);
+
+  // Check if mock state has any market cards to display
+  const hasAnyMarketCards = mockEntry
+    ? (mockEntry.state.marketTier1 ?? []).length > 0 ||
+      (mockEntry.state.marketTier2 ?? []).length > 0 ||
+      (mockEntry.state.marketTier3 ?? []).length > 0
+    : false;
+
   function triggerPlay(forceReducedMotion: boolean) {
     if (!selectedId || !mockEntry) return;
     const steps = resolveLuminaryProcedure(selectedId, effectType, mockEntry.state, mockEntry.ownerId);
     setCurrentSteps(steps);
+    setBoardSteps(steps);
     setAftermath(null);
     setProcKey(k => k + 1);
+    setSeqKey(k => k + 1);
     setIsActive(true);
     // Store reducedMotion in a ref so the cinematic reads it at mount.
     // We pass it as a prop directly via the active flag state below.
@@ -1320,7 +1750,10 @@ function ProcedureReviewSection() {
                 setSelectedId(cfg.luminaryId);
                 setAftermath(null);
                 setCurrentSteps(null);
+                setBoardSteps(null);
+                setSeqKey(0);
                 setEffectType('summon');
+                slotRefs.current.clear();
               }}
               className="relative rounded-lg overflow-hidden border transition-colors text-left"
               style={{
@@ -1504,6 +1937,46 @@ function ProcedureReviewSection() {
               )}
             </div>
           )}
+
+          {/* ── Board Effect Preview ─────────────────────────────────────────── */}
+          <div className="flex flex-col gap-3 pt-3 border-t border-border/10">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="text-[9px] font-mono text-muted-foreground/40 uppercase tracking-widest">
+                board effect preview
+              </span>
+              {boardSteps !== null && (
+                <span className="text-[9px] font-mono text-muted-foreground/30">
+                  {hasMarketEffect ? 'market targeting active' : 'no market card effects'}
+                </span>
+              )}
+            </div>
+
+            {hasAnyMarketCards ? (
+              <>
+                {boardSteps === null && (
+                  <p className="text-[10px] font-mono text-muted-foreground/30 italic">
+                    Press ▶ Play to animate board effects against the mock market.
+                  </p>
+                )}
+                {boardSteps !== null && !hasMarketEffect && (
+                  <p className="text-[10px] font-mono text-muted-foreground/40 italic">
+                    This effect targets player panels or decks — no card-level market effects.
+                  </p>
+                )}
+                <MockMarketBoard
+                  state={mockEntry.state}
+                  effects={boardEffects}
+                  slotRefs={slotRefs}
+                />
+              </>
+            ) : (
+              <p className="text-[10px] font-mono text-muted-foreground/35 italic">
+                {config.animationArchetype === 'scry' || config.animationArchetype === 'seeded'
+                  ? 'Deck scry / seed effect — targets deck tops, not face-up market cards.'
+                  : 'No market cards in mock state for this effect path.'}
+              </p>
+            )}
+          </div>
         </div>
       ) : (
         <p className="text-center text-[11px] text-muted-foreground/30 mt-4">
@@ -1524,6 +1997,16 @@ function ProcedureReviewSection() {
           onComplete={handleComplete}
         />
       )}
+
+      {/* ── Board BurnFlash portals (document.body, position:fixed) ────────── */}
+      {activeBurns.map(burn => (
+        <BurnFlash
+          key={burn.key}
+          slotRect={burn.rect}
+          onDone={() => onBurnDone(burn.key)}
+          sourceLuminaryId={selectedId ?? undefined}
+        />
+      ))}
     </div>
   );
 }
