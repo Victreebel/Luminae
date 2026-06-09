@@ -27,25 +27,33 @@ function hmrNoReload(): Plugin {
   // On Replit the proxy force-closes every WS connection on a ~25 s fixed lease,
   // so this triggers a full page reload every ~25 s regardless of keepalive traffic.
   //
-  // Fix: patch location.reload in the injected script. We replace location.reload
-  // with a no-op for a short window after each vite:ws:disconnect event. Since the
-  // HMR socket reconnects in ~200 ms and real navigations (user clicking links) take
-  // >25 ms to fire a reload, a 1000 ms suppression window safely covers only the
-  // proxy-forced drop cycles without blocking intentional reloads.
+  // Fix: patch location.reload in the injected script. Suppression is boolean,
+  // not time-based: turned ON by vite:ws:disconnect, OFF by vite:ws:connect.
+  // This covers the full waitForSuccessfulPing → reload path regardless of how
+  // long Vite's polling cycle takes (can be 5–30 s on Replit's proxy).
+  // Intentional HMR full-page reloads (changed module that can't hot-swap) still
+  // fire normally because suppression ends the moment the socket reconnects.
   const script = `
 if (import.meta.hot) {
   const _reload = location.reload.bind(location);
-  let _suppressUntil = 0;
+  // When the HMR socket drops (proxy force-close), suppress any location.reload()
+  // until the socket successfully reconnects.  This blocks the
+  // waitForSuccessfulPing → reload path that Vite triggers after polling,
+  // which can take 5–30 s on Replit — far longer than the old 1 s window.
+  // Once the socket reconnects (vite:ws:connect), suppression ends immediately
+  // so that intentional HMR full-page-reloads (e.g. a module that can't hot-swap)
+  // still fire normally.
+  let _suppressReload = false;
   import.meta.hot.on('vite:ws:disconnect', () => {
-    // Suppress the imminent Vite location.reload() for 1 s.
-    // This covers the waitForSuccessfulPing → reload path while leaving
-    // intentional reloads (triggered well after navigation) unaffected.
-    _suppressUntil = Date.now() + 1000;
+    _suppressReload = true;
+  });
+  import.meta.hot.on('vite:ws:connect', () => {
+    _suppressReload = false;
   });
   Object.defineProperty(location, 'reload', {
     configurable: true,
     value: function patchedReload() {
-      if (Date.now() < _suppressUntil) return; // swallow proxy-drop reload
+      if (_suppressReload) return; // swallow proxy-drop polling reload
       _reload();
     }
   });

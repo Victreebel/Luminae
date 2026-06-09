@@ -13,8 +13,7 @@ handleMessage("custom" / event="vite:ws:disconnect")
   → hmrClient.notifyListeners("vite:ws:disconnect", ...)  ← our listener fires here
   → if (!willUnload) { waitForSuccessfulPing(url) → location.reload() }
 ```
-This triggered a full page reload every ~25 s, resetting all in-progress animations and game state
-in the sandbox/dev page.
+This triggered a full page reload every ~25 s, resetting all in-progress animations and game state.
 
 ## What was tried and FAILED (keepalive approaches)
 
@@ -34,16 +33,31 @@ All keepalive approaches failed because the proxy uses a **fixed lease**, not an
 
 **Accept that the WS will drop every ~25 s. Prevent the reload instead.**
 
-The plugin injects a `<script type="module">` into `index.html` (dev only) that:
-1. Registers `import.meta.hot.on('vite:ws:disconnect', ...)` — fires before Vite's reload check.
-2. Sets `_suppressUntil = Date.now() + 1000` on each disconnect.
-3. Patches `location.reload` via `Object.defineProperty` to be a no-op within that 1s window.
+The plugin injects a `<script type="module">` into `index.html` (dev only) that patches
+`location.reload` using a **boolean flag** (not a time window):
 
-The 1s window safely covers only the `waitForSuccessfulPing → reload` path (triggered ~0-200ms
-after disconnect) while leaving intentional user-triggered reloads unaffected (those fire only
-after real navigation, well outside the 1s window).
+```js
+let _suppressReload = false;
+import.meta.hot.on('vite:ws:disconnect', () => { _suppressReload = true; });
+import.meta.hot.on('vite:ws:connect',    () => { _suppressReload = false; });
+location.reload = function patchedReload() {
+  if (_suppressReload) return;  // swallow proxy-drop polling reload
+  _reload();
+};
+```
 
-**Result:** 1 silent reconnect per ~70s vs. 49 full page reloads per ~86s before the fix.
+**Why boolean, not time-based:** Replit's polling cycle after a drop can take 5–30 s — far outside
+any fixed suppression window. The old 1-second window caused a white-out when polling took longer.
+Boolean suppression is active for exactly as long as the socket is down.
+
+**Why intentional reloads still work:** `vite:ws:connect` fires the moment the socket reconnects.
+Any subsequent `location.reload()` from Vite (changed module that can't hot-swap) fires after
+suppression is already off.
+
+The `hmrPongReply` server plugin (also inside `hmrNoReload`) keeps bidirectional ping/pong to
+reduce the visible `[vite] connecting...` banner frequency.
+
+**Result:** Zero white-outs from proxy-forced HMR drops; intentional code-change reloads unaffected.
 
 **Vite 7 key facts:**
 - `server.ws.clients` → `Set<HotChannelClient>` with `client.socket` (raw ws.WebSocket).
@@ -54,5 +68,3 @@ after real navigation, well outside the 1s window).
   not a synthetic dispatchEvent. Cannot be set from outside the Vite client module.
 
 **How to apply:** Any future change to `vite.config.ts` must preserve the `hmrNoReload` plugin.
-The `hmrPongReply` inside it reduces the visible "[vite] connecting..." banner frequency (fewer
-drops get through before being swallowed) so keep it too.
