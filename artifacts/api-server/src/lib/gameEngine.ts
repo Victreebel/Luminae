@@ -3151,5 +3151,6 @@ export function formatGameState(
     glassOrchardTriggered: stateData.glassOrchardTriggered ?? false,
     burnPile: stateData.burnPile ?? [],
     burnEvents: stateData.burnEvents ?? [],
+    coreActionUsed: stateData.coreActionUsed ?? false,
   };
 }

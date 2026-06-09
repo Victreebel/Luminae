@@ -713,6 +713,12 @@ export const StartGameResponse = zod.object({
     .describe(
       "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
     ),
+  coreActionUsed: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
+    ),
   pendingLuminaryChoice: zod
     .object({
       playerId: zod.string(),
@@ -1199,6 +1205,12 @@ export const RematchResponse = zod.object({
     .describe(
       "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
     ),
+  coreActionUsed: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
+    ),
   pendingLuminaryChoice: zod
     .object({
       playerId: zod.string(),
@@ -1684,6 +1696,12 @@ export const GetGameStateResponse = zod.object({
     .optional()
     .describe(
       "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+    ),
+  coreActionUsed: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
     ),
   pendingLuminaryChoice: zod
     .object({
@@ -2240,6 +2258,12 @@ export const SubmitActionResponse = zod.object({
     .optional()
     .describe(
       "Ordered list of individual burn events (one per card burned) including tier and source Luminary",
+    ),
+  coreActionUsed: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn",
     ),
   pendingLuminaryChoice: zod
     .object({

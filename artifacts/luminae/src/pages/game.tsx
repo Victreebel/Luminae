@@ -1512,7 +1512,7 @@ export default function GameBoard() {
   // isMyTurn is false while we're waiting to choose luminary order — the picker
   // overlay is the only interactive surface during that phase.
   const isMyTurn = isActivePlayer && !summonGateActive && !luminaryChoiceIsOurs;
-  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted;
+  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted && !state?.coreActionUsed;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
   // Focus-trap: win overlay (game over screen — Escape is a no-op since there is nothing to dismiss)

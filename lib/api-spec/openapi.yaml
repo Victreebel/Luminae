@@ -1610,6 +1610,9 @@ components:
           items:
             $ref: "#/components/schemas/BurnEvent"
           description: Ordered list of individual burn events (one per card burned) including tier and source Luminary
+        coreActionUsed:
+          type: boolean
+          description: True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn
         pendingLuminaryChoice:
           type: object
           nullable: true

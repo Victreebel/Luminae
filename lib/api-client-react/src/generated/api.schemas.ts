@@ -686,6 +686,8 @@ export interface GameState {
   burnPile?: string[];
   /** Ordered list of individual burn events (one per card burned) including tier and source Luminary */
   burnEvents?: BurnEvent[];
+  /** True once the current player has used their core action this turn (harvest, forge, or reserve); resets to false on advanceTurn */
+  coreActionUsed?: boolean;
   /** Set when the current player must choose the order to claim multiple simultaneous Luminaries */
   pendingLuminaryChoice?: GameStatePendingLuminaryChoice;
 }
