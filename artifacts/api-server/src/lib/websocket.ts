@@ -129,6 +129,22 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
 
   logger.info({ roomId, playerId }, "Player connected via WebSocket");
 
+  // Send WebSocket protocol-level PING frames every 10 s so that intermediate
+  // proxies (e.g. Replit's janeway reverse proxy) see real TCP-layer keepalive
+  // traffic and reset their idle/lease timers.  This is distinct from the
+  // app-level JSON {type:"ping"} that the client sends — protocol PINGs are
+  // handled at the WebSocket framing layer and are more likely to be recognised
+  // by proxies as genuine keepalive activity.
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    }
+  }, 10_000);
+
+  ws.on("pong", () => {
+    // Protocol-level pong received — connection is alive.  No action needed.
+  });
+
   // Notify room of reconnect
   broadcastToRoom(roomId, {
     type: "player_connected",
@@ -159,6 +175,7 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
   });
 
   ws.on("close", () => {
+    clearInterval(pingInterval);
     handleClose(ws, roomId, playerId, playerName).catch((err) => {
       logger.error({ err, roomId, playerId }, "Unhandled error in WebSocket close handler");
     });

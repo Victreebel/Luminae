@@ -28,6 +28,22 @@
  * The keepalive mechanisms (10-second bidirectional ping/pong on both sockets)
  * prevent this.  If either breaks, this test will catch it within 30–90 s.
  *
+ * ── Proxy path coverage ───────────────────────────────────────────────────────
+ *
+ * This test connects via localhost:80 (the local nginx reverse proxy).  That
+ * path validates the keepalive works through the local proxy and is sufficient
+ * for CI and developer machines.
+ *
+ * The Replit workspace preview iframe uses an ADDITIONAL external proxy at
+ * janeway.replit.dev.  That path has historically had a shorter (~25-30 s)
+ * fixed WS lease than the local proxy.  This test CANNOT reach the external
+ * proxy from inside the container (Playwright's browser also connects via
+ * localhost:80 when run headless inside the Repl).  If REPLIT_DEV_DOMAIN is
+ * set, a note is printed after the test so developers know the external path
+ * was not verified by this run.  The server-side ws.ping() protocol PING
+ * frames (added in websocket.ts) are the keepalive mechanism that targets the
+ * external proxy; the localhost:80 test validates the frame interval is firing.
+ *
  * Run:
  *   pnpm --filter @workspace/scripts run test:ws-keepalive
  */

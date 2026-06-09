@@ -48,6 +48,7 @@ export function useGameWebsocket({
   const [isReconnecting, setIsReconnecting] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectDelayRef = useRef(1000);
   const MAX_RECONNECT_DELAY = 16000;
   const hasEverConnectedRef = useRef(false);
@@ -90,6 +91,12 @@ export function useGameWebsocket({
 
     ws.onopen = () => {
       setIsConnected(true);
+      // Cancel any pending banner timer from a recent onclose — the socket
+      // reconnected fast enough that the user never needs to see the banner.
+      if (reconnectBannerTimerRef.current !== null) {
+        clearTimeout(reconnectBannerTimerRef.current);
+        reconnectBannerTimerRef.current = null;
+      }
       setIsReconnecting(false);
       hasEverConnectedRef.current = true;
       reconnectDelayRef.current = 1000;
@@ -174,8 +181,14 @@ export function useGameWebsocket({
 
       // Only show the reconnecting banner for unexpected drops, not the
       // initial connection attempt (hasEverConnectedRef guards this).
+      // Use a 1.5 s grace period: proxy-forced reconnects complete in ~400 ms
+      // so the banner never appears for them.  Only a genuinely stuck reconnect
+      // (server down, network loss) surfaces the banner after the grace window.
       if (hasEverConnectedRef.current) {
-        setIsReconnecting(true);
+        reconnectBannerTimerRef.current = setTimeout(() => {
+          reconnectBannerTimerRef.current = null;
+          setIsReconnecting(true);
+        }, 1_500);
       }
 
       reconnectTimeoutRef.current = setTimeout(() => {
@@ -196,6 +209,10 @@ export function useGameWebsocket({
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (reconnectBannerTimerRef.current) {
+        clearTimeout(reconnectBannerTimerRef.current);
+        reconnectBannerTimerRef.current = null;
       }
       if (wsRef.current) {
         wsRef.current.onclose = null;
