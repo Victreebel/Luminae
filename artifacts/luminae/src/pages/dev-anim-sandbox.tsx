@@ -1246,6 +1246,18 @@ export default function DevAnimSandbox() {
 
   // ── SFX group state ────────────────────────────────────────────────────────
   const [sfxHarvestAffinity, setSfxHarvestAffinity] = useState<GemKey>('ruby');
+  const [sfxFanfareAffinity, setSfxFanfareAffinity] = useState<GemKey>('ruby');
+
+  // One representative summon-color hex per GemKey that maps through FANFARE_COLOR_MAP.
+  // Any hex not in the map falls back to 'flux' inside playLuminaryFanfare().
+  const FANFARE_PRESET_COLORS: Record<GemKey, string> = {
+    ruby:     '#ff5a3c',
+    sapphire: '#60a5fa',
+    emerald:  '#2ecc71',
+    onyx:     '#4c1d95',
+    pearl:    '#cbd5e1',
+    flux:     '#888888', // not in map → falls back to flux tuning
+  };
 
   // ── Shared UI state ────────────────────────────────────────────────────────
   const [collapsed, setCollapsed] = useState(false);
@@ -1531,6 +1543,94 @@ export default function DevAnimSandbox() {
                 </div>
                 <p className="text-[10px] text-muted-foreground/30 mt-2">
                   Pitch varies by selected affinity.
+                </p>
+              </div>
+
+              {/* ── Turn & Win Sounds ────────────────────────────── */}
+              <div>
+                <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-3">
+                  Turn &amp; Win
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {/* Your Turn Start */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playTurnStart(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(99,202,241,0.08)', borderColor: 'rgba(99,202,241,0.35)', color: '#63caf1' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,202,241,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(99,202,241,0.08)'; }}
+                  >
+                    🔔 Your Turn Start
+                  </button>
+
+                  {/* Opponent Turn Start */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playOpponentTurnStart(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(100,116,139,0.08)', borderColor: 'rgba(100,116,139,0.35)', color: '#94a3b8' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(100,116,139,0.16)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(100,116,139,0.08)'; }}
+                  >
+                    🔕 Opponent Turn
+                  </button>
+
+                  {/* Win Fanfare */}
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playWin(); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{ background: 'rgba(234,179,8,0.10)', borderColor: 'rgba(234,179,8,0.45)', color: '#fbbf24' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.20)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(234,179,8,0.10)'; }}
+                  >
+                    🏆 Win Fanfare
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Luminary Fanfare ──────────────────────────────── */}
+              <div>
+                <p className="text-[11px] font-mono text-muted-foreground/50 uppercase tracking-widest mb-2">
+                  Luminary Fanfare
+                </p>
+                {/* Affinity pill selector */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {GEM_KEYS.map(k => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSfxFanfareAffinity(k)}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded border transition-colors"
+                      style={{
+                        borderColor: sfxFanfareAffinity === k ? GEM_META[k].hex : 'rgba(255,255,255,0.12)',
+                        color:       sfxFanfareAffinity === k ? GEM_META[k].hex : '#64748b',
+                        background:  sfxFanfareAffinity === k ? `${GEM_META[k].hex}22` : 'transparent',
+                      }}
+                    >
+                      {GEM_META[k].name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { void gameAudio.playLuminaryFanfare(FANFARE_PRESET_COLORS[sfxFanfareAffinity]); }}
+                    className="text-sm font-mono px-4 py-2 rounded border transition-colors"
+                    style={{
+                      background:   `${GEM_META[sfxFanfareAffinity].hex}14`,
+                      borderColor:  `${GEM_META[sfxFanfareAffinity].hex}55`,
+                      color:        GEM_META[sfxFanfareAffinity].hex,
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${GEM_META[sfxFanfareAffinity].hex}28`; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${GEM_META[sfxFanfareAffinity].hex}14`; }}
+                  >
+                    ✨ Luminary Fanfare
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/30 mt-2">
+                  Pitch and timbre vary by selected affinity.
                 </p>
               </div>
 
