@@ -1666,6 +1666,258 @@ function describeAftermath(steps: AnimationTimelineStep[]): AftermathLine[] {
   return lines;
 }
 
+// ─── computeSnapshotAt ────────────────────────────────────────────────────────
+// Returns the "during-step-N" board visual state: the cumulative effect of all
+// steps [0..stepIndex] applied in sequence, with step N's visual in its active
+// (not yet cleared) form.  This means a targetClaim step at index N will show
+// its highlights still ON — useful for debugging because it shows exactly which
+// cards a step is acting on.  This is intentionally different from the final
+// cleared state that the live sequencer reaches once timers fire.
+
+function computeSnapshotAt(
+  steps: AnimationTimelineStep[],
+  stepIndex: number,
+): SlotEffectMap {
+  const effects: SlotEffectMap = {};
+  const burnedIds = new Set<string>();
+
+  for (let i = 0; i <= stepIndex && i < steps.length; i++) {
+    const step = steps[i];
+    switch (step.type) {
+      case 'targetClaim': {
+        const ids = step.targetIds.filter(id => !id.startsWith('mock-p'));
+        const kw: CardSlotEffect['highlightKeyword'] =
+          step.keyword === 'burn' ? 'burn' :
+          step.keyword === 'condemned' ? 'condemned' : undefined;
+        for (const id of ids) {
+          effects[id] = { ...(effects[id] ?? defaultSlotEffect()), highlighted: true, highlightKeyword: kw };
+        }
+        break;
+      }
+      case 'keywordEvent': {
+        const ids = step.targetIds.filter(id => !id.startsWith('mock-p'));
+        if (step.keyword === 'burn') {
+          for (const id of ids) {
+            burnedIds.add(id);
+            effects[id] = { ...(effects[id] ?? defaultSlotEffect()), burned: true, highlighted: false };
+          }
+        }
+        break;
+      }
+      case 'keywordEvents': {
+        for (const ev of step.events) {
+          const ids = ev.targetIds.filter(id => !id.startsWith('mock-p'));
+          if (ev.keyword === 'burn') {
+            for (const id of ids) {
+              burnedIds.add(id);
+              effects[id] = { ...(effects[id] ?? defaultSlotEffect()), burned: true, highlighted: false };
+            }
+          }
+        }
+        break;
+      }
+      case 'residue': {
+        const kw: BoardBadgeType = step.keyword === 'seeded' ? 'avatar_seed' : step.keyword;
+        for (const id of step.targetIds) {
+          effects[id] = { ...(effects[id] ?? defaultSlotEffect()), badge: kw, badgeIsNew: false };
+        }
+        break;
+      }
+      case 'marketRedraw': {
+        for (const id of [...burnedIds]) {
+          if (effects[id]) effects[id] = { ...effects[id], burned: false, refilling: false };
+        }
+        burnedIds.clear();
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return effects;
+}
+
+// ─── describeStep ─────────────────────────────────────────────────────────────
+
+function describeStep(step: AnimationTimelineStep): string {
+  switch (step.type) {
+    case 'luminaryPulse':
+      return `luminaryPulse · ${step.luminaryId}`;
+    case 'targetClaim': {
+      const n = step.targetIds.length;
+      const kw = step.keyword ? ` [${step.keyword}]` : '';
+      return `targetClaim · ${n} target${n !== 1 ? 's' : ''}${kw}`;
+    }
+    case 'keywordEvent': {
+      const n = step.targetIds.length;
+      return `${step.keyword} · ${n} card${n !== 1 ? 's' : ''}`;
+    }
+    case 'keywordEvents': {
+      const parts = step.events.map(ev => `${ev.keyword}×${ev.targetIds.length}`).join(', ');
+      return `keywordEvents · ${parts || 'empty'}`;
+    }
+    case 'residue': {
+      const n = step.targetIds.length;
+      return `residue:${step.keyword} · ${n > 0 ? `${n} card${n !== 1 ? 's' : ''}` : 'deck tops'}`;
+    }
+    case 'marketRedraw': {
+      const n = step.slotIds.length;
+      return `marketRedraw · ${n} slot${n !== 1 ? 's' : ''}`;
+    }
+    case 'scoreChange': {
+      const sign = step.amount >= 0 ? '+' : '';
+      return `scoreChange · ${sign}${step.amount} Eminence × ${step.playerIds.length} player${step.playerIds.length !== 1 ? 's' : ''}`;
+    }
+    case 'crystalReturn': {
+      const t = step.crystalType ? ` (${step.crystalType})` : '';
+      return `crystalReturn${t} · ${step.playerIds.length} player${step.playerIds.length !== 1 ? 's' : ''}`;
+    }
+    case 'deckScry': {
+      const tiers = step.tierIds.map(t => t.replace('tier', 'T')).join('+');
+      const bias = step.affinityBias ? ` · ${step.affinityBias} bias` : '';
+      return `deckScry · ${tiers}${bias}`;
+    }
+    case 'pendingAction':
+      return `pendingAction · assimilate → ${step.ownerId}`;
+    default:
+      return 'unknown step';
+  }
+}
+
+function stepPipColor(step: AnimationTimelineStep): string {
+  switch (step.type) {
+    case 'luminaryPulse':   return '#a78bfa';
+    case 'targetClaim':     return '#38bdf8';
+    case 'keywordEvent':    return '#ef4444';
+    case 'keywordEvents':   return '#ef4444';
+    case 'residue':         return '#22c55e';
+    case 'marketRedraw':    return '#64748b';
+    case 'scoreChange':     return '#fbbf24';
+    case 'crystalReturn':   return '#60a5fa';
+    case 'deckScry':        return '#c084fc';
+    case 'pendingAction':   return '#fb923c';
+    default:                return '#475569';
+  }
+}
+
+// ─── StepScrubBar ─────────────────────────────────────────────────────────────
+
+interface StepScrubBarProps {
+  steps: AnimationTimelineStep[];
+  activeIndex: number | null;
+  onScrub: (index: number) => void;
+  primaryColor: string;
+}
+
+function StepScrubBar({ steps, activeIndex, onScrub, primaryColor }: StepScrubBarProps) {
+  const [tooltipEl, setTooltipEl] = useState<{ text: string; x: number; y: number } | null>(null);
+
+  if (steps.length === 0) return null;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Floating tooltip rendered at fixed coords */}
+      {tooltipEl && (
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltipEl.x,
+            top: tooltipEl.y - 6,
+            transform: 'translate(-50%, -100%)',
+            background: '#0f172a',
+            border: '1px solid rgba(255,255,255,0.14)',
+            borderRadius: 5,
+            padding: '4px 9px',
+            fontSize: 9,
+            fontFamily: 'monospace',
+            color: '#e2e8f0',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            zIndex: 9999,
+            boxShadow: '0 4px 14px rgba(0,0,0,0.65)',
+          }}
+        >
+          {tooltipEl.text}
+        </div>
+      )}
+
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          step scrub
+        </span>
+        <span style={{ fontSize: 9, fontFamily: 'monospace', color: '#334155' }}>
+          {steps.length} step{steps.length !== 1 ? 's' : ''}
+        </span>
+        {activeIndex !== null && (
+          <span style={{ fontSize: 9, fontFamily: 'monospace', color: primaryColor }}>
+            · {activeIndex + 1} / {steps.length} — {describeStep(steps[activeIndex])}
+          </span>
+        )}
+      </div>
+
+      {/* Pip strip */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+        {steps.map((step, i) => {
+          const isActive = activeIndex === i;
+          const baseColor = stepPipColor(step);
+          const pipColor = isActive ? primaryColor : baseColor;
+          const showLabel = steps.length <= 16;
+
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onScrub(i)}
+              onMouseEnter={e => {
+                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                setTooltipEl({
+                  text: `${i + 1} · ${describeStep(step)}`,
+                  x: rect.left + rect.width / 2,
+                  y: rect.top,
+                });
+              }}
+              onMouseLeave={() => setTooltipEl(null)}
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                border: isActive
+                  ? `2px solid ${pipColor}`
+                  : `1px solid ${pipColor}66`,
+                background: isActive ? `${pipColor}50` : `${pipColor}20`,
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'border-color 0.12s, background 0.12s',
+                flexShrink: 0,
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {showLabel && (
+                <span
+                  style={{
+                    fontSize: 7,
+                    fontFamily: 'monospace',
+                    color: isActive ? pipColor : `${pipColor}99`,
+                    lineHeight: 1,
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  }}
+                >
+                  {i + 1}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── ProcedureReviewSection ───────────────────────────────────────────────────
 // Self-contained Procedure Review tab.  All state is local; the
 // LuminaryActivationCinematic renders via createPortal (full-screen overlay).
@@ -1685,6 +1937,9 @@ function ProcedureReviewSection() {
   const slotRefs = useRef<Map<string, HTMLElement>>(new Map());
   const [boardSteps, setBoardSteps] = useState<AnimationTimelineStep[] | null>(null);
 
+  // Scrub bar: which step the user has pinned for static inspection (null = live animation).
+  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
+
   const config    = selectedId ? LUMINARY_ANIMATION_CONFIG[selectedId]  : null;
   const mockEntry = selectedId ? MOCK_PROCEDURE_STATES[selectedId]      : null;
   const sandbox   = selectedId ? SANDBOX_LUMINARIES.find(l => l.id === selectedId) : null;
@@ -1692,6 +1947,12 @@ function ProcedureReviewSection() {
 
   const { effects: boardEffects, activeBurns, onBurnDone, hasMarketEffect } =
     useBoardEffectSequencer(boardSteps, seqKey, slotRefs);
+
+  // When a pip is selected, override live animation effects with a static snapshot.
+  const displayEffects: SlotEffectMap =
+    scrubIndex !== null && boardSteps
+      ? computeSnapshotAt(boardSteps, scrubIndex)
+      : boardEffects;
 
   // Check if mock state has any market cards to display
   const hasAnyMarketCards = mockEntry
@@ -1706,6 +1967,7 @@ function ProcedureReviewSection() {
     setCurrentSteps(steps);
     setBoardSteps(steps);
     setAftermath(null);
+    setScrubIndex(null);   // clear any pinned step so live animation shows
     setProcKey(k => k + 1);
     setSeqKey(k => k + 1);
     setIsActive(true);
@@ -1752,6 +2014,7 @@ function ProcedureReviewSection() {
                 setCurrentSteps(null);
                 setBoardSteps(null);
                 setSeqKey(0);
+                setScrubIndex(null);
                 setEffectType('summon');
                 slotRefs.current.clear();
               }}
@@ -1947,9 +2210,104 @@ function ProcedureReviewSection() {
               {boardSteps !== null && (
                 <span className="text-[9px] font-mono text-muted-foreground/30">
                   {hasMarketEffect ? 'market targeting active' : 'no market card effects'}
+                  {scrubIndex !== null && (
+                    <span style={{ color: primaryColor, marginLeft: 8 }}>· scrub mode</span>
+                  )}
                 </span>
               )}
             </div>
+
+            {/* Step scrub bar — visible whenever steps have been resolved */}
+            {boardSteps !== null && boardSteps.length > 0 && (
+              <div
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'rgba(0,0,0,0.3)',
+                  border: `1px solid ${scrubIndex !== null ? `${primaryColor}44` : 'rgba(255,255,255,0.07)'}`,
+                  transition: 'border-color 0.2s',
+                }}
+              >
+                <StepScrubBar
+                  steps={boardSteps}
+                  activeIndex={scrubIndex}
+                  onScrub={i => setScrubIndex(prev => prev === i ? null : i)}
+                  primaryColor={primaryColor}
+                />
+
+                {/* Step inspector — partial aftermath up to the selected step */}
+                {scrubIndex !== null && (() => {
+                  const partialLines = describeAftermath(boardSteps.slice(0, scrubIndex + 1));
+                  const stepDesc = describeStep(boardSteps[scrubIndex]);
+                  return (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        paddingTop: 10,
+                        borderTop: `1px solid rgba(255,255,255,0.06)`,
+                      }}
+                    >
+                      {/* Step label */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontFamily: 'monospace',
+                            color: '#334155',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.07em',
+                          }}
+                        >
+                          step {scrubIndex + 1}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontFamily: 'monospace',
+                            color: primaryColor,
+                          }}
+                        >
+                          {stepDesc}
+                        </span>
+                      </div>
+
+                      {/* Partial aftermath */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            fontFamily: 'monospace',
+                            color: '#334155',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.07em',
+                          }}
+                        >
+                          aftermath so far
+                        </span>
+                      </div>
+                      {partialLines.length === 0 ? (
+                        <span
+                          style={{ fontSize: 10, fontFamily: 'monospace', color: '#334155', fontStyle: 'italic' }}
+                        >
+                          no scoreable events yet
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 16px' }}>
+                          {partialLines.map((line, i) => (
+                            <span
+                              key={i}
+                              style={{ fontSize: 10, fontFamily: 'monospace', color: line.color }}
+                            >
+                              {line.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {hasAnyMarketCards ? (
               <>
@@ -1958,23 +2316,27 @@ function ProcedureReviewSection() {
                     Press ▶ Play to animate board effects against the mock market.
                   </p>
                 )}
-                {boardSteps !== null && !hasMarketEffect && (
+                {boardSteps !== null && !hasMarketEffect && scrubIndex === null && (
                   <p className="text-[10px] font-mono text-muted-foreground/40 italic">
                     This effect targets player panels or decks — no card-level market effects.
                   </p>
                 )}
                 <MockMarketBoard
                   state={mockEntry.state}
-                  effects={boardEffects}
+                  effects={displayEffects}
                   slotRefs={slotRefs}
                 />
               </>
             ) : (
-              <p className="text-[10px] font-mono text-muted-foreground/35 italic">
-                {config.animationArchetype === 'scry' || config.animationArchetype === 'seeded'
-                  ? 'Deck scry / seed effect — targets deck tops, not face-up market cards.'
-                  : 'No market cards in mock state for this effect path.'}
-              </p>
+              <>
+                {boardSteps === null && (
+                  <p className="text-[10px] font-mono text-muted-foreground/35 italic">
+                    {config.animationArchetype === 'scry' || config.animationArchetype === 'seeded'
+                      ? 'Deck scry / seed effect — targets deck tops, not face-up market cards.'
+                      : 'No market cards in mock state for this effect path.'}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
