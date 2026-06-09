@@ -5121,6 +5121,7 @@ export default function GameBoard() {
               const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
               const isAffinityChange = entry.summary.startsWith('switched ');
               const isCancelled = entry.summary.startsWith('planned move voided');
+              const isBurned = entry.summary.startsWith('The First Hunger Assimilated') || /\bBurned\b/i.test(entry.summary);
               const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
               const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
               return (
@@ -5168,7 +5169,18 @@ export default function GameBoard() {
                       </span>
                     </>
                   ) : (
-                    <span className="text-foreground/80"> · {entry.summary}</span>
+                    <>
+                      <span className="text-foreground/80"> · {entry.summary}</span>
+                      {isBurned && (
+                        <span
+                          className="inline-flex items-center gap-0.5 ml-1.5 align-middle"
+                          title="Burned"
+                          style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)', borderRadius: 4, padding: '0 4px', fontSize: 9, lineHeight: '14px', color: '#F87171', verticalAlign: 'middle' }}
+                        >
+                          🔥 Burned
+                        </span>
+                      )}
+                    </>
                   )}
                   <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
                 </div>
@@ -7707,6 +7719,7 @@ export default function GameBoard() {
                     const logPlayer = state.players.find((pl) => pl.playerId === entry.playerId);
                     const isAffinityChange = entry.summary.startsWith('switched ');
                     const isCancelled = entry.summary.startsWith('planned move voided');
+                    const isBurned = entry.summary.startsWith('The First Hunger Assimilated') || /\bBurned\b/i.test(entry.summary);
                     const affinityLabel = isAffinityChange ? (entry.summary.split(' to ').pop() ?? '') : '';
                     const dotColor = AFFINITY_DOT_COLOR[affinityLabel] ?? '#888';
                     return (
@@ -7751,7 +7764,18 @@ export default function GameBoard() {
                               </span>
                             </>
                           ) : (
-                            <span className="text-foreground/80"> · {entry.summary}</span>
+                            <>
+                              <span className="text-foreground/80"> · {entry.summary}</span>
+                              {isBurned && (
+                                <span
+                                  className="inline-flex items-center gap-0.5 ml-1.5 align-middle"
+                                  title="Burned"
+                                  style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)', borderRadius: 4, padding: '0 4px', fontSize: 9, lineHeight: '14px', color: '#F87171', verticalAlign: 'middle' }}
+                                >
+                                  🔥 Burned
+                                </span>
+                              )}
+                            </>
                           )}
                           <span className="ml-1 text-[10px] text-muted-foreground/40">R{entry.turn}</span>
                         </div>
