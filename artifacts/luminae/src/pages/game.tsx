@@ -617,6 +617,10 @@ export default function GameBoard() {
   const [summonOverlays, setSummonOverlays] = useState<Array<{ id: string; lumId: string }>>([]);
   // Luminary currently undergoing a summon-flash animation (zoom + flash effect)
   const [flashLumId, setFlashLumId] = useState<string | null>(null);
+  // Market redraw / refill pulse — Set of slotKeys ("${tier}-${index}") currently showing the ↺ pulse
+  const [refillingSlots, setRefillingSlots] = useState<Set<string>>(new Set());
+  // Card IDs whose market-marker badge was just applied (drives the isNew pop animation)
+  const [newlyMarkedCardIds, setNewlyMarkedCardIds] = useState<Set<string>>(new Set());
   const prevStateForAnimRef = useRef<typeof state>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -1347,6 +1351,51 @@ export default function GameBoard() {
           filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
           transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
         });
+      }
+    }
+
+    // ── Market refill pulse — fires after BurnFlash completes ──────────────
+    // When burn entries were resolved above, schedule the ↺ refill pulse on
+    // those slots ~1520 ms later (320 ms badge + 1200 ms BurnFlash).
+    // Uses a local closure so we can capture burnEntries without repeating
+    // the detection logic.
+    {
+      const prevBurned2 = new Set<string>(prev.burnPile ?? []);
+      const newBurnedIds2 = (state.burnPile ?? []).filter(id => !prevBurned2.has(id));
+      if (newBurnedIds2.length > 0) {
+        const prevTiers2 = [
+          { tier: 1 as const, cards: prev.marketTier1 },
+          { tier: 2 as const, cards: prev.marketTier2 },
+          { tier: 3 as const, cards: prev.marketTier3 },
+        ] as const;
+        const slotKeys: string[] = [];
+        for (const burnedId of newBurnedIds2) {
+          for (const { tier, cards } of prevTiers2) {
+            for (let i = 0; i < cards.length; i++) {
+              if (cards[i]?.id === burnedId) {
+                slotKeys.push(`${tier}-${i}`);
+                break;
+              }
+            }
+          }
+        }
+        if (slotKeys.length > 0) {
+          setTimeout(() => {
+            setRefillingSlots(new Set(slotKeys));
+            setTimeout(() => setRefillingSlots(new Set()), 700);
+          }, 1520);
+        }
+      }
+    }
+
+    // ── Newly applied market markers (condemned badge pop animation) ────────
+    {
+      const prevMarkers = prev.marketMarkers ?? {};
+      const nextMarkers = state.marketMarkers ?? {};
+      const newlyMarked = Object.keys(nextMarkers).filter(id => !prevMarkers[id]);
+      if (newlyMarked.length > 0) {
+        setNewlyMarkedCardIds(new Set(newlyMarked));
+        setTimeout(() => setNewlyMarkedCardIds(new Set()), 700);
       }
     }
 
@@ -4064,7 +4113,7 @@ export default function GameBoard() {
                       {state?.marketMarkers?.[c.id] && (
                         <>
                           <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} />
                         </>
                       )}
                     </div>
@@ -4108,9 +4157,24 @@ export default function GameBoard() {
                       {state?.marketMarkers?.[c.id] && (
                         <>
                           <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} />
                         </>
                       )}
+                      {/* Refill pulse — opacity-only to respect overflow-hidden container */}
+                      <AnimatePresence>
+                        {refillingSlots.has(slotKey) && (
+                          <motion.div
+                            key="refill"
+                            className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl"
+                            style={{ fontSize: 18, color: '#4ade80', zIndex: 25 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: [0, 1, 0.85, 0] }}
+                            transition={{ duration: 0.7, ease: 'easeOut' }}
+                          >
+                            ↺
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                       {/* Native-resolution info overlay — sized for the 56×80 chip */}
                       <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-1">
                         {/* Top row: lumen badge (left) + bonus gem badge (right) */}
@@ -4187,6 +4251,28 @@ export default function GameBoard() {
                       />
                     )}
                     {isQueued && <QueuedOverlay />}
+                    {/* Keyword overlay + badge — steady-state (non-flipping) cards */}
+                    {state?.marketMarkers?.[c.id] && (
+                      <>
+                        <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} />
+                      </>
+                    )}
+                    {/* Refill pulse after burn-triggered market redraw */}
+                    <AnimatePresence>
+                      {refillingSlots.has(slotKey) && (
+                        <motion.div
+                          key="refill"
+                          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl"
+                          style={{ fontSize: 28, color: '#4ade80', zIndex: 25 }}
+                          initial={{ opacity: 0, scale: 0.7 }}
+                          animate={{ opacity: [0, 1, 0.85, 0], scale: [0.7, 1.1, 1.05, 0.9] }}
+                          transition={{ duration: 0.7, ease: 'easeOut' }}
+                        >
+                          ↺
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <div
                       className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/55 backdrop-blur-sm px-1 py-0.5 transition-opacity duration-500"
                       style={{ opacity: cardDetailDiscovered ? 0 : 1 }}
