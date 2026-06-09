@@ -1,0 +1,101 @@
+Apply a light visual polish pass to active Luminary animation configs.
+
+Goal:
+Each Luminary should feel distinct while still using shared animation primitives:
+- luminaryPulse
+- targetClaim
+- KeywordEvents
+- Burn
+- Condemned
+- Forgotten
+- Nullified
+- Seeded
+- scoreChange
+- crystalReturn
+- deckScry
+- pendingAction
+- marketRedraw
+
+Do not create bespoke animation systems.
+Do not change mechanics, costs, scoring, turn order, tutorial order, or card data.
+
+Polish rules:
+- Keep source, target, and result readable.
+- Keep animations brief.
+- Respect reduced-motion mode.
+- Respect skip/fast-forward behavior.
+- Do not reintroduce shrink-in/collapse-in generic activation.
+- Use each Luminary’s existing color palette.
+- Use flourish as overlay/motion flavor only.
+
+Apply these identity flourishes:
+
+1. Red Moth
+- Red wing-shadow sweeps over targeted market cards.
+- Burn fracture should feel like the card is split into before/after.
+
+2. Tide Architect
+- Deck tops ripple like tidewater.
+- Continuum-biased cards surface through pale blue-white shimmer.
+
+3. Verdant Oracle
+- Persistent Verdance aura should feel like quiet root growth.
+- Avoid explosive growth; it should feel patient and living.
+
+4. Void Warden
+- Board-wide dark ripple should feel silent and watchful.
+- Score loss should feel like Eminence being swallowed by distance.
+
+5. Concordance Mandala
+- On threshold trigger, Radiance artifacts briefly align into geometric mandala light.
+- Once-used marker should be small and elegant.
+
+6. Phoenix Paradox
+- Burned cards leave a blue-red recurrence afterimage.
+- Surviving Flare/Continuum card should lock into place with a paradox pulse.
+
+7. Catalyst Bloom
+- Prior Burn cinders become green growth sparks.
+- Do not replay all prior Burns unless necessary.
+
+8. Iron Harbinger
+- Hammer-shadow falls over Tier III row before Burn.
+- Keep mass Burn readable and not too slow.
+
+9. The Hourless Compass
+- Compass needle spins once.
+- A broken hour-ring passes over the market.
+- Forgotten marker fades Eminence icons into blue-black haze.
+
+10. Seed Beyond Seasons
+- Blue-green seed glyphs plant onto deck tops.
+- When a seeded card appears, the seed marker should quietly wake.
+
+11. Glass Orchard
+- Replication shimmer should feel like glass fruit refracting the copied Artifact.
+- Keep copied-card movement clear.
+
+12. Pale Merchant
+- Pale scales briefly appear over overloaded crystal pools.
+- Returned crystals should visibly move back to bank.
+
+13. Ember Sovereign
+- Condemned cards receive violet-orange mandate seals.
+- Delayed Burn should feel like the sentence coming due.
+
+14. First Hunger
+- Assimilate replacement action should feel predatory but not like a bonus action.
+- On use, selected Artifact Burns using shared Burn animation with hunger-colored accent fragments.
+- Keep “Burn” terminology in UI/logs.
+
+15. Null Sovereign
+- Nullified cards receive cold black-white domain seals.
+- Eminence icons should feel silenced, not destroyed.
+
+Acceptance criteria:
+- All Luminaries feel more distinct.
+- All animations still use shared primitives.
+- Reduced-motion and skip behavior still work.
+- Source/target/result clarity is preserved.
+- No mechanics are changed.
+- Existing tests/typecheck pass.
