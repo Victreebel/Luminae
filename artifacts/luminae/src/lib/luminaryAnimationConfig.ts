@@ -89,7 +89,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
       { type: 'marketRedraw', slotIds: [] },
     ],
-    flavorLine: 'Affected cards split along a fracture line — before and after the rupture both briefly visible.',
+    flavorLine: 'A red wing-shadow sweeps across Tier II and III before the rupture fires — targeted cards split along a fracture line, before and after the burn both briefly visible.',
   },
 
   // 2. Tide Architect — The Observer Effect
@@ -104,10 +104,10 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     effectName: 'The Observer Effect',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_tide' },
-      { type: 'deckScry', tierIds: ['tier2', 'tier3'] },
+      { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'sapphire' },
       { type: 'marketRedraw', slotIds: [] },
     ],
-    flavorLine: 'Market reorders with quiet inevitability; the tide does not announce itself.',
+    flavorLine: 'Continuum-affinity cards surface through pale blue-white shimmer as the tide looks ahead; the market reorders with quiet inevitability, unhurried.',
   },
 
   // 3. Verdant Oracle — Early Bloom
@@ -124,7 +124,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_verdant' },
     ],
-    flavorLine: 'Roots quietly extend around purchase affordances; the bonus begins the following turn.',
+    flavorLine: 'A living root-pulse extends quietly around purchase affordances — patient and never explosive; the affinity bonus takes hold the following turn.',
   },
 
   // 4. Void Warden — Oblivion
@@ -142,7 +142,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'targetClaim', targetIds: [] },
       { type: 'scoreChange', playerIds: [], amount: -4 },
     ],
-    flavorLine: 'Eminence falls as if something vast and patient has noticed every counter at once.',
+    flavorLine: 'A silent dark ripple spreads board-wide — the warden watches from a distance, and Eminence counters begin falling as if swallowed by the emptiness between stars.',
   },
 
   // 5. Concordance Mandala — Perfect Coherence
@@ -160,7 +160,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'targetClaim', targetIds: [] },
       { type: 'scoreChange', playerIds: [], amount: 2 },
     ],
-    flavorLine: 'Order finds its payoff — pattern resolves into coherence, and the owner gains the measure of it.',
+    flavorLine: 'Radiance artifacts briefly align into geometric mandala light before the coherence payoff resolves — the once-used marker appears small and elegant at the center.',
   },
 
   // 6. Phoenix Paradox — Ash-Seeking Recurrence
@@ -179,7 +179,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
       { type: 'marketRedraw', slotIds: [] },
     ],
-    flavorLine: 'Burned cards leave an afterimage; the surviving Flare or Continuum card locks into place last.',
+    flavorLine: 'Non-Flare/Continuum cards burn in a blue-red afterimage flash; surviving Flare and Continuum cards lock into place last with a paradox pulse before the market refreshes.',
   },
 
   // 7. Catalyst Bloom — Aftergrowth
@@ -198,7 +198,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       // amount is dynamic (burnPile.length at payout time); 0 is a template placeholder
       { type: 'scoreChange', playerIds: [], amount: 0 },
     ],
-    flavorLine: 'Each prior burn pays out as growth; the bloom is proportional to the wreckage that preceded it.',
+    flavorLine: 'Prior burn cinders transform into green growth sparks — the owner gains Eminence proportional to the accumulated burn pile without replaying individual burns.',
   },
 
   // 8. Iron Harbinger — Impact Extinction
@@ -217,7 +217,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
       { type: 'marketRedraw', slotIds: [] },
     ],
-    flavorLine: 'The Tier III row falls silent under a single impact, then burns. No survivors.',
+    flavorLine: 'A hammer-shadow descends across the Tier III row before the Burn fires — every card falls in the same moment; the mass extinction is fast and unambiguous.',
   },
 
   // 9. The Hourless Compass — The Forgotten Hour
@@ -232,11 +232,12 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     effectName: 'The Forgotten Hour',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_compass' },
+      { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
       { type: 'targetClaim', targetIds: [] },
       { type: 'residue', keyword: 'forgotten', targetIds: [] },
     ],
     residueType: 'forgotten',
-    flavorLine: 'Eminence icons become hazy and unreadable — not destroyed, just misplaced in time.',
+    flavorLine: 'A compass-needle sweep scans all tiers before the broken hour-ring descends — Eminence icons on every market card fade into blue-black haze, not destroyed, just lost in time.',
   },
 
   // 10. Seed Beyond Seasons — Avatar Seeds
@@ -255,7 +256,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'seeded', targetIds: [] },
     ],
     residueType: 'seeded',
-    flavorLine: "Tomorrow's cards are marked now; seeded badges appear when they surface into the market.",
+    flavorLine: 'Blue-green seed glyphs plant silently onto deck tops across all tiers; when a seeded card surfaces into the market, the seed marker quietly wakes.',
   },
 
   // 11. Glass Orchard — Perfect Replication
@@ -273,7 +274,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'luminaryPulse', luminaryId: 'lum_orchard' },
       { type: 'targetClaim', targetIds: [] },
     ],
-    flavorLine: 'Glass fruit refracts the copied artifact; the copy enters the collection silently, without ceremony.',
+    flavorLine: 'A glass-fruit refraction shimmer pulses over the copied Artifact before the copy enters the collection — the movement is clear and unhurried.',
   },
 
   // 12. Pale Merchant — Balance Due
@@ -291,7 +292,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'targetClaim', targetIds: [] },
       { type: 'crystalReturn', playerIds: [] },
     ],
-    flavorLine: 'Scales appear over excess crystals, then the debt is paid back to the bank — cleanly, without negotiation.',
+    flavorLine: 'Pale scales briefly appear over overloaded crystal pools; excess crystals visibly return to the bank — the debt is settled cleanly, without negotiation.',
   },
 
   // 13. Ember Sovereign — Cinder Mandate
@@ -312,7 +313,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'condemned', targetIds: [] },
     ],
     residueType: 'condemned',
-    flavorLine: 'The mandate seal brands doomed cards at summon; on the appointed turn, the debt is collected without appeal.',
+    flavorLine: 'A violet-orange mandate seal brands doomed cards at summon — the condemned mark pulses with deferred menace; on the appointed turn, the sentence arrives without appeal.',
   },
 
   // 14. First Hunger — Assimilation
@@ -330,7 +331,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'targetClaim', targetIds: [] },
       { type: 'pendingAction', action: 'assimilate', ownerId: '' },
     ],
-    flavorLine: 'Normal core actions recede — the hunger offers one replacement choice. Burn, take the Eminence, and the market refreshes.',
+    flavorLine: 'The assimilate replacement feels predatory, not opportunistic — on use, the selected Artifact burns with hunger-colored accent fragments under the canonical Burn animation; the core action is consumed, not supplemented.',
   },
 
   // 15. Null Sovereign — Black Domain
@@ -349,7 +350,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'nullified', targetIds: [] },
     ],
     residueType: 'nullified',
-    flavorLine: 'Eminence icons fall silent — not burned, not forgotten, simply nullified under cold authority.',
+    flavorLine: 'Cold black-white domain seals descend onto Tier III cards — Eminence icons feel silenced, not destroyed; the authority is absolute and arrives without ceremony.',
   },
 
 };

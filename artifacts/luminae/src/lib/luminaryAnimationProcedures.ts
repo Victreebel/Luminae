@@ -103,11 +103,11 @@ function resolveMoth(s: GameState): AnimationTimelineStep[] {
 }
 
 // 2. Tide Architect / The Observer Effect (lum_tide)
-//    luminaryPulse → deckScry Tier II/III → marketRedraw
+//    luminaryPulse → deckScry Tier II/III (sapphire bias = Continuum cards shimmer first) → marketRedraw
 function resolveTide(): AnimationTimelineStep[] {
   return [
     pulse('lum_tide'),
-    { type: 'deckScry', tierIds: ['tier2', 'tier3'] },
+    { type: 'deckScry', tierIds: ['tier2', 'tier3'], affinityBias: 'sapphire' },
     { type: 'marketRedraw', slotIds: [] },
   ];
 }
@@ -146,15 +146,23 @@ function resolveRadiant(s: GameState, ownerId: string): AnimationTimelineStep[] 
 }
 
 // 6. Phoenix Paradox / Ash-Seeking Recurrence (lum_astral)
-//    luminaryPulse → targetClaim Tier III+II → burn non-Flare/Continuum → marketRedraw
+//    luminaryPulse → targetClaim Tier III+II → burn non-Flare/Continuum
+//    → paradox pulse on surviving ruby/sapphire cards → marketRedraw
+//    The second targetClaim (no keyword) gives the "surviving card locks into place last"
+//    identity beat — distinguishes this from Red Moth's full-row burn.
 function resolveAstral(s: GameState): AnimationTimelineStep[] {
   const combined = [...t3(s), ...t2(s)];
   const allIds = combined.map(c => c.id);
   const burnIds = excludeBonus(combined, ['ruby', 'sapphire']).map(c => c.id);
+  const survivorIds = byBonus(combined, ['ruby', 'sapphire']).map(c => c.id);
   return [
     pulse('lum_astral'),
     { type: 'targetClaim', targetIds: allIds, keyword: 'burn' },
     { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: burnIds }] },
+    // Paradox pulse: surviving Flare/Continuum cards lock into place last
+    ...(survivorIds.length > 0
+      ? [{ type: 'targetClaim' as const, targetIds: survivorIds }]
+      : []),
     { type: 'marketRedraw', slotIds: [] },
   ];
 }
@@ -174,7 +182,9 @@ function resolveBloom(s: GameState, ownerId: string): AnimationTimelineStep[] {
 }
 
 // 8. Iron Harbinger / Impact Extinction (lum_forge)
-//    luminaryPulse → targetClaim all face-up Tier III → burn all → marketRedraw
+//    luminaryPulse → targetClaim all face-up Tier III (hammer-shadow, keyword: burn pre-tint)
+//    → burn all → marketRedraw
+//    The burn pre-tint on targetClaim produces the "hammer-shadow falls before the strike" beat.
 function resolveForge(s: GameState): AnimationTimelineStep[] {
   const targets = t3Ids(s);
   return [
@@ -186,11 +196,15 @@ function resolveForge(s: GameState): AnimationTimelineStep[] {
 }
 
 // 9. lum_compass / The Forgotten Hour
-//    luminaryPulse → targetClaim all face-up market → forgotten residue → Eminence muted
+//    luminaryPulse → deckScry all tiers (compass-needle sweep, hour-ring visual)
+//    → targetClaim all face-up market → forgotten residue → Eminence muted
+//    The deckScry step gives the "needle spins / broken hour-ring passes over the market"
+//    beat before the Forgotten residue lands, making the suppression feel earned.
 function resolveCompass(s: GameState): AnimationTimelineStep[] {
   const targets = allMarketIds(s);
   return [
     pulse('lum_compass'),
+    { type: 'deckScry', tierIds: ['tier1', 'tier2', 'tier3'] },
     { type: 'targetClaim', targetIds: targets },
     residue('forgotten', targets),
   ];
