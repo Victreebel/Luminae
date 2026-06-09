@@ -38,11 +38,12 @@
  * janeway.replit.dev.  That path has historically had a shorter (~25-30 s)
  * fixed WS lease than the local proxy.  This test CANNOT reach the external
  * proxy from inside the container (Playwright's browser also connects via
- * localhost:80 when run headless inside the Repl).  If REPLIT_DEV_DOMAIN is
- * set, a note is printed after the test so developers know the external path
- * was not verified by this run.  The server-side ws.ping() protocol PING
- * frames (added in websocket.ts) are the keepalive mechanism that targets the
- * external proxy; the localhost:80 test validates the frame interval is firing.
+ * localhost:80 when run headless inside the Repl).  When REPLIT_DEV_DOMAIN is
+ * set, a console.info note is emitted at test end so developers know the
+ * external path was not verified by this run.  The server-side ws.ping()
+ * protocol PING frames (added in websocket.ts) are the keepalive mechanism
+ * that targets the external proxy; the localhost:80 test validates the frame
+ * interval is firing.
  *
  * Run:
  *   pnpm --filter @workspace/scripts run test:ws-keepalive
@@ -284,4 +285,19 @@ test('game and HMR WebSockets stay connected for 60 s with no idle reconnect', a
       'and the pong handler in artifacts/api-server/src/lib/websocket.ts.',
     ].join('\n'),
   ).toBe(0);
+
+  // ── External proxy coverage note ──────────────────────────────────────────
+  // When running inside the Replit container, REPLIT_DEV_DOMAIN is set but
+  // Playwright's headless browser still routes through localhost:80 — it cannot
+  // reach the external janeway.replit.dev proxy from inside the container.
+  // Emit a runtime note so CI logs and developers know the external path was
+  // not verified by this run.  The server-side ws.ping() protocol PINGs target
+  // that proxy; this localhost:80 run confirms the keepalive interval is firing.
+  if (process.env['REPLIT_DEV_DOMAIN']) {
+    console.info(
+      '[ws-keepalive] NOTE: REPLIT_DEV_DOMAIN is set, but Playwright connects via localhost:80 ' +
+      '(same as CI). The external janeway.replit.dev proxy path was NOT verified by this run. ' +
+      'The server-side ws.ping() frames in websocket.ts are the keepalive for that path.',
+    );
+  }
 });
