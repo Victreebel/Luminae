@@ -1025,6 +1025,10 @@ export default function GameBoard() {
 
   useEffect(() => {
     setCoreActionSubmitted(false);
+    setSelectedCrystals({});
+    setCrystalHistory([]);
+    setPrePromotionHistory(null);
+    setActionMode('none');
   }, [state?.currentPlayerIndex]);
 
   // v0.8 — which Luminaries currently have a pending delayed effect.
