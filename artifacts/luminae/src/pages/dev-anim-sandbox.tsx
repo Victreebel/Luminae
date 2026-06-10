@@ -1143,6 +1143,7 @@ function BurnFlashPreview() {
               { label: 'bottom ignite',  ms: 300 },
               { label: 'upward burn',    ms: 1400 },
               { label: 'top sparks',     ms: 150 },
+              { label: 'smoke',          ms: 250 },
               { label: 'scorch fade',    ms: 400 },
             ]}
             playing={playing}

@@ -365,6 +365,27 @@ const ASH_ARCS = [
   { dx:  28, dy: -92, delay: 1.76, size: 4 },
 ] as const;
 
+// Flame tongues — vertical flickering flame columns riding the flame edge.
+const FLAME_TONGUES = [
+  { xFrac: 0.15, h: 24, w: 10, delay: 0.30, dur: 0.28, rise: -18 },
+  { xFrac: 0.35, h: 32, w: 12, delay: 0.36, dur: 0.32, rise: -26 },
+  { xFrac: 0.55, h: 28, w: 11, delay: 0.32, dur: 0.30, rise: -22 },
+  { xFrac: 0.75, h: 22, w:  9, delay: 0.38, dur: 0.26, rise: -16 },
+  { xFrac: 0.50, h: 36, w: 14, delay: 0.42, dur: 0.34, rise: -30 },
+  { xFrac: 0.25, h: 20, w:  8, delay: 0.46, dur: 0.24, rise: -14 },
+  { xFrac: 0.65, h: 26, w: 10, delay: 0.50, dur: 0.28, rise: -20 },
+  { xFrac: 0.85, h: 18, w:  8, delay: 0.54, dur: 0.22, rise: -12 },
+] as const;
+
+// Smoke wisps — rising grey clouds after the burn clears.
+const SMOKE_WISPS = [
+  { xFrac: 0.20, yFrac: 0.95, w: 28, h: 18, dur: 0.55, delay: 1.40, rise: -50, drift:  8 },
+  { xFrac: 0.45, yFrac: 0.90, w: 34, h: 22, dur: 0.50, delay: 1.45, rise: -60, drift: -6 },
+  { xFrac: 0.70, yFrac: 0.92, w: 26, h: 16, dur: 0.45, delay: 1.50, rise: -45, drift: 10 },
+  { xFrac: 0.55, yFrac: 0.85, w: 30, h: 20, dur: 0.40, delay: 1.55, rise: -55, drift: -4 },
+  { xFrac: 0.35, yFrac: 0.88, w: 22, h: 14, dur: 0.35, delay: 1.60, rise: -40, drift:  6 },
+] as const;
+
 export function BurnFlash({
   slotRect,
   onDone,
@@ -461,6 +482,42 @@ export function BurnFlash({
         transition={{ duration: BURN_DUR_S + 0.04, delay: BURN_START_S - 0.02, ease: 'linear', times: [0, 0.04, 0.96, 1] }}
       />
 
+      {/* ── Phase 3b: Flame tongues — flickering vertical fire columns ── */}
+      {FLAME_TONGUES.map((f, i) => {
+        const startX = slotRect.left + slotRect.width * f.xFrac - f.w / 2;
+        const startY = slotRect.bottom - f.h;
+        return (
+          <motion.div
+            key={`flame-${i}`}
+            style={{
+              position: 'absolute',
+              left: startX,
+              top: startY,
+              width: f.w,
+              height: f.h,
+              borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+              background: `linear-gradient(to top, rgba(255,34,0,0.85) 0%, rgba(255,136,0,0.6) 45%, rgba(255,238,68,0.25) 75%, transparent 100%)`,
+              transformOrigin: 'bottom center',
+              mixBlendMode: 'screen',
+              pointerEvents: 'none',
+            }}
+            initial={{ scaleY: 0.3, opacity: 0, scaleX: 0.6 }}
+            animate={{
+              scaleY: [0.3, 1.0, 0.7, 1.1, 0.5, 0.8, 0.4],
+              scaleX: [0.6, 0.9, 1.1, 0.8, 1.0, 0.7, 0.5],
+              opacity: [0, 0.85, 0.6, 0.9, 0.5, 0.7, 0],
+              y: [0, f.rise * 0.3, f.rise * 0.6, f.rise * 0.9, f.rise, f.rise - 4, f.rise - 8],
+            }}
+            transition={{
+              duration: f.dur,
+              delay: f.delay,
+              ease: 'easeInOut',
+              times: [0, 0.15, 0.35, 0.50, 0.70, 0.85, 1],
+            }}
+          />
+        );
+      })}
+
       {/* ── Phase 3: Cinders — spawn at the flame front position and rise ── */}
       {CINDERS.map((c, i) => {
         const delay = BURN_START_S + (1 - c.yFrac) * BURN_DUR_S;
@@ -521,6 +578,42 @@ export function BurnFlash({
           transition={{ duration: 0.40, delay: f.delay, ease: [0.25, 0.46, 0.45, 0.94] }}
         />
       ))}
+
+      {/* ── Phase 6: Smoke wisps — rising grey clouds after the burn ── */}
+      {SMOKE_WISPS.map((s, i) => {
+        const startX = slotRect.left + slotRect.width * s.xFrac - s.w / 2;
+        const startY = slotRect.top + slotRect.height * s.yFrac;
+        return (
+          <motion.div
+            key={`smoke-${i}`}
+            style={{
+              position: 'absolute',
+              left: startX,
+              top: startY,
+              width: s.w,
+              height: s.h,
+              borderRadius: '50%',
+              background: `radial-gradient(ellipse at 50% 50%, rgba(80,80,80,0.35) 0%, rgba(60,60,60,0.20) 50%, transparent 80%)`,
+              filter: 'blur(3px)',
+              transformOrigin: 'center bottom',
+              pointerEvents: 'none',
+            }}
+            initial={{ opacity: 0, scale: 0.6, y: 0, x: 0 }}
+            animate={{
+              opacity: [0, 0.35, 0.25, 0.15, 0],
+              scale: [0.6, 1.0, 1.3, 1.6, 2.0],
+              y: [0, s.rise * 0.3, s.rise * 0.6, s.rise * 0.85, s.rise],
+              x: [0, s.drift * 0.3, s.drift * 0.6, s.drift * 0.85, s.drift],
+            }}
+            transition={{
+              duration: s.dur,
+              delay: s.delay,
+              ease: 'easeOut',
+              times: [0, 0.20, 0.45, 0.70, 1],
+            }}
+          />
+        );
+      })}
 
       {/* ── Phase 7: Scorch residue — brief dark char on the empty slot ── */}
       <motion.div
