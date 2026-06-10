@@ -107,15 +107,21 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _
         transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
         style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)` }}
       />
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: excited ? 4.5 : 11, repeat: Infinity, ease: "linear" }}
-        style={{ position: "absolute", inset: 0, borderRadius: "50%", background: midBg, maskImage: mask, WebkitMaskImage: mask }}
+      <div
+        style={{
+          position: "absolute", inset: 0, borderRadius: "50%", background: midBg, maskImage: mask, WebkitMaskImage: mask,
+          animation: "tut-orb-cw linear infinite",
+          animationDuration: `${excited ? 4.5 : 11}s`,
+          animationPlayState: prefersReducedMotion ? "paused" : "running",
+        }}
       />
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: excited ? 7 : 17, repeat: Infinity, ease: "linear" }}
-        style={{ position: "absolute", inset: "13%", borderRadius: "50%", background: innerBg, maskImage: mask, WebkitMaskImage: mask }}
+      <div
+        style={{
+          position: "absolute", inset: "13%", borderRadius: "50%", background: innerBg, maskImage: mask, WebkitMaskImage: mask,
+          animation: "tut-orb-ccw linear infinite",
+          animationDuration: `${excited ? 7 : 17}s`,
+          animationPlayState: prefersReducedMotion ? "paused" : "running",
+        }}
       />
       <div style={{ position: "absolute", inset: "30%", borderRadius: "50%",
         background: muted
@@ -2251,6 +2257,20 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
   const affKeys = AFFINITY_SEQ_KEYS;
   const affinityNames = useMemo(() => AFFINITY_SEQ_KEYS.map(k => GEM_META[k].name), []);
 
+  // Stable random values for the background star field — prevents framer-motion
+  // from restarting animations on every re-render due to new Math.random() calls.
+  const bgStars = useMemo(() =>
+    Array.from({ length: 30 }, () => ({
+      w: Math.random() * 2 + 1,
+      h: Math.random() * 2 + 1,
+      left: `${(Math.random() * 100).toFixed(1)}%`,
+      top:  `${(Math.random() * 100).toFixed(1)}%`,
+      opacity: Math.random() * 0.5 + 0.1,
+      duration: Math.random() * 4 + 2,
+      delay: Math.random() * 3,
+    })),
+  []);
+
   const SKIP_CINEMATIC_IDS = ["b4_shatter", "b5_affinities", "b5b_affinity_tokens", "b5c_architect_assembly"];
   // Pre-shatter dialogue beats that can also be skipped — excludes b3b_farewell ("take me home" branch)
   const SKIP_PRE_SHATTER_IDS = ["b0_contact", "b1_locate", "b2_lumii_intro", "b3_architect", "b3c_border"];
@@ -2563,19 +2583,19 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       {/* Subtle star field for early beats */}
       {s.beat <= 4 && (
         <div className="absolute inset-0 pointer-events-none">
-          {[...Array(30)].map((_, i) => (
+          {bgStars.map((star, i) => (
             <motion.div
               key={i}
               className="absolute rounded-full bg-white"
               style={{
-                width: Math.random() * 2 + 1,
-                height: Math.random() * 2 + 1,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                opacity: Math.random() * 0.5 + 0.1,
+                width: star.w,
+                height: star.h,
+                left: star.left,
+                top: star.top,
+                opacity: star.opacity,
               }}
               animate={{ opacity: [0.1, 0.6, 0.1] }}
-              transition={{ duration: Math.random() * 4 + 2, repeat: Infinity, delay: Math.random() * 3 }}
+              transition={{ duration: star.duration, repeat: Infinity, delay: star.delay }}
             />
           ))}
         </div>

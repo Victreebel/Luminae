@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Gavel, Check, Flame } from 'lucide-react';
 import { CipherSigil } from '@/components/CipherApertureAnimation';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ── Shared geometry ───────────────────────────────────────────────────────────
 const CHAMFER = 12;
@@ -144,6 +145,7 @@ export function ForgeButton({
   label, subtitle = 'Manifest Artifact',
   confirmGlow = '#f59e0b', darkText, isPlan,
 }: ForgeButtonProps) {
+  const isMobile  = useIsMobile();
   const nubColor  = isPending ? `${confirmGlow}ee` : 'rgba(208,160,34,0.92)';
   const diaColor  = isPending ? `${confirmGlow}ff` : 'rgba(228,180,42,0.97)';
   const nubGlow   = isPending
@@ -171,7 +173,7 @@ export function ForgeButton({
       }}
       animate={isPending ? {
         boxShadow: [FORGE_PENDING_DIM, FORGE_PENDING_BRIGHT],
-        filter: [FORGE_FILTER_PEND_DIM, FORGE_FILTER_PEND_BRIGHT],
+        filter: isMobile ? FORGE_FILTER_PEND_DIM : [FORGE_FILTER_PEND_DIM, FORGE_FILTER_PEND_BRIGHT],
         y: 1,
       } : {
         boxShadow: FORGE_INSET_IDLE,
@@ -189,7 +191,7 @@ export function ForgeButton({
       }}
       transition={isPending ? {
         boxShadow: { duration: 1.15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
-        filter:    { duration: 1.15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        filter:    isMobile ? { duration: 0.20 } : { duration: 1.15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         y:         { duration: 0.12 },
       } : {
         boxShadow: { duration: 0.20 },
@@ -382,6 +384,7 @@ export function EncryptButton({
   onClick, disabled, isPending, isSent,
   label, subtitle = 'Reserve Pattern', sigilId = 9001, isPlan,
 }: EncryptButtonProps) {
+  const isMobile = useIsMobile();
   return (
     <motion.button
       type="button"
@@ -400,7 +403,7 @@ export function EncryptButton({
       }}
       animate={isPending ? {
         boxShadow: [ENCRYPT_PENDING_DIM, ENCRYPT_PENDING_BRIGHT],
-        filter: [ENCRYPT_FILTER_PEND_DIM, ENCRYPT_FILTER_PEND_BRIGHT],
+        filter: isMobile ? ENCRYPT_FILTER_PEND_DIM : [ENCRYPT_FILTER_PEND_DIM, ENCRYPT_FILTER_PEND_BRIGHT],
         y: 1,
       } : {
         boxShadow: ENCRYPT_INSET_IDLE,
@@ -418,7 +421,7 @@ export function EncryptButton({
       }}
       transition={isPending ? {
         boxShadow: { duration: 1.30, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
-        filter:    { duration: 1.30, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        filter:    isMobile ? { duration: 0.20 } : { duration: 1.30, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         y:         { duration: 0.12 },
       } : {
         boxShadow: { duration: 0.20 },
@@ -619,6 +622,7 @@ export function AssimilateButton({
   label, subtitle = 'Burn Artifact',
   eminenceReward,
 }: AssimilateButtonProps) {
+  const isMobile = useIsMobile();
   const nubColor = isPending ? 'rgba(240,90,50,0.95)' : 'rgba(195,40,18,0.88)';
   const diaColor = isPending ? 'rgba(255,100,60,1.00)' : 'rgba(218,52,24,0.95)';
   const nubGlow  = isPending ? '0 0 8px rgba(245,80,40,0.90)' : '0 0 5px rgba(220,48,18,0.50)';
@@ -644,7 +648,7 @@ export function AssimilateButton({
       }}
       animate={isPending ? {
         boxShadow: [ASSIM_PENDING_DIM, ASSIM_PENDING_BRIGHT],
-        filter: [ASSIM_FILTER_PEND_DIM, ASSIM_FILTER_PEND_BRIGHT],
+        filter: isMobile ? ASSIM_FILTER_PEND_DIM : [ASSIM_FILTER_PEND_DIM, ASSIM_FILTER_PEND_BRIGHT],
         y: 1,
       } : {
         boxShadow: ASSIM_INSET_IDLE,
@@ -662,7 +666,7 @@ export function AssimilateButton({
       }}
       transition={isPending ? {
         boxShadow: { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
-        filter:    { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        filter:    isMobile ? { duration: 0.20 } : { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         y:         { duration: 0.12 },
       } : {
         boxShadow: { duration: 0.20 },

@@ -1,6 +1,7 @@
 // @refresh reset
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,7 @@ export function AuraExpansion({
   primaryColor: string;
   visible: boolean;
 }) {
+  const isMobile = useIsMobile();
   const colors = affinities.slice(0, 3).map(a => GEM_COLORS[a] ?? primaryColor);
   const c1 = colors[0] ?? primaryColor;
   const c2 = colors[1] ?? c1;
@@ -141,13 +143,13 @@ export function AuraExpansion({
       <motion.div
         style={{
           position: 'absolute',
-          width: '140vmin',
-          height: '140vmin',
+          width: isMobile ? '100vmin' : '140vmin',
+          height: isMobile ? '100vmin' : '140vmin',
           background: `radial-gradient(ellipse at center,
             ${c1}10 0%,
             ${c2}08 38%,
             transparent 62%)`,
-          filter: 'blur(24px)',
+          filter: isMobile ? undefined : 'blur(24px)',
         }}
         initial={{ scale: 0.3, opacity: 0 }}
         animate={{
@@ -170,7 +172,7 @@ export function AuraExpansion({
             ${c1}30 0%,
             ${c1}14 44%,
             transparent 70%)`,
-          filter: 'blur(18px)',
+          filter: isMobile ? undefined : 'blur(18px)',
         }}
         initial={{ scale: 0.2, opacity: 0 }}
         animate={{
@@ -199,6 +201,7 @@ export function TargetBadge({
   target: LuminaryEffectTarget;
   isLingering: boolean;
 }) {
+  const isMobile = useIsMobile();
   const conf = TONE_CONFIG[tone];
   return (
     <motion.div
@@ -211,7 +214,7 @@ export function TargetBadge({
         background: `${conf.snapColor}18`,
         border: `1px solid ${conf.snapColor}44`,
         color: conf.snapColor,
-        backdropFilter: 'blur(4px)',
+        backdropFilter: isMobile ? undefined : 'blur(4px)',
       }}
       // Drifts in from entity (above), expands outward toward board (below).
       // No scale-shrink on entry or exit — only directional flow.

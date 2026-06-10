@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { KardashevTier, AffinityPalette } from '@/lib/kardashev';
 import { getCivilizationName, getSecondaryAffinityColor } from '@/lib/kardashev';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ── Seeded PRNG ──────────────────────────────────────────────────────────────
 function seededRng(seed: number): () => number {
@@ -950,16 +951,24 @@ const TIER_LABELS: Record<KardashevTier, string> = {
 
 function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isMobile = useIsMobile();
+  const isMobileRef = useRef(isMobile);
+  isMobileRef.current = isMobile;
+  const frameCountRef = useRef(0);
 
   // Generate stable scene data (seeded, won't change between renders).
   // dysonSwarm is always generated at max count (60); drawDysonSwarm slices it.
-  const stars = useMemo(() => genStars(seededRng(42), 360), []);
-  const galaxyPoints = useMemo(() => genGalaxy(seededRng(137)), []);
+  // On mobile, use a reduced geometry budget to stay within GPU/CPU limits.
+  const stars = useMemo(() => genStars(seededRng(42), isMobile ? 145 : 360), [isMobile]);
+  const galaxyPoints = useMemo(() => {
+    const all = genGalaxy(seededRng(137));
+    return isMobile ? all.slice(0, 210) : all;
+  }, [isMobile]);
   const patches = useMemo(() => genPlanetPatches(seededRng(99)), []);
   const orbits = useMemo(() => genOrbits(seededRng(77), 3), []);
   const dysonSwarm = useMemo(() => genDysonSwarm(seededRng(13), 60), []);
-  // Always generated at max count (80); drawCityLights slices based on progressFraction
-  const cityLights = useMemo(() => genCityLights(seededRng(55), 80), []);
+  // Always generated at max count (80 desktop / 32 mobile); drawCityLights slices based on progressFraction
+  const cityLights = useMemo(() => genCityLights(seededRng(55), isMobile ? 32 : 80), [isMobile]);
 
   // Per-slot born-timestamps for Dyson swarm fade-in.
   // Initialized to a large negative value so all pre-existing satellites resolve
@@ -1002,6 +1011,14 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
     const clampedFraction = Math.min(1, Math.max(0, progressFraction));
 
     const render = (now: number) => {
+      // On mobile skip every other frame to halve the GPU workload.
+      if (isMobileRef.current) {
+        frameCountRef.current++;
+        if (frameCountRef.current % 2 !== 0) {
+          rafId = requestAnimationFrame(render);
+          return;
+        }
+      }
       syncSize();
       const w = canvas.width / dpr;
       const h = canvas.height / dpr;
@@ -1026,7 +1043,7 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
 
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
       else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor, cityLights, clampedFraction);
-      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, dysonSwarm, palette, secondaryColor, clampedFraction, bornAtRef.current);
+      else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, isMobileRef.current ? [] : dysonSwarm, palette, secondaryColor, clampedFraction, bornAtRef.current);
       else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
 
       rafId = requestAnimationFrame(render);

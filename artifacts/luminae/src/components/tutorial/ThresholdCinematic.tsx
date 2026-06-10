@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const TOTAL = 2.7;
 const COMPLETE_DELAY = 2.75;
@@ -11,6 +12,7 @@ interface Props {
 
 export function ThresholdCinematic({ onComplete }: Props) {
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLElement | null>(null);
 
   useFocusTrap(containerRef, true, onComplete, { handleEscape: false });
@@ -60,8 +62,8 @@ export function ThresholdCinematic({ onComplete }: Props) {
           position: "absolute",
           inset: 0,
           background: "rgba(4,2,15,0.88)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
+          backdropFilter: isMobile ? undefined : "blur(18px)",
+          WebkitBackdropFilter: isMobile ? undefined : "blur(18px)",
         }}
       />
 
@@ -105,7 +107,7 @@ export function ThresholdCinematic({ onComplete }: Props) {
           borderRadius: "50%",
           background:
             "radial-gradient(circle, transparent 52%, rgba(90,45,180,0.6) 66%, rgba(50,20,110,0.28) 80%, transparent 92%)",
-          filter: "blur(7px)",
+          filter: isMobile ? undefined : "blur(7px)",
           willChange: "transform, opacity",
           pointerEvents: "none",
         }}
@@ -123,7 +125,7 @@ export function ThresholdCinematic({ onComplete }: Props) {
           borderRadius: "50%",
           background:
             "radial-gradient(circle, #04020f 38%, rgba(8,3,24,0.9) 62%, transparent 80%)",
-          filter: "blur(22px)",
+          filter: isMobile ? undefined : "blur(22px)",
           willChange: "transform, opacity",
           pointerEvents: "none",
         }}

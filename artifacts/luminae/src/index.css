@@ -1379,6 +1379,37 @@ button,
   animation: lum-aw-pending-pulse 0.9s ease-in-out infinite;
 }
 
+/* ── LumiiOrb CSS rotation keyframes (used by TutorialDirector) ─────────────
+   Pure CSS rotation replaces framer-motion repeat:Infinity ease:linear loops,
+   which run on the JS thread and cannot be offloaded by the WAAPI scheduler.
+   Duration is set via inline `animationDuration` so `excited` prop still works. */
+@keyframes tut-orb-cw  { to { rotate:  360deg; } }
+@keyframes tut-orb-ccw { to { rotate: -360deg; } }
+
+/* ── card-ring-pulse: reduced shadow layers on touch screens ─────────────────
+   The desktop version has 8 box-shadow layers; each GPU-composited paint tick
+   forces the shadow engine to rasterize all of them. On touch/mobile we cut to
+   3 layers (tight ring + one bloom) which visually reads the same but costs ~3×
+   less per frame on the mobile compositor. */
+@media (pointer: coarse) {
+  @keyframes card-ring-pulse {
+    0%, 100% {
+      border: 2px solid rgba(255,255,220,1);
+      box-shadow:
+        inset 0 0 10px rgba(255,255,200,0.9),
+        0 0 0   3px rgba(255,255,180,1),
+        0 0 18px    rgba(255,220,50,0.9);
+    }
+    50% {
+      border: 2px solid rgba(255,200,50,0.3);
+      box-shadow:
+        inset 0 0 2px  rgba(255,220,50,0.1),
+        0 0 0  2px rgba(255,200,50,0.25),
+        0 0 8px    rgba(255,180,30,0.15);
+    }
+  }
+}
+
 /* ── Compass (lum_compass) — illustrated background + heat-haze shimmer ─────
    Uses the real background.png star-field image as the cosmic backdrop.
    The background fades radially into the card so there's no hard square edge.
