@@ -118,25 +118,26 @@ All 12 Luminary panels and entities are accepted and locked. Do not regenerate a
 
 ### Burn Animation Rules — Do Not Regress
 
-**Visual principle:** The burn animation MUST stay crisp and readable throughout.
+**Visual principle:** The card burns progressively from bottom to top — crisp and readable throughout.
 
 **Forbidden effects — never add these to BurnFlash or any burn-adjacent layer:**
 - `filter: blur(...)` / `backdropFilter: blur(...)` / `WebkitFilter: blur(...)`
 - Motion blur, Gaussian blur, smeared card images, blurry dissolves, hazy fades that mask the card
 - Overbright washes or smoke layers that hide the card identity
+- Simple fade-out, shrink-in, or instant replacement
 
-**The card must remain identifiable during the early and middle portions of the burn.**
+**The unburned upper portion of the card must remain fully readable until the flame line reaches it.**
 
 **Required phase sequence (BurnFlash canonical spec):**
 1. Target claim — crisp ember outline ring snaps onto the card border.
-2. Bottom edge ignites — sharp ember/flame edge appears at the bottom of the slot.
-3. Flame line travels upward — a sharp horizontal burn front advances bottom→top. The burned portion below shows clean ash/scorch texture (no blur). The unburned portion above stays fully readable until the line reaches it.
-4. Top edge burns away last — crisp spark points flare at the top edge.
-5. Ash/sparks arc to the Burn Pile icon.
+2. Bottom ignition — sharp ember glow ignites at the bottom edge of the slot.
+3. Upward burn — ash overlay (`scaleY: 0→1`, `transformOrigin: bottom center`) covers the card from bottom to top. A sharp flame edge line travels upward in sync. Cinder sparks spawn at the flame front and rise away. No blur on any layer.
+4. Top-edge spark burst — crisp sparks radiate from the top of the card as the last portion burns away.
+5. Ash arc fragments scatter from the consumed card.
 6. Burn Pile count increments (🔥 chip) — handled by state update.
-7. Market redraw fires only after the burn animation is complete — never behind a blur mask.
+7. Scorch residue fades — brief dark char overlay on the empty slot; market redraw fires only after burn animation is complete.
 
-**Current implementation note:** The existing BurnFlash in `game-luminary-effects.tsx` predates this spec and contains `filter: blur()` on two layers (Phase 3a central flare and Phase 3c smoke wisps). These are flagged for removal in a dedicated rework task. New burn work must not add additional blur.
+**Multi-card burns:** Stagger individual BurnFlash calls 80–120 ms apart in the procedure — do not play full animations one-by-one.
 
 ### Button Scale-Transform Convention — Do Not Regress
 Never apply a scale-up hover effect (`scale: 1.x`, `hover:scale-[1.x]`, or `whileHover={{ scale: 1.x }}`) to a button or interactive element whose **ancestor** has `overflow-hidden`. The parent clips the scaled element's painted overflow, causing the button to appear to shrink or get cut off at its edges on hover.

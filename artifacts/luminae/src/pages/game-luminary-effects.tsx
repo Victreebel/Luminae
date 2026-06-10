@@ -289,9 +289,10 @@ export function BurnBadgeOverlay({
 // ── CANONICAL BURN ANIMATION RULES (do not regress) ──────────────────────────
 //
 // Visual principle: the burn MUST stay crisp and readable throughout.
+//   • The card burns progressively from bottom to top — the unburned upper
+//     portion remains fully readable until the flame line reaches it.
 //   • No blur effects of any kind — no motion blur, no Gaussian blur (filter:blur()),
 //     no smeared card image, no blurry dissolve, no hazy fade masking the card.
-//   • The card must remain identifiable during the early and middle portions of the burn.
 //   • Do not hide the card with blur, smoke layers, or overbright wash effects.
 //
 // Forbidden CSS/style properties inside BurnFlash (and any burn-adjacent layer):
@@ -299,48 +300,69 @@ export function BurnBadgeOverlay({
 //
 // ── PHASE SEQUENCE ────────────────────────────────────────────────────────────
 //
-// Phase 1 (  0–150 ms): Target claim — crisp ember outline ring snaps onto the card.
-// Phase 2 (150–350 ms): Bottom edge ignites — a sharp ember/flame edge appears at the
-//                        bottom of the card slot; crack lines radiate from centre.
-// Phase 3 (300–700 ms): Flame line travels upward — a sharp horizontal burn front
-//                        advances from bottom to top.  The burned portion below the
-//                        line shows clean ash/scorch texture (no blur).  The unburned
-//                        portion above remains fully readable until the line reaches it.
-// Phase 4 (650–850 ms): Top edge burns away last — crisp spark points flare at the
-//                        top edge just before the card is consumed.
-// Phase 5 (750–1050ms): Ash/sparks fly toward the Burn Pile icon — charred fragments
-//                        arc across the board.
+// Phase 1 (  0–150 ms): Target claim — crisp ember outline ring snaps onto card.
+// Phase 2 (140–300 ms): Bottom ignition — sharp ember glow ignites at the
+//                        bottom edge of the card.
+// Phase 3 (200–700 ms): Upward burn — ash overlay grows bottom→top via scaleY
+//                        (transformOrigin: bottom center); a sharp flame edge
+//                        line travels upward in sync; cinder sparks spawn at
+//                        the flame front and rise away.  The card remains fully
+//                        readable above the flame line until consumed.
+// Phase 4 (680–870 ms): Top-edge spark burst — crisp sparks radiate from the
+//                        top of the card as the last visible portion burns.
+// Phase 5 (750–1050ms): Ash arc fragments scatter from the consumed card top.
 // Phase 6 (handled by state): Burn Pile count increments (🔥 chip).
-// Phase 7 (after animation): Market redraw fires ONLY after the burn animation is
-//                        complete and readable — never overlap with a blur mask.
+// Phase 7 (870–1150ms): Scorch residue fades — brief dark char overlay on the
+//                        empty slot, then the slot redraws normally.
 //
 // Callable as { type: 'keywordEvent', keyword: 'burn', targetIds: [...] } inside
 // any AnimationProcedure (see lib/animationProcedure.ts).
 //
-// NOTE: blur() on Phase 3a (central flare) and Phase 3c (smoke wisps) has been
-// removed.  Phase 3a is now a crisp radial-gradient ember burst; Phase 3c is
-// crisp ember spark particles that rise and fade.
+// Multi-card burns: stagger individual BurnFlash calls 80–120 ms apart in the
+// procedure; all cards still visibly register with the Burn Pile.
 
-// Ash fragment vectors — precomputed, stable across renders.
-const ASH_FRAGMENTS = [
-  { dx: -58, dy: -72, delay: 0.39, size: 5 },
-  { dx:  62, dy: -68, delay: 0.41, size: 6 },
-  { dx: -78, dy: -18, delay: 0.43, size: 4 },
-  { dx:  74, dy:  -8, delay: 0.37, size: 5 },
-  { dx: -42, dy:  62, delay: 0.45, size: 4 },
-  { dx:  48, dy:  68, delay: 0.42, size: 6 },
-  { dx: -22, dy: -88, delay: 0.40, size: 3 },
-  { dx:  28, dy: -82, delay: 0.44, size: 4 },
+// Burn timing constants (seconds).
+const BURN_START_S = 0.20;  // when the flame front begins rising
+const BURN_DUR_S   = 0.50;  // upward travel duration (200 → 700 ms)
+
+// Cinder sparks — spawn at the flame front as it passes their Y position.
+// xFrac: 0=left edge, 1=right edge of slot.
+// yFrac: 0=top, 1=bottom of slot.  delay = BURN_START_S + (1-yFrac)*BURN_DUR_S.
+// dxPx: slight horizontal drift (px) for visual variety.
+const CINDERS = [
+  { xFrac: 0.12, yFrac: 0.90, dxPx:  -8, size: 3 },
+  { xFrac: 0.48, yFrac: 0.80, dxPx:   5, size: 4 },
+  { xFrac: 0.78, yFrac: 0.70, dxPx:  -4, size: 3 },
+  { xFrac: 0.30, yFrac: 0.60, dxPx:   9, size: 4 },
+  { xFrac: 0.68, yFrac: 0.50, dxPx:  -6, size: 3 },
+  { xFrac: 0.20, yFrac: 0.38, dxPx:   7, size: 4 },
+  { xFrac: 0.82, yFrac: 0.28, dxPx:  -5, size: 3 },
+  { xFrac: 0.45, yFrac: 0.18, dxPx:   4, size: 4 },
+  { xFrac: 0.15, yFrac: 0.08, dxPx:  -9, size: 3 },
+  { xFrac: 0.60, yFrac: 0.02, dxPx:   6, size: 3 },
 ] as const;
 
-// Crack line descriptors — angle in degrees, half-length as a fraction of the
-// shorter slot dimension.
-const CRACK_LINES = [
-  { angle: -38, frac: 0.46 },
-  { angle:  22, frac: 0.39 },
-  { angle: 148, frac: 0.43 },
-  { angle: 202, frac: 0.36 },
-  { angle:  82, frac: 0.31 },
+// Top-edge sparks — fire when the flame reaches the top of the card (~680 ms).
+const TOP_SPARKS = [
+  { dx: -55, dy: -42, delay: 0.68 },
+  { dx:  52, dy: -48, delay: 0.69 },
+  { dx: -28, dy: -62, delay: 0.70 },
+  { dx:  30, dy: -58, delay: 0.71 },
+  { dx:   2, dy: -68, delay: 0.70 },
+  { dx: -68, dy: -22, delay: 0.72 },
+  { dx:  66, dy: -18, delay: 0.72 },
+] as const;
+
+// Ash arc fragments — scatter from the top of the consumed card (~750 ms).
+const ASH_ARCS = [
+  { dx: -58, dy: -72, delay: 0.75, size: 5 },
+  { dx:  62, dy: -68, delay: 0.77, size: 6 },
+  { dx: -78, dy: -18, delay: 0.79, size: 4 },
+  { dx:  74, dy:  -8, delay: 0.76, size: 5 },
+  { dx: -42, dy: -82, delay: 0.81, size: 4 },
+  { dx:  48, dy: -88, delay: 0.78, size: 6 },
+  { dx: -22, dy: -98, delay: 0.80, size: 3 },
+  { dx:  28, dy: -92, delay: 0.76, size: 4 },
 ] as const;
 
 export function BurnFlash({
@@ -359,9 +381,8 @@ export function BurnFlash({
     return () => clearTimeout(t);
   }, []);
 
-  const cx = slotRect.left + slotRect.width  / 2;
-  const cy = slotRect.top  + slotRect.height / 2;
-  const shortSide = Math.min(slotRect.width, slotRect.height);
+  const cx   = slotRect.left + slotRect.width  / 2;
+  const topY = slotRect.top;
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9995 }}>
@@ -383,84 +404,28 @@ export function BurnFlash({
         transition={{ duration: 0.42, ease: 'easeOut', times: [0, 0.18, 0.6, 1] }}
       />
 
-      {/* ── Phase 2: Heat fracture — crack lines radiating from centre ── */}
-      {CRACK_LINES.map((crack, i) => {
-        const halfLen = crack.frac * shortSide;
-        return (
-          <motion.div
-            key={i}
-            style={{
-              position: 'absolute',
-              left: cx - halfLen,
-              top:  cy,
-              width:  halfLen * 2,
-              height: 1.5,
-              background: 'linear-gradient(90deg, transparent 0%, #ff8833cc 40%, #ffcc7788 70%, transparent 100%)',
-              transformOrigin: '50% 50%',
-              transform: `rotate(${crack.angle}deg)`,
-            }}
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: [0, 1, 1, 0.3], opacity: [0, 0.9, 0.7, 0] }}
-            transition={{ duration: 0.55, delay: 0.13 + i * 0.028, ease: 'easeOut', times: [0, 0.25, 0.6, 1] }}
-          />
-        );
-      })}
-
-      {/* ── Phase 3a: Central ember flare ── */}
+      {/* ── Phase 2: Bottom ignition — sharp ember glow at the bottom edge ── */}
       <motion.div
         style={{
           position: 'absolute',
-          left: cx - slotRect.width  * 0.6,
-          top:  cy - slotRect.height * 0.6,
-          width:  slotRect.width  * 1.2,
-          height: slotRect.height * 1.2,
-          borderRadius: 12,
-          background: 'radial-gradient(ellipse at center, #ff9a2aee 0%, #ff5500cc 28%, #cc220088 55%, transparent 78%)',
+          left: slotRect.left + 4,
+          top:  slotRect.bottom - 10,
+          width:  slotRect.width - 8,
+          height: 14,
+          borderRadius: 4,
+          background: 'linear-gradient(to top, #ff2200ee 0%, #ff8800cc 55%, #ffcc44aa 100%)',
+          boxShadow: '0 0 14px 6px #ff550088',
         }}
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: [0, 1.1, 1.35], opacity: [0, 0.92, 0] }}
-        transition={{ duration: 0.62, delay: 0.24, ease: 'easeOut', times: [0, 0.2, 1] }}
+        initial={{ scaleX: 0, opacity: 0 }}
+        animate={{ scaleX: [0, 1, 1, 0.5], opacity: [0, 1, 0.9, 0] }}
+        transition={{ duration: 0.30, delay: 0.14, ease: 'easeOut', times: [0, 0.22, 0.72, 1] }}
       />
 
-      {/* ── Phase 3b: Ash fragments scatter outward ── */}
-      {ASH_FRAGMENTS.map((f, i) => (
-        <motion.div
-          key={i}
-          style={{
-            position: 'absolute',
-            left: cx - f.size / 2,
-            top:  cy - f.size / 2,
-            width:  f.size,
-            height: f.size,
-            borderRadius: i % 2 === 0 ? '50%' : 2,
-            background: i % 3 === 0 ? '#ff8833' : i % 3 === 1 ? '#ffaa55' : '#8a7a6a',
-          }}
-          initial={{ x: 0, y: 0, opacity: 0.9, scale: 1 }}
-          animate={{ x: f.dx, y: f.dy, opacity: 0, scale: 0.15 }}
-          transition={{ duration: 0.44, delay: f.delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-        />
-      ))}
-
-      {/* ── Phase 3c: Ember spark particles (crisp, no blur) ── */}
-      {([0, 1, 2, 3] as const).map(i => (
-        <motion.div
-          key={i}
-          style={{
-            position: 'absolute',
-            left: slotRect.left + slotRect.width  * (0.18 + i * 0.21),
-            top:  slotRect.top  + slotRect.height * 0.38,
-            width:  4 + i,
-            height: 4 + i,
-            borderRadius: '50%',
-            background: i % 2 === 0 ? '#ffaa55aa' : '#ff6600aa',
-          }}
-          initial={{ y: 0, opacity: 0.75, scale: 1 }}
-          animate={{ y: -30 - i * 10, opacity: 0, scale: 0 }}
-          transition={{ duration: 0.52, delay: 0.32 + i * 0.06, ease: 'easeOut' }}
-        />
-      ))}
-
-      {/* ── Phase 5: Scorched residue — char overlay fades out after fragments clear ── */}
+      {/* ── Phase 3: Ash overlay — grows from bottom to top via scaleY ──
+           transformOrigin 'bottom center' keeps the bottom edge anchored at
+           slotRect.bottom while the top edge rises toward slotRect.top.
+           This covers the burned-away portion; the card below is still
+           visible above the flame line until the overlay reaches it.        ── */}
       <motion.div
         style={{
           position: 'absolute',
@@ -469,12 +434,109 @@ export function BurnFlash({
           width:  slotRect.width,
           height: slotRect.height,
           borderRadius: 12,
-          background: 'radial-gradient(ellipse at center, rgba(55,18,0,0.48) 0%, rgba(28,8,0,0.28) 55%, transparent 82%)',
-          border: '1px solid rgba(110,40,0,0.32)',
+          background: 'linear-gradient(to top, #0a0400 0%, #180800 40%, #261000 75%, #341500 100%)',
+          transformOrigin: 'bottom center',
+        }}
+        initial={{ scaleY: 0 }}
+        animate={{ scaleY: [0, 1, 1], opacity: [1, 1, 0] }}
+        transition={{ duration: BURN_DUR_S + 0.45, delay: BURN_START_S, ease: ['linear', 'easeOut'], times: [0, BURN_DUR_S / (BURN_DUR_S + 0.45), 1] }}
+      />
+
+      {/* ── Phase 3: Flame edge line — rides at the top of the rising ash ──
+           Positioned at top:slotRect.top, y animates from +slotRect.height
+           (bottom of card) to 0 (top of card), matching the ash overlay.    ── */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          left: slotRect.left - 2,
+          top:  slotRect.top - 5,
+          width:  slotRect.width + 4,
+          height: 12,
+          borderRadius: 3,
+          background: 'linear-gradient(to top, #ff2200 0%, #ff8800 50%, #ffee44 100%)',
+          boxShadow: '0 0 10px 5px #ff660099, 0 0 3px 2px #ffbb44cc',
+        }}
+        initial={{ y: slotRect.height, opacity: 0 }}
+        animate={{ y: [slotRect.height, slotRect.height, 0, -3], opacity: [0, 1, 1, 0] }}
+        transition={{ duration: BURN_DUR_S + 0.04, delay: BURN_START_S - 0.02, ease: 'linear', times: [0, 0.04, 0.96, 1] }}
+      />
+
+      {/* ── Phase 3: Cinders — spawn at the flame front position and rise ── */}
+      {CINDERS.map((c, i) => {
+        const delay = BURN_START_S + (1 - c.yFrac) * BURN_DUR_S;
+        return (
+          <motion.div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: slotRect.left + slotRect.width  * c.xFrac - c.size / 2,
+              top:  slotRect.top  + slotRect.height * c.yFrac - c.size / 2,
+              width:  c.size,
+              height: c.size,
+              borderRadius: i % 3 === 0 ? '50%' : 2,
+              background: i % 2 === 0 ? '#ffaa44' : '#ff6622',
+            }}
+            initial={{ y: 0, x: 0, opacity: 0, scale: 1 }}
+            animate={{ y: -22 - (i % 3) * 8, x: c.dxPx, opacity: [0, 1, 0], scale: [1, 1.4, 0] }}
+            transition={{ duration: 0.36, delay, ease: 'easeOut', times: [0, 0.2, 1] }}
+          />
+        );
+      })}
+
+      {/* ── Phase 4: Top-edge spark burst — fires as the last of the card burns ── */}
+      {TOP_SPARKS.map((s, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: cx - 3,
+            top:  topY + 4,
+            width:  6,
+            height: 6,
+            borderRadius: '50%',
+            background: i % 2 === 0 ? '#ffcc44' : '#ff8822',
+            boxShadow: '0 0 4px 2px #ff660066',
+          }}
+          initial={{ x: 0, y: 0, opacity: 0.95, scale: 1 }}
+          animate={{ x: s.dx, y: s.dy, opacity: 0, scale: 0.2 }}
+          transition={{ duration: 0.32, delay: s.delay, ease: [0.2, 0.6, 0.4, 0.9] }}
+        />
+      ))}
+
+      {/* ── Phase 5: Ash arc fragments scatter from the top of the consumed card ── */}
+      {ASH_ARCS.map((f, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: cx - f.size / 2,
+            top:  topY,
+            width:  f.size,
+            height: f.size,
+            borderRadius: i % 2 === 0 ? '50%' : 2,
+            background: i % 3 === 0 ? '#cc5500' : i % 3 === 1 ? '#ff8833' : '#6a5a4a',
+          }}
+          initial={{ x: 0, y: 0, opacity: 0.88, scale: 1 }}
+          animate={{ x: f.dx, y: f.dy, opacity: 0, scale: 0.15 }}
+          transition={{ duration: 0.40, delay: f.delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+        />
+      ))}
+
+      {/* ── Phase 7: Scorch residue — brief dark char on the empty slot ── */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          left: slotRect.left,
+          top:  slotRect.top,
+          width:  slotRect.width,
+          height: slotRect.height,
+          borderRadius: 12,
+          background: 'radial-gradient(ellipse at 50% 65%, rgba(50,15,0,0.50) 0%, rgba(18,5,0,0.30) 55%, transparent 82%)',
+          border: '1px solid rgba(90,28,0,0.26)',
         }}
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.88, 0.65, 0] }}
-        transition={{ duration: 0.52, delay: 0.75, ease: 'easeOut', times: [0, 0.1, 0.45, 1] }}
+        transition={{ duration: 0.46, delay: 0.87, ease: 'easeOut', times: [0, 0.08, 0.45, 1] }}
       />
     </div>,
     document.body,

@@ -1129,7 +1129,7 @@ function BurnFlashPreview() {
 
   return (
     <CardFxPreviewShell
-      note="The one-shot BurnFlash that plays over the market slot when a card is burned. Phase 3a (central flare) and 3c (spark particles) are now crisp — no blur."
+      note="Bottom-up burn: ash overlay grows bottom→top (scaleY, no blur), flame edge travels upward, cinders spawn at the flame front, top sparks burst when the card is consumed."
       controls={
         <>
           <div className="flex justify-center pt-1">
@@ -1138,11 +1138,11 @@ function BurnFlashPreview() {
           <TimingBar
             totalMs={BURN_FLASH_MS}
             phases={[
-              { label: 'target ring',   ms: 150  },
-              { label: 'crack lines',   ms: 200  },
-              { label: 'ember flare',   ms: 380  },
-              { label: 'ash scatter',   ms: 200  },
-              { label: 'scorch fade',   ms: 270  },
+              { label: 'target ring',    ms: 150 },
+              { label: 'bottom ignite',  ms: 150 },
+              { label: 'upward burn',    ms: 380 },
+              { label: 'top sparks',     ms: 190 },
+              { label: 'scorch fade',    ms: 330 },
             ]}
             playing={playing}
             playKey={animKey}

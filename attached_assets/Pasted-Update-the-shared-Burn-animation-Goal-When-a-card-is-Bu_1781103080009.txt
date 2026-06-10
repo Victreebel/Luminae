@@ -1,0 +1,65 @@
+Update the shared Burn animation.
+
+Goal:
+When a card is Burned, it should visibly burn from the bottom upward, disappearing as the flame line travels up the card. The player should clearly understand that the card is being permanently destroyed/removed into the Burn Pile, not discarded, faded, or simply redrawn.
+
+Burn visual sequence:
+1. Target claim
+- The targeted card receives a crisp ember outline or burn marker.
+- Keep the card fully readable at this stage.
+
+2. Bottom ignition
+- Fire begins at the bottom edge of the card.
+- The ignition should be sharp and clear, not blurry or smoky.
+
+3. Upward burn progression
+- A visible flame/ember line travels upward across the card.
+- The portion below the flame line disappears as it burns away.
+- The burned-away area should become ash/scorch fragments or transparent empty space.
+- The unburned upper portion of the card should remain visible and readable until the burn reaches it.
+
+4. Final top-edge burn
+- The top edge burns away last.
+- Add a small crisp spark/ember burst when the last visible part of the card disappears.
+
+5. Burn Pile transfer
+- Remaining ash/sparks should travel toward the Burn Pile indicator.
+- Burn Pile count should increment after the card has visibly burned away.
+
+6. Market aftermath
+- The market slot briefly shows a scorched residue/empty state.
+- Then the slot redraws normally if the effect calls for refill.
+
+Strict visual rules:
+- Avoid blur effects entirely.
+- No motion blur.
+- No Gaussian blur.
+- No hazy dissolve.
+- No smoky overlay that hides the card.
+- No shrink-in/collapse-in animation.
+- No simple fade-out.
+- No instant replacement.
+
+The burn should feel crisp, legible, and physical:
+- sharp flame edge
+- clear upward progression
+- visible ash boundary
+- clean sparks/embers
+- card disappearing from bottom to top
+
+Performance note:
+Avoid expensive blur/filter effects. Use masks/clipping, opacity, sprite/particle effects, CSS transforms, or lightweight overlays instead.
+
+Multi-card burns:
+- If multiple cards are Burned, start their bottom-up burn animations in a slight staggered wave, around 80–120ms apart.
+- Do not play long full animations one-by-one.
+- All burned cards should still visibly register with the Burn Pile.
+
+Acceptance criteria:
+- A Burned card visibly burns from bottom to top.
+- The card disappears progressively as the burn line rises.
+- The card remains readable during the early and middle burn.
+- No blur or hazy dissolve is used.
+- Burn feels distinct from discard, redraw, or fade-out.
+- Burn Pile count updates after the burn completes.
+- Existing tests/typecheck pass.
