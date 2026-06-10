@@ -658,7 +658,7 @@ class GameAudio {
     const scheduledTime = ctx.currentTime + stagger;
     // Play the pre-built Burn.mp3 asset; falls back to procedural synthesis if the
     // file fails to load or decode.  Volume scales with cluster index.
-    void this.scheduleMp3(BURN_MP3, scheduledTime, 0.45 * volScale);
+    void this.scheduleMp3(BURN_MP3, scheduledTime, 0.28 * volScale);
   }
 
   /**
