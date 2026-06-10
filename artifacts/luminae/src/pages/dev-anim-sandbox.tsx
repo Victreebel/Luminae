@@ -9,7 +9,7 @@ import {
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
 import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
-import { BurnPileParticle, CardMarkerBadge, BurnFlash } from './game-luminary-effects';
+import { BurnPileParticle, CardMarkerBadge, BurnFlash, CardKeywordOverlay } from './game-luminary-effects';
 import { CIPHER_MODE_TOTAL_MS, type CipherApertureMode, DEAL_ANIM_MS } from './game-constants';
 import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
@@ -71,6 +71,15 @@ const CARD_FX_MODES: { id: CardFxMode; label: string }[] = [
   { id: 'reserved_forge_ring',  label: 'Reserved Ring' },
   { id: 'market_deal_flip',     label: 'Market Flip' },
   { id: 'burn_pile_particle',   label: 'Burn → Pile' },
+];
+
+// ─── Keyword FX Mode ──────────────────────────────────────────────────────────
+
+type KeywordFxMode = 'burn_flash' | 'keyword_states';
+
+const KEYWORD_FX_MODES: { id: KeywordFxMode; label: string }[] = [
+  { id: 'burn_flash',     label: 'BurnFlash' },
+  { id: 'keyword_states', label: 'Keyword States' },
 ];
 
 // ─── Card FX Helpers ──────────────────────────────────────────────────────────
@@ -1084,6 +1093,190 @@ function BurnPileParticlePreview() {
             />
           )}
         </ScaledViewportContainer>
+      }
+    />
+  );
+}
+
+// ─── BurnFlash Preview ────────────────────────────────────────────────────────
+// Renders BurnFlash in a ScaledViewportContainer at a simulated card slot.
+// BurnFlash uses position:fixed + createPortal(document.body), so the same
+// stacking-context scaling trick as BurnPileParticle applies here.
+
+const BURN_FLASH_MS = 1200;
+
+function BurnFlashPreview() {
+  const [animKey, setAnimKey]   = useState(0);
+  const [playing, setPlaying]   = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function play() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setAnimKey(k => k + 1);
+    setPlaying(true);
+    timerRef.current = setTimeout(() => setPlaying(false), BURN_FLASH_MS + 150);
+  }
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  // Slot rect in window.innerWidth/Height coordinates — ScaledViewportContainer
+  // scales these so they land correctly inside the preview area.
+  const slotRect = {
+    left:   Math.round(window.innerWidth  * 0.50 - 56),
+    top:    Math.round(window.innerHeight * 0.30),
+    width:  112,
+    height: 160,
+  } as DOMRect;
+
+  return (
+    <CardFxPreviewShell
+      note="The one-shot BurnFlash that plays over the market slot when a card is burned. Phase 3a (central flare) and 3c (spark particles) are now crisp — no blur."
+      controls={
+        <>
+          <div className="flex justify-center pt-1">
+            <ReplayButton onClick={play} accentHex="#ff6820" />
+          </div>
+          <TimingBar
+            totalMs={BURN_FLASH_MS}
+            phases={[
+              { label: 'target ring',   ms: 150  },
+              { label: 'crack lines',   ms: 200  },
+              { label: 'ember flare',   ms: 380  },
+              { label: 'ash scatter',   ms: 200  },
+              { label: 'scorch fade',   ms: 270  },
+            ]}
+            playing={playing}
+            playKey={animKey}
+          />
+        </>
+      }
+      previewArea={
+        <ScaledViewportContainer playing={playing} idleLabel="Press Play to preview BurnFlash">
+          {/* Faint mock card silhouette so the overlay has context */}
+          {playing && (
+            <div
+              key={`slot-${animKey}`}
+              style={{
+                position: 'fixed',
+                left:   slotRect.left,
+                top:    slotRect.top,
+                width:  slotRect.width,
+                height: slotRect.height,
+                borderRadius: 10,
+                background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                zIndex: 1,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {playing && (
+            <BurnFlash
+              key={animKey}
+              slotRect={slotRect}
+              onDone={() => setPlaying(false)}
+            />
+          )}
+        </ScaledViewportContainer>
+      }
+    />
+  );
+}
+
+// ─── Keyword States Preview ────────────────────────────────────────────────────
+// Shows CardKeywordOverlay and CardMarkerBadge side-by-side on mock card slots
+// for all persistent keyword states: condemned, forgotten, nullified, seeded.
+
+type KwStateType = 'condemned' | 'forgotten' | 'nullified' | 'avatar_seed';
+
+const KW_STATE_META: Record<KwStateType, { label: string; accent: string; desc: string }> = {
+  condemned:  { label: 'Condemned',  accent: '#ef4444', desc: 'Ember-red vignette — burning imminence' },
+  forgotten:  { label: 'Forgotten',  accent: '#9988ee', desc: 'Blue-black haze + desaturation' },
+  nullified:  { label: 'Nullified',  accent: '#64748b', desc: 'Full greyscale desaturation' },
+  avatar_seed:{ label: 'Seeded',     accent: '#2ecc71', desc: 'Soft green edge shimmer' },
+};
+
+function KeywordStatePreview() {
+  const [selected, setSelected] = useState<KwStateType>('condemned');
+  const meta = KW_STATE_META[selected];
+
+  return (
+    <CardFxPreviewShell
+      note="Persistent keyword overlays that sit on a card throughout its marked state. CardKeywordOverlay (aura) + CardMarkerBadge (corner badge) shown together."
+      controls={
+        <ControlRow label="Keyword">
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(KW_STATE_META) as KwStateType[]).map(kw => {
+              const m = KW_STATE_META[kw];
+              const active = selected === kw;
+              return (
+                <button
+                  key={kw}
+                  type="button"
+                  onClick={() => setSelected(kw)}
+                  className="text-[10px] font-mono px-2.5 py-1 rounded border transition-colors"
+                  style={{
+                    borderColor: active ? m.accent : 'rgba(255,255,255,0.15)',
+                    background:  active ? `${m.accent}22` : 'transparent',
+                    color:       active ? m.accent : '#64748b',
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+        </ControlRow>
+      }
+      previewArea={
+        <div
+          className="flex items-center justify-center gap-8 px-6"
+          style={{ minHeight: 260, background: 'rgba(3,4,12,0.95)', borderRadius: 12 }}
+        >
+          {/* Without overlay — baseline */}
+          <div className="flex flex-col items-center gap-3">
+            <div
+              style={{
+                width: MOCK_CARD_W,
+                height: MOCK_CARD_H,
+                borderRadius: 10,
+                background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            />
+            <span className="text-[9px] font-mono text-muted-foreground/30 uppercase tracking-widest">clean</span>
+          </div>
+
+          {/* With overlay + badge */}
+          <div className="flex flex-col items-center gap-3">
+            <div
+              style={{
+                width: MOCK_CARD_W,
+                height: MOCK_CARD_H,
+                borderRadius: 10,
+                background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              <CardKeywordOverlay type={selected} />
+              <div style={{ position: 'absolute', top: 4, left: 4, zIndex: 20 }}>
+                <CardMarkerBadge
+                  type={selected === 'avatar_seed' ? 'avatar_seed' : selected}
+                  isNew={false}
+                />
+              </div>
+            </div>
+            <span
+              className="text-[9px] font-mono uppercase tracking-widest"
+              style={{ color: meta.accent }}
+            >
+              {meta.label}
+            </span>
+          </div>
+        </div>
       }
     />
   );
@@ -2426,7 +2619,7 @@ function LuminaryGridCard({
 
 // ─── DevAnimSandbox ───────────────────────────────────────────────────────────
 
-type SandboxGroup = 'luminary' | 'cardFx' | 'sfx' | 'procedure';
+type SandboxGroup = 'luminary' | 'cardFx' | 'keywordFx' | 'sfx' | 'procedure';
 
 export default function DevAnimSandbox() {
   const [, setLocation] = useLocation();
@@ -2445,6 +2638,9 @@ export default function DevAnimSandbox() {
 
   // ── Card FX group state ────────────────────────────────────────────────────
   const [cardFxMode, setCardFxMode] = useState<CardFxMode>('cipher_reserve');
+
+  // ── Keyword FX group state ─────────────────────────────────────────────────
+  const [keywordFxMode, setKeywordFxMode] = useState<KeywordFxMode>('burn_flash');
 
   // ── SFX group state ────────────────────────────────────────────────────────
   const [sfxHarvestAffinity, setSfxHarvestAffinity] = useState<GemKey>('ruby');
@@ -2512,7 +2708,7 @@ export default function DevAnimSandbox() {
           <>
             {/* Group selector */}
             <div className="flex items-center gap-1 ml-2 bg-black/30 rounded-md p-0.5 border border-border/20">
-              {(['luminary', 'cardFx', 'sfx', 'procedure'] as SandboxGroup[]).map(g => (
+              {(['luminary', 'cardFx', 'keywordFx', 'sfx', 'procedure'] as SandboxGroup[]).map(g => (
                 <button
                   key={g}
                   type="button"
@@ -2523,9 +2719,10 @@ export default function DevAnimSandbox() {
                     color:      group === g ? '#e2e8f0' : '#64748b',
                   }}
                 >
-                  {g === 'luminary' ? 'Luminary FX'
-                    : g === 'cardFx' ? 'Card FX'
-                    : g === 'sfx' ? 'Audio SFX'
+                  {g === 'luminary'   ? 'Luminary FX'
+                    : g === 'cardFx'  ? 'Card FX'
+                    : g === 'keywordFx' ? 'Keyword FX'
+                    : g === 'sfx'     ? 'Audio SFX'
                     : 'Procedure Review'}
                 </button>
               ))}
@@ -2569,6 +2766,25 @@ export default function DevAnimSandbox() {
                 ))}
               </div>
             )}
+
+            {group === 'keywordFx' && (
+              <div className="flex items-center gap-1 bg-black/20 rounded-md p-0.5 border border-border/15">
+                {KEYWORD_FX_MODES.map(m => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setKeywordFxMode(m.id)}
+                    className="text-[11px] font-mono px-2.5 py-1 rounded transition-colors"
+                    style={{
+                      background: keywordFxMode === m.id ? 'rgba(255,255,255,0.10)' : 'transparent',
+                      color:      keywordFxMode === m.id ? '#e2e8f0' : '#64748b',
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -2586,9 +2802,16 @@ export default function DevAnimSandbox() {
       </div>
 
       {/* ── Instructions ──────────────────────────────────────────────────── */}
-      {!collapsed && group !== 'sfx' && group !== 'procedure' && (
+      {!collapsed && group !== 'sfx' && group !== 'procedure' && group !== 'keywordFx' && (
         <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
           {group === 'luminary' ? luminaryInstructions[mode] : cardFxInstructions[cardFxMode]}
+        </p>
+      )}
+      {!collapsed && group === 'keywordFx' && (
+        <p className="text-xs text-muted-foreground text-center pt-4 pb-2 px-4">
+          {keywordFxMode === 'burn_flash'
+            ? 'Press Play to preview the standalone BurnFlash animation — crisp ember burst with no blur layers.'
+            : 'Select a keyword state to preview the persistent card overlay (aura + corner badge) for each keyword.'}
         </p>
       )}
       {!collapsed && group === 'procedure' && (
@@ -2917,6 +3140,14 @@ export default function DevAnimSandbox() {
               {cardFxMode === 'burn_pile_particle'    && <BurnPileParticlePreview />}
             </>
           )}
+          {/* ════════════════ KEYWORD FX GROUP ════════════════ */}
+          {group === 'keywordFx' && (
+            <>
+              {keywordFxMode === 'burn_flash'     && <BurnFlashPreview />}
+              {keywordFxMode === 'keyword_states' && <KeywordStatePreview />}
+            </>
+          )}
+
           {/* ════════════════ PROCEDURE REVIEW GROUP ════════════════ */}
           {group === 'procedure' && <ProcedureReviewSection />}
 

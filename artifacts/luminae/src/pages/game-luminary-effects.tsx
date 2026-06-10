@@ -317,9 +317,9 @@ export function BurnBadgeOverlay({
 // Callable as { type: 'keywordEvent', keyword: 'burn', targetIds: [...] } inside
 // any AnimationProcedure (see lib/animationProcedure.ts).
 //
-// NOTE: The current implementation (below) pre-dates this crisp-burn spec and uses
-// blur() on Phase 3a/3c layers.  Those layers are flagged for replacement with
-// sharp flame-front and scorch-texture equivalents in a dedicated rework task.
+// NOTE: blur() on Phase 3a (central flare) and Phase 3c (smoke wisps) has been
+// removed.  Phase 3a is now a crisp radial-gradient ember burst; Phase 3c is
+// crisp ember spark particles that rise and fade.
 
 // Ash fragment vectors — precomputed, stable across renders.
 const ASH_FRAGMENTS = [
@@ -416,7 +416,6 @@ export function BurnFlash({
           height: slotRect.height * 1.2,
           borderRadius: 12,
           background: 'radial-gradient(ellipse at center, #ff9a2aee 0%, #ff5500cc 28%, #cc220088 55%, transparent 78%)',
-          filter: 'blur(2.5px)',
         }}
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: [0, 1.1, 1.35], opacity: [0, 0.92, 0] }}
@@ -442,7 +441,7 @@ export function BurnFlash({
         />
       ))}
 
-      {/* ── Phase 3c: Rising smoke wisps ── */}
+      {/* ── Phase 3c: Ember spark particles (crisp, no blur) ── */}
       {([0, 1, 2, 3] as const).map(i => (
         <motion.div
           key={i}
@@ -453,8 +452,7 @@ export function BurnFlash({
             width:  4 + i,
             height: 4 + i,
             borderRadius: '50%',
-            background: i % 2 === 0 ? '#ffaa5555' : '#ff660044',
-            filter: 'blur(2px)',
+            background: i % 2 === 0 ? '#ffaa55aa' : '#ff6600aa',
           }}
           initial={{ y: 0, opacity: 0.75, scale: 1 }}
           animate={{ y: -30 - i * 10, opacity: 0, scale: 0 }}
