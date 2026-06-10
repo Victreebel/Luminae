@@ -1440,6 +1440,7 @@ export function LuminarySummonCutscene({
   onFlash,
   onSkip,
   overrideColor,
+  className,
 }: {
   luminaryId: string;
   luminaryName: string;
@@ -1452,6 +1453,7 @@ export function LuminarySummonCutscene({
   onFlash?: () => void;
   onSkip?: () => void;
   overrideColor?: string;
+  className?: string;
 }) {
   const [phase, setPhase] = useState<CutscenePhase>('establish');
   // True once the cutscene reaches the fully-revealed phase and lingers,
@@ -1714,10 +1716,12 @@ export function LuminarySummonCutscene({
   const vesselLeft = vw / 2 - BOARD_CARD_W / 2;
   const vesselTop  = vh / 2 - BOARD_CARD_H / 2;
 
+  const rootClass = className || 'fixed inset-0 z-[9000]';
+
   return (
     <div
       ref={(el) => { containerRef.current = el; }}
-      className="fixed inset-0 z-[9000]"
+      className={rootClass}
       onClick={() => {
         if (awaitingDismiss && dismissRef.current) dismissRef.current();
       }}
