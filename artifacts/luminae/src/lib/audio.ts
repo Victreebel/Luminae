@@ -24,6 +24,9 @@ const FANFARE_COLOR_MAP: Record<string, GemKey> = {
 // Card flip — pre-built WAV asset.
 const CARD_FLIP_WAV = new URL('../assets/audio/Effects/Card_Flip_Over.wav', import.meta.url).href;
 
+// Burn mechanic — pre-built MP3 asset.
+const BURN_MP3 = new URL('../assets/audio/Effects/Burn.mp3', import.meta.url).href;
+
 // Luminary summon cutscene — pre-built MP3 assets, played at their phase beat times.
 // Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
 const LUMINARY_SFX = {
@@ -646,36 +649,16 @@ class GameAudio {
    */
   playCardBurn(index = 0, total = 1) {
     if (this.muted) return;
-    try {
-      const ctx = this.initCtx();
-      const stagger = index * 0.08;
-      const t = ctx.currentTime + stagger;
-
-      // Volume scale: each card in a cluster is slightly louder than the last.
-      // index=0 → 1.0×, index=1 → 1.12×, index=2 → 1.24×, index≥5 → 1.5× (cap).
-      // total=1 short-circuits to 1.0 so isolated burns are completely unchanged.
-      const volScale = total > 1 ? Math.min(1 + index * 0.12, 1.5) : 1.0;
-
-      // Ember rush — narrow noise sweep upward (fire catching)
-      this.noiseSweep(ctx, t, 0.16, 0.055 * volScale, 80, 300);
-
-      // Sub-bass ember thud — brief sine anchor
-      this.osc(ctx, 68, 'sine', t, t + 0.32, 0.05 * volScale, 0.006);
-
-      // Crackle pops — 4 irregular bandpass noise blips
-      const crackles: [number, number, number][] = [
-        [0.022, 350, 8],
-        [0.075, 480, 10],
-        [0.140, 420, 9],
-        [0.215, 560, 11],
-      ];
-      for (const [offset, freq, q] of crackles) {
-        this.noiseBlip(ctx, t + offset, 0.028, 0.055 * volScale, freq, q);
-      }
-
-      // Brief high sizzle — ignition pop
-      this.noiseBlip(ctx, t + 0.10, 0.06, 0.035 * volScale, 2100, 5);
-    } catch (e) { console.warn('SFX failed', e); }
+    // Volume scale: each card in a cluster is slightly louder than the last.
+    // index=0 → 1.0×, index=1 → 1.12×, index=2 → 1.24×, index≥5 → 1.5× (cap).
+    // total=1 short-circuits to 1.0 so isolated burns are completely unchanged.
+    const volScale = total > 1 ? Math.min(1 + index * 0.12, 1.5) : 1.0;
+    const stagger = index * 0.08;
+    const ctx = this.initCtx();
+    const scheduledTime = ctx.currentTime + stagger;
+    // Play the pre-built Burn.mp3 asset; falls back to procedural synthesis if the
+    // file fails to load or decode.  Volume scales with cluster index.
+    void this.scheduleMp3(BURN_MP3, scheduledTime, 0.45 * volScale);
   }
 
   /**
