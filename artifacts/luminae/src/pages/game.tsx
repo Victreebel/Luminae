@@ -8201,7 +8201,7 @@ export default function GameBoard() {
 
       {/* ── Dev: Luminary Summon Test Panel ── */}
       {import.meta.env.DEV && summonQueue.length === 0 && state?.status === 'playing' && (
-        <div className="fixed bottom-20 left-2 z-[150] flex flex-col gap-1 p-2 rounded-lg border border-amber-500/40 bg-black/80 shadow-lg shadow-black/60">
+        <div className="fixed bottom-20 right-2 z-[150] flex flex-col gap-1 p-2 rounded-lg border border-amber-500/40 bg-black/80 shadow-lg shadow-black/60">
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-amber-300 font-mono uppercase tracking-wider font-semibold">Test Cutscene</span>
             <button

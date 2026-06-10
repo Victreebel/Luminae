@@ -3196,7 +3196,7 @@ export default function DevAnimSandbox() {
       {/* ── Summon Cutscene (overlay) ──────────────────────────────────────── */}
       <AnimatePresence>
         {group === 'luminary' && mode === 'summon' && active && (
-          <div key={summonKey} className="fixed top-0 right-0 bottom-0 w-1/2 z-50">
+          <div key={summonKey} className="fixed inset-0 z-50">
             <LuminarySummonCutscene
               luminaryId={active.id}
               luminaryName={active.name}
@@ -3204,7 +3204,6 @@ export default function DevAnimSandbox() {
               lumens={active.lumens}
               flavor={active.flavor}
               overrideColor={getLuminaryVisuals(active.id).summonColor}
-              className="absolute inset-0"
               onComplete={handleSummonComplete}
               onSkip={handleSummonComplete}
             />
