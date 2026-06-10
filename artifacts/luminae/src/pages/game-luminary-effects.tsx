@@ -321,9 +321,9 @@ export function BurnBadgeOverlay({
 // Multi-card burns: stagger individual BurnFlash calls 80–120 ms apart in the
 // procedure; all cards still visibly register with the Burn Pile.
 
-// Burn timing constants (seconds).
-const BURN_START_S = 0.20;  // when the flame front begins rising
-const BURN_DUR_S   = 0.50;  // upward travel duration (200 → 700 ms)
+// Burn timing constants (seconds) — synced to Burn.mp3 (~5.6 s).
+const BURN_START_S = 1.00;  // when the flame front begins rising
+const BURN_DUR_S   = 4.00;  // upward travel duration (1000 → 5000 ms)
 
 // Cinder sparks — spawn at the flame front as it passes their Y position.
 // xFrac: 0=left edge, 1=right edge of slot.
@@ -342,27 +342,27 @@ const CINDERS = [
   { xFrac: 0.60, yFrac: 0.02, dxPx:   6, size: 3 },
 ] as const;
 
-// Top-edge sparks — fire when the flame reaches the top of the card (~680 ms).
+// Top-edge sparks — fire when the flame reaches the top of the card (~5000 ms).
 const TOP_SPARKS = [
-  { dx: -55, dy: -42, delay: 0.68 },
-  { dx:  52, dy: -48, delay: 0.69 },
-  { dx: -28, dy: -62, delay: 0.70 },
-  { dx:  30, dy: -58, delay: 0.71 },
-  { dx:   2, dy: -68, delay: 0.70 },
-  { dx: -68, dy: -22, delay: 0.72 },
-  { dx:  66, dy: -18, delay: 0.72 },
+  { dx: -55, dy: -42, delay: 4.98 },
+  { dx:  52, dy: -48, delay: 4.99 },
+  { dx: -28, dy: -62, delay: 5.00 },
+  { dx:  30, dy: -58, delay: 5.01 },
+  { dx:   2, dy: -68, delay: 5.00 },
+  { dx: -68, dy: -22, delay: 5.02 },
+  { dx:  66, dy: -18, delay: 5.02 },
 ] as const;
 
-// Ash arc fragments — scatter from the top of the consumed card (~750 ms).
+// Ash arc fragments — scatter from the top of the consumed card (~5050 ms).
 const ASH_ARCS = [
-  { dx: -58, dy: -72, delay: 0.75, size: 5 },
-  { dx:  62, dy: -68, delay: 0.77, size: 6 },
-  { dx: -78, dy: -18, delay: 0.79, size: 4 },
-  { dx:  74, dy:  -8, delay: 0.76, size: 5 },
-  { dx: -42, dy: -82, delay: 0.81, size: 4 },
-  { dx:  48, dy: -88, delay: 0.78, size: 6 },
-  { dx: -22, dy: -98, delay: 0.80, size: 3 },
-  { dx:  28, dy: -92, delay: 0.76, size: 4 },
+  { dx: -58, dy: -72, delay: 5.05, size: 5 },
+  { dx:  62, dy: -68, delay: 5.07, size: 6 },
+  { dx: -78, dy: -18, delay: 5.09, size: 4 },
+  { dx:  74, dy:  -8, delay: 5.06, size: 5 },
+  { dx: -42, dy: -82, delay: 5.11, size: 4 },
+  { dx:  48, dy: -88, delay: 5.08, size: 6 },
+  { dx: -22, dy: -98, delay: 5.10, size: 3 },
+  { dx:  28, dy: -92, delay: 5.06, size: 4 },
 ] as const;
 
 export function BurnFlash({
@@ -377,7 +377,7 @@ export function BurnFlash({
 }) {
   const onDoneRef = useRef(onDone);
   useEffect(() => {
-    const t = setTimeout(() => onDoneRef.current(), 1200);
+    const t = setTimeout(() => onDoneRef.current(), 5600);
     return () => clearTimeout(t);
   }, []);
 
@@ -401,7 +401,7 @@ export function BurnFlash({
         }}
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: [0, 1, 0.85, 0], scale: [0.92, 1.0, 1.0, 1.02] }}
-        transition={{ duration: 0.42, ease: 'easeOut', times: [0, 0.18, 0.6, 1] }}
+        transition={{ duration: 0.80, ease: 'easeOut', times: [0, 0.18, 0.6, 1] }}
       />
 
       {/* ── Phase 2: Bottom ignition — sharp ember glow at the bottom edge ── */}
@@ -418,7 +418,7 @@ export function BurnFlash({
         }}
         initial={{ scaleX: 0, opacity: 0 }}
         animate={{ scaleX: [0, 1, 1, 0.5], opacity: [0, 1, 0.9, 0] }}
-        transition={{ duration: 0.30, delay: 0.14, ease: 'easeOut', times: [0, 0.22, 0.72, 1] }}
+        transition={{ duration: 0.80, delay: 0.60, ease: 'easeOut', times: [0, 0.22, 0.72, 1] }}
       />
 
       {/* ── Phase 3: Ash overlay — grows from bottom to top via scaleY ──
@@ -536,7 +536,7 @@ export function BurnFlash({
         }}
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.88, 0.65, 0] }}
-        transition={{ duration: 0.46, delay: 0.87, ease: 'easeOut', times: [0, 0.08, 0.45, 1] }}
+        transition={{ duration: 1.20, delay: 4.80, ease: 'easeOut', times: [0, 0.08, 0.45, 1] }}
       />
     </div>,
     document.body,

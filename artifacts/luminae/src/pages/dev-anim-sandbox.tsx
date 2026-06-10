@@ -1103,7 +1103,7 @@ function BurnPileParticlePreview() {
 // BurnFlash uses position:fixed + createPortal(document.body), so the same
 // stacking-context scaling trick as BurnPileParticle applies here.
 
-const BURN_FLASH_MS = 1200;
+const BURN_FLASH_MS = 5600;
 
 function BurnFlashPreview() {
   const [animKey, setAnimKey]   = useState(0);
@@ -1139,11 +1139,11 @@ function BurnFlashPreview() {
           <TimingBar
             totalMs={BURN_FLASH_MS}
             phases={[
-              { label: 'target ring',    ms: 150 },
-              { label: 'bottom ignite',  ms: 150 },
-              { label: 'upward burn',    ms: 380 },
-              { label: 'top sparks',     ms: 190 },
-              { label: 'scorch fade',    ms: 330 },
+              { label: 'target ring',    ms: 800 },
+              { label: 'bottom ignite',  ms: 800 },
+              { label: 'upward burn',    ms: 4000 },
+              { label: 'top sparks',     ms: 400 },
+              { label: 'scorch fade',    ms: 1200 },
             ]}
             playing={playing}
             playKey={animKey}
