@@ -17,7 +17,8 @@
     "audit:overlays": "node overlay-audit/audit-overlays.cjs",
     "test:overlays": "playwright test --config=playwright.config.ts overlay-audit/overlay-centering.spec.ts",
     "test:dialog-keyboard": "playwright test --config=dialog-keyboard.config.ts",
-    "test:ws-keepalive": "playwright test --config=connection-stability.config.ts"
+    "test:ws-keepalive": "playwright test --config=connection-stability.config.ts",
+    "probe:ws-external": "tsx ./src/ws-external-probe.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",

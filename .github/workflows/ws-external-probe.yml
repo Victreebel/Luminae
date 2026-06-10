@@ -1,0 +1,169 @@
+# ws-external-probe.yml
+#
+# Scheduled WebSocket stability probe — external proxy path
+#
+# This workflow runs the ws-external-probe.ts script from a GitHub Actions
+# runner, which connects to the deployed (or dev-preview) app via its public
+# HTTPS/WSS domain.  Unlike the in-container ws-keepalive Playwright test,
+# which connects via localhost:80, this job exercises the EXTERNAL proxy
+# (janeway.replit.dev for dev previews, or the Replit deployment domain for
+# production).  That proxy has historically had a shorter (~25–30 s) idle WS
+# lease than the local nginx proxy, and it is the proxy the keepalive
+# mechanisms in websocket.ts were specifically written to defeat.
+#
+# Configuration:
+#   • Set the WS_PROBE_TARGET repository variable (Settings → Variables) to the
+#     base HTTPS URL of the app you want to test, e.g.:
+#       https://luminae.replit.app        (deployed production domain)
+#       https://<repl-slug>.replit.dev    (dev preview domain)
+#   • If WS_PROBE_TARGET is not set, the workflow skips gracefully with a
+#     warning rather than failing — useful for forks or repos without a live app.
+#
+# On failure:
+#   • The job exits non-zero, turning the Actions status check red.
+#   • A GitHub issue is automatically opened (or re-opened) to surface the
+#     regression, titled "🚨 WS external proxy keepalive regression detected".
+#     Subsequent failures on an already-open issue add a comment instead of
+#     opening a duplicate.
+#
+# Trigger:
+#   • Scheduled: every 6 hours (keeps the check frequent enough to catch a
+#     regression quickly without hammering the server).
+#   • Manual: workflow_dispatch (run on demand, e.g. after a keepalive change).
+
+name: WS External Proxy Probe
+
+on:
+  schedule:
+    # Every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC
+    - cron: '0 0,6,12,18 * * *'
+  workflow_dispatch:
+    inputs:
+      target_override:
+        description: 'Override target URL (leave blank to use WS_PROBE_TARGET variable)'
+        required: false
+        default: ''
+      probe_duration_ms:
+        description: 'Probe duration in ms (default: 60000)'
+        required: false
+        default: '60000'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    name: External WebSocket keepalive probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check for target URL
+        id: check_target
+        run: |
+          TARGET="${{ inputs.target_override || vars.WS_PROBE_TARGET }}"
+          if [ -z "$TARGET" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::WS_PROBE_TARGET is not set. Skipping probe. Set the repository variable to enable this check."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.check_target.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        if: steps.check_target.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        if: steps.check_target.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install workspace dependencies
+        if: steps.check_target.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run external WebSocket probe
+        if: steps.check_target.outputs.skip != 'true'
+        id: probe
+        env:
+          WS_PROBE_TARGET: ${{ steps.check_target.outputs.target }}
+          PROBE_DURATION_MS: ${{ inputs.probe_duration_ms || '60000' }}
+        run: pnpm --filter @workspace/scripts run probe:ws-external
+
+      # ── On failure: open or comment on a GitHub issue ─────────────────────
+      # This step only runs when the probe job fails, giving teams a visible
+      # alert in the issue tracker rather than requiring them to watch Actions.
+
+      - name: Open or update failure issue
+        if: failure() && steps.probe.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '🚨 WS external proxy keepalive regression detected';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const target = '${{ steps.check_target.outputs.target }}';
+            const body = [
+              '## WebSocket external proxy keepalive failure',
+              '',
+              `The scheduled [WS external proxy probe](${runUrl}) failed.`,
+              '',
+              '**Target:** ' + target,
+              '**Time:** ' + new Date().toISOString(),
+              '',
+              '### What this means',
+              'The game WebSocket was dropped by the external reverse proxy before the 60-second probe duration elapsed.',
+              'This indicates that the keepalive mechanism (`ws.ping()` in `artifacts/api-server/src/lib/websocket.ts`) may not be firing correctly, or the proxy idle lease has changed.',
+              '',
+              '### How to diagnose',
+              '1. Check the [Actions run](' + runUrl + ') for the exact close code and reason.',
+              '2. Verify the `pingInterval` in `artifacts/api-server/src/lib/websocket.ts` is set to ≤10 000 ms.',
+              '3. Confirm the deployed app is reachable at ' + target,
+              '4. Re-run the probe manually: `WS_PROBE_TARGET=' + target + ' pnpm --filter @workspace/scripts run probe:ws-external`',
+              '',
+              '### References',
+              '- `artifacts/api-server/src/lib/websocket.ts` — server-side `pingInterval`',
+              '- `artifacts/luminae/src/hooks/use-game-websocket.ts` — client-side keepalive ping',
+              '- `scripts/src/ws-external-probe.ts` — this probe script',
+              '- `scripts/connection-stability/ws-keepalive.spec.ts` — local proxy test (localhost:80)',
+            ].join('\n');
+
+            // Search for an existing open issue with the same title.
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'ws-keepalive',
+            });
+
+            const existing = issues.find(i => i.title === title);
+
+            if (existing) {
+              // Comment on the existing issue rather than opening a duplicate.
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `## Probe failed again\n\n[Actions run](${runUrl}) — ${new Date().toISOString()}\n\nTarget: ${target}`,
+              });
+              core.warning(`Updated existing issue #${existing.number}`);
+            } else {
+              // Open a new issue.
+              const { data: issue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['ws-keepalive', 'bug'],
+              });
+              core.warning(`Opened issue #${issue.number}: ${issue.html_url}`);
+            }

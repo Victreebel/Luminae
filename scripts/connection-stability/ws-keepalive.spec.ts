@@ -45,6 +45,17 @@
  * that targets the external proxy; the localhost:80 test validates the frame
  * interval is firing.
  *
+ * To verify the EXTERNAL proxy path, use the standalone probe script:
+ *
+ *   WS_PROBE_TARGET=https://<your-domain> \
+ *     pnpm --filter @workspace/scripts run probe:ws-external
+ *
+ * The probe connects from outside the container (e.g. a GitHub Actions runner)
+ * and exercises the actual janeway.replit.dev / deployment proxy lease.  A
+ * scheduled GitHub Actions workflow at .github/workflows/ws-external-probe.yml
+ * runs this check every 6 hours against the deployed app and opens a GitHub
+ * issue automatically if the connection drops before 60 s.
+ *
  * Run:
  *   pnpm --filter @workspace/scripts run test:ws-keepalive
  */
