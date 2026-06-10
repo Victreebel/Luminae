@@ -1114,6 +1114,7 @@ function BurnFlashPreview() {
     if (timerRef.current) clearTimeout(timerRef.current);
     setAnimKey(k => k + 1);
     setPlaying(true);
+    gameAudio.playCardBurn();
     timerRef.current = setTimeout(() => setPlaying(false), BURN_FLASH_MS + 150);
   }
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
