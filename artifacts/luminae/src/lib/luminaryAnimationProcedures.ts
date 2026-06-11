@@ -120,8 +120,8 @@ function resolveVerdant(_s: GameState, _ownerId: string): AnimationTimelineStep[
 }
 
 // 4. Void Warden / Oblivion (lum_void)
-//    luminaryPulse → targetClaim all players (incl. summoner) → scoreChange all −4
-//    targetClaim ensures every player panel — including the summoner — is visibly
+//    luminaryPulse → targetClaim all players (incl. claimer) → scoreChange all −4
+//    targetClaim ensures every player panel — including the claimer — is visibly
 //    highlighted before the Eminence drain resolves.
 function resolveVoid(s: GameState): AnimationTimelineStep[] {
   const players = allPlayerIds(s);
@@ -255,11 +255,11 @@ function resolvePale(s: GameState): AnimationTimelineStep[] {
 }
 
 // 13. Ember Sovereign / Cinder Mandate (lum_ember)
-//     On summon: luminaryPulse → targetClaim non-Flare/Abyss/Radiance → condemned residue
+//     On arrival: luminaryPulse → targetClaim non-Flare/Abyss/Radiance → condemned residue
 //     On start_of_turn: condemned cards flare → burn → marketRedraw
 function resolveEmber(
   s: GameState,
-  effectType: 'summon' | 'end_of_turn' | 'start_of_turn',
+  effectType: 'summon' | 'end_of_turn' | 'start_of_turn', // API enum kept ('summon' = arrival effect)
 ): AnimationTimelineStep[] {
   if (effectType === 'start_of_turn') {
     const condemnedIds = markedIds(s, 'condemned');
@@ -270,7 +270,7 @@ function resolveEmber(
       { type: 'marketRedraw', slotIds: [] },
     ];
   }
-  // summon / end_of_turn: mark cards as condemned
+  // arrival / end_of_turn: mark cards as condemned
   const affected = excludeBonus(allMarket(s), ['ruby', 'onyx', 'pearl']).map(c => c.id);
   return [
     pulse('lum_ember'),
@@ -280,7 +280,7 @@ function resolveEmber(
 }
 
 // 14. First Hunger / Assimilate (lum_hunger)
-//     On summon: luminaryPulse → targetClaim owner → pendingAction assimilate
+//     On arrival: luminaryPulse → targetClaim owner → pendingAction assimilate
 //     targetClaim highlights the owner panel so the player knows who receives
 //     the assimilate replacement action before the ASSIMILATE pill appears.
 function resolveHunger(_s: GameState, ownerId: string): AnimationTimelineStep[] {
@@ -304,7 +304,7 @@ function resolveNull(s: GameState): AnimationTimelineStep[] {
 
 // ── Master resolver ────────────────────────────────────────────────────────────
 
-type EffectType = 'summon' | 'end_of_turn' | 'start_of_turn';
+type EffectType = 'summon' | 'end_of_turn' | 'start_of_turn'; // API enum kept ('summon' = arrival effect)
 
 /**
  * Resolves the animation procedure for a Luminary activation.

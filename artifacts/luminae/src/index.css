@@ -1067,8 +1067,8 @@ button,
 }
 .lum-ambient-generic-t3 { animation: lum-ambient-generic-t3 5.7s ease-in-out infinite; }
 
-/* ── Summon cutscene — CSS-compositor tremble animations ───────────────
-   These replace framer-motion repeat:Infinity loops inside the summon
+/* ── Arrival cutscene — CSS-compositor tremble animations ───────────────
+   These replace framer-motion repeat:Infinity loops inside the arrival
    cutscene.  During the ~6 s cutscene the browser would otherwise run JS
    interpolation on every frame for the vessel shake and board glow.
    CSS keyframes move the same motion to the compositor thread, eliminating
@@ -1296,10 +1296,10 @@ button,
 }
 
 
-/* ── Summon cutscene — CSS-compositor animations ─────────────────────────
-   Replaces framer-motion repeat:Infinity loops in LuminarySummonCutscene.
+/* ── Arrival cutscene — CSS-compositor animations ─────────────────────────
+   Replaces framer-motion repeat:Infinity loops in LuminaryArrivalCutscene.
    Converts: light-leak motes, second-crack motes/pools, energy rays,
-   breathing hover. Eliminates ~17 JS animation loops per summon event.
+   breathing hover. Eliminates ~17 JS animation loops per arrival event.
    Energy rays simplified to opacity-only (scaleY dropped) for SVG compat. */
 @keyframes lum-cs-mote {
   0%, 100% { opacity: 0; }

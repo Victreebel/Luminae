@@ -2,7 +2,7 @@
  * gameEngine.test.ts — Luminary Mechanics Update v0.8
  *
  * Covers: markers (Forgotten / Condemned / Nullified / Avatar Seed),
- * on-summon burn / scry effects, end-of-turn payouts, start-of-turn burns,
+ * on-arrival burn / scry effects, end-of-turn payouts, start-of-turn burns,
  * the Assimilation action, The Glass Orchard bonus, and normalizeState defaults.
  */
 
@@ -66,7 +66,7 @@ function claimLuminary(state: GameStateData, lumId: string) {
     player.bonuses[c] = lum.requirements[c];
   }
   enrichPlayer(state, state.currentPlayerIndex);
-  // Only this Luminary should be active so no other summons fire.
+  // Only this Luminary should be active so no other arrivals fire.
   state.activeLuminaries = [lumId];
 
   const cardId = state.marketTier1[0];
@@ -224,7 +224,7 @@ describe("coreActionUsed — one core action per turn", () => {
       summonedAtTurnCount: 0,
     });
     player.luminaries = [lumId];
-    state.turnCount = 5; // past the summon turn so the toggle is allowed
+    state.turnCount = 5; // past the arrival turn so the toggle is allowed
 
     state.coreActionUsed = true;
     const r = applyAction(state, "p1", {
@@ -378,9 +378,9 @@ describe("Avatar Seed — pending Eminence accumulates on opponent forge", () =>
     expect(state.avatarSeedState!.payoutDone).toBe(true);
   });
 
-  it("does NOT pay out on the SAME turn as summon", () => {
+  it("does NOT pay out on the SAME turn as arrival", () => {
     const state = makeGame();
-    state.turnCount = 0; // Summon and end-of-turn both at 0 → condition is false.
+    state.turnCount = 0; // Arrival and end-of-turn both at 0 → condition is false.
 
     state.avatarSeedState = {
       ownerId: "p1",
@@ -500,7 +500,7 @@ describe("The Glass Orchard — Perfect Replication: +1 extra bonus on first Ver
     state = makeGame();
     enrichPlayer(state, 0);
     state.players[0].luminaries = ["lum_orchard"];
-    state.activeLuminaries = []; // No other Luminary summons.
+    state.activeLuminaries = []; // No other Luminary arrivals.
     state.glassOrchardTriggered = false;
   });
 
@@ -622,8 +622,8 @@ describe("Assimilation — First Hunger one-time burn action", () => {
     expect(r.success).toBe(false);
   });
 
-  it("summon sets flag but does not auto-execute the ability", () => {
-    // The lum_hunger summon handler sets firstHungerAvailable to the summoner's ID;
+  it("arrival sets flag but does not auto-execute the ability", () => {
+    // The lum_hunger arrival handler sets firstHungerAvailable to the claimer's ID;
     // it must NOT immediately grant the Assimilation +2 bonus — the player must
     // explicitly use the assimilate action later.
     const freshState = makeGame();
@@ -637,7 +637,7 @@ describe("Assimilation — First Hunger one-time burn action", () => {
     const cardId = freshState.marketTier1[0]!;
     applyAction(freshState, "p1", { type: "purchase_card", cardId });
 
-    // Flag should now be set for the summoner — NOT consumed.
+    // Flag should now be set for the claimer — NOT consumed.
     expect(freshState.firstHungerAvailable).toBe("p1");
 
     // Eminence gained must equal: card's printed lumens + luminary's own lumens bonus.
@@ -745,7 +745,7 @@ describe("Assimilation — First Hunger one-time burn action", () => {
     }
   });
 
-  it("assimilation works on a future turn (not just the summon turn)", () => {
+  it("assimilation works on a future turn (not just the arrival turn)", () => {
     // firstHungerAvailable is "p1"; have p1 pass, p2 pass, then p1 assimilates.
     pass(state); // p1 passes
     pass(state); // p2 passes
@@ -854,10 +854,10 @@ describe("Forgotten Hour — markers expire at end of owner's next turn", () => 
   });
 });
 
-// ─── On-summon burn effects ───────────────────────────────────────────────────
+// ─── On-arrival burn effects ───────────────────────────────────────────────────
 
-describe("Impact Extinction (lum_forge) — burns all face-up Tier III on summon", () => {
-  it("removes all original Tier III market cards on Iron Harbinger summon", () => {
+describe("Impact Extinction (lum_forge) — burns all face-up Tier III on arrival", () => {
+  it("removes all original Tier III market cards on Iron Harbinger arrival", () => {
     const state = makeGame();
     const t3Before = [...state.marketTier3];
     expect(t3Before.length).toBeGreaterThan(0);
@@ -869,7 +869,7 @@ describe("Impact Extinction (lum_forge) — burns all face-up Tier III on summon
   });
 });
 
-describe("Rupture of the Still (lum_moth) — burns lowest-cost T3/T2 without Flare on summon", () => {
+describe("Rupture of the Still (lum_moth) — burns lowest-cost T3/T2 without Flare on arrival", () => {
   it("fires without error and player owns lum_moth after claim", () => {
     const state = makeGame();
     claimLuminary(state, "lum_moth");
@@ -901,7 +901,7 @@ describe("Phoenix Paradox (lum_astral) — Ash-Seeking Recurrence cascade burn",
 // ─── Observer Effect (lum_tide) ───────────────────────────────────────────────
 
 describe("Observer Effect (lum_tide) — scry and reorder decks by Continuum", () => {
-  it("promotes Continuum cards to the top of Tier 2 and Tier 3 decks on summon", () => {
+  it("promotes Continuum cards to the top of Tier 2 and Tier 3 decks on arrival", () => {
     const state = makeGame();
 
     // Plant a known sapphire card at position 2 in the T2 deck, and a non-sapphire at 0/1.
@@ -1053,7 +1053,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     expect(state.pendingLuminaryChoice).toBeNull();
   });
 
-  it("both Luminaries have summon events queued in player-chosen order", () => {
+  it("both Luminaries have arrival events queued in player-chosen order", () => {
     const state = makeGame();
     enrichPlayer(state, 0);
     const p = state.players[0];
@@ -1193,7 +1193,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
 
   // ─── Cascade re-entry ───────────────────────────────────────────────────────
 
-  it("cascade re-entry: a summon effect that grants a crystal bonus can claim a second Luminary", () => {
+  it("cascade re-entry: an arrival effect that grants a crystal bonus can claim a second Luminary", () => {
     // lum_scholar's Selective Amnesia draws a card from the deck and adds it to
     // the player's collection, granting its bonusColor as a permanent bonus.
     // Setup: lum_scholar fires at depth 0, draws an emerald card → player bonus
@@ -1270,8 +1270,8 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
 
   // ─── plannedAction double-execution guard ───────────────────────────────────
 
-  it("plannedAction is NOT re-executed after deferred action creates new summon events", () => {
-    // Setup: player has a plannedAction.  A pending summon event is outstanding.
+  it("plannedAction is NOT re-executed after deferred action creates new arrival events", () => {
+    // Setup: player has a plannedAction.  A pending arrival event is outstanding.
     // When the event resolves, the plannedAction executes once.  If that execution
     // triggers another Luminary claim (new pendingSummonEvent), the plannedAction
     // must NOT execute again when the new event resolves.
@@ -1283,7 +1283,7 @@ describe("checkLuminaries — simultaneous-claim sequencing", () => {
     p.bonuses.emerald = 4; // one more emerald card will push to 5 → qualifies
     state.activeLuminaries = ["lum_verdant"];
 
-    // Inject a fake pre-existing pending summon event (from a hypothetical earlier claim).
+    // Inject a fake pre-existing pending arrival event (from a hypothetical earlier claim).
     state.pendingSummonEvents = [{
       eventId: "fake-event-v1",
       luminaryId: "lum_tide",
@@ -1410,7 +1410,7 @@ describe("burnPile eligibility guards and burnCard() invariants", () => {
 
   it("burned market slot is refilled from the deck after Iron Harbinger (lum_forge) fires", () => {
     // Iron Harbinger's Impact Extinction burns every face-up Tier III card on
-    // summon.  drawIntoMarket should replace each burned slot with a fresh card
+    // arrival.  drawIntoMarket should replace each burned slot with a fresh card
     // from deckTier3 (if available).
     const t3Before = [...state.marketTier3];
     expect(t3Before.length).toBeGreaterThan(0);
@@ -1567,9 +1567,9 @@ describe("BurnEvent — enriched payload (v2 format)", () => {
     }
   });
 
-  it("BurnEvent.ownerPlayerId is the summoning player's id", () => {
+  it("BurnEvent.ownerPlayerId is the claiming player's id", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_forge"); // p1 summons lum_forge
+    claimLuminary(state, "lum_forge"); // p1 claims lum_forge
     for (const ev of state.burnEvents) {
       expect(ev.ownerPlayerId).toBe("p1");
     }
@@ -1644,7 +1644,7 @@ describe("First Hunger — Assimilation (lum_hunger)", () => {
     });
   }
 
-  it("firstHungerAvailable is set to the summoner's playerId on summon", () => {
+  it("firstHungerAvailable is set to the claimer's playerId on arrival", () => {
     const state = makeGame();
     claimLuminary(state, "lum_hunger");
     expect(state.firstHungerAvailable).toBe("p1");
@@ -1782,7 +1782,7 @@ describe("First Hunger — Assimilation (lum_hunger)", () => {
 
   it("wrong player cannot assimilate when firstHungerAvailable is set to another player (regression)", () => {
     const state = makeGame();
-    claimLuminary(state, "lum_hunger"); // p1's summon; advances to p2's turn
+    claimLuminary(state, "lum_hunger"); // p1's arrival; advances to p2's turn
     enrichPlayer(state, 1);
     // firstHungerAvailable='p1', but it is now p2's turn — p2 tries to claim it
     const target = findAssimTarget(state);

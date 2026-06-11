@@ -59,7 +59,7 @@ import {
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
 import { getAvatarForPlayer, getSavedAvatarId, getDefaultCivName } from '@/lib/avatars';
 import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
-import { LuminaryPanelArt, LuminarySummonCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_VARIANTS } from '@/lib/luminaryAssets';
+import { LuminaryPanelArt, LuminaryArrivalCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_VARIANTS } from '@/lib/luminaryAssets';
 import { BOARD_CARD_W, BOARD_CARD_H } from '@/lib/constants';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
 import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
@@ -78,7 +78,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, SummonMarketOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, ArrivalMarketOverlay } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
@@ -458,25 +458,25 @@ export default function GameBoard() {
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [testPanelCollapsed, setTestPanelCollapsed] = useState(false);
   const [expandedLumEffects, setExpandedLumEffects] = useState<Set<string>>(new Set());
-  const [summonQueue, setSummonQueue] = useState<Array<{
+  const [arrivalQueue, setArrivalQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
     claimedBy?: string; // player name who claimed this Luminary
     cardRect?: { cx: number; cy: number; w: number };
     eventId: string;    // stable server event ID (or 'dev-test-<id>' for dev panel)
-    isDevTest: boolean; // dev tests skip the server resolve_summon call
-    winSealingColor?: string; // summonColor of the Luminary when this event seals a win
+    isDevTest: boolean; // dev tests skip the server resolve_arrival call
+    winSealingColor?: string; // arrivalColor of the Luminary when this event seals a win
   }>>([]);
-  // Tracks which server summon eventIds have already been pushed into the queue
+  // Tracks which server arrival eventIds have already been pushed into the queue
   // so that duplicate WebSocket / reconnect deliveries are safely deduped.
-  const handledSummonEventIdsRef = useRef(new Set<string>());
+  const handledArrivalEventIdsRef = useRef(new Set<string>());
   // True when the user pressed "Skip view" on the active cutscene.
   // The cutscene stays mounted (timer runs) but the overlay is hidden.
-  const [localSummonSkipped, setLocalSummonSkipped] = useState(false);
-  // Prevents the initial-state pending-summon check from running twice.
-  const checkedInitialSummonRef = useRef(false);
-  // Stable ref to enqueueSummon — populated after it is defined below (after
+  const [localArrivalSkipped, setLocalArrivalSkipped] = useState(false);
+  // Prevents the initial-state pending-arrival check from running twice.
+  const checkedInitialArrivalRef = useRef(false);
+  // Stable ref to enqueueArrival — populated after it is defined below (after
   // the early return) so the initial-load useEffect can call it safely.
-  const enqueueSummonRef = useRef<(
+  const enqueueArrivalRef = useRef<(
     lumId: string,
     lumName: string,
     lumDomain: string,
@@ -487,37 +487,37 @@ export default function GameBoard() {
     winSealingColor?: string,
     claimedBy?: string,
   ) => void>(() => {});
-  // Luminary IDs that have been detected as newly summoned in processUpdate but
-  // whose summonQueue entry hasn't been added yet (RAF chain pending). Used to
+  // Luminary IDs that have been detected as newly arrived in processUpdate but
+  // whose arrivalQueue entry hasn't been added yet (RAF chain pending). Used to
   // suppress the vortex portal during those few frames so it never flashes
-  // before the cutscene starts. Cleared when the entry lands in summonQueue.
-  const pendingSuppressLumIdsRef = useRef(new Set<string>());
-  // Tracks current summonQueue length for stale-closure-safe reads inside processUpdate.
-  const summonQueueLenRef = useRef(0);
-  // Counts summon events that have been dispatched to enqueueSummon but have not
-  // yet landed in summonQueue (i.e. still mid-RAF-chain). The flush effect uses
+  // before the cutscene starts. Cleared when the entry lands in arrivalQueue.
+  const pendingSuppressArrivalIdsRef = useRef(new Set<string>());
+  // Tracks current arrivalQueue length for stale-closure-safe reads inside processUpdate.
+  const arrivalQueueLenRef = useRef(0);
+  // Counts arrival events that have been dispatched to enqueueArrival but have not
+  // yet landed in arrivalQueue (i.e. still mid-RAF-chain). The flush effect uses
   // this to avoid releasing pendingGameOver before the cutscenes actually start.
   const enqueuingCountRef = useRef(0);
-  // True when status just became 'finished' but summons are still in flight.
-  // The win overlay and win audio are held back until the summon queue drains.
+  // True when status just became 'finished' but arrivals are still in flight.
+  // The win overlay and win audio are held back until the arrival queue drains.
   const [pendingGameOver, setPendingGameOver] = useState(false);
   const [showCinematic, setShowCinematic] = useState(() => !getSkipCinematics());
   const [showWinOverlay, setShowWinOverlay] = useState(true);
   const returnBannerRef = useRef<HTMLButtonElement | null>(null);
-  // summonColor of the Luminary that sealed the game (set when pendingGameOver goes
+  // arrivalColor of the Luminary that sealed the game (set when pendingGameOver goes
   // true). Read by the flush effect to play the affinity fanfare before playWin().
   const pendingGameOverLumColorRef = useRef<string>('');
   // Guard that prevents the flush effect from firing the fanfare twice if the
-  // summonQueue.length dep oscillates while pendingGameOver is still true.
+  // arrivalQueue.length dep oscillates while pendingGameOver is still true.
   const fanfareFiredForGameOverRef = useRef(false);
   // Guard that prevents the initial-load win fanfare from firing more than once
   // per component lifetime (covers page reloads, spectators, latecomers).
   const winFanfareOnLoadFiredRef = useRef(false);
-  // True once status transitions to 'finished' — prevents doEnqueue from pushing
-  // new summons after the game ends (only the already-active cutscene is allowed to finish).
+  // True once status transitions to 'finished' — prevents doEnqueueArrival from pushing
+  // new arrivals after the game ends (only the already-active cutscene is allowed to finish).
   const gameFinishedRef = useRef(false);
   // ── Activation cinematic queue ─────────────────────────────────────────────
-  // Unlike summon events, activation events do NOT gate game progression.
+  // Unlike arrival events, activation events do NOT gate game progression.
   // They just enqueue a ~4s full-screen cinematic and auto-dismiss.
   const [activationQueue, setActivationQueue] = useState<PendingLuminaryActivationEvent[]>([]);
   const handledActivationEventIdsRef = useRef(new Set<string>());
@@ -543,8 +543,8 @@ export default function GameBoard() {
   // Timer handle for the animation-barrier delay before the victory cinematic starts.
   // Cleared on unmount to prevent a stale callback firing after navigation.
   const winBarrierTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Stores remaining barrier ms captured in the summon path so the pendingGameOver
-  // flush effect can still respect it (summon cutscene always outlasts typical anims,
+  // Stores remaining barrier ms captured in the arrival path so the pendingGameOver
+  // flush effect can still respect it (arrival cutscene always outlasts typical anims,
   // so this resolves to 0 in practice but keeps the logic consistent).
   const animBarrierMsRef = useRef(0);
   const pendingTurnAnnounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -616,8 +616,8 @@ export default function GameBoard() {
   const [orchardCopyPulseKey, setOrchardCopyPulseKey] = useState(0);
   const [showSeedBoardEffect, setShowSeedBoardEffect] = useState(false);
   const orchardPortalRectRef = useRef<DOMRect | null>(null);
-  const [summonOverlays, setSummonOverlays] = useState<Array<{ id: string; lumId: string }>>([]);
-  // Luminary currently undergoing a summon-flash animation (zoom + flash effect)
+  const [arrivalOverlays, setArrivalOverlays] = useState<Array<{ id: string; lumId: string }>>([]);
+  // Luminary currently undergoing an arrival-flash animation (zoom + flash effect)
   const [flashLumId, setFlashLumId] = useState<string | null>(null);
   // Market redraw / refill pulse — Set of slotKeys ("${tier}-${index}") currently showing the ↺ pulse
   const [refillingSlots, setRefillingSlots] = useState<Set<string>>(new Set());
@@ -947,7 +947,7 @@ export default function GameBoard() {
   };
 
   // Immediately cancel all pending pre-win visual animations so the win overlay
-  // can appear without waiting for queued card/summon animations to drain.
+  // can appear without waiting for queued card/arrival animations to drain.
   // Does NOT affect audio — win fanfare and playWin() still fire normally.
   // Should be called at the moment game-over is detected.
   const cancelPendingAnimations = () => {
@@ -1083,8 +1083,8 @@ export default function GameBoard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.status, state?.version]);
 
-  // ── Initial-load summon check ─────────────────────────────────────────────
-  // Picks up any pendingSummonEvents already in the REST-loaded state (page
+  // ── Initial-load arrival check ─────────────────────────────────────────────
+  // Picks up any pendingArrivalEvents already in the REST-loaded state (page
   // load / reconnect) where no subsequent WebSocket delta will fire a diff.
   // Also seeds claimedThisSession with every already-resolved Luminary so
   // idle entity overlays are restored immediately after a page reload or
@@ -1092,18 +1092,18 @@ export default function GameBoard() {
   // Placed after `state` is declared but before early returns so hook order
   // is always stable across renders.
   useEffect(() => {
-    if (checkedInitialSummonRef.current) return;
+    if (checkedInitialArrivalRef.current) return;
     if (!state) return;
-    checkedInitialSummonRef.current = true;
+    checkedInitialArrivalRef.current = true;
     const pending = state?.pendingSummonEvents ?? [];
     // If the game was already finished when we loaded, identify the sealing
-    // Luminary so its cutscene burst visuals can use the correct summonColor.
+    // Luminary so its cutscene burst visuals can use the correct summonColor (API contract).
     const initialWinTrigId = state.winTriggerLuminaryId ?? undefined;
     for (const evt of pending) {
       const lum = state?.luminaries?.find((l: Luminary) => l.id === evt.luminaryId);
       if (lum) {
         const isSealing = initialWinTrigId && evt.luminaryId === initialWinTrigId;
-        // summonColor is read from the server-side Luminary object here (rather
+        // summonColor (API contract) is read from the server-side Luminary object here (rather
         // than getLuminaryVisuals) because `lum` is already in hand from the
         // state query and both sources hold the same value. The frontend asset
         // map (LUMINARY_VISUALS) is the canonical reference for any new code
@@ -1111,7 +1111,7 @@ export default function GameBoard() {
         const wsc: string | undefined = isSealing ? (lum.summonColor ?? '') || undefined : undefined;
         const claimer = (state?.players ?? []).find((p: { claimedLuminaryIds?: string[] }) =>
           (p.claimedLuminaryIds ?? []).includes(evt.luminaryId));
-        enqueueSummonRef.current(
+        enqueueArrivalRef.current(
           evt.luminaryId, lum.name, lum.domain ?? '',
           lum.oblivion ? -lum.oblivion : lum.lumens, lum.flavor ?? '', evt.eventId, false, wsc,
           (claimer as { playerName?: string })?.playerName,
@@ -1119,7 +1119,7 @@ export default function GameBoard() {
       }
     }
     // Seed idle overlays for Luminaries already claimed before this page load.
-    // Exclude any that still have a pending summon event — they will self-add
+    // Exclude any that still have a pending arrival event — they will self-add
     // to claimedThisSession when their cutscene completes.
     const pendingIds = new Set(pending.map(e => e.luminaryId));
     const alreadyClaimed: string[] = [];
@@ -1150,8 +1150,8 @@ export default function GameBoard() {
       p => p.playerId === state.winnerId
     );
     let fanfareColor = '#fbbf24';
-    // If the win was sealed by a Luminary summon, use that Luminary's
-    // summonColor — it is the most thematically appropriate hue for the
+    // If the win was sealed by a Luminary arrival, use that Luminary's
+    // summonColor (API contract) — it is the most thematically appropriate hue for the
     // fanfare and matches what the live flush path captures via
     // pendingGameOverLumColorRef.
     const winTriggerLumId = state.winTriggerLuminaryId;
@@ -1487,19 +1487,19 @@ export default function GameBoard() {
       setBoardDimKey(k => k + 1);
     }
 
-    // ── Per-summon market overlays (Red Moth, Iron Harbinger, Null, Ember, etc.) ──
-    // Fires concurrently with the summon cutscene for each Luminary that has
+    // ── Per-arrival market overlays (Red Moth, Iron Harbinger, Null, Ember, etc.) ──
+    // Fires concurrently with the arrival cutscene for each Luminary that has
     // a specific board-state visual treatment.
-    const SUMMON_OVERLAY_IDS = [
+    const ARRIVAL_OVERLAY_IDS = [
       'lum_moth', 'lum_forge', 'lum_null', 'lum_ember',
       'lum_compass', 'lum_verdant', 'lum_pale',
       'lum_tide', 'lum_void', 'lum_hunger',
     ] as const;
-    for (const lumId of SUMMON_OVERLAY_IDS) {
+    for (const lumId of ARRIVAL_OVERLAY_IDS) {
       const prevHas = prev.pendingSummonEvents?.some(e => e.luminaryId === lumId) ?? false;
       const newHas  = state.pendingSummonEvents?.some(e => e.luminaryId === lumId) ?? false;
       if (!prevHas && newHas) {
-        setSummonOverlays(pf => [...pf, { id: `${lumId}-${Date.now()}`, lumId }]);
+        setArrivalOverlays(pf => [...pf, { id: `${lumId}-${Date.now()}`, lumId }]);
       }
     }
 
@@ -1574,8 +1574,8 @@ export default function GameBoard() {
   // have stable closure references on every render regardless of whether
   // state has loaded yet.  When state is null the null-safe forms produce
   // safe false / undefined values, and the early returns below still fire.
-  const summonGateActive = summonQueue.length > 0;
-  summonQueueLenRef.current = summonQueue.length;
+  const arrivalGateActive = arrivalQueue.length > 0;
+  arrivalQueueLenRef.current = arrivalQueue.length;
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
 
@@ -1587,7 +1587,7 @@ export default function GameBoard() {
 
   // isMyTurn is false while we're waiting to choose luminary order — the picker
   // overlay is the only interactive surface during that phase.
-  const isMyTurn = isActivePlayer && !summonGateActive && !luminaryChoiceIsOurs;
+  const isMyTurn = isActivePlayer && !arrivalGateActive && !luminaryChoiceIsOurs;
   const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted && !state?.coreActionUsed;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
@@ -1595,7 +1595,7 @@ export default function GameBoard() {
   // Only active after the victory cinematic has been dismissed.
   useFocusTrap(
     winOverlayContainerRef,
-    state?.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && showWinOverlay,
+    state?.status === 'finished' && !pendingGameOver && arrivalQueue.length === 0 && !showCinematic && showWinOverlay,
     () => { /* terminal state — no dismiss action */ },
   );
 
@@ -1761,11 +1761,11 @@ export default function GameBoard() {
     if (prev && newState.version <= prev.version && !isRematch) return;
     if (isRematch) {
       initialTurnFiredRef.current = false;
-      checkedInitialSummonRef.current = false;
-      handledSummonEventIdsRef.current = new Set();
+      checkedInitialArrivalRef.current = false;
+      handledArrivalEventIdsRef.current = new Set();
       handledActivationEventIdsRef.current = new Set();
       setActivationQueue([]);
-      pendingSuppressLumIdsRef.current = new Set();
+      pendingSuppressArrivalIdsRef.current = new Set();
       stateQueueRef.current = [];
       gameFinishedRef.current = false;
       setClaimedThisSession([]);
@@ -1775,8 +1775,8 @@ export default function GameBoard() {
 
       // ── Planned-action cancellation ────────────────────────────────────────
       // The engine stamps lastAction = { type: "planned_action_cancelled", playerId, reason }
-      // on the second version bump inside the deferred-failure branch of resolve_summon.
-      // This lets us distinguish a clean summon resolution from one that also voided
+      // on the second version bump inside the deferred-failure branch of resolve_summon (arrival gate).
+      // This lets us distinguish a clean arrival resolution from one that also voided
       // the waiting player's planned move.  Only show the notice to the affected player;
       // no affinity or purchase animation should be triggered for this update.
       if (action?.type === 'planned_action_cancelled') {
@@ -2194,72 +2194,72 @@ export default function GameBoard() {
       queryClient.setQueryData(getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }), newState);
       prevStateRef.current = newState;
 
-      // Track the event ID and raw summonColor of the win-sealing Luminary so the
+      // Track the event ID and raw summonColor (API contract) of the win-sealing Luminary so the
       // enqueue loop below can color that specific cutscene's particles to match.
       let sealingEventId = '';
-      let sealingLumSummonColor = '';
+      let sealingLumArrivalColor = '';
 
       if (newState.status === 'finished' && (prev?.status ?? state?.status) !== 'finished') {
-        // Count summon events that will actually be dispatched to enqueueSummon
-        // in the loop below (not yet in handledSummonEventIdsRef means not deduped).
+        // Count arrival events that will actually be dispatched to enqueueArrival
+        // in the loop below (not yet in handledArrivalEventIdsRef means not deduped).
         const incomingPending = newState.pendingSummonEvents ?? [];
         const toEnqueue = incomingPending.filter(
-          evt => !handledSummonEventIdsRef.current.has(evt.eventId)
+          evt => !handledArrivalEventIdsRef.current.has(evt.eventId)
         ).length;
-        const hasPendingSummons = toEnqueue > 0 || summonQueueLenRef.current > 0 || enqueuingCountRef.current > 0;
-        if (hasPendingSummons) {
+        const hasPendingArrivals = toEnqueue > 0 || arrivalQueueLenRef.current > 0 || enqueuingCountRef.current > 0;
+        if (hasPendingArrivals) {
           // Register in-flight dispatches BEFORE the enqueue loop below runs,
-          // so the flush effect cannot fire before the RAFs land in summonQueue.
+          // so the flush effect cannot fire before the RAFs land in arrivalQueue.
           enqueuingCountRef.current += toEnqueue;
-          // Capture the sealing Luminary's summonColor for the fanfare.
+          // Capture the sealing Luminary's arrivalColor for the fanfare.
           // We grab the last *new* event's Luminary (same filter used for toEnqueue).
           const allPendingEvts = newState.pendingSummonEvents ?? [];
           const newPendingEvts = allPendingEvts.filter(
-            e => !handledSummonEventIdsRef.current.has(e.eventId)
+            e => !handledArrivalEventIdsRef.current.has(e.eventId)
           );
           if (newPendingEvts.length > 0) {
             const lastEvt = newPendingEvts[newPendingEvts.length - 1];
             const sealingLum = newState.luminaries.find(l => l.id === lastEvt.luminaryId);
-            const lumSummonColor: string = sealingLum?.summonColor ?? '';
+            const lumArrivalColor: string = sealingLum?.summonColor ?? '';
 
-            // Store the raw summonColor for the cutscene visual burst override.
+            // Store the raw arrivalColor for the cutscene visual burst override.
             // This is the Luminary's canonical color and is what the task requires.
             sealingEventId = lastEvt.eventId;
-            sealingLumSummonColor = lumSummonColor;
+            sealingLumArrivalColor = lumArrivalColor;
 
-            // Always use the sealing Luminary's summonColor for Luminary-triggered wins.
+            // Always use the sealing Luminary's arrivalColor for Luminary-triggered wins.
             // Card bonusColor is intentionally not used here so both the live flush path
             // and the on-load fanfare path agree on color priority.
-            pendingGameOverLumColorRef.current = lumSummonColor;
+            pendingGameOverLumColorRef.current = lumArrivalColor;
           }
           // Defer: the flush useEffect below will fire win audio and clear the
           // hold once enqueuingCount reaches zero AND the queue drains.
           setPendingGameOver(true);
           // Capture the animation barrier before we clear the queue — the flush
           // effect will use animBarrierMsRef to defer cancelPendingAnimations()
-          // so any in-flight card/gem animations can complete. The summon
+          // so any in-flight card/gem animations can complete. The arrival
           // cutscene (~12 s) always outlasts the barrier cap (≤ 3 s), so this
           // is a minor polish pass that keeps the logic symmetric with the
-          // non-summon path. enqueuingCountRef is reset to 0 so that RAF-chain
-          // items that have not yet landed in summonQueue are silently dropped
-          // by doEnqueue (which checks gameFinishedRef before pushing).
+          // non-arrival path. enqueuingCountRef is reset to 0 so that RAF-chain
+          // items that have not yet landed in arrivalQueue are silently dropped
+          // by doEnqueueArrival (which checks gameFinishedRef before pushing).
           // The slice(0,1) keeps only the currently-active cutscene; all
-          // queued-but-not-started summons are discarded.
+          // queued-but-not-started arrivals are discarded.
           gameFinishedRef.current = true;
           enqueuingCountRef.current = 0;
           // Cancel the turn announcement immediately — it would be confusing to
-          // show "Your Turn" while the summon cutscene is playing.
+          // show "Your Turn" while the arrival cutscene is playing.
           cancelTurnAnnouncement();
-          const summonPathBarrierMs = Math.min(3000, Math.max(0, animationEndTimeRef.current - Date.now()));
+          const arrivalPathBarrierMs = Math.min(3000, Math.max(0, animationEndTimeRef.current - Date.now()));
           // Store as an absolute deadline so the flush effect can compute remaining time
           // even if it fires slightly later than expected.
-          animBarrierMsRef.current = summonPathBarrierMs > 0 ? Date.now() + summonPathBarrierMs : 0;
+          animBarrierMsRef.current = arrivalPathBarrierMs > 0 ? Date.now() + arrivalPathBarrierMs : 0;
           // Clear the state queue immediately so no further game states are
           // processed, but defer full cancelPendingAnimations() to the flush
           // effect so card/gem animations running underneath the cutscene finish.
           if (queueTimerRef.current) { clearTimeout(queueTimerRef.current); queueTimerRef.current = null; }
           stateQueueRef.current = [];
-          setSummonQueue(q => q.slice(0, 1));
+          setArrivalQueue(q => q.slice(0, 1));
         } else {
           gameFinishedRef.current = true;
           // Cancel the turn announcement immediately — showing "Your Turn" while
@@ -2322,7 +2322,7 @@ export default function GameBoard() {
             // Clear the state queue immediately so no further game states are processed.
             if (queueTimerRef.current) { clearTimeout(queueTimerRef.current); queueTimerRef.current = null; }
             stateQueueRef.current = [];
-            // Prevent the flush useEffect from firing this non-summon hold — we will
+            // Prevent the flush useEffect from firing this non-arrival hold — we will
             // release pendingGameOver ourselves inside the barrier timeout below.
             fanfareFiredForGameOverRef.current = true;
             setPendingGameOver(true);
@@ -2338,10 +2338,10 @@ export default function GameBoard() {
         }
       }
 
-      // AUDIT: summon-cutscene branch — plan-registration state updates leave
+      // AUDIT: arrival-cutscene branch — plan-registration state updates leave
       // pendingSummonEvents unchanged, so every event in newPending will be found in
       // prevPending (alreadyKnown = true) and the enqueueSummon call is skipped.  The
-      // secondary guard inside enqueueSummon (handledSummonEventIdsRef) provides an
+      // secondary guard inside enqueueSummon (handledArrivalEventIdsRef) provides an
       // additional layer.  No separate action-key dedup ref is needed here.
       // Detect newly arrived pendingSummonEvents and start cutscenes for ALL players.
       // The dedup guard in enqueueSummon prevents re-enqueueing the same event.
@@ -2352,25 +2352,25 @@ export default function GameBoard() {
         for (const evt of newPending) {
           // Only enqueue cutscenes for events that weren't in the previous state.
           // Dedup against replaying the same eventId is handled inside enqueueSummon
-          // via handledSummonEventIdsRef — that is the correct dedup boundary.
+          // via handledArrivalEventIdsRef — that is the correct dedup boundary.
           // NOTE: do NOT gate on claimedLuminaryIds here. The engine pushes the
           // luminary into both player.luminaries AND pendingSummonEvents in the same
           // atomic state update, so isAlreadyClaimed would always be true for a live
-          // summon and would suppress every cutscene.
+          // arrival and would suppress every cutscene.
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
           if (!alreadyKnown) {
             // Synchronously mark this luminary as suppressed BEFORE any RAF fires.
             // This ensures the portal doesn't flash during the frames between the
-            // queryClient.setQueryData re-render and the setSummonQueue call.
-            if (!handledSummonEventIdsRef.current.has(evt.eventId)) {
-              pendingSuppressLumIdsRef.current.add(evt.luminaryId);
+            // queryClient.setQueryData re-render and the setArrivalQueue call.
+            if (!handledArrivalEventIdsRef.current.has(evt.eventId)) {
+              pendingSuppressArrivalIdsRef.current.add(evt.luminaryId);
             }
             const lum = newState.luminaries.find(l => l.id === evt.luminaryId);
             if (lum) {
               // Pass winSealingColor for the event that sealed the win so its
-              // cutscene burst visuals match the Luminary's summonColor.
+              // cutscene burst visuals match the Luminary's summonColor (API contract).
               const wsc = (sealingEventId && evt.eventId === sealingEventId)
-                ? sealingLumSummonColor : undefined;
+                ? sealingLumArrivalColor : undefined;
               const claimedByPlayer = (newState.players ?? []).find(
                 (p: { claimedLuminaryIds?: string[] }) =>
                   (p.claimedLuminaryIds ?? []).includes(evt.luminaryId)
@@ -2392,13 +2392,13 @@ export default function GameBoard() {
       }
 
       // Detect newly arrived pendingLuminaryActivationEvents and enqueue ~4s activation cinematics.
-      // Unlike summon events these do NOT gate game progression — no drain-queue barrier needed.
+      // Unlike arrival events these do NOT gate game progression — no drain-queue barrier needed.
       {
         const prevPending = prev?.pendingLuminaryActivationEvents ?? [];
         const newPending = newState?.pendingLuminaryActivationEvents ?? [];
         for (const evt of newPending) {
-          // Summon-type events are shown via the summon cutscene — skip them here.
-          // (lum_seed no longer pushes a summon activation event from the engine,
+          // Arrival-type events are shown via the arrival cutscene — skip them here.
+          // (lum_seed no longer pushes an arrival activation event from the engine,
           // but this guard handles any in-flight game states from before that change.)
           if (evt.effectType === 'summon') continue;
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
@@ -2512,7 +2512,7 @@ export default function GameBoard() {
       // correctly blocks re-fires without needing an additional action-key dedup ref.
       // fireTurnAnnouncement also has its own lastAnnouncedTurnRef guard as a second layer.
       // Skip re-announcing if this update is a planned_action_cancelled — the preceding
-      // resolve_summon update already triggered the correct announcement and firing again
+      // resolve_summon (arrival gate) update already triggered the correct announcement and firing again
       // would produce a duplicate or out-of-order "your turn" banner.
       if (newState.status === 'playing' && newState.lastAction && newState.lastAction.type !== 'planned_action_cancelled' && newState.currentPlayerIndex !== (prev?.currentPlayerIndex ?? state?.currentPlayerIndex)) {
         const nextPlayer = newState.players[newState.currentPlayerIndex];
@@ -2532,10 +2532,10 @@ export default function GameBoard() {
     queueTimerRef.current = null;
     if (stateQueueRef.current.length === 0) return;
     const remaining = animationEndTimeRef.current - Date.now();
-    // Also pause draining while a summon cutscene is actively playing.
-    const summonActive = summonQueue.length > 0;
-    if (remaining > 50 || pendingTurnAnnounceRef.current || summonActive) {
-      const delay = remaining > 50 ? remaining + 100 : summonActive ? 500 : 200;
+    // Also pause draining while an arrival cutscene is actively playing.
+    const arrivalActive = arrivalQueue.length > 0;
+    if (remaining > 50 || pendingTurnAnnounceRef.current || arrivalActive) {
+      const delay = remaining > 50 ? remaining + 100 : arrivalActive ? 500 : 200;
       queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
       return;
     }
@@ -2607,7 +2607,7 @@ export default function GameBoard() {
         // calculations and the planning UI (canAffordCard / "Plan: Forge" button)
         // always reflect the latest server state even while an animation is still
         // playing.  Visual-only state (hiddenSlots, flippingCards, cardActionBurst,
-        // summon cutscene) is derived exclusively from processUpdate, which is still
+        // arrival cutscene) is derived exclusively from processUpdate, which is still
         // gated by the animation queue, so animations are completely unaffected.
         queryClient.setQueryData(
           getGetGameStateQueryKey(roomId!, { sessionToken: session?.sessionToken || '' }),
@@ -2691,7 +2691,7 @@ export default function GameBoard() {
   //
   // Safety: processUpdateRef's version guard (newState.version <= prev.version
   // → return) prevents double-animation when WS already processed the state.
-  // The summon dedup guard (handledSummonEventIdsRef) adds a second layer for
+  // The arrival dedup guard (handledArrivalEventIdsRef) adds a second layer for
   // cutscenes. The effect is intentionally not dep-array-exhaustive — it only
   // needs to react to `state` changing (the polling result).
   useEffect(() => {
@@ -2704,9 +2704,9 @@ export default function GameBoard() {
     // advanced by processUpdate. Without this check the same state version gets
     // pushed into stateQueueRef twice — once from the WS path and once here.
     // Both calls would eventually process the same pendingSummonEvent, and while
-    // the inner dedup guards (version guard + handledSummonEventIdsRef) catch the
+    // the inner dedup guards (version guard + handledArrivalEventIdsRef) catch the
     // duplicate, the double-queued entry still creates unnecessary work during the
-    // 12-second summon cutscene gate and can cause queue confusion under load.
+    // 12-second arrival cutscene gate and can cause queue confusion under load.
     if (stateQueueRef.current.some(s => s.version === polledVersion)) return;
     // WS missed this version — feed it through the animation queue.
     const remaining = animationEndTimeRef.current - Date.now();
@@ -2733,7 +2733,7 @@ export default function GameBoard() {
   // is missed, ghosts persist and the slot appears frozen.  This effect sets a
   // 7 s deadline: any ghost still alive after that is force-cleared.  7 s is
   // longer than the longest regular animation (cipher burst ~6.5 s) but shorter
-  // than the summon cutscene (12 s), so it catches genuinely stuck ghosts
+  // than the arrival cutscene (12 s), so it catches genuinely stuck ghosts
   // without interfering with in-flight animations.
   useEffect(() => {
     if (Object.keys(burstGhostCards).length === 0) return;
@@ -2752,7 +2752,7 @@ export default function GameBoard() {
   // ── enqueueSummon ─────────────────────────────────────────────────────────
   // Triggered by real game events detected via pendingSummonEvents.
   //
-  // Dedup guard: skips any eventId already in handledSummonEventIdsRef.
+  // Dedup guard: skips any eventId already in handledArrivalEventIdsRef.
   // Animation barrier: if other animations are running, delays the DOM
   // measurement and queue push until they complete.
   //
@@ -2764,7 +2764,7 @@ export default function GameBoard() {
   //   5. el.scrollIntoView (instant)    — bring card into view on both axes
   //   6. one rAF                        — let scroll settle
   //   7. getBoundingClientRect()        — fresh measurement
-  //   8. setSummonQueue + setAnimEndTime — start the cutscene; block state drains
+  //   8. setArrivalQueue + setAnimEndTime — start the cutscene; block state drains
   //
   // If the element is missing after switching tabs, falls back to viewport-centre.
   const enqueueSummon = (
@@ -2780,21 +2780,21 @@ export default function GameBoard() {
   ) => {
     // 1. Dedup guard (skip for dev tests which intentionally replay)
     if (!isDevTest) {
-      if (handledSummonEventIdsRef.current.has(eventId)) {
+      if (handledArrivalEventIdsRef.current.has(eventId)) {
         console.log(`[Luminae] enqueueSummon: duplicate eventId="${eventId}" — skipped`);
         return;
       }
-      handledSummonEventIdsRef.current.add(eventId);
+      handledArrivalEventIdsRef.current.add(eventId);
     }
 
     console.log(`[Luminae] enqueueSummon: queueing lumId="${lumId}" eventId="${eventId}" isDevTest=${isDevTest}`);
 
-    const doEnqueue = () => {
-      // If the game has already ended, do not push this summon into the queue.
-      // The currently-active cutscene (summonQueue[0]) is allowed to finish via
+    const doEnqueueArrival = () => {
+      // If the game has already ended, do not push this arrival into the queue.
+      // The currently-active cutscene (arrivalQueue[0]) is allowed to finish via
       // the pendingGameOver mechanism; everything else is silently discarded.
       if (gameFinishedRef.current) {
-        pendingSuppressLumIdsRef.current.delete(lumId);
+        pendingSuppressArrivalIdsRef.current.delete(lumId);
         return;
       }
       setActiveTab('board');                         // 3. ensure board tab mounts
@@ -2809,8 +2809,8 @@ export default function GameBoard() {
               `[Luminae] enqueueSummon: no DOM element for luminary "${lumId}". ` +
               'Falling back to viewport centre.'
             );
-            pendingSuppressLumIdsRef.current.delete(lumId);
-            setSummonQueue(q => [
+            pendingSuppressArrivalIdsRef.current.delete(lumId);
+            setArrivalQueue(q => [
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
                 lumens: lumLumens, flavor: lumFlavor, claimedBy, cardRect: undefined, eventId, isDevTest, winSealingColor },
@@ -2839,8 +2839,8 @@ export default function GameBoard() {
               );
             }
 
-            pendingSuppressLumIdsRef.current.delete(lumId);
-            setSummonQueue(q => [                   // 7. start the cutscene
+            pendingSuppressArrivalIdsRef.current.delete(lumId);
+            setArrivalQueue(q => [                   // 7. start the cutscene
               ...q,
               { id: lumId, name: lumName, domain: lumDomain,
                 lumens: lumLumens, flavor: lumFlavor, claimedBy, cardRect: cardRectVal, eventId, isDevTest, winSealingColor },
@@ -2857,19 +2857,19 @@ export default function GameBoard() {
     const animBarrier = animationEndTimeRef.current - Date.now();
     if (animBarrier > 50) {
       console.log(`[Luminae] enqueueSummon: delaying ${Math.round(animBarrier)}ms for animation barrier`);
-      setTimeout(doEnqueue, animBarrier + 100);
+      setTimeout(doEnqueueArrival, animBarrier + 100);
     } else {
-      doEnqueue();
+      doEnqueueArrival();
     }
   };
   // Keep the ref in sync so the pre-early-return useEffect can call it.
-  enqueueSummonRef.current = enqueueSummon;
+  enqueueArrivalRef.current = enqueueSummon;
 
   // ── Deferred game-over flush ───────────────────────────────────────────────
-  // When a Luminary summon and the win condition arrive in the same state
+  // When a Luminary arrival and the win condition arrive in the same state
   // update, `pendingGameOver` is set to hold back the win overlay and win
-  // audio until the summon cutscene completes. This effect fires the deferred
-  // actions as soon as the summon queue fully drains.
+  // audio until the arrival cutscene completes. This effect fires the deferred
+  // actions as soon as the arrival queue fully drains.
 
   // Delay (ms) between the fanfare starting and the win overlay appearing /
   // playWin() firing. Should roughly match the fanfare duration (~1.3 s).
@@ -2880,10 +2880,10 @@ export default function GameBoard() {
   useEffect(() => {
     // Only flush when the queue is fully drained AND no events are still mid-RAF
     // chain waiting to be pushed into the queue. enqueuingCountRef drops to zero
-    // synchronously when each event lands in setSummonQueue (inside enqueueSummon).
+    // synchronously when each event lands in setArrivalQueue (inside enqueueSummon).
     if (
       pendingGameOver &&
-      summonQueue.length === 0 &&
+      arrivalQueue.length === 0 &&
       enqueuingCountRef.current === 0 &&
       !fanfareFiredForGameOverRef.current
     ) {
@@ -2896,12 +2896,12 @@ export default function GameBoard() {
       // overlay is released. If no color was captured (edge case), the fanfare
       // gracefully falls back to the flux/default voice.
       //
-      // Also check animBarrierMsRef: the summon path stored any remaining
-      // animation-barrier time there. The summon cutscene (~12 s) always
+      // Also check animBarrierMsRef: the arrival path stored any remaining
+      // animation-barrier time there. The arrival cutscene (~12 s) always
       // outlasts the barrier cap (≤ 3 s), so this is zero in practice, but
       // keeping the check here ensures cancelPendingAnimations() is not called
       // while a card/gem animation burst is still mid-sequence.
-      const summonFlushBarrierMs = Math.max(0, animBarrierMsRef.current - Date.now());
+      const arrivalFlushBarrierMs = Math.max(0, animBarrierMsRef.current - Date.now());
       animBarrierMsRef.current = 0;
       gameAudio.playLuminaryFanfare(pendingGameOverLumColorRef.current);
       winBarrierTimerRef.current = setTimeout(() => {
@@ -2911,33 +2911,33 @@ export default function GameBoard() {
         fanfareFiredForGameOverRef.current = false;
         setPendingGameOver(false);
         gameAudio.playWin();
-      }, WIN_FANFARE_DELAY_MS + summonFlushBarrierMs);
+      }, WIN_FANFARE_DELAY_MS + arrivalFlushBarrierMs);
     }
-  }, [summonQueue.length, pendingGameOver]);
+  }, [arrivalQueue.length, pendingGameOver]);
 
-  // In tutorial mode, suppress the summon cutscene entirely — immediately drain
-  // any queued summon entries by running the onComplete logic synchronously.
+  // In tutorial mode, suppress the arrival cutscene entirely — immediately drain
+  // any queued arrival entries by running the onComplete logic synchronously.
   // This prevents the near-opaque cinematic overlay from blacking out the tutorial
   // UI for the ~9.5 s cutscene duration. resolve_summon is still dispatched
   // (now allowed through the tutorial gate above) so the server gate clears correctly.
   useEffect(() => {
     if (!isTutorial) return;
-    if (summonQueue.length === 0) return;
-    const entry = summonQueue[0];
+    if (arrivalQueue.length === 0) return;
+    const entry = arrivalQueue[0];
     if (!entry) return;
-    setSummonQueue(q => q.slice(1));
+    setArrivalQueue(q => q.slice(1));
     setClaimedThisSession(prev =>
       prev.includes(entry.id) ? prev : [...prev, entry.id]
     );
     if (!entry.isDevTest) {
       executeAction({ type: 'resolve_summon', eventId: entry.eventId });
     }
-  // summonQueue is the reactive dep that re-runs this effect whenever a new
+  // arrivalQueue is the reactive dep that re-runs this effect whenever a new
   // entry is pushed. executeAction is omitted from the dep array intentionally:
   // it is re-created each render but the latest version is always captured
-  // through the closure when this effect fires due to summonQueue changing.
+  // through the closure when this effect fires due to arrivalQueue changing.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTutorial, summonQueue]);
+  }, [isTutorial, arrivalQueue]);
 
   const playGemBurst = (crystals: Partial<CrystalCounts>, playerName: string, avatarId: string | null) => {
     const gems: GemKey[] = [];
@@ -3220,7 +3220,7 @@ export default function GameBoard() {
     // Steps 0–3 each have specific permitted types; step 4 (Luminaries intro,
     // requiresConfirm) has an empty list, so ALL actions are blocked until the
     // player taps "Got it" and the overlay dismisses (tutorialStep goes to -1).
-    // resolve_summon must always reach the server to clear the summon gate,
+    // resolve_summon must always reach the server to clear the arrival gate,
     // even during tutorial steps where all other action types are gated.
     if (payload.type !== 'resolve_summon' && isTutorial && tutorialStep >= 0 && tutorialStep < LUMII_BEAT_COUNT) {
       const permitted = LUMII_BEAT_GATES[tutorialStep] ?? [];
@@ -3267,7 +3267,7 @@ export default function GameBoard() {
       setSelectedCrystals({});
       setCrystalHistory([]);
       setPrePromotionHistory(null);
-      // resolve_summon fires from onComplete for every player who watched the
+      // resolve_summon fires from onComplete for every player who watched the  // arrival gate dispatch
       // cutscene (including opponents who skipped the view and may be browsing
       // cards). Do not close their card sheet as a side-effect of that action.
       if (payload.type !== 'resolve_summon') setSelectedCard(null);
@@ -3609,11 +3609,11 @@ export default function GameBoard() {
   };
 
   // canPlan is available to any player whenever the game is active and there is
-  // no blocking Luminary summon cutscene. It is intentionally NOT tied to
+  // no blocking Luminary arrival cutscene. It is intentionally NOT tied to
   // !isActivePlayer or !isMyTurn — planning should be accessible at all times
   // (on your turn, off your turn, during animation locks). Only Luminary
   // cutscenes gate it, because those require player attention.
-  const canPlan = state.status === 'playing' && !!me && (!summonGateActive || localSummonSkipped);
+  const canPlan = state.status === 'playing' && !!me && (!arrivalGateActive || localArrivalSkipped);
   const myPlannedAction = me?.plannedAction ?? null;
   const plannedCardId: string | null = (myPlannedAction?.cardId as string | undefined) ?? null;
 
@@ -3758,23 +3758,23 @@ export default function GameBoard() {
             // Real server affinity state
             const serverLumAffinity = state.luminaryAffinities.find(la => la.luminaryId === l.id) ?? null;
             const isOwnedByMe = claimedByPlayer?.playerId === session?.playerId;
-            // isLive: bonus active starting the turn AFTER summoning
+            // isLive: bonus active starting the turn AFTER arrival
             const isLive = !!serverLumAffinity && turnCount > serverLumAffinity.summonedAtTurnCount;
 
-            // Suppress the claimed vortex/portal while a summon cutscene is active
+            // Suppress the claimed vortex/portal while an arrival cutscene is active
             // for this luminary. The server marks it claimed immediately (for rules /
             // persistence), but visually the portal must not appear until the shatter
-            // animation has fully resolved. isSummonInProgress covers every entry in
+            // animation has fully resolved. isArrivalInProgress covers every entry in
             // the queue (not just the head) so queued-but-not-yet-playing cutscenes
             // are also suppressed. Dev-test entries (isDevTest=true) have no real
             // claimedByPlayer, so they are excluded to keep the dev preview working.
-            const isSummonInProgress = summonQueue.some(e => e.id === l.id && !e.isDevTest)
-              || pendingSuppressLumIdsRef.current.has(l.id);
+            const isArrivalInProgress = arrivalQueue.some(e => e.id === l.id && !e.isDevTest)
+              || pendingSuppressArrivalIdsRef.current.has(l.id);
 
             // Visible claimed state — cleared during active cutscene so the board
             // slot keeps rendering the sealed panel until onComplete fires.
-            const visibleClaimedByPlayer = isSummonInProgress ? null : claimedByPlayer;
-            const visibleClaimedByNames  = isSummonInProgress ? []   : claimedByNames;
+            const visibleClaimedByPlayer = isArrivalInProgress ? null : claimedByPlayer;
+            const visibleClaimedByNames  = isArrivalInProgress ? []   : claimedByNames;
 
             return (
               <LuminaryCard
@@ -3784,8 +3784,8 @@ export default function GameBoard() {
                 isReleased={claimedThisSession.includes(l.id)}
                 luminaryAffinity={serverLumAffinity}
                 claimedByPlayer={visibleClaimedByPlayer}
-                isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
-                isLive={isSummonInProgress ? false : isLive}
+                isOwnedByMe={isArrivalInProgress ? false : isOwnedByMe}
+                isLive={isArrivalInProgress ? false : isLive}
                 canToggle={isOwnedByMe && !!serverLumAffinity && (serverLumAffinity.eligibleAffinities?.length ?? 0) >= 2 && turnCount > serverLumAffinity.summonedAtTurnCount}
                 onToggle={(affinity) => executeAction({ type: 'toggle_luminary_affinity', luminaryId: l.id, affinity: affinity as ActionRequestAffinity })}
                 costMode={costMode}
@@ -6400,7 +6400,7 @@ export default function GameBoard() {
                 {!selectedCard.readOnly && !isMyTurn && !canPlan && (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     <AlertCircle className="inline h-4 w-4 mr-1" />
-                    Waiting for Luminary summon…
+                    Waiting for Luminary arrival…
                   </p>
                 )}
 
@@ -6832,7 +6832,7 @@ export default function GameBoard() {
                   {!isMyTurn && !canPlan && (
                     <p className="text-sm text-muted-foreground text-center py-2">
                       <AlertCircle className="inline h-4 w-4 mr-1" />
-                      Waiting for Luminary summon…
+                      Waiting for Luminary arrival…
                     </p>
                   )}
 
@@ -7807,7 +7807,7 @@ export default function GameBoard() {
 
       {/* ── Victory Cinematic ── */}
       <AnimatePresence>
-        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && showCinematic && (() => {
+        {state.status === 'finished' && !pendingGameOver && arrivalQueue.length === 0 && showCinematic && (() => {
           const winnerId = state.winnerId;
           if (!winnerId) return null;
           const winnerPlayer = (state.players as GamePlayerState[]).find(p => p.playerId === winnerId);
@@ -7839,7 +7839,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Return-to-Results banner (shown when board is visible after game over) ── */}
-      {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && !showWinOverlay && (() => {
+      {state.status === 'finished' && !pendingGameOver && arrivalQueue.length === 0 && !showCinematic && !showWinOverlay && (() => {
         const onReturnToResults = () => setShowWinOverlay(true);
         return (
           <ReturnResultsBanner
@@ -7851,7 +7851,7 @@ export default function GameBoard() {
       })()}
 
       {/* ── Board-view action log panel (shown when viewing board after game over) ── */}
-      {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && !showWinOverlay && (() => {
+      {state.status === 'finished' && !pendingGameOver && arrivalQueue.length === 0 && !showCinematic && !showWinOverlay && (() => {
         const AFFINITY_DOT_COLOR: Record<string, string> = {
           Flare: '#FF5A3C',
           Continuum: '#3D6BFF',
@@ -7966,7 +7966,7 @@ export default function GameBoard() {
 
       {/* ── Win Overlay ── */}
       <AnimatePresence>
-        {state.status === 'finished' && !pendingGameOver && summonQueue.length === 0 && !showCinematic && showWinOverlay && (
+        {state.status === 'finished' && !pendingGameOver && arrivalQueue.length === 0 && !showCinematic && showWinOverlay && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -8284,7 +8284,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Dev: Luminary Summon Test Panel ── */}
-      {import.meta.env.DEV && summonQueue.length === 0 && state?.status === 'playing' && (
+      {import.meta.env.DEV && arrivalQueue.length === 0 && state?.status === 'playing' && (
         <div className="fixed bottom-20 right-2 z-[150] flex flex-col gap-1 p-2 rounded-lg border border-amber-500/40 bg-black/80 shadow-lg shadow-black/60">
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-amber-300 font-mono uppercase tracking-wider font-semibold">Test Cutscene</span>
@@ -8316,7 +8316,7 @@ export default function GameBoard() {
         </div>
       )}
 
-      {/* Luminary summoning cutscene queue — plays one cutscene at a time.
+      {/* Luminary arrival cutscene queue — plays one cutscene at a time.
           When the user presses "Skip view", the cutscene overlay is hidden via
           CSS (visibility:hidden) but the component stays mounted so its internal
           timer chain still runs and fires onComplete at the correct moment.
@@ -8326,24 +8326,24 @@ export default function GameBoard() {
           the component must never mount here so the full-screen dark overlay
           (z-9000, up to 88% opacity) never appears during the tutorial. */}
       <AnimatePresence>
-        {!isTutorial && summonQueue.length > 0 && summonQueue[0] && (() => {
-          const entry = summonQueue[0];
+        {!isTutorial && arrivalQueue.length > 0 && arrivalQueue[0] && (() => {
+          const entry = arrivalQueue[0];
           // Completion logic shared by both onSkip and the cutscene's internal
           // onComplete timer. When the user taps Skip, the cutscene is unmounted
           // immediately so the queue advances and the server gate resolves.
-          const resolveSummon = () => {
-            console.log(`[Luminae] Summon resolved: eventId="${entry.eventId}" isDevTest=${entry.isDevTest}`);
-            setLocalSummonSkipped(false);
-            setSummonQueue(q => q.slice(1));
+          const resolveArrival = () => {
+            console.log(`[Luminae] Arrival resolved: eventId="${entry.eventId}" isDevTest=${entry.isDevTest}`);
+            setLocalArrivalSkipped(false);
+            setArrivalQueue(q => q.slice(1));
             setClaimedThisSession(prev =>
               prev.includes(entry.id) ? prev : [...prev, entry.id]
             );
-            // After the Seed Beyond Seasons summon cutscene resolves, show the
+            // After the Seed Beyond Seasons arrival cutscene resolves, show the
             // deck-seeding flourish as a compact board-level effect (no fullscreen overlay).
             if (entry.id === 'lum_seed') {
               setShowSeedBoardEffect(true);
             }
-            // Resolve the global summon gate on the server so all clients
+            // Resolve the global arrival gate on the server so all clients
             // can unblock their turn actions once the cutscene is done.
             if (!entry.isDevTest) {
               executeAction({ type: 'resolve_summon', eventId: entry.eventId });
@@ -8351,7 +8351,7 @@ export default function GameBoard() {
           };
           return (
             <div key={entry.eventId}>
-              <LuminarySummonCutscene
+              <LuminaryArrivalCutscene
                 luminaryId={entry.id}
                 luminaryName={entry.name}
                 domain={entry.domain}
@@ -8361,11 +8361,11 @@ export default function GameBoard() {
                 cardRect={entry.cardRect}
                 overrideColor={entry.winSealingColor}
                 onSkip={() => {
-                  console.log(`[Luminae] Summon view skipped locally for eventId="${entry.eventId}"`);
-                  gameAudio.stopSummonCutscene();
-                  resolveSummon();
+                  console.log(`[Luminae] Arrival view skipped locally for eventId="${entry.eventId}"`);
+                  gameAudio.stopArrivalCutscene();
+                  resolveArrival();
                 }}
-                onComplete={resolveSummon}
+                onComplete={resolveArrival}
                 onFlash={() => {
                   setFlashLumId(entry.id);
                   // Auto-clear after the flash animation finishes (~0.5 s)
@@ -8378,10 +8378,10 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* Luminary activation cinematic queue — plays one ~4s cinematic per effect.
-          These are distinct from the 12-s summon cutscene and do NOT gate progression.
-          Gated on summonQueue.length === 0 so the arrival effect never fires while
-          the summon cutscene is still playing. */}
-      {!isTutorial && activationQueue.length > 0 && summonQueue.length === 0 && (() => {
+          These are distinct from the 12-s arrival cutscene and do NOT gate progression.
+          Gated on arrivalQueue.length === 0 so the arrival effect never fires while
+          the arrival cutscene is still playing. */}
+      {!isTutorial && activationQueue.length > 0 && arrivalQueue.length === 0 && (() => {
         const evt = activationQueue[0];
         const lum = (state?.luminaries ?? []).find((l: Luminary) => l.id === evt.luminaryId);
         const triggeringPlayer = (state?.players ?? []).find(
@@ -8411,11 +8411,11 @@ export default function GameBoard() {
       })()}
 
       {/* "Waiting" chip shown when the user has skipped their local view but
-          the summon is still globally resolving (cutscene timer still running). */}
-      {localSummonSkipped && summonQueue.length > 0 && (
+          the arrival is still globally resolving (cutscene timer still running). */}
+      {localArrivalSkipped && arrivalQueue.length > 0 && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[9001] flex items-center gap-2 bg-black/75 text-white/75 text-xs px-4 py-2 rounded-full border border-white/15 backdrop-blur pointer-events-none select-none">
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-          <span>Summoning in progress…</span>
+          <span>Arrival in progress…</span>
         </div>
       )}
 
@@ -8434,8 +8434,8 @@ export default function GameBoard() {
           <LuminaryIdleOverlay
             key={lumId}
             luminaryId={lumId}
-            frozen={summonQueue.length > 0}
-            hidden={activeTab !== 'board' || summonQueue.length > 0}
+            frozen={arrivalQueue.length > 0}
+            hidden={activeTab !== 'board' || arrivalQueue.length > 0}
             activeAffinityColor={activeAffinityColor}
           />
         );
@@ -8524,17 +8524,17 @@ export default function GameBoard() {
         pulseKey={orchardCopyPulseKey}
       />
       {/* ── Seed Beyond Seasons board-level seeding flourish ──
-          Plays after the summon cutscene resolves for lum_seed.
+          Plays after the arrival cutscene resolves for lum_seed.
           Renders at normal board scale (no dimming, no entity overlay). */}
       {showSeedBoardEffect && (
         <SeedBeyondSeasonsEffect onComplete={() => setShowSeedBoardEffect(false)} />
       )}
-      {/* ── v0.8 Per-Luminary summon market overlays ── */}
-      {summonOverlays.map(o => (
-        <SummonMarketOverlay
+      {/* ── v0.8 Per-Luminary arrival market overlays ── */}
+      {arrivalOverlays.map(o => (
+        <ArrivalMarketOverlay
           key={o.id}
           lumId={o.lumId}
-          onDone={() => setSummonOverlays(pf => pf.filter(x => x.id !== o.id))}
+          onDone={() => setArrivalOverlays(pf => pf.filter(x => x.id !== o.id))}
         />
       ))}
       {/* Aura preview modal — full-screen entity + aura animation */}

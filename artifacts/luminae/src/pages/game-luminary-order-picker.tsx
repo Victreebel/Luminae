@@ -106,7 +106,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
               const rank = selectedOrder.indexOf(lum.id);
               const isSelected = rank !== -1;
               const visuals = getLuminaryVisuals(lum.id);
-              const glowHex = visuals.summonColor;
+              const glowHex = visuals.summonColor; // API contract field
 
               return (
                 <motion.button

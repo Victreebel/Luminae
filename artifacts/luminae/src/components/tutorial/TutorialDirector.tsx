@@ -33,7 +33,7 @@ import {
   type TutState,
   type TAction,
 } from "@/lib/tutorialReducer";
-import { LuminarySummonCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
+import { LuminaryArrivalCutscene, LuminaryPanelArt } from "@/lib/luminaryAssets";
 import { BOARD_CARD_W, BOARD_CARD_H } from "@/lib/constants";
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from "@/components/ArtifactCardBack";
 import { AffinityEmblem } from "@/components/AffinityEmblem";
@@ -1379,7 +1379,7 @@ function ScriptedMarket({ s, dispatch, beatId, subStep, onCardTap, tier1Ref, tie
 
 // ─── Fullscreen Shatter Overlay ───────────────────────────────────────────────
 // Matches the exact phase structure, 4-layer crack paint, 3-D shard scatter,
-// and audio timing of the Luminary summon cutscene.
+// and audio timing of the Luminary arrival cutscene.
 
 const FS_PHASE_ORDER = [
   'pressure', 'firstcrack', 'leaking', 'secondcrack',
@@ -1572,7 +1572,7 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
     return () => clearTimeout(t);
   }, [phase]);
 
-  // Advance through phases at the same durations as the summon cutscene.
+  // Advance through phases at the same durations as the arrival cutscene.
   // onShattering fires when shards begin flying (cosmos underlight starts).
   // onRevealCosmos fires at the same moment so the cosmos fades in through the gaps.
   useEffect(() => {
@@ -2688,7 +2688,7 @@ function LuminaryPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
     <div className="fixed inset-0 flex flex-col items-center justify-center" style={{ background: `url(${backgroundCosmos}) center/cover` }}>
       <div className="absolute inset-0 bg-black/60" />
       <div className="relative z-10 flex flex-col items-center gap-6 w-full">
-        <LuminarySummonCutscene
+        <LuminaryArrivalCutscene
           luminaryId="lum_verdant"
           luminaryName="The Verdant Oracle"
           domain="Verdance"

@@ -30,7 +30,7 @@ interface PendingSummonEvent {
   createdAt?: number;
 }
 
-/** Emitted each time a Luminary's mechanical effect fires (summon arrival,
+/** Emitted each time a Luminary's mechanical effect fires (arrival cutscene,
  *  end-of-turn hook, start-of-turn hook).  Clients consume it to trigger
  *  the 4-second activation cinematic overlay, then send
  *  resolve_luminary_activation to pop it from the queue. */
@@ -52,7 +52,7 @@ export interface CardMarker {
   type: CardMarkerType;
   /** Player ID of the Luminary owner who placed the marker. */
   ownerId: string;
-  /** turnCount when the Luminary was summoned (used for timing checks). */
+  /** turnCount when the Luminary arrived (used for timing checks). */
   summonedAtTurnCount: number;
 }
 
@@ -377,7 +377,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7f1d1d",
     auraStyle: "fire",
     effectName: "Rupture of the Still",
-    effectDescription: "On summon, burns the lowest-cost Tier III and Tier II Artifact without Flare affinity from the market, forcing those slots to immediately redraw.",
+    effectDescription: "On arrival, burns the lowest-cost Tier III and Tier II Artifact without Flare affinity from the market, forcing those slots to immediately redraw.",
   },
   {
     id: "lum_tide",
@@ -390,7 +390,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#e2e8f0",
     auraStyle: "tide",
     effectName: "The Observer Effect",
-    effectDescription: "On summon, scries the top cards of the Tier II and Tier III decks and reorders them so Continuum Artifacts surface first.",
+    effectDescription: "On arrival, scries the top cards of the Tier II and Tier III decks and reorders them so Continuum Artifacts surface first.",
   },
   {
     id: "lum_verdant",
@@ -403,7 +403,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#166534",
     auraStyle: "verdant",
     effectName: "Early Bloom",
-    effectDescription: "Living Luminary bonus — starting the turn after you summon this Luminary, you gain +1 Verdance toward every card purchase while you own it.",
+    effectDescription: "Living Luminary bonus — starting the turn after this Luminary arrives, you gain +1 Verdance toward every card purchase while you own it.",
   },
   {
     id: "lum_void",
@@ -417,7 +417,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "void",
     effectName: "Oblivion",
-    effectDescription: "On summon, ALL players (including you) immediately lose 4 Eminence. This Luminary awards no Eminence to its summoner.",
+    effectDescription: "On arrival, ALL players (including you) immediately lose 4 Eminence. This Luminary awards no Eminence to its claimer.",
   },
   {
     id: "lum_radiant",
@@ -444,7 +444,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#3d6bff",
     auraStyle: "astral",
     effectName: "Ash-Seeking Recurrence",
-    effectDescription: "On summon, burns face-up Tier III then Tier II Artifacts from the market one by one until a Flare or Continuum card is revealed — that card stays in the market.",
+    effectDescription: "On arrival, burns face-up Tier III then Tier II Artifacts from the market one by one until a Flare or Continuum card is revealed — that card stays in the market.",
   },
   {
     id: "lum_bloom",
@@ -470,7 +470,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#1c1917",
     auraStyle: "storm",
     effectName: "Impact Extinction",
-    effectDescription: "On summon, burns every currently face-up Tier III Artifact from the market, forcing all those slots to immediately redraw from the deck.",
+    effectDescription: "On arrival, burns every currently face-up Tier III Artifact from the market, forcing all those slots to immediately redraw from the deck.",
   },
   {
     id: "lum_compass",
@@ -483,7 +483,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "distorted",
     effectName: "The Forgotten Hour",
-    effectDescription: "On summon, marks all currently face-up market Artifacts as Forgotten — they award 0 Eminence when forged until the end of your next turn.",
+    effectDescription: "On arrival, marks all currently face-up market Artifacts as Forgotten — they award 0 Eminence when forged until the end of your next turn.",
   },
   {
     id: "lum_seed",
@@ -496,7 +496,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "compass",
     effectName: "Avatar Seeds",
-    effectDescription: "On summon, places Avatar Seed tokens on the top card of each deck tier. When an opponent forges a seeded card, you earn pending Eminence paid out at the end of your next turn.",
+    effectDescription: "On arrival, places Avatar Seed tokens on the top card of each deck tier. When an opponent forges a seeded card, you earn pending Eminence paid out at the end of your next turn.",
   },
   {
     id: "lum_orchard",
@@ -522,7 +522,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "pale",
     effectName: "Balance Due",
-    effectDescription: "On summon, each player holding more than half the starting supply of any crystal must return 1 of that crystal to the bank.",
+    effectDescription: "On arrival, each player holding more than half the starting supply of any crystal must return 1 of that crystal to the bank.",
   },
   // ── Triple-color Luminaries (2–4 Eminence) ──────────────────────────────────
   {
@@ -536,7 +536,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
     effectName: "Cinder Mandate",
-    effectDescription: "On summon, marks all face-up Artifacts lacking Flare, Abyss, or Radiance affinity as Condemned — they burn at the start of your next turn, clearing those market slots.",
+    effectDescription: "On arrival, marks all face-up Artifacts lacking Flare, Abyss, or Radiance affinity as Condemned — they burn at the start of your next turn, clearing those market slots.",
   },
   {
     id: "lum_hunger",
@@ -549,7 +549,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#4ade80",
     auraStyle: "oracle",
     effectName: "Assimilation",
-    effectDescription: "On summon, you may replace your forge action this turn with Assimilation — copy the bonus affinity of any Artifact card in your collection as a permanent bonus.",
+    effectDescription: "On arrival, you may replace your forge action this turn with Assimilation — copy the bonus affinity of any Artifact card in your collection as a permanent bonus.",
   },
   {
     id: "lum_null",
@@ -562,9 +562,9 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#0a0a14",
     auraStyle: "null",
     effectName: "Black Domain",
-    effectDescription: "On summon, marks all face-up Tier III Artifacts lacking Continuum, Abyss, or Radiance affinity as Nullified — they award 0 Eminence when forged.",
+    effectDescription: "On arrival, marks all face-up Tier III Artifacts lacking Continuum, Abyss, or Radiance affinity as Nullified — they award 0 Eminence when forged.",
   },
-  // ── Deferred / Inactive Luminaries (not in active summon pool) ────────────
+  // ── Deferred / Inactive Luminaries (not in active arrival pool) ────────────
   {
     id: "lum_oracle",
     name: "The Cosmic Oracle",
@@ -588,7 +588,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#e0e7ff",
     auraStyle: "distorted",
     effectName: "Selective Amnesia",
-    effectDescription: "On summon, draws two cards from the top of the Artifact deck and chooses one to immediately add to your collection (the other is discarded).",
+    effectDescription: "On arrival, draws two cards from the top of the Artifact deck and chooses one to immediately add to your collection (the other is discarded).",
   },
 ];
 
@@ -668,7 +668,7 @@ function checkKardashevAdvance(
   });
 }
 
-// Luminaries in the active summon pool for v0.8.
+// Luminaries in the active arrival pool for v0.8.
 // lum_oracle (Cosmic Oracle) is deferred per the v0.8 spec.
 // lum_moth, lum_seed, lum_orchard, lum_hunger are new active Luminaries;
 // they use procedural SVG art until illustrated assets are finalised.
@@ -838,9 +838,9 @@ export interface ActionPayload {
 
 // ─── Luminary Affinity Helpers ────────────────────────────────────────────────
 
-// Maps a Luminary's summonColor hex to its closest CrystalColor affinity.
+// Maps a Luminary's summonColor (API contract) hex to its closest CrystalColor affinity.
 // Used to pick a sensible default active affinity when claiming a Luminary.
-const SUMMON_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
+const ARRIVAL_COLOR_TO_AFFINITY: Partial<Record<string, CrystalColor>> = {
   // Ruby / Radiance
   "#ff5a3c": "ruby",   // lum_ember
   "#f43f5e": "ruby",   // lum_astral
@@ -868,7 +868,7 @@ function defaultActiveAffinity(
   eligible: CrystalColor[],
 ): CrystalColor {
   if (eligible.length === 0) return "ruby";
-  const mapped = SUMMON_COLOR_TO_AFFINITY[lum.summonColor.toLowerCase()];
+  const mapped = ARRIVAL_COLOR_TO_AFFINITY[lum.summonColor.toLowerCase()];
   if (mapped && eligible.includes(mapped)) return mapped;
   return eligible[0];
 }
@@ -1688,7 +1688,7 @@ function applySummonEffect(
       break;
     }
     case "lum_hunger": {
-      // Assimilation: enable this turn's Assimilation action for the summoner.
+      // Assimilation: enable this turn's Assimilation action for the claimer.
       state.firstHungerAvailable = player.playerId;
       pushLog(state, {
         playerId: player.playerId, playerName: player.playerName,
@@ -1843,7 +1843,7 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
 function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
   // ── Assimilation (First Hunger): lingering one-shot — persists until used, never auto-cleared ──
 
-  // ── Ember Sovereign (lum_ember): burn remaining Condemned cards at start of summoner's next turn ──
+  // ── Ember Sovereign (lum_ember): burn remaining Condemned cards at start of claimer's next turn ──
   const emberLa = state.luminaryAffinities.find(
     (x) => x.luminaryId === "lum_ember" && x.ownerId === player.playerId,
   );

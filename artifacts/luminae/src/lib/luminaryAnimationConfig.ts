@@ -10,8 +10,8 @@
  *  displayName       — human-readable Luminary name
  *  domain            — thematic domain, matches engine's LUMINARIES[].domain
  *  affinities        — CrystalColor keys for this Luminary's eligible affinities
- *  primaryColor      — mirrors LUMINARY_VISUALS[id].summonColor (update both if changed)
- *  secondaryColor    — mirrors LUMINARY_VISUALS[id].summonSecondaryColor (update both if changed)
+ *  primaryColor      — mirrors LUMINARY_VISUALS[id].summonColor (API contract; update both if changed)
+ *  secondaryColor    — mirrors LUMINARY_VISUALS[id].summonSecondaryColor (API contract; update both if changed)
  *  animationArchetype — high-level animation identity category
  *  effectName        — in-game effect name, matches engine's effectName field
  *  procedureSteps    — typed canonical step template for the primary activation path;
@@ -36,7 +36,7 @@ export type AnimationArchetype =
   | 'seeded'           // Seeded residue deferred to deck; badge on market entry
   | 'replication'      // card copy boon (no direct score delta)
   | 'crystalReturn'    // crystalReturn from players above threshold
-  | 'condemned'        // two-path: summon → Condemned residue; start_of_turn → Burn
+  | 'condemned'        // two-path: arrival → Condemned residue; start_of_turn → Burn
   | 'assimilate';      // pendingAction replaces core action for one turn
 
 // ─── Config type ─────────────────────────────────────────────────────────────
@@ -48,9 +48,9 @@ export interface LuminaryAnimationConfig {
   domain: string;
   /** CrystalColor keys for this Luminary's eligible affinities (e.g. 'ruby', 'sapphire'). */
   affinities: string[];
-  /** Cinematic flash / glow primary color. Mirrors LUMINARY_VISUALS[id].summonColor. */
+  /** Cinematic flash / glow primary color. Mirrors LUMINARY_VISUALS[id].summonColor (API contract). */
   primaryColor: string;
-  /** Secondary flash / gradient color. Mirrors LUMINARY_VISUALS[id].summonSecondaryColor. */
+  /** Secondary flash / gradient color. Mirrors LUMINARY_VISUALS[id].summonSecondaryColor (API contract). */
   secondaryColor: string;
   animationArchetype: AnimationArchetype;
   /** In-game effect name; matches the engine's effectName field. */
@@ -60,7 +60,7 @@ export interface LuminaryAnimationConfig {
    * targetIds and playerIds are empty arrays — resolvers in luminaryAnimationProcedures.ts
    * fill them from live GameState at cinematic time.
    * For Luminaries with multiple paths (e.g. Ember Sovereign), this represents
-   * the summon path; the resolver handles per-effectType variations.
+   * the arrival path; the resolver handles per-effectType variations.
    */
   procedureSteps: AnimationTimelineStep[];
   /** Persistent keyword marker placed on cards after the cinematic, if any. */
@@ -301,7 +301,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
   },
 
   // 13. Ember Sovereign — Cinder Mandate
-  // Primary path (summon): marks non-immune cards as Condemned.
+  // Primary path (arrival): marks non-immune cards as Condemned.
   // Secondary path (start_of_turn): Condemned cards burn — handled by the resolver.
   lum_ember: {
     luminaryId: 'lum_ember',
@@ -318,7 +318,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'condemned', targetIds: [] },
     ],
     residueType: 'condemned',
-    flavorLine: 'A violet-orange mandate seal brands doomed cards at summon — the condemned mark pulses with deferred menace; on the appointed turn, the sentence arrives without appeal.',
+    flavorLine: 'A violet-orange mandate seal brands doomed cards at arrival — the condemned mark pulses with deferred menace; on the appointed turn, the sentence arrives without appeal.',
   },
 
   // 14. First Hunger — Assimilation

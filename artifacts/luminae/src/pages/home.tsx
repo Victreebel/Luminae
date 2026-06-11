@@ -516,7 +516,7 @@ export default function Home() {
                       ? "You've already completed the tutorial — jump straight in?"
                       : tutorialSeen
                         ? "Pick up where you left off with Lumii"
-                        : "Guide your civilization to legend — harvest, forge, summon, ascend"}
+                        : "Guide your civilization to legend — harvest, forge, arrive, ascend"}
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />

@@ -10,8 +10,8 @@
 
 type GemKey = 'ruby'|'sapphire'|'emerald'|'onyx'|'pearl'|'flux';
 
-// Maps each Luminary's summonColor hex → its nearest GemKey affinity.
-// Mirrors the SUMMON_COLOR_TO_AFFINITY table in gameEngine.ts.
+// Maps each Luminary's arrivalColor hex → its nearest GemKey affinity.
+// Mirrors the ARRIVAL_COLOR_TO_AFFINITY table in gameEngine.ts.
 const FANFARE_COLOR_MAP: Record<string, GemKey> = {
   '#ff5a3c': 'ruby',    '#f43f5e': 'ruby',
   '#60a5fa': 'sapphire','#38bdf8': 'sapphire', '#3d6bff': 'sapphire',
@@ -27,7 +27,7 @@ const CARD_FLIP_WAV = new URL('../assets/audio/Effects/Card_Flip_Over.wav', impo
 // Burn mechanic — pre-built MP3 asset.
 const BURN_MP3 = new URL('../assets/audio/Effects/Burn.mp3', import.meta.url).href;
 
-// Luminary summon cutscene — pre-built MP3 assets, played at their phase beat times.
+// Luminary arrival cutscene — pre-built MP3 assets, played at their phase beat times.
 // Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
 const LUMINARY_SFX = {
   firstCrack:         new URL('../assets/audio/luminary/First Crackmp3.mp3',                import.meta.url).href,
@@ -60,9 +60,9 @@ class GameAudio {
   private shimmerTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly MUSIC_GAIN = 0.32;
 
-  // ── Summon cutscene mute state ───────────────────────────────────────────
-  private _summonMasterGain: GainNode | null = null;
-  private _summonCtx: AudioContext | null = null;
+  // ── Arrival cutscene mute state ──────────────────────────────────────────
+  private _arrivalMasterGain: GainNode | null = null;
+  private _arrivalCtx: AudioContext | null = null;
 
   // ── Activation sting mute state ──────────────────────────────────────────
   private _activationGain: GainNode | null = null;
@@ -386,9 +386,9 @@ class GameAudio {
 
   /**
    * Short affinity-themed fanfare for the Luminary that sealed the game.
-   * Fires at the end of the summon cutscene, just before playWin().
+   * Fires at the end of the arrival cutscene, just before playWin().
    * Duration ~1.3 s — distinct from (and shorter than) the full win sound.
-   * summonColor is the hex from the Luminary's summonColor field.
+   * summonColor is the hex from the Luminary's summonColor field (API contract).
    */
   playLuminaryFanfare(summonColor: string) {
     if (this.muted) return;
@@ -436,7 +436,7 @@ class GameAudio {
    * Short activation sting for the LuminaryActivationCinematic overlay (~1–1.5 s).
    * Three distinct tonal characters, one per effect type:
    *
-   *   summon       — crystalline arrival burst: sub-bass impact + bright ascending
+   *   summon ('arrival' in-game) — crystalline arrival burst: sub-bass impact + bright ascending
    *                  4-note arpeggio + high shimmer tail.  Signals something has
    *                  materialized.
    *
@@ -878,7 +878,7 @@ class GameAudio {
         gain.gain.linearRampToValueAtTime(0, fadeStart + fadeOut.durationSeconds);
       }
       src.connect(gain);
-      // When a bus node is provided (e.g. _summonMasterGain), route through it
+      // When a bus node is provided (e.g. _arrivalMasterGain), route through it
       // so a gain ramp on the bus silences this source even if decode finishes
       // after the ramp was scheduled (race-free skip behaviour).
       gain.connect(dest ?? ctx.destination);
@@ -888,9 +888,9 @@ class GameAudio {
     }
   }
 
-  // ── Luminary Summon Cutscene ─────────────────────────────────────────────
+  // ── Luminary Arrival Cutscene ────────────────────────────────────────────
   // All sounds are pre-scheduled at AudioContext times matching the visual
-  // phase durations in LuminarySummonCutscene.  Routed through a shared
+  // phase durations in LuminaryArrivalCutscene.  Routed through a shared
   // DynamicsCompressor to prevent clipping when layers peak together.
   //
   // Phase offsets (ms from cutscene mount):
@@ -931,7 +931,7 @@ class GameAudio {
 
   /**
    * Synthesises the flash-phase reveal burst tuned to the Luminary's aura group.
-   * Called from playSummonCutscene() at the FLASH beat (t + FLASH/1000).
+   * Called from playArrivalCutscene() at the FLASH beat (t + FLASH/1000).
    * All oscillators/noise are routed to `D` (the shared compressor bus).
    *
    * Groups and their sonic character:
@@ -1036,7 +1036,7 @@ class GameAudio {
     }
   }
 
-  playSummonCutscene(auraStyle = 'radiant') {
+  playArrivalCutscene(auraStyle = 'radiant') {
     if (this.muted) return;
     try {
       const ctx = this.initCtx();
@@ -1051,14 +1051,14 @@ class GameAudio {
       comp.release.value   = 0.18;
 
       // Master gain for the entire procedural synthesis chain — routed between
-      // the compressor and ctx.destination so stopSummonCutscene() can ramp
+      // the compressor and ctx.destination so stopArrivalCutscene() can ramp
       // all oscillator/noise layers to silence in one operation.
       const masterGain = ctx.createGain();
       masterGain.gain.value = 1;
       comp.connect(masterGain);
       masterGain.connect(ctx.destination);
-      this._summonMasterGain = masterGain;
-      this._summonCtx        = ctx;
+      this._arrivalMasterGain = masterGain;
+      this._arrivalCtx        = ctx;
 
       const D = comp;
 
@@ -1192,8 +1192,8 @@ class GameAudio {
       // Each file is fetched+decoded async and scheduled precisely on the
       // AudioContext timeline. Decode typically completes well within the
       // ~3.0 s gap before the first beat (CRACK1).
-      // Route all MP3 SFX through _summonMasterGain (same bus as the procedural
-      // synthesis chain).  If stopSummonCutscene() has already ramped the master
+      // Route all MP3 SFX through _arrivalMasterGain (same bus as the procedural
+      // synthesis chain).  If stopArrivalCutscene() has already ramped the master
       // to 0 by the time a decode completes, the newly connected gain feeds into
       // a zero-output bus and stays silent — no separate per-source tracking needed.
       const mp3Bus = masterGain;
@@ -1209,7 +1209,7 @@ class GameAudio {
   }
 
   /**
-   * Fade out all summon cutscene audio (~250 ms ramp) when the player skips
+   * Fade out all arrival cutscene audio (~250 ms ramp) when the player skips
    * the visual overlay.  Ramps the shared master gain to 0, silencing both
    * the procedural synthesis chain (oscillators/noise) and all MP3 SFX —
    * including any whose async decode completes after this call, since those
@@ -1217,9 +1217,9 @@ class GameAudio {
    * The timer chain still runs to completion; only the audio is silenced.
    * Safe to call if no cutscene is playing.
    */
-  stopSummonCutscene() {
-    const ctx  = this._summonCtx;
-    const gain = this._summonMasterGain;
+  stopArrivalCutscene() {
+    const ctx  = this._arrivalCtx;
+    const gain = this._arrivalMasterGain;
     if (!ctx || !gain) return;
     const now = ctx.currentTime;
     gain.gain.setValueAtTime(gain.gain.value, now);
@@ -1229,7 +1229,7 @@ class GameAudio {
   /**
    * Tutorial fullscreen shatter — crack/shatter/flash sequence timed to the
    * FullscreenShatterOverlay visual phases.  Same sound layers as
-   * playSummonCutscene but starting at the pressure phase (no camera intro).
+   * playArrivalCutscene but starting at the pressure phase (no camera intro).
    *
    * Visual phase ms offsets from overlay mount:
    *   pressure=0  firstcrack=90  leaking=410  secondcrack=1260
@@ -1320,7 +1320,7 @@ class GameAudio {
       this.noiseBlip(ctx, s(FLASH +  38), 0.60, 0.085, 5400, 2.0, D);
       this.noiseBlip(ctx, s(FLASH + 240), 0.50, 0.060, 6600, 2.5, D);
 
-      // ── MP3 assets — same SFX as summon cutscene ─────────────────────
+      // ── MP3 assets — same SFX as arrival cutscene ─────────────────────
       void this.scheduleMp3(LUMINARY_SFX.firstCrack,        t + CRACK1 / 1000,          0.20);
       void this.scheduleMp3(LUMINARY_SFX.secondCrack,       t + CRACK2 / 1000,          0.18);
       void this.scheduleMp3(LUMINARY_SFX.universeExpanding, t + SHATT  / 1000,          0.22,

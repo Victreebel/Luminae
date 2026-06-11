@@ -9,7 +9,7 @@ to the procedural SVG entity art automatically — no code changes needed.
 | Filename      | Purpose                                                          |
 |---------------|------------------------------------------------------------------|
 | panel.webp    | Sealed board panel art — shown in the objective tile and as the  |
-|               | shattering vessel in the summoning cutscene.                     |
+|               | shattering vessel in the arrival cutscene.                     |
 |               | Aspect ratio: square (1:1) or portrait up to 3:4.               |
 |               | Will be displayed with object-fit:cover inside the tile frame.  |
 | entity.webp   | Freed entity cutout — transparent background PNG/WebP.           |

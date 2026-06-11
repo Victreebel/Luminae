@@ -1,0 +1,93 @@
+Implement an Arrival Brand animation for Luminary effects that place persistent markers on cards.
+
+This applies to Luminary arrival effects that apply:
+- Forgotten
+- Seeded
+- Condemned
+- Nullified
+
+Goal:
+When a Luminary arrival marks cards, the marker should feel like it is branded onto the board by the Luminary. The player should clearly see the source Luminary, the affected targets, the marker symbol, and what the marker means.
+
+Animation sequence:
+1. Camera setup
+- If more than one card is affected, smoothly transition to full-board or affected-zone view.
+- No abrupt cuts.
+- Ensure source Luminary and affected targets are visible when possible.
+
+2. Luminary source pulse
+- The source Luminary activates first.
+- Use the Luminary’s primary/secondary colors.
+- The pulse should expand outward from the Luminary, not shrink inward.
+
+3. Sky strike / lightning beam
+- A lightning-like energy beam descends from above the board and strikes each affected card.
+- The beam should feel like it comes from the sky/cosmic space above the board, not from the card itself.
+- For multiple targets, strikes may happen in a quick staggered wave or near-simultaneous pattern.
+- Keep the sequence readable and brief.
+
+4. Large impact brand
+- When each card is struck, show the appropriate marker symbol large enough to cover most of the card face.
+- The symbol should be crisp, not blurry.
+- The card should still be identifiable around/under the symbol if possible.
+- The symbol should pulse once or twice in the Luminary’s colors.
+
+5. Settle into persistent marker
+- After the large brand pulse, the symbol should shrink/fade into its normal persistent marker position.
+- Persistent marker should remain small enough that the card stays readable.
+- Do not leave a giant full-card overlay permanently.
+
+6. Traceability / information
+- Hovering or clicking the persistent marker should show a tooltip explaining the keyword.
+- The tooltip should include:
+  - keyword name
+  - mechanical meaning
+  - source Luminary name
+  - duration/expiration if relevant
+- Hovering the marker should optionally highlight or trace a subtle line back to the source Luminary, if the source is visible.
+- Players should be able to understand what the symbol means and which Luminary created it.
+
+Marker-specific visuals:
+- Forgotten:
+  - blue-black temporal lightning
+  - large broken hour-ring or missing clock symbol
+  - tooltip: “Forgotten: This Artifact awards 0 Eminence when forged until the end of [duration]. Source: [Luminary].”
+
+- Condemned:
+  - violet-orange judgment lightning
+  - large cinder mandate seal / burning verdict glyph
+  - tooltip: “Condemned: This Artifact will Burn at the start of [source player]’s next turn. Source: [Luminary].”
+
+- Nullified:
+  - black-white silent beam
+  - large closed eclipse / null seal
+  - tooltip: “Nullified: This Artifact awards 0 Eminence while marked. Source: [Luminary].”
+
+- Seeded:
+  - blue-green living light strike
+  - large Avatar Seed glyph / sprouting future mark
+  - tooltip: “Seeded: If an opponent forges this card, [source player] gains pending Eminence. Source: [Luminary].”
+
+Visual rules:
+- Avoid blur effects.
+- Avoid hazy overlays that hide the card.
+- Avoid abrupt camera cuts.
+- Do not use shrink-in/collapse-in for the Luminary activation.
+- The large brand is temporary.
+- The persistent marker is smaller and inspectable.
+- Keep source, target, keyword, and aftermath clear.
+
+Accessibility:
+- Reduced motion mode should replace lightning strikes with quick crisp flashes and immediate marker placement.
+- Skip/fast-forward should leave all markers correctly placed and tooltips functional.
+- Skipping must not leave the camera stuck in full-board view.
+
+Acceptance criteria:
+- Forgotten, Seeded, Condemned, and Nullified markers use the Arrival Brand animation when placed by Luminary arrival.
+- Each struck card briefly shows a large marker symbol covering most of the card.
+- The large symbol pulses in the Luminary’s colors.
+- The symbol settles into a smaller persistent marker.
+- The marker tooltip explains meaning, source Luminary, and duration if relevant.
+- Players can trace the marker back to the source Luminary or source name.
+- No mechanics are changed.
+- Existing tests/typecheck pass.

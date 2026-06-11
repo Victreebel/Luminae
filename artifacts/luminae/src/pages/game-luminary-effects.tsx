@@ -1041,12 +1041,12 @@ export function OrchardCopyPulse({
   );
 }
 
-// ── SummonMarketOverlay ───────────────────────────────────────────────────────
-// Per-Luminary full-viewport overlay that fires when that Luminary is summoned.
+// ── ArrivalMarketOverlay ───────────────────────────────────────────────────────
+// Per-Luminary full-viewport overlay that fires when that Luminary arrives.
 // Layered above the board but below any modal.
 // Each lumId maps to a distinct visual treatment.
 
-export function SummonMarketOverlay({
+export function ArrivalMarketOverlay({
   lumId,
   onDone,
 }: {

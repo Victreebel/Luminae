@@ -202,10 +202,9 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     .where(eq(roomsTable.id, rawId))
     .limit(1);
 
-  // resolve_summon and toggle_luminary_affinity are non-turn-gated housekeeping
-  // actions that must be accepted even when the game is finished (e.g. a
-  // summon cutscene completes on the final turn). All other actions require the
-  // room to be actively playing.
+  // resolve_summon (arrival cutscene) and toggle_luminary_affinity are
+  // non-turn-gated housekeeping actions that must be accepted even when the
+  // All other actions require the room to be actively playing.
   const isHousekeepingAction =
     actionData.type === "resolve_summon" ||
     actionData.type === "resolve_luminary_activation" ||

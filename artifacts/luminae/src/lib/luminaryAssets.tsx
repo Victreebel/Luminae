@@ -29,9 +29,9 @@ interface LuminaryVisuals {
   /** CSS mix-blend-mode applied to the entityCutout img. Use 'screen' for dark-bg entities where bg-removal is imperfect. */
   entityBlendMode?: string;
   /**
-   * Flash burst tint used during the summoning cutscene. This is the single
+   * Flash burst tint used during the arrival cutscene. This is the single
    * source of truth for both the sandbox and the game board — do not duplicate
-   * these values elsewhere. Mirrors gameEngine.ts LUMINARIES[].summonColor;
+   * these values elsewhere. Mirrors gameEngine.ts LUMINARIES[].summonColor (API contract);
    * update both together if you change a Luminary's flash palette.
    */
   summonColor: string;
@@ -40,7 +40,7 @@ interface LuminaryVisuals {
   /**
    * Aura animation style key consumed by the aura animation system.
    * Must be a member of KNOWN_AURA_STYLES.  Mirrors gameEngine.ts LUMINARIES[].auraStyle;
-   * update both together.  The lint:summon-colors script enforces this at CI time.
+   * update both together.  The lint:arrival-colors script enforces this at CI time.
    */
   auraStyle: AuraStyle;
   /**
@@ -63,7 +63,7 @@ interface LuminaryVisuals {
 //
 //   src/assets/luminaries/<luminary-id>/panel.webp
 //     Sealed board panel art — shown in the objective tile and as the
-//     shattering vessel in the summoning cutscene.
+//     shattering vessel in the arrival cutscene.
 //     Aspect ratio: square (1:1) to portrait (3:4). object-fit: cover.
 //
 //   src/assets/luminaries/<luminary-id>/entity.webp
@@ -968,7 +968,7 @@ function HungerEntity({ size = 140, className = '' }: { size?: number; className
 // ─── Luminary Visuals Map ─────────────────────────────────────────────────────
 // Colors derived from each Luminary's requirement gem palette.
 // summonColor / summonSecondaryColor are the single source of truth for flash
-// tints — they mirror gameEngine.ts LUMINARIES[].summonColor but live here so
+// tints — they mirror gameEngine.ts LUMINARIES[].summonColor (API contract) but live here so
 // the frontend never reads them from the server event. Update both files in
 // sync whenever a Luminary's flash palette changes.
 
@@ -1428,7 +1428,7 @@ const PHASES: CutscenePhase[] = [
 ];
 
 
-export function LuminarySummonCutscene({
+export function LuminaryArrivalCutscene({
   luminaryId,
   luminaryName,
   domain,
@@ -1466,8 +1466,8 @@ export function LuminarySummonCutscene({
   const { EntityArt, primaryColor: visPrimaryColor, secondaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   // AURA_VARIANTS[auraStyle] intentionally not used — all flash elements now use
   // fixed duration/scale regardless of aura variant for a consistent snappy feel.
-  // When overrideColor is provided (win-sealing summon), use it for all burst/particle
-  // visuals so they match the sealing Luminary's summonColor rather than the generic
+  // When overrideColor is provided (win-sealing arrival), use it for all burst/particle
+  // visuals so they match the sealing Luminary's summonColor (API contract) rather than the generic
   // LUMINARY_VISUALS primaryColor.
   const primaryColor = (overrideColor && overrideColor.startsWith('#') && overrideColor.length >= 7)
     ? overrideColor
@@ -1484,7 +1484,7 @@ export function LuminarySummonCutscene({
   // the trap activates but immediately releases on Escape via the onSkip path.
   const containerRef = useRef<HTMLElement | null>(null);
   // When the cutscene is waiting at the reveal frame, route Escape to the same
-  // dismiss handler as the tap-anywhere path so the summon can always resolve.
+  // dismiss handler as the tap-anywhere path so the arrival can always resolve.
   // Before reveal, Escape keeps the existing local-skip behaviour (hides the
   // overlay but lets the internal timer complete so the server gate is not jumped).
   useFocusTrap(
@@ -1506,7 +1506,7 @@ export function LuminarySummonCutscene({
   // Runs exactly once on mount; respects the user's mute setting internally.
   // auraStyle is stable for the lifetime of this component (derived from luminaryId).
   useEffect(() => {
-    gameAudio.playSummonCutscene(auraStyle);
+    gameAudio.playArrivalCutscene(auraStyle);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Phase timer chain — empty dep array: runs exactly once on mount.
@@ -1731,7 +1731,7 @@ export function LuminarySummonCutscene({
             onSkip();
           }}
           className="absolute top-4 right-4 z-[9100] flex items-center gap-1.5 text-white/55 hover:text-white/90 text-xs px-3 py-1.5 rounded-full border border-white/15 bg-black/40 backdrop-blur transition-colors select-none"
-          aria-label="Skip summoning view"
+          aria-label="Skip arrival view"
         >
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className="opacity-70">
             <path d="M1 1l8 4-8 4V1z" />
@@ -2937,7 +2937,7 @@ export function AuraPreviewModal({
 }
 
 // ── LuminaryIdleOverlay ──────────────────────────────────────────────────────
-// After the summon cutscene completes the entity flies back to its panel card
+// After the arrival cutscene completes the entity flies back to its panel card
 // and remains there as a living guardian for the rest of the game.
 //
 // Mount lifecycle:

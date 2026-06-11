@@ -604,7 +604,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
     }
   }, [isFlashing]);
 
-  const summonColor = getLuminaryVisuals(luminary.id).summonColor;
+  const arrivalColor = getLuminaryVisuals(luminary.id).summonColor;
 
   const handleIdleClick = () => {
     onOpenSheet?.();
@@ -743,13 +743,13 @@ export const LuminaryCard = React.memo(function LuminaryCard({
         </>
       )}
 
-      {/* Flash overlay — triggered when Luminary activates its on-summon effect */}
+      {/* Flash overlay — triggered when Luminary activates its arrival effect */}
       <AnimatePresence>
         {isFlashing && (
           <motion.div
             className="absolute inset-0 z-30 pointer-events-none"
             style={{
-              background: `radial-gradient(ellipse at center, ${summonColor}cc 0%, ${summonColor}66 40%, transparent 75%)`,
+              background: `radial-gradient(ellipse at center, ${arrivalColor}cc 0%, ${arrivalColor}66 40%, transparent 75%)`,
             }}
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1.05 }}

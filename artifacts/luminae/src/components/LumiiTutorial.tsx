@@ -1210,7 +1210,7 @@ export function LumiiTutorial({
   // Celebration burst state — briefly true after each successful action beat
   const [burstActive, setBurstActive] = useState(false);
   // Color used during the current burst — varies by action type for normal beats,
-  // and uses the Luminary's summonColor for the first-Luminary claim milestone.
+  // and uses the Luminary's summonColor (API contract) for the first-Luminary claim milestone.
   const [burstColor, setBurstColor] = useState<string>("#fbbf24");
   // Intensity for the current burst — sourced from BURST_INTENSITY map so callers
   // reference named event types instead of raw literals.
@@ -1280,7 +1280,7 @@ export function LumiiTutorial({
 
   // Trigger a brief celebration burst on Lumii then advance after it plays.
   // opts.duration: how long the burst lasts (default 500ms; use 700ms for Luminary claims).
-  // opts.color: flash palette color (default gold #fbbf24; use Luminary summonColor for claims).
+  // opts.color: flash palette color (default gold #fbbf24; use Luminary summonColor (API contract) for claims).
   // opts.intensity: scale peak from BURST_INTENSITY map (default BURST_INTENSITY_DEFAULT).
   //   Values >= 1.35 also fire the wide-ring shockwave (ring 2).
   // opts.gemKey: affinity key that drives the per-affinity particle palettes (both rings).
@@ -1312,7 +1312,7 @@ export function LumiiTutorial({
 
   // Detect when the required action completes — trigger celebration burst then advance.
   // If the action resulted in a Luminary claim, use a longer burst (700ms) in the
-  // Luminary's own summon color so the moment feels appropriately epic.
+  // Luminary's own summonColor (API contract) so the moment feels appropriately epic.
   useEffect(() => {
     if (!beat || beat.advance.type !== "action") return;
     if (!state?.actionLog?.length) return;
@@ -1327,7 +1327,7 @@ export function LumiiTutorial({
       const prevCount = prevClaimedLumCountRef.current;
       prevClaimedLumCountRef.current = currentClaimedCount;
       if (prevCount === 0 && currentClaimedCount === 1) {
-        // First Luminary claimed — use its summon color, a longer epic burst, and elevated
+        // First Luminary claimed — use its summonColor (API contract), a longer epic burst, and elevated
         // intensity. No single gemKey applies; summonColor drives the palette for this moment.
         const newLumId = myPlayer?.claimedLuminaryIds?.[0];
         const lumData = (state.luminaries ?? []).find((l) => l.id === newLumId);

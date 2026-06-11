@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  LuminarySummonCutscene,
+  LuminaryArrivalCutscene,
   LuminaryIdleOverlay,
   getLuminaryVisuals,
 } from '@/lib/luminaryAssets';
@@ -52,12 +52,12 @@ const SANDBOX_LUMINARIES: SandboxLuminary[] = [
 
 // ─── Luminary Mode ────────────────────────────────────────────────────────────
 
-type SandboxMode = 'summon' | 'idle' | 'activation';
+type SandboxMode = 'arrival' | 'idle' | 'activation';
 
 const MODES: { id: SandboxMode; label: string }[] = [
   { id: 'activation', label: 'Activation' },
   { id: 'idle',       label: 'Idle Portal' },
-  { id: 'summon',     label: 'Summon Flash' },
+  { id: 'arrival',     label: 'Arrival Flash' },
 ];
 
 // ─── Card FX Mode ─────────────────────────────────────────────────────────────
@@ -2124,7 +2124,7 @@ function ProcedureReviewSection() {
   const [procKey, setProcKey]           = useState(0);
   const [seqKey, setSeqKey]             = useState(0);
   const [isActive, setIsActive]         = useState(false);
-  const [effectType, setEffectType]     = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon');
+  const [effectType, setEffectType]     = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon'); // API enum 'summon' = arrival effect
   const [currentSteps, setCurrentSteps] = useState<AnimationTimelineStep[] | null>(null);
   const [aftermath, setAftermath]       = useState<AftermathLine[] | null>(null);
 
@@ -2210,7 +2210,7 @@ function ProcedureReviewSection() {
                 setBoardSteps(null);
                 setSeqKey(0);
                 setScrubIndex(null);
-                setEffectType('summon');
+                setEffectType('summon'); // API enum 'summon' = arrival effect
                 slotRefs.current.clear();
               }}
               className="relative rounded-lg overflow-hidden border transition-colors text-left"
@@ -2279,7 +2279,7 @@ function ProcedureReviewSection() {
               Effect type
             </span>
             <div className="flex gap-1">
-              {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => (
+              {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => ( // API enum 'summon' = arrival effect
                 <button
                   key={et}
                   type="button"
@@ -2584,7 +2584,7 @@ function LuminaryGridCard({
       className="relative rounded-lg overflow-hidden border border-border/30 hover:border-border/60 transition-colors text-left group"
       style={{ background: '#0a0a14' }}
     >
-      <div className="h-1.5 w-full" style={{ background: mode === 'summon' ? vis.summonColor : vis.primaryColor }} />
+      <div className="h-1.5 w-full" style={{ background: mode === 'arrival' ? vis.summonColor : vis.primaryColor }} />
 
       <div className="p-3 flex flex-col gap-1">
         <div className="flex items-center gap-2">
@@ -2601,7 +2601,7 @@ function LuminaryGridCard({
           <span className="text-[10px] text-muted-foreground">{lum.domain}</span>
           {lum.lumens > 0 && <span className="text-[10px] font-mono text-amber-400">{lum.lumens}✦</span>}
         </div>
-        {mode === 'summon' && (
+        {mode === 'arrival' && (
           <div className="flex items-center gap-1.5 mt-1">
             <span className="inline-block w-3 h-3 rounded-sm shrink-0 border border-white/10" style={{ background: vis.summonColor }} />
             <span className="text-[9px] font-mono text-muted-foreground/50">{vis.summonColor}</span>
@@ -2612,7 +2612,7 @@ function LuminaryGridCard({
       {isActive && (
         <div
           className="absolute inset-0 pointer-events-none rounded-lg"
-          style={{ boxShadow: `inset 0 0 0 2px ${mode === 'summon' ? vis.summonColor : vis.primaryColor}` }}
+          style={{ boxShadow: `inset 0 0 0 2px ${mode === 'arrival' ? vis.summonColor : vis.primaryColor}` }}
         />
       )}
     </button>
@@ -2631,10 +2631,10 @@ export default function DevAnimSandbox() {
 
   // ── Luminary group state ───────────────────────────────────────────────────
   const [active, setActive] = useState<SandboxLuminary | null>(null);
-  const [summonKey, setSummonKey] = useState(0);
+  const [arrivalKey, setArrivalKey] = useState(0);
   const [activationKey, setActivationKey] = useState(0);
-  const [activationEffectType, setActivationEffectType] = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon');
-  const [mode, setMode] = useState<SandboxMode>('summon');
+  const [activationEffectType, setActivationEffectType] = useState<'summon' | 'end_of_turn' | 'start_of_turn'>('summon'); // API enum 'summon' = arrival effect
+  const [mode, setMode] = useState<SandboxMode>('arrival');
   const [selected, setSelected] = useState<SandboxLuminary | null>(null);
   const [idleKey, setIdleKey] = useState(0);
 
@@ -2648,7 +2648,7 @@ export default function DevAnimSandbox() {
   const [sfxHarvestAffinity, setSfxHarvestAffinity] = useState<GemKey>('ruby');
   const [sfxFanfareAffinity, setSfxFanfareAffinity] = useState<GemKey>('ruby');
 
-  // One representative summon-color hex per GemKey that maps through FANFARE_COLOR_MAP.
+  // One representative arrival-color hex per GemKey that maps through FANFARE_COLOR_MAP.
   // Any hex not in the map falls back to 'flux' inside playLuminaryFanfare().
   const FANFARE_PRESET_COLORS: Record<GemKey, string> = {
     ruby:     '#ff5a3c',
@@ -2663,9 +2663,9 @@ export default function DevAnimSandbox() {
   const [collapsed, setCollapsed] = useState(false);
 
   function handleGridClick(lum: SandboxLuminary) {
-    if (mode === 'summon') {
+    if (mode === 'arrival') {
       setActive(lum);
-      setSummonKey(k => k + 1);
+      setArrivalKey(k => k + 1);
     } else if (mode === 'activation') {
       setActive(lum);
       setActivationKey(k => k + 1);
@@ -2675,10 +2675,10 @@ export default function DevAnimSandbox() {
     }
   }
 
-  function handleSummonComplete() { setActive(null); }
+  function handleArrivalComplete() { setActive(null); }
 
   const luminaryInstructions: Record<SandboxMode, string> = {
-    summon:     'Click any Luminary to preview its full summon cutscene with its correct flash tint.',
+    arrival:     'Click any Luminary to preview its full arrival cutscene with its correct flash tint.',
     activation: 'Click any Luminary to preview the ~4 s activation cinematic (arrival / end-of-turn / start-of-turn effect).',
     idle:       'Click any Luminary to preview its idle portal overlay — entity return-flight + looping aura glow.',
   };
@@ -2835,7 +2835,7 @@ export default function DevAnimSandbox() {
                   <LuminaryGridCard
                     key={lum.id}
                     lum={lum}
-                    isActive={mode === 'summon' ? active?.id === lum.id : selected?.id === lum.id}
+                    isActive={mode === 'arrival' ? active?.id === lum.id : selected?.id === lum.id}
                     mode={mode}
                     onClick={() => handleGridClick(lum)}
                   />
@@ -3177,7 +3177,7 @@ export default function DevAnimSandbox() {
       {!collapsed && group === 'luminary' && mode === 'activation' && (
         <div className="flex items-center justify-center gap-2 px-4 pb-2">
           <span className="text-[10px] font-mono text-muted-foreground/50 uppercase tracking-widest">Effect type:</span>
-          {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => (
+          {(['summon', 'end_of_turn', 'start_of_turn'] as const).map(et => ( // API enum 'summon' = arrival effect
             <button
               key={et}
               type="button"
@@ -3195,19 +3195,19 @@ export default function DevAnimSandbox() {
         </div>
       )}
 
-      {/* ── Summon Cutscene (overlay) ──────────────────────────────────────── */}
+      {/* ── Arrival Cutscene (overlay) ─────────────────────────────────────── */}
       <AnimatePresence>
-        {group === 'luminary' && mode === 'summon' && active && (
-          <div key={summonKey} className="fixed inset-0 z-50">
-            <LuminarySummonCutscene
+        {group === 'luminary' && mode === 'arrival' && active && (
+          <div key={arrivalKey} className="fixed inset-0 z-50">
+            <LuminaryArrivalCutscene
               luminaryId={active.id}
               luminaryName={active.name}
               domain={active.domain}
               lumens={active.lumens}
               flavor={active.flavor}
               overrideColor={getLuminaryVisuals(active.id).summonColor}
-              onComplete={handleSummonComplete}
-              onSkip={handleSummonComplete}
+              onComplete={handleArrivalComplete}
+              onSkip={handleArrivalComplete}
             />
           </div>
         )}
