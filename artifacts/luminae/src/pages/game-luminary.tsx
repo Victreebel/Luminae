@@ -315,11 +315,6 @@ export function LuminaryClaimedPortal({
             <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={14} />
             <span className="text-[9px] font-semibold leading-none text-white truncate" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{ownerName}</span>
           </div>
-          {!isOwnedByMe && activeKey && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <MiniGem color={activeKey} size={10} />
-            </div>
-          )}
         </div>
       )}
 
