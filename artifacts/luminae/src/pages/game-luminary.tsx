@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Luminary, GamePlayerState, LuminaryActiveState, CrystalCounts } from '@workspace/api-client-react';
 import { GEM_META, GEM_KEYS, type GemKey } from '@/lib/gemMeta';
@@ -22,7 +22,7 @@ import { ArmedSigil } from './game-luminary-effects';
 // remaining 3 cycle through the other requirement colours.
 export function LuminaryClaimedPortal({
   luminary, claimedByPlayer, luminaryAffinity,
-  isOwnedByMe, isLive: _isLive, canToggle, onToggle, isNew = false,
+  isOwnedByMe, isLive: _isLive, canToggle, onToggle, onOpenSheet, isNew = false,
   isArmed = false, burnCount,
 }: {
   luminary: Luminary;
@@ -32,6 +32,7 @@ export function LuminaryClaimedPortal({
   isLive?: boolean;
   canToggle?: boolean;
   onToggle?: (affinity: string) => void;
+  onOpenSheet?: () => void;
   isNew?: boolean;
   isArmed?: boolean;
   burnCount?: number;
@@ -109,26 +110,58 @@ export function LuminaryClaimedPortal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hexes.join(','), g1]);
 
-  const handleToggle = () => {
-    if (!canToggle || !onToggle || eligibleKeys.length < 2 || !activeKey) return;
-    const idx = eligibleKeys.indexOf(activeKey);
-    const next = eligibleKeys[(idx + 1) % eligibleKeys.length];
-    onToggle(next);
-  };
+  const lastTapTimeRef = useRef<number>(0);
+  const openSheetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => () => {
+    if (openSheetTimerRef.current !== null) clearTimeout(openSheetTimerRef.current);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    const now = Date.now();
+    const delta = now - lastTapTimeRef.current;
+    const isDoubleTap = delta < 280;
+
+    if (isDoubleTap) {
+      // Double tap — cycle affinity
+      if (openSheetTimerRef.current !== null) {
+        clearTimeout(openSheetTimerRef.current);
+        openSheetTimerRef.current = null;
+      }
+      lastTapTimeRef.current = 0;
+      if (canToggle && onToggle && eligibleKeys.length >= 2 && activeKey) {
+        const idx = eligibleKeys.indexOf(activeKey);
+        onToggle(eligibleKeys[(idx + 1) % eligibleKeys.length]);
+      }
+    } else {
+      // First tap — open sheet after brief delay (so double-tap can cancel it)
+      lastTapTimeRef.current = now;
+      if (onOpenSheet) {
+        if (canToggle) {
+          openSheetTimerRef.current = setTimeout(() => {
+            openSheetTimerRef.current = null;
+            onOpenSheet();
+          }, 280);
+        } else {
+          onOpenSheet();
+        }
+      }
+    }
+  }, [canToggle, onToggle, onOpenSheet, eligibleKeys, activeKey]);
+
+  const isInteractive = !!(onOpenSheet || canToggle);
   const ownerName = claimedByPlayer?.playerName ?? '';
 
-  const Tag = (canToggle ? motion.button : motion.div) as typeof motion.div;
-
   return (
-    <Tag
+    <motion.button
+      type="button"
       className="absolute inset-0 bg-[#030308]"
-      style={{ transformOrigin: '50% 42%', cursor: canToggle ? 'pointer' : 'default' }}
+      style={{ transformOrigin: '50% 42%', cursor: isInteractive ? 'pointer' : 'default' }}
       initial={fresh ? { scale: 0.04, opacity: 0 } : false}
       animate={{ scale: 1, opacity: 1 }}
       transition={fresh ? { duration: 0.88, ease: [0.16, 1, 0.3, 1] } : {}}
-      onClick={canToggle ? handleToggle : undefined}
-      {...(canToggle ? { type: 'button', whileTap: { scale: 0.97 } } : {})}
+      onClick={isInteractive ? handleClick : undefined}
+      whileTap={isInteractive ? { scale: 0.97 } : {}}
     >
       {/* ── Opening spiral burst ── */}
       {fresh && (
@@ -317,7 +350,7 @@ export function LuminaryClaimedPortal({
 
       {/* Armed sigil */}
       <ArmedSigil isVisible={isArmed} color={g1} />
-    </Tag>
+    </motion.button>
   );
 }
 
@@ -405,6 +438,7 @@ export function LuminaryCard({
           isLive={isLive}
           canToggle={canToggle}
           onToggle={onToggle}
+          onOpenSheet={onOpenSheet}
           isNew={portalIsNew}
           isArmed={isArmed}
           burnCount={burnCount}
