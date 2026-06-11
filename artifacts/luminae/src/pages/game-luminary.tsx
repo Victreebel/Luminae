@@ -456,37 +456,24 @@ export const LuminaryCard = React.memo(function LuminaryCard({
     ? {}
     : { scale: 1.02, boxShadow: `0 0 18px 4px ${glowHex}55, 0 0 6px 1px ${glowHex}33` };
 
-  // Compute display costs based on costMode
+  // Luminaries have no card-bonus discounts — requirements are fixed.
+  // The only mode that changes the display is 'needed_now', which subtracts
+  // the player's held crystals to show how many more they still need.
   const mode = costMode ?? 'printed';
-  const costAfterBonuses = useMemo(() => {
-    const out: Partial<Record<GemKey, number>> = {};
-    for (const k of GEM_KEYS) {
-      if (k === 'flux') continue;
-      const req = luminary.requirements[k as keyof CrystalCounts] ?? 0;
-      if (req <= 0) continue;
-      const bonus = playerBonuses?.[k as keyof CrystalCounts] ?? 0;
-      out[k] = Math.max(0, req - bonus);
-    }
-    return out;
-  }, [luminary.requirements, playerBonuses]);
-
   const neededCost = useMemo(() => {
     if (mode !== 'needed_now') return undefined;
     const out: Partial<Record<GemKey, number>> = {};
     for (const k of GEM_KEYS) {
       if (k === 'flux') continue;
-      const after = costAfterBonuses[k as GemKey] ?? 0;
-      if (after <= 0) continue;
+      const req = luminary.requirements[k as keyof CrystalCounts] ?? 0;
+      if (req <= 0) continue;
       const have = heldCrystals?.[k as keyof CrystalCounts] ?? 0;
-      const need = Math.max(0, after - have);
-      if (need > 0) out[k as GemKey] = need;
+      const need = Math.max(0, req - have);
+      out[k as GemKey] = need;
     }
-    // Always return an object (even empty) so the display layer knows
-    // we are in needed_now mode and can render ✓ for covered costs.
     return out;
-  }, [costAfterBonuses, heldCrystals, mode]);
-
-  const displayCost = mode === 'printed' ? undefined : (mode === 'after_bonuses' ? costAfterBonuses : neededCost);
+  }, [mode, luminary.requirements, heldCrystals]);
+  const displayCost = mode === 'needed_now' ? neededCost : undefined;
 
   const canAffordLuminary = !isClaimed && isMyTurn === true && (
     CRYSTALS.every(c => {
@@ -573,14 +560,10 @@ export const LuminaryCard = React.memo(function LuminaryCard({
                 {GEM_KEYS.filter(k => k !== 'flux' && (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => {
                   const base = luminary.requirements[k as GemKey] ?? 0;
                   const eff = displayCost !== undefined ? (displayCost[k as GemKey] ?? 0) : base;
-                  const isReduced = displayCost !== undefined && eff < base;
-                  const isCovered = displayCost !== undefined && eff === 0;
                   return (
-                    <div key={k} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isCovered ? 'bg-green-900/60' : isReduced ? 'bg-blue-900/50' : 'bg-black/50'}`}>
+                    <div key={k} className="flex items-center gap-0.5 bg-black/50 rounded px-1 py-0.5">
                       <MiniGem color={k as GemKey} size={10} />
-                      <span className={`text-[10px] font-bold ${isCovered ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white/80'}`}>
-                        {isCovered ? '✓' : eff}
-                      </span>
+                      <span className="text-[10px] font-bold text-white/80">{eff}</span>
                     </div>
                   );
                 })}
