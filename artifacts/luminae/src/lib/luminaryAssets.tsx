@@ -1301,7 +1301,7 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
   // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
   // to a tiny sliver with letterbox bars on top and bottom.
-  lum_compass: { objectFit: 'cover', objectPosition: 'center center', noFloat: true },
+  lum_compass: { scale: 1.18, objectFit: 'cover', objectPosition: 'center center', noFloat: true },
   // Wide horizontal seed — shift down slightly so the body fills the tall
   // portrait panel without floating at the top.
   lum_seed: { objectPosition: 'center 55%' },
@@ -3315,7 +3315,9 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
               style={{
                 position: 'absolute', inset: 0, width: '100%', height: '100%',
                 display: 'block',
-                objectFit: 'contain', objectPosition: 'center center',
+                objectFit: objFit as React.CSSProperties['objectFit'],
+                objectPosition: objPos,
+                ...(entScale !== 1 ? { transform: `scale(${entScale})`, transformOrigin: 'center center' } : {}),
                 maskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
                 WebkitMaskImage: 'radial-gradient(ellipse 90% 96% at 50% 30%, black 16%, rgba(0,0,0,0.92) 44%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.12) 74%, transparent 84%)',
               }}
