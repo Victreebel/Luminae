@@ -3819,6 +3819,8 @@ export default function GameBoard() {
                 isArmed={armedLumIds.has(l.id)}
                 isFlashing={flashLumId === l.id}
                 burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
+                costMode={costMode}
+                heldCrystals={me?.crystals}
               />
             );
           })}
