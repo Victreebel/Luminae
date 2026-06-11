@@ -1700,8 +1700,6 @@ export default function GameBoard() {
   // via optional chaining because state may still be null at this point.
   const forgeDeductions = useMemo<Partial<Record<GemKey, number>> | undefined>(() => {
     if (!selectedCard || !me) return undefined;
-    const myCanPlan = state?.status === 'playing' && (!summonGateActive || localSummonSkipped);
-    if (!isMyTurn && !myCanPlan) return undefined;
     const effCost = effectiveCost(selectedCard.card, me) as Record<string, number>;
     const result: Partial<Record<GemKey, number>> = {};
     let fluxNeeded = 0;
@@ -1715,7 +1713,7 @@ export default function GameBoard() {
     }
     if (fluxNeeded > 0) result.flux = fluxNeeded;
     return Object.keys(result).length > 0 ? result : undefined;
-  }, [selectedCard, me, isMyTurn, state?.status, summonGateActive, localSummonSkipped]);
+  }, [selectedCard, me]);
 
   // ── Reserve hint ──────────────────────────────────────────────────────────
   useEffect(() => {
