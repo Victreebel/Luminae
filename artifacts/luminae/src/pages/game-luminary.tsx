@@ -556,14 +556,39 @@ export const LuminaryCard = React.memo(function LuminaryCard({
               </AnimatePresence>
             </div>
             <div className="flex flex-col gap-1">
-              <div className="flex flex-wrap gap-1 justify-center">
+              <div className="flex flex-wrap gap-0.5 justify-center items-end">
                 {GEM_KEYS.filter(k => k !== 'flux' && (luminary.requirements[k as GemKey] ?? 0) > 0).map(k => {
                   const base = luminary.requirements[k as GemKey] ?? 0;
                   const eff = displayCost !== undefined ? (displayCost[k as GemKey] ?? 0) : base;
+                  const isMet = displayCost !== undefined && eff === 0;
+                  const meta = GEM_META[k as GemKey];
+                  const tooltipBase = displayCost !== undefined
+                    ? (isMet
+                        ? `${meta.name} requirement met (${playerBonuses?.[k as keyof CrystalCounts] ?? 0}/${base})`
+                        : `${eff} more ${meta.name} bonus card${eff === 1 ? '' : 's'} needed (have ${playerBonuses?.[k as keyof CrystalCounts] ?? 0}/${base})`)
+                    : `${base} ${meta.name} bonus card${base === 1 ? '' : 's'} required`;
                   return (
-                    <div key={k} className="flex items-center gap-0.5 bg-black/50 rounded px-1 py-0.5">
-                      <MiniGem color={k as GemKey} size={10} />
-                      <span className="text-[10px] font-bold text-white/80">{eff}</span>
+                    <div
+                      key={k}
+                      className="relative shrink-0 overflow-hidden"
+                      style={{
+                        width: 20, height: 28, borderRadius: 3,
+                        opacity: isMet ? 0.45 : 1,
+                        boxShadow: isMet ? 'none' : `0 0 8px ${meta.glowHex}99, 0 2px 4px rgba(0,0,0,0.85)`,
+                        border: `1px solid ${isMet ? 'rgba(255,255,255,0.2)' : `${meta.glowHex}88`}`,
+                      }}
+                      title={tooltipBase}
+                    >
+                      <img src={meta.image} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.68) 100%)' }} />
+                      <div className="absolute pointer-events-none" style={{ inset: 1.5, border: `1px solid ${meta.glowHex}44`, borderRadius: 2 }} />
+                      {isMet ? (
+                        <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none">✓</span>
+                      ) : (
+                        <span className="absolute bottom-[3px] inset-x-0 text-center text-[9px] font-bold text-white leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,1)]">
+                          {eff}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
