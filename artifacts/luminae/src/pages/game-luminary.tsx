@@ -557,6 +557,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
   costMode, playerBonuses, isMyTurn, onOpenSheet, isArmed = false,
   isFlashing = false, burnCount,
+  onHoverStart, onHoverEnd,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -574,6 +575,8 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   isArmed?: boolean;
   isFlashing?: boolean;
   burnCount?: number;
+  onHoverStart?: () => void;
+  onHoverEnd?: () => void;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -625,13 +628,15 @@ export const LuminaryCard = React.memo(function LuminaryCard({
       } : undefined}
       transition={canAffordLuminary ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : undefined}
       className={`relative w-[var(--card-w)] h-[var(--card-h)] rounded-xl overflow-hidden shadow-xl bg-black shrink-0 ${
-        isClaimed ? 'ring-1 ring-white/10' : canAffordLuminary ? 'ring-0' : 'ring-1 ring-black/30'
+        isClaimed ? 'ring-1 ring-white/10 z-[20]' : canAffordLuminary ? 'ring-0' : 'ring-1 ring-black/30'
       }`}
       title={isClaimed
         ? `Released${claimedByPlayer ? ` — claimed by ${claimedByPlayer.playerName}` : ''}`
         : (luminary.flavor || luminary.name)}
       style={isHidden ? { opacity: 0, pointerEvents: 'none' } : undefined}
       onClick={!isHidden && !isClaimed ? handleIdleClick : undefined}
+      onHoverStart={() => onHoverStart?.()}
+      onHoverEnd={() => onHoverEnd?.()}
     >
       {isClaimed ? (
         <LuminaryClaimedPortal

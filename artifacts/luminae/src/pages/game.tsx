@@ -441,6 +441,7 @@ export default function GameBoard() {
   const luminarySheetContainerRef = useRef<HTMLElement | null>(null);
   const winOverlayContainerRef = useRef<HTMLElement | null>(null);
   const [selectedLuminary, setSelectedLuminary] = useState<Luminary | null>(null);
+  const [hoveredLumId, setHoveredLumId] = useState<string | null>(null);
   const [auraPreviewLuminaryId, setAuraPreviewLuminaryId] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
@@ -3795,6 +3796,8 @@ export default function GameBoard() {
                 isArmed={armedLumIds.has(l.id)}
                 isFlashing={flashLumId === l.id}
                 burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
+                onHoverStart={() => setHoveredLumId(l.id)}
+                onHoverEnd={() => setHoveredLumId(null)}
               />
             );
           })}
@@ -8437,6 +8440,7 @@ export default function GameBoard() {
             frozen={arrivalQueue.length > 0}
             hidden={activeTab !== 'board' || arrivalQueue.length > 0}
             activeAffinityColor={activeAffinityColor}
+            dimmed={hoveredLumId === lumId}
           />
         );
       })}

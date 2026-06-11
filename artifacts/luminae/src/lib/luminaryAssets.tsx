@@ -1301,7 +1301,7 @@ const IDLE_ENTITY_OVERRIDES: Record<string, {
   lum_astral: { scale: 1.08, objectPosition: 'center 42%' },
   // Wide cosmic entity — crop to fill the portrait card so it doesn't shrink
   // to a tiny sliver with letterbox bars on top and bottom.
-  lum_compass: { scale: 1.18, objectFit: 'cover', objectPosition: 'center center', noFloat: true },
+  lum_compass: { scale: 1.0, objectFit: 'cover', objectPosition: 'center center', noFloat: true },
   // Wide horizontal seed — shift down slightly so the body fills the tall
   // portrait panel without floating at the top.
   lum_seed: { objectPosition: 'center 55%' },
@@ -2951,7 +2951,7 @@ export function AuraPreviewModal({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
+export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor, dimmed = false }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string; dimmed?: boolean }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
@@ -3429,8 +3429,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
               top: absEntityTop,
               width: IDLE_W,
               height: IDLE_H,
-              opacity: hidden ? 0 : 1,
-              transition: hidden ? 'none' : 'opacity 0.4s ease-in',
+              opacity: hidden ? 0 : (dimmed ? 0.15 : 1),
+              transition: hidden ? 'none' : 'opacity 0.3s ease-in',
             }}
           >
             <div style={{ position: 'relative', width: IDLE_W, height: IDLE_H }}>
@@ -3491,8 +3491,8 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       <div
         className="fixed pointer-events-none"
         style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
-                 opacity: (hidden || !isWithinScroller) ? 0 : 1,
-                 transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.4s ease-in',
+                 opacity: (hidden || !isWithinScroller) ? 0 : (dimmed ? 0.15 : 1),
+                 transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.3s ease-in',
                  display: (hidden || !isWithinScroller) ? 'none' : undefined }}
       >
         {/* ── Return flight: centre of viewport → card position ── */}
