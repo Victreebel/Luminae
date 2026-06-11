@@ -1,0 +1,132 @@
+Update Reveal animation logic to distinguish batch reveal from sequential reveal-until effects.
+
+Goal:
+Reveal animations should match the structure of the effect. “Reveal 6” is not the same as “Reveal up to 6 until you reveal X.”
+
+Do not change gameplay mechanics, costs, scoring, turn order, tutorial order, or balance.
+
+Definitions:
+
+1. Batch Reveal
+    Used for effects worded like:
+
+* “Reveal 6 cards.”
+* “Reveal the top N cards.”
+* “Reveal N, then burn all cards matching X.”
+* “Reveal N, choose/keep/burn based on criteria.”
+
+Animation behavior:
+
+* Smoothly move to Compact View / full-board framing if needed.
+* Cards are revealed one by one.
+* Each revealed card flips forward into the forefront / inspection row.
+* Revealed cards stay visible in the forefront until the full reveal batch is complete.
+* After all cards are revealed, apply the effect outcome:
+    * Cards being Burned should Burn together or in a fast staggered batch.
+    * Cards being kept should fly/shrink/slide to their final slot/location.
+    * Cards being returned should fly/shrink/slide back to deck or appropriate zone.
+    * Cards being marked should receive the appropriate marker animation.
+* The player should understand the whole revealed set before outcomes resolve.
+
+Example:
+“Reveal 6, then Burn all Flare cards.”
+Animation:
+Reveal card 1 → hold in forefront.
+Reveal card 2 → hold in forefront.
+Reveal card 3 → hold in forefront.
+Reveal card 4 → hold in forefront.
+Reveal card 5 → hold in forefront.
+Reveal card 6 → hold in forefront.
+Then target all revealed Flare cards → Burn them together or in a quick readable stagger.
+Non-Burned cards fly/shrink to their final locations.
+
+2. Sequential Reveal-Until
+    Used for effects worded like:
+
+* “Reveal up to 6 cards until you reveal a Flare card.”
+* “Reveal cards one by one until X is revealed.”
+* “Reveal until a matching card is found.”
+
+Animation behavior:
+
+* Smoothly move to Compact View / full-board framing if needed.
+* Reveal one card at a time.
+* Each card flips forward into the forefront.
+* Immediately evaluate that card.
+* If the card fails the condition:
+    * Apply its fate immediately, usually Burn, discard, return, or move.
+    * Then proceed to the next reveal.
+* If the card satisfies the condition:
+    * Hold it briefly in the forefront.
+    * Emphasize that it matched.
+    * Then animate it flying/shrinking/sliding to its final current location.
+    * Stop revealing.
+* Do not reveal all cards first for reveal-until effects.
+* The suspense should come from the one-by-one check.
+
+Example:
+“Reveal up to 6 cards until you reveal a card with Flare.”
+Animation:
+Reveal card 1 → if not Flare, Burn/resolve it → reveal card 2.
+Reveal card 2 → if not Flare, Burn/resolve it → reveal card 3.
+Continue until a Flare card appears.
+When Flare appears → pulse/lock matching card → move it to final location → stop.
+
+3. Forefront reveal presentation
+
+* Revealed cards should flip one by one into a clear forefront/inspection position.
+* Forefront cards should be larger or visually elevated enough to be readable.
+* Do not blur.
+* Do not obscure card name, affinity, cost, or Eminence.
+* Use crisp flip/slide/scale motion.
+* When resolution is complete, cards should visibly meet their fate:
+    * Burned cards use the shared bottom-up Burn animation.
+    * Kept cards fly/shrink/slide into their current market/location.
+    * Returned cards fly/shrink/slide back to the deck.
+    * Marked cards receive the appropriate marker/Arrival Brand animation.
+
+4. Phoenix Paradox / Ash-Seeking Recurrence
+    Phoenix Paradox should use Sequential Reveal-Until behavior, not Batch Reveal.
+
+Animation:
+
+* Luminary pulse.
+* Compact View / affected market framing if needed.
+* Reveal/check cards one by one from Tier III then Tier II according to existing mechanics.
+* Each nonmatching card resolves immediately through shared Burn animation.
+* Continue until a Flare or Continuum card is revealed.
+* The matching card pulses red-blue, stays, and moves/settles into its face-up market slot.
+* Stop the loop.
+
+5. Event log wording
+    Batch reveal:
+    “[Source] revealed [N] cards.”
+    Then:
+    “[N] revealed cards were Burned / moved / returned / kept.”
+
+Sequential reveal-until:
+“[Source] revealed cards one by one until [condition].”
+For each failed card:
+“[Card Name] did not match and was Burned.”
+For the match:
+“[Card Name] matched and remains.”
+
+Visual rules:
+
+* No blur.
+* No abrupt cuts.
+* No generic shrink-in/collapse-in.
+* Cards may shrink/fly only when moving to their actual destination.
+* Keep revealed cards readable.
+* Batch outcomes resolve after the full batch is shown.
+* Reveal-until outcomes resolve one by one.
+
+Acceptance criteria:
+
+* Batch Reveal and Sequential Reveal-Until are distinct animation procedures.
+* Batch Reveal holds all revealed cards in the forefront before resolving outcomes.
+* Sequential Reveal-Until reveals and resolves cards one by one.
+* Phoenix Paradox uses Sequential Reveal-Until.
+* Burned revealed cards use the shared bottom-up Burn animation.
+* Cards clearly fly/shrink/slide to their actual destination after reveal resolution.
+* Existing tests/typecheck pass.
