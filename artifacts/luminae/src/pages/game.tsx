@@ -15,7 +15,9 @@ import type {
   Luminary,
   GamePlayerState,
   LuminaryActiveState,
+  LuminaryActiveStateEligibleAffinitiesItem,
   ActionRequest,
+  ActionRequestAffinity,
   PendingLuminaryActivationEvent,
   BurnEvent,
 } from '@workspace/api-client-react';
@@ -3784,7 +3786,8 @@ export default function GameBoard() {
                 claimedByPlayer={visibleClaimedByPlayer}
                 isOwnedByMe={isSummonInProgress ? false : isOwnedByMe}
                 isLive={isSummonInProgress ? false : isLive}
-                canToggle={false}
+                canToggle={isOwnedByMe && !!serverLumAffinity && (serverLumAffinity.eligibleAffinities?.length ?? 0) >= 2 && turnCount > serverLumAffinity.summonedAtTurnCount}
+                onToggle={(affinity) => executeAction({ type: 'toggle_luminary_affinity', luminaryId: l.id, affinity: affinity as ActionRequestAffinity })}
                 costMode={costMode}
                 playerBonuses={me?.bonuses}
                 isMyTurn={isMyTurn}
@@ -6571,6 +6574,69 @@ export default function GameBoard() {
                         <span className="flex items-center gap-1 text-sm font-bold text-amber-200">+{selectedLuminary.lumens}<EminenceDiamond size={10} /></span>
                       </div>
                     </div>
+                    {/* Active Affinity Selector (sheet) — only for claimed Luminaries with multi-eligible affinities */}
+                    {(() => {
+                      const sheetLumAffinity = state?.luminaryAffinities?.find(la => la.luminaryId === selectedLuminary.id) ?? null;
+                      const isSheetOwnedByMe = (safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(selectedLuminary.id))?.playerId ?? '') === session?.playerId;
+                      const eligible = sheetLumAffinity?.eligibleAffinities ?? [];
+                      const activeKey = sheetLumAffinity?.activeAffinity as GemKey | undefined;
+                      const activeMeta = activeKey ? GEM_META[activeKey] : null;
+                      const canToggleSheet = isSheetOwnedByMe && eligible.length >= 2 && (state?.turnCount ?? 0) > (sheetLumAffinity?.summonedAtTurnCount ?? 0);
+                      if (!sheetLumAffinity || !activeKey || !activeMeta) return null;
+                      return (
+                        <div className="flex flex-col gap-1.5 rounded-lg px-3 py-2 bg-white/5 border border-white/10">
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">Active Affinity</span>
+                          <div className="flex items-center gap-2">
+                            {/* Current active gem */}
+                            <div className="flex items-center gap-1.5 rounded-md px-2 py-1" style={{ border: `1px solid ${activeMeta.glowHex}55`, boxShadow: `0 0 8px ${activeMeta.glowHex}33` }}>
+                              <MiniGem color={activeKey} size={13} />
+                              <span className="text-[11px] font-semibold" style={{ color: activeMeta.hex, textShadow: `0 0 6px ${activeMeta.glowHex}88` }}>{activeMeta.name}</span>
+                            </div>
+                            {/* Toggle button for multi-eligible Luminaries */}
+                            {canToggleSheet && (
+                              <button
+                                type="button"
+                                className="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold transition-colors"
+                                style={{ border: `1px solid ${activeMeta.glowHex}44`, background: 'rgba(3,3,8,0.65)', color: activeMeta.hex }}
+                                title="Cycle active affinity"
+                                onClick={() => {
+                                  const idx = eligible.indexOf(activeKey as LuminaryActiveStateEligibleAffinitiesItem);
+                                  const next = eligible[(idx + 1) % eligible.length] as ActionRequestAffinity;
+                                  executeAction({ type: 'toggle_luminary_affinity', luminaryId: selectedLuminary.id, affinity: next });
+                                }}
+                              >
+                                <span style={{ fontSize: 11, lineHeight: 1 }}>↻</span> Switch
+                              </button>
+                            )}
+                          </div>
+                          {/* Ineligible until next turn hint */}
+                          {isSheetOwnedByMe && !canToggleSheet && (state?.turnCount ?? 0) <= (sheetLumAffinity?.summonedAtTurnCount ?? 0) && (
+                            <span className="text-[9px] text-amber-400/70">Alliance bonus activates on your next turn.</span>
+                          )}
+                          {/* Eligible dots for multi-eligible Luminaries */}
+                          {eligible.length >= 2 && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {eligible.map(ek => {
+                                const k = ek as GemKey;
+                                const isActive = k === activeKey;
+                                return (
+                                  <span
+                                    key={k}
+                                    className="inline-block rounded-full"
+                                    style={{
+                                      width: 6, height: 6,
+                                      background: isActive ? GEM_META[k].hex : `${GEM_META[k].hex}44`,
+                                      boxShadow: isActive ? `0 0 4px ${GEM_META[k].glowHex}` : 'none',
+                                      transition: 'all 0.2s ease',
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
                 <Button variant="ghost" className="w-full text-muted-foreground focus-visible:outline-none focus-visible:ring-0" onClick={() => setSelectedLuminary(null)}>
