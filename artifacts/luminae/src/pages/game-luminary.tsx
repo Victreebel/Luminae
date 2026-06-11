@@ -289,17 +289,20 @@ export function LuminaryClaimedPortal({
         <span className="text-lg font-serif font-black leading-none select-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
           {luminary.oblivion ? `-${luminary.oblivion}` : luminary.lumens}
         </span>
-        {activeKey && (
+      </div>
+      {/* Active affinity gem — z-30 puts it anterior to the vortex art */}
+      {activeKey && (
+        <div className="absolute top-2 right-2 z-30 pointer-events-none">
           <motion.div
             animate={{ y: [-2, 2, -2] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
+            style={{ filter: `drop-shadow(0 0 7px ${g2}dd)` }}
             title={activeAffinityMeta ? (isOwnedByMe ? `Active affinity: ${activeAffinityMeta.name}` : undefined) : undefined}
           >
-            <MiniGem color={activeKey} size={16} />
+            <MiniGem color={activeKey} size={22} />
           </motion.div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Bottom: full-width alliance bar — gradient overlay, anterior to art */}
       {claimedByPlayer && ownerName && (
