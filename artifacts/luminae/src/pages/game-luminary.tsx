@@ -422,7 +422,7 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   luminaryAffinity, claimedByPlayer, isLive, canToggle, onToggle,
   playerBonuses, isMyTurn, onOpenSheet, isArmed = false,
   isFlashing = false, burnCount,
-  costMode, heldCrystals,
+  costMode,
 }: {
   luminary: Luminary;
   claimedByNames?: string[];
@@ -440,7 +440,6 @@ export const LuminaryCard = React.memo(function LuminaryCard({
   isFlashing?: boolean;
   burnCount?: number;
   costMode?: 'printed' | 'after_bonuses' | 'needed_now';
-  heldCrystals?: Partial<CrystalCounts>;
 }) {
   const isClaimed = claimedByNames.length > 0;
   const initialClaimedRef = useRef(isClaimed);
@@ -458,7 +457,8 @@ export const LuminaryCard = React.memo(function LuminaryCard({
 
   // Luminaries have no card-bonus discounts — requirements are fixed.
   // The only mode that changes the display is 'needed_now', which subtracts
-  // the player's held crystals to show how many more they still need.
+  // the number of purchased cards of each affinity (== playerBonuses) from
+  // the raw luminary requirements to show how many more cards are still needed.
   const mode = costMode ?? 'printed';
   const neededCost = useMemo(() => {
     if (mode !== 'needed_now') return undefined;
@@ -467,12 +467,12 @@ export const LuminaryCard = React.memo(function LuminaryCard({
       if (k === 'flux') continue;
       const req = luminary.requirements[k as keyof CrystalCounts] ?? 0;
       if (req <= 0) continue;
-      const have = heldCrystals?.[k as keyof CrystalCounts] ?? 0;
+      const have = playerBonuses?.[k as keyof CrystalCounts] ?? 0;
       const need = Math.max(0, req - have);
       out[k as GemKey] = need;
     }
     return out;
-  }, [mode, luminary.requirements, heldCrystals]);
+  }, [mode, luminary.requirements, playerBonuses]);
   const displayCost = mode === 'needed_now' ? neededCost : undefined;
 
   const canAffordLuminary = !isClaimed && isMyTurn === true && (

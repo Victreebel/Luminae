@@ -3820,7 +3820,6 @@ export default function GameBoard() {
                 isFlashing={flashLumId === l.id}
                 burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
                 costMode={costMode}
-                heldCrystals={me?.crystals}
               />
             );
           })}
