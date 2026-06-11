@@ -481,7 +481,9 @@ export const LuminaryCard = React.memo(function LuminaryCard({
       const need = Math.max(0, after - have);
       if (need > 0) out[k as GemKey] = need;
     }
-    return Object.keys(out).length > 0 ? out : undefined;
+    // Always return an object (even empty) so the display layer knows
+    // we are in needed_now mode and can render ✓ for covered costs.
+    return out;
   }, [costAfterBonuses, heldCrystals, mode]);
 
   const displayCost = mode === 'printed' ? undefined : (mode === 'after_bonuses' ? costAfterBonuses : neededCost);
