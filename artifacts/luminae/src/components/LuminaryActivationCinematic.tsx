@@ -33,7 +33,12 @@ interface LuminaryActivationCinematicProps {
    * is checked independently inside the component and also triggers this path.
    */
   reducedMotion?: boolean;
-  onComplete: () => void;
+  /**
+   * Called when the cinematic ends (normally or via skip).
+   * `skipped` is true when the player held-to-skip or the reduced-motion timer
+   * completed early — callers should bypass any exit animations in that case.
+   */
+  onComplete: (skipped?: boolean) => void;
 }
 
 // ─── ProcedureStrip ───────────────────────────────────────────────────────────
@@ -325,7 +330,8 @@ export function LuminaryActivationCinematic({
     timersRef.current = [];
     gameAudio.stopActivationSting();
     setPhase('done');
-    onCompleteRef.current();
+    // Pass skipped=true so callers can bypass exit animations immediately.
+    onCompleteRef.current(true);
   };
 
   // ── Hold gesture handlers ──────────────────────────────────────────────────
@@ -381,7 +387,8 @@ export function LuminaryActivationCinematic({
       const t1 = setTimeout(() => {
         completedRef.current = true;
         setPhase('done');
-        onCompleteRef.current();
+        // Reduced-motion auto-complete is a fast-forward path — no exit animations.
+        onCompleteRef.current(true);
       }, REDUCED_HOLD_MS);
       timersRef.current = [t1];
     } else {

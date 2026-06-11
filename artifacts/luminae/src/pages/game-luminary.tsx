@@ -419,7 +419,7 @@ export const LuminaryClaimedPortal = React.memo(function LuminaryClaimedPortal({
 
 export const LuminaryCard = React.memo(function LuminaryCard({
   luminary, claimedByNames = [], isReleased = false,
-  luminaryAffinity, claimedByPlayer, isOwnedByMe, isLive, canToggle, onToggle,
+  luminaryAffinity, claimedByPlayer, isOwnedByMe: _isOwnedByMe, isLive, canToggle, onToggle,
   playerBonuses, isMyTurn, onOpenSheet, isArmed = false,
   isFlashing = false, burnCount,
 }: {

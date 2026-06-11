@@ -23,6 +23,7 @@ import type {
 } from '@workspace/api-client-react';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
+import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
 import { useQueryClient } from '@tanstack/react-query';
 import { getSession, clearSession } from '@/lib/session';
@@ -646,6 +647,13 @@ export default function GameBoard() {
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
   const overlayOpenRef = useRef(false);
+
+  const viewOrchestrator = useViewOrchestrator({
+    marketCompact,
+    setMarketCompact,
+    boardRef: mainScrollRef,
+    abridgedAnims,
+  });
   // Tracks how many AI affinity-change log entries have already triggered the
   // switch sound, so that we only fire for genuinely new entries.
   const seenAiAffinityLogCountRef = useRef(0);
@@ -752,6 +760,24 @@ export default function GameBoard() {
   useEffect(() => {
     overlayOpenRef.current = isAnyOverlayOpen;
   }, [isAnyOverlayOpen]);
+
+  // View orchestration: prepare the board layout before each Luminary activation cinematic.
+  // Fires when a new activation event becomes the head of the queue and no arrival
+  // cutscene is blocking.  prepare() snapshots the current view state and switches to
+  // Compact View if the procedure targets multiple distinct board zones — so that by the
+  // time the entity appears (after the 150 ms ANTICIPATE phase), all affected slots are
+  // visible without horizontal scrolling.
+  useEffect(() => {
+    if (!activationQueue.length || arrivalQueue.length > 0 || isTutorial) return;
+    const evt = activationQueue[0];
+    const procedure = resolveLuminaryProcedure(
+      evt.luminaryId,
+      evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
+      state,
+      evt.triggeringPlayerId,
+    );
+    viewOrchestrator.prepare(procedure);
+  }, [activationQueue[0]?.eventId, arrivalQueue.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Body scroll lock — a single call covering all overlays at once.
   // To add a new overlay, append its boolean to the overlayStates array above.
@@ -3804,6 +3830,7 @@ export default function GameBoard() {
           ═══════════════════════════════════════════════════════ */}
       <div
         data-tutorial-zone="market"
+        data-market-section="true"
         className="relative"
         style={(tutorialZone === 'market' || tutorialZone === 'filters') ? {
           boxShadow: tutorialAttention === 'action'
@@ -3884,7 +3911,7 @@ export default function GameBoard() {
             )}
             <button
               type="button"
-              onClick={() => setMarketCompact(v => !v)}
+              onClick={() => { viewOrchestrator.onManualToggle(); setMarketCompact(v => !v); }}
               className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
               title={marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
               aria-pressed={marketCompact}
@@ -8400,7 +8427,8 @@ export default function GameBoard() {
             triggeringPlayerName={triggeringPlayer?.playerName}
             procedure={procedure.length > 0 ? procedure : undefined}
             reducedMotion={abridgedAnims}
-            onComplete={() => {
+            onComplete={(skipped) => {
+              viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
             }}
