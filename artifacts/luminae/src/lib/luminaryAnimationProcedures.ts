@@ -144,20 +144,48 @@ function resolveRadiant(s: GameState, ownerId: string): AnimationTimelineStep[] 
 }
 
 // 6. Phoenix Paradox / Ash-Seeking Recurrence (lum_astral)
-//    luminaryPulse → targetClaim Tier III+II → burn non-Flare/Continuum
-//    → paradox pulse on surviving ruby/sapphire cards → marketRedraw
-//    The second targetClaim (no keyword) gives the "surviving card locks into place last"
-//    identity beat — distinguishes this from Red Moth's full-row burn.
+//    Sequential reveal-until: non-Flare/Continuum cards burn one by one
+//    from Tier III then Tier II until a matching card is found.
+//    The surviving card locks into place with a final targetClaim.
 function resolveAstral(s: GameState): AnimationTimelineStep[] {
-  const combined = [...t3(s), ...t2(s)];
-  const allIds = combined.map(c => c.id);
-  const burnIds = excludeBonus(combined, ['ruby', 'sapphire']).map(c => c.id);
-  const survivorIds = byBonus(combined, ['ruby', 'sapphire']).map(c => c.id);
+  const t3Cards = t3(s);
+  const t2Cards = t2(s);
+
+  // Build reveal-until sequences per tier from the live state.
+  // The engine has already resolved the cascade; we reconstruct the per-card
+  // sequence from the current market (post-cascade) + burnEvents.
+  function buildTierSequence(cards: ArtifactCard[], tier: number): AnimationTimelineStep[] {
+    const result: AnimationTimelineStep[] = [];
+    const nonMatching = excludeBonus(cards, ['ruby', 'sapphire']);
+    const matching = byBonus(cards, ['ruby', 'sapphire']);
+
+    // Non-matching cards: each is revealed and burned immediately
+    for (const card of nonMatching) {
+      result.push({ type: 'reveal', cardIds: [card.id], tier, stopCondition: 'Flare or Continuum', revealType: 'sequential' });
+      result.push({ type: 'keywordEvent', keyword: 'burn', targetIds: [card.id] });
+    }
+
+    // Matching card: revealed and locked in (no burn)
+    if (matching.length > 0) {
+      // Use the first matching card as the survivor
+      result.push({ type: 'reveal', cardIds: [matching[0].id], tier, stopCondition: 'Flare or Continuum', revealType: 'sequential' });
+    }
+
+    return result;
+  }
+
+  const t3Sequence = buildTierSequence(t3Cards, 3);
+  const t2Sequence = buildTierSequence(t2Cards, 2);
+
+  // Survivor IDs for the final lock-in pulse
+  const survivorIds = [...byBonus(t3Cards, ['ruby', 'sapphire']).map(c => c.id),
+                       ...byBonus(t2Cards, ['ruby', 'sapphire']).map(c => c.id)];
+
   return [
     pulse('lum_astral'),
-    { type: 'targetClaim', targetIds: allIds, keyword: 'burn' },
-    { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: burnIds }] },
-    // Paradox pulse: surviving Flare/Continuum cards lock into place last
+    ...t3Sequence,
+    ...t2Sequence,
+    // Final lock-in pulse for surviving cards
     ...(survivorIds.length > 0
       ? [{ type: 'targetClaim' as const, targetIds: survivorIds }]
       : []),

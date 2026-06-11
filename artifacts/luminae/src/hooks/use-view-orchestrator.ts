@@ -51,6 +51,9 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
       case 'keywordEvent':
         step.targetIds.forEach(id => entityIds.add(id));
         break;
+      case 'reveal':
+        step.cardIds.forEach(id => entityIds.add(id));
+        break;
       case 'keywordEvents':
         step.events.forEach(ev => ev.targetIds.forEach(id => entityIds.add(id)));
         break;

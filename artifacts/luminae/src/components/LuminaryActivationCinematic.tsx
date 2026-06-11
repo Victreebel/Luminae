@@ -97,6 +97,11 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
     }
     case 'deckScry':      return { icon: '◉', label: 'SCRY',       color: '#a78bfa' };
     case 'pendingAction': return { icon: '✦', label: 'ASSIMILATE', color: '#fb923c' };
+    case 'reveal': {
+      const tierLabel = step.tier ? `T${step.tier}` : '';
+      const scope = step.cardIds.length > 1 ? ` ${step.cardIds.length}` : '';
+      return { icon: '◉', label: `REVEAL${scope} ${tierLabel}`.trim(), color: '#fbbf24' };
+    }
     default:              return null;
   }
 }

@@ -55,7 +55,23 @@ export type AnimationProcedureStep =
   | { type: 'scoreChange'; playerIds: string[]; amount: number }
   | { type: 'crystalReturn'; playerIds: string[]; crystalType?: string }
   | { type: 'deckScry'; tierIds: string[]; affinityBias?: string }
-  | { type: 'pendingAction'; action: 'assimilate'; ownerId: string };
+  | { type: 'pendingAction'; action: 'assimilate'; ownerId: string }
+  | {
+      /**
+       * Reveal one or more cards into a forefront inspection position.
+       * Used for both batch reveal (all cards at once) and sequential reveal-until
+       * (one by one). The ProcedureStrip renders this as a "REVEAL" pill.
+       *
+       * For sequential reveal-until, each individual card gets its own `reveal`
+       * step followed by an immediate `keywordEvent` (burn/keep/etc.) before the
+       * next reveal, so the ProcedureStrip reads: REVEAL → BURN → REVEAL → BURN → …
+       */
+      type: 'reveal';
+      cardIds: string[];
+      tier?: number;
+      stopCondition?: string;
+      revealType?: 'batch' | 'sequential';
+    };
 
 export type AnimationProcedure = AnimationProcedureStep[];
 

@@ -28,6 +28,7 @@ import type { AnimationTimelineStep, KeywordMarker } from '@/lib/animationProced
 
 export type AnimationArchetype =
   | 'burn'             // one-shot or selective Burn of target cards + market refresh
+  | 'revealUntil'      // sequential reveal-until: one card at a time, resolve immediately
   | 'scry'             // deck scry + market reorder shimmer
   | 'passiveBoon'      // persistent passive bonus on owner (no card residue)
   | 'globalDisruption' // board-wide negative scoreChange affecting all players
@@ -171,18 +172,22 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
     affinities: ['ruby', 'sapphire'],
     primaryColor: '#f43f5e',
     secondaryColor: '#3d6bff',
-    animationArchetype: 'burn',
+    animationArchetype: 'revealUntil',
     effectName: 'Ash-Seeking Recurrence',
     procedureSteps: [
       { type: 'luminaryPulse', luminaryId: 'lum_astral' },
-      { type: 'targetClaim', targetIds: [], keyword: 'burn' },
-      { type: 'keywordEvents', events: [{ keyword: 'burn', targetIds: [] }] },
-      // Survivor lock-in beat — second targetClaim (no keyword) highlights Flare/Continuum
-      // cards that survived the burn; reads as CLAIM (resolution) not TARGET (pre-warn).
+      // Sequential reveal-until: each non-matching card is revealed and burned
+      // immediately, one by one, until a Flare/Continuum card is found.
+      // The resolver emits [reveal, burn, reveal, burn, ...] pairs from live state.
+      { type: 'reveal', cardIds: [], tier: 3, stopCondition: 'Flare or Continuum' },
+      { type: 'keywordEvent', keyword: 'burn', targetIds: [] },
+      { type: 'reveal', cardIds: [], tier: 2, stopCondition: 'Flare or Continuum' },
+      { type: 'keywordEvent', keyword: 'burn', targetIds: [] },
+      // Final survivor pulse: the matching card locks into place
       { type: 'targetClaim', targetIds: [] },
       { type: 'marketRedraw', slotIds: [] },
     ],
-    flavorLine: 'Non-Flare/Continuum cards burn in a blue-red afterimage flash; surviving Flare and Continuum cards lock into place last with a paradox pulse before the market refreshes.',
+    flavorLine: 'Cards are revealed one by one from Tier III then Tier II. Each non-Flare/Continuum card burns immediately and the next is revealed. When a matching card appears, it pulses red-blue and locks into place — the suspense is in the one-by-one check, not the batch.',
   },
 
   // 7. Catalyst Bloom — Aftergrowth
