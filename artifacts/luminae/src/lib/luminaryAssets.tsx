@@ -2951,7 +2951,7 @@ export function AuraPreviewModal({
 //
 // The entity art uses objectFit:cover + a radial mask so the bottom ~28 %
 // of the card (name, claim tag) stays legible underneath the transparent edge.
-export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor, dimmed = false }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string; dimmed?: boolean }) {
+export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ luminaryId, frozen = false, hidden = false, activeAffinityColor }: { luminaryId: string; frozen?: boolean; hidden?: boolean; activeAffinityColor?: string }) {
   const vis = getLuminaryVisuals(luminaryId);
   const { EntityArt, primaryColor, glowColor, entityBlendMode, auraStyle } = vis;
   const auraVariant = AURA_VARIANTS[auraStyle] ?? AURA_VARIANT_FALLBACK;
@@ -3429,7 +3429,7 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
               top: absEntityTop,
               width: IDLE_W,
               height: IDLE_H,
-              opacity: hidden ? 0 : (dimmed ? 0.15 : 1),
+              opacity: hidden ? 0 : 1,
               transition: hidden ? 'none' : 'opacity 0.3s ease-in',
             }}
           >
@@ -3491,7 +3491,7 @@ export const LuminaryIdleOverlay = React.memo(function LuminaryIdleOverlay({ lum
       <div
         className="fixed pointer-events-none"
         style={{ zIndex: 18, left: destX, top: destY, width: IDLE_W, height: IDLE_H,
-                 opacity: (hidden || !isWithinScroller) ? 0 : (dimmed ? 0.15 : 1),
+                 opacity: (hidden || !isWithinScroller) ? 0 : 1,
                  transition: (hidden || !isWithinScroller) ? 'none' : 'opacity 0.3s ease-in',
                  display: (hidden || !isWithinScroller) ? 'none' : undefined }}
       >
