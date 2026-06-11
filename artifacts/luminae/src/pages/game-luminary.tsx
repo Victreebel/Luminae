@@ -429,19 +429,15 @@ export function LuminaryCard({
                 {canAffordLuminary && (
                   <motion.div
                     key="can-afford-badge"
-                    initial={{ opacity: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.6 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                    className="flex items-center justify-center rounded-full bg-black/70 backdrop-blur-sm"
-                    style={{
-                      width: 18, height: 18,
-                      border: `1.5px solid ${glowHex}`,
-                      boxShadow: `0 0 6px 1px ${glowHex}88`,
-                    }}
+                    initial={{ scale: 1.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 480, damping: 13, mass: 0.55 }}
+                    className="flex items-center gap-0.5 backdrop-blur-sm rounded px-1 py-0.5 bg-green-900/70"
                     title="You meet all requirements — claim this Luminary!"
                   >
-                    <span className="text-[10px] font-bold leading-none" style={{ color: glowHex }}>✓</span>
+                    <span className="text-[10px] font-bold text-green-300">✓</span>
+                    <MiniGem color={glowKey} size={10} />
                   </motion.div>
                 )}
               </AnimatePresence>
