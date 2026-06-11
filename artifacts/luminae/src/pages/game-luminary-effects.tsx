@@ -1072,6 +1072,8 @@ export function SummonMarketOverlay({
   if (lumId === 'lum_verdant') return createPortal(<VerdantBloomFx />, document.body);
   if (lumId === 'lum_pale') return createPortal(<PaleMerchantFx />, document.body);
   if (lumId === 'lum_tide') return createPortal(<TideScryFx />, document.body);
+  if (lumId === 'lum_void') return createPortal(<VoidWardenFx />, document.body);
+  if (lumId === 'lum_hunger') return createPortal(<FirstHungerFx />, document.body);
   return null;
 }
 
@@ -1497,6 +1499,156 @@ function TideScryFx() {
         animate={{ scaleX: [0, 1, 1, 0], opacity: [0, 0.75, 0.55, 0] }}
         transition={{ duration: 1.9, times: [0, 0.1, 0.82, 1], ease: 'easeInOut' }}
       />
+    </div>
+  );
+}
+
+// Void Warden — dark implosion collapse, all light draining inward
+function VoidWardenFx() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
+      {/* Central void implosion glow */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: '40%', left: '50%',
+          translateX: '-50%', translateY: '-50%',
+          width: '50vw', height: '50vw',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #2e1065 0%, #4c1d95 25%, #0a0a14 60%, transparent 78%)',
+          filter: 'blur(10px)',
+          pointerEvents: 'none',
+          zIndex: 69,
+        }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.2, 0.6, 0], opacity: [0, 0.85, 0.7, 0] }}
+        transition={{ duration: 2.0, times: [0, 0.22, 0.55, 1], ease: 'easeInOut' }}
+      />
+      {/* Collapse ring — dark violet border that snaps inward */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: '40%', left: '50%',
+          translateX: '-50%', translateY: '-50%',
+          borderRadius: '50%',
+          border: '2px solid #6b21a8',
+          boxShadow: '0 0 20px 6px #4c1d9544',
+          pointerEvents: 'none',
+          zIndex: 69,
+        }}
+        initial={{ width: '60vw', height: '60vw', opacity: 0.9 }}
+        animate={{ width: '10vw', height: '10vw', opacity: 0 }}
+        transition={{ duration: 1.6, ease: 'easeIn' }}
+      />
+      {/* 4 corner drains — dark particles being pulled toward center */}
+      {[
+        { x: '10%', y: '10%' },
+        { x: '90%', y: '10%' },
+        { x: '10%', y: '90%' },
+        { x: '90%', y: '90%' },
+      ].map((pos, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'fixed',
+            left: pos.x, top: pos.y,
+            width: 6, height: 6,
+            borderRadius: '50%',
+            background: '#a855f7',
+            boxShadow: '0 0 8px 3px #7e22ce66',
+            pointerEvents: 'none',
+            zIndex: 70,
+          }}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{
+            x: ['0vw', `${(50 - parseInt(pos.x)) * 0.8}vw`],
+            y: ['0vh', `${(40 - parseInt(pos.y)) * 0.8}vh`],
+            opacity: [0, 0.8, 0],
+            scale: [0, 1.2, 0.3],
+          }}
+          transition={{ duration: 1.4, delay: i * 0.08, ease: 'easeInOut' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// First Hunger — golden maw / consumption vortex, card being devoured
+function FirstHungerFx() {
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
+      {/* Warm amber core glow — the "maw" */}
+      <motion.div
+        style={{
+          position: 'fixed',
+          top: '45%', left: '50%',
+          translateX: '-50%', translateY: '-50%',
+          width: '30vw', height: '30vw',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #fbbf2488 0%, #f59e0b55 35%, #92400e22 60%, transparent 75%)',
+          filter: 'blur(8px)',
+          pointerEvents: 'none',
+          zIndex: 69,
+        }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.1, 0.9, 0], opacity: [0, 0.85, 0.6, 0] }}
+        transition={{ duration: 1.8, times: [0, 0.2, 0.55, 1], ease: 'easeOut' }}
+      />
+      {/* Swirling teeth-like arcs */}
+      {[0, 1, 2].map(i => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'fixed',
+            top: '45%', left: '50%',
+            translateX: '-50%', translateY: '-50%',
+            width: 80 + i * 60,
+            height: 80 + i * 60,
+            borderRadius: '50%',
+            border: '2px solid #fbbf24',
+            borderBottomColor: 'transparent',
+            borderLeftColor: 'transparent',
+            pointerEvents: 'none',
+            zIndex: 69,
+          }}
+          initial={{ opacity: 0, rotate: i * 40 }}
+          animate={{ opacity: [0, 0.75, 0.5, 0], rotate: [i * 40, i * 40 + 180] }}
+          transition={{ duration: 1.6, delay: i * 0.12, ease: 'easeOut' }}
+        />
+      ))}
+      {/* Particle embers being sucked inward */}
+      {Array.from({ length: 8 }).map((_, i) => {
+        const angle = (i / 8) * Math.PI * 2;
+        const startR = 35;
+        const endR = 4;
+        return (
+          <motion.div
+            key={i}
+            style={{
+              position: 'fixed',
+              top: '45%', left: '50%',
+              width: 3,
+              height: 3,
+              borderRadius: '50%',
+              background: '#fbbf24',
+              boxShadow: '0 0 6px 2px #f59e0b66',
+              pointerEvents: 'none',
+              zIndex: 70,
+            }}
+            initial={{
+              x: Math.cos(angle) * startR + 'vw',
+              y: Math.sin(angle) * startR + 'vh',
+              opacity: 0,
+            }}
+            animate={{
+              x: Math.cos(angle) * endR + 'vw',
+              y: Math.sin(angle) * endR + 'vh',
+              opacity: [0, 0.9, 0],
+            }}
+            transition={{ duration: 1.3, delay: i * 0.06, ease: 'easeIn' }}
+          />
+        );
+      })}
     </div>
   );
 }

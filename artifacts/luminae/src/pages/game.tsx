@@ -1415,6 +1415,25 @@ export default function GameBoard() {
       }
     }
 
+    // ── Void Warden Oblivion (-4 eminence all players) ─────────────────────
+    // Detect when the void activation event lands and the state reflects the -4 drain.
+    const prevVoidActive = prev.pendingSummonEvents?.some(e => e.luminaryId === 'lum_void') ?? false;
+    const newVoidActive  = state.pendingSummonEvents?.some(e => e.luminaryId === 'lum_void') ?? false;
+    if (!prevVoidActive && newVoidActive) {
+      for (const p of (state.players ?? [])) {
+        // Opponent chips use data-opponent-chip; local player panel has no data attribute,
+        // so fall back to the [data-singularity-well] which sits near the local player area.
+        const panelEl = document.querySelector(`[data-opponent-chip="${p.playerId}"]`)
+          ?? (p.playerId === session?.playerId ? document.querySelector('[data-singularity-well]') : null);
+        const rect = panelEl?.getBoundingClientRect();
+        if (rect) {
+          setDelayedEffectFloats(pf => [
+            ...pf, { id: `void-${p.playerId}-${Date.now()}`, amount: -4, color: '#4c1d95', originRect: rect },
+          ]);
+        }
+      }
+    }
+
     // ── Catalyst Bloom (N burns → N eminence payout) ───────────────────────
     const prevBloom  = prev.catalystBloomBurnCount  ?? 0;
     const newBloom   = state.catalystBloomBurnCount ?? 0;
@@ -1472,6 +1491,7 @@ export default function GameBoard() {
     const SUMMON_OVERLAY_IDS = [
       'lum_moth', 'lum_forge', 'lum_null', 'lum_ember',
       'lum_compass', 'lum_verdant', 'lum_pale',
+      'lum_tide', 'lum_void', 'lum_hunger',
     ] as const;
     for (const lumId of SUMMON_OVERLAY_IDS) {
       const prevHas = prev.pendingSummonEvents?.some(e => e.luminaryId === lumId) ?? false;

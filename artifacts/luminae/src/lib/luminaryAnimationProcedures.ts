@@ -21,9 +21,7 @@
 // Red Moth              |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Tide Architect        |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Verdant Oracle        |  ✓     |  ✓*    |  ✓     |  —     | *TargetBadge fallback  | —
-// Void Warden           |  ✓     |  ✗     |  ✓     |  —     | No targetClaim before  | Added
-//                       |        |        |        |        | scoreChange; summoner  | targetClaim
-//                       |        |        |        |        | panel not highlighted  | (allPlayers)
+// Void Warden           |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Concordance Mandala   |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Phoenix Paradox       |  ✓     |  ✓     |  ✓     |  —     | None                   | —
 // Catalyst Bloom        |  ✓     |  ✗     |  ✗*    |  —     | No targetClaim; used   | Added
