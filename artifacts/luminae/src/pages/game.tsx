@@ -1025,13 +1025,19 @@ export default function GameBoard() {
     }
   }, [error, isTutorial, setLocation]);
 
+  // Only reset selection state when it becomes YOUR turn — not when an opponent
+  // forges a card and currentPlayerIndex changes away from you.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    const isNowMyTurn = !!state && !!session && state.status === 'playing' &&
+      state.players[state.currentPlayerIndex ?? 0]?.playerId === session.playerId;
+    if (!isNowMyTurn) return;
     setCoreActionSubmitted(false);
     setSelectedCrystals({});
     setCrystalHistory([]);
     setPrePromotionHistory(null);
     setActionMode('none');
-  }, [state?.currentPlayerIndex]);
+  }, [state?.currentPlayerIndex, session?.playerId]);
 
   // v0.8 — which Luminaries currently have a pending delayed effect.
   // Drives the ArmedSigil on the Luminary portal.
