@@ -294,7 +294,7 @@ export function LuminaryClaimedPortal({
             animate={{ y: [-2, 2, -2] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             style={{ filter: `drop-shadow(0 0 5px ${g2}cc)` }}
-            title={activeAffinityMeta ? `${isOwnedByMe ? 'Active affinity' : 'Opponent boosting'}: ${activeAffinityMeta.name}` : undefined}
+            title={activeAffinityMeta ? (isOwnedByMe ? `Active affinity: ${activeAffinityMeta.name}` : undefined) : undefined}
           >
             <MiniGem color={activeKey} size={16} />
           </motion.div>
@@ -312,11 +312,9 @@ export function LuminaryClaimedPortal({
             <PlayerAvatar avatarId={claimedByPlayer.avatarId ?? null} name={ownerName} size={14} />
             <span className="text-[9px] font-semibold leading-none text-white truncate" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}>{ownerName}</span>
           </div>
-          {!isOwnedByMe && activeKey && activeAffinityMeta && (
+          {!isOwnedByMe && activeKey && (
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[7px] font-medium tracking-wide text-white/40 shrink-0 uppercase">Opponent boosting</span>
               <MiniGem color={activeKey} size={10} />
-              <span className="text-[8px] font-semibold leading-none" style={{ color: g1, textShadow: `0 0 4px ${g1}88` }}>{activeAffinityMeta.name}</span>
             </div>
           )}
         </div>
