@@ -1,0 +1,61 @@
+Clarification: “Full board view” means the existing Compact View mode already available via the Forge/board view toggle.
+
+When a Luminary/card effect affects more than one card or multiple board zones:
+
+1. Save the player’s current view state
+
+* Whether Compact View is on/off
+* Current pan/center/focus if applicable
+* Current selected/focused card or zone if applicable
+
+2. Switch to Compact View if needed
+
+* If Compact View is already on, do not toggle it off/on.
+* If Compact View is off, smoothly transition into Compact View.
+* No abrupt cuts or snapping.
+
+3. Center the board/effect area
+
+* Once in Compact View, smoothly center the board so all affected targets are visible when possible.
+* If Compact View was already active, simply smooth-center the board/effect area.
+* Prioritize showing:
+    * source Luminary/card
+    * affected targets
+    * relevant destination zone, such as Burn Pile, bank, or deck tiers
+
+4. Play the animation sequence
+
+* Source activation first.
+* Then target claim.
+* Then keyword/event animation:
+    * Burn
+    * Reveal
+    * Scry
+    * Condemned
+    * Forgotten
+    * Nullified
+    * Seeded
+    * scoreChange
+    * crystalReturn
+    * marketRedraw/refill
+
+5. Return to previous view
+
+* After the animation completes, smoothly restore the player’s prior view state.
+* If the player originally had Compact View off, return to non-compact view.
+* If the player originally had Compact View on, keep Compact View on and return to the prior center/focus if appropriate.
+* Do not fight the player if they manually change view during/after the animation.
+
+Reduced motion / skip:
+
+* Reduced motion should still use Compact View when necessary, but transitions should be shorter and simpler.
+* Skip/fast-forward must leave the correct final view state and must not leave the board stuck in the wrong view.
+
+Acceptance criteria:
+
+* Multi-target effects use existing Compact View as the full-board view.
+* If Compact View is already enabled, the system only centers/reframes smoothly.
+* If Compact View is disabled, the system smoothly enters Compact View before resolving the effect.
+* After the animation, the board smoothly returns to the player’s previous view state.
+* No abrupt camera/view cuts.
+* No new separate “full board view” system is created.
