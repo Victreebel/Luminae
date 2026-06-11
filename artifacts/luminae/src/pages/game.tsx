@@ -79,7 +79,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, ArrivalMarketOverlay } from './game-luminary-effects';
+import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, ArrivalMarketOverlay, ArrivalBrandStrike, type BrandStrikeTarget } from './game-luminary-effects';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
 import { deriveAccolades } from '@/lib/accolades';
@@ -624,6 +624,10 @@ export default function GameBoard() {
   const [refillingSlots, setRefillingSlots] = useState<Set<string>>(new Set());
   // Card IDs whose market-marker badge was just applied (drives the isNew pop animation)
   const [newlyMarkedCardIds, setNewlyMarkedCardIds] = useState<Set<string>>(new Set());
+  // Pending ArrivalBrandStrike entries — beam + large brand animations for newly-placed markers
+  const [brandStrikes, setBrandStrikes] = useState<Array<{ id: string; strikes: BrandStrikeTarget[] }>>([]);
+  // Per-card brand delay (ms) so each badge springs in after its own beam settles
+  const [brandDelayMap, setBrandDelayMap] = useState<Map<string, number>>(new Map());
   const prevStateForAnimRef = useRef<typeof state>(null);
   const [dealingCard, setDealingCard] = useState<{
     card: ArtifactCard;
@@ -1421,14 +1425,37 @@ export default function GameBoard() {
       }
     }
 
-    // ── Newly applied market markers (condemned badge pop animation) ────────
+    // ── Newly applied market markers — badge pop + ArrivalBrandStrike beam ──
     {
       const prevMarkers = prev.marketMarkers ?? {};
       const nextMarkers = state.marketMarkers ?? {};
       const newlyMarked = Object.keys(nextMarkers).filter(id => !prevMarkers[id]);
       if (newlyMarked.length > 0) {
         setNewlyMarkedCardIds(new Set(newlyMarked));
-        setTimeout(() => setNewlyMarkedCardIds(new Set()), 700);
+        setTimeout(() => setNewlyMarkedCardIds(new Set()), 1400);
+
+        // Capture card DOM rects and fire the beam brand animation
+        const strikes: BrandStrikeTarget[] = [];
+        newlyMarked.forEach((cardId, i) => {
+          const el = document.querySelector(`[data-card-id="${cardId}"]`);
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          if (r.width === 0) return;
+          strikes.push({
+            rect: { x: r.x, y: r.y, w: r.width, h: r.height },
+            type: nextMarkers[cardId].type as BrandStrikeTarget['type'],
+            delay: i * 90,
+          });
+        });
+        if (strikes.length > 0) {
+          const strikeId = `brand-${Date.now()}`;
+          setBrandStrikes(prev => [...prev, { id: strikeId, strikes }]);
+          // Per-card delay map: badge springs in after its own beam finishes (~i*90 + 550ms)
+          const delayMap = new Map<string, number>();
+          newlyMarked.forEach((cardId, i) => delayMap.set(cardId, i * 90 + 550));
+          setBrandDelayMap(delayMap);
+          setTimeout(() => setBrandDelayMap(new Map()), 1500);
+        }
       }
     }
 
@@ -4165,7 +4192,7 @@ export default function GameBoard() {
                       {state?.marketMarkers?.[c.id] && (
                         <>
                           <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} />
+                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} />
                         </>
                       )}
                     </div>
@@ -4209,7 +4236,7 @@ export default function GameBoard() {
                       {state?.marketMarkers?.[c.id] && (
                         <>
                           <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} />
+                          <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} />
                         </>
                       )}
                       {/* Refill pulse — opacity-only to respect overflow-hidden container */}
@@ -4307,7 +4334,7 @@ export default function GameBoard() {
                     {state?.marketMarkers?.[c.id] && (
                       <>
                         <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} />
+                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} />
                       </>
                     )}
                     {/* Refill pulse after burn-triggered market redraw */}
@@ -4697,7 +4724,7 @@ export default function GameBoard() {
                     {state?.marketMarkers?.[c.id] && (
                       <>
                         <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                        <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} />
                       </>
                     )}
                     <div
@@ -7514,7 +7541,7 @@ export default function GameBoard() {
                             {state?.marketMarkers?.[c.id] && (
                               <>
                                 <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
-                                <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                                <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} />
                               </>
                             )}
                           </div>
@@ -8562,6 +8589,14 @@ export default function GameBoard() {
           key={o.id}
           lumId={o.lumId}
           onDone={() => setArrivalOverlays(pf => pf.filter(x => x.id !== o.id))}
+        />
+      ))}
+      {/* ── v0.8 Arrival brand beam strikes (lightning → large icon → persistent badge) ── */}
+      {brandStrikes.map(b => (
+        <ArrivalBrandStrike
+          key={b.id}
+          strikes={b.strikes}
+          onDone={() => setBrandStrikes(prev => prev.filter(x => x.id !== b.id))}
         />
       ))}
       {/* Aura preview modal — full-screen entity + aura animation */}

@@ -1,3 +1,4 @@
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef } from 'react';
@@ -16,57 +17,106 @@ type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'bur
 
 const MARKER_META: Record<
   MarkerType,
-  { label: string; bg: string; border: string; text: string; icon: string }
+  { label: string; bg: string; border: string; text: string; icon: string; tooltip: string }
 > = {
   forgotten: {
-    label: 'Forgotten',
-    bg:     'rgba(10,6,30,0.93)',
-    border: '#3b2b8c',
-    text:   '#9988ee',
-    icon:   '◎',
+    label:   'Forgotten',
+    bg:      'rgba(10,6,30,0.93)',
+    border:  '#3b2b8c',
+    text:    '#9988ee',
+    icon:    '◎',
+    tooltip: 'Forgotten: This Artifact awards 0 Eminence when forged until this effect expires. Source: The Hourless Compass.',
   },
   condemned: {
-    label: 'Condemned',
-    bg:     'rgba(36,4,4,0.95)',
-    border: '#8b1c1c',
-    text:   '#e05050',
-    icon:   '⚑',
+    label:   'Condemned',
+    bg:      'rgba(36,4,4,0.95)',
+    border:  '#8b1c1c',
+    text:    '#e05050',
+    icon:    '⚑',
+    tooltip: 'Condemned: This Artifact will Burn at the start of the source player\'s next turn. Source: Ember Sovereign.',
   },
   nullified: {
-    label: 'Nullified',
-    bg:     'rgba(4,8,22,0.95)',
-    border: '#1c3b6e',
-    text:   '#6080c0',
-    icon:   '⊘',
+    label:   'Nullified',
+    bg:      'rgba(4,8,22,0.95)',
+    border:  '#1c3b6e',
+    text:    '#6080c0',
+    icon:    '⊘',
+    tooltip: 'Nullified: This Artifact awards 0 Eminence while marked. Source: Null Sovereign.',
   },
   avatar_seed: {
-    label: 'Seeded',
-    bg:     'rgba(4,18,12,0.95)',
-    border: '#1a5c3a',
-    text:   '#4cc88a',
-    icon:   '⁕',
+    label:   'Seeded',
+    bg:      'rgba(4,18,12,0.95)',
+    border:  '#1a5c3a',
+    text:    '#4cc88a',
+    icon:    '⁕',
+    tooltip: 'Seeded: If an opponent forges this card, the source player gains pending Eminence. Source: The Seed Beyond Seasons.',
   },
   burned: {
-    label: 'Burned',
-    bg:     'rgba(48,12,0,0.96)',
-    border: '#cc4400',
-    text:   '#ff7040',
-    icon:   '✕',
+    label:   'Burned',
+    bg:      'rgba(48,12,0,0.96)',
+    border:  '#cc4400',
+    text:    '#ff7040',
+    icon:    '✕',
+    tooltip: '',
+  },
+};
+
+// Per-marker-type visual config for the ArrivalBrandStrike beam animation.
+// No blur is used anywhere — all sharpness is achieved via gradients + borders.
+const BRAND_META: Record<MarkerType, {
+  beamColor: string;      // main beam shaft color
+  beamSecondary: string;  // beam origin (top) — cosmic space color
+  flashColor: string;     // impact flash / border color
+  brandColor: string;     // large brand icon text color
+}> = {
+  forgotten: {
+    beamColor:     '#818cf8',
+    beamSecondary: '#1e1b4b',
+    flashColor:    '#c4b5fd',
+    brandColor:    '#9988ee',
+  },
+  condemned: {
+    beamColor:     '#c026d3',
+    beamSecondary: '#78350f',
+    flashColor:    '#f97316',
+    brandColor:    '#e05050',
+  },
+  nullified: {
+    beamColor:     '#94a3b8',
+    beamSecondary: '#0f172a',
+    flashColor:    '#e2e8f0',
+    brandColor:    '#7090b8',
+  },
+  avatar_seed: {
+    beamColor:     '#4ade80',
+    beamSecondary: '#064e3b',
+    flashColor:    '#86efac',
+    brandColor:    '#4cc88a',
+  },
+  burned: {
+    beamColor:     '#f97316',
+    beamSecondary: '#7c2d12',
+    flashColor:    '#fcd34d',
+    brandColor:    '#ff7040',
   },
 };
 
 export function CardMarkerBadge({
   type,
   isNew = false,
+  brandDelay,
 }: {
   type: MarkerType;
   isNew?: boolean;
+  /** When set, delays the pop-in spring so the badge settles after the brand strike. */
+  brandDelay?: number;
 }) {
   const meta = MARKER_META[type];
   const animClass =
     type === 'condemned'  ? 'kw-condemned'  :
     type === 'forgotten'  ? 'kw-forgotten'  :
     type === 'avatar_seed'? 'kw-seeded'     : '';
+  const delayS = isNew && brandDelay !== undefined ? brandDelay / 1000 : 0.06;
   return (
     <motion.div
       className="absolute top-1 left-1 z-30 pointer-events-none"
@@ -75,10 +125,10 @@ export function CardMarkerBadge({
       exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.28, ease: 'easeOut' } }}
       transition={
         isNew
-          ? { type: 'spring', stiffness: 420, damping: 22, delay: 0.06 }
+          ? { type: 'spring', stiffness: 420, damping: 22, delay: delayS }
           : {}
       }
-      title={meta.label}
+      title={meta.tooltip || meta.label}
     >
       <div
         className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none${animClass ? ` ${animClass}` : ''}`}
@@ -94,6 +144,188 @@ export function CardMarkerBadge({
         {meta.icon}
       </div>
     </motion.div>
+  );
+}
+
+// ── ArrivalBrandStrike ────────────────────────────────────────────────────────
+// Portal-rendered overlay that fires when a Luminary arrival brands cards with
+// persistent markers. For each affected card shows:
+//   1. A lightning beam descending from above the viewport
+//   2. A crisp impact flash on the card border
+//   3. A large brand symbol covering the card face, pulse, then fade
+// The persistent CardMarkerBadge then springs in (delayed via brandDelay prop).
+// No blur effects used anywhere — sharpness via gradients and borders only.
+
+export interface BrandStrikeTarget {
+  rect: { x: number; y: number; w: number; h: number };
+  type: MarkerType;
+  delay: number; // ms stagger offset
+}
+
+export function ArrivalBrandStrike({
+  strikes,
+  onDone,
+}: {
+  strikes: BrandStrikeTarget[];
+  onDone: () => void;
+}) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  const reducedMotion = useRef(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false,
+  ).current;
+
+  useEffect(() => {
+    const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
+    const totalMs = reducedMotion ? 350 : maxDelay + 900;
+    const t = setTimeout(() => onDoneRef.current(), totalMs);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (reducedMotion) {
+    // Reduced-motion: quick crisp border flash per card, no beam
+    return createPortal(
+      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}>
+        {strikes.map((s, i) => {
+          const bm = BRAND_META[s.type];
+          const mm = MARKER_META[s.type];
+          return (
+            <React.Fragment key={i}>
+              <motion.div
+                style={{
+                  position: 'fixed',
+                  left: s.rect.x, top: s.rect.y,
+                  width: s.rect.w, height: s.rect.h,
+                  border: `2px solid ${bm.flashColor}`,
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 0.28, delay: s.delay / 1000, ease: 'easeOut' }}
+              />
+              {/* Large brand — reduced motion: appears instantly then fades */}
+              <motion.div
+                style={{
+                  position: 'fixed',
+                  left: s.rect.x + s.rect.w / 2,
+                  top:  s.rect.y + s.rect.h / 2,
+                  translateX: '-50%',
+                  translateY: '-50%',
+                  fontSize: Math.round(s.rect.w * 0.55),
+                  lineHeight: 1,
+                  color: bm.brandColor,
+                  fontWeight: 'bold',
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 0.28, delay: s.delay / 1000 + 0.04, ease: 'easeOut' }}
+              >
+                {mm.icon}
+              </motion.div>
+            </React.Fragment>
+          );
+        })}
+      </div>,
+      document.body,
+    );
+  }
+
+  return createPortal(
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}>
+      {strikes.map((s, i) => {
+        const bm = BRAND_META[s.type];
+        const mm = MARKER_META[s.type];
+        const d = s.delay / 1000; // seconds for framer-motion
+        const cardCx = s.rect.x + s.rect.w / 2;
+        const beamTip = s.rect.y + s.rect.h * 0.55;
+
+        return (
+          <React.Fragment key={i}>
+            {/* ── Lightning beam: cosmic space above → card center ── */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: cardCx - 2,
+                top: 0,
+                width: 4,
+                height: beamTip,
+                background: `linear-gradient(to bottom, transparent 0%, ${bm.beamSecondary} 15%, ${bm.beamColor} 65%, ${bm.flashColor} 100%)`,
+                transformOrigin: 'top center',
+              }}
+              initial={{ scaleY: 0, opacity: 0 }}
+              animate={{ scaleY: [0, 1, 1, 0], opacity: [0, 1, 0.85, 0] }}
+              transition={{ duration: 0.38, delay: d, times: [0, 0.35, 0.7, 1], ease: 'easeIn' }}
+            />
+            {/* Thin side halo lines for the beam — no blur, just crisp lines */}
+            {[-3, 3].map(offset => (
+              <motion.div
+                key={offset}
+                style={{
+                  position: 'fixed',
+                  left: cardCx + offset - 0.5,
+                  top: 0,
+                  width: 1,
+                  height: beamTip * 0.7,
+                  background: `linear-gradient(to bottom, transparent 0%, ${bm.beamColor}55 50%, transparent 100%)`,
+                  transformOrigin: 'top center',
+                }}
+                initial={{ scaleY: 0, opacity: 0 }}
+                animate={{ scaleY: [0, 1, 0], opacity: [0, 0.6, 0] }}
+                transition={{ duration: 0.35, delay: d + 0.02, ease: 'easeIn' }}
+              />
+            ))}
+            {/* ── Impact flash on card border ── */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: s.rect.x - 1, top: s.rect.y - 1,
+                width: s.rect.w + 2, height: s.rect.h + 2,
+                border: `2px solid ${bm.flashColor}`,
+                boxShadow: `inset 0 0 10px 2px ${bm.beamColor}44`,
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0] }}
+              transition={{ duration: 0.22, delay: d + 0.09, ease: 'easeOut' }}
+            />
+            {/* ── Large brand symbol — covers most of card face ── */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: s.rect.x + s.rect.w / 2,
+                top:  s.rect.y + s.rect.h / 2,
+                translateX: '-50%',
+                translateY: '-50%',
+                fontSize: Math.round(s.rect.w * 0.58),
+                lineHeight: 1,
+                color: bm.brandColor,
+                textShadow: `0 0 6px ${bm.beamColor}cc`,
+                fontWeight: 'bold',
+                userSelect: 'none',
+                pointerEvents: 'none',
+              }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{
+                scale:   [0,    1.14, 1,    1.09, 1,    0  ],
+                opacity: [0,    1,    1,    1,    1,    0  ],
+              }}
+              transition={{
+                duration: 0.82,
+                delay: d + 0.10,
+                times:   [0, 0.26, 0.40, 0.58, 0.70, 1],
+                ease: 'easeOut',
+              }}
+            >
+              {mm.icon}
+            </motion.div>
+          </React.Fragment>
+        );
+      })}
+    </div>,
+    document.body,
   );
 }
 
