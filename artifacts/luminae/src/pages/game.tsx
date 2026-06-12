@@ -1067,6 +1067,15 @@ export default function GameBoard() {
     stateQueueRef.current = [];
     // Clear ghost cards that were waiting for burst animations to start.
     setBurstGhostCards({});
+    // Force-unmount any forge / reserve / deal animation that is still in flight
+    // so the win cinematic isn't disrupted by a card flying across the board.
+    setCardActionBurst(null);
+    setOpponentForgeAbsorb(null);
+    setCipherBurst(null);
+    setDealingCard(null);
+    // Reveal any hidden market slots / flip animations so the board is clean.
+    setHiddenSlots(new Set());
+    setFlippingCards(new Set());
   };
 
 
