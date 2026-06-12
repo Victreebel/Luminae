@@ -284,12 +284,9 @@ class GameAudio {
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
-      // Short papery noise burst — card stock being pulled from a pile
-      this.noiseBlip(ctx, t,        0.03, 0.09, 1400, 9);
-      this.noiseBlip(ctx, t + 0.02, 0.05, 0.06,  700, 6);
-      // Arc whoosh — card travelling through air
-      this.noiseSweep(ctx, t + 0.03, 0.28, 0.06, 300, 1200);
-      // Soft thud — card landing in the slot
+      // Play the real Card_Flip_Over.wav asset as the core papery draw sound
+      this.scheduleMp3(CARD_FLIP_WAV, t, 0.55);
+      // Layer synthesized details: soft thud — card landing in the slot
       this.osc(ctx, 95, 'sine', t + 0.30, t + 0.46, 0.07, 0.003);
       this.noiseBlip(ctx, t + 0.30, 0.08, 0.05, 500, 4);
     } catch (e) { console.warn('SFX failed', e); }

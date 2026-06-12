@@ -1288,6 +1288,187 @@ function KeywordStatePreview() {
   );
 }
 
+// ─── Brand Strike Preview ───────────────────────────────────────────────────
+// Shows the full ArrivalBrandStrike animation: source pulse + beam + impact flash
+// + large brand symbol. Also demonstrates the interactive CardMarkerBadge.
+
+type BrandMarkerType = 'condemned' | 'forgotten' | 'nullified' | 'avatar_seed';
+
+const BRAND_STRIKE_META: Record<
+  BrandMarkerType,
+  { label: string; accent: string; desc: string; lumId: string }
+> = {
+  condemned: { label: 'Condemned', accent: '#ef4444', desc: 'Ember Sovereign', lumId: 'lum_ember' },
+  forgotten: { label: 'Forgotten', accent: '#9988ee', desc: 'The Hourless Compass', lumId: 'lum_compass' },
+  nullified: { label: 'Nullified', accent: '#64748b', desc: 'Null Sovereign', lumId: 'lum_null' },
+  avatar_seed: { label: 'Seeded', accent: '#2ecc71', desc: 'The Seed Beyond Seasons', lumId: 'lum_seed' },
+};
+
+const BRAND_STRIKE_TOTAL_MS = 1200;
+
+function BrandStrikePreview() {
+  const [selected, setSelected] = useState<BrandMarkerType>('condemned');
+  const [animKey, setAnimKey] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const meta = BRAND_STRIKE_META[selected];
+  const lum = getLuminaryVisuals(meta.lumId);
+
+  function play() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setAnimKey(k => k + 1);
+    setPlaying(true);
+    timerRef.current = setTimeout(() => setPlaying(false), BRAND_STRIKE_TOTAL_MS + 150);
+  }
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const scale = PREVIEW_W / window.innerWidth;
+  const cardW = 112;
+  const cardH = 160;
+  const cardY = Math.round(window.innerHeight * 0.35);
+  const cardRects = [
+    { x: Math.round(window.innerWidth * 0.40 - cardW / 2), y: cardY, w: cardW, h: cardH },
+    { x: Math.round(window.innerWidth * 0.60 - cardW / 2), y: cardY, w: cardW, h: cardH },
+  ];
+  const sourceRect = {
+    x: Math.round(window.innerWidth * 0.50 - cardW / 2),
+    y: Math.round(window.innerHeight * 0.12),
+    w: cardW,
+    h: cardH,
+  };
+
+  const brandStrikes: BrandStrikeTarget[] = playing
+    ? cardRects.map((r, i) => ({
+        rect: r,
+        type: selected,
+        delay: 260 + i * 90,
+      }))
+    : [];
+
+  return (
+    <CardFxPreviewShell
+      note={`Arrival Brand Strike: source pulse (${meta.desc}) + lightning beam + impact flash + large brand symbol. Hover the badge to see the trace-back glow.`}
+      controls={
+        <>
+          <ControlRow label="Luminary">
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(BRAND_STRIKE_META) as BrandMarkerType[]).map(b => {
+                const m = BRAND_STRIKE_META[b];
+                const active = selected === b;
+                return (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setSelected(b)}
+                    className="text-[10px] font-mono px-2.5 py-1 rounded border transition-colors"
+                    style={{
+                      borderColor: active ? m.accent : 'rgba(255,255,255,0.15)',
+                      background:  active ? `${m.accent}22` : 'transparent',
+                      color:       active ? m.accent : '#64748b',
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </ControlRow>
+          <div className="flex justify-center pt-1">
+            <ReplayButton onClick={play} accentHex={meta.accent} />
+          </div>
+          <TimingBar
+            totalMs={BRAND_STRIKE_TOTAL_MS}
+            phases={[
+              { label: 'source pulse', ms: 300 },
+              { label: 'beam 1',       ms: 380 },
+              { label: 'beam 2',       ms: 380 },
+              { label: 'brand fade',   ms: 140 },
+            ]}
+            playing={playing}
+            playKey={animKey}
+          />
+        </>
+      }
+      previewArea={
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: PREVIEW_W,
+            height: PREVIEW_H,
+            overflow: 'hidden',
+            background: 'rgba(3,4,12,0.95)',
+            borderRadius: 12,
+            margin: '0 auto',
+          }}
+        >
+          {!playing && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-[10px] font-mono text-muted-foreground/30 uppercase tracking-widest">
+                Press Play to preview the brand strike
+              </span>
+            </div>
+          )}
+          {playing && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0, left: 0,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                pointerEvents: 'none',
+              }}
+            >
+              {/* Mock card silhouettes so the beam has context */}
+              {cardRects.map((r, i) => (
+                <div
+                  key={`card-${i}`}
+                  style={{
+                    position: 'fixed',
+                    left: r.x, top: r.y,
+                    width: r.w, height: r.h,
+                    borderRadius: 10,
+                    background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    zIndex: 1,
+                    pointerEvents: 'none',
+                  }}
+                />
+              ))}
+              {/* Mock source portal silhouette */}
+              <div
+                style={{
+                  position: 'fixed',
+                  left: sourceRect.x, top: sourceRect.y,
+                  width: sourceRect.w, height: sourceRect.h,
+                  borderRadius: 10,
+                  background: 'linear-gradient(160deg, #2a1a2e 0%, #26133e 60%, #1f1a60 100%)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                }}
+              />
+
+              <ArrivalBrandStrike
+                key={animKey}
+                strikes={brandStrikes}
+                source={{
+                  rect: sourceRect,
+                  primary: lum.summonColor ?? '#a78bfa',
+                  secondary: lum.summonSecondaryColor ?? lum.summonColor ?? '#f0abfc',
+                }}
+                onDone={() => setPlaying(false)}
+              />
+            </div>
+          )}
+        </div>
+      }
+    />
+  );
+}
+
 // ─── Card FX total durations ──────────────────────────────────────────────────
 // Single source of truth for the comparison strip — sourced from the same
 // constants used by each preview component's TimingBar so they stay in sync.
@@ -3149,6 +3330,7 @@ export default function DevAnimSandbox() {
           {/* ════════════════ KEYWORD FX GROUP ════════════════ */}
           {group === 'keywordFx' && (
             <>
+              {keywordFxMode === 'brand_strike'   && <BrandStrikePreview />}
               {keywordFxMode === 'burn_flash'     && <BurnFlashPreview />}
               {keywordFxMode === 'keyword_states' && <KeywordStatePreview />}
             </>
