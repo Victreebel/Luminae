@@ -164,10 +164,10 @@ function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) 
 //      Single click dismisses. Auto-completes at 380ms.
 
 const ANTICIPATE_MS = 150;   // 0.00–0.15s
-const REVEAL_MS     = 400;   // 0.15–0.55s  — faster fade-in
+const REVEAL_MS     = 400;   // 0.15–0.55s  — fast fade-in
 const HOLD_MS       = 550;   // 0.55–1.10s
-const PAN_OUT_MS    = 760;   // 1.10–1.86s  — slightly longer fade-out
-// Total: 1860ms
+const PAN_OUT_MS    = 860;   // 1.10–1.96s  — lingering fade-out
+// Total: 1960ms
 
 // Reduced-motion / abridged: compact overlay duration
 const REDUCED_HOLD_MS = 380;
@@ -179,16 +179,16 @@ const HOLD_TO_SKIP_MS = 350;
 // The entity runs a single continuous framer-motion keyframe sequence from mount
 // (at ANTICIPATE_MS) through the end of PAN_OUT.  No phase-driven transitions.
 //
-// Duration: REVEAL_MS + HOLD_MS + PAN_OUT_MS = 1710ms
+// Duration: REVEAL_MS + HOLD_MS + PAN_OUT_MS = 1810ms
 //
 // Opacity spec:     0% → 35% → 75% → 100% → 100% → 0%
 // Scale spec:    0.82 → 0.88 → 0.94 → 1.00 → 1.00 → 1.12
 //
-// Fast fade-in: entity reaches 100% in 400ms (was 830ms).
-// Longer fade-out: 960ms (was 680ms).
+// Fast fade-in: entity reaches 100% in ~400ms.
+// Lingering fade-out: 860ms.
 // Normalized [0,1]: 0.000  0.088  0.175  0.234  0.439  1.000
 
-const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.71
+const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.81
 
 // Steeper fade-in: entity materialises quickly from nothing.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
