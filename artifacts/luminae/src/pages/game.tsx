@@ -2125,9 +2125,6 @@ export default function GameBoard() {
                         faceScale: _faceScale,
                       });
                       gameAudio.playCardDraw();
-                      // Flip SFX paired with the deal flip (rotateY 0→180), timed to the edge-flip.
-                      const tFlipSfx = setTimeout(() => gameAudio.playCardFlip(), DEAL_FLIP_SOUND_MS);
-                      cardAnimTimersRef.current.push(tFlipSfx);
                     } else {
                       // Opponent forge fallback: deck or slot element not in DOM
                       // (player on a different tab, compact layout not rendered, etc.).
@@ -2213,9 +2210,6 @@ export default function GameBoard() {
                         faceScale: _faceScale,
                       });
                       gameAudio.playCardDraw();
-                      // Flip SFX paired with the deal flip (rotateY 0→180), timed to the edge-flip.
-                      const tFlipSfx = setTimeout(() => gameAudio.playCardFlip(), DEAL_FLIP_SOUND_MS);
-                      cardAnimTimersRef.current.push(tFlipSfx);
                     } else {
                       // Fallback: flip in place if DOM elements not found.
                       // Keep the slot hidden until the flip completes — do NOT clear
@@ -2223,8 +2217,6 @@ export default function GameBoard() {
                       setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
-                      // In-place rotateY flip only renders in non-compact mode (compact uses a shrink-in).
-                      if (!marketCompact) gameAudio.playCardFlip();
                       if (marketCompact) {
                         const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                         const slotR = slotEl?.getBoundingClientRect();
@@ -2315,15 +2307,10 @@ export default function GameBoard() {
                       faceScale: _faceScale,
                     });
                     gameAudio.playCardDraw();
-                    // Flip SFX paired with the deal flip (rotateY 0→180), timed to the edge-flip.
-                    const tFlipSfx = setTimeout(() => gameAudio.playCardFlip(), DEAL_FLIP_SOUND_MS);
-                    cardAnimTimersRef.current.push(tFlipSfx);
                   } else {
                     setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
-                    // In-place rotateY flip only renders in non-compact mode (compact uses a shrink-in).
-                    if (!marketCompact) gameAudio.playCardFlip();
                     if (marketCompact) {
                       const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                       const slotR = slotEl?.getBoundingClientRect();
