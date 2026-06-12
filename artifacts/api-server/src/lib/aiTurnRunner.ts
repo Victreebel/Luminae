@@ -14,11 +14,11 @@ import { logger } from "./logger";
 import { withRoomLock, tryClaimAiRunner, releaseAiRunner } from "./roomLock";
 import { armTurnTimer, updateTurnDeadline } from "./turnTimer";
 
-const AI_TURN_DELAY_MS = 1800;
-const AI_TURN_DELAY_CARD_ANIM_MS = 4500;
+const AI_TURN_DELAY_MS = 950;
+const AI_TURN_DELAY_CARD_ANIM_MS = 2400;
 
 // Easy AI feels human-paced: 5–9 s for regular moves, 7–11 s for card actions
-// (card anim needs ~4.5 s to complete, so the easy floor already covers it)
+// (card anim needs ~2.4 s to complete, so the easy floor already covers it)
 const easyDelay = (isCardAction: boolean): number =>
   isCardAction
     ? 7000 + Math.random() * 4000
