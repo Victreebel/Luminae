@@ -35,8 +35,8 @@ const MARKER_META: Record<
     border:   '#8b1c1c',
     text:     '#e05050',
     icon:     '⚑',
-    meaning:  'This Artifact will Burn at the start of the source player\'s next turn.',
-    duration: 'Resolves at the start of the source player\'s next turn.',
+    meaning:  'Burns at the start of Ember Sovereign\'s next turn. Forge cost lacked 3 or more Flare, Abyss, or Radiance.',
+    duration: 'Burns at the start of Ember Sovereign\'s next turn.',
   },
   nullified: {
     label:    'Nullified',
@@ -92,10 +92,10 @@ const BRAND_META: Record<MarkerType, {
     brandColor:    '#9988ee',
   },
   condemned: {
-    beamColor:     '#c026d3',
-    beamSecondary: '#78350f',
-    flashColor:    '#f97316',
-    brandColor:    '#e05050',
+    beamColor:     '#ff5a3c',  // ember orange — lum_ember summonColor
+    beamSecondary: '#1a0030',  // deep black-violet — lum_ember secondary darkness
+    flashColor:    '#d4af37',  // sovereign gold — imperial impact flash
+    brandColor:    '#e05050',  // ember red — keep
   },
   nullified: {
     beamColor:     '#94a3b8',

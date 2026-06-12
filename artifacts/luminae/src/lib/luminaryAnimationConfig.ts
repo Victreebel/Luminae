@@ -323,7 +323,7 @@ export const LUMINARY_ANIMATION_CONFIG: Record<string, LuminaryAnimationConfig> 
       { type: 'residue', keyword: 'condemned', targetIds: [] },
     ],
     residueType: 'condemned',
-    flavorLine: 'A violet-orange mandate seal brands doomed cards at arrival — the condemned mark pulses with deferred menace; on the appointed turn, the sentence arrives without appeal.',
+    flavorLine: 'An ember mandate brands each Artifact whose forge cost lacks 3 or more Flare, Abyss, or Radiance — the Condemned mark pulses with deferred menace; at the start of the appointed turn, the sentence executes without appeal.',
   },
 
   // 14. First Hunger — Assimilation
