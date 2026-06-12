@@ -1829,3 +1829,9 @@ id = "EUy_p2jSmVMOM-8z6l4Wt"
 uri = "file://.local/tasks/chatgpt-animation-prompt-brief.md"
 type = "text"
 title = "Luminae — Animation Prompt Design Brief"
+
+[[outputs]]
+id = "jjvgqm-FiPlaSwGPeo8du"
+uri = "file://artifacts/luminae/docs/LUMINARY_REFERENCE_GUIDE.md"
+type = "text"
+title = "Luminary Reference Guide — Complete Document"
