@@ -761,7 +761,8 @@ function drawDysonSwarm(
   // slot index crossed the visible boundary (recorded in bornAt by the render loop).
   // Slots stamped long before t (bornAt ≪ t) resolve to fadeAlpha = 1 immediately.
   for (let i = 0; i < visibleCount; i++) {
-    const sat = swarm[i]!;
+    const sat = swarm[i];
+    if (!sat) continue; // guard: empty swarm array on mobile or malformed state
     const fadeAlpha = Math.min(1, Math.max(0, (t - bornAt[i]!) / SWARM_FADE_DURATION));
     if (fadeAlpha < 0.01) continue;
     const angle = sat.angle0 + sat.angSpd * t;
