@@ -1,0 +1,137 @@
+Implement a shared “Arrival Brand” animation for Luminary arrival effects that place persistent card markers.
+
+Goal:
+When a Luminary arrival effect places a persistent marker on cards, the marker should feel like it is branded onto the board by the Luminary. The player should clearly see:
+
+1. Which Luminary caused the effect
+2. Which cards were targeted
+3. Which marker was applied
+4. What the marker means
+5. How to trace the marker back to its source
+
+This should be a shared animation system, not separate bespoke logic for each Luminary.
+
+Applies to these Luminary-arrival markers:
+
+* Forgotten
+* Seeded
+* Condemned
+* Nullified
+
+Do not change gameplay mechanics, Luminary effects, costs, Eminence values, scoring, turn order, tutorial order, artifact data, or balance.
+
+Animation sequence:
+
+1. Camera setup
+
+* If more than one card is affected, smoothly transition to full-board or affected-zone view.
+* No abrupt cuts.
+* Smoothly pan/zoom so the source Luminary and affected cards are visible when possible.
+* Save the prior camera/view state so the board can smoothly return afterward.
+
+2. Luminary source pulse
+
+* The source Luminary activates first.
+* Use the Luminary’s primary and secondary colors.
+* The pulse should expand outward from the Luminary.
+* Do not use shrink-in or collapse-in motion.
+
+3. Sky / lightning strike
+
+* A lightning-like beam descends from above the board and strikes each affected card.
+* The beam should feel like it comes from the sky/cosmic space above the board, not from the card itself.
+* For multiple targets, strikes may occur in a quick staggered wave or near-simultaneous pattern.
+* Keep this readable and brief.
+
+4. Large impact brand
+
+* When each card is struck, show the appropriate marker symbol large enough to cover most of the card face.
+* The symbol should be crisp and readable.
+* The card should remain partially identifiable around or beneath the symbol.
+* The symbol should pulse once or twice in the Luminary’s colors.
+
+5. Settle into persistent marker
+
+* After the large brand pulse, the symbol shrinks/fades into its normal persistent marker position.
+* The persistent marker should be small enough that the card remains readable.
+* Do not leave the large full-card symbol permanently.
+* Permanent marker should support hover/click inspection.
+
+6. Tooltip and traceability
+
+* Hovering or clicking the persistent marker should show a tooltip with:
+    * keyword name
+    * mechanical meaning
+    * source Luminary name
+    * duration or expiration timing if relevant
+* If possible, hovering the marker should subtly highlight or trace back to the source Luminary.
+* If the source Luminary is not visible, the tooltip source name is sufficient.
+
+Marker-specific visuals:
+
+Forgotten
+
+* Used by The Hourless Compass / The Forgotten Hour.
+* Beam: blue-black temporal lightning.
+* Large brand: broken hour-ring, missing clock, or fractured memory sigil.
+* Persistent marker: small blue-black broken hour symbol.
+* Tooltip text:
+    “Forgotten: This Artifact awards 0 Eminence when forged until this effect expires. Source: The Hourless Compass.”
+
+Condemned
+
+* Used by Ember Sovereign / Cinder Mandate.
+* Beam: violet-orange judgment lightning.
+* Large brand: cinder mandate seal, burning verdict glyph, or ember judgment mark.
+* Persistent marker: small violet-orange brand.
+* Tooltip text:
+    “Condemned: This Artifact will Burn at the start of the source player’s next turn. Source: Ember Sovereign.”
+
+Nullified
+
+* Used by Null Sovereign / Black Domain.
+* Beam: black-white silent strike.
+* Large brand: closed eclipse, null seal, or black-domain sigil.
+* Persistent marker: small black-white void seal.
+* Tooltip text:
+    “Nullified: This Artifact awards 0 Eminence while marked. Source: Null Sovereign.”
+
+Seeded
+
+* Used by Seed Beyond Seasons / Avatar Seeds.
+* Beam: blue-green living light strike.
+* Large brand: Avatar Seed glyph, sprouting future mark, or seed sigil.
+* Persistent marker: small blue-green seed glyph.
+* Tooltip text:
+    “Seeded: If an opponent forges this card, the source player gains pending Eminence. Source: The Seed Beyond Seasons.”
+
+Visual rules:
+
+* Avoid blur effects entirely.
+* No motion blur.
+* No Gaussian blur.
+* No hazy overlays that hide the card.
+* No abrupt camera cuts.
+* No shrink-in/collapse-in for generic Luminary activation.
+* The large brand is temporary.
+* The persistent marker is small, readable, and inspectable.
+* Keep source, target, keyword, and aftermath clear.
+
+Accessibility:
+
+* Reduced-motion mode should replace lightning strikes with quick crisp flashes and immediate marker placement.
+* Skip/fast-forward should leave all markers correctly placed and tooltips functional.
+* Skipping must not leave the camera stuck in full-board view.
+* Animation locks must release reliably.
+
+Acceptance criteria:
+
+* Forgotten, Seeded, Condemned, and Nullified markers use the shared Arrival Brand animation when placed by Luminary arrival.
+* Each struck card briefly shows a large marker symbol covering most of the card.
+* The large symbol pulses in the source Luminary’s colors.
+* The large symbol settles into a smaller persistent marker.
+* The persistent marker tooltip explains keyword meaning, source Luminary, and duration if relevant.
+* Players can understand and trace why the marker exists.
+* The board smoothly returns to the prior camera/view state after the marker animation.
+* No gameplay mechanics are changed.
+* Existing tests/typecheck pass.

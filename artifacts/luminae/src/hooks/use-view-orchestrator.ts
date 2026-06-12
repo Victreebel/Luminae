@@ -254,6 +254,7 @@ function programmaticScrollTo(
   board: HTMLElement,
   options: ScrollToOptions,
   isProgrammaticRef: React.MutableRefObject<boolean>,
+  onComplete?: () => void,
 ): void {
   isProgrammaticRef.current = true;
   board.scrollTo(options);
@@ -263,6 +264,7 @@ function programmaticScrollTo(
     if (!released) {
       released = true;
       isProgrammaticRef.current = false;
+      onComplete?.();
     }
   };
 
@@ -293,7 +295,7 @@ export interface ViewOrchestrator {
    * Snapshots current view state and, if the procedure is multi-target, switches
    * to Compact View and scrolls to center all affected zones.
    */
-  prepare: (procedure: AnimationProcedureStep[]) => void;
+  prepare: (procedure: AnimationProcedureStep[], onSettled?: () => void) => void;
 
   /**
    * Call from the cinematic's onComplete.
@@ -381,13 +383,26 @@ export function useViewOrchestrator({
     isProgrammaticScrollRef.current = false;
   }, [removeScrollListener]);
 
-  const prepare = useCallback((procedure: AnimationProcedureStep[]) => {
+  const prepare = useCallback((procedure: AnimationProcedureStep[], onSettled?: () => void) => {
     resetPerCinematic();
+
+    // onSettled fires exactly once, after the view has settled (or immediately
+    // on any bypass path). Callers use it to capture fresh DOM rects only after
+    // the compact switch + centering scroll have completed.
+    let settledFired = false;
+    const fireSettled = () => {
+      if (settledFired) return;
+      settledFired = true;
+      onSettled?.();
+    };
 
     const model = buildOrchestrationModel(procedure);
 
     // Single-target effects — no orchestration needed
-    if (!isMultiTarget(model)) return;
+    if (!isMultiTarget(model)) {
+      fireSettled();
+      return;
+    }
 
     const currentCompact = marketCompactRef.current;
     const board          = boardRefRef.current.current;
@@ -395,7 +410,10 @@ export function useViewOrchestrator({
     // Viewport-fit bypass: if all target elements are already visible in the
     // current scroll viewport, there is nothing to reframe — skip orchestration
     // entirely regardless of whether compact mode is on or off.
-    if (board && elementsAlreadyInView(model, board)) return;
+    if (board && elementsAlreadyInView(model, board)) {
+      fireSettled();
+      return;
+    }
 
     snapshotRef.current = {
       marketCompact: currentCompact,
@@ -437,12 +455,17 @@ export function useViewOrchestrator({
         : MEASURE_DELAY_SWITCHED_MS;
       scrollTimerRef.current = setTimeout(() => {
         scrollTimerRef.current = null;
-        if (playerScrolledRef.current || !modelRef.current) return;
+        if (playerScrolledRef.current || !modelRef.current) {
+          // Player took over, or model cleared — no programmatic scroll will
+          // fire, so settle now against the current view.
+          fireSettled();
+          return;
+        }
         const bounds = computeTargetBounds(modelRef.current, board);
         const behavior: ScrollBehavior = abridgedRef.current ? 'instant' : 'smooth';
         if (!bounds) {
           // All targets are pinned outside the scroll container — show market top.
-          programmaticScrollTo(board, { top: 0, behavior }, isProgrammaticScrollRef);
+          programmaticScrollTo(board, { top: 0, behavior }, isProgrammaticScrollRef, fireSettled);
           return;
         }
         const boardHeight    = board.clientHeight;
@@ -452,8 +475,12 @@ export function useViewOrchestrator({
           board,
           { top: Math.max(0, idealScrollTop), behavior },
           isProgrammaticScrollRef,
+          fireSettled,
         );
       }, delayMs);
+    } else {
+      // No board ref — nothing to reframe; settle immediately.
+      fireSettled();
     }
   }, [resetPerCinematic]);
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef } from 'react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 // ── CardMarkerBadge ──────────────────────────────────────────────────────────
 // Small overlay badge rendered in the top-left corner of a market card slot.
@@ -17,48 +18,63 @@ type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'bur
 
 const MARKER_META: Record<
   MarkerType,
-  { label: string; bg: string; border: string; text: string; icon: string; tooltip: string }
+  { label: string; bg: string; border: string; text: string; icon: string; meaning: string; duration: string }
 > = {
   forgotten: {
-    label:   'Forgotten',
-    bg:      'rgba(10,6,30,0.93)',
-    border:  '#3b2b8c',
-    text:    '#9988ee',
-    icon:    '◎',
-    tooltip: 'Forgotten: This Artifact awards 0 Eminence when forged until this effect expires. Source: The Hourless Compass.',
+    label:    'Forgotten',
+    bg:       'rgba(10,6,30,0.93)',
+    border:   '#3b2b8c',
+    text:     '#9988ee',
+    icon:     '◎',
+    meaning:  'This Artifact awards 0 Eminence when forged until this effect expires.',
+    duration: 'Expires at the end of the source player\'s next turn.',
   },
   condemned: {
-    label:   'Condemned',
-    bg:      'rgba(36,4,4,0.95)',
-    border:  '#8b1c1c',
-    text:    '#e05050',
-    icon:    '⚑',
-    tooltip: 'Condemned: This Artifact will Burn at the start of the source player\'s next turn. Source: Ember Sovereign.',
+    label:    'Condemned',
+    bg:       'rgba(36,4,4,0.95)',
+    border:   '#8b1c1c',
+    text:     '#e05050',
+    icon:     '⚑',
+    meaning:  'This Artifact will Burn at the start of the source player\'s next turn.',
+    duration: 'Resolves at the start of the source player\'s next turn.',
   },
   nullified: {
-    label:   'Nullified',
-    bg:      'rgba(4,8,22,0.95)',
-    border:  '#1c3b6e',
-    text:    '#6080c0',
-    icon:    '⊘',
-    tooltip: 'Nullified: This Artifact awards 0 Eminence while marked. Source: Null Sovereign.',
+    label:    'Nullified',
+    bg:       'rgba(4,8,22,0.95)',
+    border:   '#1c3b6e',
+    text:     '#6080c0',
+    icon:     '⊘',
+    meaning:  'This Artifact awards 0 Eminence while marked.',
+    duration: 'Persists while this Artifact remains marked.',
   },
   avatar_seed: {
-    label:   'Seeded',
-    bg:      'rgba(4,18,12,0.95)',
-    border:  '#1a5c3a',
-    text:    '#4cc88a',
-    icon:    '⁕',
-    tooltip: 'Seeded: If an opponent forges this card, the source player gains pending Eminence. Source: The Seed Beyond Seasons.',
+    label:    'Seeded',
+    bg:       'rgba(4,18,12,0.95)',
+    border:   '#1a5c3a',
+    text:     '#4cc88a',
+    icon:     '⁕',
+    meaning:  'If an opponent forges this card, the source player gains pending Eminence.',
+    duration: 'Active until an opponent forges this Artifact.',
   },
   burned: {
-    label:   'Burned',
-    bg:      'rgba(48,12,0,0.96)',
-    border:  '#cc4400',
-    text:    '#ff7040',
-    icon:    '✕',
-    tooltip: '',
+    label:    'Burned',
+    bg:       'rgba(48,12,0,0.96)',
+    border:   '#cc4400',
+    text:     '#ff7040',
+    icon:     '✕',
+    meaning:  '',
+    duration: '',
   },
+};
+
+// Persistent-marker → source Luminary mapping (1:1). Drives the tooltip "source"
+// line and the hover trace-back glow on the originating Luminary portal.
+export const MARKER_SOURCE: Record<MarkerType, { lumId: string; lumName: string } | null> = {
+  forgotten:   { lumId: 'lum_compass', lumName: 'The Hourless Compass' },
+  condemned:   { lumId: 'lum_ember',   lumName: 'Ember Sovereign' },
+  nullified:   { lumId: 'lum_null',    lumName: 'Null Sovereign' },
+  avatar_seed: { lumId: 'lum_seed',    lumName: 'The Seed Beyond Seasons' },
+  burned:      null,
 };
 
 // Per-marker-type visual config for the ArrivalBrandStrike beam animation.
@@ -101,49 +117,86 @@ const BRAND_META: Record<MarkerType, {
   },
 };
 
+// Lead time (ms) for the source-Luminary arrival pulse that precedes the brand
+// beams. The caller bakes this into each strike's delay when a source is present
+// so the beams begin only after the source has visibly "fired".
+export const SOURCE_PULSE_LEAD_MS = 300;
+
 export function CardMarkerBadge({
   type,
   isNew = false,
   brandDelay,
+  onTraceSource,
 }: {
   type: MarkerType;
   isNew?: boolean;
   /** When set, delays the pop-in spring so the badge settles after the brand strike. */
   brandDelay?: number;
+  /**
+   * Called on hover/focus with the source Luminary id (and null on leave/blur),
+   * letting the parent pulse a trace-back glow on the originating portal.
+   */
+  onTraceSource?: (lumId: string | null) => void;
 }) {
   const meta = MARKER_META[type];
+  const src = MARKER_SOURCE[type];
   const animClass =
     type === 'condemned'  ? 'kw-condemned'  :
     type === 'forgotten'  ? 'kw-forgotten'  :
     type === 'avatar_seed'? 'kw-seeded'     : '';
   const delayS = isNew && brandDelay !== undefined ? brandDelay / 1000 : 0.06;
+
+  const enter = () => onTraceSource?.(src?.lumId ?? null);
+  const leave = () => onTraceSource?.(null);
+
   return (
-    <motion.div
-      className="absolute top-1 left-1 z-30 pointer-events-none"
-      initial={isNew ? { scale: 0, opacity: 0 } : false}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.28, ease: 'easeOut' } }}
-      transition={
-        isNew
-          ? { type: 'spring', stiffness: 420, damping: 22, delay: delayS }
-          : {}
-      }
-      title={meta.tooltip || meta.label}
-    >
-      <div
-        className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none${animClass ? ` ${animClass}` : ''}`}
-        style={{
-          width: 16,
-          height: 16,
-          background: meta.bg,
-          border: `1px solid ${meta.border}`,
-          color: meta.text,
-          boxShadow: `0 0 6px ${meta.border}88`,
-        }}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.div
+          className="absolute top-1 left-1 z-30 pointer-events-auto cursor-help"
+          initial={isNew ? { scale: 0, opacity: 0 } : false}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.5, opacity: 0, transition: { duration: 0.28, ease: 'easeOut' } }}
+          transition={
+            isNew
+              ? { type: 'spring', stiffness: 420, damping: 22, delay: delayS }
+              : {}
+          }
+          tabIndex={0}
+          role="button"
+          aria-label={`${meta.label} marker${src ? ` — source ${src.lumName}` : ''}`}
+          onMouseEnter={enter}
+          onMouseLeave={leave}
+          onFocus={enter}
+          onBlur={leave}
+          onClick={(e) => { e.stopPropagation(); }}
+        >
+          <div
+            className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
+            style={{
+              width: 16,
+              height: 16,
+              background: meta.bg,
+              border: `1px solid ${meta.border}`,
+              color: meta.text,
+              boxShadow: `0 0 6px ${meta.border}88`,
+            }}
+          >
+            {meta.icon}
+          </div>
+        </motion.div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="max-w-[240px] text-left text-[11px] leading-snug"
+        style={{ background: 'rgba(10,12,24,0.97)', color: '#e8eaf2', border: `1px solid ${meta.border}` }}
       >
-        {meta.icon}
-      </div>
-    </motion.div>
+        <p className="font-bold" style={{ color: meta.text }}>{meta.label}</p>
+        {meta.meaning && <p className="mt-0.5 opacity-95">{meta.meaning}</p>}
+        {src && <p className="mt-1 opacity-70">Source: {src.lumName}</p>}
+        {meta.duration && <p className="opacity-70">{meta.duration}</p>}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -164,9 +217,17 @@ export interface BrandStrikeTarget {
 
 export function ArrivalBrandStrike({
   strikes,
+  source,
   onDone,
 }: {
   strikes: BrandStrikeTarget[];
+  /**
+   * Optional source-Luminary framing: the originating portal's viewport rect and
+   * its summon colors. When present (and not reduced-motion), an expanding pulse
+   * fires from the portal before the beams, and the large brand glyph is tinted
+   * with the Luminary's colors instead of the marker's default palette.
+   */
+  source?: { rect: { x: number; y: number; w: number; h: number }; primary: string; secondary: string };
   onDone: () => void;
 }) {
   const onDoneRef = useRef(onDone);
@@ -215,7 +276,7 @@ export function ArrivalBrandStrike({
                   translateY: '-50%',
                   fontSize: Math.round(s.rect.w * 0.55),
                   lineHeight: 1,
-                  color: bm.brandColor,
+                  color: source?.primary ?? bm.brandColor,
                   fontWeight: 'bold',
                   userSelect: 'none',
                   pointerEvents: 'none',
@@ -236,6 +297,63 @@ export function ArrivalBrandStrike({
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 75 }}>
+      {/* ── Source-Luminary arrival pulse (expanding only — no shrink-in) ── */}
+      {source && (() => {
+        const cx = source.rect.x + source.rect.w / 2;
+        const cy = source.rect.y + source.rect.h / 2;
+        const base = Math.max(source.rect.w, source.rect.h);
+        const pulseDur = (SOURCE_PULSE_LEAD_MS + 260) / 1000;
+        return (
+          <React.Fragment key="source-pulse">
+            {/* Central flare core — radial gradient, no blur */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: cx, top: cy,
+                width: base * 0.9, height: base * 0.9,
+                translateX: '-50%', translateY: '-50%',
+                borderRadius: '9999px',
+                background: `radial-gradient(circle, ${source.primary}cc 0%, ${source.secondary}66 45%, transparent 72%)`,
+                pointerEvents: 'none',
+              }}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [0, 1.15, 0.95], opacity: [0, 0.9, 0] }}
+              transition={{ duration: pulseDur * 0.75, ease: 'easeOut' }}
+            />
+            {/* Expanding ring — primary color */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: cx, top: cy,
+                width: base, height: base,
+                translateX: '-50%', translateY: '-50%',
+                borderRadius: '9999px',
+                border: `3px solid ${source.primary}`,
+                boxShadow: `0 0 16px 2px ${source.primary}aa, inset 0 0 12px 1px ${source.secondary}88`,
+                pointerEvents: 'none',
+              }}
+              initial={{ scale: 0.25, opacity: 0 }}
+              animate={{ scale: [0.25, 1.0, 2.4], opacity: [0, 0.95, 0] }}
+              transition={{ duration: pulseDur, times: [0, 0.4, 1], ease: 'easeOut' }}
+            />
+            {/* Expanding ring — secondary color, slight lag for depth */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: cx, top: cy,
+                width: base, height: base,
+                translateX: '-50%', translateY: '-50%',
+                borderRadius: '9999px',
+                border: `2px solid ${source.secondary}`,
+                pointerEvents: 'none',
+              }}
+              initial={{ scale: 0.25, opacity: 0 }}
+              animate={{ scale: [0.25, 1.3, 2.8], opacity: [0, 0.7, 0] }}
+              transition={{ duration: pulseDur, delay: 0.08, times: [0, 0.4, 1], ease: 'easeOut' }}
+            />
+          </React.Fragment>
+        );
+      })()}
       {strikes.map((s, i) => {
         const bm = BRAND_META[s.type];
         const mm = MARKER_META[s.type];
@@ -301,8 +419,8 @@ export function ArrivalBrandStrike({
                 translateY: '-50%',
                 fontSize: Math.round(s.rect.w * 0.58),
                 lineHeight: 1,
-                color: bm.brandColor,
-                textShadow: `0 0 6px ${bm.beamColor}cc`,
+                color: source?.primary ?? bm.brandColor,
+                textShadow: `0 0 6px ${(source?.secondary ?? bm.beamColor)}cc`,
                 fontWeight: 'bold',
                 userSelect: 'none',
                 pointerEvents: 'none',
