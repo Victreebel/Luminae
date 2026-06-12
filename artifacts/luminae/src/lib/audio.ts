@@ -192,6 +192,27 @@ class GameAudio {
   }
 
   /**
+   * Short dissonant "denied" buzzer — played when a card-info action button
+   * (Forge / Encrypt) is pressed after its card has already vanished from the
+   * market. Two descending low square-wave tones over a sub thud, reading
+   * clearly as a rejection without being harsh enough to startle.
+   */
+  playActionRejected() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      const t = ctx.currentTime;
+      // Descending two-tone buzzer (harsh square waves).
+      this.osc(ctx, 196, 'square', t,        t + 0.10, 0.045, 0.004);
+      this.osc(ctx, 147, 'square', t + 0.09, t + 0.24, 0.05,  0.004);
+      // Low sub thud for weight.
+      this.osc(ctx, 82,  'sine',   t,        t + 0.26, 0.05,  0.008);
+      // Muffled noise edge — the "blocked" texture.
+      this.noiseBlip(ctx, t, 0.07, 0.035, 320, 2);
+    } catch (e) { console.warn('SFX failed', e); }
+  }
+
+  /**
    * Soft crystal chime timed to the moment a harvested token lands.
    * Lighter and shorter than playCrystalPicked — meant to play once per gem
    * at the exact landing frame of the harvest spin animation.

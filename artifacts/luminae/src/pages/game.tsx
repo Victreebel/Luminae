@@ -1750,6 +1750,35 @@ export default function GameBoard() {
     return (c.ruby ?? 0) > 0 || (c.emerald ?? 0) > 0 || (c.pearl ?? 0) > 0;
   }, [selectedCard]);
 
+  // ── Market-vanish guard for the open card-info panel ───────────────────────
+  // True when the panel is showing a MARKET card (not a reserve view, not a
+  // read-only forged card) whose slot has just left the market — bought,
+  // reserved, or burned by another player or a Luminary effect. Drives an
+  // immediate visual lock (overlay over the action buttons) plus an auto-close,
+  // with a rejection sound if a button is pressed before the panel closes.
+  const selectedCardVanished = useMemo<boolean>(() => {
+    if (!selectedCard || !state) return false;
+    if (selectedCard.fromReserve || selectedCard.readOnly) return false;
+    const id = selectedCard.card.id;
+    const inMarket =
+      (state.marketTier1 ?? []).some((c) => c?.id === id) ||
+      (state.marketTier2 ?? []).some((c) => c?.id === id) ||
+      (state.marketTier3 ?? []).some((c) => c?.id === id);
+    return !inMarket;
+  }, [selectedCard, state]);
+
+  // When the open card's market slot vanishes, auto-close the panel after a
+  // short beat. The delay keeps the lock perceivable and gives the rejection
+  // overlay a brief window to catch an in-flight press before unmount.
+  useEffect(() => {
+    if (!selectedCardVanished) return;
+    const timer = setTimeout(() => {
+      setSelectedCard(null);
+      setPendingSheetAction(null);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [selectedCardVanished]);
+
   // effectiveCost is declared, before any early returns) so both the TDZ and
   // react-hooks/rules-of-hooks constraints are satisfied. canPlan is inlined
   // via optional chaining because state may still be null at this point.
@@ -6226,9 +6255,25 @@ export default function GameBoard() {
 
               {/* Action buttons */}
               <div
-                className="flex flex-col gap-2.5 rounded-xl overflow-visible"
+                className="relative flex flex-col gap-2.5 rounded-xl overflow-visible"
                 style={{ border: '1.5px solid transparent', overflow: 'visible' }}
               >
+
+                {/* Market-vanish lock — the instant the card leaves the market,
+                    this overlay covers the action buttons, blocks presses, and
+                    plays a rejection sound until the panel auto-closes. */}
+                {selectedCardVanished && (
+                  <div
+                    className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-card/75 backdrop-blur-[1px] cursor-not-allowed"
+                    onClick={(e) => { e.stopPropagation(); gameAudio.playActionRejected(); }}
+                    role="presentation"
+                  >
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      No longer available
+                    </span>
+                  </div>
+                )}
 
                 {/* ── Immediate actions (your active turn only) ── */}
                 {!selectedCard.readOnly && isMyTurnForCoreAction && (
@@ -6256,7 +6301,7 @@ export default function GameBoard() {
                         )}
                       </AnimatePresence>
                       <ForgeButton
-                        disabled={!me || !canAffordCard(selectedCard.card, me)}
+                        disabled={!me || !canAffordCard(selectedCard.card, me) || selectedCardVanished}
                         isPending={pendingSheetAction === 'forge'}
                         isSent={sentFlashBtn === 'forge'}
                         confirmHex={forgeConfirmHex}
@@ -6300,7 +6345,7 @@ export default function GameBoard() {
                           )}
                         </AnimatePresence>
                         <EncryptButton
-                          disabled={!me || !canReserveMore(me)}
+                          disabled={!me || !canReserveMore(me) || selectedCardVanished}
                           isPending={pendingSheetAction === 'reserve'}
                           isSent={sentFlashBtn === 'reserve'}
                           sigilId={9001}
@@ -6336,7 +6381,7 @@ export default function GameBoard() {
                               className={`relative w-full${btnAnimTarget === 'assimilate' ? ` btn-${btnAnimType}-flash` : ''}`}
                             >
                               <AssimilateButton
-                                disabled={!canAffordAssim}
+                                disabled={!canAffordAssim || selectedCardVanished}
                                 isPending={pendingSheetAction === 'assimilate'}
                                 isSent={sentFlashBtn === 'assimilate'}
                                 eminenceReward={pendingSheetAction === 'assimilate' ? undefined : (selectedCard.card.lumens + 2)}
@@ -6391,6 +6436,7 @@ export default function GameBoard() {
                       className={`relative w-full${btnAnimTarget === 'plan_forge' ? ` btn-${btnAnimType}-flash` : ''}`}
                     >
                       <ForgeButton
+                        disabled={selectedCardVanished}
                         isPending={pendingSheetAction === 'plan_forge'}
                         isSent={sentFlashBtn === 'plan_forge'}
                         confirmHex={forgeConfirmHex}
@@ -6419,7 +6465,7 @@ export default function GameBoard() {
                         className={`w-full${btnAnimTarget === 'plan_reserve' ? ` btn-${btnAnimType}-flash` : ''}`}
                       >
                         <EncryptButton
-                          disabled={!me || !canReserveMore(me)}
+                          disabled={!me || !canReserveMore(me) || selectedCardVanished}
                           isPending={pendingSheetAction === 'plan_reserve'}
                           isSent={sentFlashBtn === 'plan_reserve'}
                           sigilId={9002}
