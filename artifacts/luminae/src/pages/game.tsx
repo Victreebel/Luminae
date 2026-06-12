@@ -603,6 +603,8 @@ export default function GameBoard() {
   // card transitions directly from "in slot" to "flying in overlay" with no flash.
   const [burstGhostCards, setBurstGhostCards] = useState<Record<string, ArtifactCard>>({});
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
+  const flippingCardsRef = useRef<Set<string>>(new Set());
+  flippingCardsRef.current = flippingCards;
   // Fire-and-forget ghost independent of flippingCards so pre-cleanup can't kill it mid-flight.
   const [compactGhost, setCompactGhost] = useState<{
     id: string;
@@ -3315,6 +3317,10 @@ export default function GameBoard() {
 
   const openCardSheet = useCallback((card: ArtifactCard, fromReserve: boolean) => {
     if (!me) return;
+    // Lock: suppress sheet open while the card is still undergoing a flip-to-replace
+    // animation (replace from deck after a forge or cipher). The animation must remain
+    // the dominant visual event; the card is already in its end state server-side.
+    if (flippingCardsRef.current.has(card.id)) return;
     if (!cardDetailDiscovered) {
       setCardDetailDiscovered(true);
       localStorage.setItem('luminae_card_detail_discovered', 'true');
