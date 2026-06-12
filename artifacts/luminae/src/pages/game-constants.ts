@@ -66,7 +66,7 @@ export const localTurnVariants = {
 export const DEAL_ANIM_MS = 1700;
 
 /** Delay (ms) after a card begins its deal-from-deck flight before the
- *  Card_Flip_Over.wav flip SFX fires. Times the sound to the visual edge-flip:
+ *  Card draw.mp3 flip SFX fires. Times the sound to the visual edge-flip:
  *  the deal animation runs 1.5 s with rotateY hitting 90° at its midpoint
  *  (~750 ms), so a slight lead lands the flip sound on the card turning over. */
 export const DEAL_FLIP_SOUND_MS = 600;

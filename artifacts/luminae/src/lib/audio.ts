@@ -21,8 +21,8 @@ const FANFARE_COLOR_MAP: Record<string, GemKey> = {
   '#fbbf24': 'flux',
 };
 
-// Card flip — pre-built WAV asset.
-const CARD_FLIP_WAV = new URL('../assets/audio/Effects/Card_Flip_Over.wav', import.meta.url).href;
+// Card draw / flip — pre-built MP3 asset.
+const CARD_DRAW_MP3 = new URL('../assets/audio/Effects/Card draw.mp3', import.meta.url).href;
 
 // Luminary effect activation sting — pre-built WAV asset.
 const EFFECT_WAV = new URL('../assets/audio/Effects/Effect.wav', import.meta.url).href;
@@ -284,8 +284,8 @@ class GameAudio {
     try {
       const ctx = this.initCtx();
       const t = ctx.currentTime;
-      // Play the real Card_Flip_Over.wav asset as the core papery draw sound
-      this.scheduleMp3(CARD_FLIP_WAV, t, 0.55);
+      // Play the real Card draw.mp3 asset as the core papery draw sound
+      this.scheduleMp3(CARD_DRAW_MP3, t, 0.55);
       // Layer synthesized details: soft thud — card landing in the slot
       this.osc(ctx, 95, 'sine', t + 0.30, t + 0.46, 0.07, 0.003);
       this.noiseBlip(ctx, t + 0.30, 0.08, 0.05, 500, 4);
@@ -685,11 +685,11 @@ class GameAudio {
     } catch (e) { console.warn('SFX failed', e); }
   }
 
-  /** Physical card flip — plays the Card_Flip_Over.wav asset. */
+  /** Physical card flip — plays the Card draw.mp3 asset. */
   playCardFlip() {
     if (this.muted) return;
     const ctx = this.initCtx();
-    this.scheduleMp3(CARD_FLIP_WAV, ctx.currentTime, 0.85);
+    this.scheduleMp3(CARD_DRAW_MP3, ctx.currentTime, 0.85);
   }
 
   playBonusOnyx() {
