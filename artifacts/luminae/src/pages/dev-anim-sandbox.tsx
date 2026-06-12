@@ -929,6 +929,8 @@ function MarketDealFlipPreview() {
     setFlipKey(k => k + 1);
     timerRef.current = setTimeout(() => {
       setPhase('flipping');
+      // Pair the Card_Flip_Over.wav flip SFX with the in-place rotateY flip.
+      gameAudio.playCardFlip();
       timerRef.current = setTimeout(() => {
         setPhase('face');
         setPlaying(false);

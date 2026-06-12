@@ -73,7 +73,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -1982,6 +1982,9 @@ export default function GameBoard() {
                         faceScale: _faceScale,
                       });
                       gameAudio.playCardDraw();
+                      // Flip SFX paired with the deal flip (rotateY 0→180), timed to the edge-flip.
+                      const tFlipSfx = setTimeout(() => gameAudio.playCardFlip(), DEAL_FLIP_SOUND_MS);
+                      cardAnimTimersRef.current.push(tFlipSfx);
                     } else {
                       // Opponent forge fallback: deck or slot element not in DOM
                       // (player on a different tab, compact layout not rendered, etc.).
@@ -2067,6 +2070,9 @@ export default function GameBoard() {
                         faceScale: _faceScale,
                       });
                       gameAudio.playCardDraw();
+                      // Flip SFX paired with the deal flip (rotateY 0→180), timed to the edge-flip.
+                      const tFlipSfx = setTimeout(() => gameAudio.playCardFlip(), DEAL_FLIP_SOUND_MS);
+                      cardAnimTimersRef.current.push(tFlipSfx);
                     } else {
                       // Fallback: flip in place if DOM elements not found.
                       // Keep the slot hidden until the flip completes — do NOT clear
@@ -2074,6 +2080,8 @@ export default function GameBoard() {
                       setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                       setFlippingCards(new Set([newCard.id]));
                       gameAudio.playCardDraw();
+                      // In-place rotateY flip only renders in non-compact mode (compact uses a shrink-in).
+                      if (!marketCompact) gameAudio.playCardFlip();
                       if (marketCompact) {
                         const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                         const slotR = slotEl?.getBoundingClientRect();
@@ -2164,10 +2172,15 @@ export default function GameBoard() {
                       faceScale: _faceScale,
                     });
                     gameAudio.playCardDraw();
+                    // Flip SFX paired with the deal flip (rotateY 0→180), timed to the edge-flip.
+                    const tFlipSfx = setTimeout(() => gameAudio.playCardFlip(), DEAL_FLIP_SOUND_MS);
+                    cardAnimTimersRef.current.push(tFlipSfx);
                   } else {
                     setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
                     setFlippingCards(new Set([cipherNewCard.id]));
                     gameAudio.playCardDraw();
+                    // In-place rotateY flip only renders in non-compact mode (compact uses a shrink-in).
+                    if (!marketCompact) gameAudio.playCardFlip();
                     if (marketCompact) {
                       const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
                       const slotR = slotEl?.getBoundingClientRect();
