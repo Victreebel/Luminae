@@ -73,7 +73,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -1130,10 +1130,52 @@ export default function GameBoard() {
 
   useEffect(() => {
     setCoreActionSubmitted(false);
-    setSelectedCrystals({});
-    setCrystalHistory([]);
-    setPrePromotionHistory(null);
-    setActionMode('none');
+    // Only clear the token selection if the bank no longer has enough supply to
+    // honor it.  Keep selections that are still valid so a player who pre-selects
+    // tokens while watching an opponent isn't interrupted unnecessarily.
+    //   take-2: needs bank[color] >= 4
+    //   take-3: needs bank[color] >= 1 for every selected color
+    const bank = state?.crystalBank;
+    if (!bank || actionMode === 'none' || Object.keys(selectedCrystals).length === 0) {
+      setSelectedCrystals({});
+      setCrystalHistory([]);
+      setPrePromotionHistory(null);
+      setActionMode('none');
+      return;
+    }
+    if (actionMode === 'take2') {
+      const color = Object.keys(selectedCrystals)[0] as keyof CrystalCounts | undefined;
+      if (!color || (bank[color] ?? 0) < 4) {
+        setSelectedCrystals({});
+        setCrystalHistory([]);
+        setPrePromotionHistory(null);
+        setActionMode('none');
+      }
+      return;
+    }
+    // take3: prune any color whose bank count has dropped to 0
+    const surviving: Partial<CrystalCounts> = {};
+    for (const [c, n] of Object.entries(selectedCrystals)) {
+      if ((bank[c as keyof CrystalCounts] ?? 0) >= 1) {
+        surviving[c as keyof CrystalCounts] = n as number;
+      }
+    }
+    if (Object.keys(surviving).length === 0) {
+      setSelectedCrystals({});
+      setCrystalHistory([]);
+      setPrePromotionHistory(null);
+      setActionMode('none');
+    } else if (Object.keys(surviving).length < Object.keys(selectedCrystals).length) {
+      setSelectedCrystals(surviving);
+      setCrystalHistory(
+        Object.entries(surviving).flatMap(([c, n]) =>
+          Array(n as number).fill(c) as Array<keyof CrystalCounts>,
+        ),
+      );
+      setPrePromotionHistory(null);
+    }
+    // else: all selections still valid — keep them untouched
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.currentPlayerIndex]);
 
   // v0.8 — which Luminaries currently have a pending delayed effect.
