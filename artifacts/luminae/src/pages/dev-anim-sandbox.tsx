@@ -9,7 +9,8 @@ import {
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
 import { CipherApertureAnimation, PHASE_DUR } from '@/components/CipherApertureAnimation';
 import { ForgeAnimation, OpponentForgeAnimation, FORGE_PHASE_MS } from './game-forge-animation';
-import { BurnPileParticle, CardMarkerBadge, BurnFlash, CardKeywordOverlay } from './game-luminary-effects';
+import { BurnPileParticle, CardMarkerBadge, BurnFlash, CardKeywordOverlay, ArrivalBrandStrike } from './game-luminary-effects';
+import type { BrandStrikeTarget } from './game-luminary-effects';
 import { CIPHER_MODE_TOTAL_MS, type CipherApertureMode, DEAL_ANIM_MS } from './game-constants';
 import { ArtifactCardView, EminenceDiamond } from './game-card';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
@@ -75,9 +76,10 @@ const CARD_FX_MODES: { id: CardFxMode; label: string }[] = [
 
 // ─── Keyword FX Mode ──────────────────────────────────────────────────────────
 
-type KeywordFxMode = 'burn_flash' | 'keyword_states';
+type KeywordFxMode = 'burn_flash' | 'keyword_states' | 'brand_strike';
 
 const KEYWORD_FX_MODES: { id: KeywordFxMode; label: string }[] = [
+  { id: 'brand_strike',   label: 'Brand Strike' },
   { id: 'burn_flash',     label: 'BurnFlash' },
   { id: 'keyword_states', label: 'Keyword States' },
 ];
