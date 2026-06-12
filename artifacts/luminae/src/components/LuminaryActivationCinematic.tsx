@@ -398,7 +398,12 @@ export function LuminaryActivationCinematic({
       timersRef.current = [t1];
     } else {
       // Full-motion path: 1860ms phase chain.
-      gameAudio.playActivationSting(effectType, primaryColor);
+      // Fade-in matches the overlay ANTICIPATE ramp; fade-out matches PAN_OUT.
+      gameAudio.playActivationSting(effectType, primaryColor, {
+        fadeInMs:       ANTICIPATE_MS,
+        fadeOutStartMs: ANTICIPATE_MS + REVEAL_MS + HOLD_MS,
+        fadeOutMs:      Math.round(PAN_OUT_MS * 0.65),
+      });
 
       const t1 = setTimeout(() => setPhase('reveal'),  ANTICIPATE_MS);
       const t2 = setTimeout(() => setPhase('hold'),    ANTICIPATE_MS + REVEAL_MS);

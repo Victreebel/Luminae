@@ -477,6 +477,7 @@ class GameAudio {
   playActivationSting(
     _effectType: 'summon' | 'end_of_turn' | 'start_of_turn',
     _primaryColor?: string,
+    fadeOptions?: { fadeInMs?: number; fadeOutStartMs?: number; fadeOutMs?: number },
   ) {
     if (this.muted) return;
     try {
@@ -485,7 +486,26 @@ class GameAudio {
       // Route through a shared gain node so stopActivationSting() can ramp
       // the volume to 0 immediately on skip, even during async WAV decode.
       const ag = ctx.createGain();
-      ag.gain.setValueAtTime(1, t);
+
+      const fadeInS       = (fadeOptions?.fadeInMs       ?? 0)   / 1000;
+      const fadeOutStartS = (fadeOptions?.fadeOutStartMs ?? null);
+      const fadeOutS      = (fadeOptions?.fadeOutMs      ?? 80)  / 1000;
+
+      if (fadeInS > 0) {
+        // Start silent and ramp up to match the visual fade-in.
+        ag.gain.setValueAtTime(0, t);
+        ag.gain.linearRampToValueAtTime(1, t + fadeInS);
+      } else {
+        ag.gain.setValueAtTime(1, t);
+      }
+
+      if (fadeOutStartS !== null) {
+        const foStart = t + fadeOutStartS / 1000;
+        // Hold peak until fade-out begins, then ramp to silence.
+        ag.gain.setValueAtTime(1, foStart);
+        ag.gain.linearRampToValueAtTime(0, foStart + fadeOutS);
+      }
+
       ag.connect(ctx.destination);
       this._activationGain = ag;
       this._activationCtx  = ctx;
