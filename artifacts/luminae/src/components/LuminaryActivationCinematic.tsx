@@ -164,10 +164,10 @@ function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) 
 //      Single click dismisses. Auto-completes at 380ms.
 
 const ANTICIPATE_MS = 150;   // 0.00–0.15s
-const REVEAL_MS     = 540;   // 0.15–0.69s  (midpoint between original 480 and slow 600)
-const HOLD_MS       = 550;   // 0.69–1.24s
-const PAN_OUT_MS    = 680;   // 1.24–1.92s
-// Total: 1920ms
+const REVEAL_MS     = 480;   // 0.15–0.63s
+const HOLD_MS       = 550;   // 0.63–1.18s
+const PAN_OUT_MS    = 680;   // 1.18–1.86s
+// Total: 1860ms
 
 // Reduced-motion / abridged: compact overlay duration
 const REDUCED_HOLD_MS = 380;
@@ -179,34 +179,32 @@ const HOLD_TO_SKIP_MS = 350;
 // The entity runs a single continuous framer-motion keyframe sequence from mount
 // (at ANTICIPATE_MS) through the end of PAN_OUT.  No phase-driven transitions.
 //
-// Duration: REVEAL_MS + HOLD_MS + PAN_OUT_MS = 1770ms
+// Duration: REVEAL_MS + HOLD_MS + PAN_OUT_MS = 1710ms
 //
 // Opacity spec:     0% → 35% → 75% → 100% → 100% → 0%
 // Scale spec:    0.82 → 0.88 → 0.94 → 1.00 → 1.00 → 1.12
 //
-// Times are the midpoint between the original fast set [0, 0.117, 0.281, 0.485, 0.602, 1]
-// and the slow set [0, 0.200, 0.450, 0.700, 0.850, 1].
-// Normalized [0,1]: 0.000  0.158  0.366  0.593  0.726  1.000
+// Fast timing (REVEAL_MS = 480) with gradual opacity/filter curve.
+// Normalized [0,1]: 0.000  0.117  0.281  0.485  0.602  1.000
 
-const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.77
+const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.71
 
 // Gradual opacity build-up: entity materialises smoothly from nothing.
-// The filter follows the same curve for a unified reveal feeling.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
 const ENTITY_SCALE   = [0.82, 0.88, 0.94, 1.00, 1.00, 1.12];
 const ENTITY_Y       = ['-2vh', '-1vh', '-0.5vh', '0vh', '0vh', '3vh'];
-const ENTITY_TIMES   = [0, 0.158, 0.366, 0.593, 0.726, 1];
+const ENTITY_TIMES   = [0, 0.117, 0.281, 0.485, 0.602, 1];
 
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
-// Entity emerges as a dark, blurry silhouette and gradually resolves into full
-// colour. The blur dissolves in step with the opacity curve.
-const ENTITY_FILTER_TIMES = [0, 0.158, 0.366, 0.593, 0.726, 1];
+// Entity emerges as a dark silhouette and gradually resolves into full colour.
+// The blur dissolves in step with the opacity curve.
+const ENTITY_FILTER_TIMES = [0, 0.117, 0.281, 0.485, 0.602, 1];
 const ENTITY_FILTER = [
   'brightness(0.05) saturate(0) blur(5px)',    // 0.000  — pure dark silhouette
-  'brightness(0.15) saturate(0) blur(4px)',    // 0.158  — still shadowed
-  'brightness(0.45) saturate(0.4) blur(2px)',  // 0.366  — emerging
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.593  — full reveal
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.726  — hold
+  'brightness(0.15) saturate(0) blur(4px)',    // 0.117  — still shadowed
+  'brightness(0.45) saturate(0.4) blur(2px)',  // 0.281  — emerging
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.485  — full reveal
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.602  — hold
   'brightness(0)    saturate(1.0)  blur(0px)', // 1.000  — gone
 ];
 
@@ -692,8 +690,8 @@ export function LuminaryActivationCinematic({
             className="absolute bottom-14 inset-x-0 flex flex-col items-center gap-2 px-4"
             style={{ pointerEvents: 'none', zIndex: 1 }}
             initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.50, delay: 0.32, ease: 'easeOut' as const } }}
-            exit={{ opacity: 0, transition: { duration: 0.30 } }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.45, delay: 0.28, ease: 'easeOut' as const } }}
+            exit={{ opacity: 0, transition: { duration: 0.25 } }}
           >
             {/* Effect-type label pill */}
             <div
