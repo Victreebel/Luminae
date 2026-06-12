@@ -6,3 +6,5 @@
 - [Vite HMR keepalive — Replit proxy](vite-hmr-keepalive.md) — proxy needs bidirectional traffic; client-only pings insufficient; hmrPongReply plugin + hmr.timeout:10000 is the fix.
 - [useIsMobile — must check touch + width](use-is-mobile.md) — width-only check fires on desktop in Replit's narrow iframe preview, stripping all mobile-guarded effects from desktop builds.
 - [Cascade test — two-stage deck setup](cascade-deck-setup.md) — lum_scholar cascade re-entry test was flaky; fix: fill market to 4 first, then prepend [filler, target] to deck so purchase-refill consumes filler deterministically.
+- [Opponent forge fallback — FALLBACK_FLIP_ANIM_MS](opponent-forge-fallback.md) — 5800 ms lock fires when market slot not in DOM; use slot-reveal instead for opponents.
+- [enqueueSummon barrier cap](enqueueSummon-barrier-cap.md) — summon arrival barrier must be capped at 500 ms; full forge lock (3–5.8 s) is wrong for a separate DOM section.

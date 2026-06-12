@@ -1954,22 +1954,14 @@ export default function GameBoard() {
                       });
                       gameAudio.playCardDraw();
                     } else {
-                      setAnimEndTime(FALLBACK_FLIP_ANIM_MS);
-                      setFlippingCards(new Set([newCard.id]));
+                      // Opponent forge fallback: deck or slot element not in DOM
+                      // (player on a different tab, compact layout not rendered, etc.).
+                      // Do NOT extend the animation lock with FALLBACK_FLIP_ANIM_MS (5800 ms) —
+                      // the initial forge lock set above is sufficient sequencing.
+                      // Just reveal the replacement card immediately; no in-place flip needed
+                      // for an opponent's action the local player isn't watching.
                       gameAudio.playCardDraw();
-                      if (marketCompact) {
-                        const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
-                        const slotR = slotEl?.getBoundingClientRect();
-                        if (slotR) {
-                          setCompactGhost({ id: `${newCard.id}-${Date.now()}`, cardViewProps: { card: newCard, tier }, chipRect: slotR });
-                        }
-                      }
-                      const t2 = setTimeout(() => {
-                        if (opponentForgeAbsorbKeyRef.current !== absorbSeq) return;
-                        setFlippingCards(new Set());
-                        setHiddenSlots(new Set());
-                      }, FALLBACK_FLIP_CLEANUP_MS);
-                      cardAnimTimersRef.current.push(t2);
+                      setHiddenSlots(new Set());
                     }
                   } else {
                     setHiddenSlots(new Set());
@@ -2907,10 +2899,16 @@ export default function GameBoard() {
     };
 
     // 2. Respect animation barrier — delay if other animations are active.
+    // Cap at 500 ms: the Luminary portal lives in a separate DOM section from the
+    // card market, so card-forge / deal animations don't affect its layout.  A short
+    // settle window is enough; waiting for the full forge lock (up to 3 s or 5.8 s
+    // fallback) would block the cutscene for no visual benefit and could cause the
+    // arrival to be skipped if the state queue moved on during the wait.
     const animBarrier = animationEndTimeRef.current - Date.now();
     if (animBarrier > 50) {
-      console.log(`[Luminae] enqueueSummon: delaying ${Math.round(animBarrier)}ms for animation barrier`);
-      setTimeout(doEnqueueArrival, animBarrier + 100);
+      const cappedBarrier = Math.min(animBarrier, 500);
+      console.log(`[Luminae] enqueueSummon: delaying ${Math.round(cappedBarrier)}ms for animation barrier (raw: ${Math.round(animBarrier)}ms)`);
+      setTimeout(doEnqueueArrival, cappedBarrier + 100);
     } else {
       doEnqueueArrival();
     }
