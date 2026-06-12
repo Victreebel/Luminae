@@ -1129,53 +1129,12 @@ export default function GameBoard() {
   }, [error, isTutorial, setLocation]);
 
   useEffect(() => {
+    // Reset the per-turn submission flag only.  Crystal selections are local UI
+    // state that belongs to the player — they persist until an action is submitted
+    // or the player manually deselects.  If the bank can no longer honour the
+    // selection the harvest button will be disabled and the server will reject the
+    // action, both of which give clear feedback without silently wiping the intent.
     setCoreActionSubmitted(false);
-    // Only clear the token selection if the bank no longer has enough supply to
-    // honor it.  Keep selections that are still valid so a player who pre-selects
-    // tokens while watching an opponent isn't interrupted unnecessarily.
-    //   take-2: needs bank[color] >= 4
-    //   take-3: needs bank[color] >= 1 for every selected color
-    const bank = state?.crystalBank;
-    if (!bank || actionMode === 'none' || Object.keys(selectedCrystals).length === 0) {
-      setSelectedCrystals({});
-      setCrystalHistory([]);
-      setPrePromotionHistory(null);
-      setActionMode('none');
-      return;
-    }
-    if (actionMode === 'take2') {
-      const color = Object.keys(selectedCrystals)[0] as keyof CrystalCounts | undefined;
-      if (!color || (bank[color] ?? 0) < 4) {
-        setSelectedCrystals({});
-        setCrystalHistory([]);
-        setPrePromotionHistory(null);
-        setActionMode('none');
-      }
-      return;
-    }
-    // take3: prune any color whose bank count has dropped to 0
-    const surviving: Partial<CrystalCounts> = {};
-    for (const [c, n] of Object.entries(selectedCrystals)) {
-      if ((bank[c as keyof CrystalCounts] ?? 0) >= 1) {
-        surviving[c as keyof CrystalCounts] = n as number;
-      }
-    }
-    if (Object.keys(surviving).length === 0) {
-      setSelectedCrystals({});
-      setCrystalHistory([]);
-      setPrePromotionHistory(null);
-      setActionMode('none');
-    } else if (Object.keys(surviving).length < Object.keys(selectedCrystals).length) {
-      setSelectedCrystals(surviving);
-      setCrystalHistory(
-        Object.entries(surviving).flatMap(([c, n]) =>
-          Array(n as number).fill(c) as Array<keyof CrystalCounts>,
-        ),
-      );
-      setPrePromotionHistory(null);
-    }
-    // else: all selections still valid — keep them untouched
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.currentPlayerIndex]);
 
   // v0.8 — which Luminaries currently have a pending delayed effect.
