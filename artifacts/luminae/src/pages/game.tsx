@@ -648,6 +648,7 @@ export default function GameBoard() {
   const [refillingSlots, setRefillingSlots] = useState<Set<string>>(new Set());
   // Card IDs whose market-marker badge was just applied (drives the isNew pop animation)
   const [newlyMarkedCardIds, setNewlyMarkedCardIds] = useState<Set<string>>(new Set());
+
   // Pending ArrivalBrandStrike entries — beam + large brand animations for newly-placed markers.
   // `source` carries the originating Luminary portal rect + colors (camera-orchestrated path only);
   // `orchestrated`/`restoreImmediate` tell the render site to release the camera when the strike ends.
@@ -1641,14 +1642,24 @@ export default function GameBoard() {
           // summoning is dismissed — never overlap effect animations with summoning.
           // Use hasIncomingArrival (computed from the prev→state diff) rather than the
           // queue length ref, because the ref hasn't been updated yet for this cycle.
-          if (hasIncomingArrival) {
-            // Defer both badge and beam until the arrival cutscene resolves. Firing the
-            // badge immediately would highlight cards on the board before the summon
-            // animation has even started, which is visually confusing. The cards are
-            // already persistently marked in game state (marketMarkers), so players will
-            // see the Condemned status when they look at the board after dismissal.
-            // If cards burned before resolveArrival fires, neither badge nor beam shows —
-            // that's acceptable; the burn itself communicates the outcome.
+          // Defer whenever ANY arrival owns the board:
+          //   • hasIncomingArrival — new summon in this same state snapshot (rAF not yet
+          //     fired, so arrivalQueueLenRef may still read 0)
+          //   • arrivalQueueLenRef > 0 — a cutscene is already running
+          //   • pendingSuppressArrivalIdsRef.size > 0 — summon detected, rAF queued
+          // In all these cases we also SUPPRESS the overlay+badge render so the red
+          // vignette and "CONDEMNED" stamp never appear on cards before the beam fires.
+          const arrivalPending =
+            hasIncomingArrival ||
+            arrivalQueueLenRef.current > 0 ||
+            pendingSuppressArrivalIdsRef.current.size > 0;
+          if (arrivalPending) {
+            // Show badges immediately so players see what's condemned during the cutscene.
+            // The beam animation is deferred to resolveArrival — it fires after the arrival
+            // cutscene dismisses, at which point the cards are still present because the
+            // turn timer is paused while pendingSummonEvents / pendingActivationEvents exist.
+            setNewlyMarkedCardIds(new Set(newlyMarked));
+            setTimeout(() => setNewlyMarkedCardIds(new Set()), 1850);
             deferredBrandStrikesRef.current.push({
               ids: newlyMarked,
               markers: nextMarkers,
