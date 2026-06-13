@@ -8608,6 +8608,18 @@ export default function GameBoard() {
                 >
                   <span className="mr-2 opacity-60">⊞</span>View Board
                 </Button>
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={() => {
+                    setShowWinOverlay(false);
+                    setShowCinematic(true);
+                    requestAnimationFrame(() => returnBannerRef.current?.focus());
+                  }}
+                >
+                  <span className="mr-2 opacity-60">↺</span>Replay Board
+                </Button>
               </motion.div>
             </motion.div>
           </motion.div>
