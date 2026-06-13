@@ -461,6 +461,7 @@ export default function GameBoard() {
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [testPanelCollapsed, setTestPanelCollapsed] = useState(false);
   const [devRewindCount, setDevRewindCount] = useState<number | null>(null);
+  const [devHasSummonSnapshot, setDevHasSummonSnapshot] = useState(false);
   const [expandedLumEffects, setExpandedLumEffects] = useState<Set<string>>(new Set());
   const [arrivalQueue, setArrivalQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
@@ -799,7 +800,9 @@ export default function GameBoard() {
     if (!import.meta.env.DEV || !roomId || !session?.sessionToken) return;
     fetch(`/api/dev/rooms/${roomId}/rewind/count?sessionToken=${encodeURIComponent(session.sessionToken)}`)
       .then(r => r.ok ? r.json() : null)
-      .then((d: { count: number } | null) => { if (d) setDevRewindCount(d.count); })
+      .then((d: { count: number; hasSummonSnapshot?: boolean } | null) => {
+        if (d) { setDevRewindCount(d.count); setDevHasSummonSnapshot(d.hasSummonSnapshot ?? false); }
+      })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, session?.sessionToken]);
@@ -8674,7 +8677,32 @@ export default function GameBoard() {
 
       {/* ── Dev: Turn Rewind ── */}
       {import.meta.env.DEV && state?.status === 'playing' && (
-        <div className="fixed bottom-2 right-2 z-[150]">
+        <div className="fixed bottom-2 right-2 z-[150] flex gap-1">
+          {/* "Replay Arrival" — jumps directly to the nearest snapshot with pendingSummonEvents */}
+          <button
+            type="button"
+            disabled={!devHasSummonSnapshot}
+            onClick={async () => {
+              if (!roomId || !session?.sessionToken) return;
+              const res = await fetch(`/api/dev/rooms/${roomId}/rewind/to-summon`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionToken: session.sessionToken }),
+              });
+              if (res.ok) {
+                window.location.reload();
+              } else {
+                const data = await res.json() as { error?: string };
+                setDevHasSummonSnapshot(false);
+                console.warn('[dev rewind to-summon]', data.error ?? 'unknown error');
+              }
+            }}
+            className="text-[10px] font-mono px-2 py-1 rounded border transition-colors shadow-lg shadow-black/60 disabled:opacity-40 disabled:cursor-not-allowed border-violet-500/40 bg-black/80 text-violet-300/90 hover:bg-violet-900/50 hover:border-violet-500/70"
+            title={devHasSummonSnapshot ? 'Jump to arrival snapshot (before resolve_summon) — replays the full cutscene + brand strikes' : 'No arrival snapshot — claim a Luminary first'}
+          >
+            ✦ Replay Arrival
+          </button>
+          {/* Single-step rewind */}
           <button
             type="button"
             disabled={devRewindCount === 0}
@@ -8694,7 +8722,7 @@ export default function GameBoard() {
               }
             }}
             className="text-[10px] font-mono px-2 py-1 rounded border transition-colors shadow-lg shadow-black/60 disabled:opacity-40 disabled:cursor-not-allowed border-amber-500/40 bg-black/80 text-amber-300/90 hover:bg-amber-900/50 hover:border-amber-500/70"
-            title={devRewindCount === 0 ? 'No snapshots — play a turn first' : `Rewind to previous game state (${devRewindCount ?? '?'} step${devRewindCount !== 1 ? 's' : ''} available)`}
+            title={devRewindCount === 0 ? 'No snapshots — play a turn first' : `Rewind one step (${devRewindCount ?? '?'} step${devRewindCount !== 1 ? 's' : ''} available)`}
           >
             ⏪ Rewind{devRewindCount !== null ? ` (${devRewindCount})` : ''}
           </button>

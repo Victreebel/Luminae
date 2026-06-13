@@ -17,7 +17,7 @@ import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 import { recordGameResult } from "../lib/rematchManager";
-import { pushSnapshot, popSnapshot, snapshotCount, seedFromDb } from "../lib/devStateBuffer";
+import { pushSnapshot, popSnapshot, snapshotCount, seedFromDb, hasSummonSnapshot, popToSummon } from "../lib/devStateBuffer";
 
 const router: IRouter = Router();
 
@@ -374,7 +374,55 @@ if (process.env.NODE_ENV !== 'production') {
       .where(and(eq(playersTable.sessionToken, sessionToken), eq(playersTable.roomId, roomId)))
       .limit(1);
     if (!player) { res.status(403).json({ error: 'Not a member of this room' }); return; }
-    res.json({ count: snapshotCount(roomId) });
+    res.json({ count: snapshotCount(roomId), hasSummonSnapshot: hasSummonSnapshot(roomId) });
+  });
+
+  // POST /api/dev/rooms/:roomId/rewind/to-summon ────────────────────────────────
+  // Searches the snapshot buffer backward and restores the most-recent state
+  // that has pendingSummonEvents, skipping however many steps are needed.
+  router.post('/dev/rooms/:roomId/rewind/to-summon', async (req, res): Promise<void> => {
+    const roomId = Array.isArray(req.params.roomId) ? req.params.roomId[0] : req.params.roomId;
+    const { sessionToken } = req.body as { sessionToken?: string };
+    if (!sessionToken) { res.status(400).json({ error: 'sessionToken required' }); return; }
+    const [player] = await db.select().from(playersTable)
+      .where(and(eq(playersTable.sessionToken, sessionToken), eq(playersTable.roomId, roomId)))
+      .limit(1);
+    if (!player) { res.status(403).json({ error: 'Not a member of this room' }); return; }
+
+    const result = popToSummon(roomId);
+    if (!result) {
+      res.status(404).json({ error: 'No arrival snapshot in buffer — play through a Luminary claim first' });
+      return;
+    }
+
+    const { state: snapshot, steps } = result;
+    const [room] = await db.select().from(roomsTable).where(eq(roomsTable.id, roomId)).limit(1);
+    if (!room) { res.status(404).json({ error: 'Room not found' }); return; }
+
+    await withRoomLock(roomId, async () => {
+      const [gs] = await db.select().from(gameStatesTable).where(eq(gameStatesTable.roomId, roomId)).limit(1);
+      const newVersion = (gs?.version ?? 0) + 1;
+      (snapshot as { version: number }).version = newVersion;
+      await db.update(gameStatesTable)
+        .set({ state: snapshot, version: newVersion, updatedAt: new Date() })
+        .where(eq(gameStatesTable.roomId, roomId));
+    });
+
+    const allPlayers = await db.select().from(playersTable).where(eq(playersTable.roomId, roomId));
+    const connectedIds = getConnectedPlayerIds(roomId);
+    for (const p of allPlayers) { if (p.isAi) connectedIds.add(p.id); }
+    const avatarMap = new Map<string, string | null>(allPlayers.map(p => [p.id, p.avatarId ?? null]));
+    const aiMap = new Map(allPlayers.map(p => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]));
+
+    const restored = normalizeState(snapshot);
+    const formatted = formatGameState(roomId, room.status, restored, connectedIds, avatarMap, aiMap);
+    for (const p of allPlayers) {
+      if (p.isAi) continue;
+      sendToPlayer(roomId, p.id, { type: 'state_update', state: filterStateForPlayer(formatted, p.id) });
+    }
+    armTurnTimer(roomId, restored);
+
+    res.json({ ok: true, steps, snapshotsRemaining: snapshotCount(roomId) });
   });
 
   // POST /api/dev/rooms/:roomId/rewind ──────────────────────────────────────────
