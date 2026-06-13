@@ -31,9 +31,9 @@ const MARKER_META: Record<
   },
   condemned: {
     label:    'Condemned',
-    bg:       'rgba(36,4,4,0.95)',
-    border:   '#8b1c1c',
-    text:     '#e05050',
+    bg:       'rgba(60,4,4,0.95)',
+    border:   '#c82828',
+    text:     '#ff6060',
     icon:     '⚑',
     meaning:  'Burns at the start of Ember Sovereign\'s next turn. Forge cost lacked 3 or more Flare, Abyss, or Radiance.',
     duration: 'Burns at the start of Ember Sovereign\'s next turn.',
@@ -174,12 +174,12 @@ export function CardMarkerBadge({
           <div
             className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
             style={{
-              width: 16,
-              height: 16,
+              width: 18,
+              height: 18,
               background: meta.bg,
-              border: `1px solid ${meta.border}`,
+              border: `1.5px solid ${meta.border}`,
               color: meta.text,
-              boxShadow: `0 0 6px ${meta.border}88`,
+              boxShadow: `0 0 8px 2px ${meta.border}cc`,
             }}
           >
             {meta.icon}
@@ -466,11 +466,11 @@ export function CardKeywordOverlay({
   if (type === 'condemned') {
     return (
       <div
-        className="kw-overlay-condemned absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
+        className="kw-overlay-condemned absolute inset-0 z-20 pointer-events-none rounded-xl overflow-hidden"
         style={{
           background:
-            'linear-gradient(to bottom, rgba(160,24,0,0.42) 0%, transparent 30%, transparent 65%, rgba(170,28,0,0.48) 100%)',
-          boxShadow: 'inset 0 0 0 2px rgba(220,50,0,0.72), inset 0 0 18px 4px rgba(180,30,0,0.35)',
+            'linear-gradient(135deg, rgba(180,20,0,0.55) 0%, rgba(140,10,0,0.35) 40%, rgba(160,20,0,0.45) 60%, rgba(180,20,0,0.55) 100%)',
+          boxShadow: 'inset 0 0 0 2.5px rgba(220,55,0,0.85), inset 0 0 24px 6px rgba(180,30,0,0.45), 0 0 16px 4px rgba(200,40,0,0.25)',
         }}
       />
     );
