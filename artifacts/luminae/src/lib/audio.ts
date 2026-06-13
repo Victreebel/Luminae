@@ -30,6 +30,9 @@ const EFFECT_WAV = new URL('../assets/audio/Effects/Effect.wav', import.meta.url
 // Burn mechanic — pre-built MP3 asset.
 const BURN_MP3 = new URL('../assets/audio/Effects/Burn.mp3', import.meta.url).href;
 
+// Arrival brand strike (Cinder Mandate, etc.) — plays when brand beams land on cards.
+const SPELLBOUND_WAV = new URL('../assets/audio/Effects/Spellbound.wav', import.meta.url).href;
+
 // Luminary arrival cutscene — pre-built MP3 assets, played at their phase beat times.
 // Vite statically analyses new URL(literal, import.meta.url) and bundles each file.
 const LUMINARY_SFX = {
@@ -650,6 +653,18 @@ class GameAudio {
     // Play the pre-built Burn.mp3 asset; falls back to procedural synthesis if the
     // file fails to load or decode.  Volume scales with cluster index.
     void this.scheduleMp3(BURN_MP3, scheduledTime, 0.28 * volScale);
+  }
+
+  /**
+   * Plays Spellbound.wav when arrival brand-strike beams land on condemned/marked cards.
+   * Called once per brand-strike batch regardless of how many cards are struck.
+   */
+  playBrandStrike() {
+    if (this.muted) return;
+    try {
+      const ctx = this.initCtx();
+      void this.scheduleMp3(SPELLBOUND_WAV, ctx.currentTime, 0.78);
+    } catch (e) { console.warn('SFX failed', e); }
   }
 
   /**

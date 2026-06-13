@@ -1617,6 +1617,7 @@ export default function GameBoard() {
               }
             }
             const usedLead = source ? lead : 0;
+            gameAudio.playBrandStrike();
             const strikeId = fireBrandStrikes(newlyMarked, nextMarkers, {
               source,
               lead: usedLead,
@@ -1657,6 +1658,7 @@ export default function GameBoard() {
             });
           } else {
             // No arrival blocking, just no mapped source — fire immediately.
+            gameAudio.playBrandStrike();
             fireBrandStrikes(newlyMarked, nextMarkers);
           }
         }
@@ -8731,6 +8733,7 @@ export default function GameBoard() {
                       }
                     }
                     const usedLead = source ? lead : 0;
+                    gameAudio.playBrandStrike();
                     const strikeId = fireBrandStrikes(ids, markers, {
                       source,
                       lead: usedLead,
@@ -8746,6 +8749,7 @@ export default function GameBoard() {
                   });
                 } else {
                   // No mapped source — simple badge + beam without camera takeover
+                  gameAudio.playBrandStrike();
                   fireBrandStrikes(ids, markers);
                 }
               }
