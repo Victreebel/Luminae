@@ -704,7 +704,7 @@ export default function GameBoard() {
     },
   ): string | null => {
     if (ids.length === 0) return null;
-    console.log('[BRAND DEBUG] fireBrandStrikes called with', ids.length, 'ids, opts:', { orchestrated: opts?.orchestrated, lead: opts?.lead, hasSource: !!opts?.source });
+    // fireBrandStrikes called
     const lead = opts?.lead ?? 0;
     setNewlyMarkedCardIds(new Set(ids));
     // Window must cover the full brand strike (1.35s) + stagger delay + buffer
@@ -715,12 +715,10 @@ export default function GameBoard() {
     ids.forEach((cardId, i) => {
       const el = document.querySelector(`[data-card-id="${cardId}"]`);
       if (!el) {
-        console.log('[BRAND DEBUG] DOM element NOT FOUND for cardId:', cardId);
         return;
       }
       const r = el.getBoundingClientRect();
       if (r.width === 0) {
-        console.log('[BRAND DEBUG] DOM element found but width=0 for cardId:', cardId);
         return;
       }
       strikes.push({
@@ -729,7 +727,7 @@ export default function GameBoard() {
         delay: lead + i * 90,
       });
     });
-    console.log('[BRAND DEBUG] fireBrandStrikes captured', strikes.length, 'of', ids.length, 'strikes');
+    // fireBrandStrikes captured strikes
     if (strikes.length === 0) return null;
 
     const strikeId = `brand-${Date.now()}`;
@@ -1534,7 +1532,7 @@ export default function GameBoard() {
       const prevMarkers = prev.marketMarkers ?? {};
       const nextMarkers = state.marketMarkers ?? {};
       const newlyMarked = Object.keys(nextMarkers).filter(id => !prevMarkers[id]);
-      console.log('[BRAND DEBUG] marker diff:', newlyMarked.length, 'newlyMarked:', newlyMarked, 'nextMarkerTypes:', newlyMarked.map(id => nextMarkers[id]?.type), 'hasIncomingArrival will be computed...');
+      // marker diff detected for animation triggering
       if (newlyMarked.length > 0) {
         // The brand strike may "orchestrate" the camera — reframe the board so the
         // originating Luminary portal AND the branded cards are visible — but ONLY when
@@ -1632,6 +1630,18 @@ export default function GameBoard() {
           // Use hasIncomingArrival (computed from the prev→state diff) rather than the
           // queue length ref, because the ref hasn't been updated yet for this cycle.
           if (hasIncomingArrival) {
+            // Badges must appear immediately so the player sees what was condemned
+            // before the cards are potentially burned at the start of the next turn.
+            // Only the beam animation is deferred; the badge pop is not.
+            setNewlyMarkedCardIds(prev => new Set([...prev, ...newlyMarked]));
+            setTimeout(() => {
+              setNewlyMarkedCardIds(prev => {
+                const next = new Set(prev);
+                for (const id of newlyMarked) next.delete(id);
+                return next;
+              });
+            }, 2000);
+            // Queue the beam animation for after the arrival cutscene finishes.
             deferredBrandStrikesRef.current.push({ ids: newlyMarked, markers: nextMarkers });
           } else {
             // No arrival blocking, just no mapped source — fire immediately.
@@ -8672,11 +8682,11 @@ export default function GameBoard() {
             // Flush any brand strikes that were deferred while this arrival was in progress.
             // Effect animations must not start until the summoning is fully dismissed.
             const deferredStrikes = deferredBrandStrikesRef.current;
-            console.log('[BRAND DEBUG] resolveArrival flushing deferredStrikes:', deferredStrikes.length, 'entries');
+            // resolveArrival flushing deferredStrikes
             if (deferredStrikes.length > 0) {
               deferredBrandStrikesRef.current = [];
               for (const { ids, markers } of deferredStrikes) {
-                console.log('[BRAND DEBUG] resolveArrival calling fireBrandStrikes with', ids.length, 'ids');
+                // resolveArrival calling fireBrandStrikes
                 fireBrandStrikes(ids, markers);
               }
             }

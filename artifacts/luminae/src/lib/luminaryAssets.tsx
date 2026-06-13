@@ -2538,8 +2538,8 @@ export function LuminaryArrivalCutscene({
             transition={isFading
               ? { duration: 0.55, ease: 'easeIn' }
               : {
-                  opacity: { duration: 0.55, delay: 0.15, ease: 'easeOut' },
-                  filter:  { duration: 2.15, delay: 0.15, times: [0, 0.75, 0.92, 1.0], ease: 'easeOut' },
+                  opacity: { duration: 1.80, delay: 0.30, ease: 'easeOut' },
+                  filter:  { duration: 2.15, delay: 0.30, times: [0, 0.75, 0.92, 1.0], ease: 'easeOut' },
                 }
             }
           >
