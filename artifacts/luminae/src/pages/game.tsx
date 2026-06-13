@@ -460,6 +460,7 @@ export default function GameBoard() {
   const [showReservedOverlay, setShowReservedOverlay] = useState(false);
   const [expandedOpponents, setExpandedOpponents] = useState<Set<string>>(new Set());
   const [testPanelCollapsed, setTestPanelCollapsed] = useState(false);
+  const [devRewindCount, setDevRewindCount] = useState<number | null>(null);
   const [expandedLumEffects, setExpandedLumEffects] = useState<Set<string>>(new Set());
   const [arrivalQueue, setArrivalQueue] = useState<Array<{
     id: string; name: string; domain: string; lumens: number; flavor: string;
@@ -792,6 +793,16 @@ export default function GameBoard() {
     gameAudio.startMusic();
     return () => { gameAudio.stopMusic(); };
   }, []);
+
+  // Dev: fetch rewind snapshot count so the button is informed on first render.
+  useEffect(() => {
+    if (!import.meta.env.DEV || !roomId || !session?.sessionToken) return;
+    fetch(`/api/dev/rooms/${roomId}/rewind/count?sessionToken=${encodeURIComponent(session.sessionToken)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { count: number } | null) => { if (d) setDevRewindCount(d.count); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, session?.sessionToken]);
 
   // Scroll-passthrough fix.
   // Problem: the player panel and the main board area are siblings, not
@@ -8666,6 +8677,7 @@ export default function GameBoard() {
         <div className="fixed bottom-2 right-2 z-[150]">
           <button
             type="button"
+            disabled={devRewindCount === 0}
             onClick={async () => {
               if (!roomId || !session?.sessionToken) return;
               const res = await fetch(`/api/dev/rooms/${roomId}/rewind`, {
@@ -8677,13 +8689,14 @@ export default function GameBoard() {
                 window.location.reload();
               } else {
                 const data = await res.json() as { error?: string };
+                setDevRewindCount(0);
                 console.warn('[dev rewind]', data.error ?? 'unknown error');
               }
             }}
-            className="text-[10px] font-mono px-2 py-1 rounded border border-amber-500/40 bg-black/80 text-amber-300/90 hover:bg-amber-900/50 hover:border-amber-500/70 transition-colors shadow-lg shadow-black/60"
-            title="Rewind to previous game state (dev only)"
+            className="text-[10px] font-mono px-2 py-1 rounded border transition-colors shadow-lg shadow-black/60 disabled:opacity-40 disabled:cursor-not-allowed border-amber-500/40 bg-black/80 text-amber-300/90 hover:bg-amber-900/50 hover:border-amber-500/70"
+            title={devRewindCount === 0 ? 'No snapshots — play a turn first' : `Rewind to previous game state (${devRewindCount ?? '?'} step${devRewindCount !== 1 ? 's' : ''} available)`}
           >
-            ⏪ Rewind
+            ⏪ Rewind{devRewindCount !== null ? ` (${devRewindCount})` : ''}
           </button>
         </div>
       )}

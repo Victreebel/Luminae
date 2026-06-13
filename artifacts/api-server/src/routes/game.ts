@@ -17,7 +17,7 @@ import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 import { recordGameResult } from "../lib/rematchManager";
-import { pushSnapshot, popSnapshot, snapshotCount } from "../lib/devStateBuffer";
+import { pushSnapshot, popSnapshot, snapshotCount, seedFromDb } from "../lib/devStateBuffer";
 
 const router: IRouter = Router();
 
@@ -138,6 +138,12 @@ router.get("/rooms/:roomId/state", async (req, res): Promise<void> => {
     (gs.state as { activeLuminaries?: unknown }).activeLuminaries ?? [],
   );
   const normalized = normalizeState(gs.state);
+
+  // Dev: seed the rewind buffer from DB so the button works even after a
+  // server restart (before any new actions have been taken this session).
+  if (process.env.NODE_ENV !== 'production') {
+    seedFromDb(rawId, normalized as unknown as Record<string, unknown>);
+  }
 
   // Persist normalized state if it diverged from what's stored. This bakes
   // in any backward-compat migrations (e.g. re-rolled Luminaries from the
@@ -355,10 +361,25 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
   void runAiTurnsIfNeeded(rawId);
 });
 
-// ── Dev-only: POST /api/dev/rooms/:roomId/rewind ──────────────────────────────
-// Restores the most-recent pre-action snapshot for the room and broadcasts
-// the rewound state to all connected players.  Not registered in production.
+// ── Dev-only routes ────────────────────────────────────────────────────────────
+// None of these are registered in production (NODE_ENV check at the top of
+// the block). Paths are under /api/dev/ to make them easy to grep and audit.
 if (process.env.NODE_ENV !== 'production') {
+  // GET /api/dev/rooms/:roomId/rewind/count
+  router.get('/dev/rooms/:roomId/rewind/count', async (req, res): Promise<void> => {
+    const roomId = Array.isArray(req.params.roomId) ? req.params.roomId[0] : req.params.roomId;
+    const { sessionToken } = req.query as { sessionToken?: string };
+    if (!sessionToken) { res.status(400).json({ error: 'sessionToken required' }); return; }
+    const [player] = await db.select().from(playersTable)
+      .where(and(eq(playersTable.sessionToken, sessionToken), eq(playersTable.roomId, roomId)))
+      .limit(1);
+    if (!player) { res.status(403).json({ error: 'Not a member of this room' }); return; }
+    res.json({ count: snapshotCount(roomId) });
+  });
+
+  // POST /api/dev/rooms/:roomId/rewind ──────────────────────────────────────────
+  // Restores the most-recent pre-action snapshot for the room and broadcasts
+  // the rewound state to all connected players.
   router.post('/dev/rooms/:roomId/rewind', async (req, res): Promise<void> => {
     const roomId = Array.isArray(req.params.roomId) ? req.params.roomId[0] : req.params.roomId;
     const { sessionToken } = req.body as { sessionToken?: string };
