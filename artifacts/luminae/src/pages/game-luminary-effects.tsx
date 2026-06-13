@@ -171,19 +171,40 @@ export function CardMarkerBadge({
           onBlur={leave}
           onClick={(e) => { e.stopPropagation(); }}
         >
-          <div
-            className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
-            style={{
-              width: 18,
-              height: 18,
-              background: meta.bg,
-              border: `1.5px solid ${meta.border}`,
-              color: meta.text,
-              boxShadow: `0 0 8px 2px ${meta.border}cc`,
-            }}
-          >
-            {meta.icon}
-          </div>
+          {type === 'condemned' ? (
+            // Stamp pill — rotated text label matching the Forge stamp style
+            <div
+              className={`flex items-center justify-center rounded px-[3px] py-[1.5px] font-black uppercase transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
+              style={{
+                fontSize: 6.5,
+                letterSpacing: '0.09em',
+                lineHeight: 1.25,
+                whiteSpace: 'nowrap',
+                background: meta.bg,
+                border: `1.5px solid ${meta.border}`,
+                color: meta.text,
+                boxShadow: `0 0 8px 2px ${meta.border}cc`,
+                transform: 'rotate(-7deg)',
+              }}
+            >
+              {meta.label}
+            </div>
+          ) : (
+            // Circular icon badge for all other marker types
+            <div
+              className={`flex items-center justify-center rounded-full text-[9px] font-bold leading-none transition-[filter] duration-150 hover:brightness-125${animClass ? ` ${animClass}` : ''}`}
+              style={{
+                width: 18,
+                height: 18,
+                background: meta.bg,
+                border: `1.5px solid ${meta.border}`,
+                color: meta.text,
+                boxShadow: `0 0 8px 2px ${meta.border}cc`,
+              }}
+            >
+              {meta.icon}
+            </div>
+          )}
         </motion.div>
       </TooltipTrigger>
       <TooltipContent
