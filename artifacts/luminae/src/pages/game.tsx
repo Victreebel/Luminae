@@ -8661,6 +8661,33 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
+      {/* ── Dev: Turn Rewind ── */}
+      {import.meta.env.DEV && state?.status === 'playing' && (
+        <div className="fixed bottom-2 right-2 z-[150]">
+          <button
+            type="button"
+            onClick={async () => {
+              if (!roomId || !session?.sessionToken) return;
+              const res = await fetch(`/api/dev/rooms/${roomId}/rewind`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionToken: session.sessionToken }),
+              });
+              if (res.ok) {
+                window.location.reload();
+              } else {
+                const data = await res.json() as { error?: string };
+                console.warn('[dev rewind]', data.error ?? 'unknown error');
+              }
+            }}
+            className="text-[10px] font-mono px-2 py-1 rounded border border-amber-500/40 bg-black/80 text-amber-300/90 hover:bg-amber-900/50 hover:border-amber-500/70 transition-colors shadow-lg shadow-black/60"
+            title="Rewind to previous game state (dev only)"
+          >
+            ⏪ Rewind
+          </button>
+        </div>
+      )}
+
       {/* ── Dev: Luminary Summon Test Panel ── */}
       {import.meta.env.DEV && arrivalQueue.length === 0 && state?.status === 'playing' && (
         <div className="fixed bottom-20 right-2 z-[150] flex flex-col gap-1 p-2 rounded-lg border border-amber-500/40 bg-black/80 shadow-lg shadow-black/60">

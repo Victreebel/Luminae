@@ -17,6 +17,7 @@ import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 import { recordGameResult } from "../lib/rematchManager";
+import { pushSnapshot, popSnapshot, snapshotCount } from "../lib/devStateBuffer";
 
 const router: IRouter = Router();
 
@@ -245,6 +246,11 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const stateData = normalizeState(gs.state);
     const expectedVersion = stateData.version;
 
+    // Dev: snapshot state before mutation so rewind can restore it
+    if (process.env.NODE_ENV !== 'production') {
+      pushSnapshot(rawId, stateData as unknown as Record<string, unknown>);
+    }
+
     const result = applyAction(stateData, player.id, action);
     if (!result.success) {
       req.log.warn({ actionType: action.type, error: result.error }, "Action failed");
@@ -348,6 +354,78 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
   // If next player is an AI, kick off AI turn loop in background
   void runAiTurnsIfNeeded(rawId);
 });
+
+// ── Dev-only: POST /api/dev/rooms/:roomId/rewind ──────────────────────────────
+// Restores the most-recent pre-action snapshot for the room and broadcasts
+// the rewound state to all connected players.  Not registered in production.
+if (process.env.NODE_ENV !== 'production') {
+  router.post('/dev/rooms/:roomId/rewind', async (req, res): Promise<void> => {
+    const roomId = Array.isArray(req.params.roomId) ? req.params.roomId[0] : req.params.roomId;
+    const { sessionToken } = req.body as { sessionToken?: string };
+
+    if (!sessionToken) {
+      res.status(400).json({ error: 'sessionToken required' });
+      return;
+    }
+
+    // Verify the requester is a member of this room
+    const [player] = await db
+      .select()
+      .from(playersTable)
+      .where(and(eq(playersTable.sessionToken, sessionToken), eq(playersTable.roomId, roomId)))
+      .limit(1);
+    if (!player) {
+      res.status(403).json({ error: 'Not a member of this room' });
+      return;
+    }
+
+    const snapshot = popSnapshot(roomId);
+    if (!snapshot) {
+      res.status(404).json({ error: 'No snapshots available — play a turn first' });
+      return;
+    }
+
+    const [room] = await db.select().from(roomsTable).where(eq(roomsTable.id, roomId)).limit(1);
+    if (!room) {
+      res.status(404).json({ error: 'Room not found' });
+      return;
+    }
+
+    // Write the snapshot back, bumping version above whatever's in DB so
+    // all clients recognise it as a newer state.
+    await withRoomLock(roomId, async () => {
+      const [gs] = await db
+        .select()
+        .from(gameStatesTable)
+        .where(eq(gameStatesTable.roomId, roomId))
+        .limit(1);
+      const newVersion = (gs?.version ?? 0) + 1;
+      (snapshot as { version: number }).version = newVersion;
+      await db
+        .update(gameStatesTable)
+        .set({ state: snapshot, version: newVersion, updatedAt: new Date() })
+        .where(eq(gameStatesTable.roomId, roomId));
+    });
+
+    // Broadcast restored state to every human player in the room
+    const allPlayers = await db.select().from(playersTable).where(eq(playersTable.roomId, roomId));
+    const connectedIds = getConnectedPlayerIds(roomId);
+    for (const p of allPlayers) { if (p.isAi) connectedIds.add(p.id); }
+    const avatarMap = new Map<string, string | null>(allPlayers.map(p => [p.id, p.avatarId ?? null]));
+    const aiMap = new Map(allPlayers.map(p => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]));
+
+    const restored = normalizeState(snapshot);
+    const formatted = formatGameState(roomId, room.status, restored, connectedIds, avatarMap, aiMap);
+    for (const p of allPlayers) {
+      if (p.isAi) continue;
+      sendToPlayer(roomId, p.id, { type: 'state_update', state: filterStateForPlayer(formatted, p.id) });
+    }
+    // Re-arm the turn timer for the restored turn
+    armTurnTimer(roomId, restored);
+
+    res.json({ ok: true, snapshotsRemaining: snapshotCount(roomId) });
+  });
+}
 
 // GET /api/cards/lore
 router.get("/cards/lore", (_req, res) => {
