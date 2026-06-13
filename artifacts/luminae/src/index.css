@@ -323,10 +323,10 @@ button,
 
 /* Matches badge rhythm — quick flare then slow ember decay. */
 @keyframes kw-overlay-condemned {
-  0%   { opacity: 0.42; }
-  18%  { opacity: 0.88; }
-  62%  { opacity: 0.54; }
-  100% { opacity: 0.42; }
+  0%   { opacity: 0.55; }
+  18%  { opacity: 0.95; }
+  62%  { opacity: 0.68; }
+  100% { opacity: 0.55; }
 }
 .kw-overlay-condemned { animation: kw-overlay-condemned 2.0s ease-in-out infinite; }
 

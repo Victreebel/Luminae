@@ -697,7 +697,8 @@ export default function GameBoard() {
     if (ids.length === 0) return null;
     const lead = opts?.lead ?? 0;
     setNewlyMarkedCardIds(new Set(ids));
-    setTimeout(() => setNewlyMarkedCardIds(new Set()), 1400 + lead);
+    // Window must cover the full brand strike (1.35s) + stagger delay + buffer
+    setTimeout(() => setNewlyMarkedCardIds(new Set()), 1850 + lead);
 
     // Capture card DOM rects and build the beam strike list.
     const strikes: BrandStrikeTarget[] = [];
@@ -729,7 +730,8 @@ export default function GameBoard() {
     const delayMap = new Map<string, number>();
     ids.forEach((cardId, i) => delayMap.set(cardId, lead + i * 90 + 550));
     setBrandDelayMap(delayMap);
-    setTimeout(() => setBrandDelayMap(new Map()), 1500 + lead);
+    // Keep delay map alive until after the longest brand strike (1.35s) + stagger
+    setTimeout(() => setBrandDelayMap(new Map()), 1850 + lead);
     return strikeId;
   }, []);
 
@@ -1602,7 +1604,7 @@ export default function GameBoard() {
             // Safety net: if ArrivalBrandStrike never reports done (unmount, manual scroll,
             // etc.), still release the camera. restore() is idempotent with the render-site
             // onDone, so a double call is a harmless no-op.
-            const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 900 + 1200;
+            const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 1650 + 800;
             setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
           });
         } else {

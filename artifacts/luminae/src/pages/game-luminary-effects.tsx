@@ -240,7 +240,8 @@ export function ArrivalBrandStrike({
 
   useEffect(() => {
     const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
-    const totalMs = reducedMotion ? 350 : maxDelay + 900;
+    // brand duration 1.35s + 0.10s delay offset + 0.20s buffer
+    const totalMs = reducedMotion ? 350 : maxDelay + 1650;
     const t = setTimeout(() => onDoneRef.current(), totalMs);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -427,13 +428,13 @@ export function ArrivalBrandStrike({
               }}
               initial={{ scale: 0, opacity: 0 }}
               animate={{
-                scale:   [0,    1.14, 1,    1.09, 1,    0  ],
-                opacity: [0,    1,    1,    1,    1,    0  ],
+                scale:   [0,    1.14, 1,    1.09, 1,    1,    0  ],
+                opacity: [0,    1,    1,    1,    1,    1,    0  ],
               }}
               transition={{
-                duration: 0.82,
+                duration: 1.35,
                 delay: d + 0.10,
-                times:   [0, 0.26, 0.40, 0.58, 0.70, 1],
+                times:   [0, 0.18, 0.30, 0.48, 0.62, 0.82, 1],
                 ease: 'easeOut',
               }}
             >
@@ -468,8 +469,8 @@ export function CardKeywordOverlay({
         className="kw-overlay-condemned absolute inset-0 z-10 pointer-events-none rounded-xl overflow-hidden"
         style={{
           background:
-            'linear-gradient(to bottom, rgba(120,18,0,0.28) 0%, transparent 32%, transparent 62%, rgba(140,22,0,0.36) 100%)',
-          boxShadow: 'inset 0 0 0 1.5px rgba(180,38,0,0.55)',
+            'linear-gradient(to bottom, rgba(160,24,0,0.42) 0%, transparent 30%, transparent 65%, rgba(170,28,0,0.48) 100%)',
+          boxShadow: 'inset 0 0 0 2px rgba(220,50,0,0.72), inset 0 0 18px 4px rgba(180,30,0,0.35)',
         }}
       />
     );
