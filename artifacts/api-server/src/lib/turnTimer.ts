@@ -68,9 +68,15 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       // Do not auto-pass while Luminary arrival or activation cutscenes are
       // still pending. The deadline will be cleared by updateTurnDeadline so no
       // stale timer fires, but guard here as well for extra safety.
+      // Summon-type activation events are never resolved by clients (the arrival
+      // cutscene handles them visually), so exclude them from this check to
+      // avoid a permanent block after any Luminary summon.
+      const pendingNonSummonActivations = (
+        state.pendingLuminaryActivationEvents ?? []
+      ).filter((e) => e.effectType !== "summon");
       if (
         (state.pendingSummonEvents?.length ?? 0) > 0 ||
-        (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+        pendingNonSummonActivations.length > 0
       ) {
         return;
       }
@@ -166,9 +172,15 @@ export function updateTurnDeadline(state: GameStateData): void {
   }
   // Pause timer while cutscenes are in progress — the next player must not
   // be auto-passed while the board is mid-cinematic.
+  // Summon-type activation events are never resolved by clients (the arrival
+  // cutscene handles them visually), so exclude them to avoid permanently
+  // disabling the turn timer after any Luminary summon.
+  const pendingNonSummonActivationCount = (state.pendingLuminaryActivationEvents ?? []).filter(
+    (e) => e.effectType !== "summon",
+  ).length;
   if (
     (state.pendingSummonEvents?.length ?? 0) > 0 ||
-    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+    pendingNonSummonActivationCount > 0
   ) {
     state.turnDeadline = null;
     return;

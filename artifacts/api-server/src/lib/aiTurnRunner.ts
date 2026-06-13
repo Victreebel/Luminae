@@ -115,9 +115,17 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
 
         // Pause AI turns while Luminary cutscenes are still resolving on
         // clients. The runner will be re-invoked by the next action handler.
+        // Note: only non-summon activation events block here — summon-type
+        // entries are pushed by the engine but skipped by every client's
+        // activation-cinematic detection loop (the arrival cutscene handles
+        // them visually), so they are never resolved via resolve_luminary_activation
+        // and would cause a permanent stall if counted here.
+        const pendingNonSummonActivations = (
+          state.pendingLuminaryActivationEvents ?? []
+        ).filter((e) => e.effectType !== "summon");
         if (
           (state.pendingSummonEvents?.length ?? 0) > 0 ||
-          (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+          pendingNonSummonActivations.length > 0
         ) {
           return { kind: "stop" as const };
         }
