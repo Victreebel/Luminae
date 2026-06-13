@@ -527,6 +527,14 @@ export default function GameBoard() {
   // orchestrate the camera — it must not while an activation cinematic owns the view.
   const activationQueueLenRef = useRef(0);
   const handledActivationEventIdsRef = useRef(new Set<string>());
+  // Brand strikes deferred while an arrival cutscene is in progress. Flushed
+  // when the arrival resolves so that effect animations never fire while the
+  // summoning is still playing.
+  const deferredBrandStrikesRef = useRef<Array<{ ids: string[]; markers: Record<string, { type: string }> }>>([]);
+  // Activation events deferred while an arrival cutscene is in progress. Flushed
+  // when the arrival resolves so that effect cinematics never start before the
+  // summoning is fully dismissed.
+  const deferredActivationEventsRef = useRef<PendingLuminaryActivationEvent[]>([]);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -1608,9 +1616,17 @@ export default function GameBoard() {
             setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
           });
         } else {
-          // Camera owned by another cutscene (or no mapped source): fire against the
-          // current layout with synchronous rects — no camera orchestration.
-          fireBrandStrikes(newlyMarked, nextMarkers);
+          // Camera owned by another cutscene (arrival in progress, or no mapped source).
+          // If an arrival is in progress, defer the brand strike so it fires AFTER the
+          // summoning is dismissed — never overlap effect animations with summoning.
+          // Use hasIncomingArrival (computed from the prev→state diff) rather than the
+          // queue length ref, because the ref hasn't been updated yet for this cycle.
+          if (hasIncomingArrival) {
+            deferredBrandStrikesRef.current.push({ ids: newlyMarked, markers: nextMarkers });
+          } else {
+            // No arrival blocking, just no mapped source — fire immediately.
+            fireBrandStrikes(newlyMarked, nextMarkers);
+          }
         }
       }
     }
@@ -2624,18 +2640,26 @@ export default function GameBoard() {
 
       // Detect newly arrived pendingLuminaryActivationEvents and enqueue ~4s activation cinematics.
       // Unlike arrival events these do NOT gate game progression — no drain-queue barrier needed.
+      // However, if an arrival cutscene is in progress (or about to start), the activation
+      // event is deferred and flushed only after the summoning is fully dismissed.
       {
         const prevPending = prev?.pendingLuminaryActivationEvents ?? [];
         const newPending = newState?.pendingLuminaryActivationEvents ?? [];
+        const arrivalInProgress =
+          arrivalQueueLenRef.current > 0 ||
+          enqueuingCountRef.current > 0 ||
+          pendingSuppressArrivalIdsRef.current.size > 0;
         for (const evt of newPending) {
           // Arrival-type events are shown via the arrival cutscene — skip them here.
-          // (lum_seed no longer pushes an arrival activation event from the engine,
-          // but this guard handles any in-flight game states from before that change.)
           if (evt.effectType === 'summon') continue;
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
           if (!alreadyKnown && !handledActivationEventIdsRef.current.has(evt.eventId)) {
             handledActivationEventIdsRef.current.add(evt.eventId);
-            setActivationQueue(q => [...q, evt]);
+            if (arrivalInProgress) {
+              deferredActivationEventsRef.current.push(evt);
+            } else {
+              setActivationQueue(q => [...q, evt]);
+            }
           }
         }
       }
@@ -8605,6 +8629,21 @@ export default function GameBoard() {
             // can unblock their turn actions once the cutscene is done.
             if (!entry.isDevTest) {
               executeAction({ type: 'resolve_summon', eventId: entry.eventId });
+            }
+            // Flush any brand strikes that were deferred while this arrival was in progress.
+            // Effect animations must not start until the summoning is fully dismissed.
+            const deferredStrikes = deferredBrandStrikesRef.current;
+            if (deferredStrikes.length > 0) {
+              deferredBrandStrikesRef.current = [];
+              for (const { ids, markers } of deferredStrikes) {
+                fireBrandStrikes(ids, markers);
+              }
+            }
+            // Flush deferred activation events so their cinematics start now.
+            const deferredActivations = deferredActivationEventsRef.current;
+            if (deferredActivations.length > 0) {
+              deferredActivationEventsRef.current = [];
+              setActivationQueue(q => [...q, ...deferredActivations]);
             }
           };
           return (
