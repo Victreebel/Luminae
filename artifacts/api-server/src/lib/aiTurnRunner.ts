@@ -113,6 +113,15 @@ export async function runAiTurnsIfNeeded(roomId: string): Promise<void> {
         const state = normalizeState(gs.state);
         if ((state.phase as string) === "finished") return { kind: "stop" as const };
 
+        // Pause AI turns while Luminary cutscenes are still resolving on
+        // clients. The runner will be re-invoked by the next action handler.
+        if (
+          (state.pendingSummonEvents?.length ?? 0) > 0 ||
+          (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+        ) {
+          return { kind: "stop" as const };
+        }
+
         const currentPlayerIdx = state.currentPlayerIndex;
         const currentPlayerId = state.players[currentPlayerIdx]?.playerId;
         if (!currentPlayerId) return { kind: "stop" as const };

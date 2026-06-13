@@ -65,6 +65,16 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
       if (state.version !== expectedVersion) return;
       if (state.phase === "finished") return;
 
+      // Do not auto-pass while Luminary arrival or activation cutscenes are
+      // still pending. The deadline will be cleared by updateTurnDeadline so no
+      // stale timer fires, but guard here as well for extra safety.
+      if (
+        (state.pendingSummonEvents?.length ?? 0) > 0 ||
+        (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+      ) {
+        return;
+      }
+
       const currentPlayerId = state.players[state.currentPlayerIndex]?.playerId;
       if (!currentPlayerId) return;
 
@@ -144,9 +154,22 @@ async function expireTurn(roomId: string, expectedVersion: number): Promise<void
 /**
  * Mutates state.turnDeadline based on the room's configured timer. Call
  * AFTER applyAction succeeds to set the deadline for the *next* player's turn.
+ *
+ * When Luminary arrival or activation cutscenes are pending, the turn timer is
+ * paused so the cinematic can finish before the next player is forced to act.
+ * The timer resumes once the last pending event is resolved.
  */
 export function updateTurnDeadline(state: GameStateData): void {
   if (state.phase === "finished") {
+    state.turnDeadline = null;
+    return;
+  }
+  // Pause timer while cutscenes are in progress — the next player must not
+  // be auto-passed while the board is mid-cinematic.
+  if (
+    (state.pendingSummonEvents?.length ?? 0) > 0 ||
+    (state.pendingLuminaryActivationEvents?.length ?? 0) > 0
+  ) {
     state.turnDeadline = null;
     return;
   }
