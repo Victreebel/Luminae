@@ -704,6 +704,7 @@ export default function GameBoard() {
     },
   ): string | null => {
     if (ids.length === 0) return null;
+    console.log('[BRAND DEBUG] fireBrandStrikes called with', ids.length, 'ids, opts:', { orchestrated: opts?.orchestrated, lead: opts?.lead, hasSource: !!opts?.source });
     const lead = opts?.lead ?? 0;
     setNewlyMarkedCardIds(new Set(ids));
     // Window must cover the full brand strike (1.35s) + stagger delay + buffer
@@ -1526,6 +1527,7 @@ export default function GameBoard() {
       const prevMarkers = prev.marketMarkers ?? {};
       const nextMarkers = state.marketMarkers ?? {};
       const newlyMarked = Object.keys(nextMarkers).filter(id => !prevMarkers[id]);
+      console.log('[BRAND DEBUG] marker diff:', newlyMarked.length, 'newlyMarked:', newlyMarked, 'nextMarkerTypes:', newlyMarked.map(id => nextMarkers[id]?.type), 'hasIncomingArrival will be computed...');
       if (newlyMarked.length > 0) {
         // The brand strike may "orchestrate" the camera — reframe the board so the
         // originating Luminary portal AND the branded cards are visible — but ONLY when
@@ -8663,9 +8665,11 @@ export default function GameBoard() {
             // Flush any brand strikes that were deferred while this arrival was in progress.
             // Effect animations must not start until the summoning is fully dismissed.
             const deferredStrikes = deferredBrandStrikesRef.current;
+            console.log('[BRAND DEBUG] resolveArrival flushing deferredStrikes:', deferredStrikes.length, 'entries');
             if (deferredStrikes.length > 0) {
               deferredBrandStrikesRef.current = [];
               for (const { ids, markers } of deferredStrikes) {
+                console.log('[BRAND DEBUG] resolveArrival calling fireBrandStrikes with', ids.length, 'ids');
                 fireBrandStrikes(ids, markers);
               }
             }
