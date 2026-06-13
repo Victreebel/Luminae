@@ -1594,6 +1594,9 @@ export default function GameBoard() {
           const procedure: AnimationProcedureStep[] = [
             { type: 'luminaryPulse', luminaryId: srcMeta.lumId },
             { type: 'targetClaim', targetIds: newlyMarked, keyword },
+            // Ensure the full market section (all tiers) is visible before the
+            // brand-strike beams fire — not just the condemned cards.
+            { type: 'marketRedraw', slotIds: [] },
           ];
           const lead = instant ? 0 : SOURCE_PULSE_LEAD_MS;
           viewOrchestrator.prepare(procedure, () => {
@@ -8707,6 +8710,9 @@ export default function GameBoard() {
                   const procedure: AnimationProcedureStep[] = [
                     { type: 'luminaryPulse', luminaryId: srcMeta.lumId },
                     { type: 'targetClaim', targetIds: ids, keyword },
+                    // Ensure the full market section (all tiers) is visible before
+                    // the brand-strike beams fire — not just the condemned cards.
+                    { type: 'marketRedraw', slotIds: [] },
                   ];
                   const lead = instant ? 0 : SOURCE_PULSE_LEAD_MS;
                   viewOrchestrator.prepare(procedure, () => {
