@@ -714,15 +714,22 @@ export default function GameBoard() {
     const strikes: BrandStrikeTarget[] = [];
     ids.forEach((cardId, i) => {
       const el = document.querySelector(`[data-card-id="${cardId}"]`);
-      if (!el) return;
+      if (!el) {
+        console.log('[BRAND DEBUG] DOM element NOT FOUND for cardId:', cardId);
+        return;
+      }
       const r = el.getBoundingClientRect();
-      if (r.width === 0) return;
+      if (r.width === 0) {
+        console.log('[BRAND DEBUG] DOM element found but width=0 for cardId:', cardId);
+        return;
+      }
       strikes.push({
         rect: { x: r.x, y: r.y, w: r.width, h: r.height },
         type: markers[cardId].type as BrandStrikeTarget['type'],
         delay: lead + i * 90,
       });
     });
+    console.log('[BRAND DEBUG] fireBrandStrikes captured', strikes.length, 'of', ids.length, 'strikes');
     if (strikes.length === 0) return null;
 
     const strikeId = `brand-${Date.now()}`;
