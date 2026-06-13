@@ -530,8 +530,16 @@ export default function GameBoard() {
   const handledActivationEventIdsRef = useRef(new Set<string>());
   // Brand strikes deferred while an arrival cutscene is in progress. Flushed
   // when the arrival resolves so that effect animations never fire while the
-  // summoning is still playing.
-  const deferredBrandStrikesRef = useRef<Array<{ ids: string[]; markers: Record<string, { type: string }> }>>([]);
+  // summoning is still playing. Each entry carries the full orchestration data
+  // (source Luminary, instant flag) so the post-arrival flush can run the same
+  // camera-orchestrated beam + badge sequence as the immediate path.
+  const deferredBrandStrikesRef = useRef<Array<{
+    ids: string[];
+    markers: Record<string, { type: string }>;
+    srcMeta: { lumId: string } | null;
+    srcLum: Luminary | undefined;
+    instant: boolean;
+  }>>([]);
   // Activation events deferred while an arrival cutscene is in progress. Flushed
   // when the arrival resolves so that effect cinematics never start before the
   // summoning is fully dismissed.
@@ -1630,19 +1638,17 @@ export default function GameBoard() {
           // Use hasIncomingArrival (computed from the prev→state diff) rather than the
           // queue length ref, because the ref hasn't been updated yet for this cycle.
           if (hasIncomingArrival) {
-            // Badges must appear immediately so the player sees what was condemned
-            // before the cards are potentially burned at the start of the next turn.
-            // Only the beam animation is deferred; the badge pop is not.
-            setNewlyMarkedCardIds(prev => new Set([...prev, ...newlyMarked]));
-            setTimeout(() => {
-              setNewlyMarkedCardIds(prev => {
-                const next = new Set(prev);
-                for (const id of newlyMarked) next.delete(id);
-                return next;
-              });
-            }, 2000);
-            // Queue the beam animation for after the arrival cutscene finishes.
-            deferredBrandStrikesRef.current.push({ ids: newlyMarked, markers: nextMarkers });
+            // Defer BOTH badge and beam animation until the summoning cutscene is fully
+            // dismissed. The fireBrandStrikes call in the flush already sets the badge
+            // (setNewlyMarkedCardIds) before the beam fires, so badges are visible at the
+            // correct moment — not while the camera is still locked on the arrival portal.
+            deferredBrandStrikesRef.current.push({
+              ids: newlyMarked,
+              markers: nextMarkers,
+              srcMeta,
+              srcLum,
+              instant,
+            });
           } else {
             // No arrival blocking, just no mapped source — fire immediately.
             fireBrandStrikes(newlyMarked, nextMarkers);
@@ -8697,9 +8703,54 @@ export default function GameBoard() {
             // resolveArrival flushing deferredStrikes
             if (deferredStrikes.length > 0) {
               deferredBrandStrikesRef.current = [];
-              for (const { ids, markers } of deferredStrikes) {
-                // resolveArrival calling fireBrandStrikes
-                fireBrandStrikes(ids, markers);
+              for (const { ids, markers, srcMeta, srcLum, instant } of deferredStrikes) {
+                if (srcMeta && srcLum) {
+                  // Full camera-orchestrated path: frame the source portal AND branded cards,
+                  // then fire the beam with the portal as source. This is the same sequence as
+                  // the immediate cameraFree path above — the only difference is timing.
+                  const firstType = markers[ids[0]]?.type as BrandStrikeTarget['type'] | undefined;
+                  const keyword: 'forgotten' | 'condemned' | 'nullified' | 'seeded' =
+                    firstType === 'avatar_seed'
+                      ? 'seeded'
+                      : (firstType as 'forgotten' | 'condemned' | 'nullified');
+                  const procedure: AnimationProcedureStep[] = [
+                    { type: 'luminaryPulse', luminaryId: srcMeta.lumId },
+                    { type: 'targetClaim', targetIds: ids, keyword },
+                  ];
+                  const lead = instant ? 0 : SOURCE_PULSE_LEAD_MS;
+                  viewOrchestrator.prepare(procedure, () => {
+                    const portalEl = document.querySelector(`[data-luminary-id="${srcMeta.lumId}"]`);
+                    let source:
+                      | { rect: { x: number; y: number; w: number; h: number }; primary: string; secondary: string }
+                      | undefined;
+                    if (portalEl && !instant) {
+                      const pr = portalEl.getBoundingClientRect();
+                      if (pr.width > 0) {
+                        source = {
+                          rect: { x: pr.x, y: pr.y, w: pr.width, h: pr.height },
+                          primary: srcLum.summonColor ?? '#a78bfa',
+                          secondary: srcLum.summonSecondaryColor ?? srcLum.summonColor ?? '#f0abfc',
+                        };
+                      }
+                    }
+                    const usedLead = source ? lead : 0;
+                    const strikeId = fireBrandStrikes(ids, markers, {
+                      source,
+                      lead: usedLead,
+                      orchestrated: true,
+                      restoreImmediate: instant,
+                    });
+                    if (!strikeId) {
+                      viewOrchestrator.restore({ immediate: instant });
+                      return;
+                    }
+                    const totalMs = usedLead + (ids.length - 1) * 90 + 1650 + 800;
+                    setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
+                  });
+                } else {
+                  // No mapped source — simple badge + beam without camera takeover
+                  fireBrandStrikes(ids, markers);
+                }
               }
             }
             // Flush deferred activation events so their cinematics start now.
