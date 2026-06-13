@@ -2706,8 +2706,13 @@ export default function GameBoard() {
           enqueuingCountRef.current > 0 ||
           pendingSuppressArrivalIdsRef.current.size > 0;
         for (const evt of newPending) {
-          // Arrival-type events are shown via the arrival cutscene — skip them here.
-          if (evt.effectType === 'summon') continue;
+          // NOTE: effectType === 'summon' events are NOT skipped here. The arrival
+          // cutscene (LuminaryArrivalCutscene, ~12s) shows the Luminary's intro.
+          // The activation cinematic (LuminaryActivationCinematic, ~4s) is a separate
+          // procedural effect showing the Luminary's board impact (e.g. Cinder Mandate
+          // marking cards condemned). Both must play — one after the other.
+          // Since arrivalInProgress will be true when the summon event first arrives,
+          // it gets deferred into deferredActivationEventsRef and flushed in Phase 2.
           const alreadyKnown = prevPending.some(e => e.eventId === evt.eventId);
           if (!alreadyKnown && !handledActivationEventIdsRef.current.has(evt.eventId)) {
             handledActivationEventIdsRef.current.add(evt.eventId);
