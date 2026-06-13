@@ -8696,7 +8696,7 @@ export default function GameBoard() {
             <button
               type="button"
               onClick={async () => {
-                const session = getAccountSession();
+                const session = getSession();
                 if (!session || !roomId) return;
                 const resp = await fetch(`/api/dev/rooms/${roomId}/rewind`, {
                   method: 'POST',
