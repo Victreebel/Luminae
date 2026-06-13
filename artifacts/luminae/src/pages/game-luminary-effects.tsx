@@ -35,7 +35,7 @@ const MARKER_META: Record<
     border:   '#c82828',
     text:     '#ff6060',
     icon:     '⚑',
-    meaning:  'Burns at the start of Ember Sovereign\'s next turn. Forge cost lacked 3 or more Flare, Abyss, or Radiance.',
+    meaning:  'Condemned — Burns at the start of Ember Sovereign\'s next turn.',
     duration: 'Burns at the start of Ember Sovereign\'s next turn.',
   },
   nullified: {

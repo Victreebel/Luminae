@@ -536,7 +536,7 @@ export const LUMINARIES: LuminaryDef[] = [
     summonSecondaryColor: "#7b1fa2",
     auraStyle: "fire",
     effectName: "Cinder Mandate",
-    effectDescription: "On arrival, marks all face-up Artifacts lacking Flare, Abyss, or Radiance affinity as Condemned — they burn at the start of your next turn, clearing those market slots.",
+    effectDescription: "On arrival, mark each face-up Artifact as Condemned unless its forge cost includes 3 or more Flare, Abyss, or Radiance. At the start of your next turn, burn each remaining Condemned Artifact and refill its market slot.",
   },
   {
     id: "lum_hunger",
@@ -1536,8 +1536,13 @@ function applySummonEffect_cinderMandate(
     for (const id of getMarketForTier(state, tier)) {
       const card = CARD_MAP.get(id);
       if (!card) continue;
-      // Condemned if lacks ALL of: Flare (ruby), Abyss (onyx), Radiance (pearl)
-      if (card.cost.ruby === 0 && card.cost.onyx === 0 && card.cost.pearl === 0) {
+      // A card survives Cinder Mandate if its forge cost includes 3+ of at least one of:
+      //   Flare (ruby), Abyss (onyx), or Radiance (pearl).
+      // Otherwise, it is marked Condemned.
+      const hasFlare = (card.cost.ruby ?? 0) >= 3;
+      const hasAbyss = (card.cost.onyx ?? 0) >= 3;
+      const hasRadiance = (card.cost.pearl ?? 0) >= 3;
+      if (!hasFlare && !hasAbyss && !hasRadiance) {
         state.marketMarkers[id] = { type: "condemned", ownerId: player.playerId, summonedAtTurnCount };
         count++;
       }

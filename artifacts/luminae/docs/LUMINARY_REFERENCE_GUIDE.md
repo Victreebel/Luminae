@@ -270,7 +270,7 @@ The active Luminary pool is `AVAILABLE_LUMINARIES` (12 illustrated Luminaries). 
 | **Affinities** | Flare, Abyss, Radiance |
 | **Cost** | 3 Flare + 3 Abyss + 3 Radiance |
 | **Eminence** | 4 |
-| **Effect** | **Two-path:** On arrival, marks all face-up Artifacts lacking Flare, Abyss, or Radiance as **Condemned**. At the start of your next turn, Condemned cards burn, clearing those slots. |
+| **Effect** | **Cinder Mandate:** On arrival, mark each face-up Artifact as Condemned unless its forge cost includes 3 or more Flare, Abyss, or Radiance. At the start of your next turn, burn each remaining Condemned Artifact and refill its market slot. |
 | **Flavor** | *"What cannot survive the fire is granted the mercy of disappearance."* |
 | **Animation Archetype** | `condemned` |
 | **Procedure Steps** | `luminaryPulse` → `targetClaim` (keyword: condemned) → `residue` (condemned) |

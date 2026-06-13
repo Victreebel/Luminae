@@ -1,0 +1,78 @@
+Update Ember Sovereign / Cinder Mandate.
+
+Goal:
+Ember Sovereign’s effect should read and behave as a two-stage sovereign judgment: first it marks unworthy artifacts as Condemned, then at the start of the owner’s next turn it burns the remaining condemned artifacts.
+
+Update effect wording everywhere Ember Sovereign is displayed, including card text, tooltip text, Luminary detail modal, activation cinematic text, logs, and any reference/help text.
+
+New canonical effect text:
+“On arrival, mark each face-up Artifact as Condemned unless its forge cost includes 3 or more Flare, Abyss, or Radiance. At the start of your next turn, burn each remaining Condemned Artifact and refill its market slot.”
+
+Rules clarification:
+
+* A face-up Artifact survives Cinder Mandate if its forge cost includes at least one of the following:
+    * 3 or more Flare
+    * 3 or more Abyss
+    * 3 or more Radiance
+* If it does not satisfy at least one of those thresholds, mark it Condemned.
+* Condemned cards do not burn immediately.
+* Condemned cards burn at the start of the Ember Sovereign owner’s next turn.
+* If a Condemned card is forged, reserved, removed, or otherwise leaves the market before that start-of-turn burn, do not burn it.
+* After condemned cards burn, refill their market slots normally.
+* Do not change Ember Sovereign’s ID, cost, affinities, Eminence value, art assets, or ownership logic unless strictly necessary for this effect.
+
+Animation Phase 1 — Arrival Condemnation:
+After the Living Entity breaks out of crystal and the player voluntarily exits the Luminary Presentation screen, continue the animation chain instead of ending immediately.
+
+Sequence:
+
+1. Keep camera/control locked.
+2. Shrink the Ember Sovereign living entity into its vortex panel.
+3. Center the camera on the board and switch to compact/full-board mode if necessary so all market targets are visible.
+4. Play Ember Sovereign’s effect activation animation and sound.
+5. Energy beams rain down from above onto every Artifact being marked Condemned.
+6. Each impacted card receives a large, clear Condemned brand over most of the card face.
+7. The brand pulses briefly, then resolves into the persistent Condemned marker/badge.
+8. Restore the previous camera/view mode.
+9. Resume normal gameplay.
+
+Animation Phase 2 — Start-of-next-turn Judgment:
+At the start of the Ember Sovereign owner’s next turn, before normal player actions:
+
+1. Take control of the camera again.
+2. Center/switch to compact or full-board view so all remaining Condemned cards are visible.
+3. Play a shorter Ember Sovereign effect activation animation and sound.
+4. Pulse all existing Condemned markers.
+5. Apply the burn animation to all remaining Condemned cards.
+6. Refill their market slots after the burn animation.
+7. Restore the previous camera/view mode.
+8. Continue the turn normally.
+
+Marker / tooltip update:
+Condemned marker tooltip should say:
+“Condemned — Burns at the start of Ember Sovereign’s next turn.”
+
+Visual requirements:
+
+* Condemned marks must be large and unmistakable.
+* Use Ember Sovereign colors: ember orange, red, black-violet, and sovereign gold.
+* Energy beams should feel like judgment from above: sharp, controlled, royal, not chaotic lightning.
+* Avoid blur-heavy effects.
+* Prefer crisp beams, opacity, scale, masks, glow borders, and lightweight particles.
+* The player should be able to trace the Condemned marker back to Ember Sovereign.
+
+Reduced-motion / abridged mode:
+Skip entity flourish and beam travel.
+Use board-center camera, source pulse, target border flash, instant Condemned brand pop-in, and later a quick burn fade.
+
+Validation:
+
+* Add or update tests for the new Cinder Mandate threshold logic.
+* Confirm artifacts with 3+ Flare survive.
+* Confirm artifacts with 3+ Abyss survive.
+* Confirm artifacts with 3+ Radiance survive.
+* Confirm artifacts with only 1–2 Flare/Abyss/Radiance are Condemned.
+* Confirm artifacts with no Flare/Abyss/Radiance are Condemned.
+* Confirm Condemned cards burn at the start of the owner’s next turn, not immediately.
+* Confirm cards removed before the next-turn burn are not burned again.
+* Confirm market slots refill after the burn.
