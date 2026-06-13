@@ -17,6 +17,7 @@ import { runAiTurnsIfNeeded } from "../lib/aiTurnRunner";
 import { withRoomLock } from "../lib/roomLock";
 import { armTurnTimer, updateTurnDeadline } from "../lib/turnTimer";
 import { recordGameResult } from "../lib/rematchManager";
+import { captureDevSnapshot, getDevSnapshot } from "../lib/devRewind";
 
 const router: IRouter = Router();
 
@@ -245,10 +246,25 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
     const stateData = normalizeState(gs.state);
     const expectedVersion = stateData.version;
 
+    // DEV: capture a snapshot just before the first Luminary is claimed so
+    // the rewind endpoint can restore it for animation testing.
+    const isPreFirstLuminary =
+      process.env.NODE_ENV !== "production" &&
+      stateData.pendingSummonEvents.length === 0 &&
+      stateData.players.every((p) => (p.luminaries ?? []).length === 0);
+    const preActionSnapshot = isPreFirstLuminary
+      ? (JSON.parse(JSON.stringify(stateData)) as typeof stateData)
+      : null;
+
     const result = applyAction(stateData, player.id, action);
     if (!result.success) {
       req.log.warn({ actionType: action.type, error: result.error }, "Action failed");
       return { ok: false as const, status: 400, error: result.error };
+    }
+
+    // DEV: if the action just triggered the first Luminary claim, commit snapshot.
+    if (preActionSnapshot && stateData.pendingSummonEvents.length > 0) {
+      captureDevSnapshot(rawId, preActionSnapshot);
     }
 
     // Refresh per-turn deadline based on configured timer.
@@ -347,6 +363,113 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 
   // If next player is an AI, kick off AI turn loop in background
   void runAiTurnsIfNeeded(rawId);
+});
+
+// POST /api/dev/rooms/:roomId/rewind
+// DEV-ONLY: restore the game state to the snapshot captured just before the
+// first Luminary was claimed.  Returns 403 in production.
+router.post("/dev/rooms/:roomId/rewind", async (req, res): Promise<void> => {
+  if (process.env.NODE_ENV === "production") {
+    res.status(403).json({ error: "Not available in production" });
+    return;
+  }
+
+  const rawId = Array.isArray(req.params.roomId)
+    ? req.params.roomId[0]
+    : req.params.roomId;
+
+  const { sessionToken } = req.body as { sessionToken?: string };
+  if (!sessionToken) {
+    res.status(400).json({ error: "sessionToken required" });
+    return;
+  }
+
+  const [player] = await db
+    .select()
+    .from(playersTable)
+    .where(
+      and(
+        eq(playersTable.sessionToken, sessionToken),
+        eq(playersTable.roomId, rawId),
+      ),
+    )
+    .limit(1);
+
+  if (!player) {
+    res.status(403).json({ error: "Not a member of this room" });
+    return;
+  }
+
+  const snapshot = getDevSnapshot(rawId);
+  if (!snapshot) {
+    res.status(404).json({ error: "No pre-luminary snapshot for this room. Play a game until a Luminary is claimed first." });
+    return;
+  }
+
+  const outcome = await withRoomLock(rawId, async () => {
+    const [gs] = await db
+      .select()
+      .from(gameStatesTable)
+      .where(eq(gameStatesTable.roomId, rawId))
+      .limit(1);
+
+    if (!gs) {
+      return { ok: false as const, status: 404, error: "Game state not found" };
+    }
+
+    // Restore snapshot with a fresh incremented version to avoid conflicts.
+    const restored = { ...snapshot, version: gs.version + 1 };
+
+    await db
+      .update(gameStatesTable)
+      .set({
+        state: restored as unknown as Record<string, unknown>,
+        version: restored.version,
+        updatedAt: new Date(),
+      })
+      .where(eq(gameStatesTable.roomId, rawId));
+
+    await db
+      .update(roomsTable)
+      .set({ status: "playing", updatedAt: new Date() })
+      .where(eq(roomsTable.id, rawId));
+
+    const allPlayers = await db
+      .select()
+      .from(playersTable)
+      .where(eq(playersTable.roomId, rawId));
+
+    const avatarMap = new Map<string, string | null>(
+      allPlayers.map((p) => [p.id, p.avatarId ?? null]),
+    );
+    const aiMap = new Map(
+      allPlayers.map((p) => [p.id, { isAi: p.isAi, aiDifficulty: p.aiDifficulty != null ? parseAiDifficulty(p.aiDifficulty) : null }]),
+    );
+
+    const connectedIds = getConnectedPlayerIds(rawId);
+    for (const p of allPlayers) {
+      if (p.isAi) connectedIds.add(p.id);
+    }
+
+    const formatted = formatGameState(rawId, "playing", restored, connectedIds, avatarMap, aiMap);
+    for (const p of allPlayers) {
+      if (p.isAi) continue;
+      sendToPlayer(rawId, p.id, {
+        type: "state_update",
+        state: filterStateForPlayer(formatted, p.id),
+      });
+    }
+
+    return { ok: true as const, turnCount: restored.turnCount };
+  });
+
+  if (!outcome.ok) {
+    res.status(outcome.status).json({ error: outcome.error });
+    return;
+  }
+
+  req.log.info({ roomId: rawId }, "Dev rewind: restored pre-luminary snapshot");
+  res.json({ ok: true, rewindToTurnCount: outcome.turnCount });
 });
 
 // GET /api/cards/lore

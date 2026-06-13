@@ -8691,6 +8691,33 @@ export default function GameBoard() {
           {testPanelCollapsed && (
             <span className="text-[10px] text-amber-300/50 px-1 font-mono">{((state.luminaries ?? []).length)} Luminaries</span>
           )}
+          {/* ── Dev: Rewind to pre-luminary snapshot ── */}
+          <div className="border-t border-amber-500/20 mt-0.5 pt-1">
+            <button
+              type="button"
+              onClick={async () => {
+                const session = getAccountSession();
+                if (!session || !roomId) return;
+                const resp = await fetch(`/api/dev/rooms/${roomId}/rewind`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sessionToken: session.sessionToken }),
+                });
+                if (resp.ok) {
+                  const data = await resp.json() as { rewindToTurnCount?: number };
+                  console.log('[dev-rewind] restored to turnCount:', data.rewindToTurnCount);
+                } else {
+                  const err = await resp.json() as { error?: string };
+                  console.warn('[dev-rewind] failed:', err.error ?? resp.status);
+                  alert(`Rewind failed: ${err.error ?? resp.status}`);
+                }
+              }}
+              className="w-full text-[10px] bg-black/60 text-red-400/90 border border-red-500/40 rounded px-2 py-1 hover:bg-red-900/30 hover:border-red-500/60 transition-colors text-left font-mono"
+              title="Restore game to the turn just before the first Luminary was claimed (snapshot captured automatically)"
+            >
+              ⏪ rewind to pre-luminary
+            </button>
+          </div>
         </div>
       )}
 
