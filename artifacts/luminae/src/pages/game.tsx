@@ -79,7 +79,7 @@ import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCa
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
-import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, ArrivalMarketOverlay, ArrivalBrandStrike, MARKER_SOURCE, SOURCE_PULSE_LEAD_MS, type BrandStrikeTarget } from './game-luminary-effects';
+import { CardMarkerBadge, CardKeywordOverlay, BurnBadgeOverlay, BurnFlash, DelayedEffectFloat, BoardDimOverlay, BloomSeedParticle, BurnPileParticle, BurnChipLandingSpark, OrchardCopyPulse, ArrivalMarketOverlay, ArrivalBrandStrike, BrandStrikeAura, MARKER_SOURCE, SOURCE_PULSE_LEAD_MS, type BrandStrikeTarget, type MarkerType } from './game-luminary-effects';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 import { ForgeAnimation, OpponentForgeAnimation, AbridgedForgeAnimation } from './game-forge-animation';
 import { VictoryCinematic } from '@/components/VictoryCinematic';
@@ -661,6 +661,9 @@ export default function GameBoard() {
   }>>([]);
   // Per-card brand delay (ms) so each badge springs in after its own beam settles
   const [brandDelayMap, setBrandDelayMap] = useState<Map<string, number>>(new Map());
+  // Per-card electric aura state — present while the lingering discharge is active
+  // after a brand strike. Cleared ~3.4s after the last card is hit.
+  const [strikeAuraMap, setStrikeAuraMap] = useState<Map<string, { type: MarkerType; delay: number }>>(new Map());
   // Luminary id whose portal is currently glowing because a persistent-marker badge is
   // hovered/focused (source trace-back). null when nothing is traced.
   const [tracedSourceLumId, setTracedSourceLumId] = useState<string | null>(null);
@@ -716,8 +719,8 @@ export default function GameBoard() {
     // fireBrandStrikes called
     const lead = opts?.lead ?? 0;
     setNewlyMarkedCardIds(new Set(ids));
-    // Window must cover the full brand strike (1.35s) + stagger delay + buffer
-    setTimeout(() => setNewlyMarkedCardIds(new Set()), 1850 + lead);
+    // Brand lands at 420ms + 1.35s duration + stagger + buffer
+    setTimeout(() => setNewlyMarkedCardIds(new Set()), 2200 + lead);
 
     // Capture card DOM rects and build the beam strike list.
     const strikes: BrandStrikeTarget[] = [];
@@ -750,12 +753,18 @@ export default function GameBoard() {
         restoreImmediate: opts?.restoreImmediate,
       },
     ]);
-    // Per-card delay map: badge springs in after its own beam finishes (~lead + i*90 + 550ms)
+    // Per-card delay map: badge springs in 150ms after impact (420ms) = 570ms
     const delayMap = new Map<string, number>();
-    ids.forEach((cardId, i) => delayMap.set(cardId, lead + i * 90 + 550));
+    ids.forEach((cardId, i) => delayMap.set(cardId, lead + i * 90 + 570));
     setBrandDelayMap(delayMap);
-    // Keep delay map alive until after the longest brand strike (1.35s) + stagger
-    setTimeout(() => setBrandDelayMap(new Map()), 1850 + lead);
+    setTimeout(() => setBrandDelayMap(new Map()), 2200 + lead);
+    // Electric aura — starts at beam impact per card, lingers 3.2s
+    const auraMap = new Map<string, { type: MarkerType; delay: number }>();
+    ids.forEach((cardId, i) => {
+      auraMap.set(cardId, { type: markers[cardId].type as MarkerType, delay: lead + i * 90 + 420 });
+    });
+    setStrikeAuraMap(auraMap);
+    setTimeout(() => setStrikeAuraMap(new Map()), lead + (ids.length - 1) * 90 + 420 + 3400);
     return strikeId;
   }, []);
 
@@ -4481,6 +4490,7 @@ export default function GameBoard() {
                           <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
                         </>
                       )}
+                      {strikeAuraMap.has(c.id) && <BrandStrikeAura type={strikeAuraMap.get(c.id)!.type} delay={strikeAuraMap.get(c.id)!.delay} />}
                     </div>
                   );
                 }
@@ -4525,6 +4535,7 @@ export default function GameBoard() {
                           <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
                         </>
                       )}
+                      {strikeAuraMap.has(c.id) && <BrandStrikeAura type={strikeAuraMap.get(c.id)!.type} delay={strikeAuraMap.get(c.id)!.delay} />}
                       {/* Refill pulse — opacity-only to respect overflow-hidden container */}
                       <AnimatePresence>
                         {refillingSlots.has(slotKey) && (
@@ -4623,6 +4634,7 @@ export default function GameBoard() {
                         <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
                       </>
                     )}
+                    {strikeAuraMap.has(c.id) && <BrandStrikeAura type={strikeAuraMap.get(c.id)!.type} delay={strikeAuraMap.get(c.id)!.delay} />}
                     {/* Refill pulse after burn-triggered market redraw */}
                     <AnimatePresence>
                       {refillingSlots.has(slotKey) && (
@@ -5013,6 +5025,7 @@ export default function GameBoard() {
                         <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
                       </>
                     )}
+                    {strikeAuraMap.has(c.id) && <BrandStrikeAura type={strikeAuraMap.get(c.id)!.type} delay={strikeAuraMap.get(c.id)!.delay} />}
                     <div
                       className="pointer-events-none absolute bottom-1 right-1 flex items-center gap-0.5 rounded bg-black/55 backdrop-blur-sm px-1 py-0.5 transition-opacity duration-500"
                       style={{ opacity: cardDetailDiscovered ? 0 : 1 }}
@@ -7847,6 +7860,7 @@ export default function GameBoard() {
                                 <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
                               </>
                             )}
+                            {strikeAuraMap.has(c.id) && <BrandStrikeAura type={strikeAuraMap.get(c.id)!.type} delay={strikeAuraMap.get(c.id)!.delay} />}
                           </div>
                           <div className="flex-1 flex flex-col gap-1.5 min-w-0">
                             <div className="font-bold text-sm leading-tight">{c.name}</div>
@@ -8755,7 +8769,7 @@ export default function GameBoard() {
                       viewOrchestrator.restore({ immediate: instant });
                       return;
                     }
-                    const totalMs = usedLead + (ids.length - 1) * 90 + 1650 + 800;
+                    const totalMs = usedLead + (ids.length - 1) * 90 + 2000 + 800;
                     setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
                   });
                 } else {

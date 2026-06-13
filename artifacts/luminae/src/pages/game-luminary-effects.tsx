@@ -14,7 +14,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 // Avatar Seed — blue-green seed sigil
 // Burned      — transient fire-orange burn label (~300 ms, fades as BurnFlash ramps up)
 
-type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'burned';
+export type MarkerType = 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed' | 'burned';
 
 const MARKER_META: Record<
   MarkerType,
@@ -261,8 +261,8 @@ export function ArrivalBrandStrike({
 
   useEffect(() => {
     const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
-    // brand duration 1.35s + 0.10s delay offset + 0.20s buffer
-    const totalMs = reducedMotion ? 350 : maxDelay + 1650;
+    // brand lands at +420ms, duration 1.35s, plus 230ms buffer
+    const totalMs = reducedMotion ? 350 : maxDelay + 2000;
     const t = setTimeout(() => onDoneRef.current(), totalMs);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -386,6 +386,8 @@ export function ArrivalBrandStrike({
         return (
           <React.Fragment key={i}>
             {/* ── Lightning beam: cosmic space above → card center ── */}
+            {/* Beam tip reaches card at exactly 420ms (= 0.70 × 600ms), matching  */}
+            {/* the absolute amplitude peak in Spellbound.wav.                     */}
             <motion.div
               style={{
                 position: 'fixed',
@@ -398,7 +400,7 @@ export function ArrivalBrandStrike({
               }}
               initial={{ scaleY: 0, opacity: 0 }}
               animate={{ scaleY: [0, 1, 1, 0], opacity: [0, 1, 0.85, 0] }}
-              transition={{ duration: 0.38, delay: d, times: [0, 0.35, 0.7, 1], ease: 'easeIn' }}
+              transition={{ duration: 0.60, delay: d, times: [0, 0.70, 0.88, 1], ease: 'easeIn' }}
             />
             {/* Thin side halo lines for the beam — no blur, just crisp lines */}
             {[-3, 3].map(offset => (
@@ -415,10 +417,10 @@ export function ArrivalBrandStrike({
                 }}
                 initial={{ scaleY: 0, opacity: 0 }}
                 animate={{ scaleY: [0, 1, 0], opacity: [0, 0.6, 0] }}
-                transition={{ duration: 0.35, delay: d + 0.02, ease: 'easeIn' }}
+                transition={{ duration: 0.58, delay: d + 0.02, ease: 'easeIn' }}
               />
             ))}
-            {/* ── Impact flash on card border ── */}
+            {/* ── Impact flash on card border — fires when beam tip lands (420ms) ── */}
             <motion.div
               style={{
                 position: 'fixed',
@@ -429,9 +431,9 @@ export function ArrivalBrandStrike({
               }}
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 1, 0] }}
-              transition={{ duration: 0.22, delay: d + 0.09, ease: 'easeOut' }}
+              transition={{ duration: 0.22, delay: d + 0.41, ease: 'easeOut' }}
             />
-            {/* ── Large brand symbol — covers most of card face ── */}
+            {/* ── Large brand symbol — stamps in at the audio peak (420ms) ── */}
             <motion.div
               style={{
                 position: 'fixed',
@@ -454,7 +456,7 @@ export function ArrivalBrandStrike({
               }}
               transition={{
                 duration: 1.35,
-                delay: d + 0.10,
+                delay: d + 0.41,
                 times:   [0, 0.18, 0.30, 0.48, 0.62, 0.82, 1],
                 ease: 'easeOut',
               }}
@@ -466,6 +468,63 @@ export function ArrivalBrandStrike({
       })}
     </div>,
     document.body,
+  );
+}
+
+// ── BrandStrikeAura ───────────────────────────────────────────────────────────
+// Lingering electric aura rendered inside a market card slot after a brand
+// strike lands. Flickers like residual discharge energy for ~3.2s then fades.
+// `delay` is the ms elapsed from when fireBrandStrikes was called until the
+// beam hit this card (= lead + i*90 + 420ms — the Spellbound.wav impact peak).
+export function BrandStrikeAura({
+  type,
+  delay,
+}: {
+  type: MarkerType;
+  delay: number;
+}) {
+  const bm = BRAND_META[type];
+  const d = delay / 1000;
+  return (
+    <>
+      {/* Electric border arc — crackles then fades over 3.2s */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          inset: -1,
+          border: `1.5px solid ${bm.flashColor}`,
+          boxShadow: `0 0 8px 2px ${bm.beamColor}99, 0 0 3px 1px ${bm.flashColor}88, inset 0 0 5px 1px ${bm.beamColor}33`,
+          pointerEvents: 'none',
+          zIndex: 8,
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 0.28, 0.82, 0.12, 0.65, 0.06, 0.44, 0.02, 0.18, 0] }}
+        transition={{
+          duration: 3.2,
+          delay: d,
+          times: [0, 0.03, 0.12, 0.22, 0.36, 0.48, 0.60, 0.70, 0.80, 0.90, 1.0],
+          ease: 'linear',
+        }}
+      />
+      {/* Ambient energy glow — softer inner radial that decays with the arc */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          inset: 3,
+          background: `radial-gradient(ellipse at center, ${bm.beamColor}22 0%, transparent 75%)`,
+          pointerEvents: 'none',
+          zIndex: 7,
+        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 0.9, 0.2, 0.7, 0.05, 0.45, 0, 0.3, 0] }}
+        transition={{
+          duration: 2.8,
+          delay: d + 0.02,
+          times: [0, 0.04, 0.15, 0.26, 0.42, 0.55, 0.65, 0.78, 1.0],
+          ease: 'linear',
+        }}
+      />
+    </>
   );
 }
 
