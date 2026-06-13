@@ -8,3 +8,4 @@
 - [Cascade test — two-stage deck setup](cascade-deck-setup.md) — lum_scholar cascade re-entry test was flaky; fix: fill market to 4 first, then prepend [filler, target] to deck so purchase-refill consumes filler deterministically.
 - [Opponent forge fallback — FALLBACK_FLIP_ANIM_MS](opponent-forge-fallback.md) — 5800 ms lock fires when market slot not in DOM; use slot-reveal instead for opponents.
 - [enqueueSummon barrier cap](enqueueSummon-barrier-cap.md) — summon arrival barrier must be capped at 500 ms; full forge lock (3–5.8 s) is wrong for a separate DOM section.
+- [Brand strike summon — immediate badge, deferred beam](brand-strike-summon-arch.md) — suppression caused badges to never render when cards burned before Phase 2; use immediate badge pop instead.
