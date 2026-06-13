@@ -1638,10 +1638,20 @@ export default function GameBoard() {
           // Use hasIncomingArrival (computed from the prev→state diff) rather than the
           // queue length ref, because the ref hasn't been updated yet for this cycle.
           if (hasIncomingArrival) {
-            // Defer BOTH badge and beam animation until the summoning cutscene is fully
-            // dismissed. The fireBrandStrikes call in the flush already sets the badge
-            // (setNewlyMarkedCardIds) before the beam fires, so badges are visible at the
-            // correct moment — not while the camera is still locked on the arrival portal.
+            // Show the condemned/branded badges immediately so the player can see which
+            // cards are marked DURING the summoning cutscene. Cards can burn before the
+            // cutscene ends (~8-12s), so delaying the badge means it might never appear.
+            setNewlyMarkedCardIds(new Set(newlyMarked));
+            setTimeout(() => {
+              setNewlyMarkedCardIds(prev => {
+                const next = new Set(prev);
+                for (const id of newlyMarked) next.delete(id);
+                return next;
+              });
+            }, 2000);
+            // Defer only the beam animation until after the arrival cutscene resolves.
+            // If cards are already burned by then the beam simply won't fire — that's fine,
+            // the badge already conveyed the information.
             deferredBrandStrikesRef.current.push({
               ids: newlyMarked,
               markers: nextMarkers,
@@ -8613,18 +8623,6 @@ export default function GameBoard() {
                   }}
                 >
                   <span className="mr-2 opacity-60">⊞</span>View Board
-                </Button>
-                <Button
-                  size="lg"
-                  variant="ghost"
-                  className="w-full text-muted-foreground"
-                  onClick={() => {
-                    setShowWinOverlay(false);
-                    setShowCinematic(true);
-                    requestAnimationFrame(() => returnBannerRef.current?.focus());
-                  }}
-                >
-                  <span className="mr-2 opacity-60">↺</span>Replay Board
                 </Button>
               </motion.div>
             </motion.div>
