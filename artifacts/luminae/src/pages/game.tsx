@@ -1638,20 +1638,13 @@ export default function GameBoard() {
           // Use hasIncomingArrival (computed from the prev→state diff) rather than the
           // queue length ref, because the ref hasn't been updated yet for this cycle.
           if (hasIncomingArrival) {
-            // Show the condemned/branded badges immediately so the player can see which
-            // cards are marked DURING the summoning cutscene. Cards can burn before the
-            // cutscene ends (~8-12s), so delaying the badge means it might never appear.
-            setNewlyMarkedCardIds(new Set(newlyMarked));
-            setTimeout(() => {
-              setNewlyMarkedCardIds(prev => {
-                const next = new Set(prev);
-                for (const id of newlyMarked) next.delete(id);
-                return next;
-              });
-            }, 2000);
-            // Defer only the beam animation until after the arrival cutscene resolves.
-            // If cards are already burned by then the beam simply won't fire — that's fine,
-            // the badge already conveyed the information.
+            // Defer both badge and beam until the arrival cutscene resolves. Firing the
+            // badge immediately would highlight cards on the board before the summon
+            // animation has even started, which is visually confusing. The cards are
+            // already persistently marked in game state (marketMarkers), so players will
+            // see the Condemned status when they look at the board after dismissal.
+            // If cards burned before resolveArrival fires, neither badge nor beam shows —
+            // that's acceptable; the burn itself communicates the outcome.
             deferredBrandStrikesRef.current.push({
               ids: newlyMarked,
               markers: nextMarkers,
