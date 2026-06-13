@@ -313,6 +313,28 @@ function pickReserveCard(
 
 // Selects which crystals to return when a harvest would exceed 10
 // Least useful first: prefer returning colors with surplus over what target cards need.
+/**
+ * When the AI reserves a card with a full hand (10 crystals) and the Flux bank
+ * is non-empty, the engine requires returnCrystals. This helper returns the map
+ * to include, or undefined when no return is needed.
+ */
+function maybeFluxReturn(
+  player: PlayerGameState,
+  state: GameStateData,
+  difficulty: AiDifficulty,
+): Partial<CrystalCounts> | undefined {
+  if (state.crystalBank.flux <= 0) return undefined;
+  if (totalCrystals(player.crystals) < 10) return undefined;
+  const projected: Record<CrystalColor, number> = {
+    ruby: player.crystals.ruby,
+    sapphire: player.crystals.sapphire,
+    emerald: player.crystals.emerald,
+    onyx: player.crystals.onyx,
+    pearl: player.crystals.pearl,
+  };
+  return pickCrystalsToReturn(projected, 1, player, state, difficulty);
+}
+
 function pickCrystalsToReturn(
   projected: Record<CrystalColor, number>,
   excessCount: number,
@@ -430,7 +452,8 @@ export function chooseAiAction(
   if ((wouldExceed || difficulty !== "easy") && Math.random() < (difficulty === "hard" ? 0.3 : 0.15)) {
     const reserve = pickReserveCard(state, player, difficulty);
     if (reserve?.cardId) {
-      return { type: "reserve_card", cardId: reserve.cardId };
+      const fluxReturn = maybeFluxReturn(player, state, difficulty);
+      return { type: "reserve_card", cardId: reserve.cardId, ...(fluxReturn ? { returnCrystals: fluxReturn } : {}) };
     }
   }
 
@@ -462,7 +485,8 @@ export function chooseAiAction(
     // Last resort: try to reserve a card
     const reserve = pickReserveCard(state, player, difficulty);
     if (reserve?.cardId) {
-      return { type: "reserve_card", cardId: reserve.cardId };
+      const fluxReturn = maybeFluxReturn(player, state, difficulty);
+      return { type: "reserve_card", cardId: reserve.cardId, ...(fluxReturn ? { returnCrystals: fluxReturn } : {}) };
     }
     // Nothing better — pass-like move (take whatever 1 we can)
     for (const c of CRYSTAL_COLORS) {
@@ -475,7 +499,8 @@ export function chooseAiAction(
       const deck =
         tier === 1 ? state.deckTier1 : tier === 2 ? state.deckTier2 : state.deckTier3;
       if (deck.length > 0 && player.reservedCardIds.length < 3) {
-        return { type: "reserve_card", tier };
+        const fluxReturn = maybeFluxReturn(player, state, difficulty);
+        return { type: "reserve_card", tier, ...(fluxReturn ? { returnCrystals: fluxReturn } : {}) };
       }
     }
     // Absolute fallback (turn will fail validation, but engine handles it)

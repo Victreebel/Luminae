@@ -1699,7 +1699,7 @@ components:
           description: Event ID for resolve_summon action
         returnCrystals:
           type: object
-          description: Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned)
+          description: Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full)
           properties:
             ruby:
               type: integer

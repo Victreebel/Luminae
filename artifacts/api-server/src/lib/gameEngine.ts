@@ -2215,6 +2215,49 @@ export function applyAction(
       if (!action.cardId && !action.tier)
         return { success: false, error: "cardId or tier required" };
 
+      // ── Hand-limit pre-check (must happen before any state mutation) ──────────
+      // Reserving awards 1 Flux from the bank. If the player already holds 10
+      // crystals and the Flux bank is non-empty, that would push them to 11.
+      // In that case, require a returnCrystals payload specifying exactly 1
+      // crystal to return. Validate before touching any state.
+      const _totalHeldBeforeFlux =
+        CRYSTAL_COLORS.reduce((s, c) => s + player.crystals[c], 0) + player.crystals.flux;
+      const _fluxWouldOverflow = state.crystalBank.flux > 0 && _totalHeldBeforeFlux >= 10;
+      if (_fluxWouldOverflow) {
+        const _returnMap = action.returnCrystals ?? {};
+        const _returnColorsWF = (Object.keys(_returnMap) as CrystalColorWithFlux[]).filter(
+          (c) => (_returnMap[c] ?? 0) > 0,
+        );
+        const _totalReturned = _returnColorsWF.reduce((s, c) => s + (_returnMap[c] ?? 0), 0);
+        if (_totalReturned < 1) {
+          return { success: false, error: "Must return a crystal to reserve (hand full)" };
+        }
+        for (const c of _returnColorsWF) {
+          if ((player.crystals[c] ?? 0) < (_returnMap[c] ?? 0)) {
+            return {
+              success: false,
+              error: `Cannot return ${COLOR_LABEL[c as CrystalColor] ?? "Singularity"} you do not hold`,
+            };
+          }
+        }
+      }
+
+      // Helper: award Flux crystal, applying any validated return first.
+      const _awardFlux = () => {
+        if (state.crystalBank.flux <= 0) return;
+        if (_fluxWouldOverflow) {
+          const returnMap = action.returnCrystals!;
+          for (const c of (Object.keys(returnMap) as CrystalColorWithFlux[]).filter(
+            (k) => (returnMap[k] ?? 0) > 0,
+          )) {
+            player.crystals[c] -= returnMap[c]!;
+            state.crystalBank[c] += returnMap[c]!;
+          }
+        }
+        player.crystals.flux++;
+        state.crystalBank.flux--;
+      };
+
       // Blind reserve from deck (no cardId; tier specified)
       if (!action.cardId) {
         const tier = action.tier as 1 | 2 | 3;
@@ -2239,10 +2282,7 @@ export function applyAction(
           }
         }
         player.reservedCardIds.push(blindId);
-        if (state.crystalBank.flux > 0) {
-          player.crystals.flux++;
-          state.crystalBank.flux--;
-        }
+        _awardFlux();
         break;
       }
 
@@ -2270,10 +2310,7 @@ export function applyAction(
         if (!state.marketMarkers) state.marketMarkers = {};
         state.marketMarkers[action.cardId] = mktReserveMarker;
       }
-      if (state.crystalBank.flux > 0) {
-        player.crystals.flux++;
-        state.crystalBank.flux--;
-      }
+      _awardFlux();
       break;
     }
 
@@ -2831,13 +2868,22 @@ function describeAction(action: ActionPayload, _player: PlayerGameState): string
       return base;
     }
     case "reserve_card": {
+      const ret = action.returnCrystals;
+      const retSuffix = ret
+        ? (() => {
+            const parts = (Object.keys(ret) as CrystalColorWithFlux[])
+              .filter((c) => (ret[c] ?? 0) > 0)
+              .map((c) => `${ret[c]} ${COLOR_LABEL[c as CrystalColor] ?? "Singularity"}`);
+            return parts.length > 0 ? ` (returned ${parts.join(", ")})` : "";
+          })()
+        : "";
       if (action.cardId) {
         const lore = getCardLore(action.cardId);
-        return `Encrypted "${lore.name}"`;
+        return `Encrypted "${lore.name}"${retSuffix}`;
       }
-      return action.tier
+      return (action.tier
         ? `Encrypted a Tier ${action.tier} card from the deck`
-        : "Encrypted a card";
+        : "Encrypted a card") + retSuffix;
     }
     case "purchase_card":
     case "purchase_reserved": {

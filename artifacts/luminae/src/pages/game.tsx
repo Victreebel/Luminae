@@ -300,8 +300,9 @@ export default function GameBoard() {
   const [actionMode, setActionMode] = useState<'none' | 'take3' | 'take2'>('none');
   const [returnPhase, setReturnPhase] = useState<{
     pendingTake: Partial<CrystalCounts>;
-    actionType: 'take3' | 'take2';
+    actionType: 'take3' | 'take2' | 'reserve';
     excessCount: number;
+    pendingReserve?: { type: 'reserve_card'; cardId?: string; tier?: number; _tier?: number };
   } | null>(null);
   const [returnSelections, setReturnSelections] = useState<Partial<CrystalCounts>>({});
   const [showUndoHint, setShowUndoHint] = useState(false);
@@ -3322,12 +3323,34 @@ export default function GameBoard() {
   };
 
   const handleReserveCard = (card: ArtifactCard) => {
-    if (!isMyTurnForCoreAction) return;
+    if (!isMyTurnForCoreAction || !me) return;
+    const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+    if (handTotal >= 10 && (state?.crystalBank?.flux ?? 0) > 0) {
+      setReturnPhase({
+        pendingTake: {},
+        actionType: 'reserve',
+        excessCount: 1,
+        pendingReserve: { type: 'reserve_card', cardId: card.id, tier: card.tier, _tier: card.tier },
+      });
+      setReturnSelections({});
+      return;
+    }
     executeAction({ type: 'reserve_card', cardId: card.id, _tier: card.tier, tier: card.tier });
   };
 
   const handleReserveDeck = (tier: number) => {
-    if (!isMyTurnForCoreAction) return;
+    if (!isMyTurnForCoreAction || !me) return;
+    const handTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
+    if (handTotal >= 10 && (state?.crystalBank?.flux ?? 0) > 0) {
+      setReturnPhase({
+        pendingTake: {},
+        actionType: 'reserve',
+        excessCount: 1,
+        pendingReserve: { type: 'reserve_card', tier, _tier: tier },
+      });
+      setReturnSelections({});
+      return;
+    }
     executeAction({ type: 'reserve_card', tier, _tier: tier });
   };
 
@@ -3696,6 +3719,13 @@ export default function GameBoard() {
     if (!isMyTurnForCoreAction || !returnPhase || !me) return;
     const totalSelected = Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0);
     if (totalSelected < returnPhase.excessCount) return;
+    if (returnPhase.actionType === 'reserve') {
+      if (!returnPhase.pendingReserve) return;
+      executeAction({ ...returnPhase.pendingReserve, returnCrystals: returnSelections });
+      setReturnPhase(null);
+      setReturnSelections({});
+      return;
+    }
     optimisticHarvestFiredRef.current = true;
     triggerHarvestBurst(returnPhase.pendingTake);
     pendingHarvestCheckRef.current = {
@@ -6085,7 +6115,7 @@ export default function GameBoard() {
                         const remaining = returnPhase.excessCount - sel;
                         return (
                           <p className="text-[10px] text-white/50 mt-0.5">
-                            {remaining > 0 ? `Select ${remaining} more to return` : 'Ready — confirm to harness'}
+                            {remaining > 0 ? `Select ${remaining} more to return` : returnPhase.actionType === 'reserve' ? 'Ready — confirm to encrypt' : 'Ready — confirm to harness'}
                           </p>
                         );
                       })()}
@@ -6150,7 +6180,7 @@ export default function GameBoard() {
                           boxShadow: '0 0 18px rgba(124,58,237,0.55)', border: '1px solid rgba(167,139,250,0.5)',
                         } : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'not-allowed' }}
                       >
-                        {ready ? 'Confirm Return & Harness' : `Select ${returnPhase.excessCount - Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0)} more to return`}
+                        {ready ? (returnPhase.actionType === 'reserve' ? 'Confirm Return & Encrypt' : 'Confirm Return & Harness') : `Select ${returnPhase.excessCount - Object.values(returnSelections).reduce((a, b) => a + (b ?? 0), 0)} more to return`}
                       </motion.button>
                     );
                   })()}
