@@ -1636,9 +1636,6 @@ export default function GameBoard() {
           const procedure: AnimationProcedureStep[] = [
             { type: 'luminaryPulse', luminaryId: srcMeta.lumId },
             { type: 'targetClaim', targetIds: newlyMarked, keyword },
-            // Ensure the full market section (all tiers) is visible before the
-            // brand-strike beams fire — not just the condemned cards.
-            { type: 'marketRedraw', slotIds: [] },
           ];
           const lead = instant ? 0 : SOURCE_PULSE_LEAD_MS;
           viewOrchestrator.prepare(procedure, () => {
@@ -1674,7 +1671,8 @@ export default function GameBoard() {
             // Safety net: if ArrivalBrandStrike never reports done (unmount, manual scroll,
             // etc.), still release the camera. restore() is idempotent with the render-site
             // onDone, so a double call is a harmless no-op.
-            const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 1650 + 800;
+            // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
+            const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 3820 + 400;
             setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
           });
         } else {
@@ -8814,7 +8812,8 @@ export default function GameBoard() {
               let totalStrikesMs = 0;
               for (const s of strikes) {
                 const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                totalStrikesMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+                // Per-set: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
+                totalStrikesMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
               }
               if (totalStrikesMs > 0) setAnimEndTime(totalStrikesMs);
               let nextAt = 0;
@@ -8831,7 +8830,6 @@ export default function GameBoard() {
                     const procedure: AnimationProcedureStep[] = [
                       { type: 'luminaryPulse', luminaryId: capturedS.srcMeta.lumId },
                       { type: 'targetClaim', targetIds: capturedS.ids, keyword },
-                      { type: 'marketRedraw', slotIds: [] },
                     ];
                     const lead = capturedS.instant ? 0 : SOURCE_PULSE_LEAD_MS;
                     viewOrchestrator.prepare(procedure, () => {
@@ -8861,7 +8859,8 @@ export default function GameBoard() {
                         viewOrchestrator.restore({ immediate: capturedS.instant });
                         return;
                       }
-                      const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 2000 + 800;
+                      // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
+                      const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 3820 + 400;
                       setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
                     });
                   } else {
@@ -8869,9 +8868,9 @@ export default function GameBoard() {
                     fireBrandStrikes(capturedS.ids, capturedS.markers);
                   }
                 }, capturedOffset);
-                // Estimate full cycle: camera settle + lead + beam/brand + aura buffer
+                // Estimate full cycle: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
                 const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                nextAt += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+                nextAt += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
               }
             };
             // ── Return-flight gate ─────────────────────────────────────────────────
@@ -8899,7 +8898,8 @@ export default function GameBoard() {
                   let precomputedTotalMs = 0;
                   for (const s of deferredStrikes) {
                     const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                    precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+                    // Per-set: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
+                    precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
                   }
                   postActivationStrikesTotalMsRef.current = precomputedTotalMs;
                   postActivationStrikesFirerRef.current = () => fireStrikeSet(deferredStrikes);

@@ -261,8 +261,11 @@ export function ArrivalBrandStrike({
 
   useEffect(() => {
     const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
-    // brand lands at +420ms, duration 1.35s, plus 230ms buffer
-    const totalMs = reducedMotion ? 350 : maxDelay + 2000;
+    // Aura crackles from beam-impact (+420ms) for 3200ms. Wait until it fully fades
+    // before calling onDone so the camera does not restore while the aura is still
+    // visible. Add a 200ms buffer after the aura ends.
+    //   maxDelay + 420 (beam impact) + 3200 (aura duration) + 200 (buffer) = +3820
+    const totalMs = reducedMotion ? 350 : maxDelay + 3820;
     const t = setTimeout(() => onDoneRef.current(), totalMs);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
