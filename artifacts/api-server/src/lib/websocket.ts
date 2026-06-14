@@ -129,17 +129,20 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
 
   logger.info({ roomId, playerId }, "Player connected via WebSocket");
 
-  // Send WebSocket protocol-level PING frames every 10 s so that intermediate
+  // Send WebSocket protocol-level PING frames every 5 s so that intermediate
   // proxies (e.g. Replit's janeway reverse proxy) see real TCP-layer keepalive
   // traffic and reset their idle/lease timers.  This is distinct from the
   // app-level JSON {type:"ping"} that the client sends — protocol PINGs are
   // handled at the WebSocket framing layer and are more likely to be recognised
   // by proxies as genuine keepalive activity.
+  // 5 s (not 10 s) ensures the max idle gap is well under any typical proxy
+  // idle timeout even when the client-side JSON ping and server PING happen
+  // to fire on the same cycle.
   const pingInterval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.ping();
     }
-  }, 10_000);
+  }, 5_000);
 
   ws.on("pong", () => {
     // Protocol-level pong received — connection is alive.  No action needed.

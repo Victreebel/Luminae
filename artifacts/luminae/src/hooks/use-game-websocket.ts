@@ -49,7 +49,7 @@ export function useGameWebsocket({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectBannerTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectDelayRef = useRef(1000);
+  const reconnectDelayRef = useRef(400);
   const MAX_RECONNECT_DELAY = 16000;
   const hasEverConnectedRef = useRef(false);
 
@@ -101,12 +101,14 @@ export function useGameWebsocket({
       hasEverConnectedRef.current = true;
       reconnectDelayRef.current = 1000;
       // Keep the connection alive through Replit's proxy by sending a ping
-      // every 20 s.  The server responds with a pong (no-op on the client).
+      // every 5 s.  Combined with the server's 5 s protocol-level PING the
+      // max idle gap on the wire is ≤5 s — well below any typical proxy
+      // idle timeout.  The server responds with a pong (no-op on the client).
       const pingInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'ping' }));
         }
-      }, 10_000);
+      }, 5_000);
       ws.addEventListener('close', () => clearInterval(pingInterval), { once: true });
     };
 

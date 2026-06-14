@@ -68,3 +68,19 @@ reduce the visible `[vite] connecting...` banner frequency.
   not a synthetic dispatchEvent. Cannot be set from outside the Vite client module.
 
 **How to apply:** Any future change to `vite.config.ts` must preserve the `hmrNoReload` plugin.
+
+## Game WebSocket reconnect banner (use-game-websocket.ts)
+
+The game WS (at `/ws`) goes through the same Replit proxy and drops on a similar idle timeout.
+
+**Effective settings (both sides must match):**
+- Server (`websocket.ts`): protocol-level `ws.ping()` every **5 s**
+- Client (`use-game-websocket.ts`): app-level JSON ping every **5 s**
+- Combined: max idle gap on the wire is ≤5 s, well below any typical proxy idle timeout
+
+**Reconnect banner suppression:**
+- Banner grace period: **1.5 s** — banner only appears if socket not reconnected within 1.5 s of drop
+- Initial reconnect delay: **400 ms** — fast enough that proxy-forced reconnects complete in ~600–900 ms total, staying under the 1.5 s grace
+- Backoff: doubles to max 16 s for genuine server-down scenarios
+
+At 10 s ping intervals the drops happened every 10–17 s and reconnects took 2–3 s (exceeding the grace, showing the banner). At 5 s intervals the drops are far less frequent and reconnects complete in <1 s.
