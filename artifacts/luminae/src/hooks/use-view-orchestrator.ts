@@ -468,9 +468,44 @@ export function useViewOrchestrator({
           programmaticScrollTo(board, { top: 0, behavior }, isProgrammaticScrollRef, fireSettled);
           return;
         }
-        const boardHeight    = board.clientHeight;
-        const targetHeight   = bounds.bottom - bounds.top;
-        const idealScrollTop = bounds.top - (boardHeight - targetHeight) / 2;
+        const boardHeight  = board.clientHeight;
+        const targetHeight = bounds.bottom - bounds.top;
+        // px of breathing room between the forge section edge and the viewport edge
+        // when content is too tall to center cleanly.
+        const SAFE_PAD = 12;
+
+        let idealScrollTop: number;
+
+        if (targetHeight <= boardHeight - 2 * SAFE_PAD) {
+          // Everything fits with breathing room — center it.
+          idealScrollTop = bounds.top - (boardHeight - targetHeight) / 2;
+        } else if (modelRef.current?.hasMarketWide) {
+          // Combined range (portal + full market) is taller than the viewport.
+          // Re-center on just [data-market-section] so every forge card stays
+          // fully in view, even if the source Luminary portal is partially
+          // clipped above the viewport top.
+          const boardRect  = board.getBoundingClientRect();
+          const marketEl   = document.querySelector<HTMLElement>('[data-market-section]');
+          if (marketEl && board.contains(marketEl)) {
+            const mr          = marketEl.getBoundingClientRect();
+            const marketTopAbs = mr.top - boardRect.top + board.scrollTop;
+            const marketH      = mr.height;
+            if (marketH <= boardHeight - 2 * SAFE_PAD) {
+              // Market section alone fits — center it.
+              idealScrollTop = marketTopAbs - (boardHeight - marketH) / 2;
+            } else {
+              // Market section itself taller than viewport — show from its top.
+              idealScrollTop = marketTopAbs - SAFE_PAD;
+            }
+          } else {
+            // Market element not found — top-align the full bounds.
+            idealScrollTop = bounds.top - SAFE_PAD;
+          }
+        } else {
+          // Non-market-wide content taller than viewport — top-align with pad.
+          idealScrollTop = bounds.top - SAFE_PAD;
+        }
+
         programmaticScrollTo(
           board,
           { top: Math.max(0, idealScrollTop), behavior },
