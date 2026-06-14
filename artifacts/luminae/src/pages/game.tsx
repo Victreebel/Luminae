@@ -1903,8 +1903,12 @@ export default function GameBoard() {
 
   // isMyTurn is false while we're waiting to choose luminary order — the picker
   // overlay is the only interactive surface during that phase.
+  // isCameraControlled: true while the view orchestrator is running compact switch +
+  // centering for a brand-strike or activation cinematic — player actions are locked
+  // for the duration so clicks don't race with programmatic scroll/layout changes.
+  const isCameraControlled = viewOrchestrator.isOrchestrating;
   const isMyTurn = isActivePlayer && !arrivalGateActive && !luminaryChoiceIsOurs;
-  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted && !state?.coreActionUsed;
+  const isMyTurnForCoreAction = isMyTurn && !coreActionSubmitted && !state?.coreActionUsed && !isCameraControlled;
   const me = state?.players.find(p => p.playerId === session?.playerId);
 
   // Focus-trap: win overlay (game over screen — Escape is a no-op since there is nothing to dismiss)
@@ -3522,7 +3526,7 @@ export default function GameBoard() {
   eminenceBreakdown.other = Math.max(0, (me?.lumens ?? 0) - eminenceBreakdown.artifacts - eminenceBreakdown.luminaries + totalOblivion);
 
   const handleCrystalClick = (color: keyof CrystalCounts) => {
-    if ((!isMyTurn && !canPlan) || color === 'flux' || !state) return;
+    if (isCameraControlled || (!isMyTurn && !canPlan) || color === 'flux' || !state) return;
     const inBank = state.crystalBank[color] ?? 0;
 
     if (actionMode === 'take2') {
@@ -4283,7 +4287,7 @@ export default function GameBoard() {
             )}
             <button
               type="button"
-              onClick={() => { viewOrchestrator.onManualToggle(); setMarketCompact(v => !v); }}
+              onClick={() => { if (isCameraControlled) return; viewOrchestrator.onManualToggle(); setMarketCompact(v => !v); }}
               className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
               title={marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
               aria-pressed={marketCompact}

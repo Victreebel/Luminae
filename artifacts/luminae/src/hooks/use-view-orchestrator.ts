@@ -21,7 +21,7 @@
  * entity target.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 
 // ─── Orchestration model ──────────────────────────────────────────────────────
@@ -324,6 +324,14 @@ export interface ViewOrchestrator {
    * Does not affect scroll restoration.
    */
   onManualToggle: () => void;
+
+  /**
+   * True from the moment prepare() commits a snapshot until restore() is called.
+   * Use to lock player-facing action buttons and UI controls for the duration of
+   * a brand-strike or activation cinematic so clicks don't race with programmatic
+   * scroll / layout changes.
+   */
+  isOrchestrating: boolean;
 }
 
 interface UseViewOrchestratorOptions {
@@ -376,6 +384,9 @@ export function useViewOrchestrator({
   const scrollTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Scroll listener cleanup
   const scrollListenerRef = useRef<(() => void) | null>(null);
+
+  // Exposed to callers so they can lock player actions during orchestration.
+  const [isOrchestrating, setIsOrchestrating] = useState(false);
 
   const removeScrollListener = useCallback(() => {
     scrollListenerRef.current?.();
@@ -432,6 +443,9 @@ export function useViewOrchestrator({
       fireSettled();
       return;
     }
+
+    // Past all guards — take ownership of the view.
+    setIsOrchestrating(true);
 
     snapshotRef.current = {
       marketCompact: currentCompact,
@@ -540,6 +554,9 @@ export function useViewOrchestrator({
   const restore = useCallback((options?: RestoreOptions) => {
     const immediate = options?.immediate ?? false;
 
+    // Always release the action lock, even on double-call / no-snapshot paths.
+    setIsOrchestrating(false);
+
     removeScrollListener();
     if (scrollTimerRef.current !== null) {
       clearTimeout(scrollTimerRef.current);
@@ -588,5 +605,5 @@ export function useViewOrchestrator({
     }
   }, []);
 
-  return { prepare, restore, onManualToggle };
+  return { prepare, restore, onManualToggle, isOrchestrating };
 }
