@@ -9,3 +9,4 @@
 - [Opponent forge fallback — FALLBACK_FLIP_ANIM_MS](opponent-forge-fallback.md) — 5800 ms lock fires when market slot not in DOM; use slot-reveal instead for opponents.
 - [enqueueSummon barrier cap](enqueueSummon-barrier-cap.md) — summon arrival barrier must be capped at 500 ms; full forge lock (3–5.8 s) is wrong for a separate DOM section.
 - [Brand strike summon — immediate badge, deferred beam](brand-strike-summon-arch.md) — suppression caused badges to never render when cards burned before Phase 2; use immediate badge pop instead.
+- [Brand strike drain-queue gate](brand-strike-drain-gate.md) — fireBrandStrikes never sets animationEndTimeRef; drain gate must be extended to cover activation + strike phases explicitly.

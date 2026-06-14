@@ -2853,8 +2853,14 @@ export default function GameBoard() {
     queueTimerRef.current = null;
     if (stateQueueRef.current.length === 0) return;
     const remaining = animationEndTimeRef.current - Date.now();
-    // Also pause draining while an arrival cutscene is actively playing.
-    const arrivalActive = arrivalQueue.length > 0;
+    // Also pause draining while an arrival cutscene, activation cinematic, or
+    // post-activation brand strikes are actively playing. All three phases
+    // (arrival → activation → brand strikes) must complete before new turn
+    // state is allowed to land and update the board.
+    const arrivalActive =
+      arrivalQueue.length > 0 ||
+      activationQueue.length > 0 ||
+      postActivationStrikesFirerRef.current !== null;
     if (remaining > 50 || pendingTurnAnnounceRef.current || arrivalActive) {
       const delay = remaining > 50 ? remaining + 100 : arrivalActive ? 500 : 200;
       queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
@@ -8772,6 +8778,15 @@ export default function GameBoard() {
             // restore) is estimated to be fully complete, so they never share the view.
             const CAMERA_SETTLE_MS = 800; // conservative estimate for viewOrchestrator.prepare()
             const fireStrikeSet = (strikes: typeof deferredStrikes) => {
+              // Pre-compute total duration and extend the state-update gate so
+              // the drain queue does not release new turn state while beams and
+              // auras are still animating.
+              let totalStrikesMs = 0;
+              for (const s of strikes) {
+                const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
+                totalStrikesMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+              }
+              if (totalStrikesMs > 0) setAnimEndTime(totalStrikesMs);
               let nextAt = 0;
               for (const s of strikes) {
                 const capturedOffset = nextAt;
