@@ -150,3 +150,9 @@ export const CIPHER_DEAL_FIRE_DELAY_MS = CIPHER_GAME_TOTAL_MS + 70;
 
 /** How long the arrival label lingers after the cipher animation completes before fading (ms). */
 export const ARRIVAL_LABEL_LINGER_MS = 250;
+
+/** Duration of the LuminaryIdleOverlay return-flight animation — the entity
+ *  flies from viewport centre back to its portal card ("shrink to vortex") over
+ *  1200 ms before the idle loop begins.  Phase 2 (activation cinematic + brand
+ *  strikes) is delayed by this amount so the two animations never overlap. */
+export const RETURN_FLIGHT_MS = 1200;

@@ -73,7 +73,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -8848,27 +8848,42 @@ export default function GameBoard() {
                 nextAt += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
               }
             };
-            if (deferredActivations.length > 0) {
-              // Activation cinematic plays first. Brand strikes are deferred until the
-              // FIRST activation's onComplete fires (postActivationStrikesFirerRef is
-              // cleared on first use, so later activations in the same queue don't re-fire).
-              setActivationQueue(q => [...q, ...deferredActivations]);
-              if (deferredStrikes.length > 0) {
-                // Pre-compute total strike duration so onComplete can call setAnimEndTime
-                // synchronously — before the 400ms settle setTimeout — closing the race
-                // window where the drain queue could open and flush condemned cards away.
-                let precomputedTotalMs = 0;
-                for (const s of deferredStrikes) {
-                  const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                  precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+            // ── Return-flight gate ─────────────────────────────────────────────────
+            // When resolveArrival fires, setClaimedThisSession adds the luminary,
+            // which mounts LuminaryIdleOverlay.  That component immediately begins
+            // a 1200ms return-flight animation: the freed entity flies from viewport
+            // centre back to its portal card ("shrink to vortex").  If we start the
+            // activation cinematic now, both play simultaneously and the vortex
+            // collapse is buried under the full-screen cinematic overlay.
+            //
+            // Fix: extend the drain gate by RETURN_FLIGHT_MS (keeps condemned cards
+            // safe during the flight window) and delay Phase 2 dispatch so the
+            // activation cinematic only mounts after the entity has settled at its
+            // portal.
+            setAnimEndTime(RETURN_FLIGHT_MS);
+            setTimeout(() => {
+              if (deferredActivations.length > 0) {
+                // Activation cinematic plays first. Brand strikes are deferred until the
+                // FIRST activation's onComplete fires (postActivationStrikesFirerRef is
+                // cleared on first use, so later activations in the same queue don't re-fire).
+                if (deferredStrikes.length > 0) {
+                  // Pre-compute total strike duration so onComplete can call setAnimEndTime
+                  // synchronously — before the 400ms settle setTimeout — closing the race
+                  // window where the drain queue could open and flush condemned cards away.
+                  let precomputedTotalMs = 0;
+                  for (const s of deferredStrikes) {
+                    const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
+                    precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+                  }
+                  postActivationStrikesTotalMsRef.current = precomputedTotalMs;
+                  postActivationStrikesFirerRef.current = () => fireStrikeSet(deferredStrikes);
                 }
-                postActivationStrikesTotalMsRef.current = precomputedTotalMs;
-                postActivationStrikesFirerRef.current = () => fireStrikeSet(deferredStrikes);
+                setActivationQueue(q => [...q, ...deferredActivations]);
+              } else {
+                // No activations pending — fire strikes immediately.
+                fireStrikeSet(deferredStrikes);
               }
-            } else {
-              // No activations pending — fire strikes immediately.
-              fireStrikeSet(deferredStrikes);
-            }
+            }, RETURN_FLIGHT_MS);
           };
           return (
             <div key={entry.eventId}>
