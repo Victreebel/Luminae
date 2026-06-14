@@ -1395,6 +1395,24 @@ export default function GameBoard() {
   useEffect(() => {
     if (!state) return;
     const prev = prevStateForAnimRef.current;
+    // Guard: when processUpdate drains older queue entries after TQ polling already
+    // delivered a newer state, this effect fires with state going BACKWARDS (e.g.
+    // v145 → v141). Without this guard the marker diff re-detects already-processed
+    // markers as "newly marked" (condemned cards appear to be added again once the
+    // burned-state v145 was prev and the older v141 is next), pushing duplicate entries
+    // to deferredBrandStrikesRef and causing spellbound.wav to play twice.
+    // Fix: skip animation processing for any backward version transition. Do NOT advance
+    // prevStateForAnimRef — that way when processUpdate finally drains up to v145, the
+    // diff from the already-seen v145 is correctly empty.
+    if (prev) {
+      // eslint-disable-next-line no-restricted-syntax -- TanStack Query widens GameState; GameState always has version:number (Zod-validated). The double-cast is the same pattern used for processUpdateRef calls elsewhere in this file.
+      const stateVerRaw = (state as unknown as { version?: number }).version;
+      // eslint-disable-next-line no-restricted-syntax -- same TQ-widened type reason as above line
+      const prevVerRaw = (prev as unknown as { version?: number }).version;
+      if (typeof stateVerRaw === 'number' && typeof prevVerRaw === 'number' && stateVerRaw < prevVerRaw) {
+        return;
+      }
+    }
     prevStateForAnimRef.current = state;
     if (!prev) return;
 

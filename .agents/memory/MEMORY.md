@@ -10,3 +10,4 @@
 - [enqueueSummon barrier cap](enqueueSummon-barrier-cap.md) — summon arrival barrier must be capped at 500 ms; full forge lock (3–5.8 s) is wrong for a separate DOM section.
 - [Brand strike summon — immediate badge, deferred beam](brand-strike-summon-arch.md) — suppression caused badges to never render when cards burned before Phase 2; use immediate badge pop instead.
 - [Brand strike drain-queue gate](brand-strike-drain-gate.md) — fireBrandStrikes never sets animationEndTimeRef; drain gate must be extended to cover activation + strike phases explicitly.
+- [Brand-strike double-sound — backward TQ state guard](brand-strike-backward-tq-guard.md) — spellbound.wav plays twice when TQ polling delivers a newer state before queue drains older entries.
