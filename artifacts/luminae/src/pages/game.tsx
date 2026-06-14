@@ -1633,8 +1633,11 @@ export default function GameBoard() {
             firstType === 'avatar_seed'
               ? 'seeded'
               : (firstType as 'forgotten' | 'condemned' | 'nullified');
+          // Only include the branded market cards in the bounding box — the Luminary
+          // portal is the beam source and is always visible in the portal strip, so
+          // there is no need to scroll it into view. Excluding luminaryPulse keeps the
+          // centering tight on the affected cards.
           const procedure: AnimationProcedureStep[] = [
-            { type: 'luminaryPulse', luminaryId: srcMeta.lumId },
             { type: 'targetClaim', targetIds: newlyMarked, keyword },
           ];
           const lead = instant ? 0 : SOURCE_PULSE_LEAD_MS;
@@ -8827,8 +8830,8 @@ export default function GameBoard() {
                       firstType === 'avatar_seed'
                         ? 'seeded'
                         : (firstType as 'forgotten' | 'condemned' | 'nullified');
+                    // Center on branded cards only — portal is always visible in the strip.
                     const procedure: AnimationProcedureStep[] = [
-                      { type: 'luminaryPulse', luminaryId: capturedS.srcMeta.lumId },
                       { type: 'targetClaim', targetIds: capturedS.ids, keyword },
                     ];
                     const lead = capturedS.instant ? 0 : SOURCE_PULSE_LEAD_MS;
