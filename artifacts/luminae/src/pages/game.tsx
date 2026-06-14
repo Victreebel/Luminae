@@ -544,6 +544,10 @@ export default function GameBoard() {
   // when the arrival resolves so that effect cinematics never start before the
   // summoning is fully dismissed.
   const deferredActivationEventsRef = useRef<PendingLuminaryActivationEvent[]>([]);
+  // Brand strikes that must fire AFTER the activation cinematic sequence completes.
+  // Set by resolveArrival when both activations and strikes are deferred; called
+  // from the activation onComplete when the queue drains to zero.
+  const postActivationStrikesFirerRef = useRef<(() => void) | null>(null);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -8758,7 +8762,7 @@ export default function GameBoard() {
             // While more arrivals remain, keep accumulating so that brand strikes and
             // activation cinematics never overlap summon cutscenes.
             if (arrivalQueue.length > 1) return;
-            // ── Phase 2: effects phase — fire in order, no overlap ──────────────────
+            // ── Phase 2: effects phase — activation cinematic first, then brand strikes ──
             const deferredStrikes = [...deferredBrandStrikesRef.current];
             deferredBrandStrikesRef.current = [];
             const deferredActivations = [...deferredActivationEventsRef.current];
@@ -8767,67 +8771,75 @@ export default function GameBoard() {
             // starts only after the previous camera cycle (prepare → beam → aura →
             // restore) is estimated to be fully complete, so they never share the view.
             const CAMERA_SETTLE_MS = 800; // conservative estimate for viewOrchestrator.prepare()
-            let nextStrikeAtMs = 0;
-            for (const s of deferredStrikes) {
-              const capturedOffset = nextStrikeAtMs;
-              const capturedS = s;
-              setTimeout(() => {
-                if (capturedS.srcMeta && capturedS.srcLum) {
-                  const firstType = capturedS.markers[capturedS.ids[0]]?.type as BrandStrikeTarget['type'] | undefined;
-                  const keyword: 'forgotten' | 'condemned' | 'nullified' | 'seeded' =
-                    firstType === 'avatar_seed'
-                      ? 'seeded'
-                      : (firstType as 'forgotten' | 'condemned' | 'nullified');
-                  const procedure: AnimationProcedureStep[] = [
-                    { type: 'luminaryPulse', luminaryId: capturedS.srcMeta.lumId },
-                    { type: 'targetClaim', targetIds: capturedS.ids, keyword },
-                    { type: 'marketRedraw', slotIds: [] },
-                  ];
-                  const lead = capturedS.instant ? 0 : SOURCE_PULSE_LEAD_MS;
-                  viewOrchestrator.prepare(procedure, () => {
-                    const portalEl = document.querySelector(`[data-luminary-id="${capturedS.srcMeta!.lumId}"]`);
-                    let source:
-                      | { rect: { x: number; y: number; w: number; h: number }; primary: string; secondary: string }
-                      | undefined;
-                    if (portalEl && !capturedS.instant) {
-                      const pr = portalEl.getBoundingClientRect();
-                      if (pr.width > 0) {
-                        source = {
-                          rect: { x: pr.x, y: pr.y, w: pr.width, h: pr.height },
-                          primary: capturedS.srcLum!.summonColor ?? '#a78bfa',
-                          secondary: capturedS.srcLum!.summonSecondaryColor ?? capturedS.srcLum!.summonColor ?? '#f0abfc',
-                        };
+            const fireStrikeSet = (strikes: typeof deferredStrikes) => {
+              let nextAt = 0;
+              for (const s of strikes) {
+                const capturedOffset = nextAt;
+                const capturedS = s;
+                setTimeout(() => {
+                  if (capturedS.srcMeta && capturedS.srcLum) {
+                    const firstType = capturedS.markers[capturedS.ids[0]]?.type as BrandStrikeTarget['type'] | undefined;
+                    const keyword: 'forgotten' | 'condemned' | 'nullified' | 'seeded' =
+                      firstType === 'avatar_seed'
+                        ? 'seeded'
+                        : (firstType as 'forgotten' | 'condemned' | 'nullified');
+                    const procedure: AnimationProcedureStep[] = [
+                      { type: 'luminaryPulse', luminaryId: capturedS.srcMeta.lumId },
+                      { type: 'targetClaim', targetIds: capturedS.ids, keyword },
+                      { type: 'marketRedraw', slotIds: [] },
+                    ];
+                    const lead = capturedS.instant ? 0 : SOURCE_PULSE_LEAD_MS;
+                    viewOrchestrator.prepare(procedure, () => {
+                      const portalEl = document.querySelector(`[data-luminary-id="${capturedS.srcMeta!.lumId}"]`);
+                      let source:
+                        | { rect: { x: number; y: number; w: number; h: number }; primary: string; secondary: string }
+                        | undefined;
+                      if (portalEl && !capturedS.instant) {
+                        const pr = portalEl.getBoundingClientRect();
+                        if (pr.width > 0) {
+                          source = {
+                            rect: { x: pr.x, y: pr.y, w: pr.width, h: pr.height },
+                            primary: capturedS.srcLum!.summonColor ?? '#a78bfa',
+                            secondary: capturedS.srcLum!.summonSecondaryColor ?? capturedS.srcLum!.summonColor ?? '#f0abfc',
+                          };
+                        }
                       }
-                    }
-                    const usedLead = source ? lead : 0;
-                    gameAudio.playBrandStrike();
-                    const strikeId = fireBrandStrikes(capturedS.ids, capturedS.markers, {
-                      source,
-                      lead: usedLead,
-                      orchestrated: true,
-                      restoreImmediate: capturedS.instant,
+                      const usedLead = source ? lead : 0;
+                      gameAudio.playBrandStrike();
+                      const strikeId = fireBrandStrikes(capturedS.ids, capturedS.markers, {
+                        source,
+                        lead: usedLead,
+                        orchestrated: true,
+                        restoreImmediate: capturedS.instant,
+                      });
+                      if (!strikeId) {
+                        viewOrchestrator.restore({ immediate: capturedS.instant });
+                        return;
+                      }
+                      const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 2000 + 800;
+                      setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
                     });
-                    if (!strikeId) {
-                      viewOrchestrator.restore({ immediate: capturedS.instant });
-                      return;
-                    }
-                    const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 2000 + 800;
-                    setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
-                  });
-                } else {
-                  gameAudio.playBrandStrike();
-                  fireBrandStrikes(capturedS.ids, capturedS.markers);
-                }
-              }, capturedOffset);
-              // Estimate full cycle: camera settle + lead + beam/brand + aura buffer
-              const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-              nextStrikeAtMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
-            }
-            // Activation cinematics start only after all brand strike cycles are done
+                  } else {
+                    gameAudio.playBrandStrike();
+                    fireBrandStrikes(capturedS.ids, capturedS.markers);
+                  }
+                }, capturedOffset);
+                // Estimate full cycle: camera settle + lead + beam/brand + aura buffer
+                const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
+                nextAt += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+              }
+            };
             if (deferredActivations.length > 0) {
-              setTimeout(() => {
-                setActivationQueue(q => [...q, ...deferredActivations]);
-              }, nextStrikeAtMs);
+              // Activation cinematic plays first. Brand strikes are deferred until the
+              // activation queue drains to zero — they fire from postActivationStrikesFirerRef
+              // inside the activation onComplete handler.
+              setActivationQueue(q => [...q, ...deferredActivations]);
+              if (deferredStrikes.length > 0) {
+                postActivationStrikesFirerRef.current = () => fireStrikeSet(deferredStrikes);
+              }
+            } else {
+              // No activations pending — fire strikes immediately.
+              fireStrikeSet(deferredStrikes);
             }
           };
           return (
@@ -8887,6 +8899,17 @@ export default function GameBoard() {
               viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+              // When the last activation cinematic completes, fire any brand strikes
+              // that were deferred until after the full activation sequence.
+              // activationQueue.length === 1 means THIS is the last item (it hasn't
+              // been popped yet — the setActivationQueue above is async).
+              if (activationQueue.length === 1 && postActivationStrikesFirerRef.current) {
+                const fire = postActivationStrikesFirerRef.current;
+                postActivationStrikesFirerRef.current = null;
+                // Give the cinematic's pan-out exit a moment to clear before beams fly.
+                // If the user held-to-skip, no settle is needed — the overlay is already gone.
+                setTimeout(fire, skipped ? 0 : 400);
+              }
             }}
           />
         );
