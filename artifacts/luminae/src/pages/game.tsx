@@ -8924,13 +8924,7 @@ export default function GameBoard() {
             procedure={procedure.length > 0 ? procedure : undefined}
             reducedMotion={abridgedAnims}
             onComplete={(skipped) => {
-              // When brand strikes are about to fire, restore the view INSTANTLY
-              // so there is no in-progress smooth scroll competing with the brand
-              // strike's viewOrchestrator.prepare() 400 ms later. If the smooth
-              // scroll from a normal restore() is still running when prepare()
-              // captures card rects, the rects are taken from the mid-scroll
-              // position and the beams land in empty space (or width=0, no beams).
-              viewOrchestrator.restore({ immediate: skipped || !!postActivationStrikesFirerRef.current });
+              viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
               // Fire brand strikes deferred from the summon arrival. The ref is cleared
