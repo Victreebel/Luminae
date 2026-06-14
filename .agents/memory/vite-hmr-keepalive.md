@@ -85,7 +85,15 @@ The game WS (at `/ws`) goes through the same Replit proxy and drops on a similar
 
 At 10 s ping intervals the drops happened every 10–17 s and reconnects took 2–3 s (exceeding the grace, showing the banner). At 5 s intervals drops still happen every 15–30 s (fixed-lease proxy), but reconnects complete in ~3–5 s through janeway.
 
-**Additional source of visible "refresh" on reconnect:**
-`game.tsx` had `isConnected` in the deps array of the `set_civ_name` effect. On every WS reconnect it fired a POST that incremented `state.version` and broadcast a full state update to all players — this caused the game board to re-render visibly.
+**Root cause of visible "refresh" on every WS reconnect — full fix (3 layers):**
 
-Fix: added `lastSentCivLabelRef = useRef<string | null>(null)` and a guard `if (lastSentCivLabelRef.current === civLabel) return` before the mutate call. The ref starts at `null` so the first-ever send still fires; subsequent reconnects skip silently. `isConnected` remains a dep so the first send triggers on initial connect.
+Every WS reconnect fired a `set_civ_name` POST (because `isConnected` was in the effect deps). The engine incremented `state.version++` unconditionally, the route broadcast a `state_update` to all players, and all clients ran `processUpdate` — causing visible re-renders and duplicate summon animation queuing.
+
+**Layer 1 — client guard** (`game.tsx`):
+Added `lastSentCivLabelRef = useRef<string | null>(null)`. Guard `if (lastSentCivLabelRef.current === civLabel) return` before mutate. Ref starts null so first-ever send fires; reconnects skip silently unless civLabel actually changed.
+
+**Layer 2 — engine idempotency** (`gameEngine.ts`, `set_civ_name` case):
+Early return `if (player.civName === newName) return { success: true }` before touching `state.version` or `state.lastAction`. If client POST slips through (component remount resets ref), server absorbs it silently.
+
+**Layer 3 — broadcast gate** (`game.ts` actions route):
+Added `if (stateData.version > expectedVersion)` guard around the `sendToPlayer` broadcast loop. Even if engine returns unchanged state, the WS broadcast is skipped — no `state_update` message, no `processUpdate`, no re-render on any client.

@@ -335,12 +335,18 @@ router.post("/rooms/:roomId/actions", async (req, res): Promise<void> => {
 
     // Send each human player a view of the state with other players' planned
     // actions stripped out.  AI players don't hold WebSocket connections.
-    for (const p of allPlayers) {
-      if (p.isAi) continue;
-      sendToPlayer(rawId, p.id, {
-        type: "state_update",
-        state: filterStateForPlayer(formatted, p.id),
-      });
+    // Skip the broadcast when the action was a no-op (idempotent actions such
+    // as set_civ_name with an unchanged name leave state.version untouched).
+    // Broadcasting an unchanged state triggers onStateUpdate on all clients,
+    // which invalidates TanStack Query cache and causes visible re-renders.
+    if (stateData.version > expectedVersion) {
+      for (const p of allPlayers) {
+        if (p.isAi) continue;
+        sendToPlayer(rawId, p.id, {
+          type: "state_update",
+          state: filterStateForPlayer(formatted, p.id),
+        });
+      }
     }
     if (
       action.type !== "toggle_luminary_affinity" &&

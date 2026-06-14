@@ -2107,7 +2107,13 @@ export function applyAction(
     case "set_civ_name": {
       const raw = action.civName ?? "";
       const trimmed = raw.trim().slice(0, 48);
-      player.civName = trimmed || undefined;
+      // Idempotency guard: if the name is unchanged, return success without
+      // touching state.version or broadcasting.  This prevents every WS
+      // reconnect from firing a spurious version bump that re-runs processUpdate
+      // on all clients (visible refresh, duplicate summon queuing, etc.).
+      const newName = trimmed || undefined;
+      if (player.civName === newName) return { success: true };
+      player.civName = newName;
       state.lastAction = { type: "set_civ_name", playerId };
       state.version++;
       return { success: true };
