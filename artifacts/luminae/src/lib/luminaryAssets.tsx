@@ -1521,15 +1521,21 @@ export function LuminaryArrivalCutscene({
       if (next === 'flashing') onFlashRef.current?.();
 
       if (next === 'revealed') {
-        // Pause here — do not auto-advance to fading. Instead arm the dismiss
-        // ref so the player can tap/click anywhere to continue.
+        // Auto-advance to fading after PHASE_DURATIONS['revealed'] ms.
+        // The player can still click/tap anywhere to advance early — the timer
+        // is cancelled on first dismissal so there is no double-advance.
         setAwaitingDismiss(true);
+        let autoTimer: ReturnType<typeof setTimeout>;
         dismissRef.current = () => {
           if (cancelled || !dismissRef.current) return;
           dismissRef.current = null; // guard against double-fire
+          clearTimeout(autoTimer);
           setAwaitingDismiss(false);
           advance(); // advances idx → fading, then done
         };
+        autoTimer = setTimeout(() => {
+          if (dismissRef.current) dismissRef.current();
+        }, PHASE_DURATIONS['revealed']);
         return;
       }
 
