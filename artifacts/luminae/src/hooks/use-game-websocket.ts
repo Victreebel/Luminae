@@ -99,7 +99,8 @@ export function useGameWebsocket({
       }
       setIsReconnecting(false);
       hasEverConnectedRef.current = true;
-      reconnectDelayRef.current = 1000;
+      // Keep the fast reconnect delay for all subsequent drops, not just the first.
+      reconnectDelayRef.current = 400;
       // Keep the connection alive through Replit's proxy by sending a ping
       // every 5 s.  Combined with the server's 5 s protocol-level PING the
       // max idle gap on the wire is ≤5 s — well below any typical proxy
@@ -192,10 +193,12 @@ export function useGameWebsocket({
         if (reconnectBannerTimerRef.current !== null) {
           clearTimeout(reconnectBannerTimerRef.current);
         }
+        // 4 s grace: proxy-forced reconnects through janeway typically complete
+        // in 2–3 s.  Banner only surfaces if the server is genuinely unreachable.
         reconnectBannerTimerRef.current = setTimeout(() => {
           reconnectBannerTimerRef.current = null;
           setIsReconnecting(true);
-        }, 1_500);
+        }, 4_000);
       }
 
       reconnectTimeoutRef.current = setTimeout(() => {

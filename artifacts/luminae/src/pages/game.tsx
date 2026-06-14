@@ -346,6 +346,11 @@ export default function GameBoard() {
     if (saved && saved.trim()) return saved;
     return getDefaultCivName(getSavedAvatarId(), stored.account.username ?? stored.account.id);
   });
+  // Tracks the last civ name successfully sent to the server this session.
+  // Prevents firing set_civ_name on every WS reconnect (proxy-forced ~15–25 s
+  // drops) — that POST increments state.version and broadcasts a full state
+  // update to all players, causing a visible game-board refresh.
+  const lastSentCivLabelRef = useRef<string | null>(null);
   const [isEditingCivName, setIsEditingCivName] = useState(false);
   const [civEditValue, setCivEditValue] = useState('');
 
@@ -2997,12 +3002,15 @@ export default function GameBoard() {
   const submitAction = useSubmitAction();
 
   // Broadcast civLabel to the server so all players can see it in the scoreboard.
-  // Runs on mount, whenever the player renames their civilization, and whenever the
-  // WebSocket reconnects (isConnected flips true) so a mid-game rejoin always
-  // re-syncs the stored civName even when state.status is already 'playing'.
+  // Only sends when civLabel actually changes (or on first send this session).
+  // isConnected is NOT in the dep array — WS reconnects must not re-send an
+  // unchanged name, because set_civ_name increments state.version and broadcasts
+  // a full state update to all players, causing a visible game-board refresh.
   useEffect(() => {
     if (!session || !roomId || !state || state.status === 'lobby') return;
     if (!isConnected) return;
+    if (lastSentCivLabelRef.current === civLabel) return;
+    lastSentCivLabelRef.current = civLabel;
     submitAction.mutate({
       roomId,
       data: { sessionToken: session.sessionToken, type: 'set_civ_name', civName: civLabel },

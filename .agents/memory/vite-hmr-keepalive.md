@@ -79,8 +79,13 @@ The game WS (at `/ws`) goes through the same Replit proxy and drops on a similar
 - Combined: max idle gap on the wire is ≤5 s, well below any typical proxy idle timeout
 
 **Reconnect banner suppression:**
-- Banner grace period: **1.5 s** — banner only appears if socket not reconnected within 1.5 s of drop
-- Initial reconnect delay: **400 ms** — fast enough that proxy-forced reconnects complete in ~600–900 ms total, staying under the 1.5 s grace
+- Banner grace period: **4 s** — banner only appears if socket not reconnected within 4 s of drop (janeway reconnects typically take 3–5 s)
+- Initial reconnect delay: **400 ms** (reset to 400 on every `onopen`, not just initial `useRef`) — fast reconnects every time, not just after page load
 - Backoff: doubles to max 16 s for genuine server-down scenarios
 
-At 10 s ping intervals the drops happened every 10–17 s and reconnects took 2–3 s (exceeding the grace, showing the banner). At 5 s intervals the drops are far less frequent and reconnects complete in <1 s.
+At 10 s ping intervals the drops happened every 10–17 s and reconnects took 2–3 s (exceeding the grace, showing the banner). At 5 s intervals drops still happen every 15–30 s (fixed-lease proxy), but reconnects complete in ~3–5 s through janeway.
+
+**Additional source of visible "refresh" on reconnect:**
+`game.tsx` had `isConnected` in the deps array of the `set_civ_name` effect. On every WS reconnect it fired a POST that incremented `state.version` and broadcast a full state update to all players — this caused the game board to re-render visibly.
+
+Fix: added `lastSentCivLabelRef = useRef<string | null>(null)` and a guard `if (lastSentCivLabelRef.current === civLabel) return` before the mutate call. The ref starts at `null` so the first-ever send still fires; subsequent reconnects skip silently. `isConnected` remains a dep so the first send triggers on initial connect.
