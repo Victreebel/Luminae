@@ -1677,7 +1677,7 @@ export default function GameBoard() {
             // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
             const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 3820 + 400;
             setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
-          });
+          }, { forceOrchestrate: true });
         } else {
           // Camera owned by another cutscene (arrival in progress, or no mapped source).
           // If an arrival is in progress, defer the brand strike so it fires AFTER the
@@ -8865,7 +8865,7 @@ export default function GameBoard() {
                       // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
                       const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 3820 + 400;
                       setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
-                    });
+                    }, { forceOrchestrate: true });
                   } else {
                     gameAudio.playBrandStrike();
                     fireBrandStrikes(capturedS.ids, capturedS.markers);

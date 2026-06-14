@@ -289,13 +289,26 @@ export interface RestoreOptions {
   immediate?: boolean;
 }
 
+export interface PrepareOptions {
+  /**
+   * When true, bypasses both the `isMultiTarget` guard and the `elementsAlreadyInView`
+   * early-exit, forcing a snapshot + compact switch + centering scroll regardless of
+   * how many targets are present or whether they are already visible.
+   *
+   * Use for brand-strike orchestration: every brand strike should hold compact view
+   * and center on the affected cards for its full duration, even when there is only
+   * one target card and it happens to be in the current viewport.
+   */
+  forceOrchestrate?: boolean;
+}
+
 export interface ViewOrchestrator {
   /**
    * Call before mounting the LuminaryActivationCinematic.
    * Snapshots current view state and, if the procedure is multi-target, switches
    * to Compact View and scrolls to center all affected zones.
    */
-  prepare: (procedure: AnimationProcedureStep[], onSettled?: () => void) => void;
+  prepare: (procedure: AnimationProcedureStep[], onSettled?: () => void, options?: PrepareOptions) => void;
 
   /**
    * Call from the cinematic's onComplete.
@@ -383,7 +396,7 @@ export function useViewOrchestrator({
     isProgrammaticScrollRef.current = false;
   }, [removeScrollListener]);
 
-  const prepare = useCallback((procedure: AnimationProcedureStep[], onSettled?: () => void) => {
+  const prepare = useCallback((procedure: AnimationProcedureStep[], onSettled?: () => void, options?: PrepareOptions) => {
     resetPerCinematic();
 
     // onSettled fires exactly once, after the view has settled (or immediately
@@ -397,9 +410,12 @@ export function useViewOrchestrator({
     };
 
     const model = buildOrchestrationModel(procedure);
+    const force = options?.forceOrchestrate ?? false;
 
-    // Single-target effects — no orchestration needed
-    if (!isMultiTarget(model)) {
+    // Single-target effects — no orchestration needed, unless forced.
+    // Brand strikes pass forceOrchestrate:true so every strike (even a single
+    // card) gets compact view + centering for the full aura duration.
+    if (!force && !isMultiTarget(model)) {
       fireSettled();
       return;
     }
@@ -410,7 +426,9 @@ export function useViewOrchestrator({
     // Viewport-fit bypass: if all target elements are already visible in the
     // current scroll viewport, there is nothing to reframe — skip orchestration
     // entirely regardless of whether compact mode is on or off.
-    if (board && elementsAlreadyInView(model, board)) {
+    // Skipped when forceOrchestrate is true (brand strikes always hold compact
+    // view regardless of whether the cards are already on screen).
+    if (!force && board && elementsAlreadyInView(model, board)) {
       fireSettled();
       return;
     }
