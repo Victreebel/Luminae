@@ -3,20 +3,20 @@ name: Brand strike drain-queue gate
 description: fireBrandStrikes never sets animationEndTimeRef; must extend drain gate explicitly for Phase 2 (activation + strikes).
 ---
 
-**Rule:** `fireBrandStrikes` never sets `animationEndTimeRef`. Brand strikes are therefore invisible to the `remaining > 50` branch of `drainQueueFnRef` unless `setAnimEndTime` is called explicitly before firing them.
+**Rule:** `fireBrandStrikes` never sets `animationEndTimeRef`. Brand strikes are therefore invisible to the `remaining > 50` branch of `drainQueueFnRef` unless `setAnimEndTime` is called explicitly *before* the first fire.
 
-**Why:** The drain queue's only arrival-phase gate was `arrivalActive = arrivalQueue.length > 0`. That drops to 0 as soon as the server acknowledges `resolve_summon` — which happens before Phase 2 animations (activation cinematic + brand strikes) have even started. New turn state was flooding the board while beams were mid-flight.
+**Why (root bugs):**
+1. The activation `onComplete` had `activationQueue.length === 1` guard. If the AI's `start_of_turn` burn event arrived *during* the summon cinematic, the queue had length ≥ 2 when `onComplete` fired — guard failed, `fire` never called, strikes never showed.
+2. `setAnimEndTime` was called inside `fireStrikeSet` (inside `setTimeout(fire, 400)`). In the 0–400ms settle window, the drain queue could open and flush condemned-card state, burning cards before beams landed.
 
-**How to apply:** Any animation sequence that fires _after_ the arrival queue clears must do two things:
+**How to apply — canonical pattern for deferred post-activation strikes:**
 
-1. **Extend the `arrivalActive` check** in `drainQueueFnRef.current` to cover the new phases. Current guard:
-   ```typescript
-   const arrivalActive =
-     arrivalQueue.length > 0 ||          // arrival cutscene
-     activationQueue.length > 0 ||       // activation cinematic
-     postActivationStrikesFirerRef.current !== null; // strikes pending
-   ```
+1. **Phase 2 (resolveArrival):** Pre-compute `totalStrikesMs` using the same formula as the stagger loop. Store in `postActivationStrikesTotalMsRef.current`. Set `postActivationStrikesFirerRef.current = () => fireStrikeSet(strikes)`.
 
-2. **Call `setAnimEndTime(totalMs)` at the start of `fireStrikeSet`** (pre-computed from the same cycle-duration formula used to stagger timeouts) so the `remaining > 50` gate covers the period after the firer ref is cleared but before the last beam/aura finishes.
+2. **`onComplete`:** Check only `postActivationStrikesFirerRef.current !== null` (no queue-length check). Call `setAnimEndTime(settleMs + totalMs)` SYNCHRONOUSLY before `setTimeout(fire, settleMs)`. Clear both refs. This extends `animationEndTimeRef` before the settle window starts.
 
-The three gates chain serially: `arrivalQueue` → `activationQueue` → `postActivationStrikesFirerRef` → `animationEndTimeRef`. All four must be clear before any new state lands.
+3. **Drain gate:** `arrivalActive = arrivalQueue.length > 0 || activationQueue.length > 0`. No `postActivationStrikesFirerRef` in the gate — `animationEndTimeRef` (set in onComplete) covers the strike window via `remaining > 50`.
+
+4. **`fireStrikeSet`:** Still calls `setAnimEndTime(totalMs)` internally as a refining call (exact duration once strikes actually start). This is secondary to the onComplete call.
+
+The chain: `arrivalQueue` → `activationQueue` → `animationEndTimeRef` (set synchronously, covers settle + strikes).

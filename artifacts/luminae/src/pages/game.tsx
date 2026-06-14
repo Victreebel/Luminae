@@ -546,8 +546,13 @@ export default function GameBoard() {
   const deferredActivationEventsRef = useRef<PendingLuminaryActivationEvent[]>([]);
   // Brand strikes that must fire AFTER the activation cinematic sequence completes.
   // Set by resolveArrival when both activations and strikes are deferred; called
-  // from the activation onComplete when the queue drains to zero.
+  // from the activation onComplete. Cleared on first use so only one activation
+  // (the summon one) triggers the strikes regardless of how many are queued.
   const postActivationStrikesFirerRef = useRef<(() => void) | null>(null);
+  // Pre-computed total duration (ms) of all brand strikes stored in the ref above.
+  // Read in onComplete to synchronously extend animationEndTimeRef before the
+  // 400ms settle setTimeout fires, preventing a drain-queue race window.
+  const postActivationStrikesTotalMsRef = useRef(0);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -2853,14 +2858,13 @@ export default function GameBoard() {
     queueTimerRef.current = null;
     if (stateQueueRef.current.length === 0) return;
     const remaining = animationEndTimeRef.current - Date.now();
-    // Also pause draining while an arrival cutscene, activation cinematic, or
-    // post-activation brand strikes are actively playing. All three phases
-    // (arrival → activation → brand strikes) must complete before new turn
-    // state is allowed to land and update the board.
+    // Also pause draining while an arrival cutscene or activation cinematic is
+    // actively playing. Brand strike animations are covered by animationEndTimeRef
+    // (extended synchronously in the activation onComplete before the settle
+    // setTimeout fires), so no separate gate is needed for that phase.
     const arrivalActive =
       arrivalQueue.length > 0 ||
-      activationQueue.length > 0 ||
-      postActivationStrikesFirerRef.current !== null;
+      activationQueue.length > 0;
     if (remaining > 50 || pendingTurnAnnounceRef.current || arrivalActive) {
       const delay = remaining > 50 ? remaining + 100 : arrivalActive ? 500 : 200;
       queueTimerRef.current = setTimeout(() => drainQueueFnRef.current(), delay);
@@ -8846,10 +8850,19 @@ export default function GameBoard() {
             };
             if (deferredActivations.length > 0) {
               // Activation cinematic plays first. Brand strikes are deferred until the
-              // activation queue drains to zero — they fire from postActivationStrikesFirerRef
-              // inside the activation onComplete handler.
+              // FIRST activation's onComplete fires (postActivationStrikesFirerRef is
+              // cleared on first use, so later activations in the same queue don't re-fire).
               setActivationQueue(q => [...q, ...deferredActivations]);
               if (deferredStrikes.length > 0) {
+                // Pre-compute total strike duration so onComplete can call setAnimEndTime
+                // synchronously — before the 400ms settle setTimeout — closing the race
+                // window where the drain queue could open and flush condemned cards away.
+                let precomputedTotalMs = 0;
+                for (const s of deferredStrikes) {
+                  const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
+                  precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 2000 + 800 + 400;
+                }
+                postActivationStrikesTotalMsRef.current = precomputedTotalMs;
                 postActivationStrikesFirerRef.current = () => fireStrikeSet(deferredStrikes);
               }
             } else {
@@ -8914,16 +8927,25 @@ export default function GameBoard() {
               viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
-              // When the last activation cinematic completes, fire any brand strikes
-              // that were deferred until after the full activation sequence.
-              // activationQueue.length === 1 means THIS is the last item (it hasn't
-              // been popped yet — the setActivationQueue above is async).
-              if (activationQueue.length === 1 && postActivationStrikesFirerRef.current) {
+              // Fire brand strikes deferred from the summon arrival. The ref is cleared
+              // on first use so only ONE activation (the summon one) triggers strikes —
+              // later start_of_turn activations that land in the same queue do nothing.
+              // NOTE: do NOT check activationQueue.length here. If the AI's start_of_turn
+              // burn event arrived during the cinematic, activationQueue may already have
+              // length ≥ 2, which previously caused the === 1 guard to silently skip fire.
+              if (postActivationStrikesFirerRef.current) {
                 const fire = postActivationStrikesFirerRef.current;
+                const totalMs = postActivationStrikesTotalMsRef.current;
                 postActivationStrikesFirerRef.current = null;
+                postActivationStrikesTotalMsRef.current = 0;
+                const settleMs = skipped ? 0 : 400;
+                // Extend the state-update gate SYNCHRONOUSLY (before the setTimeout) so
+                // the drain queue cannot open in the settle window and flush condemned cards
+                // away before beams land. fireStrikeSet will refine this with the exact
+                // duration once it actually starts executing.
+                setAnimEndTime(settleMs + totalMs);
                 // Give the cinematic's pan-out exit a moment to clear before beams fly.
-                // If the user held-to-skip, no settle is needed — the overlay is already gone.
-                setTimeout(fire, skipped ? 0 : 400);
+                setTimeout(fire, settleMs);
               }
             }}
           />
