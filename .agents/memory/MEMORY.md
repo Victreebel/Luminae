@@ -11,3 +11,5 @@
 - [Brand strike summon — immediate badge, deferred beam](brand-strike-summon-arch.md) — suppression caused badges to never render when cards burned before Phase 2; use immediate badge pop instead.
 - [Brand strike drain-queue gate](brand-strike-drain-gate.md) — fireBrandStrikes never sets animationEndTimeRef; drain gate must be extended to cover activation + strike phases explicitly.
 - [Brand-strike double-sound — backward TQ state guard](brand-strike-backward-tq-guard.md) — spellbound.wav plays twice when TQ polling delivers a newer state before queue drains older entries.
+- [Start-of-turn burn payload snapshot](start-of-turn-burn-payload.md) — capture target IDs before the burn loop or they're gone by the time client animation fires.
+- [suppressedMarkerIds — hide markers until animation fires](suppressed-marker-ids.md) — suppress at state-update time; unsuppress in every code path where fireBrandStrikes is called or skipped.

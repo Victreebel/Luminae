@@ -42,6 +42,13 @@ export interface PendingLuminaryActivationEvent {
   /** Player ID who owns the Luminary (for display / color choice). */
   triggeringPlayerId: string;
   createdAt?: number;
+  /**
+   * Card IDs targeted by this activation, captured at event-push time.
+   * Used by the client to drive animations after the server has already
+   * modified state (e.g. Cinder Mandate start_of_turn burn clears
+   * marketMarkers before the client animation runs).
+   */
+  targetCardIds?: string[];
 }
 
 export type CrystalCounts = Record<CrystalColorWithFlux, number>;
@@ -1593,6 +1600,7 @@ function pushActivationEvent(
   luminaryId: string,
   effectType: PendingLuminaryActivationEvent["effectType"],
   triggeringPlayerId: string,
+  targetCardIds?: string[],
 ): void {
   if (!Array.isArray(state.pendingLuminaryActivationEvents)) {
     state.pendingLuminaryActivationEvents = [];
@@ -1603,6 +1611,7 @@ function pushActivationEvent(
     effectType,
     triggeringPlayerId,
     createdAt: Date.now(),
+    ...(targetCardIds && targetCardIds.length > 0 ? { targetCardIds } : {}),
   });
 }
 
@@ -1861,6 +1870,10 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
       ([, m]) => m.type === "condemned" && m.ownerId === player.playerId,
     );
     if (condemned.length > 0) {
+      // Capture IDs before the burn loop clears them from marketMarkers.
+      // The client animation procedure needs these IDs to drive the burn
+      // cinematic even after state.marketMarkers has been cleared by burnCard.
+      const condemnedCardIds = condemned.map(([id]) => id);
       let burnCount = 0;
       for (const [cardId] of condemned) {
         for (const tier of [1, 2, 3] as const) {
@@ -1879,7 +1892,7 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
           summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
           turn: state.roundNumber,
         });
-        pushActivationEvent(state, "lum_ember", "start_of_turn", player.playerId);
+        pushActivationEvent(state, "lum_ember", "start_of_turn", player.playerId, condemnedCardIds);
       }
     }
   }

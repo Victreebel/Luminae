@@ -285,12 +285,21 @@ function resolvePale(s: GameState): AnimationTimelineStep[] {
 // 13. Ember Sovereign / Cinder Mandate (lum_ember)
 //     On arrival: luminaryPulse → targetClaim non-Flare/Abyss/Radiance → condemned residue
 //     On start_of_turn: condemned cards flare → burn → marketRedraw
+//
+//     payloadIds: card IDs captured by the server BEFORE the burn loop cleared marketMarkers.
+//     Without the payload the client cannot resolve targets — marketMarkers is already empty
+//     by the time the activation event is consumed. Always prefer payloadIds over a live state
+//     lookup for the start_of_turn path.
 function resolveEmber(
   s: GameState,
   effectType: 'summon' | 'end_of_turn' | 'start_of_turn', // API enum kept ('summon' = arrival effect)
+  payloadIds?: string[],
 ): AnimationTimelineStep[] {
   if (effectType === 'start_of_turn') {
-    const condemnedIds = markedIds(s, 'condemned');
+    // Use server-captured IDs when available; fall back to live state for abridged/test paths.
+    const condemnedIds = (payloadIds && payloadIds.length > 0)
+      ? payloadIds
+      : markedIds(s, 'condemned');
     return [
       pulse('lum_ember'),
       { type: 'targetClaim', targetIds: condemnedIds, keyword: 'burn' },
@@ -338,12 +347,16 @@ type EffectType = 'summon' | 'end_of_turn' | 'start_of_turn'; // API enum kept (
  * Resolves the animation procedure for a Luminary activation.
  * Returns [] for unknown Luminaries or null state — never throws.
  * Procedures are UI-only: they describe the visual sequence without changing mechanics.
+ *
+ * eventPayload: optional extra data from the PendingLuminaryActivationEvent (e.g.
+ * targetCardIds captured server-side before state mutations cleared them).
  */
 export function resolveLuminaryProcedure(
   luminaryId: string,
   effectType: EffectType,
   state: GameState | null | undefined,
   ownerId: string,
+  eventPayload?: { targetCardIds?: string[] },
 ): AnimationTimelineStep[] {
   if (!state) return [];
   try {
@@ -360,7 +373,7 @@ export function resolveLuminaryProcedure(
       case 'lum_seed':    return resolveSeed();
       case 'lum_orchard': return resolveOrchard(state, ownerId);
       case 'lum_pale':    return resolvePale(state);
-      case 'lum_ember':   return resolveEmber(state, effectType);
+      case 'lum_ember':   return resolveEmber(state, effectType, eventPayload?.targetCardIds);
       case 'lum_hunger':  return resolveHunger(state, ownerId);
       case 'lum_null':    return resolveNull(state);
       default:            return [];

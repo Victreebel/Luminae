@@ -1,0 +1,71 @@
+Audit and fix Cinder Mandate marker visibility by separating rules state from visual marker introduction.
+
+Problem:
+Cinder Mandate writes Condemned markers to state.marketMarkers immediately on summon. That is correct for rules. But client UI components may render those markers immediately, before the brand-strike animation introduces them. This creates inconsistent visibility: badges can appear too early, brand strikes can appear too late, or branding can show during the next-turn Burn phase.
+
+Correct model:
+
+* Server rules state may mark cards Condemned immediately.
+* Client visual marker visibility should be controlled separately.
+* Condemned markers should not become visibly shown until the summon-time Cinder Mandate activation/brand-strike animation lands on each target.
+
+Required behavior:
+
+1. On Ember Sovereign summon:
+
+* Server scans market and writes Condemned markers for rules.
+* Server pushes a PendingLuminaryActivationEvent with effectType: "summon" for Cinder Mandate marking.
+* That event must include target card IDs and market slot IDs for the Condemned cards.
+
+2. During Ember Sovereign arrival cutscene:
+
+* Condemned markers may exist in state.
+* But visible badges/vignettes/overlays must be suppressed.
+* No Condemned card marker should appear before the brand strike unless reduced-motion/skip mode intentionally applies final state.
+
+3. After arrival:
+
+* Play the summon activation cinematic.
+* Use Compact View / centered board if multiple targets are affected.
+* Fire brand strikes from Ember Sovereign to each target.
+* When each beam lands:
+    * show the large Condemned brand impact
+    * then reveal the persistent Condemned badge/vignette for that card
+* After all strikes complete, the Condemned markers remain visible during the waiting window.
+
+4. Waiting window:
+
+* Condemned cards that remain in the market should visibly keep their Condemned marker.
+* If a Condemned card is purchased or reserved before the burn, it should leave the market normally and no ghost marker should remain on the market slot.
+
+5. Start of owner’s next turn:
+
+* applyStartOfTurnEffects should Burn remaining Condemned cards.
+* The start_of_turn activation event should represent Burn, not branding.
+* It should trigger the shared bottom-up Burn animation.
+* It should not trigger Condemned brand strikes.
+* Burned card information must be available to the client animation even if the server state has already removed/refilled the card.
+
+Important distinction:
+
+* effectType: "summon" for Ember Sovereign = Cinder Mandate branding / Condemned marker introduction.
+* effectType: "start_of_turn" for Ember Sovereign = Cinder Mandate Burn resolution.
+    These are different animations and must not be swapped or combined.
+
+Audit for:
+
+* Any UI rendering Condemned directly from marketMarkers without checking visual suppression/introduced state.
+* Any start_of_turn Cinder Mandate event that triggers brand strikes instead of Burn.
+* Any missing event payload data needed to animate burned cards after server refill.
+* Any marker cleanup issue when a Condemned card is purchased/reserved before burn.
+
+Acceptance criteria:
+
+* Condemned badges/vignettes do not appear before brand strikes during summon.
+* Brand strikes happen only during summon activation, not next-turn burn.
+* Condemned markers remain visible during the waiting window after branding.
+* Purchased/reserved Condemned cards do not leave ghost markers.
+* Start-of-turn Cinder Mandate plays Burn animation only.
+* Burn animation has access to correct burned card/slot information.
+* No gameplay mechanics are changed.
+* Existing tests/typecheck pass.

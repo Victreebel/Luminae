@@ -662,6 +662,11 @@ export default function GameBoard() {
   const [refillingSlots, setRefillingSlots] = useState<Set<string>>(new Set());
   // Card IDs whose market-marker badge was just applied (drives the isNew pop animation)
   const [newlyMarkedCardIds, setNewlyMarkedCardIds] = useState<Set<string>>(new Set());
+  // Card IDs whose newly placed markers are visually suppressed until the brand-strike beam
+  // lands on them. Added when markers arrive (during an arrival cutscene or camera hold) and
+  // cleared when fireBrandStrikes fires for those cards. Stale entries from burned/purchased
+  // cards are swept on every marketMarkers change so the set never leaks.
+  const [suppressedMarkerIds, setSuppressedMarkerIds] = useState<Set<string>>(new Set());
 
   // Pending ArrivalBrandStrike entries — beam + large brand animations for newly-placed markers.
   // `source` carries the originating Luminary portal rect + colors (camera-orchestrated path only);
@@ -903,6 +908,7 @@ export default function GameBoard() {
       evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
       state,
       evt.triggeringPlayerId,
+      { targetCardIds: evt.targetCardIds },
     );
     viewOrchestrator.prepare(procedure);
   }, [activationQueue[0]?.eventId, arrivalQueue.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1626,6 +1632,14 @@ export default function GameBoard() {
         const srcMeta = firstType ? MARKER_SOURCE[firstType] : null;
         const srcLum = srcMeta ? state.luminaries?.find(l => l.id === srcMeta.lumId) : undefined;
 
+        // Suppress newly-marked cards visually until their brand-strike beam fires.
+        // Each card's overlay + badge are hidden while suppressedMarkerIds contains its ID.
+        // The stale-suppression sweep (above) removes entries when cards leave the market.
+        // For instant/abridged mode, final state is applied immediately — no suppression.
+        if (!instant) {
+          setSuppressedMarkerIds(prev => new Set([...prev, ...newlyMarked]));
+        }
+
         if (cameraFree && srcMeta && srcLum && !isTutorial) {
           // Synthesize a minimal procedure so the orchestrator frames BOTH the source
           // portal and every branded card before the beams fire.
@@ -1667,10 +1681,22 @@ export default function GameBoard() {
               restoreImmediate: instant,
             });
             if (!strikeId) {
-              // Nothing drawn (cards already gone) — release the camera immediately.
+              // Nothing drawn (cards already gone) — unsuppress and release the camera immediately.
+              setSuppressedMarkerIds(prev => {
+                const next = new Set(prev);
+                newlyMarked.forEach(id => next.delete(id));
+                return next;
+              });
               viewOrchestrator.restore({ immediate: instant });
               return;
             }
+            // fireBrandStrikes is now playing — reveal each card's overlay+badge.
+            // brandDelayMap drives the per-card badge pop-in timing (impact+150ms).
+            setSuppressedMarkerIds(prev => {
+              const next = new Set(prev);
+              newlyMarked.forEach(id => next.delete(id));
+              return next;
+            });
             // Safety net: if ArrivalBrandStrike never reports done (unmount, manual scroll,
             // etc.), still release the camera. restore() is idempotent with the render-site
             // onDone, so a double call is a harmless no-op.
@@ -1689,22 +1715,19 @@ export default function GameBoard() {
           //     fired, so arrivalQueueLenRef may still read 0)
           //   • arrivalQueueLenRef > 0 — a cutscene is already running
           //   • pendingSuppressArrivalIdsRef.size > 0 — summon detected, rAF queued
-          // In all these cases we also SUPPRESS the overlay+badge render so the red
-          // vignette and "CONDEMNED" stamp never appear on cards before the beam fires.
           const arrivalPending =
             hasIncomingArrival ||
             arrivalQueueLenRef.current > 0 ||
             pendingSuppressArrivalIdsRef.current.size > 0;
           if (arrivalPending) {
-            // Phase 1 (summon phase): show the badge immediately with spring pop-in
-            // so players can see condemned/forgotten/nullified cards during the 12s
-            // arrival cutscene. The beam animation is still deferred to Phase 2 so it
-            // doesn't fight the arrival for the view-orchestrator. If the cards burn
-            // before Phase 2 fires (start-of-turn Cinder Mandate), the beam is
-            // gracefully skipped — but the badge was already visible, which is the
-            // canonical indicator. Do NOT suppress: suppression caused the badge to
-            // never render when cards burned before resolveArrival ran.
-            setNewlyMarkedCardIds(prev => new Set([...prev, ...newlyMarked]));
+            // Phase 1 (summon phase): markers are suppressed (added to suppressedMarkerIds above).
+            // The brand-strike beam is the visual introduction for each branded card — the overlay
+            // and badge stay hidden during the arrival cutscene.
+            // Phase 2 fires after arrival dismissal: fireBrandStrikes → suppressedMarkerIds cleared
+            // → overlay appears + badge springs in via brandDelayMap timing.
+            // If cards burn before Phase 2 (start-of-turn Cinder Mandate): their marketMarkers
+            // entry is removed, the render check short-circuits naturally, and the stale-suppression
+            // sweep removes the ID from suppressedMarkerIds — no ghost overlays.
             deferredBrandStrikesRef.current.push({
               ids: newlyMarked,
               markers: nextMarkers,
@@ -1716,6 +1739,12 @@ export default function GameBoard() {
             // No arrival blocking, just no mapped source — fire immediately.
             gameAudio.playBrandStrike();
             fireBrandStrikes(newlyMarked, nextMarkers);
+            // Reveal overlays+badges immediately; brandDelayMap handles per-card badge timing.
+            setSuppressedMarkerIds(prev => {
+              const next = new Set(prev);
+              newlyMarked.forEach(id => next.delete(id));
+              return next;
+            });
           }
         }
       }
@@ -1892,6 +1921,24 @@ export default function GameBoard() {
   const arrivalGateActive = arrivalQueue.length > 0;
   arrivalQueueLenRef.current = arrivalQueue.length;
   activationQueueLenRef.current = activationQueue.length;
+
+  // Stale-suppression sweep: any card ID that's no longer in state.marketMarkers
+  // (burned, purchased, reserved) is removed from suppressedMarkerIds so the set
+  // never accumulates phantom entries. Uses functional update to avoid capturing
+  // stale suppressedMarkerIds in the dep array while still reading the latest prev.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- state.marketMarkers identity changes on every new broadcast; suppressedMarkerIds is read via functional-update prev, not the closure
+  useEffect(() => {
+    setSuppressedMarkerIds(prev => {
+      if (prev.size === 0) return prev;
+      const activeIds = new Set(Object.keys(state?.marketMarkers ?? {}));
+      let changed = false;
+      for (const id of prev) {
+        if (!activeIds.has(id)) { changed = true; break; }
+      }
+      if (!changed) return prev;
+      return new Set([...prev].filter(id => activeIds.has(id)));
+    });
+  }, [state?.marketMarkers]); // eslint-disable-line react-hooks/exhaustive-deps
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
 
@@ -4537,7 +4584,7 @@ export default function GameBoard() {
                         />
                       </motion.div>
                       {isQueued && <QueuedOverlay />}
-                      {state?.marketMarkers?.[c.id] && (
+                      {state?.marketMarkers?.[c.id] && !suppressedMarkerIds.has(c.id) && (
                         <>
                           <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
                           <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
@@ -4582,7 +4629,7 @@ export default function GameBoard() {
                       {/* Subtle dark scrim to ease card art brightness in compact view */}
                       <div className="pointer-events-none absolute inset-0" style={{ background: 'rgba(0,0,0,0.28)' }} />
                       {/* Marker badge + overlay (v0.8) — rendered above all chip art layers */}
-                      {state?.marketMarkers?.[c.id] && (
+                      {state?.marketMarkers?.[c.id] && !suppressedMarkerIds.has(c.id) && (
                         <>
                           <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
                           <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
@@ -4681,7 +4728,7 @@ export default function GameBoard() {
                     )}
                     {isQueued && <QueuedOverlay />}
                     {/* Keyword overlay + badge — steady-state (non-flipping) cards */}
-                    {state?.marketMarkers?.[c.id] && (
+                    {state?.marketMarkers?.[c.id] && !suppressedMarkerIds.has(c.id) && (
                       <>
                         <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
                         <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
@@ -5072,7 +5119,7 @@ export default function GameBoard() {
                       hideStrike={costMode === 'needed_now'}
                     />
                     {isQueued && <QueuedOverlay />}
-                    {state?.marketMarkers?.[c.id] && (
+                    {state?.marketMarkers?.[c.id] && !suppressedMarkerIds.has(c.id) && (
                       <>
                         <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
                         <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
@@ -7907,7 +7954,7 @@ export default function GameBoard() {
                               tapped={false}
                               hideStrike={costMode === 'needed_now'}
                             />
-                            {state?.marketMarkers?.[c.id] && (
+                            {state?.marketMarkers?.[c.id] && !suppressedMarkerIds.has(c.id) && (
                               <>
                                 <CardKeywordOverlay type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
                                 <CardMarkerBadge type={state.marketMarkers[c.id].type as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(c.id)} brandDelay={brandDelayMap.get(c.id)} onTraceSource={setTracedSourceLumId} />
@@ -8863,9 +8910,21 @@ export default function GameBoard() {
                         restoreImmediate: capturedS.instant,
                       });
                       if (!strikeId) {
+                        // No DOM targets — unsuppress immediately and release camera.
+                        setSuppressedMarkerIds(prev => {
+                          const next = new Set(prev);
+                          capturedS.ids.forEach(id => next.delete(id));
+                          return next;
+                        });
                         viewOrchestrator.restore({ immediate: capturedS.instant });
                         return;
                       }
+                      // fireBrandStrikes is playing — reveal overlays+badges for these cards.
+                      setSuppressedMarkerIds(prev => {
+                        const next = new Set(prev);
+                        capturedS.ids.forEach(id => next.delete(id));
+                        return next;
+                      });
                       // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
                       const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 3820 + 400;
                       setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
@@ -8873,6 +8932,12 @@ export default function GameBoard() {
                   } else {
                     gameAudio.playBrandStrike();
                     fireBrandStrikes(capturedS.ids, capturedS.markers);
+                    // No camera orchestration — reveal overlays+badges immediately.
+                    setSuppressedMarkerIds(prev => {
+                      const next = new Set(prev);
+                      capturedS.ids.forEach(id => next.delete(id));
+                      return next;
+                    });
                   }
                 }, capturedOffset);
                 // Estimate full cycle: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
