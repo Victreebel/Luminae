@@ -1664,6 +1664,14 @@ export default function GameBoard() {
             { type: 'targetClaim', targetIds: newlyMarked, keyword },
           ];
           const lead = instant ? 0 : SOURCE_PULSE_LEAD_MS;
+          // Extend the drain gate BEFORE prepare() so the turn announcement cannot
+          // slip through during the camera-settle window (~800ms) or during the beam
+          // and aura animation that follows.  Uses the conservative max lead
+          // (SOURCE_PULSE_LEAD_MS) because we don't yet know whether a valid portal
+          // rect will be found; the gate is refined inside onSettled once we know.
+          const ARRIVAL_CAMERA_SETTLE_MS = 800;
+          const estimatedTotalMs = lead + (newlyMarked.length - 1) * 90 + 3820 + 400;
+          setAnimEndTime(ARRIVAL_CAMERA_SETTLE_MS + estimatedTotalMs);
           viewOrchestrator.prepare(procedure, () => {
             // Re-capture rects AFTER the centering scroll settles, so they reflect the
             // final (possibly compacted + scrolled) layout.
@@ -1711,6 +1719,8 @@ export default function GameBoard() {
             // onDone, so a double call is a harmless no-op.
             // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
             const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 3820 + 400;
+            // Refine the drain gate now that we have the exact lead duration.
+            setAnimEndTime(totalMs);
             setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
           }, { forceOrchestrate: true });
         } else {
