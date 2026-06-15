@@ -569,6 +569,8 @@ export interface PendingLuminaryActivationEvent {
   triggeringPlayerId: string;
   /** Unix ms timestamp when this event was created; optional for backward compat */
   createdAt?: number;
+  /** Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers. */
+  targetCardIds?: string[];
 }
 
 export type CardMarkerType =
@@ -740,7 +742,7 @@ export const ActionRequestAffinity = {
 } as const;
 
 /**
- * Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned)
+ * Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full)
  */
 export type ActionRequestReturnCrystals = {
   ruby?: number;
@@ -769,7 +771,7 @@ export interface ActionRequest {
   affinity?: ActionRequestAffinity;
   /** Event ID for resolve_summon action */
   eventId?: string;
-  /** Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned) */
+  /** Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full) */
   returnCrystals?: ActionRequestReturnCrystals;
   /** Nested action payload for plan_action type */
   plannedActionData?: ActionRequestPlannedActionData;

@@ -628,6 +628,12 @@ export const StartGameResponse = zod.object({
             .describe(
               "Unix ms timestamp when this event was created; optional for backward compat",
             ),
+          targetCardIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -1119,6 +1125,12 @@ export const RematchResponse = zod.object({
             .optional()
             .describe(
               "Unix ms timestamp when this event was created; optional for backward compat",
+            ),
+          targetCardIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
             ),
         })
         .describe(
@@ -1612,6 +1624,12 @@ export const GetGameStateResponse = zod.object({
             .describe(
               "Unix ms timestamp when this event was created; optional for backward compat",
             ),
+          targetCardIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
+            ),
         })
         .describe(
           "An activation event queued for the short (~4s) per-effect cinematic overlay",
@@ -1780,7 +1798,7 @@ export const SubmitActionBody = zod.object({
     })
     .optional()
     .describe(
-      "Crystals to return when a harvest would exceed the 10-crystal hand limit (sparse map — only include colors being returned)",
+      "Crystals to return when a harvest or reserve would exceed the 10-crystal hand limit (sparse map — only include colors being returned; for reserve_card use exactly 1 total when hand is full)",
     ),
   plannedActionData: zod
     .record(zod.string(), zod.unknown())
@@ -2173,6 +2191,12 @@ export const SubmitActionResponse = zod.object({
             .optional()
             .describe(
               "Unix ms timestamp when this event was created; optional for backward compat",
+            ),
+          targetCardIds: zod
+            .array(zod.string())
+            .optional()
+            .describe(
+              "Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.",
             ),
         })
         .describe(

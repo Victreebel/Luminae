@@ -1926,7 +1926,6 @@ export default function GameBoard() {
   // (burned, purchased, reserved) is removed from suppressedMarkerIds so the set
   // never accumulates phantom entries. Uses functional update to avoid capturing
   // stale suppressedMarkerIds in the dep array while still reading the latest prev.
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- state.marketMarkers identity changes on every new broadcast; suppressedMarkerIds is read via functional-update prev, not the closure
   useEffect(() => {
     setSuppressedMarkerIds(prev => {
       if (prev.size === 0) return prev;
@@ -1938,7 +1937,7 @@ export default function GameBoard() {
       if (!changed) return prev;
       return new Set([...prev].filter(id => activeIds.has(id)));
     });
-  }, [state?.marketMarkers]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state?.marketMarkers]);
   const isActivePlayer = !!state && !!session && state.status === 'playing' &&
     state.players[state.currentPlayerIndex]?.playerId === session.playerId;
 

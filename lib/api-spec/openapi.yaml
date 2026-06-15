@@ -1469,6 +1469,11 @@ components:
         createdAt:
           type: integer
           description: Unix ms timestamp when this event was created; optional for backward compat
+        targetCardIds:
+          type: array
+          items:
+            type: string
+          description: Card IDs targeted by this activation (e.g. condemned cards for start_of_turn burn). Captured server-side before state mutations clear marketMarkers.
       required:
         - eventId
         - luminaryId
