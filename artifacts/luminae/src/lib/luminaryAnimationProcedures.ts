@@ -284,18 +284,20 @@ function resolvePale(s: GameState): AnimationTimelineStep[] {
 
 // 13. Ember Sovereign / Cinder Mandate (lum_ember)
 //     On arrival: luminaryPulse → targetClaim non-Flare/Abyss/Radiance → condemned residue
-//     On start_of_turn: condemned cards flare → burn → marketRedraw
+//     On end_of_turn: condemned cards flare → burn → marketRedraw
 //
 //     payloadIds: card IDs captured by the server BEFORE the burn loop cleared marketMarkers.
 //     Without the payload the client cannot resolve targets — marketMarkers is already empty
 //     by the time the activation event is consumed. Always prefer payloadIds over a live state
-//     lookup for the start_of_turn path.
+//     lookup for the end_of_turn path.
 function resolveEmber(
   s: GameState,
   effectType: 'summon' | 'end_of_turn' | 'start_of_turn', // API enum kept ('summon' = arrival effect)
   payloadIds?: string[],
 ): AnimationTimelineStep[] {
-  if (effectType === 'start_of_turn') {
+  if (effectType === 'end_of_turn' || effectType === 'start_of_turn') {
+    // end_of_turn is the canonical burn trigger. start_of_turn is a backward-compat
+    // fallback for events queued in games that pre-date the end-of-turn change.
     // Use server-captured IDs when available; fall back to live state for abridged/test paths.
     const condemnedIds = (payloadIds && payloadIds.length > 0)
       ? payloadIds

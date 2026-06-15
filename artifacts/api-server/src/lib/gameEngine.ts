@@ -1558,7 +1558,7 @@ function applySummonEffect_cinderMandate(
   if (condemnedIds.length > 0) {
     pushLog(state, {
       playerId: player.playerId, playerName: player.playerName,
-      summary: `Ember Sovereign — Cinder Mandate: ${condemnedIds.length} Artifact(s) marked Condemned (burns at start of next turn)`,
+      summary: `Ember Sovereign — Cinder Mandate: ${condemnedIds.length} Artifact(s) marked Condemned (burns at end of next turn)`,
       turn: state.roundNumber,
     });
   }
@@ -1851,17 +1851,8 @@ function applyEndOfTurnEffects(state: GameStateData, player: PlayerGameState): v
       pushActivationEvent(state, "lum_compass", "end_of_turn", player.playerId);
     }
   }
-}
 
-/**
- * Apply start-of-turn effects for the player whose turn is about to begin.
- * Called at the END of advanceTurn, AFTER turnCount has been incremented and
- * the currentPlayerIndex has advanced.
- */
-function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState): void {
-  // ── Assimilation (First Hunger): lingering one-shot — persists until used, never auto-cleared ──
-
-  // ── Ember Sovereign (lum_ember): burn remaining Condemned cards at start of claimer's next turn ──
+  // ── Ember Sovereign (lum_ember): burn remaining Condemned cards at end of claimer's next turn ──
   const emberLa = state.luminaryAffinities.find(
     (x) => x.luminaryId === "lum_ember" && x.ownerId === player.playerId,
   );
@@ -1896,10 +1887,20 @@ function applyStartOfTurnEffects(state: GameStateData, player: PlayerGameState):
           summary: `Ember Sovereign — Cinder Mandate: burned ${burnCount} Condemned Artifact(s)`,
           turn: state.roundNumber,
         });
-        pushActivationEvent(state, "lum_ember", "start_of_turn", player.playerId, condemnedCardIds);
+        pushActivationEvent(state, "lum_ember", "end_of_turn", player.playerId, condemnedCardIds);
       }
     }
   }
+}
+
+/**
+ * Apply start-of-turn effects for the player whose turn is about to begin.
+ * Called at the END of advanceTurn, AFTER turnCount has been incremented and
+ * the currentPlayerIndex has advanced.
+ */
+function applyStartOfTurnEffects(_state: GameStateData, _player: PlayerGameState): void {
+  // ── Assimilation (First Hunger): lingering one-shot — persists until used, never auto-cleared ──
+  // (No other start-of-turn effects currently active.)
 }
 
 // ─── Win Condition ────────────────────────────────────────────────────────────

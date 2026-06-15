@@ -35,8 +35,8 @@ const MARKER_META: Record<
     border:   '#c82828',
     text:     '#ff6060',
     icon:     '⌬',
-    meaning:  'Condemned — Burns at the start of Ember Sovereign\'s next turn.',
-    duration: 'Burns at the start of Ember Sovereign\'s next turn.',
+    meaning:  'Condemned — Burns at the end of Ember Sovereign\'s next turn.',
+    duration: 'Burns at the end of Ember Sovereign\'s next turn.',
   },
   nullified: {
     label:    'Nullified',
