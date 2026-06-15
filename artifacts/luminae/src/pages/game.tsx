@@ -8963,17 +8963,31 @@ export default function GameBoard() {
                 // FIRST activation's onComplete fires (postActivationStrikesFirerRef is
                 // cleared on first use, so later activations in the same queue don't re-fire).
                 if (deferredStrikes.length > 0) {
+                  // Augment strike IDs with activation event payload so brand strikes fire
+                  // for ALL condemned targets, not just cards captured by the newlyMarked
+                  // state diff (which can be incomplete due to TQ polling races).
+                  // s.markers is the full marketMarkers snapshot from diff-time — it has
+                  // entries for all condemned IDs set in the same atomic state update.
+                  const augmentedStrikes = deferredStrikes.map(s => {
+                    if (!s.srcMeta) return s;
+                    const matchingAct = deferredActivations.find(
+                      a => a.luminaryId === s.srcMeta!.lumId &&
+                           a.targetCardIds && a.targetCardIds.length > s.ids.length,
+                    );
+                    if (!matchingAct?.targetCardIds) return s;
+                    return { ...s, ids: matchingAct.targetCardIds };
+                  });
                   // Pre-compute total strike duration so onComplete can call setAnimEndTime
                   // synchronously — before the 400ms settle setTimeout — closing the race
                   // window where the drain queue could open and flush condemned cards away.
                   let precomputedTotalMs = 0;
-                  for (const s of deferredStrikes) {
+                  for (const s of augmentedStrikes) {
                     const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
                     // Per-set: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
                     precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
                   }
                   postActivationStrikesTotalMsRef.current = precomputedTotalMs;
-                  postActivationStrikesFirerRef.current = () => fireStrikeSet(deferredStrikes);
+                  postActivationStrikesFirerRef.current = () => fireStrikeSet(augmentedStrikes);
                 }
                 setActivationQueue(q => [...q, ...deferredActivations]);
               } else {
@@ -9025,6 +9039,7 @@ export default function GameBoard() {
           evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
           state,
           evt.triggeringPlayerId,
+          { targetCardIds: evt.targetCardIds },
         );
         return (
           <LuminaryActivationCinematic
@@ -9039,6 +9054,9 @@ export default function GameBoard() {
               viewOrchestrator.restore({ immediate: skipped });
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+              // Safety fallback IDs: captured now so the setTimeout below can reference them
+              // even after the activation queue has advanced to the next event.
+              const safetyUnsuppressIds = evt.targetCardIds;
               // Fire brand strikes deferred from the summon arrival. The ref is cleared
               // on first use so only ONE activation (the summon one) triggers strikes —
               // later start_of_turn activations that land in the same queue do nothing.
@@ -9058,6 +9076,27 @@ export default function GameBoard() {
                 setAnimEndTime(settleMs + totalMs);
                 // Give the cinematic's pan-out exit a moment to clear before beams fly.
                 setTimeout(fire, settleMs);
+                // Safety fallback: unsuppress any payload IDs that didn't receive a beam
+                // (e.g. card off-screen, DOM width = 0, reduced-motion path). This prevents
+                // condemned markers from staying permanently invisible after animation ends.
+                if (safetyUnsuppressIds && safetyUnsuppressIds.length > 0) {
+                  setTimeout(() => {
+                    setSuppressedMarkerIds(prev => {
+                      if (prev.size === 0) return prev;
+                      const next = new Set(prev);
+                      safetyUnsuppressIds.forEach(id => next.delete(id));
+                      return next;
+                    });
+                  }, settleMs + totalMs + 1200);
+                }
+              } else if (safetyUnsuppressIds && safetyUnsuppressIds.length > 0) {
+                // No deferred strikes scheduled — unsuppress payload IDs immediately so
+                // persistent markers are always visible after the cinematic completes.
+                setSuppressedMarkerIds(prev => {
+                  const next = new Set(prev);
+                  safetyUnsuppressIds.forEach(id => next.delete(id));
+                  return next;
+                });
               }
             }}
           />

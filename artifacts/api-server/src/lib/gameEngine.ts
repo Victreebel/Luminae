@@ -1536,9 +1536,9 @@ function applySummonEffect_cinderMandate(
   state: GameStateData,
   player: PlayerGameState,
   summonedAtTurnCount: number,
-): void {
+): string[] {
   if (!state.marketMarkers) state.marketMarkers = {};
-  let count = 0;
+  const condemnedIds: string[] = [];
   for (const tier of [1, 2, 3] as const) {
     for (const id of getMarketForTier(state, tier)) {
       const card = CARD_MAP.get(id);
@@ -1551,17 +1551,18 @@ function applySummonEffect_cinderMandate(
       const hasRadiance = (card.cost.pearl ?? 0) >= 3;
       if (!hasFlare && !hasAbyss && !hasRadiance) {
         state.marketMarkers[id] = { type: "condemned", ownerId: player.playerId, summonedAtTurnCount };
-        count++;
+        condemnedIds.push(id);
       }
     }
   }
-  if (count > 0) {
+  if (condemnedIds.length > 0) {
     pushLog(state, {
       playerId: player.playerId, playerName: player.playerName,
-      summary: `Ember Sovereign — Cinder Mandate: ${count} Artifact(s) marked Condemned (burns at start of next turn)`,
+      summary: `Ember Sovereign — Cinder Mandate: ${condemnedIds.length} Artifact(s) marked Condemned (burns at start of next turn)`,
       turn: state.roundNumber,
     });
   }
+  return condemnedIds;
 }
 
 function applySummonEffect_blackDomain(
@@ -1691,8 +1692,11 @@ function applySummonEffect(
     }
     case "lum_ember": {
       // Cinder Mandate: mark face-up cards without Flare/Abyss/Radiance as Condemned.
-      applySummonEffect_cinderMandate(state, player, summonedAtTurnCount);
-      pushActivationEvent(state, lumId, "summon", player.playerId);
+      // Capture the condemned IDs at mark-time and include them in the event payload so
+      // the client animation still has the full target list after the server burn loop
+      // has cleared marketMarkers.
+      const condemnedIds = applySummonEffect_cinderMandate(state, player, summonedAtTurnCount);
+      pushActivationEvent(state, lumId, "summon", player.playerId, condemnedIds);
       break;
     }
     case "lum_null": {

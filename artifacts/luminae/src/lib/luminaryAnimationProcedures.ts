@@ -307,8 +307,13 @@ function resolveEmber(
       { type: 'marketRedraw', slotIds: [] },
     ];
   }
-  // arrival / end_of_turn: mark cards as condemned
-  const affected = excludeBonus(allMarket(s), ['ruby', 'onyx', 'pearl']).map(c => c.id);
+  // arrival / end_of_turn: mark cards as condemned.
+  // Prefer server-captured payload IDs — the definitive condemned list captured at
+  // mark-time. Fall back to a live-state derivation only for dev/test paths where
+  // the payload hasn't been set (e.g. dev-rewind or direct state injection).
+  const affected = (payloadIds && payloadIds.length > 0)
+    ? payloadIds
+    : excludeBonus(allMarket(s), ['ruby', 'onyx', 'pearl']).map(c => c.id);
   return [
     pulse('lum_ember'),
     { type: 'targetClaim', targetIds: affected },

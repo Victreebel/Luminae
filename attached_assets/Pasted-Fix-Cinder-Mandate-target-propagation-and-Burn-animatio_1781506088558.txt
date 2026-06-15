@@ -1,0 +1,90 @@
+Fix Cinder Mandate target propagation and Burn animation payloads.
+
+Current observed behavior:
+
+* Ember Sovereign arrival suppression works.
+* Cinder Mandate brand strike only hit 1 card.
+* But 5 cards later burned.
+* Condemned markers did not persist visibly through the waiting window.
+* Start-of-turn Burn animation did not visibly play.
+* The game did not get stuck.
+
+Diagnosis:
+The server correctly marks multiple cards as Condemned, but the summon-time brand-strike animation is not receiving or using the full Condemned target list. It appears to animate only one target while the rules state contains more. Also, the start-of-turn burn animation likely lacks enough target slot/snapshot data after the server has already burned/refilled the market.
+
+Required fix:
+
+1. On Ember Sovereign summon, capture the full Condemned target list
+    When applySummonEffect_cinderMandate marks cards as Condemned, also collect every marked target into the summon activation event payload.
+
+Payload should include enough data for animation:
+
+* cardId
+* cardName if available
+* tier
+* market slot/index
+* marker keyword: condemned
+* source luminary: lum_ember
+
+Do not rely on the client rediscovering Condemned targets from live state or DOM queries.
+
+2. Brand strikes must use the event payload
+    For the effectType: "summon" Cinder Mandate activation:
+
+* Use the event payload’s full condemned target list.
+* Fire brand strikes for every target in that list.
+* Unsuppress/reveal the Condemned badge/vignette for each card exactly when its beam lands.
+* After the animation, all Condemned cards that are still in the market should have visible persistent markers.
+
+Acceptance:
+If 5 cards are marked Condemned, 5 cards should receive brand strikes and 5 should show persistent Condemned markers afterward.
+
+3. Do not leave unstruck Condemned cards visually suppressed
+    After the Cinder Mandate summon activation completes:
+
+* Any Condemned card still in the market and owned by that Ember Sovereign event should be unsuppressed, even if an individual beam failed.
+* This is a safety fallback so rules state and visual state cannot diverge.
+
+4. Fix start-of-turn Burn animation payload
+    When applyStartOfTurnEffects burns remaining Condemned cards:
+
+* Capture burned targets before burnCard removes/refills them.
+* The start_of_turn activation event must include:
+    * cardId
+    * cardName if available
+    * tier
+    * previous market slot/index
+    * source luminary: lum_ember
+    * keyword/event: burn
+
+The client Burn animation must use this payload rather than relying on live marketMarkers, because those markers may already be cleared by the time the client receives the state.
+
+5. Start-of-turn event must play Burn, not brand
+    For Ember Sovereign:
+
+* effectType: "summon" = Condemned brand strikes.
+* effectType: "start_of_turn" = bottom-up Burn animation.
+* Do not show Condemned brand strikes during start_of_turn.
+
+6. Correct Condemned symbol
+    Replace the current wrong Condemned brand symbol with a better judgment/mandate seal.
+    Preferred temporary text symbol: ⌬
+    If using SVG/custom icon, use a violet-orange cinder mandate seal.
+    Do not use a flag-like icon.
+7. Manual test acceptance
+    Run Ember Sovereign with multiple condemned targets.
+
+Expected:
+
+* Arrival cutscene: no Condemned markers visible early.
+* Post-arrival Cinder Mandate activation: every Condemned target is struck.
+* Each struck card gets the large temporary ⌬ brand.
+* Each struck card then keeps a persistent Condemned marker/vignette.
+* Opponents’ turns: Condemned markers remain visible.
+* Owner’s next turn: only remaining Condemned cards Burn.
+* Burn animation is bottom-up, no blur.
+* Burn Pile updates.
+* Market redraw happens after Burn.
+* No duplicate strikes.
+* No stuck gate.
+* Existing tests/typecheck pass.
