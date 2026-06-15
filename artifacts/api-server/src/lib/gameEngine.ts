@@ -1036,6 +1036,13 @@ function applyLuminaryBatch(
     player.luminaries.push(lumId);
     const eligible = CRYSTAL_COLORS.filter((c) => lum.requirements[c] > 0);
     const defaultAffinity = defaultActiveAffinity(lum, eligible);
+    // Remove any stale entry for the same lum+player before inserting the fresh
+    // one.  Duplicate entries can arise if a dev-rewind clears player.luminaries
+    // without clearing state.luminaryAffinities; the stale entry would have an
+    // old summonedAtTurnCount that satisfies the burn condition immediately.
+    state.luminaryAffinities = state.luminaryAffinities.filter(
+      (x) => !(x.luminaryId === lumId && x.ownerId === player.playerId),
+    );
     state.luminaryAffinities.push({
       luminaryId: lumId,
       ownerId: player.playerId,
@@ -2780,6 +2787,21 @@ export function applyAction(
       player.bonuses   = { ruby: 3, sapphire: 0, emerald: 5, onyx: 0, pearl: 0, flux: 0 };
       player.lumens    = 13;
       player.luminaries = [];
+      // Clear any luminaryAffinities entries owned by this player so that a
+      // subsequent Luminary summon starts with a fresh summonedAtTurnCount.
+      // Without this, stale entries from a previous summon satisfy timing checks
+      // immediately and cause effects (e.g. Cinder Mandate burn) to fire on the
+      // wrong turn.
+      state.luminaryAffinities = state.luminaryAffinities.filter(
+        (x) => x.ownerId !== player.playerId,
+      );
+      // Clear any market markers (condemned, forgotten, nullified) owned by
+      // this player so the board is clean for the next test.
+      if (state.marketMarkers) {
+        for (const [id, m] of Object.entries(state.marketMarkers)) {
+          if (m.ownerId === player.playerId) delete state.marketMarkers[id];
+        }
+      }
       player.plannedAction = null;
       player.plannedActionCancelReason = null;
 
