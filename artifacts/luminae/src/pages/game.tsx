@@ -558,6 +558,14 @@ export default function GameBoard() {
   // Read in onComplete to synchronously extend animationEndTimeRef before the
   // 400ms settle setTimeout fires, preventing a drain-queue race window.
   const postActivationStrikesTotalMsRef = useRef(0);
+  // When true, the brand-strike prepare() should inherit the compact-restore
+  // obligation from the activation cinematic (which skipped its own restore() to
+  // avoid a premature zoom-in between phases).  Cleared on first use.
+  const inheritActivationViewRef = useRef(false);
+  // Compact state captured just before the activation cinematic's prepare() fires.
+  // Used by inheritActivationViewRef logic to decide whether to carry the compact-
+  // restore obligation through to the brand strike.
+  const preActivationWasCompactRef = useRef(false);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -910,6 +918,7 @@ export default function GameBoard() {
       evt.triggeringPlayerId,
       { targetCardIds: evt.targetCardIds },
     );
+    preActivationWasCompactRef.current = marketCompact;
     viewOrchestrator.prepare(procedure);
   }, [activationQueue[0]?.eventId, arrivalQueue.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -8885,6 +8894,12 @@ export default function GameBoard() {
                       { type: 'targetClaim', targetIds: capturedS.ids, keyword },
                     ];
                     const lead = capturedS.instant ? 0 : SOURCE_PULSE_LEAD_MS;
+                    // Consume the inherit flag: if the activation cinematic skipped its
+                    // restore() to keep the camera compact across the phase boundary,
+                    // tell prepare() to record the compact-restore obligation so the
+                    // final restore() correctly un-compacts at the end of the burn.
+                    const shouldInheritCompact = inheritActivationViewRef.current;
+                    if (shouldInheritCompact) inheritActivationViewRef.current = false;
                     viewOrchestrator.prepare(procedure, () => {
                       const portalEl = document.querySelector(`[data-luminary-id="${capturedS.srcMeta!.lumId}"]`);
                       let source:
@@ -8927,7 +8942,7 @@ export default function GameBoard() {
                       // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
                       const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 3820 + 400;
                       setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
-                    }, { forceOrchestrate: true });
+                    }, { forceOrchestrate: true, ...(shouldInheritCompact ? { inheritCompact: true } : {}) });
                   } else {
                     gameAudio.playBrandStrike();
                     fireBrandStrikes(capturedS.ids, capturedS.markers);
@@ -8937,6 +8952,13 @@ export default function GameBoard() {
                       capturedS.ids.forEach(id => next.delete(id));
                       return next;
                     });
+                    // If the activation cinematic held the camera compact across the phase
+                    // boundary (skipped its own restore), release it now via the still-live
+                    // activation snapshot — this path has no prepare() of its own.
+                    if (inheritActivationViewRef.current) {
+                      inheritActivationViewRef.current = false;
+                      viewOrchestrator.restore({ immediate: true });
+                    }
                   }
                 }, capturedOffset);
                 // Estimate full cycle: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
@@ -9051,7 +9073,19 @@ export default function GameBoard() {
             procedure={procedure.length > 0 ? procedure : undefined}
             reducedMotion={abridgedAnims}
             onComplete={(skipped) => {
-              viewOrchestrator.restore({ immediate: skipped });
+              // Only restore the view now when no brand strikes are about to follow.
+              // When strikes ARE pending, the camera stays held compact so the burn
+              // animation begins without a premature zoom-in/zoom-out between phases.
+              // The brand strike's own restore() will be the final camera release.
+              const hasPendingStrikes = postActivationStrikesFirerRef.current !== null;
+              if (!hasPendingStrikes) {
+                viewOrchestrator.restore({ immediate: skipped });
+              } else if (!preActivationWasCompactRef.current) {
+                // Activation cinematic switched us to compact from normal view.
+                // Signal the upcoming brand-strike prepare() to inherit the compact-
+                // restore obligation so the final restore() un-compacts correctly.
+                inheritActivationViewRef.current = true;
+              }
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
               // Safety fallback IDs: captured now so the setTimeout below can reference them

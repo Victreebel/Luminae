@@ -300,6 +300,19 @@ export interface PrepareOptions {
    * one target card and it happens to be in the current viewport.
    */
   forceOrchestrate?: boolean;
+
+  /**
+   * When true, signals that compact view is already on from a prior orchestration
+   * session that intentionally skipped its restore() so the camera would stay held
+   * across a phase boundary (e.g. activation cinematic → brand-strike burn).
+   *
+   * prepare() will NOT switch compact (it is already on), but it will record the
+   * restore obligation so that when this session's restore() fires, the view returns
+   * to non-compact — exactly as if THIS session had initiated the compact switch.
+   *
+   * Only meaningful when `currentCompact` is true at call time.
+   */
+  inheritCompact?: boolean;
 }
 
 export interface ViewOrchestrator {
@@ -476,6 +489,14 @@ export function useViewOrchestrator({
         abridgedRef.current,
         false, // never immediate on entry
       );
+    } else if (options?.inheritCompact) {
+      // Compact is already on because a prior session (activation cinematic)
+      // switched it and intentionally skipped its restore() to avoid a
+      // premature zoom-in between phases.  Record the owed restore so that
+      // THIS session's restore() will un-compact at the end — as if we had
+      // initiated the compact switch ourselves.
+      didSwitchCompact.current = true;
+      snapshotRef.current!.marketCompact = false;
     }
 
     // ── Deferred scroll-centering ─────────────────────────────────────────
