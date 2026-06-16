@@ -65,7 +65,6 @@ export function ActivationDirectorRouter({
         lumSummonColor={lum?.summonColor}
         lumSummonSecondaryColor={lum?.summonSecondaryColor}
         targetCardIds={evt.targetCardIds ?? []}
-        marketMarkers={state?.marketMarkers ?? {}}
         reducedMotion={abridgedAnims}
         actions={brandingActions}
         onComplete={onBrandingComplete}

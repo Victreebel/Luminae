@@ -91,7 +91,6 @@ interface CinderMandateBrandingDirectorProps {
   lumSummonColor?: string;
   lumSummonSecondaryColor?: string;
   targetCardIds: string[];
-  marketMarkers: Record<string, { type: string }>;
   reducedMotion: boolean;
   actions: CinderMandateBrandingActions;
   onComplete: (skipped?: boolean) => void;
@@ -104,7 +103,6 @@ export function CinderMandateBrandingDirector({
   lumSummonColor,
   lumSummonSecondaryColor,
   targetCardIds,
-  marketMarkers,
   reducedMotion,
   actions,
   onComplete,
@@ -115,13 +113,6 @@ export function CinderMandateBrandingDirector({
   onCompleteRef.current = onComplete;
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
-  // marketMarkers is updated by the parent as state arrives from the server.
-  // The brand-strike timer fires 820ms+ after mount, by which time the server
-  // has sent the condemned-card markers.  Without a ref, the mount-closure
-  // would use stale pre-update markers and crash with "Cannot read .type".
-  const marketMarkersRef = useRef(marketMarkers);
-  marketMarkersRef.current = marketMarkers;
-
   // Ref to the beat overlay DOM node for imperative animation.
   const beatOverlayRef = useRef<HTMLDivElement | null>(null);
 
@@ -189,7 +180,13 @@ export function CinderMandateBrandingDirector({
           const usedLead = source ? lead : 0;
 
           actionsRef.current.playBrandStrike();
-          const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, marketMarkersRef.current, {
+          // Build synthetic markers: the server encodes condemned IDs into the event payload
+          // precisely because state.marketMarkers may be cleared before the animation runs.
+          // We know all targets are type "condemned" — do NOT use state.marketMarkers here.
+          const syntheticMarkers = Object.fromEntries(
+            targetCardIds.map(id => [id, { type: 'condemned' as const }]),
+          );
+          const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, syntheticMarkers, {
             source,
             lead: usedLead,
             // orchestrated: false — director owns camera; ArrivalBrandStrike must NOT call restore()

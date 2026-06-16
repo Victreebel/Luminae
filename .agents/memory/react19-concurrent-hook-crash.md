@@ -30,3 +30,21 @@ Eliminate `useState` from the component entirely. Replace state/effect chains wi
 - After: `useRef×3, useEffect×1` = 4 hooks, zero re-renders from within the component
 
 **Confirmed fix:** `CinderMandateBrandingDirector.tsx` — imperative rewrite with `animate()` from framer-motion eliminated the crash completely.
+
+## Cinder Mandate follow-up crash: "Cannot read .type" on marketMarkers
+
+After the imperative rewrite, a second crash surfaced: `markers[cardId].type` undefined inside `fireBrandStrikes`.
+
+**Root cause:** The director passed `state?.marketMarkers` to `fireBrandStrikes` for the `type` lookup, but the server's own comment (gameEngine.ts line 1702) explains: "Capture the condemned IDs at mark-time and include them in the event payload so the client animation still has the full target list **after the server burn loop has cleared marketMarkers**." The server intentionally clears `marketMarkers` before the client animation runs. `state.marketMarkers` will be `{}` (empty) by the time the brand-strike timer fires.
+
+**Wrong fix attempted:** Adding a `marketMarkersRef` updated every render — failed because the parent re-renders with empty `marketMarkers`, so the ref is still empty.
+
+**Correct fix:** Build a synthetic markers object directly from `evt.targetCardIds`. For Cinder Mandate, all targets are type `"condemned"` — the director knows this intrinsically:
+```tsx
+const syntheticMarkers = Object.fromEntries(
+  targetCardIds.map(id => [id, { type: 'condemned' as const }]),
+);
+fireBrandStrikes(targetCardIds, syntheticMarkers, { ... });
+```
+
+**Rule:** Any director that calls `fireBrandStrikes` with target IDs from `evt.targetCardIds` must supply its OWN synthetic markers, never `state.marketMarkers`. The state may be cleared before animations run.
