@@ -1323,6 +1323,16 @@ button,
   animation: lum-portal-badge-pulse 2.6s ease-in-out infinite;
 }
 
+/* LuminaryCard outer glow when the player can afford to summon.
+   Color varies per Luminary — pass via CSS custom properties inline. */
+@keyframes lum-card-afford-pulse {
+  0%, 100% { box-shadow: var(--lum-afford-dim); }
+  50%       { box-shadow: var(--lum-afford-bright); }
+}
+.lum-card-afford-pulse {
+  animation: lum-card-afford-pulse 1.8s ease-in-out infinite;
+}
+
 
 /* ── Arrival cutscene — CSS-compositor animations ─────────────────────────
    Replaces framer-motion repeat:Infinity loops in LuminaryArrivalCutscene.

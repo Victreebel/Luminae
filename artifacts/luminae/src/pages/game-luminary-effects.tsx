@@ -723,19 +723,13 @@ export function ArmedSigil({
           exit={{ scale: 0, opacity: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         >
-          {/* Outer pulse ring */}
-          <motion.div
-            className="absolute rounded-full"
+          {/* Outer pulse ring — CSS replaces repeat:Infinity framer-motion loop */}
+          <div
+            className="absolute rounded-full armed-sigil-ring"
             style={{
               inset: -4,
               border: `1px solid ${color}`,
-              opacity: 0.5,
             }}
-            animate={{
-              scale:   [1, 1.6, 1],
-              opacity: [0.5, 0, 0.5],
-            }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
           />
           {/* Inner sigil dot */}
           <div

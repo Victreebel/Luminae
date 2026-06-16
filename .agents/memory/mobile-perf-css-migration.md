@@ -89,9 +89,24 @@ Key: `pathLength` must be absent from BOTH `initial` AND `animate` on mobile —
 
 **How to apply:** Use `isMobile` (from `useIsMobile()`) to branch animate/transition. Single-value animate targets with plain `duration` are cheap; keyframe arrays are expensive.
 
-## Remaining JS loops (5 total — acceptable)
+## What was converted (continued)
+
+**Portal idle (game-luminary.tsx / LuminaryClaimedPortal) — APPLIED to JSX:**
+- 7 loops per portal instance eliminated: outer ring (14s CW), inner swirl (9s CCW), aura pulse, centre mote, 7 drifting motes, gem float → CSS classes `lum-portal-ring-cw/ccw`, `lum-portal-aura-pulse`, `lum-portal-mote-center`, `lum-portal-drift`, `lum-portal-gem-float`
+- Drifting motes use inline `animationDuration`/`animationDelay` style props to vary timing per instance
+- `lum-portal-mote-center` keyframe includes `translate(-50%, -50%)` — do not add inline transform or it will compound
+
+**LuminaryCard afford-pulse (game-luminary.tsx / LuminaryCard):**
+- `canAffordLuminary` box-shadow repeat:Infinity → `lum-card-afford-pulse` CSS keyframe + CSS custom properties (`--lum-afford-dim`, `--lum-afford-bright`) set inline for per-Luminary color
+
+**ArmedSigil ring (game-luminary-effects.tsx):**
+- Outer pulse ring repeat:Infinity → `armed-sigil-ring` CSS class; border color still set inline as it varies per Luminary
+
+**CRITICAL LESSON — the ~25s OOM crash origin:**
+The CSS keyframes were written to index.css in a prior session but the JSX in game-luminary.tsx was never updated to use them. 5 portals × 7 JS loops = 35 framer-motion RAF callbacks, causing tab OOM every ~25s with no JS error in console (pure GPU/memory crash). Always verify the JSX uses the new CSS class — writing the CSS alone does nothing.
+
+## Remaining JS loops (4 total — acceptable)
 
 - `TideEyeOverlay` (2 loops, iris glow halo + drift): only renders when Tide Luminary is on screen.
 - Establish-phase glow (1 loop, 0.28s duration): fires for ~1–2s during `isEstablish` summon phase; complex multi-property (opacity, x, y, rotate) with MotionValues.
-- `game-luminary.tsx`: summon-button pulse; only when `canAffordLuminary`.
 - `AffinityWell.tsx` (3 loops): conditional on `forgeDed > 0 || pending > 0`.
