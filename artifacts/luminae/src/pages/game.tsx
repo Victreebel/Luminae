@@ -9125,6 +9125,25 @@ export default function GameBoard() {
             pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
             brandingActions={{
               prepare: viewOrchestrator.prepare,
+              lockBoardScroll: () => {
+                // Prevent the player from scrolling the main board (vertical)
+                // or the Luminary portal row (horizontal) during the brand-strike
+                // window.  Rects are captured via getBoundingClientRect() at
+                // fire-time; any scroll after that shifts cards relative to the
+                // fixed-position SVG beam overlay, making strikes appear to miss.
+                if (mainScrollRef.current) {
+                  mainScrollRef.current.style.overflowY = 'hidden';
+                }
+                const lumRow = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+                if (lumRow) lumRow.style.overflow = 'hidden';
+              },
+              unlockBoardScroll: () => {
+                if (mainScrollRef.current) {
+                  mainScrollRef.current.style.overflowY = '';
+                }
+                const lumRow = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+                if (lumRow) lumRow.style.overflow = '';
+              },
               setAnimEndTime,
               unsuppressMarkers: (ids) => {
                 setSuppressedMarkerIds(prev => {

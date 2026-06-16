@@ -60,6 +60,15 @@ export interface CinderMandateBrandingActions {
     onSettled?: () => void,
     options?: { forceOrchestrate?: boolean },
   ) => void;
+  /**
+   * Prevent the player from scrolling the board or the Luminary portal row
+   * during the brand-strike window.  Brand-strike beams use viewport-relative
+   * rects captured at fire-time; any scroll after capture drifts the SVG
+   * overlay off its targets.
+   */
+  lockBoardScroll: () => void;
+  /** Release the scroll lock applied by lockBoardScroll. */
+  unlockBoardScroll: () => void;
   /** Extend the animation drain gate by `ms` from now. */
   setAnimEndTime: (ms: number) => void;
   /** Remove card IDs from the visual suppression set (reveals overlays + badges). */
@@ -157,6 +166,14 @@ export function CinderMandateBrandingDirector({
             void animate(overlay, { opacity: 0 }, { duration: 0.18, ease: 'easeOut' });
           }
 
+          // Lock scroll on the board and Luminary portal row NOW, before any
+          // rect is captured.  Brand-strike beams are positioned using
+          // viewport-relative getBoundingClientRect() snapshots; if the player
+          // scrolls between capture and render the SVG overlay drifts off the
+          // card targets.  The lock is released when onComplete fires (or in
+          // cleanup if the component unmounts early).
+          actionsRef.current.lockBoardScroll();
+
           // Capture source-portal rect now that layout has settled
           const portalEl = document.querySelector(`[data-luminary-id="${luminaryId}"]`);
           let source:
@@ -208,6 +225,7 @@ export function CinderMandateBrandingDirector({
           // After strikes settle + aftermath hold: call onComplete.
           // Camera stays compact — no restore() here.
           const completeTimer = setTimeout(() => {
+            actionsRef.current.unlockBoardScroll();
             onCompleteRef.current(false);
           }, completeDelay);
           timers.push(completeTimer);
@@ -220,6 +238,9 @@ export function CinderMandateBrandingDirector({
 
     return () => {
       timers.forEach(clearTimeout);
+      // Safety: release scroll lock if the component unmounts before the
+      // completeTimer fires (e.g. skip / fast-forward path).
+      actionsRef.current.unlockBoardScroll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
