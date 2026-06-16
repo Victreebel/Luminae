@@ -899,7 +899,7 @@ export default function GameBoard() {
   // IMPORTANT — when adding a new overlay, add its boolean here.
   // useScrollLock below reads this same array, so you only need to update
   // this one list; no separately wired scroll-lock effect is required.
-  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, showBurnPileOverlay, !!selectedLuminary, !!auraPreviewLuminaryId] as const;
+  const overlayStates = [!!selectedCard, showReservedOverlay, showForgedOverlay, showBurnPileOverlay, !!selectedLuminary, !!auraPreviewLuminaryId, arrivalQueue.length > 0] as const;
   const isAnyOverlayOpen = overlayStates.some(Boolean);
 
   // Keep overlayOpenRef in sync so the touch-forwarding handler above can
