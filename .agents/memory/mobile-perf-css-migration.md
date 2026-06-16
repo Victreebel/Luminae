@@ -76,6 +76,7 @@ Key: `pathLength` must be absent from BOTH `initial` AND `animate` on mobile —
 - CSS `animation-fill-mode: backwards` prevents a 1-frame flash at full opacity before the animation start keyframe (opacity: 0) takes effect.
 - SVG presentation attribute `opacity="0"` can also be used as an alternative initial state; CSS animations override presentation attributes.
 - `animationDuration`/`animationDelay` inline style props override the shorthand `animation:` duration/delay from the class — clean way to vary per-instance timing.
+- **DO NOT use CSS `@keyframes` for `stroke-dashoffset`/`stroke-dasharray` on SVG `<path>` elements.** Unitless values in keyframes (e.g. `stroke-dashoffset: 1`) are spec-invalid CSS `<length>` values. Browsers accept them inconsistently. The `pathLength` SVG attribute + CSS animation interaction is also unreliable across browsers. For draw-on effects, keep `motion.path` + framer-motion `pathLength` animation — it's one-shot (no `repeat: Infinity`), so no OOM risk. Only `opacity` and `transform` are safe to animate on SVG elements via CSS `@keyframes`.
 
 ## Mobile reveal simplifications (isRevealed phase)
 
