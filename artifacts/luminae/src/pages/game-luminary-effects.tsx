@@ -571,61 +571,65 @@ export function BrandStrikeAura({
             {/* Arc 1 — main diagonal, ember red, upper-left → lower-right */}
             <motion.path
               d="M 5,15 L 15,28 L 24,18 L 35,38 L 44,24 L 55,44 L 64,30 L 75,52 L 84,38 L 94,58"
+              pathLength={1}
               stroke="#ff5a3c"
               strokeWidth={1.4}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.9 }}
-              animate={{ pathLength: 1, opacity: [0.9, 0.78, 0.2, 0] }}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
               transition={{
-                duration: 1.10, delay: d, ease: 'easeOut',
-                opacity: { duration: 1.10, delay: d, times: [0, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.42, delay: d, ease: 'easeOut' },
+                opacity: { duration: 1.10, delay: d, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
               }}
             />
             {/* Arc 2 — counter-diagonal, orange, lower-left → upper-right */}
             <motion.path
               d="M 6,78 L 16,62 L 26,72 L 36,54 L 46,66 L 57,46 L 67,60 L 78,36 L 86,50 L 94,28"
+              pathLength={1}
               stroke="#f97316"
               strokeWidth={1.1}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.9 }}
-              animate={{ pathLength: 1, opacity: [0.9, 0.78, 0.2, 0] }}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
               transition={{
-                duration: 1.05, delay: d + 0.05, ease: 'easeOut',
-                opacity: { duration: 1.05, delay: d + 0.05, times: [0, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.40, delay: d + 0.05, ease: 'easeOut' },
+                opacity: { duration: 1.05, delay: d + 0.05, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
               }}
             />
             {/* Arc 3 — horizontal crackle, amber, zigzags across upper quarter */}
             <motion.path
               d="M 12,20 L 22,12 L 32,22 L 42,10 L 54,20 L 64,10 L 74,22 L 84,12 L 92,20"
+              pathLength={1}
               stroke="#fbbf24"
               strokeWidth={0.8}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.9 }}
-              animate={{ pathLength: 1, opacity: [0.9, 0.78, 0.2, 0] }}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
               transition={{
-                duration: 0.95, delay: d + 0.03, ease: 'easeOut',
-                opacity: { duration: 0.95, delay: d + 0.03, times: [0, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.36, delay: d + 0.03, ease: 'easeOut' },
+                opacity: { duration: 0.95, delay: d + 0.03, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
               }}
             />
             {/* Arc 4 — horizontal crackle, amber, zigzags across lower quarter */}
             <motion.path
               d="M 10,78 L 20,88 L 30,76 L 42,86 L 54,74 L 66,84 L 76,72 L 86,82 L 92,72"
+              pathLength={1}
               stroke="#fbbf24"
               strokeWidth={0.8}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.9 }}
-              animate={{ pathLength: 1, opacity: [0.9, 0.78, 0.2, 0] }}
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
               transition={{
-                duration: 0.95, delay: d + 0.08, ease: 'easeOut',
-                opacity: { duration: 0.95, delay: d + 0.08, times: [0, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.36, delay: d + 0.08, ease: 'easeOut' },
+                opacity: { duration: 0.95, delay: d + 0.08, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
               }}
             />
           </svg>
