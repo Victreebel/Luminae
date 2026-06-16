@@ -115,6 +115,12 @@ export function CinderMandateBrandingDirector({
   onCompleteRef.current = onComplete;
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
+  // marketMarkers is updated by the parent as state arrives from the server.
+  // The brand-strike timer fires 820ms+ after mount, by which time the server
+  // has sent the condemned-card markers.  Without a ref, the mount-closure
+  // would use stale pre-update markers and crash with "Cannot read .type".
+  const marketMarkersRef = useRef(marketMarkers);
+  marketMarkersRef.current = marketMarkers;
 
   // Ref to the beat overlay DOM node for imperative animation.
   const beatOverlayRef = useRef<HTMLDivElement | null>(null);
@@ -183,7 +189,7 @@ export function CinderMandateBrandingDirector({
           const usedLead = source ? lead : 0;
 
           actionsRef.current.playBrandStrike();
-          const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, marketMarkers, {
+          const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, marketMarkersRef.current, {
             source,
             lead: usedLead,
             // orchestrated: false — director owns camera; ArrivalBrandStrike must NOT call restore()
