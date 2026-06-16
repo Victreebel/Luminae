@@ -13,3 +13,4 @@
 - [Brand-strike double-sound — backward TQ state guard](brand-strike-backward-tq-guard.md) — spellbound.wav plays twice when TQ polling delivers a newer state before queue drains older entries.
 - [Start-of-turn burn payload snapshot](start-of-turn-burn-payload.md) — capture target IDs before the burn loop or they're gone by the time client animation fires.
 - [suppressedMarkerIds — hide markers until animation fires](suppressed-marker-ids.md) — suppress at state-update time; unsuppress in every code path where fireBrandStrikes is called or skipped.
+- [Vite alias vs relative import — module duplication](vite-alias-module-duplication.md) — `@/pages/` import in a component + relative import in the page file = two Vite module instances → "Invalid hook call".

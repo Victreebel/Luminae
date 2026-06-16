@@ -17,9 +17,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
-import { SOURCE_PULSE_LEAD_MS } from '@/pages/game-luminary-effects';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
+
+/**
+ * How long to wait after the Luminary portal fires its source pulse before
+ * brand-strike beams begin.  Must match SOURCE_PULSE_LEAD_MS in game-luminary-effects.
+ */
+const SOURCE_PULSE_LEAD_MS = 300;
 
 /** "CINDER MANDATE" beat overlay is visible for this long before strikes begin. */
 const BEAT_HOLD_MS = 820;
