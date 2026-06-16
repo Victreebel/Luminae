@@ -135,6 +135,14 @@ export function CinderMandateBrandingDirector({
       return;
     }
 
+    // Lock scroll immediately — before prepare() so the entire cinematic
+    // (beat overlay display + camera movement + brand-strike beams) is fully
+    // protected.  Brand-strike beams use viewport-relative getBoundingClientRect()
+    // snapshots; any scroll before or during capture drifts the SVG overlay off
+    // its targets.  The lock is released when onComplete fires (or in cleanup if
+    // the component unmounts early).
+    actionsRef.current.lockBoardScroll();
+
     const procedure: AnimationProcedureStep[] = [
       { type: 'targetClaim', targetIds: targetCardIds, keyword: 'condemned' },
     ];
@@ -166,15 +174,8 @@ export function CinderMandateBrandingDirector({
             void animate(overlay, { opacity: 0 }, { duration: 0.18, ease: 'easeOut' });
           }
 
-          // Lock scroll on the board and Luminary portal row NOW, before any
-          // rect is captured.  Brand-strike beams are positioned using
-          // viewport-relative getBoundingClientRect() snapshots; if the player
-          // scrolls between capture and render the SVG overlay drifts off the
-          // card targets.  The lock is released when onComplete fires (or in
-          // cleanup if the component unmounts early).
-          actionsRef.current.lockBoardScroll();
-
-          // Capture source-portal rect now that layout has settled
+          // Scroll is already locked (locked at mount, above).
+          // Capture source-portal rect now that layout has settled.
           const portalEl = document.querySelector(`[data-luminary-id="${luminaryId}"]`);
           let source:
             | {

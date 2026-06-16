@@ -9126,11 +9126,13 @@ export default function GameBoard() {
             brandingActions={{
               prepare: viewOrchestrator.prepare,
               lockBoardScroll: () => {
-                // Prevent the player from scrolling the main board (vertical)
-                // or the Luminary portal row (horizontal) during the brand-strike
-                // window.  Rects are captured via getBoundingClientRect() at
-                // fire-time; any scroll after that shifts cards relative to the
-                // fixed-position SVG beam overlay, making strikes appear to miss.
+                // Pin document.body and the scrollable board containers so the
+                // entire branding cinematic (beat overlay + camera + brand-strike
+                // beams) cannot be disrupted by player scrolling.  Rects are
+                // captured via getBoundingClientRect() at fire-time; any scroll
+                // after capture shifts cards relative to the fixed-position SVG
+                // beam overlay, making strikes appear to miss.
+                document.body.style.overflow = 'hidden';
                 if (mainScrollRef.current) {
                   mainScrollRef.current.style.overflowY = 'hidden';
                 }
@@ -9138,6 +9140,7 @@ export default function GameBoard() {
                 if (lumRow) lumRow.style.overflow = 'hidden';
               },
               unlockBoardScroll: () => {
+                document.body.style.overflow = '';
                 if (mainScrollRef.current) {
                   mainScrollRef.current.style.overflowY = '';
                 }
@@ -9179,6 +9182,25 @@ export default function GameBoard() {
             burnActions={{
               prepare: viewOrchestrator.prepare,
               restore: viewOrchestrator.restore,
+              lockBoardScroll: () => {
+                // Pin document.body and the scrollable board containers so the
+                // entire burn sequence (decree → shudder → heat wash → BurnFlash
+                // → refill → aftermath) cannot be disrupted by player scrolling.
+                document.body.style.overflow = 'hidden';
+                if (mainScrollRef.current) {
+                  mainScrollRef.current.style.overflowY = 'hidden';
+                }
+                const lumRow = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+                if (lumRow) lumRow.style.overflow = 'hidden';
+              },
+              unlockBoardScroll: () => {
+                document.body.style.overflow = '';
+                if (mainScrollRef.current) {
+                  mainScrollRef.current.style.overflowY = '';
+                }
+                const lumRow = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+                if (lumRow) lumRow.style.overflow = '';
+              },
               setAnimEndTime,
               onBurnFlash: (entry) => {
                 setBurnFlashes(pf => [...pf, entry]);

@@ -73,6 +73,15 @@ export interface CinderMandateBurnActions {
   ) => void;
   /** Release the camera after the sequence ends. */
   restore: (opts?: { immediate?: boolean }) => void;
+  /**
+   * Prevent the player from scrolling the board or the Luminary portal row
+   * during the burn cinematic.  Called at the very start of the mount effect
+   * so the entire sequence (decree → shudder → heat wash → BurnFlash → refill)
+   * is fully protected.
+   */
+  lockBoardScroll: () => void;
+  /** Release the scroll lock applied by lockBoardScroll. */
+  unlockBoardScroll: () => void;
   /** Extend the animation drain gate by `ms` from now. */
   setAnimEndTime: (ms: number) => void;
   /** Trigger BurnFlash on a single slot via game.tsx state. */
@@ -132,6 +141,11 @@ export function CinderMandateBurnDirector({
   useEffect(() => {
     const slots = slotsRef.current;
     const ids = targetIdsRef.current;
+
+    // Lock scroll immediately — before camera prepare() so the entire sequence
+    // (decree → shudder → heat wash → BurnFlash → refill → aftermath) is
+    // fully protected from player scrolling.
+    actionsRef.current.lockBoardScroll();
 
     const procedure: AnimationProcedureStep[] =
       ids.length > 0
@@ -240,11 +254,17 @@ export function CinderMandateBurnDirector({
     // ── Phase 5: aftermath + complete ──────────────────────────────────────
     const completesAt = burnAt + BURN_FLASH_TOTAL_MS + AFTERMATH_HOLD_MS;
     t(() => {
+      actionsRef.current.unlockBoardScroll();
       actionsRef.current.restore({ immediate: reducedMotion });
       onCompleteRef.current(reducedMotion);
     }, completesAt);
 
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      // Safety: release scroll lock if the component unmounts before the
+      // completesAt timer fires (e.g. skip / fast-forward path).
+      actionsRef.current.unlockBoardScroll();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
