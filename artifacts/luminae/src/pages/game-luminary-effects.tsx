@@ -551,9 +551,10 @@ export function BrandStrikeAura({
           {/* Jagged SVG lightning arcs crackle across the card face.
               Four paths: two diagonals (ember-red / orange) crossing the full card,
               two horizontal crackles (amber) at top and bottom thirds.
-              Each path uses pathLength 0→1 (draw-on) then fades.
-              viewBox 0 0 100 100 + preserveAspectRatio="none" scales to any card size. */}
-          <motion.svg
+              Pure CSS animation via cinder-arc-draw keyframe — no framer-motion
+              pathLength (which drives stroke-dashoffset via WAAPI/JS and is heavy
+              on mobile). pathLength="1" SVG attribute normalises dasharray units. */}
+          <svg
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             aria-hidden="true"
@@ -568,66 +569,62 @@ export function BrandStrikeAura({
             }}
           >
             {/* Arc 1 — main diagonal, ember red, upper-left → lower-right */}
-            <motion.path
+            <path
               d="M 5,15 L 15,28 L 24,18 L 35,38 L 44,24 L 55,44 L 64,30 L 75,52 L 84,38 L 94,58"
+              pathLength={1}
               stroke="#ff5a3c"
               strokeWidth={1.4}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.95 }}
-              animate={{ pathLength: 1, opacity: [0.95, 0.85, 0.45, 0] }}
-              transition={{
-                pathLength: { duration: 0.48, delay: d, ease: 'easeOut' },
-                opacity: { duration: 1.1, delay: d, times: [0, 0.35, 0.72, 1.0] },
+              style={{
+                strokeDasharray: 1,
+                animation: `cinder-arc-draw 1.10s ease-out ${d.toFixed(3)}s both`,
               }}
             />
             {/* Arc 2 — counter-diagonal, orange, lower-left → upper-right */}
-            <motion.path
+            <path
               d="M 6,78 L 16,62 L 26,72 L 36,54 L 46,66 L 57,46 L 67,60 L 78,36 L 86,50 L 94,28"
+              pathLength={1}
               stroke="#f97316"
               strokeWidth={1.1}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.85 }}
-              animate={{ pathLength: 1, opacity: [0.85, 0.70, 0.30, 0] }}
-              transition={{
-                pathLength: { duration: 0.44, delay: d + 0.05, ease: 'easeOut' },
-                opacity: { duration: 1.05, delay: d + 0.05, times: [0, 0.38, 0.74, 1.0] },
+              style={{
+                strokeDasharray: 1,
+                animation: `cinder-arc-draw 1.05s ease-out ${(d + 0.05).toFixed(3)}s both`,
               }}
             />
             {/* Arc 3 — horizontal crackle, amber, zigzags across upper quarter */}
-            <motion.path
+            <path
               d="M 12,20 L 22,12 L 32,22 L 42,10 L 54,20 L 64,10 L 74,22 L 84,12 L 92,20"
+              pathLength={1}
               stroke="#fbbf24"
               strokeWidth={0.8}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.75 }}
-              animate={{ pathLength: 1, opacity: [0.75, 0.55, 0.15, 0] }}
-              transition={{
-                pathLength: { duration: 0.38, delay: d + 0.03, ease: 'easeOut' },
-                opacity: { duration: 0.95, delay: d + 0.03, times: [0, 0.40, 0.78, 1.0] },
+              style={{
+                strokeDasharray: 1,
+                animation: `cinder-arc-draw 0.95s ease-out ${(d + 0.03).toFixed(3)}s both`,
               }}
             />
             {/* Arc 4 — horizontal crackle, amber, zigzags across lower quarter */}
-            <motion.path
+            <path
               d="M 10,78 L 20,88 L 30,76 L 42,86 L 54,74 L 66,84 L 76,72 L 86,82 L 92,72"
+              pathLength={1}
               stroke="#fbbf24"
               strokeWidth={0.8}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              initial={{ pathLength: 0, opacity: 0.75 }}
-              animate={{ pathLength: 1, opacity: [0.75, 0.55, 0.15, 0] }}
-              transition={{
-                pathLength: { duration: 0.40, delay: d + 0.08, ease: 'easeOut' },
-                opacity: { duration: 0.95, delay: d + 0.08, times: [0, 0.40, 0.78, 1.0] },
+              style={{
+                strokeDasharray: 1,
+                animation: `cinder-arc-draw 0.95s ease-out ${(d + 0.08).toFixed(3)}s both`,
               }}
             />
-          </motion.svg>
+          </svg>
         </>
       )}
     </>

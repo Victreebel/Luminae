@@ -15,9 +15,23 @@
  * block and saves the pre-measured slot rects to a ref instead of firing
  * BurnFlash immediately. This director receives those slots via `pendingBurnSlots`
  * and fires BurnFlash at the correct point in its timeline.
+ *
+ * Implementation note — NO useState, only useRef + single useEffect
+ * ──────────────────────────────────────────────────────────────────
+ * React 19 concurrent mode can abort and retry a render mid-flight, which
+ * resets ReactCurrentDispatcher.current to ContextOnlyDispatcher between
+ * hook slots.  With multiple useState hooks, a re-render triggered by a
+ * setTimeout callback reliably crashes with "Invalid hook call" on the
+ * second render pass.
+ *
+ * Solution: remove all useState so the component never triggers a re-render
+ * of itself.  All overlays are always in the DOM (opacity 0 initially) and
+ * animated imperatively via framer-motion's standalone animate() function,
+ * which requires no React hook.  The entire sequence runs inside a single
+ * mount useEffect via a setTimeout chain.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
+import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 
@@ -99,24 +113,29 @@ export function CinderMandateBurnDirector({
   actions,
   onComplete,
 }: CinderMandateBurnDirectorProps) {
-  const [showDecree, setShowDecree] = useState(!reducedMotion);
-  const [showHeatWash, setShowHeatWash] = useState(false);
-  const [shudderActive, setShudderActive] = useState(false);
-
-  // Stable refs for timeout callbacks
+  // Stable refs — updated each render so setTimeout callbacks always capture
+  // the latest values without needing to be in effect dep arrays.
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
   // Snapshot of slots at mount time (the ref in game.tsx is cleared after this)
   const slotsRef = useRef(pendingBurnSlots);
+  // Capture targetCardIds at mount so shudder closure uses the stable value
+  const targetIdsRef = useRef(targetCardIds);
 
-  // ── Master timeline ────────────────────────────────────────────────────────
+  // DOM refs for imperative animation (no useState — see module comment)
+  const decreeRef = useRef<HTMLDivElement | null>(null);
+  const heatWashRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Single mount effect — entire sequence runs imperatively ────────────────
   useEffect(() => {
     const slots = slotsRef.current;
+    const ids = targetIdsRef.current;
+
     const procedure: AnimationProcedureStep[] =
-      targetCardIds.length > 0
-        ? [{ type: 'targetClaim', targetIds: targetCardIds, keyword: 'condemned' }]
+      ids.length > 0
+        ? [{ type: 'targetClaim', targetIds: ids, keyword: 'condemned' }]
         : [];
 
     // Pre-size drain gate for worst-case full sequence
@@ -133,22 +152,52 @@ export function CinderMandateBurnDirector({
       timers.push(h);
     };
 
-    // Decree auto-dismiss
-    if (!reducedMotion) {
-      t(() => setShowDecree(false), DECREE_MS);
+    // ── Phase 1: decree overlay (animate in immediately) ────────────────────
+    const decree = decreeRef.current;
+    if (!reducedMotion && decree) {
+      void animate(decree, { opacity: 1 }, { duration: 0.28, ease: 'easeOut' });
+      // Fade out after hold
+      t(() => {
+        void animate(decree, { opacity: 0 }, { duration: 0.22, ease: 'easeOut' });
+      }, DECREE_MS);
     }
 
-    // Shudder starts when decree ends
+    // ── Phase 2: shudder — direct DOM manipulation, no state ───────────────
     const shudderStart = reducedMotion ? 0 : DECREE_MS;
-    t(() => setShudderActive(true), shudderStart);
-    t(() => setShudderActive(false), shudderStart + SHUDDER_MS);
+    t(() => {
+      const els: HTMLElement[] = [];
+      for (const id of ids) {
+        const cardEl = document.querySelector(`[data-card-id="${id}"]`);
+        if (!cardEl) continue;
+        const slotEl = cardEl.closest('[data-slot-key]') as HTMLElement | null;
+        if (slotEl) els.push(slotEl);
+      }
+      els.forEach(el => {
+        el.style.animation = 'cinder-shudder 0.08s ease-in-out 5 alternate';
+      });
+      // Clear shudder after its duration
+      setTimeout(() => {
+        els.forEach(el => {
+          el.style.animation = '';
+          el.style.transform = '';
+        });
+      }, SHUDDER_MS);
+    }, shudderStart);
 
-    // Heat wash overlaps the second half of shudder
+    // ── Phase 3: heat wash — animate via ref, no state ─────────────────────
     const heatStart = shudderStart + Math.round(SHUDDER_MS * 0.4);
-    t(() => setShowHeatWash(true), heatStart);
-    t(() => setShowHeatWash(false), heatStart + HEAT_WASH_MS);
+    const wash = heatWashRef.current;
+    t(() => {
+      if (wash) {
+        void animate(wash, { opacity: [0, 0.17, 0] }, {
+          duration: HEAT_WASH_MS / 1000,
+          ease: 'easeInOut',
+          times: [0, 0.35, 1],
+        });
+      }
+    }, heatStart);
 
-    // BurnFlash fires after shudder completes
+    // ── Phase 4: BurnFlash (fires after shudder completes) ─────────────────
     const burnAt = shudderStart + SHUDDER_MS;
     t(() => {
       const chipEl = document.querySelector('[data-burn-pile-chip]');
@@ -188,7 +237,7 @@ export function CinderMandateBurnDirector({
       }, BURN_FLASH_TOTAL_MS);
     }, burnAt);
 
-    // Aftermath + complete
+    // ── Phase 5: aftermath + complete ──────────────────────────────────────
     const completesAt = burnAt + BURN_FLASH_TOTAL_MS + AFTERMATH_HOLD_MS;
     t(() => {
       actionsRef.current.restore({ immediate: reducedMotion });
@@ -199,122 +248,71 @@ export function CinderMandateBurnDirector({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Shudder: imperatively animate condemned slot DOM elements ─────────────
-  useEffect(() => {
-    if (targetCardIds.length === 0) return;
-    const els: HTMLElement[] = [];
-    for (const id of targetCardIds) {
-      const cardEl = document.querySelector(`[data-card-id="${id}"]`);
-      if (!cardEl) continue;
-      const slotEl = cardEl.closest('[data-slot-key]') as HTMLElement | null;
-      if (slotEl) els.push(slotEl);
-    }
-    if (els.length === 0) return;
-
-    if (shudderActive) {
-      els.forEach(el => {
-        el.style.animation = 'cinder-shudder 0.08s ease-in-out 5 alternate';
-      });
-    } else {
-      els.forEach(el => {
-        el.style.animation = '';
-        el.style.transform = '';
-      });
-    }
-
-    return () => {
-      els.forEach(el => {
-        el.style.animation = '';
-        el.style.transform = '';
-      });
-    };
-  }, [shudderActive, targetCardIds]);
-
   // ── Render ─────────────────────────────────────────────────────────────────
+  // Both overlays are always present in the DOM (opacity 0 initially) so their
+  // refs are available the moment the mount effect fires.
+  // No AnimatePresence or state needed — animation is fully imperative.
   return createPortal(
     <>
-      {/* Decree interstitial */}
-      <AnimatePresence>
-        {showDecree && (
-          <motion.div
-            key="cinder-burn-decree"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
+      {/* Decree interstitial — fades in immediately, out at DECREE_MS */}
+      <div
+        ref={(el) => { decreeRef.current = el; }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          zIndex: 195,
+          background:
+            'radial-gradient(ellipse at 50% 50%, rgba(185,28,28,0.12) 0%, rgba(0,0,0,0.07) 58%, transparent 100%)',
+          opacity: 0,
+        }}
+      >
+        <div style={{ textAlign: 'center', userSelect: 'none' }}>
+          <div
             style={{
-              position: 'fixed',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              pointerEvents: 'none',
-              zIndex: 195,
-              background:
-                'radial-gradient(ellipse at 50% 50%, rgba(185,28,28,0.12) 0%, rgba(0,0,0,0.07) 58%, transparent 100%)',
+              fontFamily: "'Cinzel', 'Palatino Linotype', serif",
+              fontSize: 19,
+              letterSpacing: '0.22em',
+              fontWeight: 700,
+              color: '#ef4444',
+              textTransform: 'uppercase',
+              textShadow:
+                '0 0 22px rgba(239,68,68,0.80), 0 0 8px rgba(239,68,68,0.50)',
             }}
           >
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.93 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.97 }}
-              transition={{ duration: 0.26, ease: 'easeOut' }}
-              style={{ textAlign: 'center', userSelect: 'none' }}
-            >
-              <div
-                style={{
-                  fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-                  fontSize: 19,
-                  letterSpacing: '0.22em',
-                  fontWeight: 700,
-                  color: '#ef4444',
-                  textTransform: 'uppercase',
-                  textShadow:
-                    '0 0 22px rgba(239,68,68,0.80), 0 0 8px rgba(239,68,68,0.50)',
-                }}
-              >
-                Cinder Mandate
-              </div>
-              <div
-                style={{
-                  marginTop: 8,
-                  fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-                  fontSize: 10,
-                  letterSpacing: '0.14em',
-                  color: 'rgba(251,191,36,0.62)',
-                  textTransform: 'uppercase',
-                }}
-              >
-                The condemned are burned.
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            Cinder Mandate
+          </div>
+          <div
+            style={{
+              marginTop: 8,
+              fontFamily: "'Cinzel', 'Palatino Linotype', serif",
+              fontSize: 10,
+              letterSpacing: '0.14em',
+              color: 'rgba(251,191,36,0.62)',
+              textTransform: 'uppercase',
+            }}
+          >
+            The condemned are burned.
+          </div>
+        </div>
+      </div>
 
       {/* Heat wash — ember glow floods the lower board */}
-      <AnimatePresence>
-        {showHeatWash && (
-          <motion.div
-            key="cinder-heat-wash"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 0.17, 0] }}
-            transition={{
-              duration: HEAT_WASH_MS / 1000,
-              ease: 'easeInOut',
-              times: [0, 0.35, 1],
-            }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              pointerEvents: 'none',
-              zIndex: 190,
-              background:
-                'linear-gradient(180deg, rgba(239,68,68,0.0) 0%, rgba(239,68,68,0.22) 55%, rgba(249,115,22,0.07) 100%)',
-            }}
-          />
-        )}
-      </AnimatePresence>
+      <div
+        ref={(el) => { heatWashRef.current = el; }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 190,
+          background:
+            'linear-gradient(180deg, rgba(239,68,68,0.0) 0%, rgba(239,68,68,0.22) 55%, rgba(249,115,22,0.07) 100%)',
+          opacity: 0,
+        }}
+      />
     </>,
     document.body,
   );

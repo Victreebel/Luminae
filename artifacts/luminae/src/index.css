@@ -340,6 +340,24 @@ button,
 }
 .kw-overlay-condemned { animation: kw-overlay-condemned 2.0s ease-in-out infinite; }
 
+/* Cinder Mandate electric arc draw-on.
+   pathLength="1" on the SVG path normalises dasharray units to 1.
+   dashoffset 1→0 draws the arc on; opacity fades it out.
+   Pure CSS — no framer-motion WAAPI on SVG geometry. */
+@keyframes cinder-arc-draw {
+  0%   { stroke-dashoffset: 1; opacity: 0.90; }
+  38%  { stroke-dashoffset: 0; opacity: 0.78; }
+  78%  { stroke-dashoffset: 0; opacity: 0.20; }
+  100% { stroke-dashoffset: 0; opacity: 0;    }
+}
+
+/* ArmedSigil outer pulse ring — CSS replaces repeat:Infinity JS loop. */
+@keyframes armed-sigil-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.50; }
+  50%       { transform: scale(1.6); opacity: 0;    }
+}
+.armed-sigil-ring { animation: armed-sigil-pulse 1.8s ease-in-out infinite; }
+
 @keyframes kw-overlay-seeded {
   0%, 100% { opacity: 0.18; }
   50%       { opacity: 0.34; }
