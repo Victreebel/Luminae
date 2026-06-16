@@ -370,6 +370,25 @@ export function LuminaryActivationCinematic({
     if (holdRafRef.current !== null) cancelAnimationFrame(holdRafRef.current);
   }, []);
 
+  // ── Scroll lock — acquired on mount, released on unmount ──────────────────
+  // Prevents the player from scrolling the board or the Luminary portal row
+  // during the ~2 s cinematic (summon / end_of_turn / start_of_turn for all
+  // non-ember Luminaries). Mirrors the lockBoardScroll/unlockBoardScroll
+  // pattern used by CinderMandateBurnDirector and CinderMandateBrandingDirector.
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const boardEl = document.querySelector<HTMLElement>('[data-game-board]');
+    if (boardEl) boardEl.style.overflowY = 'hidden';
+    const lumRow = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+    if (lumRow) lumRow.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = '';
+      if (boardEl) boardEl.style.overflowY = '';
+      if (lumRow) lumRow.style.overflow = '';
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Phase timer chain ─────────────────────────────────────────────────────
   useEffect(() => {
     if (isReduced) {
