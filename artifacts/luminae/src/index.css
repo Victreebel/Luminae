@@ -201,6 +201,16 @@ button,
   72%     { translate: 0.8px -1.5px; rotate:  0.40deg; }
   85%     { translate: -1.2px 0.7px; rotate: -0.20deg; }
 }
+
+/* Cinder Mandate card-slot shudder (condemned cards before BurnFlash) */
+@keyframes cinder-shudder {
+  0%   { translate:  0px    0px;   rotate:  0.00deg; }
+  20%  { translate: -3px    1px;   rotate: -0.50deg; }
+  40%  { translate:  2.5px -1.5px; rotate:  0.40deg; }
+  60%  { translate: -2px    1.2px; rotate: -0.35deg; }
+  80%  { translate:  1.8px -0.8px; rotate:  0.30deg; }
+  100% { translate:  0px    0px;   rotate:  0.00deg; }
+}
 .luminary-tremble {
   animation: luminary-tremble 0.28s linear infinite;
 }

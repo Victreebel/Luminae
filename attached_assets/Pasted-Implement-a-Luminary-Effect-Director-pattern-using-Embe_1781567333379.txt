@@ -1,0 +1,135 @@
+Implement a Luminary Effect Director pattern using Ember Sovereign / Cinder Mandate as the reference implementation.
+
+Problem:
+Cinder Mandate is currently assembled from reusable pieces — arrival cutscene, activation cinematic, view orchestrator, brand strikes, marker overlays, BurnFlash, market redraw — but too many of those pieces behave like independent mini-directors. This creates awkward camera behavior, rough compact/restore transitions, disconnected activation beats, and confusion between branding and burn phases.
+
+Goal:
+Keep the reusable animation primitives, but give each Luminary activation event one top-level director that owns sequencing, camera authority, marker visibility, and animation completion.
+
+Architecture rule:
+Each pending Luminary activation event should be routed to one director/procedure. That director owns:
+
+* camera/input lock during the effect
+* whether Compact View is entered
+* whether Compact View is restored or preserved
+* source pulse timing
+* target claim timing
+* brand strike or burn primitive calls
+* marker suppression/unsuppression
+* BurnFlash timing
+* Burn Pile update timing
+* market redraw timing
+* aftermath hold
+* animationEndTime/drain gate release
+* resolve_luminary_activation
+
+Reusable primitives should not independently:
+
+* call viewOrchestrator.prepare() a second time
+* restore the camera unless requested by the director
+* release the animation drain gate
+* trigger BurnFlash outside the director timeline
+* trigger brand strikes outside the director timeline
+* resolve the activation event
+
+Implement two Cinder Mandate directors:
+
+1. CinderMandateBrandingDirector
+    Triggered by:
+
+* luminaryId: “lum_ember”
+* effectType: “summon”
+
+Purpose:
+Introduce the Condemned state visually.
+
+Sequence:
+
+1. Runs only after LuminaryArrivalCutscene has completed.
+2. Locks camera/input with a light cinematic authority layer.
+3. Performs one viewOrchestrator.prepare() to frame Ember Sovereign source/portal and all Condemned market targets.
+4. Enters or remains in Compact View.
+5. Board dims slightly with Ember/violet atmosphere.
+6. Shows a short activation beat: “CINDER MANDATE”.
+7. Ember Sovereign source/portal pulses.
+8. Condemned target claim rings appear.
+9. Brand strike beams fire to every target from the event payload.
+10. Large ⌬ impact glyph appears on each target.
+11. Persistent Condemned badge/vignette appears exactly when each beam lands.
+12. After all strikes, hold the board briefly so players can inspect the newly Condemned market.
+13. Remain in Compact View after the sequence. Do not auto-restore to normal view.
+14. Release camera/input and resolve the activation.
+
+Important:
+
+* This director must not trigger BurnFlash.
+* It must use the server-provided targetCardIds payload, not live-state rediscovery as the primary target source.
+* If a beam/DOM target fails, unsuppress any remaining payload target IDs at the end so rules and visuals do not diverge.
+
+2. CinderMandateBurnDirector
+    Triggered by:
+
+* luminaryId: “lum_ember”
+* effectType: “end_of_turn”
+
+Purpose:
+Execute the delayed burn at the end of Ember Sovereign owner’s next turn.
+
+Sequence:
+
+1. Locks camera/input with the same light cinematic authority layer.
+2. Briefly darkens the board with ember/violet vignette.
+3. Shows a short decree interstitial, about 1.5–2.0 seconds:
+    * title: “CINDER MANDATE”
+    * optional subtitle: “The condemned are burned.”
+    * board remains faintly visible behind the overlay if possible.
+4. Frames all remaining condemned burn targets in Compact View.
+5. Condemned cards pulse/shudder for 350–500ms.
+6. A short heat wash crosses the viewport.
+7. BurnFlash plays bottom-up on every remaining target:
+    * crisp flame line from bottom to top
+    * no blur
+    * no generic fade-out
+    * card remains readable early in the burn
+8. Burn Pile updates.
+9. Market redraw happens after the burn animation.
+10. Hold the aftermath briefly.
+11. Prefer remaining in Compact View after the sequence, especially if multiple cards burned.
+12. Release camera/input and resolve the activation.
+
+Important:
+
+* This director must not trigger brand strikes.
+* This director should use the event payload for burn targets.
+* If targetCardIds alone is insufficient to locate old slots after market refill, add a richer payload such as burnedTargets with cardId, tier, slotIndex, and card snapshot.
+* No Cinder Mandate burn should occur or animate at start_of_turn in new games.
+
+Cinder Mandate timing rule:
+
+* Summon event = branding / Condemned marker introduction.
+* End-of-turn event = Burn execution.
+* Start-of-turn should not visibly animate Cinder Mandate burn in new games.
+
+Camera authority:
+Major Luminary effects should temporarily own camera/input like a lighter version of summoning:
+
+* disable manual view toggles during the directed sequence
+* prevent scroll/view interference during the sequence if applicable
+* suppress competing UI overlays if they clutter the effect
+* release only after the director’s aftermath hold completes
+
+Acceptance criteria:
+
+* Ember Sovereign arrival still plays normally.
+* Cinder Mandate branding happens after arrival, not during the next turn.
+* Branding uses one unified timeline and one viewOrchestrator.prepare().
+* Every Condemned target from the payload gets struck or at least unsuppressed by the end.
+* Condemned markers persist visibly through the waiting window.
+* Cinder Mandate burn happens only at end_of_turn.
+* Burn sequence has a brief decree beat before BurnFlash.
+* Burn uses bottom-up BurnFlash, Burn Pile update, and market redraw.
+* No brand strikes during burn.
+* No BurnFlash during summon branding.
+* No automatic rough restore after Cinder Mandate branding.
+* Camera/input cannot be manually disrupted during the directed effect.
+* Existing tests/typecheck pass.

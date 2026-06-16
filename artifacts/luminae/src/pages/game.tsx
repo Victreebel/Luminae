@@ -22,6 +22,9 @@ import type {
   BurnEvent,
 } from '@workspace/api-client-react';
 import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
+import { CinderMandateBrandingDirector } from '@/components/CinderMandateBrandingDirector';
+import { CinderMandateBurnDirector } from '@/components/CinderMandateBurnDirector';
+import type { DirectorBurnSlot } from '@/components/CinderMandateBurnDirector';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
 import { SeedBeyondSeasonsEffect } from '@/components/SeedBeyondSeasonsEffect';
@@ -566,6 +569,11 @@ export default function GameBoard() {
   // Used by inheritActivationViewRef logic to decide whether to carry the compact-
   // restore obligation through to the brand strike.
   const preActivationWasCompactRef = useRef(false);
+  // Slot rects for lum_ember end_of_turn burns — captured during state-diff
+  // BurnFlash detection before the director mounts. The CinderMandateBurnDirector
+  // receives this as a prop snapshot and fires BurnFlash at its own timeline point.
+  // Written by processUpdate; cleared to [] at the start of each new lum_ember burn batch.
+  const pendingDirectorBurnSlotsRef = useRef<DirectorBurnSlot[]>([]);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -908,9 +916,14 @@ export default function GameBoard() {
   // Compact View if the procedure targets multiple distinct board zones — so that by the
   // time the entity appears (after the 150 ms ANTICIPATE phase), all affected slots are
   // visible without horizontal scrolling.
+  //
+  // lum_ember events are EXCLUDED: their director components call prepare() themselves
+  // with an onSettled callback, which would race with this early eager prepare().
   useEffect(() => {
     if (!activationQueue.length || arrivalQueue.length > 0 || isTutorial) return;
     const evt = activationQueue[0];
+    // Directors manage their own prepare() — skip eager prepare for lum_ember events
+    if (evt.luminaryId === 'lum_ember') return;
     const procedure = resolveLuminaryProcedure(
       evt.luminaryId,
       evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
@@ -1486,74 +1499,101 @@ export default function GameBoard() {
         }
 
         if (burnEntries.length > 0) {
-          // Phase 1: capture slot rects NOW (slot DOM element persists even after
-          // card replacement) and show a fixed-position "Burned" badge portal at
-          // each slot's top-left corner.  The badge is visible regardless of
-          // whether the burned card is still in the render tree.
-          const resolvedEntries = burnEntries.flatMap(({ tier, slotIndex, sourceLuminaryId }) => {
-            const slotEl = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
-            if (!slotEl) return [];
-            const rect = slotEl.getBoundingClientRect();
-            return [{ id: `burn-badge-${tier}-${slotIndex}-${Date.now()}`, rect, tier, slotIndex, sourceLuminaryId }];
-          });
+          // ── Split: lum_ember burns → director-owned; all others → normal path ──
+          // CinderMandateBurnDirector owns the full BurnFlash timeline for Ember
+          // Sovereign burns. We save slot rects NOW (before market refill) so the
+          // director has the correct pre-refill positions when it mounts.
+          const directorEntries = burnEntries.filter(e => e.sourceLuminaryId === 'lum_ember');
+          const normalEntries   = burnEntries.filter(e => e.sourceLuminaryId !== 'lum_ember');
 
-          if (resolvedEntries.length > 0) {
-            setBurnBadgeOverlays(pf => [
-              ...pf,
-              ...resolvedEntries.map(e => ({ id: e.id, slotRect: e.rect })),
-            ]);
+          if (directorEntries.length > 0) {
+            // Reset accumulator for this activation cycle
+            pendingDirectorBurnSlotsRef.current = [];
+            for (const { tier, slotIndex, sourceLuminaryId } of directorEntries) {
+              const slotEl = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
+              if (slotEl) {
+                pendingDirectorBurnSlotsRef.current.push({
+                  slotRect: slotEl.getBoundingClientRect(),
+                  slotKey: `${tier}-${slotIndex}`,
+                  sourceLuminaryId,
+                });
+              }
+            }
+          }
 
-            // Phase 2: after 320 ms (badge animation completes), trigger BurnFlash.
-            // The badge calls onDone to remove itself; the flash runs independently.
-            setTimeout(() => {
-              // Capture the burn pile chip rect once — it should be visible now
-              // since the new state has ≥1 card in burnPile.
-              const chipEl = document.querySelector('[data-burn-pile-chip]');
-              const chipRect = chipEl?.getBoundingClientRect() ?? null;
-              for (const [burnIdx, { tier, slotIndex, sourceLuminaryId }] of resolvedEntries.entries()) {
-                const slotEl2 = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
-                const rect2 = slotEl2?.getBoundingClientRect();
-                if (rect2) {
-                  gameAudio.playCardBurn(burnIdx, resolvedEntries.length);
-                  setBurnFlashes(pf => [
-                    ...pf,
-                    { id: `burn-${tier}-${slotIndex}-${Date.now()}`, slotRect: rect2, sourceLuminaryId },
-                  ]);
-                  // Launch a charred-card fragment toward the burn pile chip.
-                  // Fires ~400 ms into BurnFlash (phase 3 ash-scatter) so it
-                  // feels like a fragment breaking off and flying away.
-                  if (chipRect) {
-                    const fromRect = rect2;
-                    const toRect = chipRect;
-                    setTimeout(() => {
-                      setBurnPileParticles(pf => [
-                        ...pf,
-                        { id: `bpart-${tier}-${slotIndex}-${Date.now()}`, from: fromRect, to: toRect },
-                      ]);
-                      // Arrival flash + landing sparks: fires when fragment reaches chip (~780 ms travel)
+          // Normal (non-director) burns: Phase 1 badge + Phase 2 BurnFlash
+          if (normalEntries.length > 0) {
+            // Phase 1: capture slot rects NOW (slot DOM element persists even after
+            // card replacement) and show a fixed-position "Burned" badge portal at
+            // each slot's top-left corner.  The badge is visible regardless of
+            // whether the burned card is still in the render tree.
+            const resolvedEntries = normalEntries.flatMap(({ tier, slotIndex, sourceLuminaryId }) => {
+              const slotEl = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
+              if (!slotEl) return [];
+              const rect = slotEl.getBoundingClientRect();
+              return [{ id: `burn-badge-${tier}-${slotIndex}-${Date.now()}`, rect, tier, slotIndex, sourceLuminaryId }];
+            });
+
+            if (resolvedEntries.length > 0) {
+              setBurnBadgeOverlays(pf => [
+                ...pf,
+                ...resolvedEntries.map(e => ({ id: e.id, slotRect: e.rect })),
+              ]);
+
+              // Phase 2: after 320 ms (badge animation completes), trigger BurnFlash.
+              // The badge calls onDone to remove itself; the flash runs independently.
+              setTimeout(() => {
+                // Capture the burn pile chip rect once — it should be visible now
+                // since the new state has ≥1 card in burnPile.
+                const chipEl = document.querySelector('[data-burn-pile-chip]');
+                const chipRect = chipEl?.getBoundingClientRect() ?? null;
+                for (const [burnIdx, { tier, slotIndex, sourceLuminaryId }] of resolvedEntries.entries()) {
+                  const slotEl2 = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
+                  const rect2 = slotEl2?.getBoundingClientRect();
+                  if (rect2) {
+                    gameAudio.playCardBurn(burnIdx, resolvedEntries.length);
+                    setBurnFlashes(pf => [
+                      ...pf,
+                      { id: `burn-${tier}-${slotIndex}-${Date.now()}`, slotRect: rect2, sourceLuminaryId },
+                    ]);
+                    // Launch a charred-card fragment toward the burn pile chip.
+                    // Fires ~400 ms into BurnFlash (phase 3 ash-scatter) so it
+                    // feels like a fragment breaking off and flying away.
+                    if (chipRect) {
+                      const fromRect = rect2;
+                      const toRect = chipRect;
                       setTimeout(() => {
-                        void burnChipArrivalAnim.start({
-                          scale: [1.45, 1],
-                          opacity: [0.9, 0],
-                          transition: { duration: 0.18, ease: 'easeOut' },
-                        });
-                        setBurnChipSparks(pf => [
+                        setBurnPileParticles(pf => [
                           ...pf,
-                          { id: `bspark-${tier}-${slotIndex}-${Date.now()}`, chipRect: toRect, angleSeed: Math.random() * Math.PI * 2 },
+                          { id: `bpart-${tier}-${slotIndex}-${Date.now()}`, from: fromRect, to: toRect },
                         ]);
-                      }, 780);
-                    }, 380);
+                        // Arrival flash + landing sparks: fires when fragment reaches chip (~780 ms travel)
+                        setTimeout(() => {
+                          void burnChipArrivalAnim.start({
+                            scale: [1.45, 1],
+                            opacity: [0.9, 0],
+                            transition: { duration: 0.18, ease: 'easeOut' },
+                          });
+                          setBurnChipSparks(pf => [
+                            ...pf,
+                            { id: `bspark-${tier}-${slotIndex}-${Date.now()}`, chipRect: toRect, angleSeed: Math.random() * Math.PI * 2 },
+                          ]);
+                        }, 780);
+                      }, 380);
+                    }
                   }
                 }
-              }
-            }, 320);
+              }, 320);
+            }
           }
         }
-        // Pulse the 🔥 chip to signal the burn pile count changed
-        void burnChipAnim.start({
-          filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
-          transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
-        });
+        // Pulse the 🔥 chip — only when non-director burns exist; director fires its own chip pulse.
+        if (burnEntries.some(e => e.sourceLuminaryId !== 'lum_ember')) {
+          void burnChipAnim.start({
+            filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
+            transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
+          });
+        }
       }
     }
 
@@ -1583,11 +1623,17 @@ export default function GameBoard() {
           }
         }
         if (slotKeys.length > 0) {
-          setTimeout(() => {
-            setRefillingSlots(new Set(slotKeys));
-            gameAudio.playMarketRefill();
-            setTimeout(() => setRefillingSlots(new Set()), 700);
-          }, 1520);
+          // CinderMandateBurnDirector fires its own refill pulse for lum_ember slots.
+          // Filter those out so the state-diff path doesn't double-fire.
+          const directorSlotKeys = new Set(pendingDirectorBurnSlotsRef.current.map(s => s.slotKey));
+          const nonDirectorKeys = slotKeys.filter(k => !directorSlotKeys.has(k));
+          if (nonDirectorKeys.length > 0) {
+            setTimeout(() => {
+              setRefillingSlots(new Set(nonDirectorKeys));
+              gameAudio.playMarketRefill();
+              setTimeout(() => setRefillingSlots(new Set()), 700);
+            }, 1520);
+          }
         }
       }
     }
@@ -9056,16 +9102,128 @@ export default function GameBoard() {
         })()}
       </AnimatePresence>
 
-      {/* Luminary activation cinematic queue — plays one ~4s cinematic per effect.
+      {/* Luminary activation cinematic queue — plays one cinematic per effect event.
           These are distinct from the 12-s arrival cutscene and do NOT gate progression.
-          Gated on arrivalQueue.length === 0 so the arrival effect never fires while
-          the arrival cutscene is still playing. */}
+          Gated on arrivalQueue.length === 0 so the activation never fires while the
+          arrival cutscene is still playing.
+          Routing:
+            • lum_ember + summon      → CinderMandateBrandingDirector (brand-strike sequence)
+            • lum_ember + end_of_turn → CinderMandateBurnDirector (BurnFlash sequence)
+            • all other Luminaries    → LuminaryActivationCinematic (generic ~4s cinematic) */}
       {!isTutorial && activationQueue.length > 0 && arrivalQueue.length === 0 && (() => {
         const evt = activationQueue[0];
         const lum = (state?.luminaries ?? []).find((l: Luminary) => l.id === evt.luminaryId);
         const triggeringPlayer = (state?.players ?? []).find(
           (p: GamePlayerState) => p.playerId === evt.triggeringPlayerId
         );
+
+        // ── Ember Sovereign: Cinder Mandate branding director (summon) ───────────
+        if (evt.luminaryId === 'lum_ember' && evt.effectType === 'summon') {
+          return (
+            <CinderMandateBrandingDirector
+              key={evt.eventId}
+              luminaryId={evt.luminaryId}
+              lumSummonColor={lum?.summonColor}
+              lumSummonSecondaryColor={lum?.summonSecondaryColor}
+              targetCardIds={evt.targetCardIds ?? []}
+              marketMarkers={state?.marketMarkers ?? {}}
+              reducedMotion={abridgedAnims}
+              actions={{
+                prepare: viewOrchestrator.prepare,
+                setAnimEndTime,
+                unsuppressMarkers: (ids) => {
+                  setSuppressedMarkerIds(prev => {
+                    if (prev.size === 0) return prev;
+                    const next = new Set(prev);
+                    ids.forEach(id => next.delete(id));
+                    return next;
+                  });
+                },
+                fireBrandStrikes,
+                playBrandStrike: () => gameAudio.playBrandStrike(),
+              }}
+              onComplete={(skipped) => {
+                // Director handled brand strikes internally — clear deferred-strike refs
+                // so the generic onComplete path doesn't double-fire them.
+                postActivationStrikesFirerRef.current = null;
+                postActivationStrikesTotalMsRef.current = 0;
+                // Restore camera (un-compact if view was normal before the director ran)
+                viewOrchestrator.restore({ immediate: skipped });
+                setActivationQueue(q => q.slice(1));
+                executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+                // Safety: unsuppress any target IDs that may still be in the set
+                const safetyIds = evt.targetCardIds;
+                if (safetyIds && safetyIds.length > 0) {
+                  setSuppressedMarkerIds(prev => {
+                    if (prev.size === 0) return prev;
+                    const next = new Set(prev);
+                    safetyIds.forEach(id => next.delete(id));
+                    return next;
+                  });
+                }
+              }}
+            />
+          );
+        }
+
+        // ── Ember Sovereign: Cinder Mandate burn director (end_of_turn) ──────────
+        if (evt.luminaryId === 'lum_ember' && evt.effectType === 'end_of_turn') {
+          return (
+            <CinderMandateBurnDirector
+              key={evt.eventId}
+              targetCardIds={evt.targetCardIds ?? []}
+              pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
+              reducedMotion={abridgedAnims}
+              actions={{
+                prepare: viewOrchestrator.prepare,
+                restore: viewOrchestrator.restore,
+                setAnimEndTime,
+                onBurnFlash: (entry) => {
+                  setBurnFlashes(pf => [...pf, entry]);
+                },
+                onBurnChipPulse: () => {
+                  void burnChipAnim.start({
+                    filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
+                    transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
+                  });
+                },
+                onBurnPileParticle: (fromRect, toRect) => {
+                  setBurnPileParticles(pf => [
+                    ...pf,
+                    { id: `bpart-director-${Date.now()}`, from: fromRect, to: toRect },
+                  ]);
+                  // Chip arrival flash + landing sparks fires when fragment reaches chip
+                  setTimeout(() => {
+                    void burnChipArrivalAnim.start({
+                      scale: [1.45, 1],
+                      opacity: [0.9, 0],
+                      transition: { duration: 0.18, ease: 'easeOut' },
+                    });
+                    setBurnChipSparks(pf => [
+                      ...pf,
+                      { id: `bspark-director-${Date.now()}`, chipRect: toRect, angleSeed: Math.random() * Math.PI * 2 },
+                    ]);
+                  }, 780);
+                },
+                onRefillPulse: (slotKeys) => {
+                  setRefillingSlots(new Set(slotKeys));
+                  gameAudio.playMarketRefill();
+                  setTimeout(() => setRefillingSlots(new Set()), 700);
+                },
+                playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
+              }}
+              onComplete={() => {
+                // Director already called restore() internally at the end of its timeline.
+                // Clear the slot snapshot so stale rects don't leak into future activations.
+                pendingDirectorBurnSlotsRef.current = [];
+                setActivationQueue(q => q.slice(1));
+                executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+              }}
+            />
+          );
+        }
+
+        // ── Generic cinematic for all other Luminary activations ─────────────────
         const procedure = resolveLuminaryProcedure(
           evt.luminaryId,
           evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
