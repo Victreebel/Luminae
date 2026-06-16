@@ -21,9 +21,7 @@ import type {
   PendingLuminaryActivationEvent,
   BurnEvent,
 } from '@workspace/api-client-react';
-import { LuminaryActivationCinematic } from '@/components/LuminaryActivationCinematic';
-import { CinderMandateBrandingDirector } from '@/components/CinderMandateBrandingDirector';
-import { CinderMandateBurnDirector } from '@/components/CinderMandateBurnDirector';
+import { ActivationDirectorRouter } from '@/components/ActivationDirectorRouter';
 import type { DirectorBurnSlot } from '@/components/CinderMandateBurnDirector';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
@@ -9116,131 +9114,95 @@ export default function GameBoard() {
         const triggeringPlayer = (state?.players ?? []).find(
           (p: GamePlayerState) => p.playerId === evt.triggeringPlayerId
         );
-
-        // ── Ember Sovereign: Cinder Mandate branding director (summon) ───────────
-        if (evt.luminaryId === 'lum_ember' && evt.effectType === 'summon') {
-          return (
-            <CinderMandateBrandingDirector
-              key={evt.eventId}
-              luminaryId={evt.luminaryId}
-              lumSummonColor={lum?.summonColor}
-              lumSummonSecondaryColor={lum?.summonSecondaryColor}
-              targetCardIds={evt.targetCardIds ?? []}
-              marketMarkers={state?.marketMarkers ?? {}}
-              reducedMotion={abridgedAnims}
-              actions={{
-                prepare: viewOrchestrator.prepare,
-                setAnimEndTime,
-                unsuppressMarkers: (ids) => {
-                  setSuppressedMarkerIds(prev => {
-                    if (prev.size === 0) return prev;
-                    const next = new Set(prev);
-                    ids.forEach(id => next.delete(id));
-                    return next;
-                  });
-                },
-                fireBrandStrikes,
-                playBrandStrike: () => gameAudio.playBrandStrike(),
-              }}
-              onComplete={(skipped) => {
-                // Director handled brand strikes internally — clear deferred-strike refs
-                // so the generic onComplete path doesn't double-fire them.
-                postActivationStrikesFirerRef.current = null;
-                postActivationStrikesTotalMsRef.current = 0;
-                // Restore camera (un-compact if view was normal before the director ran)
-                viewOrchestrator.restore({ immediate: skipped });
-                setActivationQueue(q => q.slice(1));
-                executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
-                // Safety: unsuppress any target IDs that may still be in the set
-                const safetyIds = evt.targetCardIds;
-                if (safetyIds && safetyIds.length > 0) {
-                  setSuppressedMarkerIds(prev => {
-                    if (prev.size === 0) return prev;
-                    const next = new Set(prev);
-                    safetyIds.forEach(id => next.delete(id));
-                    return next;
-                  });
-                }
-              }}
-            />
-          );
-        }
-
-        // ── Ember Sovereign: Cinder Mandate burn director (end_of_turn) ──────────
-        if (evt.luminaryId === 'lum_ember' && evt.effectType === 'end_of_turn') {
-          return (
-            <CinderMandateBurnDirector
-              key={evt.eventId}
-              targetCardIds={evt.targetCardIds ?? []}
-              pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
-              reducedMotion={abridgedAnims}
-              actions={{
-                prepare: viewOrchestrator.prepare,
-                restore: viewOrchestrator.restore,
-                setAnimEndTime,
-                onBurnFlash: (entry) => {
-                  setBurnFlashes(pf => [...pf, entry]);
-                },
-                onBurnChipPulse: () => {
-                  void burnChipAnim.start({
-                    filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
-                    transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
-                  });
-                },
-                onBurnPileParticle: (fromRect, toRect) => {
-                  setBurnPileParticles(pf => [
-                    ...pf,
-                    { id: `bpart-director-${Date.now()}`, from: fromRect, to: toRect },
-                  ]);
-                  // Chip arrival flash + landing sparks fires when fragment reaches chip
-                  setTimeout(() => {
-                    void burnChipArrivalAnim.start({
-                      scale: [1.45, 1],
-                      opacity: [0.9, 0],
-                      transition: { duration: 0.18, ease: 'easeOut' },
-                    });
-                    setBurnChipSparks(pf => [
-                      ...pf,
-                      { id: `bspark-director-${Date.now()}`, chipRect: toRect, angleSeed: Math.random() * Math.PI * 2 },
-                    ]);
-                  }, 780);
-                },
-                onRefillPulse: (slotKeys) => {
-                  setRefillingSlots(new Set(slotKeys));
-                  gameAudio.playMarketRefill();
-                  setTimeout(() => setRefillingSlots(new Set()), 700);
-                },
-                playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
-              }}
-              onComplete={() => {
-                // Director already called restore() internally at the end of its timeline.
-                // Clear the slot snapshot so stale rects don't leak into future activations.
-                pendingDirectorBurnSlotsRef.current = [];
-                setActivationQueue(q => q.slice(1));
-                executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
-              }}
-            />
-          );
-        }
-
-        // ── Generic cinematic for all other Luminary activations ─────────────────
-        const procedure = resolveLuminaryProcedure(
-          evt.luminaryId,
-          evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn',
-          state,
-          evt.triggeringPlayerId,
-          { targetCardIds: evt.targetCardIds },
-        );
         return (
-          <LuminaryActivationCinematic
+          <ActivationDirectorRouter
             key={evt.eventId}
-            luminaryId={evt.luminaryId}
-            effectType={evt.effectType as 'summon' | 'end_of_turn' | 'start_of_turn'}
-            luminaryName={lum?.name ?? evt.luminaryId}
-            triggeringPlayerName={triggeringPlayer?.playerName}
-            procedure={procedure.length > 0 ? procedure : undefined}
-            reducedMotion={abridgedAnims}
-            onComplete={(skipped) => {
+            evt={evt}
+            lum={lum}
+            triggeringPlayer={triggeringPlayer}
+            state={state}
+            abridgedAnims={abridgedAnims}
+            pendingBurnSlots={pendingDirectorBurnSlotsRef.current}
+            brandingActions={{
+              prepare: viewOrchestrator.prepare,
+              setAnimEndTime,
+              unsuppressMarkers: (ids) => {
+                setSuppressedMarkerIds(prev => {
+                  if (prev.size === 0) return prev;
+                  const next = new Set(prev);
+                  ids.forEach(id => next.delete(id));
+                  return next;
+                });
+              },
+              fireBrandStrikes,
+              playBrandStrike: () => gameAudio.playBrandStrike(),
+            }}
+            onBrandingComplete={(skipped) => {
+              // Director handled brand strikes internally — clear deferred-strike refs
+              // so the generic onComplete path doesn't double-fire them.
+              postActivationStrikesFirerRef.current = null;
+              postActivationStrikesTotalMsRef.current = 0;
+              // Restore camera (un-compact if view was normal before the director ran)
+              viewOrchestrator.restore({ immediate: skipped });
+              setActivationQueue(q => q.slice(1));
+              executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+              // Safety: unsuppress any target IDs that may still be in the set
+              const safetyIds = evt.targetCardIds;
+              if (safetyIds && safetyIds.length > 0) {
+                setSuppressedMarkerIds(prev => {
+                  if (prev.size === 0) return prev;
+                  const next = new Set(prev);
+                  safetyIds.forEach(id => next.delete(id));
+                  return next;
+                });
+              }
+            }}
+            burnActions={{
+              prepare: viewOrchestrator.prepare,
+              restore: viewOrchestrator.restore,
+              setAnimEndTime,
+              onBurnFlash: (entry) => {
+                setBurnFlashes(pf => [...pf, entry]);
+              },
+              onBurnChipPulse: () => {
+                void burnChipAnim.start({
+                  filter: ['brightness(1)', 'brightness(3)', 'brightness(1.5)', 'brightness(1)'],
+                  transition: { duration: 0.65, times: [0, 0.15, 0.45, 1], ease: 'easeOut' },
+                });
+              },
+              onBurnPileParticle: (fromRect, toRect) => {
+                setBurnPileParticles(pf => [
+                  ...pf,
+                  { id: `bpart-director-${Date.now()}`, from: fromRect, to: toRect },
+                ]);
+                // Chip arrival flash + landing sparks fires when fragment reaches chip
+                setTimeout(() => {
+                  void burnChipArrivalAnim.start({
+                    scale: [1.45, 1],
+                    opacity: [0.9, 0],
+                    transition: { duration: 0.18, ease: 'easeOut' },
+                  });
+                  setBurnChipSparks(pf => [
+                    ...pf,
+                    { id: `bspark-director-${Date.now()}`, chipRect: toRect, angleSeed: Math.random() * Math.PI * 2 },
+                  ]);
+                }, 780);
+              },
+              onRefillPulse: (slotKeys) => {
+                setRefillingSlots(new Set(slotKeys));
+                gameAudio.playMarketRefill();
+                setTimeout(() => setRefillingSlots(new Set()), 700);
+              },
+              playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
+            }}
+            onBurnComplete={() => {
+              // Director already called restore() internally at the end of its timeline.
+              // Clear the slot snapshot so stale rects don't leak into future activations.
+              pendingDirectorBurnSlotsRef.current = [];
+              setActivationQueue(q => q.slice(1));
+              executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
+            }}
+            onCinematicComplete={(skipped) => {
               // Only restore the view now when no brand strikes are about to follow.
               // When strikes ARE pending, the camera stays held compact so the burn
               // animation begins without a premature zoom-in/zoom-out between phases.

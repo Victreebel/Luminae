@@ -12,9 +12,22 @@
  * Does NOT call viewOrchestrator.restore() — the camera remains in whatever
  * state the prepare() call leaves it until the caller's onComplete handler
  * decides to release it (or the next director takes over).
+ *
+ * Implementation note — NO useState, only useRef + single useEffect
+ * ──────────────────────────────────────────────────────────────────
+ * React 19 concurrent mode can abort and retry a render mid-flight, which
+ * resets ReactCurrentDispatcher.current to ContextOnlyDispatcher between
+ * hook slots.  With multiple useState hooks, a re-render triggered by
+ * setBeatDone(true) from a setTimeout reliably crashes with "Invalid hook
+ * call" at the first useEffect registration on that second pass.
+ *
+ * The solution: remove all state so the component never triggers a re-render
+ * of itself.  The beat overlay is animated imperatively via framer-motion's
+ * standalone animate() function, which requires no React hook.  The entire
+ * sequence runs inside a single mount useEffect via a setTimeout chain.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
+import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 
@@ -96,20 +109,22 @@ export function CinderMandateBrandingDirector({
   actions,
   onComplete,
 }: CinderMandateBrandingDirectorProps) {
-  const [showBeat, setShowBeat] = useState(false);
-  const [beatDone, setBeatDone] = useState(false);
-
-  // Stable ref so setTimeout callbacks capture the latest onComplete
+  // Stable refs — updated each render so setTimeout callbacks always capture
+  // the latest values without needing to be in effect dep arrays.
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
-  // Stable ref so beatDone effect captures latest actions
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
 
-  // ── Phase 0: prepare camera, then show beat overlay ───────────────────────
+  // Ref to the beat overlay DOM node for imperative animation.
+  const beatOverlayRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Single mount effect — entire sequence runs imperatively ────────────────
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Nothing to brand — skip immediately
     if (targetCardIds.length === 0) {
-      // Nothing to brand — skip immediately
       onCompleteRef.current(false);
       return;
     }
@@ -126,146 +141,135 @@ export function CinderMandateBrandingDirector({
       lead +
       (targetCardIds.length - 1) * 90 +
       3820 + // aura-complete window
-      400 + // buffer
+      400 +  // buffer
       AFTERMATH_HOLD_MS;
     actionsRef.current.setAnimEndTime(estimatedTotalMs);
 
     actionsRef.current.prepare(
       procedure,
       () => {
-        // Camera has settled — start the beat overlay
-        setShowBeat(true);
+        // ── Phase 1: animate beat overlay in ────────────────────────────────
+        const overlay = beatOverlayRef.current;
+        if (overlay) {
+          void animate(overlay, { opacity: 1 }, { duration: 0.22, ease: 'easeOut' });
+        }
+
+        // ── Phase 2: after beat hold, animate out + fire strikes ─────────────
+        const beatTimer = setTimeout(() => {
+          if (overlay) {
+            void animate(overlay, { opacity: 0 }, { duration: 0.18, ease: 'easeOut' });
+          }
+
+          // Capture source-portal rect now that layout has settled
+          const portalEl = document.querySelector(`[data-luminary-id="${luminaryId}"]`);
+          let source:
+            | {
+                rect: { x: number; y: number; w: number; h: number };
+                primary: string;
+                secondary: string;
+              }
+            | undefined;
+          if (portalEl && !reducedMotion) {
+            const pr = portalEl.getBoundingClientRect();
+            if (pr.width > 0) {
+              source = {
+                rect: { x: pr.x, y: pr.y, w: pr.width, h: pr.height },
+                primary: lumSummonColor ?? '#ef4444',
+                secondary: lumSummonSecondaryColor ?? lumSummonColor ?? '#f97316',
+              };
+            }
+          }
+
+          const usedLead = source ? lead : 0;
+
+          actionsRef.current.playBrandStrike();
+          const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, marketMarkers, {
+            source,
+            lead: usedLead,
+            // orchestrated: false — director owns camera; ArrivalBrandStrike must NOT call restore()
+            orchestrated: false,
+            restoreImmediate: reducedMotion,
+          });
+
+          // Reveal overlays + badges (badges use brandDelayMap timing)
+          actionsRef.current.unsuppressMarkers(targetCardIds);
+
+          const strikeTotalMs = usedLead + (targetCardIds.length - 1) * 90 + 3820 + 400;
+          // Refine the drain gate to the exact strike duration
+          actionsRef.current.setAnimEndTime(strikeTotalMs + AFTERMATH_HOLD_MS);
+
+          const completeDelay = strikeId
+            ? strikeTotalMs + AFTERMATH_HOLD_MS
+            : 200; // No visible DOM targets — complete quickly
+
+          // After strikes settle + aftermath hold: call onComplete.
+          // Camera stays compact — no restore() here.
+          const completeTimer = setTimeout(() => {
+            onCompleteRef.current(false);
+          }, completeDelay);
+          timers.push(completeTimer);
+        }, BEAT_HOLD_MS);
+
+        timers.push(beatTimer);
       },
       { forceOrchestrate: true },
     );
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Beat overlay auto-advance ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!showBeat) return;
-    const t = setTimeout(() => {
-      setShowBeat(false);
-      setBeatDone(true);
-    }, BEAT_HOLD_MS);
-    return () => clearTimeout(t);
-  }, [showBeat]);
-
-  // ── Phase 2: fire brand strikes after beat overlay exits ──────────────────
-  useEffect(() => {
-    if (!beatDone) return;
-
-    // Capture source-portal rect now that layout has settled
-    const portalEl = document.querySelector(`[data-luminary-id="${luminaryId}"]`);
-    let source:
-      | {
-          rect: { x: number; y: number; w: number; h: number };
-          primary: string;
-          secondary: string;
-        }
-      | undefined;
-    if (portalEl && !reducedMotion) {
-      const pr = portalEl.getBoundingClientRect();
-      if (pr.width > 0) {
-        source = {
-          rect: { x: pr.x, y: pr.y, w: pr.width, h: pr.height },
-          primary: lumSummonColor ?? '#ef4444',
-          secondary: lumSummonSecondaryColor ?? lumSummonColor ?? '#f97316',
-        };
-      }
-    }
-
-    const lead = reducedMotion ? 0 : SOURCE_PULSE_LEAD_MS;
-    const usedLead = source ? lead : 0;
-
-    actionsRef.current.playBrandStrike();
-    const strikeId = actionsRef.current.fireBrandStrikes(targetCardIds, marketMarkers, {
-      source,
-      lead: usedLead,
-      // orchestrated: false — director owns camera; ArrivalBrandStrike must NOT call restore()
-      orchestrated: false,
-      restoreImmediate: reducedMotion,
-    });
-
-    // Reveal overlays + badges (badges use brandDelayMap timing)
-    actionsRef.current.unsuppressMarkers(targetCardIds);
-
-    const strikeTotalMs = usedLead + (targetCardIds.length - 1) * 90 + 3820 + 400;
-    // Refine the drain gate to the exact strike duration
-    actionsRef.current.setAnimEndTime(strikeTotalMs + AFTERMATH_HOLD_MS);
-
-    if (!strikeId) {
-      // No visible DOM targets — complete after a short delay
-      const t = setTimeout(() => onCompleteRef.current(false), 200);
-      return () => clearTimeout(t);
-    }
-
-    // After strikes settle + aftermath hold: call onComplete.
-    // Camera stays compact — no restore() here.
-    const t = setTimeout(() => onCompleteRef.current(false), strikeTotalMs + AFTERMATH_HOLD_MS);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [beatDone]);
-
   // ── Render ─────────────────────────────────────────────────────────────────
+  // The overlay is always present in the DOM (opacity 0 initially) so that
+  // the beatOverlayRef is available the moment the mount effect fires.
+  // No AnimatePresence or state needed — animation is fully imperative.
   return createPortal(
-    <AnimatePresence>
-      {showBeat && (
-        <motion.div
-          key="cinder-branding-beat"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
+    <div
+      ref={(el) => { beatOverlayRef.current = el; }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+        zIndex: 195,
+        background:
+          'radial-gradient(ellipse at 50% 52%, rgba(239,68,68,0.09) 0%, transparent 66%)',
+        opacity: 0,
+      }}
+    >
+      <div style={{ textAlign: 'center', userSelect: 'none' }}>
+        <div
           style={{
-            position: 'fixed',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            zIndex: 195,
-            background:
-              'radial-gradient(ellipse at 50% 52%, rgba(239,68,68,0.09) 0%, transparent 66%)',
+            fontFamily: "'Cinzel', 'Palatino Linotype', serif",
+            fontSize: 19,
+            letterSpacing: '0.22em',
+            fontWeight: 700,
+            color: '#ef4444',
+            textTransform: 'uppercase',
+            textShadow:
+              '0 0 22px rgba(239,68,68,0.75), 0 0 7px rgba(239,68,68,0.45)',
           }}
         >
-          <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.93 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -5, scale: 0.97 }}
-            transition={{ duration: 0.20, ease: 'easeOut' }}
-            style={{ textAlign: 'center', userSelect: 'none' }}
-          >
-            <div
-              style={{
-                fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-                fontSize: 19,
-                letterSpacing: '0.22em',
-                fontWeight: 700,
-                color: '#ef4444',
-                textTransform: 'uppercase',
-                textShadow:
-                  '0 0 22px rgba(239,68,68,0.75), 0 0 7px rgba(239,68,68,0.45)',
-              }}
-            >
-              Cinder Mandate
-            </div>
-            <div
-              style={{
-                marginTop: 6,
-                fontFamily: "'Cinzel', 'Palatino Linotype', serif",
-                fontSize: 10,
-                letterSpacing: '0.18em',
-                color: 'rgba(251,191,36,0.68)',
-                textTransform: 'uppercase',
-              }}
-            >
-              Condemned
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
+          Cinder Mandate
+        </div>
+        <div
+          style={{
+            marginTop: 6,
+            fontFamily: "'Cinzel', 'Palatino Linotype', serif",
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            color: 'rgba(251,191,36,0.68)',
+            textTransform: 'uppercase',
+          }}
+        >
+          Condemned
+        </div>
+      </div>
+    </div>,
     document.body,
   );
 }
