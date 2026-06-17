@@ -28,6 +28,10 @@ args = "accessibility"
 task = "workflow.run"
 args = "ws-keepalive"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "unit-tests"
+
 [[workflows.workflow]]
 name = "typecheck"
 author = "agent"
@@ -57,6 +61,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/scripts run test:ws-keepalive"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "unit-tests"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/luminae run test"
 
 [workflows.workflow.metadata]
 isValidation = true
