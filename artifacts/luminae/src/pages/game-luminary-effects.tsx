@@ -549,12 +549,15 @@ export function BrandStrikeAura({
             transition={{ duration: 0.38, delay: d, times: [0, 0.13, 1.0], ease: 'easeOut' }}
           />
 
-          {/* Jagged SVG lightning arcs crackle across the card face.
-              Four paths: two diagonals (ember-red / orange) crossing the full card,
-              two horizontal crackles (amber) at top and bottom thirds.
-              Uses motion.path pathLength animation — one-shot (no repeat), so no
-              JS-loop OOM risk. CSS stroke-dashoffset approach was unreliable across
-              browsers due to unitless length handling in @keyframes for SVG. */}
+          {/* Discharge rays from impact center — 5 spokes at irregular angles.
+              Each ray starts at the card center and travels outward with 2–3
+              large irregular jags (not even zigzag — amplitude varies per segment
+              so the path reads as branching electricity, not a graph line).
+              Dual-stroke per ray: wide amber halo (outer glow) rendered first,
+              then narrow white-yellow core on top — creates the "glowing wire"
+              look without any blur filter.
+              pathLength snaps on in 0.10s (near-instant flash), then opacity
+              fades over 0.75–0.80s.  All one-shot — no repeat, no OOM risk. */}
           <svg
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
@@ -569,68 +572,113 @@ export function BrandStrikeAura({
               overflow: 'visible',
             }}
           >
-            {/* Arc 1 — main diagonal, ember red, upper-left → lower-right */}
-            <motion.path
-              d="M 5,15 L 15,28 L 24,18 L 35,38 L 44,24 L 55,44 L 64,30 L 75,52 L 84,38 L 94,58"
-              pathLength={1}
-              stroke="#ff5a3c"
-              strokeWidth={1.4}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            {/* ── Ray 1: upper-right ─────────────────────────────── */}
+            <motion.path d="M 50,46 L 62,28 L 68,14 L 76,3"
+              pathLength={1} stroke="rgba(255,155,28,0.60)" strokeWidth={3.5}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
+              animate={{ pathLength: 1, opacity: [0, 0.80, 0.52, 0] }}
               transition={{
-                pathLength: { duration: 0.42, delay: d, ease: 'easeOut' },
-                opacity: { duration: 1.10, delay: d, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.10, delay: d, ease: 'easeOut' },
+                opacity: { duration: 0.78, delay: d, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
               }}
             />
-            {/* Arc 2 — counter-diagonal, orange, lower-left → upper-right */}
-            <motion.path
-              d="M 6,78 L 16,62 L 26,72 L 36,54 L 46,66 L 57,46 L 67,60 L 78,36 L 86,50 L 94,28"
-              pathLength={1}
-              stroke="#f97316"
-              strokeWidth={1.1}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <motion.path d="M 50,46 L 62,28 L 68,14 L 76,3"
+              pathLength={1} stroke="rgba(255,248,168,0.96)" strokeWidth={1.3}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
+              animate={{ pathLength: 1, opacity: [0, 1, 0.68, 0] }}
               transition={{
-                pathLength: { duration: 0.40, delay: d + 0.05, ease: 'easeOut' },
-                opacity: { duration: 1.05, delay: d + 0.05, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.10, delay: d, ease: 'easeOut' },
+                opacity: { duration: 0.80, delay: d, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
               }}
             />
-            {/* Arc 3 — horizontal crackle, amber, zigzags across upper quarter */}
-            <motion.path
-              d="M 12,20 L 22,12 L 32,22 L 42,10 L 54,20 L 64,10 L 74,22 L 84,12 L 92,20"
-              pathLength={1}
-              stroke="#fbbf24"
-              strokeWidth={0.8}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+
+            {/* ── Ray 2: lower-left ──────────────────────────────── */}
+            <motion.path d="M 50,46 L 36,62 L 24,76 L 14,90"
+              pathLength={1} stroke="rgba(255,125,18,0.55)" strokeWidth={3.0}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
+              animate={{ pathLength: 1, opacity: [0, 0.75, 0.48, 0] }}
               transition={{
-                pathLength: { duration: 0.36, delay: d + 0.03, ease: 'easeOut' },
-                opacity: { duration: 0.95, delay: d + 0.03, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.10, delay: d, ease: 'easeOut' },
+                opacity: { duration: 0.75, delay: d, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
               }}
             />
-            {/* Arc 4 — horizontal crackle, amber, zigzags across lower quarter */}
-            <motion.path
-              d="M 10,78 L 20,88 L 30,76 L 42,86 L 54,74 L 66,84 L 76,72 L 86,82 L 92,72"
-              pathLength={1}
-              stroke="#fbbf24"
-              strokeWidth={0.8}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <motion.path d="M 50,46 L 36,62 L 24,76 L 14,90"
+              pathLength={1} stroke="rgba(255,220,98,0.92)" strokeWidth={1.2}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
               initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: [0, 0.9, 0.78, 0.2, 0] }}
+              animate={{ pathLength: 1, opacity: [0, 0.96, 0.62, 0] }}
               transition={{
-                pathLength: { duration: 0.36, delay: d + 0.08, ease: 'easeOut' },
-                opacity: { duration: 0.95, delay: d + 0.08, times: [0, 0.01, 0.38, 0.78, 1.0], ease: 'linear' },
+                pathLength: { duration: 0.10, delay: d, ease: 'easeOut' },
+                opacity: { duration: 0.78, delay: d, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
+              }}
+            />
+
+            {/* ── Ray 3: upper-left (stagger +30 ms) ────────────── */}
+            <motion.path d="M 50,46 L 36,30 L 28,15 L 18,4"
+              pathLength={1} stroke="rgba(255,155,28,0.52)" strokeWidth={2.5}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.72, 0.44, 0] }}
+              transition={{
+                pathLength: { duration: 0.10, delay: d + 0.03, ease: 'easeOut' },
+                opacity: { duration: 0.72, delay: d + 0.03, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
+              }}
+            />
+            <motion.path d="M 50,46 L 36,30 L 28,15 L 18,4"
+              pathLength={1} stroke="rgba(255,248,168,0.92)" strokeWidth={1.1}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.96, 0.62, 0] }}
+              transition={{
+                pathLength: { duration: 0.10, delay: d + 0.03, ease: 'easeOut' },
+                opacity: { duration: 0.74, delay: d + 0.03, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
+              }}
+            />
+
+            {/* ── Ray 4: lower-right (stagger +30 ms) ───────────── */}
+            <motion.path d="M 50,46 L 66,60 L 76,72 L 88,90"
+              pathLength={1} stroke="rgba(255,118,18,0.50)" strokeWidth={2.5}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.70, 0.42, 0] }}
+              transition={{
+                pathLength: { duration: 0.10, delay: d + 0.03, ease: 'easeOut' },
+                opacity: { duration: 0.70, delay: d + 0.03, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
+              }}
+            />
+            <motion.path d="M 50,46 L 66,60 L 76,72 L 88,90"
+              pathLength={1} stroke="rgba(255,215,88,0.90)" strokeWidth={1.0}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.92, 0.58, 0] }}
+              transition={{
+                pathLength: { duration: 0.10, delay: d + 0.03, ease: 'easeOut' },
+                opacity: { duration: 0.72, delay: d + 0.03, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
+              }}
+            />
+
+            {/* ── Ray 5: rightward (stagger +55 ms) ─────────────── */}
+            <motion.path d="M 50,46 L 68,42 L 84,46 L 96,44"
+              pathLength={1} stroke="rgba(255,138,22,0.46)" strokeWidth={2.0}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.65, 0.38, 0] }}
+              transition={{
+                pathLength: { duration: 0.10, delay: d + 0.05, ease: 'easeOut' },
+                opacity: { duration: 0.65, delay: d + 0.05, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
+              }}
+            />
+            <motion.path d="M 50,46 L 68,42 L 84,46 L 96,44"
+              pathLength={1} stroke="rgba(255,245,152,0.86)" strokeWidth={0.9}
+              fill="none" strokeLinecap="round" strokeLinejoin="miter"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: [0, 0.88, 0.52, 0] }}
+              transition={{
+                pathLength: { duration: 0.10, delay: d + 0.05, ease: 'easeOut' },
+                opacity: { duration: 0.68, delay: d + 0.05, times: [0, 0.02, 0.55, 1.0], ease: 'linear' },
               }}
             />
           </svg>
