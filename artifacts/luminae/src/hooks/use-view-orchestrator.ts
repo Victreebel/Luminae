@@ -33,12 +33,20 @@ interface OrchestrationModel {
   luminaryId: string | null;
   /** True when marketRedraw or deckScry is present — board-wide / zone-level effect. */
   hasMarketWide: boolean;
+  /**
+   * True when any targetClaim step is present — indicates a brand-strike or
+   * card-condemning effect where the full market should stay in view so every
+   * tier is visible during the burn animation, regardless of how many cards
+   * are condemned.
+   */
+  hasTargetClaim: boolean;
 }
 
 function buildOrchestrationModel(procedure: AnimationProcedureStep[]): OrchestrationModel {
   const entityIds = new Set<string>();
   let luminaryId: string | null = null;
   let hasMarketWide = false;
+  let hasTargetClaim = false;
 
   for (const step of procedure) {
     switch (step.type) {
@@ -46,6 +54,7 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
         luminaryId = step.luminaryId;
         break;
       case 'targetClaim':
+        hasTargetClaim = true;
         step.targetIds.forEach(id => entityIds.add(id));
         break;
       case 'keywordEvent':
@@ -69,7 +78,7 @@ function buildOrchestrationModel(procedure: AnimationProcedureStep[]): Orchestra
         break;
     }
   }
-  return { entityIds, luminaryId, hasMarketWide };
+  return { entityIds, luminaryId, hasMarketWide, hasTargetClaim };
 }
 
 /**
@@ -164,6 +173,14 @@ function computeTargetBounds(
 
   // Market section for board-wide effects
   if (model.hasMarketWide) {
+    const marketEl = document.querySelector<HTMLElement>('[data-market-section]');
+    if (marketEl) bounds = expandBounds(bounds, marketEl, board, boardRect, scrollTop);
+  }
+
+  // Brand-strike / card-condemning effects: always include the full market
+  // section so every tier remains visible during the burn animation,
+  // regardless of how many cards are condemned (even just 1–2 in one tier).
+  if (model.hasTargetClaim && !model.hasMarketWide) {
     const marketEl = document.querySelector<HTMLElement>('[data-market-section]');
     if (marketEl) bounds = expandBounds(bounds, marketEl, board, boardRect, scrollTop);
   }
