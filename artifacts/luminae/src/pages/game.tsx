@@ -21,7 +21,7 @@ import type {
   PendingLuminaryActivationEvent,
   BurnEvent,
 } from '@workspace/api-client-react';
-import { ActivationDirectorRouter } from '@/components/ActivationDirectorRouter';
+import { ActivationDirectorRouter, directorNeedsScrollLock } from '@/components/ActivationDirectorRouter';
 import type { DirectorBurnSlot } from '@/components/CinderMandateBurnDirector';
 import { resolveLuminaryProcedure } from '@/lib/luminaryAnimationProcedures';
 import { useViewOrchestrator } from '@/hooks/use-view-orchestrator';
@@ -9045,16 +9045,13 @@ export default function GameBoard() {
             // the double-application is safe.  The Director's unlockBoardScroll() —
             // called from its completeTimer or cleanup — serves as the single unlock.
             //
-            // hasSensitiveDirector returns true for every (luminaryId, effectType) pair
-            // that routes to a director which snapshots viewport rects on mount.
-            // Add new pairs here as new directors are introduced.
-            const hasSensitiveDirector = (
-              a: { luminaryId: string; effectType: string },
-            ): boolean =>
-              // CinderMandateBrandingDirector: beam-strike rects captured on mount
-              (a.luminaryId === 'lum_ember' && a.effectType === 'summon');
-
-            const hasSensitiveDirectorPending = deferredActivations.some(hasSensitiveDirector);
+            // directorNeedsScrollLock is the single source-of-truth predicate
+            // exported from ActivationDirectorRouter.tsx.  When a new director
+            // is added that captures viewport rects on mount, update only that
+            // file — no change required here.
+            const hasSensitiveDirectorPending = deferredActivations.some(
+              a => directorNeedsScrollLock(a.luminaryId, a.effectType),
+            );
             if (hasSensitiveDirectorPending) {
               document.body.style.overflow = 'hidden';
               if (mainScrollRef.current) mainScrollRef.current.style.overflowY = 'hidden';

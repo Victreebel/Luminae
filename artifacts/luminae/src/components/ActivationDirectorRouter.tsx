@@ -42,6 +42,27 @@ export interface ActivationDirectorRouterProps {
   onCinematicComplete: (skipped: boolean) => void;
 }
 
+// ─── Scroll-lock predicate ────────────────────────────────────────────────────
+
+/**
+ * Returns true for every (luminaryId, effectType) pair whose director
+ * snapshots viewport rects on mount and therefore requires the board scroll
+ * to be locked *before* the director is mounted.
+ *
+ * This is the single source-of-truth for that contract.  When a new director
+ * is added that captures rects on mount, add its routing condition here —
+ * game.tsx imports this predicate and does not need to be touched.
+ *
+ * Current sensitive directors:
+ *   lum_ember + summon → CinderMandateBrandingDirector (beam-strike rects)
+ */
+export function directorNeedsScrollLock(
+  luminaryId: string,
+  effectType: string,
+): boolean {
+  return luminaryId === 'lum_ember' && effectType === 'summon';
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ActivationDirectorRouter({
