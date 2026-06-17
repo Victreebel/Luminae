@@ -9033,20 +9033,29 @@ export default function GameBoard() {
             // activation cinematic only mounts after the entity has settled at its
             // portal.
             //
-            // ── Cinder Mandate camera gap seal ─────────────────────────────────────
-            // CinderMandateBrandingDirector only applies its scroll lock when it mounts,
-            // which is AFTER the 1200 ms return-flight delay.  Any player scroll during
-            // that window shifts the board and breaks the beam-strike rect calculations.
-            // Solution: lock immediately here if a lum_ember summon activation is pending,
-            // so the board position is held from cutscene dismissal all the way through
-            // to when the Director takes over its own lock on mount.
+            // ── Camera gap seal for viewport-rect directors ─────────────────────────
+            // Directors that capture viewport-relative DOM rects (e.g. beam-strike
+            // calculations) only apply their scroll lock when they mount, which is
+            // AFTER the 1200 ms return-flight delay.  Any player scroll during that
+            // window shifts the board and invalidates those rect snapshots.
+            // Solution: lock immediately here whenever ANY deferred activation has an
+            // associated director that relies on viewport rects, so the board position
+            // is held from cutscene dismissal all the way through to Director mount.
             // The Director's lockBoardScroll() is idempotent (sets the same styles), so
-            // the double-application is safe.  The Director's unlockBoardScroll() — called
-            // from its completeTimer or cleanup — serves as the single unlock.
-            const hasCinderMandatePending = deferredActivations.some(
-              a => a.luminaryId === 'lum_ember' && a.effectType === 'summon',
-            );
-            if (hasCinderMandatePending) {
+            // the double-application is safe.  The Director's unlockBoardScroll() —
+            // called from its completeTimer or cleanup — serves as the single unlock.
+            //
+            // hasSensitiveDirector returns true for every (luminaryId, effectType) pair
+            // that routes to a director which snapshots viewport rects on mount.
+            // Add new pairs here as new directors are introduced.
+            const hasSensitiveDirector = (
+              a: { luminaryId: string; effectType: string },
+            ): boolean =>
+              // CinderMandateBrandingDirector: beam-strike rects captured on mount
+              (a.luminaryId === 'lum_ember' && a.effectType === 'summon');
+
+            const hasSensitiveDirectorPending = deferredActivations.some(hasSensitiveDirector);
+            if (hasSensitiveDirectorPending) {
               document.body.style.overflow = 'hidden';
               if (mainScrollRef.current) mainScrollRef.current.style.overflowY = 'hidden';
               const lumRowEarly = document.querySelector<HTMLElement>('[data-luminary-scroll]');
@@ -9088,10 +9097,10 @@ export default function GameBoard() {
                 setActivationQueue(q => [...q, ...deferredActivations]);
               } else {
                 // No activations pending — fire strikes immediately.
-                // Safety: if hasCinderMandatePending was set but no activation queued
+                // Safety: if hasSensitiveDirectorPending was set but no activation queued
                 // (e.g. event drained before this timeout fires), release the early lock
                 // so it cannot stay stale.
-                if (hasCinderMandatePending) {
+                if (hasSensitiveDirectorPending) {
                   document.body.style.overflow = '';
                   if (mainScrollRef.current) mainScrollRef.current.style.overflowY = '';
                   const lumRowSafe = document.querySelector<HTMLElement>('[data-luminary-scroll]');
