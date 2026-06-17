@@ -490,7 +490,8 @@ export function BrandStrikeAura({
   const d = delay / 1000;
   return (
     <>
-      {/* Electric border arc — crackles then fades over 3.2s */}
+      {/* Electric border arc — impact flash then crackle-linger then dissipate.
+          Timing targets: flash ~200ms, linger ~900ms, dissipation ~600ms → 1.6s total. */}
       <motion.div
         style={{
           position: 'absolute',
@@ -501,11 +502,11 @@ export function BrandStrikeAura({
           zIndex: 8,
         }}
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 1, 0.28, 0.82, 0.12, 0.65, 0.06, 0.44, 0.02, 0.18, 0] }}
+        animate={{ opacity: [0, 1, 0.30, 0.75, 0.12, 0.50, 0.05, 0.22, 0] }}
         transition={{
-          duration: 3.2,
+          duration: 1.6,
           delay: d,
-          times: [0, 0.03, 0.12, 0.22, 0.36, 0.48, 0.60, 0.70, 0.80, 0.90, 1.0],
+          times: [0, 0.05, 0.18, 0.30, 0.45, 0.58, 0.68, 0.80, 1.0],
           ease: 'linear',
         }}
       />
@@ -519,11 +520,11 @@ export function BrandStrikeAura({
           zIndex: 7,
         }}
         initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.9, 0.2, 0.7, 0.05, 0.45, 0, 0.3, 0] }}
+        animate={{ opacity: [0, 0.85, 0.18, 0.62, 0.05, 0.35, 0] }}
         transition={{
-          duration: 2.8,
+          duration: 1.4,
           delay: d + 0.02,
-          times: [0, 0.04, 0.15, 0.26, 0.42, 0.55, 0.65, 0.78, 1.0],
+          times: [0, 0.05, 0.18, 0.32, 0.52, 0.72, 1.0],
           ease: 'linear',
         }}
       />
@@ -656,104 +657,20 @@ export function CardKeywordOverlay({
 }) {
   if (type === 'condemned') {
     return (
-      <>
-        {/* Ember-red tint — card art stays legible through semi-transparent gradient.
-            kw-overlay-condemned CSS class drives the erratic border-crackle animation
-            (box-shadow flicker at ~0.65s).  No opacity animation on this div so the
-            tint stays constant and the card identity is always readable. */}
-        <div
-          className="kw-overlay-condemned absolute inset-0 z-[20] pointer-events-none rounded-xl overflow-hidden"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(180,20,0,0.45) 0%, rgba(140,10,0,0.26) 40%, rgba(160,20,0,0.34) 60%, rgba(180,20,0,0.45) 100%)',
-          }}
-        />
-        {/* Crackling SVG arcs — 6 paths covering edges and card face at different
-            angles.  Each flashes independently via a CSS animation class with a
-            distinct period and delay.  No framer-motion repeat:Infinity (OOM-safe).
-            Paths use initial opacity:0 so there is no flash before first keyframe. */}
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            zIndex: 21,
-            overflow: 'visible',
-          }}
-        >
-          {/* Arc 1 — upper edge, amber */}
-          <path
-            d="M 4,8 L 16,4 L 26,12 L 38,3 L 52,10 L 64,2 L 76,9 L 88,3 L 96,8"
-            stroke="rgba(255,200,60,0.92)"
-            strokeWidth={1.3}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="kw-cnd-arc-1"
-            style={{ opacity: 0 }}
-          />
-          {/* Arc 2 — lower edge, orange */}
-          <path
-            d="M 4,92 L 16,84 L 28,90 L 42,82 L 56,88 L 70,80 L 82,86 L 94,80"
-            stroke="rgba(255,130,30,0.88)"
-            strokeWidth={1.2}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="kw-cnd-arc-2"
-            style={{ opacity: 0 }}
-          />
-          {/* Arc 3 — left edge vertical, white-yellow */}
-          <path
-            d="M 8,18 L 3,32 L 10,46 L 2,60 L 9,74 L 3,88"
-            stroke="rgba(255,248,180,0.90)"
-            strokeWidth={1.1}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="kw-cnd-arc-3"
-            style={{ opacity: 0 }}
-          />
-          {/* Arc 4 — right edge vertical, amber */}
-          <path
-            d="M 92,16 L 97,30 L 90,44 L 98,58 L 91,72 L 97,86"
-            stroke="rgba(255,185,40,0.88)"
-            strokeWidth={1.1}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="kw-cnd-arc-4"
-            style={{ opacity: 0 }}
-          />
-          {/* Arc 5 — center upper diagonal, bright white-yellow */}
-          <path
-            d="M 18,28 L 30,20 L 44,30 L 58,18 L 72,28 L 86,20"
-            stroke="rgba(255,252,190,0.85)"
-            strokeWidth={1.0}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="kw-cnd-arc-5"
-            style={{ opacity: 0 }}
-          />
-          {/* Arc 6 — center lower diagonal, orange-amber */}
-          <path
-            d="M 12,68 L 26,60 L 40,70 L 54,58 L 68,68 L 82,57 L 94,64"
-            stroke="rgba(255,155,35,0.85)"
-            strokeWidth={1.0}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="kw-cnd-arc-6"
-            style={{ opacity: 0 }}
-          />
-        </svg>
-      </>
+      /* Faint static edge vignette — just enough to signal the Condemned brand
+         without creating visual noise.  No animation: the pulsing ember effect
+         comes from CardMarkerBadge (.kw-condemned class on the badge chip), and
+         the electrical crackle is handled entirely by BrandStrikeAura which
+         fires once per strike then unmounts.  Multiple condemned cards must not
+         create a wall of constant animated electricity. */
+      <div
+        className="absolute inset-0 z-[20] pointer-events-none rounded-xl overflow-hidden"
+        style={{
+          background:
+            'radial-gradient(ellipse at 50% 50%, transparent 48%, rgba(148,12,0,0.24) 100%)',
+          boxShadow: 'inset 0 0 0 1.5px rgba(200,38,0,0.38)',
+        }}
+      />
     );
   }
   if (type === 'forgotten') {

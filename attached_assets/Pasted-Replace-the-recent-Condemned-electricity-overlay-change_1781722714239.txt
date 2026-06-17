@@ -1,0 +1,65 @@
+Replace the recent Condemned electricity overlay change with the correct finite strike-residue behavior.
+
+Current problem:
+The recent change made Condemned cards keep a persistent animated electrical/crackle overlay. That is not what I want. It now looks like every Condemned card is permanently electrified, which is visually noisy and incorrect.
+
+Correct visual intent:
+The electrical/ember aura should happen only immediately after the brand strike beam impacts the card. It should linger briefly, then dissipate. After that, the card should be left with only the Condemned brand/seal and a subtle pulsing glowing symbol.
+
+Important: no blur.
+Do not use blur filters, backdrop blur, Gaussian blur, motion blur, hazy glow, smoke blur, or soft smeared effects. The effect should be crisp, sharp, and readable.
+
+Desired sequence:
+
+1. Brand strike beam hits the card.
+2. Large Condemned impact glyph appears.
+3. A crisp electrical/ember aura crackles around the card edge and near the impact area.
+4. The aura lingers briefly after impact.
+5. The aura dissipates cleanly.
+6. Final persistent state remains:
+    * Condemned brand/seal
+    * pulsing glowing ⌬ symbol
+    * optional faint static red/violet vignette
+    * no continuous electricity
+    * no constant crackle
+    * no animated zigzag lines
+    * no heavy red full-card wash
+
+Timing target:
+
+* Impact flash: fast and bright, about 150–300ms.
+* Aura linger after impact: about 700–1200ms.
+* Dissipation: about 400–700ms.
+* Persistent symbol pulse: slow and subtle, about 1.8–2.5s per cycle.
+
+What to remove or disable:
+
+* infinite electrical arc animations from the persistent Condemned overlay
+* constant SVG arcs across the card face
+* decorative zigzag/graph-like lines
+* rapid persistent border crackle
+* heavy animated red overlay
+* any effect that makes Condemned cards look actively electrified forever
+
+What to keep:
+
+* Condemned cards must remain visibly marked after the aura dissipates.
+* Keep a clear Condemned badge/seal.
+* Keep the ⌬ symbol or mandate seal.
+* The persistent marker may pulse gently, but only the symbol/brand should pulse.
+* The card art should remain readable.
+
+Implementation direction:
+Move the electrical aura/crackle out of the persistent Condemned marker overlay and into the brand strike impact/aftermath component. The persistent overlay should be quiet. The strike impact should be dramatic.
+
+The aura is the residue of the brand strike, not the permanent status effect.
+
+Acceptance criteria:
+
+* During the strike, the card looks dramatically branded.
+* For about 1–2 seconds after impact, a crisp electrical/ember aura lingers and dissipates.
+* After dissipation, no electricity remains.
+* The Condemned card remains marked only by the brand/seal and subtle pulsing ⌬ symbol.
+* Multiple Condemned cards do not create constant visual clutter.
+* No blur effects are used anywhere in this Condemned marker/strike sequence.
+* Existing tests/typecheck pass.
