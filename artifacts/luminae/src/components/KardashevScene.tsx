@@ -62,11 +62,27 @@ interface DysonSatellite {
   alpha: number;  // base alpha for pulse animation
 }
 
+// ── Animation timing constants (exported for timing-guard tests) ─────────────
+
+/** Duration (s) of the tier-crossfade enter/exit animation on the canvas layer. */
+export const TIER_CROSSFADE_DURATION_S = 0.75;
+
+/** Delay (s) after a tier/palette change before the civ-name label starts fading in.
+ *  Intentionally less than TIER_CROSSFADE_DURATION_S so the label is visible
+ *  by the time the canvas crossfade completes. */
+export const CIV_LABEL_DELAY_S = 0.4;
+
+/** Duration (s) of the civ-name label fade-in. */
+export const CIV_LABEL_DURATION_S = 0.35;
+
+/** Duration (s) of the civ-name label fade-out (exit). Faster than entry. */
+export const CIV_LABEL_EXIT_S = 0.2;
+
 // Satellite count limits — shared between the render loop (for bornAt stamping)
 // and drawDysonSwarm so both always agree on which slots are visible.
-const SWARM_MIN = 20;
-const SWARM_MAX = 60; // must match genDysonSwarm count
-const SWARM_FADE_DURATION = 1.5; // seconds
+export const SWARM_MIN = 20;
+export const SWARM_MAX = 60; // must match genDysonSwarm count
+export const SWARM_FADE_DURATION = 1.5; // seconds
 
 interface CityLight {
   dx: number;    // relative to planet center, -1..1; positive = shadow hemisphere
@@ -1106,7 +1122,7 @@ export function KardashevScene({ tier, palette, className, progressFraction }: K
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.03 }}
-            transition={{ duration: 0.75, ease: 'easeInOut' }}
+            transition={{ duration: TIER_CROSSFADE_DURATION_S, ease: 'easeInOut' }}
           >
             <KardashevCanvas tier={tier} palette={palette} progressFraction={progressFraction} />
           </motion.div>
@@ -1119,8 +1135,8 @@ export function KardashevScene({ tier, palette, className, progressFraction }: K
             className="absolute bottom-2 left-3 text-[9px] font-mono tracking-widest uppercase select-none pointer-events-none"
             style={{ color: 'rgba(180,200,255,0.28)' }}
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { delay: 0.4, duration: 0.35, ease: 'easeInOut' } }}
-            exit={{ opacity: 0, transition: { duration: 0.2, ease: 'easeInOut' } }}
+            animate={{ opacity: 1, transition: { delay: CIV_LABEL_DELAY_S, duration: CIV_LABEL_DURATION_S, ease: 'easeInOut' } }}
+            exit={{ opacity: 0, transition: { duration: CIV_LABEL_EXIT_S, ease: 'easeInOut' } }}
           >
             {civName}
           </motion.div>
@@ -1140,7 +1156,7 @@ export function KardashevScene({ tier, palette, className, progressFraction }: K
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.35, delay: 0.4, ease: 'easeInOut' }}
+              transition={{ duration: CIV_LABEL_DURATION_S, delay: CIV_LABEL_DELAY_S, ease: 'easeInOut' }}
             />
           )}
         </AnimatePresence>
