@@ -555,8 +555,29 @@ export function useViewOrchestrator({
             idealScrollTop = bounds.top - SAFE_PAD;
           }
         } else {
-          // Non-market-wide content taller than viewport — top-align with pad.
-          idealScrollTop = bounds.top - SAFE_PAD;
+          // Non-market-wide content (e.g. many condemned cards spanning all
+          // three tiers) is taller than the viewport.  Top-aligning cuts off
+          // the lower tiers.  Fall back to the same market-section centering
+          // strategy used for market-wide effects: center on the forge card
+          // area so every condemned card stays visible, accepting that the
+          // source Luminary portal may be partially above the viewport top.
+          const boardRect2   = board.getBoundingClientRect();
+          const marketEl2    = document.querySelector<HTMLElement>('[data-market-section]');
+          if (marketEl2 && board.contains(marketEl2)) {
+            const mr2           = marketEl2.getBoundingClientRect();
+            const marketTopAbs2 = mr2.top - boardRect2.top + board.scrollTop;
+            const marketH2      = mr2.height;
+            if (marketH2 <= boardHeight - 2 * SAFE_PAD) {
+              // Market section alone fits — center it.
+              idealScrollTop = marketTopAbs2 - (boardHeight - marketH2) / 2;
+            } else {
+              // Market section itself taller than viewport — show from its top.
+              idealScrollTop = marketTopAbs2 - SAFE_PAD;
+            }
+          } else {
+            // Market element not found — top-align the entity bounds.
+            idealScrollTop = bounds.top - SAFE_PAD;
+          }
         }
 
         programmaticScrollTo(

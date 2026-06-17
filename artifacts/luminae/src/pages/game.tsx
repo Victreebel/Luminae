@@ -1507,15 +1507,26 @@ export default function GameBoard() {
           if (directorEntries.length > 0) {
             // Reset accumulator for this activation cycle
             pendingDirectorBurnSlotsRef.current = [];
+            const directorSlotKeys: string[] = [];
             for (const { tier, slotIndex, sourceLuminaryId } of directorEntries) {
-              const slotEl = document.querySelector(`[data-slot-key="${tier}-${slotIndex}"]`);
+              const slotKey = `${tier}-${slotIndex}`;
+              const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
               if (slotEl) {
                 pendingDirectorBurnSlotsRef.current.push({
                   slotRect: slotEl.getBoundingClientRect(),
-                  slotKey: `${tier}-${slotIndex}`,
+                  slotKey,
                   sourceLuminaryId,
                 });
+                directorSlotKeys.push(slotKey);
               }
+            }
+            // Hide these slots immediately so the replacement card does not
+            // flash into view before the BurnFlash animation plays.
+            // The director's onRefillPulse (fired after BURN_FLASH_TOTAL_MS)
+            // calls setHiddenSlots(new Set()) to reveal the new cards in sync
+            // with the refill sweep animation.
+            if (directorSlotKeys.length > 0) {
+              setHiddenSlots(new Set(directorSlotKeys));
             }
           }
 
@@ -9265,6 +9276,9 @@ export default function GameBoard() {
                 }, 780);
               },
               onRefillPulse: (slotKeys) => {
+                // Reveal the replacement cards now that BurnFlash has completed,
+                // then play the refill sweep so new cards deal in cleanly.
+                setHiddenSlots(new Set());
                 setRefillingSlots(new Set(slotKeys));
                 gameAudio.playMarketRefill();
                 setTimeout(() => setRefillingSlots(new Set()), 700);
@@ -9274,7 +9288,9 @@ export default function GameBoard() {
             onBurnComplete={() => {
               // Director already called restore() internally at the end of its timeline.
               // Clear the slot snapshot so stale rects don't leak into future activations.
+              // Safety: clear hidden slots in case onRefillPulse was skipped (empty slots).
               pendingDirectorBurnSlotsRef.current = [];
+              setHiddenSlots(new Set());
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
             }}
