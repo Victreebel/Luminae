@@ -4556,6 +4556,16 @@ export default function GameBoard() {
                 const ghostCard = burstGhostCards[slotKey] ?? null;
                 if (ghostCard) {
                   // In compact mode clamp to chip dimensions so the slot never causes reflow.
+                  // Badge/overlay/aura: use state.marketMarkers if still present, fall back to
+                  // strikeAuraMap when the eager setQueryData has already wiped the entry
+                  // (happens when an AI purchases a condemned card mid-brand-strike animation —
+                  // the WS queue path calls setQueryData immediately but defers processUpdate,
+                  // so marketMarkers loses the entry before fireBrandStrikes fires).
+                  const ghostMarkerType: string | null =
+                    state?.marketMarkers?.[ghostCard.id]?.type ??
+                    strikeAuraMap.get(ghostCard.id)?.type ??
+                    null;
+                  const showGhostMarker = ghostMarkerType !== null && !suppressedMarkerIds.has(ghostCard.id);
                   return marketCompact ? (
                     <div
                       key={ghostCard.id}
@@ -4567,10 +4577,24 @@ export default function GameBoard() {
                       <div className="absolute inset-0 scale-[0.47] origin-top-left pointer-events-none" style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}>
                         <ArtifactCardView card={ghostCard} tier={row.tier} />
                       </div>
+                      {showGhostMarker && (
+                        <>
+                          <CardKeywordOverlay type={ghostMarkerType as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                          <CardMarkerBadge type={ghostMarkerType as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(ghostCard.id)} brandDelay={brandDelayMap.get(ghostCard.id)} onTraceSource={setTracedSourceLumId} />
+                        </>
+                      )}
+                      {strikeAuraMap.has(ghostCard.id) && <BrandStrikeAura type={strikeAuraMap.get(ghostCard.id)!.type} delay={strikeAuraMap.get(ghostCard.id)!.delay} />}
                     </div>
                   ) : (
                     <div key={ghostCard.id} data-card-id={ghostCard.id} data-slot-key={slotKey} className="relative shrink-0">
                       <ArtifactCardView card={ghostCard} tier={row.tier} />
+                      {showGhostMarker && (
+                        <>
+                          <CardKeywordOverlay type={ghostMarkerType as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} />
+                          <CardMarkerBadge type={ghostMarkerType as 'forgotten' | 'condemned' | 'nullified' | 'avatar_seed'} isNew={newlyMarkedCardIds.has(ghostCard.id)} brandDelay={brandDelayMap.get(ghostCard.id)} onTraceSource={setTracedSourceLumId} />
+                        </>
+                      )}
+                      {strikeAuraMap.has(ghostCard.id) && <BrandStrikeAura type={strikeAuraMap.get(ghostCard.id)!.type} delay={strikeAuraMap.get(ghostCard.id)!.delay} />}
                     </div>
                   );
                 }
