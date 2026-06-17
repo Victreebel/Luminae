@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion, type Easing } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { getLuminaryVisuals, getLuminaryImageAssets, RadiantLivingEntityComposite } from '@/lib/luminaryAssets';
 import { gameAudio } from '@/lib/audio';
@@ -9,6 +9,7 @@ import {
   ConsequenceSnap,
 } from '@/components/LuminaryEffectOverlay';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -193,8 +194,18 @@ const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.81
 // Steeper fade-in: entity materialises quickly from nothing.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
 const ENTITY_SCALE   = [0.82, 0.88, 0.94, 1.00, 1.00, 1.12];
-const ENTITY_Y       = ['-2vh', '-1vh', '-0.5vh', '0vh', '0vh', '3vh'];
 const ENTITY_TIMES   = [0, 0.088, 0.175, 0.234, 0.439, 1];
+
+// Desktop: wide descent + overshoot — entity falls from 30vh above, overshoots
+// 10vh below center, then springs back to rest at 0vh before pan-out.
+const ENTITY_Y_DESKTOP = ['-30vh', '-18vh', '-8vh', '10vh', '0vh', '3vh'];
+// Mobile: reduced travel and softer overshoot for smaller screens.
+const ENTITY_Y_MOBILE  = ['-15vh', '-9vh',  '-4vh', '5vh',  '0vh', '3vh'];
+
+// Per-property easing for the Y channel: easeIn on the fall segments so the
+// entity accelerates into the overshoot, then easeOut on the spring-back segment.
+// The final pan-out segment keeps easeInOut.
+const ENTITY_Y_EASE: Easing[] = ['easeIn', 'easeIn', 'easeOut', 'easeOut', 'easeInOut'];
 
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
 // Fast fade-in: blur dissolves in step with the steeper opacity curve.
@@ -288,6 +299,10 @@ export function LuminaryActivationCinematic({
   // Respect system prefers-reduced-motion OR the caller's abridgedAnims flag.
   const systemPrefersReduced = useReducedMotion();
   const isReduced = reducedMotionProp || !!systemPrefersReduced;
+
+  const isMobile = useIsMobile();
+  const entityY = isMobile ? ENTITY_Y_MOBILE : ENTITY_Y_DESKTOP;
+  const entityYInitial = isMobile ? ENTITY_Y_MOBILE[0] : ENTITY_Y_DESKTOP[0];
 
   // Shared completed flag — readable by both the timer chain cleanup and the
   // skip handler.  Using a ref avoids stale-closure issues.
@@ -625,17 +640,22 @@ export function LuminaryActivationCinematic({
           key="entity"
           className="absolute inset-0 flex items-center justify-center"
           style={{ pointerEvents: 'none' }}
-          initial={{ opacity: 0, scale: 0.88, y: '-2vh', filter: ENTITY_FILTER[0] }}
+          initial={{ opacity: 0, scale: 0.88, y: entityYInitial, filter: ENTITY_FILTER[0] }}
           animate={{
             opacity: ENTITY_OPACITY,
             scale:   ENTITY_SCALE,
-            y:       ENTITY_Y,
+            y:       entityY,
             filter:  ENTITY_FILTER,
           }}
           transition={{
             duration: ENTITY_DUR_S,
             times:    ENTITY_TIMES,
             ease:     'easeInOut',
+            y: {
+              duration: ENTITY_DUR_S,
+              times:    ENTITY_TIMES,
+              ease:     ENTITY_Y_EASE,
+            },
             filter: {
               duration: ENTITY_DUR_S,
               times:    ENTITY_FILTER_TIMES,
