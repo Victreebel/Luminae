@@ -4680,6 +4680,7 @@ export default function GameBoard() {
                     <div
                       key={c.id}
                       data-card-id={c.id}
+                      data-slot-key={slotKey}
                       className="relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
                       style={{
                         width: 56, height: 80,
@@ -4779,6 +4780,7 @@ export default function GameBoard() {
                   <div
                     key={c.id}
                     data-card-id={c.id}
+                    data-slot-key={slotKey}
                     className="relative shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
                     {...(cardFocusProps ?? {})}
                   >
