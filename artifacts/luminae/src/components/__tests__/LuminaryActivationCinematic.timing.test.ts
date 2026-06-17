@@ -79,6 +79,10 @@ describe('LuminaryActivationCinematic — ENTITY_TIMES timing invariants', () =>
 //   3. TARGET < HOLD_MS           — target beat completes within hold window
 //   4. SNAP   < HOLD_MS           — snap beat completes within hold window
 //   5. DONE   < HOLD_MS           — done beat completes within hold window (critical guard)
+//   6. SNAP − TARGET ≥ 80ms       — snap and target can't collapse into each other
+//   7. DONE − SNAP   ≥ 80ms       — done and snap can't collapse into each other
+
+const MIN_BEAT_GAP_MS = 80;
 
 describe('LuminaryActivationCinematic — beat sequence timing invariants', () => {
   it('BEAT_TARGET_MS fires before BEAT_SNAP_MS', () => {
@@ -99,5 +103,13 @@ describe('LuminaryActivationCinematic — beat sequence timing invariants', () =
 
   it('BEAT_DONE_MS completes before HOLD_MS expires (regression guard — silent drop)', () => {
     expect(BEAT_DONE_MS).toBeLessThan(HOLD_MS);
+  });
+
+  it(`BEAT_SNAP_MS is at least ${MIN_BEAT_GAP_MS}ms after BEAT_TARGET_MS (snap and target can't collapse)`, () => {
+    expect(BEAT_SNAP_MS - BEAT_TARGET_MS).toBeGreaterThanOrEqual(MIN_BEAT_GAP_MS);
+  });
+
+  it(`BEAT_DONE_MS is at least ${MIN_BEAT_GAP_MS}ms after BEAT_SNAP_MS (done and snap can't collapse)`, () => {
+    expect(BEAT_DONE_MS - BEAT_SNAP_MS).toBeGreaterThanOrEqual(MIN_BEAT_GAP_MS);
   });
 });
