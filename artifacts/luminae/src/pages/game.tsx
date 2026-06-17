@@ -9032,6 +9032,26 @@ export default function GameBoard() {
             // safe during the flight window) and delay Phase 2 dispatch so the
             // activation cinematic only mounts after the entity has settled at its
             // portal.
+            //
+            // ── Cinder Mandate camera gap seal ─────────────────────────────────────
+            // CinderMandateBrandingDirector only applies its scroll lock when it mounts,
+            // which is AFTER the 1200 ms return-flight delay.  Any player scroll during
+            // that window shifts the board and breaks the beam-strike rect calculations.
+            // Solution: lock immediately here if a lum_ember summon activation is pending,
+            // so the board position is held from cutscene dismissal all the way through
+            // to when the Director takes over its own lock on mount.
+            // The Director's lockBoardScroll() is idempotent (sets the same styles), so
+            // the double-application is safe.  The Director's unlockBoardScroll() — called
+            // from its completeTimer or cleanup — serves as the single unlock.
+            const hasCinderMandatePending = deferredActivations.some(
+              a => a.luminaryId === 'lum_ember' && a.effectType === 'summon',
+            );
+            if (hasCinderMandatePending) {
+              document.body.style.overflow = 'hidden';
+              if (mainScrollRef.current) mainScrollRef.current.style.overflowY = 'hidden';
+              const lumRowEarly = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+              if (lumRowEarly) lumRowEarly.style.overflow = 'hidden';
+            }
             setAnimEndTime(RETURN_FLIGHT_MS);
             setTimeout(() => {
               if (deferredActivations.length > 0) {
@@ -9068,6 +9088,15 @@ export default function GameBoard() {
                 setActivationQueue(q => [...q, ...deferredActivations]);
               } else {
                 // No activations pending — fire strikes immediately.
+                // Safety: if hasCinderMandatePending was set but no activation queued
+                // (e.g. event drained before this timeout fires), release the early lock
+                // so it cannot stay stale.
+                if (hasCinderMandatePending) {
+                  document.body.style.overflow = '';
+                  if (mainScrollRef.current) mainScrollRef.current.style.overflowY = '';
+                  const lumRowSafe = document.querySelector<HTMLElement>('[data-luminary-scroll]');
+                  if (lumRowSafe) lumRowSafe.style.overflow = '';
+                }
                 fireStrikeSet(deferredStrikes);
               }
             }, RETURN_FLIGHT_MS);
