@@ -1,0 +1,65 @@
+import { describe, it, expect } from 'vitest';
+import {
+  ENTITY_TIMES,
+  ENTITY_FILTER_TIMES,
+  REVEAL_MS,
+  HOLD_MS,
+  PAN_OUT_MS,
+  BEAT_TARGET_MS,
+} from '@/components/LuminaryActivationCinematic';
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+//
+// Guards the hand-tuned ENTITY_TIMES overshoot/settle budget.
+//
+// Index layout:
+//   [0] = 0.000  — start
+//   [1] = 0.072  — fade-in mid
+//   [2] = 0.135  — fade-in late
+//   [3] = 0.180  — overshoot peak  (entity below center, spring about to pull back)
+//   [4] = 0.224  — settle at rest  (entity at 0vh, must be ≥100ms before beat)
+//   [5] = 1.000  — pan-out complete
+//
+// Invariants (per timing budget comments in source):
+//   1. overshoot < settle             — spring-back direction is downward then up
+//   2. settle ≤ 0.249                 — entity must arrive ≥100ms before BEAT_TARGET_MS
+//   3. spring-back window ≥ 70ms      — snappy but readable on slow devices
+//   4. settle_ms ≤ beat_ms − 100      — the 100ms guard before the first effect beat
+//   5. ENTITY_FILTER_TIMES[3,4] mirror ENTITY_TIMES[3,4] — filter and motion must stay in sync
+
+const ENTITY_DUR_MS = REVEAL_MS + HOLD_MS + PAN_OUT_MS;
+const OVERSHOOT_IDX = 3;
+const SETTLE_IDX    = 4;
+
+describe('LuminaryActivationCinematic — ENTITY_TIMES timing invariants', () => {
+  const tOvershoot = ENTITY_TIMES[OVERSHOOT_IDX];
+  const tSettle    = ENTITY_TIMES[SETTLE_IDX];
+
+  it('overshoot keyframe comes before settle keyframe', () => {
+    expect(tOvershoot).toBeLessThan(tSettle);
+  });
+
+  it('settle keyframe is at or before t=0.249 (≥100ms guard before beat)', () => {
+    expect(tSettle).toBeLessThanOrEqual(0.249);
+  });
+
+  it('spring-back window is at least 70ms', () => {
+    const springBackMs = (tSettle - tOvershoot) * ENTITY_DUR_MS;
+    expect(springBackMs).toBeGreaterThanOrEqual(70);
+  });
+
+  it('settle arrives ≥100ms before the first effect beat', () => {
+    const beatMs    = REVEAL_MS + BEAT_TARGET_MS;
+    const settleMs  = tSettle * ENTITY_DUR_MS;
+    const bufferMs  = beatMs - settleMs;
+    expect(bufferMs).toBeGreaterThanOrEqual(100);
+  });
+
+  it('ENTITY_FILTER_TIMES overshoot index matches ENTITY_TIMES (must stay in sync)', () => {
+    expect(ENTITY_FILTER_TIMES[OVERSHOOT_IDX]).toBe(tOvershoot);
+  });
+
+  it('ENTITY_FILTER_TIMES settle index matches ENTITY_TIMES (must stay in sync)', () => {
+    expect(ENTITY_FILTER_TIMES[SETTLE_IDX]).toBe(tSettle);
+  });
+});

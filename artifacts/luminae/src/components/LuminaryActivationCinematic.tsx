@@ -165,9 +165,9 @@ function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) 
 //      Single click dismisses. Auto-completes at 380ms.
 
 const ANTICIPATE_MS = 150;   // 0.00–0.15s
-const REVEAL_MS     = 400;   // 0.15–0.55s  — fast fade-in
-const HOLD_MS       = 550;   // 0.55–1.10s
-const PAN_OUT_MS    = 860;   // 1.10–1.96s  — lingering fade-out
+export const REVEAL_MS     = 400;   // 0.15–0.55s  — fast fade-in
+export const HOLD_MS       = 550;   // 0.55–1.10s
+export const PAN_OUT_MS    = 860;   // 1.10–1.96s  — lingering fade-out
 // Total: 1960ms
 
 // Reduced-motion / abridged: compact overlay duration
@@ -208,7 +208,7 @@ const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.81
 // Steeper fade-in: entity materialises quickly from nothing.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
 const ENTITY_SCALE   = [0.82, 0.88, 0.94, 1.00, 1.00, 1.12];
-const ENTITY_TIMES   = [0, 0.072, 0.135, 0.180, 0.224, 1];
+export const ENTITY_TIMES   = [0, 0.072, 0.135, 0.180, 0.224, 1];
 
 // Desktop: wide descent + overshoot — entity falls from 30vh above, overshoots
 // 5vh below center, then springs back to rest at 0vh before pan-out.
@@ -225,7 +225,7 @@ const ENTITY_Y_EASE: Easing[] = ['easeIn', 'easeIn', 'easeOut', 'easeOut', 'ease
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
 // Fast fade-in: blur dissolves in step with the steeper opacity curve.
 // Index[3] and index[4] must match ENTITY_TIMES[3]/[4] — keep all three in sync.
-const ENTITY_FILTER_TIMES = [0, 0.072, 0.135, 0.180, 0.224, 1];
+export const ENTITY_FILTER_TIMES = [0, 0.072, 0.135, 0.180, 0.224, 1];
 const ENTITY_FILTER = [
   'brightness(0.05) saturate(0) blur(5px)',    // 0.000  — pure dark silhouette
   'brightness(0.15) saturate(0) blur(4px)',    // 0.072  — still shadowed
@@ -237,7 +237,7 @@ const ENTITY_FILTER = [
 
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
 // All offsets are absolute from hold-phase start.  All must complete before HOLD_MS expires.
-const BEAT_TARGET_MS = 150;
+export const BEAT_TARGET_MS = 150;
 const BEAT_SNAP_MS   = 300;
 const BEAT_DONE_MS   = 460;
 
