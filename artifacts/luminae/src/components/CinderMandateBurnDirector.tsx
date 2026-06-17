@@ -38,22 +38,22 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
 /** Decree interstitial display window. */
-const DECREE_MS = 1800;
+export const DECREE_MS = 1800;
 
 /** Card-slot shudder duration. */
-const SHUDDER_MS = 400;
+export const SHUDDER_MS = 400;
 
 /** Heat-wash overlay duration (starts 40% into shudder). */
-const HEAT_WASH_MS = 600;
+export const HEAT_WASH_MS = 600;
 
 /**
  * BurnFlash sequence total: badge (320 ms) + flash animation (~1200 ms).
  * Used to schedule the refill pulse after the last flash completes.
  */
-const BURN_FLASH_TOTAL_MS = 1520;
+export const BURN_FLASH_TOTAL_MS = 1520;
 
 /** Hold after refill pulse before calling onComplete. */
-const AFTERMATH_HOLD_MS = 800;
+export const AFTERMATH_HOLD_MS = 800;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

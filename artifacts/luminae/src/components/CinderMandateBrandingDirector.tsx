@@ -37,19 +37,19 @@ import type { AnimationProcedureStep } from '@/lib/animationProcedure';
  * How long to wait after the Luminary portal fires its source pulse before
  * brand-strike beams begin.  Must match SOURCE_PULSE_LEAD_MS in game-luminary-effects.
  */
-const SOURCE_PULSE_LEAD_MS = 300;
+export const SOURCE_PULSE_LEAD_MS = 300;
 
 /** "CINDER MANDATE" beat overlay is visible for this long before strikes begin. */
-const BEAT_HOLD_MS = 820;
+export const BEAT_HOLD_MS = 820;
 
 /** Conservative camera-settle budget used when pre-sizing the drain gate. */
-const SETTLE_ESTIMATE_MS = 800;
+export const SETTLE_ESTIMATE_MS = 800;
 
 /**
  * Aftermath hold after the last brand-strike aura fades.
  * Chosen to let the aura crackle fully clear before the game drains.
  */
-const AFTERMATH_HOLD_MS = 1000;
+export const AFTERMATH_HOLD_MS = 1000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

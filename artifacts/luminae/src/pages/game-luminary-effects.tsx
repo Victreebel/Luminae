@@ -858,8 +858,8 @@ export function BurnBadgeOverlay({
 // procedure; all cards still visibly register with the Burn Pile.
 
 // Burn timing constants (seconds) — synced to Burn.mp3 audible duration (~2.0 s).
-const BURN_START_S = 0.30;  // when the flame front begins rising
-const BURN_DUR_S   = 1.40;  // upward travel duration (300 → 1700 ms)
+export const BURN_START_S = 0.30;  // when the flame front begins rising
+export const BURN_DUR_S   = 1.40;  // upward travel duration (300 → 1700 ms)
 
 // Cinder sparks — spawn at the flame front as it passes their Y position.
 // xFrac: 0=left edge, 1=right edge of slot.
