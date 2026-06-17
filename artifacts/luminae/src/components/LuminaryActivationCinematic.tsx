@@ -187,20 +187,34 @@ const HOLD_TO_SKIP_MS = 350;
 //
 // Fast fade-in: entity reaches 100% in ~400ms.
 // Lingering fade-out: 860ms.
-// Normalized [0,1]: 0.000  0.088  0.175  0.234  0.439  1.000
+// Normalized [0,1]: 0.000  0.088  0.175  0.200  0.248  1.000
+//
+// Timing budget — do not regress:
+//   ENTITY_DUR_MS = REVEAL_MS + HOLD_MS + PAN_OUT_MS = 400 + 550 + 860 = 1810ms
+//   HOLD phase starts at REVEAL_MS = 400ms into entity animation.
+//   BEAT_TARGET_MS = 150ms fires 150ms after hold start:
+//     beat_ms = REVEAL_MS + BEAT_TARGET_MS = 400 + 150 = 550ms (t_norm ≈ 0.304)
+//   The settle keyframe (Y=0vh, index 4) must complete ≥100ms before that beat:
+//     settle_ms ≤ beat_ms − 100 = 550 − 100 = 450ms  →  t_norm ≤ 0.249
+//   Current settle: t=0.248 → settleMs = 0.248 × 1810 = ~449ms  buffer = 101ms ✓
+//   Never push index[4] above t=0.248; doing so breaks this 100ms guard.
+//   Overshoot (index 3) is set to t=0.200 so the spring-back window is ~87ms
+//   (449ms − 362ms), keeping the motion visibly snappy rather than instant.
 
 const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.81
 
 // Steeper fade-in: entity materialises quickly from nothing.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
 const ENTITY_SCALE   = [0.82, 0.88, 0.94, 1.00, 1.00, 1.12];
-const ENTITY_TIMES   = [0, 0.088, 0.175, 0.234, 0.439, 1];
+const ENTITY_TIMES   = [0, 0.088, 0.175, 0.200, 0.248, 1];
 
 // Desktop: wide descent + overshoot — entity falls from 30vh above, overshoots
-// 10vh below center, then springs back to rest at 0vh before pan-out.
-const ENTITY_Y_DESKTOP = ['-30vh', '-18vh', '-8vh', '10vh', '0vh', '3vh'];
+// 5vh below center, then springs back to rest at 0vh before pan-out.
+// Overshoot reduced from 10vh to 5vh so the compressed timing window (87ms)
+// still looks intentional rather than a teleport.
+const ENTITY_Y_DESKTOP = ['-30vh', '-18vh', '-8vh', '5vh', '0vh', '3vh'];
 // Mobile: reduced travel and softer overshoot for smaller screens.
-const ENTITY_Y_MOBILE  = ['-15vh', '-9vh',  '-4vh', '5vh',  '0vh', '3vh'];
+const ENTITY_Y_MOBILE  = ['-15vh', '-9vh',  '-4vh', '3vh', '0vh', '3vh'];
 
 // Per-property easing for the Y channel: easeIn on the fall segments so the
 // entity accelerates into the overshoot, then easeOut on the spring-back segment.
@@ -209,13 +223,14 @@ const ENTITY_Y_EASE: Easing[] = ['easeIn', 'easeIn', 'easeOut', 'easeOut', 'ease
 
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
 // Fast fade-in: blur dissolves in step with the steeper opacity curve.
-const ENTITY_FILTER_TIMES = [0, 0.088, 0.175, 0.234, 0.439, 1];
+// Index[3] and index[4] must match ENTITY_TIMES[3]/[4] — keep all three in sync.
+const ENTITY_FILTER_TIMES = [0, 0.088, 0.175, 0.200, 0.248, 1];
 const ENTITY_FILTER = [
   'brightness(0.05) saturate(0) blur(5px)',    // 0.000  — pure dark silhouette
   'brightness(0.15) saturate(0) blur(4px)',    // 0.088  — still shadowed
   'brightness(0.45) saturate(0.4) blur(2px)',  // 0.175  — emerging
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.234  — full reveal
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.439  — hold
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.200  — full reveal (overshoot peak)
+  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.248  — hold (settle complete, 101ms before beat)
   'brightness(0)    saturate(1.0)  blur(0px)', // 1.000  — gone
 ];
 
