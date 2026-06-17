@@ -9287,9 +9287,14 @@ export default function GameBoard() {
             }}
             onBurnComplete={() => {
               // Director already called restore() internally at the end of its timeline.
-              // Clear the slot snapshot so stale rects don't leak into future activations.
               // Safety: clear hidden slots in case onRefillPulse was skipped (empty slots).
-              pendingDirectorBurnSlotsRef.current = [];
+              // NOTE: do NOT clear pendingDirectorBurnSlotsRef here. If a second Cinder
+              // Mandate state update arrived while this director was still running,
+              // processUpdate has already reset and repopulated the ref for the next
+              // batch. Wiping it here would erase those slots before the second director
+              // mounts, causing it to fire BurnFlash on an empty list.
+              // processUpdate owns the ref reset (pendingDirectorBurnSlotsRef.current = [])
+              // at the start of every new lum_ember burn batch — no cleanup needed here.
               setHiddenSlots(new Set());
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
