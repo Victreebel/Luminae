@@ -26,16 +26,16 @@ const TIER_LABELS: Record<KardashevTier, string> = {
 };
 
 // Phase timing constants (ms from mount)
-const PHASE_1_MS = 800;   // board-reveal → darkening
-const PHASE_2_MS = 1200;  // darkening → civ-in
-const PHASE_3_MS = 2000;  // civ-in → accolades
-const CONTINUE_BTN_MS = 4500;
+export const PHASE_1_MS = 800;   // board-reveal → darkening
+export const PHASE_2_MS = 1200;  // darkening → civ-in
+export const PHASE_3_MS = 2000;  // civ-in → accolades
+export const CONTINUE_BTN_MS = 4500;
 
 // Text reveal delays (seconds from mount, for framer-motion `delay`)
-const TITLE_DELAY    = 2.0;
-const CIV_DELAY      = 2.4;
-const STATS_DELAY    = 2.8;
-const ACCOLADE_DELAY = 3.2;
+export const TITLE_DELAY    = 2.0;
+export const CIV_DELAY      = 2.4;
+export const STATS_DELAY    = 2.8;
+export const ACCOLADE_DELAY = 3.2;
 
 export function VictoryCinematic({
   winnerName,
