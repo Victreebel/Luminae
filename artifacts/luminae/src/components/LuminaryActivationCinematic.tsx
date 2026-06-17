@@ -238,8 +238,8 @@ const ENTITY_FILTER = [
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
 // All offsets are absolute from hold-phase start.  All must complete before HOLD_MS expires.
 export const BEAT_TARGET_MS = 150;
-const BEAT_SNAP_MS   = 300;
-const BEAT_DONE_MS   = 460;
+export const BEAT_SNAP_MS   = 300;
+export const BEAT_DONE_MS   = 460;
 
 // CSS scale applied to [data-game-board] during the cinematic.
 // 0.62 keeps the board legible so players can identify target cards.

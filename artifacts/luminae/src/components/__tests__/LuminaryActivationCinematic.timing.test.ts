@@ -6,6 +6,8 @@ import {
   HOLD_MS,
   PAN_OUT_MS,
   BEAT_TARGET_MS,
+  BEAT_SNAP_MS,
+  BEAT_DONE_MS,
 } from '@/components/LuminaryActivationCinematic';
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -61,5 +63,41 @@ describe('LuminaryActivationCinematic — ENTITY_TIMES timing invariants', () =>
 
   it('ENTITY_FILTER_TIMES settle index matches ENTITY_TIMES (must stay in sync)', () => {
     expect(ENTITY_FILTER_TIMES[SETTLE_IDX]).toBe(tSettle);
+  });
+});
+
+// ─── Beat sequence timing invariants ─────────────────────────────────────────
+//
+// All beat offsets are measured from the start of the HOLD phase.
+// They must fire in ascending order and all complete before HOLD_MS expires —
+// otherwise the last beat is silently dropped when the cinematic advances to
+// pan-out.
+//
+// Invariants:
+//   1. TARGET < SNAP              — beats fire in sequence
+//   2. SNAP   < DONE              — beats fire in sequence
+//   3. TARGET < HOLD_MS           — target beat completes within hold window
+//   4. SNAP   < HOLD_MS           — snap beat completes within hold window
+//   5. DONE   < HOLD_MS           — done beat completes within hold window (critical guard)
+
+describe('LuminaryActivationCinematic — beat sequence timing invariants', () => {
+  it('BEAT_TARGET_MS fires before BEAT_SNAP_MS', () => {
+    expect(BEAT_TARGET_MS).toBeLessThan(BEAT_SNAP_MS);
+  });
+
+  it('BEAT_SNAP_MS fires before BEAT_DONE_MS', () => {
+    expect(BEAT_SNAP_MS).toBeLessThan(BEAT_DONE_MS);
+  });
+
+  it('BEAT_TARGET_MS completes before HOLD_MS expires', () => {
+    expect(BEAT_TARGET_MS).toBeLessThan(HOLD_MS);
+  });
+
+  it('BEAT_SNAP_MS completes before HOLD_MS expires', () => {
+    expect(BEAT_SNAP_MS).toBeLessThan(HOLD_MS);
+  });
+
+  it('BEAT_DONE_MS completes before HOLD_MS expires (regression guard — silent drop)', () => {
+    expect(BEAT_DONE_MS).toBeLessThan(HOLD_MS);
   });
 });
