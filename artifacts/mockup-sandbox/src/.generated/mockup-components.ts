@@ -2,9 +2,6 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/eminence/EminenceDiamond.tsx": () => import("../components/mockups/eminence/EminenceDiamond.tsx"),
-  "./components/mockups/luminae-title/CrystalSpectrum.tsx": () => import("../components/mockups/luminae-title/CrystalSpectrum.tsx"),
-  "./components/mockups/luminae-title/PrismaticRefraction.tsx": () => import("../components/mockups/luminae-title/PrismaticRefraction.tsx"),
-  "./components/mockups/luminae-title/VoidSovereign.tsx": () => import("../components/mockups/luminae-title/VoidSovereign.tsx"),
   "./components/mockups/card-backs/CardBacksPreview.tsx": () => import("../components/mockups/card-backs/CardBacksPreview.tsx"),
   "./components/mockups/card-backs/Tier1Redesign.tsx": () => import("../components/mockups/card-backs/Tier1Redesign.tsx"),
   "./components/mockups/card-backs/Tier2Redesign.tsx": () => import("../components/mockups/card-backs/Tier2Redesign.tsx"),
@@ -12,5 +9,8 @@ export const modules: ModuleMap = {
   "./components/mockups/card-backs/TierI.tsx": () => import("../components/mockups/card-backs/TierI.tsx"),
   "./components/mockups/card-backs/TierII.tsx": () => import("../components/mockups/card-backs/TierII.tsx"),
   "./components/mockups/card-backs/TierIII.tsx": () => import("../components/mockups/card-backs/TierIII.tsx"),
+  "./components/mockups/luminae-title/CrystalSpectrum.tsx": () => import("../components/mockups/luminae-title/CrystalSpectrum.tsx"),
+  "./components/mockups/luminae-title/PrismaticRefraction.tsx": () => import("../components/mockups/luminae-title/PrismaticRefraction.tsx"),
+  "./components/mockups/luminae-title/VoidSovereign.tsx": () => import("../components/mockups/luminae-title/VoidSovereign.tsx"),
   "./components/mockups/sim-results/SimResults.tsx": () => import("../components/mockups/sim-results/SimResults.tsx")
 };
