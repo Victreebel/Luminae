@@ -550,7 +550,16 @@ export function useViewOrchestrator({
 
         let idealScrollTop: number;
 
-        if (targetHeight <= boardHeight - 2 * SAFE_PAD) {
+        if (modelRef.current?.hasTargetClaim) {
+          // Brand-strike / card-condemning effect: top-align to the 3-tier card
+          // grid ([data-market-tiers]) so Tier 3 appears at the top of the
+          // viewport and all three tiers stay fully visible.  Centering would
+          // keep the Forge header partially on-screen and clip Tier 1 off the
+          // bottom; top-aligning scrolls the header above the viewport edge.
+          // bounds.top == top of [data-market-tiers] because computeTargetBounds
+          // already expanded to that element for hasTargetClaim procedures.
+          idealScrollTop = bounds.top - SAFE_PAD;
+        } else if (targetHeight <= boardHeight - 2 * SAFE_PAD) {
           // Everything fits with breathing room — center it.
           idealScrollTop = bounds.top - (boardHeight - targetHeight) / 2;
         } else if (modelRef.current?.hasMarketWide) {
