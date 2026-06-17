@@ -196,26 +196,26 @@ const HOLD_TO_SKIP_MS = 350;
 //     beat_ms = REVEAL_MS + BEAT_TARGET_MS = 400 + 150 = 550ms (t_norm ≈ 0.304)
 //   The settle keyframe (Y=0vh, index 4) must complete ≥100ms before that beat:
 //     settle_ms ≤ beat_ms − 100 = 550 − 100 = 450ms  →  t_norm ≤ 0.249
-//   Current settle: t=0.224 → settleMs = 0.224 × 1810 = ~405ms  buffer = 145ms ✓
+//   Current settle: t=0.248 → settleMs = 0.248 × 1810 = ~449ms  buffer = 101ms ✓
 //   Never push index[4] above t=0.249; doing so breaks this 100ms guard.
-//   Overshoot (index 3) at t=0.180 (326ms), settle at t=0.224 (405ms):
-//     spring-back window = 405 − 326 = ~79ms → snappy and intentional on all devices.
-//   The intermediate keyframes (index[1]=0.072, index[2]=0.135) are compressed
-//   proportionally so the fall acceleration into the overshoot feels natural.
+//   Overshoot (index 3) at t=0.200 (362ms), settle at t=0.248 (449ms):
+//     spring-back window = 449 − 362 = ~87ms → visible arch-back motion.
+//   The intermediate keyframes (index[1]=0.088, index[2]=0.175) give the entity
+//   enough time in the shadowy descent phase that the dip reads clearly.
 
 const ENTITY_DUR_S = (REVEAL_MS + HOLD_MS + PAN_OUT_MS) / 1000; // 1.81
 
 // Steeper fade-in: entity materialises quickly from nothing.
 const ENTITY_OPACITY = [0,    0.35, 0.75, 1.0,  1.0,  0   ];
 const ENTITY_SCALE   = [0.82, 0.88, 0.94, 1.00, 1.00, 1.12];
-export const ENTITY_TIMES   = [0, 0.072, 0.135, 0.180, 0.224, 1];
+export const ENTITY_TIMES   = [0, 0.088, 0.175, 0.200, 0.248, 1];
 
 // Desktop: wide descent + overshoot — entity falls from 30vh above, overshoots
-// 5vh below center, then springs back to rest at 0vh before pan-out.
-// Overshoot is 5vh so the spring-back looks intentional rather than a teleport.
-const ENTITY_Y_DESKTOP = ['-30vh', '-18vh', '-8vh', '5vh', '0vh', '3vh'];
+// 10vh below center, then springs back to rest at 0vh before pan-out.
+// Overshoot is 10vh so the downward dip and spring-back arch are clearly visible.
+const ENTITY_Y_DESKTOP = ['-30vh', '-18vh', '-8vh', '10vh', '0vh', '3vh'];
 // Mobile: reduced travel and softer overshoot for smaller screens.
-const ENTITY_Y_MOBILE  = ['-15vh', '-9vh',  '-4vh', '3vh', '0vh', '3vh'];
+const ENTITY_Y_MOBILE  = ['-15vh', '-9vh',  '-4vh', '5vh',  '0vh', '3vh'];
 
 // Per-property easing for the Y channel: easeIn on the fall segments so the
 // entity accelerates into the overshoot, then easeOut on the spring-back segment.
@@ -223,16 +223,17 @@ const ENTITY_Y_MOBILE  = ['-15vh', '-9vh',  '-4vh', '3vh', '0vh', '3vh'];
 const ENTITY_Y_EASE: Easing[] = ['easeIn', 'easeIn', 'easeOut', 'easeOut', 'easeInOut'];
 
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
-// Fast fade-in: blur dissolves in step with the steeper opacity curve.
+// Crisp dark silhouette: brightness/saturation only — no blur so the entity reads
+// as a recognisable shadowy figure moving through space, not a misty dissolve.
 // Index[3] and index[4] must match ENTITY_TIMES[3]/[4] — keep all three in sync.
-export const ENTITY_FILTER_TIMES = [0, 0.072, 0.135, 0.180, 0.224, 1];
+export const ENTITY_FILTER_TIMES = [0, 0.088, 0.175, 0.200, 0.248, 1];
 const ENTITY_FILTER = [
-  'brightness(0.05) saturate(0) blur(5px)',    // 0.000  — pure dark silhouette
-  'brightness(0.15) saturate(0) blur(4px)',    // 0.072  — still shadowed
-  'brightness(0.45) saturate(0.4) blur(2px)',  // 0.135  — emerging
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.180  — full reveal (overshoot peak)
-  'brightness(1.0)  saturate(1.0)  blur(0px)', // 0.224  — hold (settle complete, 145ms before beat)
-  'brightness(0)    saturate(1.0)  blur(0px)', // 1.000  — gone
+  'brightness(0.05) saturate(0)',    // 0.000  — pure dark silhouette
+  'brightness(0.15) saturate(0)',    // 0.088  — still shadowed
+  'brightness(0.45) saturate(0.4)', // 0.175  — emerging
+  'brightness(1.0)  saturate(1.0)', // 0.200  — full reveal (overshoot peak)
+  'brightness(1.0)  saturate(1.0)', // 0.248  — hold (settle complete, 101ms before beat)
+  'brightness(0)    saturate(1.0)', // 1.000  — gone
 ];
 
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
