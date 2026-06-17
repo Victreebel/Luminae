@@ -647,6 +647,11 @@ export default function GameBoard() {
   // ghost is cleared atomically with setCardActionBurst / setCipherBurst so the
   // card transitions directly from "in slot" to "flying in overlay" with no flash.
   const [burstGhostCards, setBurstGhostCards] = useState<Record<string, ArtifactCard>>({});
+  // Persistent marker-type fallback for ghost cards (keyed by card ID).
+  // Captured at ghost-creation time (before setQueryData wipes state.marketMarkers).
+  // Used so the condemned/forgotten badge stays visible on a ghost card even after
+  // strikeAuraMap times out (~3.8–4.3 s) but before the drain gate opens (~5.7 s).
+  const ghostCardMarkerTypesRef = useRef<Map<string, string>>(new Map());
   const [flippingCards, setFlippingCards] = useState<Set<string>>(new Set());
   const flippingCardsRef = useRef<Set<string>>(new Set());
   flippingCardsRef.current = flippingCards;
@@ -1144,6 +1149,7 @@ export default function GameBoard() {
     stateQueueRef.current = [];
     // Clear ghost cards that were waiting for burst animations to start.
     setBurstGhostCards({});
+    ghostCardMarkerTypesRef.current.clear();
     // Force-unmount any forge / reserve / deal animation that is still in flight
     // so the win cinematic isn't disrupted by a card flying across the board.
     setCardActionBurst(null);
@@ -2591,6 +2597,7 @@ export default function GameBoard() {
           }
           return next;
         });
+        ghostCardMarkerTypesRef.current.delete(_cardId);
       }
 
       // Detect opponent purchase_reserved (buy from own reserve) — fly the card to their chip.
@@ -2849,6 +2856,56 @@ export default function GameBoard() {
         }
       }
 
+      // ── Pre-populate director burn slots (MUST run before setActivationQueue) ──────────
+      // CinderMandateBurnDirector snapshots pendingDirectorBurnSlotsRef.current when it
+      // mounts.  setActivationQueue (below) and queryClient.setQueryData both queue React
+      // state updates in the same synchronous call, so React commits them together — the
+      // director mounts in THAT commit, before the useEffect at ~line 1421 has fired.
+      // Populating the ref here (while the DOM still shows the pre-burn state, condemned
+      // cards still visible in their slots) guarantees the director receives correct rects.
+      // The useEffect will run afterwards and may overwrite the ref, but by then the
+      // director has already captured its snapshot via slotsRef.current = pendingBurnSlots.
+      {
+        const prevBurnPile2 = new Set<string>(prev?.burnPile ?? []);
+        const newlyBurned2 = ((newState.burnPile ?? []) as string[]).filter(id => !prevBurnPile2.has(id));
+        if (newlyBurned2.length > 0) {
+          const prevBurnEvts2 = (prev?.burnEvents ?? []) as BurnEvent[];
+          const nextBurnEvts2 = ((newState.burnEvents ?? []) as BurnEvent[]);
+          const srcLumById2 = new Map<string, string>(
+            nextBurnEvts2
+              .filter(e => !prevBurnEvts2.some(p => p.cardId === e.cardId))
+              .map(e => [e.cardId, e.sourceLuminaryId]),
+          );
+          const prevTierCards2: { tier: 1 | 2 | 3; cards: (ArtifactCard | null)[] }[] = [
+            { tier: 1, cards: (prev?.marketTier1 ?? []) as (ArtifactCard | null)[] },
+            { tier: 2, cards: (prev?.marketTier2 ?? []) as (ArtifactCard | null)[] },
+            { tier: 3, cards: (prev?.marketTier3 ?? []) as (ArtifactCard | null)[] },
+          ];
+          const emberSlots2: DirectorBurnSlot[] = [];
+          for (const burnedId of newlyBurned2) {
+            if (srcLumById2.get(burnedId) !== 'lum_ember') continue;
+            let found2 = false;
+            for (const { tier, cards } of prevTierCards2) {
+              if (found2) break;
+              for (let i = 0; i < cards.length; i++) {
+                if (cards[i]?.id === burnedId) {
+                  const slotKey2 = `${tier}-${i}`;
+                  const slotEl2 = document.querySelector(`[data-slot-key="${slotKey2}"]`);
+                  if (slotEl2) {
+                    emberSlots2.push({ slotRect: slotEl2.getBoundingClientRect(), slotKey: slotKey2, sourceLuminaryId: 'lum_ember' });
+                  }
+                  found2 = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (emberSlots2.length > 0) {
+            pendingDirectorBurnSlotsRef.current = emberSlots2;
+          }
+        }
+      }
+
       // Detect newly arrived pendingLuminaryActivationEvents and enqueue ~4s activation cinematics.
       // Unlike arrival events these do NOT gate game progression — no drain-queue barrier needed.
       // However, if an arrival cutscene is in progress (or about to start), the activation
@@ -3074,6 +3131,15 @@ export default function GameBoard() {
               const oldCard = (prevMarkets[tier] as (ArtifactCard | null)[])[idx];
               if (oldCard) {
                 setBurstGhostCards(prev => ({ ...prev, [eagerSlotKey]: oldCard }));
+                // Snapshot the marker type NOW — prevStateRef still has the pre-purchase
+                // marketMarkers (setQueryData has not yet been called at this point in the
+                // synchronous WS handler). This gives ghostMarkerType a fallback that
+                // outlasts strikeAuraMap's clearTimeout (~3.8–4.3 s) without requiring any
+                // additional state update or re-render.
+                const capturedMarkerType = prevStateRef.current?.marketMarkers?.[oldCard.id]?.type;
+                if (capturedMarkerType) {
+                  ghostCardMarkerTypesRef.current.set(oldCard.id, capturedMarkerType as string);
+                }
               }
               break;
             }
@@ -3221,6 +3287,7 @@ export default function GameBoard() {
         if (Object.keys(prev).length === 0) return prev;
         return {};
       });
+      ghostCardMarkerTypesRef.current.clear();
     }, 7000);
     return () => clearTimeout(t);
   }, [burstGhostCards]);
@@ -4564,6 +4631,7 @@ export default function GameBoard() {
                   const ghostMarkerType: string | null =
                     state?.marketMarkers?.[ghostCard.id]?.type ??
                     strikeAuraMap.get(ghostCard.id)?.type ??
+                    ghostCardMarkerTypesRef.current.get(ghostCard.id) ??
                     null;
                   const showGhostMarker = ghostMarkerType !== null && !suppressedMarkerIds.has(ghostCard.id);
                   return marketCompact ? (
