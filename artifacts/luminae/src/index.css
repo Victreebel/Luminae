@@ -331,14 +331,81 @@ button,
 
 /* ── Keyword card overlay animations ──────────────────────────────────────── */
 
-/* Matches badge rhythm — quick flare then slow ember decay. */
+/* Electricity crackle — erratic box-shadow flicker at ~0.65s per cycle.
+   Uses linear timing + tightly-spaced keyframes so bright peaks feel
+   instantaneous (like a real discharge) rather than a smooth glow.
+   Pure CSS infinite — no framer-motion repeat:Infinity (OOM-safe on mobile). */
 @keyframes kw-overlay-condemned {
-  0%   { opacity: 0.55; }
-  18%  { opacity: 0.95; }
-  62%  { opacity: 0.68; }
-  100% { opacity: 0.55; }
+  0%   { box-shadow: inset 0 0 0 2px rgba(255,90,20,0.52),   inset 0 0 8px rgba(200,40,0,0.20); }
+  4%   { box-shadow: inset 0 0 0 3.5px rgba(255,222,80,0.98), inset 0 0 22px rgba(255,142,0,0.68), 0 0 12px rgba(255,102,0,0.30); }
+  7%   { box-shadow: inset 0 0 0 1.5px rgba(178,28,0,0.30); }
+  16%  { box-shadow: inset 0 0 0 2.5px rgba(240,90,20,0.68),  inset 0 0 12px rgba(210,60,0,0.36); }
+  19%  { box-shadow: inset 0 0 0 4px rgba(255,252,150,1.0),   inset 0 0 26px rgba(255,166,0,0.75), 0 0 16px rgba(255,136,0,0.44); }
+  22%  { box-shadow: inset 0 0 0 1.5px rgba(178,28,0,0.28); }
+  33%  { box-shadow: inset 0 0 0 2px rgba(235,80,15,0.58),    inset 0 0 9px rgba(205,55,0,0.26); }
+  37%  { box-shadow: inset 0 0 0 3px rgba(255,200,85,0.95),   inset 0 0 18px rgba(255,150,0,0.62), 0 0 11px rgba(255,114,0,0.34); }
+  40%  { box-shadow: inset 0 0 0 1.5px rgba(178,28,0,0.28); }
+  51%  { box-shadow: inset 0 0 0 2.5px rgba(245,96,22,0.70),  inset 0 0 11px rgba(215,68,0,0.35); }
+  55%  { box-shadow: inset 0 0 0 3.5px rgba(255,242,132,0.98), inset 0 0 22px rgba(255,160,0,0.70), 0 0 15px rgba(255,126,0,0.40); }
+  58%  { box-shadow: inset 0 0 0 1.5px rgba(178,28,0,0.28); }
+  68%  { box-shadow: inset 0 0 0 2px rgba(230,76,14,0.60); }
+  72%  { box-shadow: inset 0 0 0 4px rgba(255,255,172,1.0),   inset 0 0 28px rgba(255,180,0,0.78), 0 0 18px rgba(255,150,0,0.50); }
+  75%  { box-shadow: inset 0 0 0 1.5px rgba(178,28,0,0.28); }
+  85%  { box-shadow: inset 0 0 0 2.5px rgba(248,106,24,0.72), inset 0 0 12px rgba(218,72,0,0.38); }
+  89%  { box-shadow: inset 0 0 0 3px rgba(255,216,96,0.95),   inset 0 0 20px rgba(255,154,0,0.65), 0 0 12px rgba(255,120,0,0.36); }
+  92%  { box-shadow: inset 0 0 0 1.5px rgba(178,28,0,0.28); }
+  100% { box-shadow: inset 0 0 0 2px rgba(255,90,20,0.52),   inset 0 0 8px rgba(200,40,0,0.20); }
 }
-.kw-overlay-condemned { animation: kw-overlay-condemned 2.0s ease-in-out infinite; }
+.kw-overlay-condemned { animation: kw-overlay-condemned 0.65s linear infinite; }
+
+/* Condemned card arc paths — 6 independent paths with different periods and
+   delays so they appear to fire at random.  Each flashes briefly (3–4% of its
+   cycle ≈ 20–50 ms) then goes dark, giving a spark-like crackling appearance.
+   All periods are prime-ratio so the combined pattern never visibly repeats. */
+@keyframes kw-cnd-arc-1 {
+  0%,100% { opacity: 0; }
+  4%,6%   { opacity: 0.88; } 7%  { opacity: 0; }
+  38%,40% { opacity: 0.72; } 41% { opacity: 0; }
+  75%,77% { opacity: 0.82; } 78% { opacity: 0; }
+}
+.kw-cnd-arc-1 { animation: kw-cnd-arc-1 1.05s linear infinite; }
+
+@keyframes kw-cnd-arc-2 {
+  0%,100% { opacity: 0; }
+  18%,21% { opacity: 0.76; } 22% { opacity: 0; }
+  62%,65% { opacity: 0.68; } 66% { opacity: 0; }
+}
+.kw-cnd-arc-2 { animation: kw-cnd-arc-2 0.90s linear infinite; animation-delay: 0.12s; }
+
+@keyframes kw-cnd-arc-3 {
+  0%,100% { opacity: 0; }
+  9%,12%  { opacity: 0.84; } 13% { opacity: 0; }
+  52%,55% { opacity: 0.78; } 56% { opacity: 0; }
+}
+.kw-cnd-arc-3 { animation: kw-cnd-arc-3 1.20s linear infinite; animation-delay: 0.30s; }
+
+@keyframes kw-cnd-arc-4 {
+  0%,100% { opacity: 0; }
+  26%,29% { opacity: 0.80; } 30% { opacity: 0; }
+  57%,60% { opacity: 0.70; } 61% { opacity: 0; }
+  84%,87% { opacity: 0.88; } 88% { opacity: 0; }
+}
+.kw-cnd-arc-4 { animation: kw-cnd-arc-4 0.85s linear infinite; animation-delay: 0.48s; }
+
+@keyframes kw-cnd-arc-5 {
+  0%,100% { opacity: 0; }
+  14%,17% { opacity: 0.74; } 18% { opacity: 0; }
+  68%,71% { opacity: 0.65; } 72% { opacity: 0; }
+}
+.kw-cnd-arc-5 { animation: kw-cnd-arc-5 1.10s linear infinite; animation-delay: 0.65s; }
+
+@keyframes kw-cnd-arc-6 {
+  0%,100% { opacity: 0; }
+  8%,10%  { opacity: 0.78; } 11% { opacity: 0; }
+  45%,48% { opacity: 0.86; } 49% { opacity: 0; }
+  80%,83% { opacity: 0.72; } 84% { opacity: 0; }
+}
+.kw-cnd-arc-6 { animation: kw-cnd-arc-6 0.95s linear infinite; animation-delay: 0.22s; }
 
 /* Cinder Mandate electric arc draw-on.
    pathLength="1" on the SVG path normalises dasharray units to 1.
@@ -366,7 +433,9 @@ button,
 
 @media (prefers-reduced-motion: reduce) {
   .kw-condemned, .kw-forgotten, .kw-seeded,
-  .kw-overlay-condemned, .kw-overlay-seeded {
+  .kw-overlay-condemned, .kw-overlay-seeded,
+  .kw-cnd-arc-1, .kw-cnd-arc-2, .kw-cnd-arc-3,
+  .kw-cnd-arc-4, .kw-cnd-arc-5, .kw-cnd-arc-6 {
     animation: none;
   }
 }
