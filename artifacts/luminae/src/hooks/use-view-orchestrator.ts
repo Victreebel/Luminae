@@ -94,6 +94,9 @@ function isMultiTarget(model: OrchestrationModel): boolean {
   if (model.hasMarketWide) return true;
   if (model.entityIds.size > 1) return true;
   if (model.luminaryId !== null && model.entityIds.size >= 1) return true;
+  // Brand-strike / card-condemning effects always need the full market in view,
+  // even when only one card is condemned.
+  if (model.hasTargetClaim) return true;
   return false;
 }
 
@@ -177,12 +180,13 @@ function computeTargetBounds(
     if (marketEl) bounds = expandBounds(bounds, marketEl, board, boardRect, scrollTop);
   }
 
-  // Brand-strike / card-condemning effects: always include the full market
-  // section so every tier remains visible during the burn animation,
-  // regardless of how many cards are condemned (even just 1–2 in one tier).
+  // Brand-strike / card-condemning effects: expand to the 3-tier card grid
+  // ([data-market-tiers]) so the camera frames all three tiers, not the full
+  // Forge section (which includes the Luminary portal strip above and would
+  // push Tier 1 off the bottom of the viewport).
   if (model.hasTargetClaim && !model.hasMarketWide) {
-    const marketEl = document.querySelector<HTMLElement>('[data-market-section]');
-    if (marketEl) bounds = expandBounds(bounds, marketEl, board, boardRect, scrollTop);
+    const tiersEl = document.querySelector<HTMLElement>('[data-market-tiers]');
+    if (tiersEl) bounds = expandBounds(bounds, tiersEl, board, boardRect, scrollTop);
   }
 
   return bounds;

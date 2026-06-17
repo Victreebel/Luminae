@@ -4457,7 +4457,7 @@ export default function GameBoard() {
           </div>
         </div>
 
-        <div className="relative flex flex-col gap-3 px-3 pb-3">
+        <div data-market-tiers="true" className="relative flex flex-col gap-3 px-3 pb-3">
         {[
           { tier: 3, cards: state.marketTier3, deck: state.deckCounts.tier3, tierIdx: 0 },
           { tier: 2, cards: state.marketTier2, deck: state.deckCounts.tier2, tierIdx: 1 },
