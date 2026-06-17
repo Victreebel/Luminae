@@ -94,6 +94,20 @@ export interface CinderMandateBurnActions {
   onBurnChipPulse: () => void;
   /** Launch a charred-fragment particle from the card slot toward the chip. */
   onBurnPileParticle: (fromRect: DOMRect, toRect: DOMRect) => void;
+  /**
+   * Hide condemned card slots just before BurnFlash fires.
+   *
+   * Called synchronously at burnAt (Phase 4) before the querySelector
+   * re-measure loop.  React batches this setState with the subsequent
+   * onBurnFlash setState so the replacement card is hidden and BurnFlash
+   * appears atomically — the replacement card never flashes through while
+   * the fire animation is playing.
+   *
+   * Called before querySelector re-measures so the DOM still shows the
+   * replacement card (React has not yet committed the hide), giving a valid
+   * liveRect for BurnFlash positioning.
+   */
+  onHideSlots: (slotKeys: string[]) => void;
   /** Trigger the ↺ refill-pulse animation on one or more slot keys. */
   onRefillPulse: (slotKeys: string[]) => void;
   /** Play the card-burn audio cue (staggered by index). */
@@ -214,6 +228,17 @@ export function CinderMandateBurnDirector({
     // ── Phase 4: BurnFlash (fires after shudder completes) ─────────────────
     const burnAt = shudderStart + SHUDDER_MS;
     t(() => {
+      // Hide condemned slots now so replacement cards never show through
+      // BurnFlash. Called before querySelector re-measures so the DOM still
+      // holds the replacement card element — React queues the hide setState
+      // but hasn't committed it yet, ensuring the element is findable and
+      // liveRect is valid. React then batches this hide with the subsequent
+      // onBurnFlash setState so both commit atomically.
+      const slotKeysToHide = slots.map(s => s.slotKey);
+      if (slotKeysToHide.length > 0) {
+        actionsRef.current.onHideSlots(slotKeysToHide);
+      }
+
       const chipEl = document.querySelector('[data-burn-pile-chip]');
       const chipRect = chipEl?.getBoundingClientRect() ?? null;
 

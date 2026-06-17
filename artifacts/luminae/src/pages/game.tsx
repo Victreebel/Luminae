@@ -1507,7 +1507,6 @@ export default function GameBoard() {
           if (directorEntries.length > 0) {
             // Reset accumulator for this activation cycle
             pendingDirectorBurnSlotsRef.current = [];
-            const directorSlotKeys: string[] = [];
             for (const { tier, slotIndex, sourceLuminaryId } of directorEntries) {
               const slotKey = `${tier}-${slotIndex}`;
               const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
@@ -1517,17 +1516,15 @@ export default function GameBoard() {
                   slotKey,
                   sourceLuminaryId,
                 });
-                directorSlotKeys.push(slotKey);
               }
             }
-            // Hide these slots immediately so the replacement card does not
-            // flash into view before the BurnFlash animation plays.
-            // The director's onRefillPulse (fired after BURN_FLASH_TOTAL_MS)
-            // calls setHiddenSlots(new Set()) to reveal the new cards in sync
-            // with the refill sweep animation.
-            if (directorSlotKeys.length > 0) {
-              setHiddenSlots(new Set(directorSlotKeys));
-            }
+            // Do NOT call setHiddenSlots here. Hiding slots in the same React
+            // batch as setActivationQueue causes the director to mount with
+            // empty placeholders already in the DOM — the camera frames empty
+            // dashed boxes and the decree phase shows no cards. Instead, the
+            // director calls onHideSlots at burnAt (Phase 4), hiding slots and
+            // firing BurnFlash in the same setState batch so replacement cards
+            // never flash through while the fire animation plays.
           }
 
           // Normal (non-director) burns: Phase 1 badge + Phase 2 BurnFlash
@@ -9250,6 +9247,9 @@ export default function GameBoard() {
                 if (lumRow) lumRow.style.overflow = '';
               },
               setAnimEndTime,
+              onHideSlots: (slotKeys) => {
+                setHiddenSlots(new Set(slotKeys));
+              },
               onBurnFlash: (entry) => {
                 setBurnFlashes(pf => [...pf, entry]);
               },
