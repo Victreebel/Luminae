@@ -301,7 +301,7 @@ function LumiiOrb({
       <defs>
         {/* Glow filter — blurs then merges over original for a soft halo */}
         <filter id={filterId} x="-150%" y="-150%" width="400%" height="400%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation={blurSd} result="blur" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation={isMobile ? 0 : blurSd} result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -756,7 +756,7 @@ function TetherBeam({
             ? `linear-gradient(${gradDir}, rgba(251,191,36,0.65), rgba(249,115,22,0.32), transparent)`
             : `linear-gradient(${gradDir}, rgba(168,85,247,0.55), rgba(59,130,246,0.28), transparent)`,
           borderRadius: 10,
-          filter: "blur(4px)",
+          filter: isMobile ? undefined : "blur(4px)",
         }}
       />
       {/* Sharper centre line */}
@@ -919,6 +919,7 @@ interface BubbleProps {
 }
 
 function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objective, onClick }: BubbleProps) {
+  const isMobile = useIsMobile();
   const showNext = !isActionBeat || !isLastLine;
   const actionPrompt = isLastLine && isActionBeat ? "Go ahead — do it!" : null;
 
@@ -934,7 +935,7 @@ function LumiiBubble({ text, isActionBeat, isLastLine, isFfBeat, phase, objectiv
       className="pointer-events-auto text-left max-w-[240px] rounded-2xl border border-white/20 shadow-xl focus:outline-none"
       style={{
         background: phase === 2 ? "rgba(20, 12, 36, 0.97)" : "rgba(10, 16, 36, 0.97)",
-        backdropFilter: "blur(14px)",
+        backdropFilter: isMobile ? undefined : "blur(14px)",
         padding: "12px 14px 10px",
       }}
     >
@@ -1384,6 +1385,7 @@ export function LumiiTutorial({
 }: Props) {
   const [, setLocation] = useLocation();
   const vpH = useViewportH();
+  const isMobile = useIsMobile();
   const [lineIdx, setLineIdx] = useState(0);
   const [isFastForwarding, setIsFastForwarding] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
@@ -1859,7 +1861,7 @@ export function LumiiTutorial({
                                           height: 18,
                                           borderRadius: "50%",
                                           background: color,
-                                          filter: "blur(4px)",
+                                          filter: isMobile ? undefined : "blur(4px)",
                                           pointerEvents: "none",
                                           zIndex: 1,
                                         }}
@@ -1914,7 +1916,7 @@ export function LumiiTutorial({
                                           height: 16,
                                           borderRadius: "50%",
                                           background: color,
-                                          filter: "blur(4px)",
+                                          filter: isMobile ? undefined : "blur(4px)",
                                           pointerEvents: "none",
                                           zIndex: 1,
                                         }}
@@ -1999,7 +2001,7 @@ export function LumiiTutorial({
                                 style={{
                                   background: "rgba(168,85,247,0.18)",
                                   border: "1px solid rgba(168,85,247,0.38)",
-                                  backdropFilter: "blur(8px)",
+                                  backdropFilter: isMobile ? undefined : "blur(8px)",
                                   color: "rgba(255,255,255,0.82)",
                                 }}
                               >

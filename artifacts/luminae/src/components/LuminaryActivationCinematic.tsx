@@ -108,6 +108,7 @@ function stepInfo(step: AnimationProcedureStep): StepInfo | null {
 }
 
 function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) {
+  const isMobile = useIsMobile();
   const visible = procedure.filter(s => s.type !== 'luminaryPulse');
   if (visible.length === 0) return null;
   return (
@@ -137,7 +138,7 @@ function ProcedureStrip({ procedure }: { procedure: AnimationProcedureStep[] }) 
                 color: info.color,
                 background: `${info.color}18`,
                 border: `1px solid ${info.color}38`,
-                backdropFilter: 'blur(4px)',
+                backdropFilter: isMobile ? undefined : 'blur(4px)',
               }}
             >
               {info.icon} {info.label}

@@ -2315,7 +2315,7 @@ export function LuminaryArrivalCutscene({
               left: vesselLeft + BOARD_CARD_W / 2 - BOARD_CARD_W * 2.75,
               top:  vesselTop  + BOARD_CARD_H / 2 - BOARD_CARD_H * 2.5,
               background: `radial-gradient(ellipse 42% 46% at 50% 44%, #ffffff 0%, #ffffffff 10%, #ffffffdd 24%, #ffffff88 50%, transparent 84%)`,
-              filter: 'blur(6px)',
+              filter: isMobile ? undefined : 'blur(6px)',
               borderRadius: '50%',
               transformOrigin: '50% 50%',
             }}
@@ -2840,10 +2840,10 @@ export function LuminaryArrivalCutscene({
                 {/* Name / domain / Eminence badge */}
                 <motion.div
                   className="flex flex-col items-center gap-1 text-center"
-                  initial={{ opacity: 0, filter: 'brightness(4) blur(4px)' }}
+                  initial={{ opacity: 0, filter: isMobile ? 'brightness(4)' : 'brightness(4) blur(4px)' }}
                   animate={{
                     opacity: isFlashing ? 0 : (isFading ? 0 : 1),
-                    filter: isFlashing ? 'brightness(4) blur(4px)' : (isFading ? 'brightness(1) blur(0px)' : 'brightness(1) blur(0px)'),
+                    filter: isFlashing ? (isMobile ? 'brightness(4)' : 'brightness(4) blur(4px)') : 'brightness(1)',
                   }}
                   transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 >

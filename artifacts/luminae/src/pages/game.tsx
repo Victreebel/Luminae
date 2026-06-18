@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 declare global {
   interface Window {
@@ -268,6 +269,7 @@ export default function GameBoard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { account, isLoading: accountLoading, prefs: accountPrefs } = useAccount();
+  const isMobile = useIsMobile();
   const session = getSession();
 
   const isTutorial = useMemo(() => {
@@ -6409,7 +6411,7 @@ export default function GameBoard() {
                             >
                               {selKeys.length > 0 && (
                                 <div key={harnessPulseKey} className={harnessPulseKey > 0 ? 'harness-press-flash' : ''} style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}>
-                                  <div className="w-full h-full harness-swirl-ring" style={{ background: conicGradient, opacity: 0.48, filter: 'blur(8px)' }} />
+                                  <div className="w-full h-full harness-swirl-ring" style={{ background: conicGradient, opacity: 0.48, filter: isMobile ? undefined : 'blur(8px)' }} />
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-b from-white/[0.13] to-transparent pointer-events-none" />
@@ -6450,7 +6452,7 @@ export default function GameBoard() {
                             >
                               {planHasColors && (
                                 <div style={{ position: 'absolute', width: '220%', height: '220%', top: '-60%', left: '-60%' }}>
-                                  <div className="w-full h-full harness-swirl-ring" style={{ background: `conic-gradient(rgba(251,191,36,0.7) 0deg, rgba(251,191,36,0.2) 180deg, rgba(251,191,36,0.7) 360deg)`, opacity: 0.30, filter: 'blur(8px)' }} />
+                                  <div className="w-full h-full harness-swirl-ring" style={{ background: `conic-gradient(rgba(251,191,36,0.7) 0deg, rgba(251,191,36,0.2) 180deg, rgba(251,191,36,0.7) 360deg)`, opacity: 0.30, filter: isMobile ? undefined : 'blur(8px)' }} />
                                 </div>
                               )}
                               <div className="absolute inset-0 bg-gradient-to-b from-white/[0.10] to-transparent pointer-events-none" />

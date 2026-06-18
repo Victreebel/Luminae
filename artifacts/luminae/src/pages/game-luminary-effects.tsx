@@ -1339,7 +1339,6 @@ export function BloomSeedParticle({
             height: 6 - i,
             borderRadius: '50%',
             background: '#4ade80',
-            filter: 'blur(1px)',
             pointerEvents: 'none',
             zIndex: 9993,
           }}
@@ -1390,6 +1389,7 @@ export function BurnPileParticle({
   to: DOMRect;
   onDone: () => void;
 }) {
+  const isMobile = useIsMobile();
   const onDoneRef = useRef(onDone);
   useEffect(() => {
     const t = setTimeout(() => onDoneRef.current(), 950);
@@ -1417,7 +1417,7 @@ export function BurnPileParticle({
           height: 8,
           borderRadius: '50%',
           background: 'radial-gradient(circle, #ff8833cc 0%, #ff440055 60%, transparent 100%)',
-          filter: 'blur(2px)',
+          filter: isMobile ? undefined : 'blur(2px)',
           pointerEvents: 'none',
           zIndex: 9993,
         }}
@@ -1647,6 +1647,7 @@ export function ArrivalMarketOverlay({
 
 // Red Moth — two crimson wings sweeping inward from the sides
 function RedMothFlareFx() {
+  const isMobile = useIsMobile();
   const wing = (side: 'left' | 'right') => {
     const offscreen = side === 'left' ? '-100%' : '100%';
     const retreat   = side === 'left' ?  '-40%' :  '40%';
@@ -1663,7 +1664,7 @@ function RedMothFlareFx() {
           background: side === 'left'
             ? 'radial-gradient(ellipse at right center, #dc262688 0%, #991b1b55 40%, transparent 75%)'
             : 'radial-gradient(ellipse at left center, #dc262688 0%, #991b1b55 40%, transparent 75%)',
-          filter: 'blur(6px)',
+          filter: isMobile ? undefined : 'blur(6px)',
         }}
         initial={{ x: offscreen, opacity: 0 }}
         animate={{ x: [offscreen, '0%', retreat], opacity: [0, 0.85, 0] }}
@@ -1685,7 +1686,7 @@ function RedMothFlareFx() {
           width: '30vw', height: '20vh',
           borderRadius: '50%',
           background: 'radial-gradient(ellipse, #fca5a588 0%, transparent 70%)',
-          filter: 'blur(8px)',
+          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1699,6 +1700,7 @@ function RedMothFlareFx() {
 
 // Iron Harbinger — amber impact shockwave
 function IronHarbingerFx() {
+  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Shockwave rings */}
@@ -1729,7 +1731,7 @@ function IronHarbingerFx() {
           width: '40vw', height: '25vh',
           borderRadius: '50%',
           background: 'radial-gradient(ellipse, #fde68acc 0%, #f97316aa 35%, transparent 70%)',
-          filter: 'blur(10px)',
+          filter: isMobile ? undefined : 'blur(10px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1780,6 +1782,7 @@ function NullDomainFx() {
 
 // Ember Sovereign — decree seal expanding then dissolving
 function EmberDecreeFx() {
+  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Seal glow */}
@@ -1791,7 +1794,7 @@ function EmberDecreeFx() {
           width: '45vw', height: '45vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #fde68aaa 0%, #f97316cc 30%, #dc2626aa 55%, transparent 75%)',
-          filter: 'blur(8px)',
+          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1834,7 +1837,6 @@ function ForgottenHourFx() {
             background: i % 2 === 0
               ? 'linear-gradient(90deg, transparent 0%, #818cf8cc 20%, #c4b5fdee 50%, #818cf8cc 80%, transparent 100%)'
               : 'linear-gradient(90deg, transparent 0%, #60a5facc 25%, #93c5fddd 50%, #60a5facc 75%, transparent 100%)',
-            filter: 'blur(0.5px)',
             pointerEvents: 'none',
             zIndex: 69,
           }}
@@ -1867,6 +1869,7 @@ function ForgottenHourFx() {
 
 // Verdant Oracle — subtle green early-bloom pulse
 function VerdantBloomFx() {
+  const isMobile = useIsMobile();
   return createPortal(
     <motion.div
       style={{
@@ -1875,7 +1878,7 @@ function VerdantBloomFx() {
         width: '35vw', height: '35vw',
         borderRadius: '50%',
         background: 'radial-gradient(circle, #4ade8066 0%, #16a34a44 40%, transparent 70%)',
-        filter: 'blur(12px)',
+        filter: isMobile ? undefined : 'blur(12px)',
         pointerEvents: 'none',
         zIndex: 69,
       }}
@@ -1889,6 +1892,7 @@ function VerdantBloomFx() {
 
 // Pale Merchant — contract seal that opens/unfurls
 function PaleMerchantFx() {
+  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Contract seal glow */}
@@ -1900,7 +1904,7 @@ function PaleMerchantFx() {
           width: '38vw', height: '38vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #f1f5f988 0%, #cbd5e1aa 35%, transparent 70%)',
-          filter: 'blur(8px)',
+          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1940,6 +1944,7 @@ function PaleMerchantFx() {
 // Total duration: ~2.0 s.
 const SCRY_COLS = 8 as const; // 4 Tier-III + 4 Tier-II columns
 function TideScryFx() {
+  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
 
@@ -1953,7 +1958,7 @@ function TideScryFx() {
           borderRadius: '50%',
           background:
             'radial-gradient(ellipse, #1e3a8a55 0%, #1d4ed866 30%, #0ea5e933 58%, transparent 78%)',
-          filter: 'blur(18px)',
+          filter: isMobile ? undefined : 'blur(18px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -1972,7 +1977,6 @@ function TideScryFx() {
           background:
             'linear-gradient(180deg, transparent 0%, #38bdf8cc 18%, #e0f2feee 50%, #38bdf8cc 82%, transparent 100%)',
           boxShadow: '0 0 18px 7px #38bdf866, 0 0 5px 2px #bae6fdcc',
-          filter: 'blur(0.5px)',
           pointerEvents: 'none',
           zIndex: 71,
         }}
@@ -2071,6 +2075,7 @@ function TideScryFx() {
 
 // Void Warden — dark implosion collapse, all light draining inward
 function VoidWardenFx() {
+  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Central void implosion glow */}
@@ -2082,7 +2087,7 @@ function VoidWardenFx() {
           width: '50vw', height: '50vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #2e1065 0%, #4c1d95 25%, #0a0a14 60%, transparent 78%)',
-          filter: 'blur(10px)',
+          filter: isMobile ? undefined : 'blur(10px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}
@@ -2141,6 +2146,7 @@ function VoidWardenFx() {
 
 // First Hunger — golden maw / consumption vortex, card being devoured
 function FirstHungerFx() {
+  const isMobile = useIsMobile();
   return (
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 69 }}>
       {/* Warm amber core glow — the "maw" */}
@@ -2152,7 +2158,7 @@ function FirstHungerFx() {
           width: '30vw', height: '30vw',
           borderRadius: '50%',
           background: 'radial-gradient(circle, #fbbf2488 0%, #f59e0b55 35%, #92400e22 60%, transparent 75%)',
-          filter: 'blur(8px)',
+          filter: isMobile ? undefined : 'blur(8px)',
           pointerEvents: 'none',
           zIndex: 69,
         }}

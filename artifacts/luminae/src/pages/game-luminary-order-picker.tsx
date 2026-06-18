@@ -6,6 +6,7 @@ import { LuminaryPanelArt, getLuminaryVisuals } from '@/lib/luminaryAssets';
 import { BOARD_CARD_W, BOARD_CARD_H } from '@/lib/constants';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
 import { EminenceDiamond } from './game-card';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ── LuminaryOrderPicker ────────────────────────────────────────────────────────
 //
@@ -36,6 +37,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
   const [selectedOrder, setSelectedOrder] = useState<string[]>([]);
   const containerRef = useRef<HTMLElement | null>(null);
   const submitAction = useSubmitAction();
+  const isMobile = useIsMobile();
 
   const isConfirmReady = isMyChoice && selectedOrder.length === candidates.length;
 
@@ -79,7 +81,7 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
       className="fixed inset-0 z-[120] flex flex-col items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: isMobile ? undefined : 'blur(6px)' }}
     >
       {isMyChoice ? (
         <div
