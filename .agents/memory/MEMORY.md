@@ -4,6 +4,7 @@
 - [pendingLuminaryChoice turn suspension](pending-luminary-choice-turn.md) — interactive multi-Luminary gate requires suspending advanceTurn in tail code; choose_luminary_order must break (not return) so tail code runs advanceTurn.
 - [framer-motion v12 WAAPI rules](framer-motion-v12-waapi-rules.md) — keyframe arrays need consistent units ('0vh' not '0'), initial prop required, exit prop needed when AnimatePresence may remove mid-animation.
 - [Vite HMR keepalive — Replit proxy](vite-hmr-keepalive.md) — proxy needs bidirectional traffic; client-only pings insufficient; hmrPongReply plugin + hmr.timeout:10000 is the fix.
+- [HMR remount dedup — import.meta.hot.data](hmr-remount-dedup.md) — Vite Fast Refresh re-evals the module on every WS reconnect, resetting useRef; use import.meta.hot.data to persist dedup Sets across HMR cycles.
 - [useIsMobile — must check touch + width](use-is-mobile.md) — width-only check fires on desktop in Replit's narrow iframe preview, stripping all mobile-guarded effects from desktop builds.
 - [Cascade test — two-stage deck setup](cascade-deck-setup.md) — lum_scholar cascade re-entry test was flaky; fix: fill market to 4 first, then prepend [filler, target] to deck so purchase-refill consumes filler deterministically.
 - [Opponent forge fallback — FALLBACK_FLIP_ANIM_MS](opponent-forge-fallback.md) — 5800 ms lock fires when market slot not in DOM; use slot-reveal instead for opponents.

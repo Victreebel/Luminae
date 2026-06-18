@@ -238,6 +238,24 @@ function ReturnResultsBanner({
   );
 }
 
+// ── HMR-persistent arrival dedup store ────────────────────────────────────
+// Vite's React Fast Refresh re-evaluates this module on every hot update,
+// which resets module-level `const` declarations.  `import.meta.hot.data` is
+// the ONE object Vite preserves across evaluations, so we seed our dedup Set
+// from it.  After the first evaluation the Set lives in hot.data and is
+// reused on subsequent HMR cycles — meaning a WS-reconnect-triggered HMR
+// update can no longer reset handledArrivalEventIdsRef to an empty Set and
+// replay the summon cutscene.  In production (hot === undefined) we fall back
+// to a plain module-level Set, which is correct because HMR never runs there.
+if (import.meta.hot) {
+  (import.meta.hot.data as Record<string, unknown>).handledArrivalEventIds
+    ??= new Set<string>();
+}
+const _handledArrivalEventIds: Set<string> =
+  ((import.meta.hot?.data as Record<string, unknown> | undefined)
+    ?.handledArrivalEventIds as Set<string> | undefined)
+  ?? new Set<string>();
+
 export default function GameBoard() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, setLocation] = useLocation();
@@ -477,7 +495,8 @@ export default function GameBoard() {
   }>>([]);
   // Tracks which server arrival eventIds have already been pushed into the queue
   // so that duplicate WebSocket / reconnect deliveries are safely deduped.
-  const handledArrivalEventIdsRef = useRef(new Set<string>());
+  // Uses the HMR-persistent Set so React Fast Refresh remounts cannot reset it.
+  const handledArrivalEventIdsRef = useRef(_handledArrivalEventIds);
   // True when the user pressed "Skip view" on the active cutscene.
   // The cutscene stays mounted (timer runs) but the overlay is hidden.
   const [localArrivalSkipped, setLocalArrivalSkipped] = useState(false);
@@ -2253,7 +2272,7 @@ export default function GameBoard() {
     if (isRematch) {
       initialTurnFiredRef.current = false;
       checkedInitialArrivalRef.current = false;
-      handledArrivalEventIdsRef.current = new Set();
+      handledArrivalEventIdsRef.current.clear();
       handledActivationEventIdsRef.current = new Set();
       setActivationQueue([]);
       pendingSuppressArrivalIdsRef.current = new Set();
@@ -9013,7 +9032,7 @@ export default function GameBoard() {
                   console.log('[dev-rewind] restored to turnCount:', data.rewindToTurnCount);
                   // Reset all animation/cinematic client state so stale events from
                   // the previous run don't replay after the rewind.
-                  handledArrivalEventIdsRef.current = new Set();
+                  handledArrivalEventIdsRef.current.clear();
                   handledActivationEventIdsRef.current = new Set();
                   deferredBrandStrikesRef.current = [];
                   deferredActivationEventsRef.current = [];
