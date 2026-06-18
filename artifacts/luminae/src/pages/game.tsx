@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+declare global {
+  interface Window {
+    __lumArrivalDedupSet?: Set<string>;
+  }
+}
+
 import { useParams, useLocation } from 'wouter';
 import { 
   useGetGameState, 
@@ -241,20 +247,20 @@ function ReturnResultsBanner({
 // ── HMR-persistent arrival dedup store ────────────────────────────────────
 // Vite's React Fast Refresh re-evaluates this module on every hot update,
 // which resets module-level `const` declarations.  `import.meta.hot.data` is
-// the ONE object Vite preserves across evaluations, so we seed our dedup Set
-// from it.  After the first evaluation the Set lives in hot.data and is
-// reused on subsequent HMR cycles — meaning a WS-reconnect-triggered HMR
-// update can no longer reset handledArrivalEventIdsRef to an empty Set and
-// replay the summon cutscene.  In production (hot === undefined) we fall back
-// to a plain module-level Set, which is correct because HMR never runs there.
+// Global dedup Set that survives both Vite HMR module re-evaluations and
+// React Fast Refresh component remounts.  window.__lumArrivalDedupSet is
+// initialized once (either from hot.data or fresh) and the same object is
+// reused across every HMR cycle.  Reset sites must call .clear() — never
+// assign a new Set — so the reference stays in the global.
 if (import.meta.hot) {
   (import.meta.hot.data as Record<string, unknown>).handledArrivalEventIds
     ??= new Set<string>();
+  window.__lumArrivalDedupSet
+    ??= (import.meta.hot.data as Record<string, unknown>).handledArrivalEventIds as Set<string>;
+} else {
+  window.__lumArrivalDedupSet ??= new Set<string>();
 }
-const _handledArrivalEventIds: Set<string> =
-  ((import.meta.hot?.data as Record<string, unknown> | undefined)
-    ?.handledArrivalEventIds as Set<string> | undefined)
-  ?? new Set<string>();
+const _handledArrivalEventIds: Set<string> = window.__lumArrivalDedupSet;
 
 export default function GameBoard() {
   const { roomId } = useParams<{ roomId: string }>();
