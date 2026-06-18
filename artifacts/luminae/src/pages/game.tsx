@@ -8981,6 +8981,22 @@ export default function GameBoard() {
                 if (resp.ok) {
                   const data = await resp.json() as { rewindToTurnCount?: number };
                   console.log('[dev-rewind] restored to turnCount:', data.rewindToTurnCount);
+                  // Reset all animation/cinematic client state so stale events from
+                  // the previous run don't replay after the rewind.
+                  handledArrivalEventIdsRef.current = new Set();
+                  handledActivationEventIdsRef.current = new Set();
+                  deferredBrandStrikesRef.current = [];
+                  deferredActivationEventsRef.current = [];
+                  pendingDirectorBurnSlotsRef.current = [];
+                  directorGhostSlotKeysRef.current = [];
+                  pendingSuppressArrivalIdsRef.current = new Set();
+                  setActivationQueue([]);
+                  setArrivalQueue([]);
+                  setBurstGhostCards({});
+                  setHiddenSlots(new Set());
+                  setRefillingSlots(new Set());
+                  setSuppressedMarkerIds(new Set());
+                  setClaimedThisSession([]);
                 } else {
                   const err = await resp.json() as { error?: string };
                   console.warn('[dev-rewind] failed:', err.error ?? resp.status);
