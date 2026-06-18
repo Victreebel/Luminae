@@ -1812,8 +1812,12 @@ export default function GameBoard() {
               srcLum,
               instant,
             });
-          } else {
+          } else if (!hasIncomingActivation) {
             // No arrival blocking, just no mapped source — fire immediately.
+            // Skip when an activation director (e.g. CinderMandateBrandingDirector) is
+            // about to own this brand-strike: it calls fireBrandStrikes + unsuppressMarkers
+            // at the correct beat timing. Firing here would clear the suppression early and
+            // show the badge before the beam hits the card.
             gameAudio.playBrandStrike();
             fireBrandStrikes(newlyMarked, nextMarkers);
             // Reveal overlays+badges immediately; brandDelayMap handles per-card badge timing.
@@ -1823,6 +1827,8 @@ export default function GameBoard() {
               return next;
             });
           }
+          // else: hasIncomingActivation && !arrivalPending — suppression stays in place;
+          // the activation director (CinderMandateBrandingDirector) fires + unsuppresses.
         }
       }
     }
