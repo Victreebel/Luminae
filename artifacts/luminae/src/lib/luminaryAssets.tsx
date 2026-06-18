@@ -271,6 +271,7 @@ function TideEntityFallback({ size = 140, className = '' }: { size?: number; cla
 // The full iris group drifts slowly within the sclera; the eyelid closes
 // from the top edge on a random schedule (every 2.5–7.5 s).
 function TideEyeOverlay({ width, height, cyFactor = 0.472 }: { width: number; height: number; cyFactor?: number }) {
+  const isMobile = useIsMobile();
   const cx      = 0.490 * width;
   const cy      = cyFactor * height;
   const irisR   = 0.052 * width;
@@ -346,20 +347,73 @@ function TideEyeOverlay({ width, height, cyFactor = 0.472 }: { width: number; he
         <ellipse cx={cx} cy={cy} rx={scleraRX} ry={scleraRY} fill="url(#te-sclera)" />
 
         {/* Iris glow halo — pulsing sapphire ring just outside the iris */}
-        <motion.circle
-          cx={cx} cy={cy} r={irisR * 1.14}
-          fill="none" stroke="#1eb8f0" strokeWidth={irisR * 0.38}
-          filter="url(#te-iris-glow)"
-          animate={{ opacity: [0.50, 0.95, 0.50], scale: [0.96, 1.06, 0.96] }}
-          transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
-          style={{ transformOrigin: `${cx}px ${cy}px` }}
-        />
+        {isMobile ? (
+          <circle
+            cx={cx} cy={cy} r={irisR * 1.14}
+            fill="none" stroke="#1eb8f0" strokeWidth={irisR * 0.38}
+            filter="url(#te-iris-glow)"
+            opacity="0.72"
+          />
+        ) : (
+          <motion.circle
+            cx={cx} cy={cy} r={irisR * 1.14}
+            fill="none" stroke="#1eb8f0" strokeWidth={irisR * 0.38}
+            filter="url(#te-iris-glow)"
+            animate={{ opacity: [0.50, 0.95, 0.50], scale: [0.96, 1.06, 0.96] }}
+            transition={{ repeat: Infinity, duration: 2.8, ease: 'easeInOut' }}
+            style={{ transformOrigin: `${cx}px ${cy}px` }}
+          />
+        )}
 
         {/* Drifting iris group — iris + texture + limbal ring + pupil + catch lights */}
-        <motion.g
-          animate={{ x: xKeys, y: yKeys }}
-          transition={{ repeat: Infinity, duration: 7.4, ease: 'easeInOut', repeatType: 'loop' }}
-        >
+        {isMobile ? (
+          <g transform={`translate(${maxDX*0.35},${maxDY*0.25})`}>
+            {/* Static mid-drift position — same content without motion */}
+            <circle cx={cx} cy={cy} r={irisR} fill="url(#te-iris)" />
+            {Array.from({ length: 24 }).map((_, j) => {
+              const angle = (j / 24) * Math.PI * 2;
+              const inner = irisR * 0.24;
+              const outer = irisR * 0.97;
+              const op = 0.13 + (j % 4) * 0.07;
+              return (
+                <line key={j}
+                  x1={cx + Math.cos(angle) * inner} y1={cy + Math.sin(angle) * inner}
+                  x2={cx + Math.cos(angle) * outer} y2={cy + Math.sin(angle) * outer}
+                  stroke="#d0e8f6" strokeWidth={irisR * 0.08} opacity={op}
+                />
+              );
+            })}
+            {/* Limbal ring */}
+            <circle cx={cx} cy={cy} r={irisR} fill="none"
+              stroke="#0a1a28" strokeWidth={irisR * 0.30} opacity="0.55" />
+            {/* Pupil */}
+            <circle cx={cx} cy={cy} r={pupilR} fill="url(#te-pupil)" />
+            {/* Pupil glow */}
+            <circle cx={cx} cy={cy} r={pupilR * 1.1} fill="none"
+              stroke="#1e8fc4" strokeWidth={irisR * 0.02} opacity="0.35"
+              filter="url(#te-pupil-glow)" />
+            {/* Catch lights */}
+            <ellipse cx={cx - irisR * 0.24} cy={cy - irisR * 0.20}
+              rx={irisR * 0.12} ry={irisR * 0.09}
+              fill="rgba(255,255,255,0.92)" />
+            <ellipse cx={cx - irisR * 0.28} cy={cy - irisR * 0.24}
+              rx={irisR * 0.05} ry={irisR * 0.04}
+              fill="rgba(255,255,255,0.88)" />
+            {/* Eyelid — static half-closed at 15% (blink-neutral) */}
+            <path d={`M ${cx - scleraRX * 1.04} ${cy - scleraRY * 0.08}
+                      Q ${cx - scleraRX * 0.52} ${cy - scleraRY * 0.82}
+                      ${cx} ${cy - scleraRY * 0.82}
+                      Q ${cx + scleraRX * 0.52} ${cy - scleraRY * 0.82}
+                      ${cx + scleraRX * 1.04} ${cy - scleraRY * 0.08}
+                      L ${cx + scleraRX * 1.04} ${cy - scleraRY * 1.30}
+                      L ${cx - scleraRX * 1.04} ${cy - scleraRY * 1.30} Z`}
+              fill="#f8fafb" opacity="0.88" />
+          </g>
+        ) : (
+          <motion.g
+            animate={{ x: xKeys, y: yKeys }}
+            transition={{ repeat: Infinity, duration: 7.4, ease: 'easeInOut', repeatType: 'loop' }}
+          >
           {/* Iris base */}
           <circle cx={cx} cy={cy} r={irisR} fill="url(#te-iris)" />
           {/* 24 radial fiber lines */}
@@ -386,6 +440,7 @@ function TideEyeOverlay({ width, height, cyFactor = 0.472 }: { width: number; he
           {/* Secondary catch light — bottom-left */}
           <circle cx={cx - irisR * 0.18} cy={cy + irisR * 0.44} r={irisR * 0.06} fill="white" opacity={0.58} />
         </motion.g>
+        )}
 
         {/* Upper eyelid shadow — anatomical depth */}
         <ellipse

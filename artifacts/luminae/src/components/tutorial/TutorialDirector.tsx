@@ -87,6 +87,7 @@ const ORB_EMBERS: OrbEmberDef[] = [
 
 function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _beatKey, muted = false }: { size?: number; excited?: boolean; highlightZone?: "harvest" | "market" | "filters" | "luminaries" | null; beatKey?: string | number; muted?: boolean }) {
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const blur = Math.round(size * 0.45);
   const mask = "radial-gradient(circle, rgba(0,0,0,0.95) 22%, rgba(0,0,0,0.45) 52%, transparent 74%)";
   const p = muted ? MUTED_ORB_PALETTE : LUMII_ORB_ZONE_PALETTE[highlightZone ?? "none"];
@@ -95,6 +96,8 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _
   const outerBg = `conic-gradient(from 0deg,${p[0]}aa,${p[1]}aa,${p[2]}aa,${p[3]}aa,${p[4]}66,${p[5]}aa,${p[0]}aa)`;
   const midBg   = `conic-gradient(from 0deg,${p[0]}cc,${p[5]}99,${p[2]}cc,${p[1]}cc,${p[3]}cc,${p[4]}55,${p[0]}cc)`;
   const innerBg = `conic-gradient(from 90deg,${p[1]}bb,${p[2]}99,${p[5]}bb,${p[3]}bb,${p[0]}99,${p[1]}bb)`;
+  const glowClass = excited ? "tut-orb-glow-excited" : "tut-orb-glow-idle";
+  const glowDur = excited ? "1.6s" : "3.8s";
   return (
     <motion.div
       style={{ width: size, height: size, position: "relative", pointerEvents: "none" }}
@@ -102,11 +105,18 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _
       animate={{ scale: 1, opacity: 1 }}
       transition={prefersReducedMotion ? undefined : { type: "spring", stiffness: 280, damping: 16, mass: 0.7 }}
     >
-      <motion.div
-        animate={{ scale: excited ? [1, 1.4, 1.1, 1.4, 1] : [1, 1.18, 1], opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52] }}
-        transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
-        style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)` }}
-      />
+      {isMobile ? (
+        <div
+          className={glowClass}
+          style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)`, ['--lum-dur' as string]: glowDur }}
+        />
+      ) : (
+        <motion.div
+          animate={{ scale: excited ? [1, 1.4, 1.1, 1.4, 1] : [1, 1.18, 1], opacity: excited ? [0.7, 1, 0.78, 1, 0.7] : [0.52, 0.84, 0.52] }}
+          transition={{ duration: excited ? 1.6 : 3.8, repeat: Infinity, ease: "easeInOut" }}
+          style={{ position: "absolute", inset: "-62%", borderRadius: "50%", background: outerBg, filter: `blur(${blur}px)` }}
+        />
+      )}
       <div
         style={{
           position: "absolute", inset: 0, borderRadius: "50%", background: midBg, maskImage: mask, WebkitMaskImage: mask,
@@ -140,6 +150,21 @@ function LumiiOrb({ size = 64, excited = false, highlightZone = null, beatKey: _
           const x1 = r1 * Math.cos(rad);
           const y1 = r1 * Math.sin(rad);
           const col = muted ? MUTED_ORB_PALETTE[i % MUTED_ORB_PALETTE.length] : e.col;
+          // Mobile: static midpoint + CSS opacity pulse; no JS drift
+          if (isMobile) {
+            const midX = (x0 + x1) / 2;
+            const midY = (y0 + y1) / 2;
+            return (
+              <g
+                key={`orb-ember-${i}`}
+                transform={`translate(${midX}, ${midY})`}
+                className="tut-ember-pulse"
+                style={{ filter: `drop-shadow(0 0 3px ${col})`, ['--lum-dur' as string]: `${e.dur}s`, ['--lum-delay' as string]: `${e.delay}s` }}
+              >
+                <circle r={sz} fill={col} />
+              </g>
+            );
+          }
           return (
             <motion.g
               key={`orb-ember-${i}`}
@@ -263,11 +288,7 @@ function DialogueBox({
           <div className="flex-1">
             <p className="text-sm text-white/90 leading-relaxed">{renderRichText(text)}</p>
             {hintText && (
-              <motion.p
-                animate={{ opacity: [0.28, 0.60, 0.28] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                className="text-[10px] text-white/35 mt-2"
-              >{hintText}</motion.p>
+              <p className="text-[10px] text-white/35 mt-2 tut-hint-twinkle">{hintText}</p>
             )}
           </div>
         </div>
@@ -347,31 +368,10 @@ function CostCallout() {
         strokeLinecap="round"
         strokeDasharray={perimeter}
         initial={{ strokeDashoffset: perimeter, opacity: 0, filter: "drop-shadow(0 0 3px rgba(251,191,36,0.5))" }}
-        animate={drawn
-          ? {
-              strokeDashoffset: 0,
-              opacity: [1, 0.5, 1],
-              filter: [
-                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
-                "drop-shadow(0 0 2px rgba(251,191,36,0.25))",
-                "drop-shadow(0 0 14px rgba(251,191,36,1)) drop-shadow(0 0 28px rgba(251,191,36,0.85)) drop-shadow(0 0 48px rgba(251,191,36,0.4))",
-              ],
-            }
-          : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }
-        }
-        transition={drawn
-          ? {
-              opacity: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
-              filter: { duration: 1.6, repeat: Infinity, ease: "easeInOut" },
-              strokeDashoffset: { duration: 0 },
-            }
-          : {
-              strokeDashoffset: { duration: 0.7, ease: "easeInOut" },
-              opacity: { duration: 0.05 },
-              filter: { duration: 0.05 },
-            }
-        }
+        animate={drawn ? { strokeDashoffset: 0 } : { strokeDashoffset: 0, opacity: 1, filter: "drop-shadow(0 0 5px rgba(251,191,36,0.8))" }}
+        transition={drawn ? { strokeDashoffset: { duration: 0 } } : { strokeDashoffset: { duration: 0.7, ease: "easeInOut" }, opacity: { duration: 0.05 }, filter: { duration: 0.05 } }}
         onAnimationComplete={() => { if (!drawn) setDrawn(true); }}
+        className={drawn ? "tut-forge-pulse" : ""}
       />
     </svg>
   );
@@ -482,11 +482,7 @@ function TutorialCard({
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/90" />
         {highlighted && (
-          <motion.div
-            animate={{ opacity: [0.3, 0.8, 0.3] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="absolute inset-0 bg-amber-400/15 rounded-xl"
-          />
+          <div className="absolute inset-0 bg-amber-400/15 rounded-xl tut-card-highlight" />
         )}
         <div className="relative z-10 h-full p-2 flex flex-col justify-between">
           <div className="flex justify-between items-start">
@@ -777,13 +773,12 @@ function AffinityWell({
             <div key={gem} className={`flex flex-col items-center gap-1.5 ${isLocked ? "opacity-35" : ""}`}>
               <div className="relative">
                 <motion.button
-                  animate={isHighlighted && cur < guided ? { scale: [1, 1.12, 1] } : { scale: 1 }}
-                  transition={{ duration: 1.1, repeat: Infinity }}
                   onClick={() => canAdd ? dispatch({ type: "SEL_AFF", gem, delta: 1 }) : undefined}
                   disabled={!canAdd}
                   className={`relative w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all
                     ${canAdd ? "cursor-pointer active:scale-90" : "cursor-default opacity-40"}
-                    ${cur > 0 ? "bg-white/10" : "bg-black/30"}`}
+                    ${cur > 0 ? "bg-white/10" : "bg-black/30"}
+                    ${isHighlighted && cur < guided ? "tut-btn-pulse" : ""}`}
                   style={{
                     borderColor: cur > 0 ? meta.hex : isHighlighted ? "#67e8f9" : "rgba(255,255,255,0.15)",
                     animation: isHighlighted && cur < guided ? "gem-button-pulse 1.6s ease-in-out infinite" : undefined,
@@ -907,13 +902,11 @@ function MarketTabs({
         const isActive = view === tab.key;
         const isHl = (tab.key === "discounted" && highlightDiscounted) || (tab.key === "needed" && highlightNeeded);
         return (
-          <motion.button
+          <button
             key={tab.key}
             onClick={() => dispatch({ type: "SET_VIEW", view: tab.key })}
-            animate={isHl ? { boxShadow: ["0 0 0 1px rgba(251,191,36,0.3)", "0 0 0 2px rgba(251,191,36,1), 0 0 18px rgba(251,191,36,0.9), 0 0 36px rgba(251,191,36,0.5)", "0 0 0 1px rgba(251,191,36,0.3)"] } : {}}
-            transition={{ duration: 1.4, repeat: Infinity }}
-            className={`text-[10px] font-semibold px-3 py-1.5 rounded-lg transition-all ${isActive ? "bg-white/15 text-white" : "bg-black/30 text-white/40 hover:bg-white/8"} ${isHl ? "ring-1 ring-amber-400" : ""}`}
-          >{tab.label}</motion.button>
+            className={`text-[10px] font-semibold px-3 py-1.5 rounded-lg transition-all ${isActive ? "bg-white/15 text-white" : "bg-black/30 text-white/40 hover:bg-white/8"} ${isHl ? "ring-1 ring-amber-400 tut-tab-glow" : ""}`}
+          >{tab.label}</button>
         );
       })}
     </div>
@@ -1473,8 +1466,9 @@ function FSOCrack({ d, d1, isDetail }: CrackDef) {
   // repeating loop never interfere with each other.
   const pulseOp   = useMotionValue(0);
   const pulseOp4  = useMotionValue(0);
+  const isMobile = useIsMobile();
   useEffect(() => {
-    if (isDetail) return;
+    if (isDetail || isMobile) return;
     // Wait for L3/L4 draw-in to settle, then begin breathing loop.
     const settle = (d1 + 0.14 + 0.95) * 1000;
     const id = setTimeout(() => {
@@ -1800,12 +1794,10 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
       {!isShattering && (
         <div className="absolute inset-0 pointer-events-none">
           {stars.map((st, i) => (
-            <motion.div
+            <div
               key={i}
-              className="absolute rounded-full bg-white"
-              style={{ width: st.width, height: st.height, left: st.left, top: st.top, opacity: st.opacity }}
-              animate={{ opacity: [0.1, 0.6, 0.1] }}
-              transition={{ duration: st.duration, repeat: Infinity, delay: st.delay }}
+              className="absolute rounded-full bg-white tut-star-twinkle"
+              style={{ width: st.width, height: st.height, left: st.left, top: st.top, opacity: st.opacity, ['--lum-dur' as string]: `${st.duration}s`, ['--lum-delay' as string]: `${st.delay}s` }}
             />
           ))}
         </div>
@@ -1848,27 +1840,23 @@ function FullscreenShatterOverlay({ onDone, onRevealCosmos, onShattering }: {
                 with additional ice-blue bloom building as pressure accumulates inside the crystal */}
             {past('leaking') && !past('cracking') && (
               <>
-                <motion.circle cx="50" cy="42.5" r="7" fill={FSO_LIGHT} filter="url(#fso-cgw)"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.22, 0.10, 0.28, 0.12, 0.24] }}
-                  transition={{ duration: 3.2, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.4 }}
+                <circle cx="50" cy="42.5" r="7" fill={FSO_LIGHT} filter="url(#fso-cgw)"
+                  className="tut-ambient-cool-1"
+                  style={{ ['--lum-dur' as string]: '3.2s', ['--lum-delay' as string]: '0.4s' }}
                 />
-                <motion.circle cx="50" cy="42.5" r="0.7" fill="white" filter="url(#fso-cgb)"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.65, 0.12, 0.85, 0.28, 0.55, 0] }}
-                  transition={{ duration: 2.8, ease: 'easeInOut', repeat: Infinity, delay: 0.25 }}
+                <circle cx="50" cy="42.5" r="0.7" fill="white" filter="url(#fso-cgb)"
+                  className="tut-ambient-cool-2"
+                  style={{ ['--lum-dur' as string]: '2.8s', ['--lum-delay' as string]: '0.25s' }}
                 />
                 {/* Ice-blue bloom at P — accumulating pressure visualized as cold light */}
-                <motion.circle cx="50" cy="42.5" r="10" fill="rgba(80,180,255,1)" filter="url(#fso-cib)"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.28, 0.14, 0.36, 0.18, 0.32] }}
-                  transition={{ duration: 2.6, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.15 }}
+                <circle cx="50" cy="42.5" r="10" fill="rgba(80,180,255,1)" filter="url(#fso-cib)"
+                  className="tut-ambient-cool-3"
+                  style={{ ['--lum-dur' as string]: '2.6s', ['--lum-delay' as string]: '0.15s' }}
                 />
                 {/* Secondary teal bloom — Q junction pre-announces the second crack */}
-                <motion.circle cx="25" cy="72.5" r="7" fill="rgba(50,200,220,1)" filter="url(#fso-cib)"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0, 0.12, 0.06, 0.18, 0.08] }}
-                  transition={{ duration: 3.4, ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', delay: 0.8 }}
+                <circle cx="25" cy="72.5" r="7" fill="rgba(50,200,220,1)" filter="url(#fso-cib)"
+                  className="tut-ambient-cool-4"
+                  style={{ ['--lum-dur' as string]: '3.4s', ['--lum-delay' as string]: '0.8s' }}
                 />
               </>
             )}
@@ -2584,18 +2572,18 @@ function CinematicPhase({ s, dispatch, onSkip }: { s: TutState; dispatch: React.
       {s.beat <= 4 && (
         <div className="absolute inset-0 pointer-events-none">
           {bgStars.map((star, i) => (
-            <motion.div
+            <div
               key={i}
-              className="absolute rounded-full bg-white"
+              className="absolute rounded-full bg-white tut-star-twinkle"
               style={{
                 width: star.w,
                 height: star.h,
                 left: star.left,
                 top: star.top,
                 opacity: star.opacity,
+                ['--lum-dur' as string]: `${star.duration}s`,
+                ['--lum-delay' as string]: `${star.delay}s`,
               }}
-              animate={{ opacity: [0.1, 0.6, 0.1] }}
-              transition={{ duration: star.duration, repeat: Infinity, delay: star.delay }}
             />
           ))}
         </div>
@@ -3507,17 +3495,12 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
       </motion.div>
 
       {/* ── Pinned Player Panel ────────────────────────────────────────── */}
-      <motion.div
+      <div
         className={`shrink-0 z-20 border-t px-3 backdrop-blur-md transition-all ${
           isShortLandscape ? "pt-1" : "pt-2"
         } ${
-          isEminenceHighlighted ? "border-amber-400/60" : isActMode ? "border-indigo-500/40" : "border-white/10"
+          isEminenceHighlighted ? "border-amber-400/60 tut-bar-glow" : isActMode ? "border-indigo-500/40" : "border-white/10"
         }`}
-        animate={isEminenceHighlighted
-          ? { boxShadow: ["0 0 18px rgba(251,191,36,0.17)", "0 0 22px rgba(251,191,36,0.28)", "0 0 18px rgba(251,191,36,0.17)"] }
-          : isActMode ? { boxShadow: "0 0 12px rgba(99,102,241,0.20)" } : { boxShadow: "none" }
-        }
-        transition={isEminenceHighlighted ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
         style={{ background: "rgba(3,3,12,0.80)", paddingBottom: "calc(8px + env(safe-area-inset-bottom, 0px))" }}
       >
         <button
@@ -3542,13 +3525,9 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               )}
               {/* Tap-hint badge — shown on beats that explicitly invite panel inspection */}
               {showPanelTapHint && (
-                <motion.span
-                  animate={{ opacity: [0.6, 1, 0.6], scale: [1, 1.06, 1] }}
-                  transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                  className="text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full shrink-0"
-                >
+                <span className="text-[9px] font-bold text-amber-300 bg-amber-500/15 border border-amber-400/30 px-1.5 py-0.5 rounded-full shrink-0 tut-badge-pulse">
                   Tap · see collection
-                </motion.span>
+                </span>
               )}
             </div>
             <div className="flex items-center gap-3 shrink-0">
@@ -3663,29 +3642,14 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               </motion.div>
             )}
             {/* Orb: excited bounce when action pending or forge just fired; gentle float otherwise */}
-            <motion.div
-              animate={shouldExcitedBounce
-                ? { y: [0, -22, 3, -15, 1, -8, 0, 0, 0] }
-                : { y: [0, -6, 0] }
-              }
-              transition={shouldExcitedBounce
-                ? {
-                    duration: 2.0,
-                    repeat: Infinity,
-                    repeatDelay: 0.8,
-                    times: [0, 0.12, 0.24, 0.34, 0.44, 0.54, 0.64, 0.82, 1],
-                    ease: "easeOut",
-                  }
-                : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
-              }
-            >
+            <div className={shouldExcitedBounce ? "tut-orb-excited" : "tut-orb-float"}>
               <div
                 className={lumiiClickable ? "pointer-events-auto cursor-pointer active:scale-90 transition-transform" : ""}
                 onClick={lumiiClickable ? (e) => { e.stopPropagation(); dispatch({ type: "PLAYER_RESPONSE" }); } : undefined}
               >
                 <LumiiOrb size={48} excited={hintVisible || forgeJustHappened || currentLineExcited} highlightZone={null} beatKey={`${beatId}-${s.dlgLine}`} />
               </div>
-            </motion.div>
+            </div>
             </div>
           </motion.div>
         );
@@ -3723,21 +3687,17 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
               strokeWidth="0.35"
               strokeDasharray="1.6 2.2"
               fill="none"
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: [0, 0.65, 0.42, 0.65, 0.42] }}
-              transition={{
-                pathLength: { duration: 0.6, ease: "easeOut" },
-                opacity: { duration: 2.8, repeat: Infinity, times: [0, 0.18, 0.5, 0.7, 1] },
-              }}
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ pathLength: { duration: 0.6, ease: "easeOut" } }}
+              className="tut-tether-pulse"
             />
-            <motion.circle
+            <circle
               cx={tx} cy={ty} r={2.0}
               fill="none"
               stroke="rgba(255,255,255,0.42)"
               strokeWidth="0.28"
-              initial={{ opacity: 0 }}
-              animate={{ r: [2.0, 3.6, 2.0], opacity: [0.52, 0.10, 0.52] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+              className="tut-tether-ring"
             />
           </svg>
         );

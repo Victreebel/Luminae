@@ -113,23 +113,13 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
                   key={lum.id}
                   onClick={() => handleCardClick(lum.id)}
                   whileTap={{ scale: 0.95 }}
-                  animate={isSelected ? {} : {
-                    boxShadow: [
-                      `0 0 0 1.5px ${glowHex}88, 0 0 10px 3px ${glowHex}33`,
-                      `0 0 0 2.5px ${glowHex}ff, 0 0 22px 8px ${glowHex}66`,
-                      `0 0 0 1.5px ${glowHex}88, 0 0 10px 3px ${glowHex}33`,
-                    ],
-                  }}
-                  transition={isSelected ? {} : {
-                    duration: 2, repeat: Infinity, ease: 'easeInOut',
-                  }}
                   className="relative rounded-xl overflow-hidden shrink-0 focus-visible:outline-none"
                   style={{
                     width: BOARD_CARD_W,
                     height: BOARD_CARD_H,
                     boxShadow: isSelected
                       ? `0 0 0 2.5px ${glowHex}ff, 0 0 24px 8px ${glowHex}88`
-                      : undefined,
+                      : `0 0 0 1.5px ${glowHex}88, 0 0 10px 3px ${glowHex}33`,
                     opacity: isSelected ? 1 : 0.88,
                   }}
                   aria-label={`${lum.name} — click to select as ${ordinalLabel(selectedOrder.length + 1)} claim`}
@@ -237,11 +227,10 @@ export const LuminaryOrderPicker = React.memo(function LuminaryOrderPicker({
         >
           <div className="flex gap-1.5 items-center">
             {[0, 1, 2].map((i) => (
-              <motion.div
+              <div
                 key={i}
-                className="w-1.5 h-1.5 rounded-full bg-amber-300"
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                className="w-1.5 h-1.5 rounded-full bg-amber-300 loading-dot-bounce"
+                style={{ animationDelay: `${i * 0.2}s` }}
               />
             ))}
           </div>

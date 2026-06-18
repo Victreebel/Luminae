@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence, useReducedMotion, type EasingDefinition } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation } from "wouter";
 import { X, ArrowRight, ChevronDown, ChevronLeft, ChevronUp } from "lucide-react";
 import type { GameState } from "@workspace/api-client-react";
@@ -8,6 +8,7 @@ import { clearSession } from "@/lib/session";
 import type { GemKey } from "@/lib/gemMeta";
 import { renderKeywords } from "@/lib/tutorialKeywords";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─── Viewport height hook ────────────────────────────────────────────────────
 
@@ -209,6 +210,7 @@ function LumiiOrb({
   const onNearestNodeRef = useRef(onNearestNode);
   onNearestNodeRef.current = onNearestNode;
 
+  const isMobile = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
 
   // Entrance animation state —————————————————————————————————————————————
@@ -307,25 +309,56 @@ function LumiiOrb({
         </filter>
       </defs>
 
-      {/* Outer presence pulse ring */}
-      <motion.circle
-        cx={0} cy={0}
-        animate={{
-          r: burst ? [20, 50, 20] : excited ? [14, 30, 14] : [11, 22, 11],
-          opacity: burst ? [0.75, 0, 0.75] : excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
-          stroke: pulseStroke,
-        }}
-        transition={{
-          r:       { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
-          opacity: { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
-          stroke:  { duration: 0.3, ease: "easeInOut" },
-        }}
-        fill="none"
-        strokeWidth={pulseStrokeW}
-      />
+      {/* Outer presence pulse ring — CSS on mobile, JS on desktop */}
+      {isMobile ? (
+        <circle
+          cx={0} cy={0}
+          r={burst ? 35 : excited ? 22 : 16}
+          fill="none"
+          stroke={pulseStroke}
+          strokeWidth={pulseStrokeW}
+          opacity={burst ? 0.55 : excited ? 0.38 : 0.22}
+          className="lumii-pulse-ring"
+          style={{
+            '--lum-pulse-dur': burst ? '0.5s' : excited ? '0.88s' : '2.5s',
+            '--lum-pulse-lo': burst ? '0.75' : excited ? '0.55' : '0.22',
+          } as React.CSSProperties}
+        />
+      ) : (
+        <motion.circle
+          cx={0} cy={0}
+          animate={{
+            r:       burst ? [20, 50, 20] : excited ? [14, 30, 14] : [11, 22, 11],
+            opacity: burst ? [0.75, 0, 0.75] : excited ? [0.55, 0, 0.55] : [0.22, 0, 0.22],
+            stroke: pulseStroke,
+          }}
+          transition={{
+            r:       { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+            opacity: { duration: burst ? 0.5 : excited ? 0.88 : 2.5, repeat: Infinity, ease: "easeOut" },
+            stroke:  { duration: 0.3, ease: "easeInOut" },
+          }}
+          fill="none"
+          strokeWidth={pulseStrokeW}
+        />
+      )}
 
       {/* Second pulse ring — excited or burst, offset phase */}
-      {(excited || burst) && (
+      {(excited || burst) && (isMobile ? (
+        <circle
+          cx={0} cy={0}
+          r={burst ? 43 : 26}
+          fill="none"
+          stroke={burst ? burstColor : "#f97316"}
+          strokeWidth={burst ? 1.4 : 0.8}
+          opacity={burst ? 0.55 : 0.38}
+          className="lumii-pulse-ring"
+          style={{
+            '--lum-pulse-dur': burst ? '0.5s' : '1.3s',
+            '--lum-pulse-delay': burst ? '0.08s' : '0.44s',
+            '--lum-pulse-lo': burst ? '0.55' : '0.38',
+          } as React.CSSProperties}
+        />
+      ) : (
         <motion.circle
           cx={0} cy={0}
           animate={{
@@ -337,7 +370,7 @@ function LumiiOrb({
           stroke={burst ? burstColor : "#f97316"}
           strokeWidth={burst ? 1.4 : 0.8}
         />
-      )}
+      ))}
 
       {/* Burst flash ring — one-shot radial flash on celebration */}
       <AnimatePresence>
@@ -370,6 +403,27 @@ function LumiiOrb({
         const posTrans = burst
           ? { duration: morphDur, ease: "easeOut" as const }
           : { duration: morphDur, ease: "easeInOut" as const };
+        // Mobile idle fast-path: static line + CSS twinkle; no positional drift
+        if (isMobile && !entering && !burst) {
+          return (
+            <line
+              key={`l-${i}-${entranceKey}`}
+              x1={shape[a][0]} y1={shape[a][1]}
+              x2={shape[b][0]} y2={shape[b][1]}
+              stroke={nodeColors[a]}
+              strokeWidth={lineWidth}
+              filter={`url(#${filterId})`}
+              strokeLinecap="round"
+              className="lumii-edge-twinkle"
+              style={{
+                '--lum-dur': `${2.8 + i * 0.35}s`,
+                '--lum-delay': `${i * 0.28}s`,
+                '--lum-edge-lo': `${loOpacity}`,
+                '--lum-edge-hi': `${hiOpacity}`,
+              } as React.CSSProperties}
+            />
+          );
+        }
         return (
           <motion.line
             key={`l-${i}-${entranceKey}`}
@@ -428,6 +482,25 @@ function LumiiOrb({
           ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
           : { duration: morphDur, ease: "easeInOut" as const };
         const scatter = scatterRef.current[i];
+        // Mobile idle fast-path: CSS twinkle, no JS drift
+        if (isMobile && !entering && !burst && !shouldMorph) {
+          return (
+            <circle
+              key={`n-${i}-${entranceKey}`}
+              cx={baseX}
+              cy={baseY}
+              r={nodeR}
+              filter={`url(#${filterId})`}
+              fill={nodeColors[i]}
+              className="lumii-node-twinkle"
+              style={{
+                '--lum-dur': `${2.0 + i * 0.28}s`,
+                '--lum-delay': `${i * 0.2}s`,
+                '--lum-twinkle-lo': '0.6',
+              } as React.CSSProperties}
+            />
+          );
+        }
         return (
           <motion.circle
             key={`n-${i}-${entranceKey}`}
@@ -486,62 +559,97 @@ function LumiiOrb({
           ? { duration: IDLE_PERIODS[i] * 1.1, repeat: Infinity, ease: "easeInOut" as const, delay: IDLE_PERIODS[i] * 0.15 }
           : { duration: morphDur, ease: "easeInOut" as const };
         const scatter = scatterRef.current[i];
+        // Mobile idle fast-path: static spike + CSS opacity twinkle
+        if (isMobile && !entering && !burst && !shouldMorph) {
+          const spikeOpacity = 0.5;
+          return (
+            <g
+              key={`spike-${i}-${entranceKey}`}
+              transform={`translate(${baseX}, ${baseY})`}
+              className="lumii-spike-twinkle"
+              style={{
+                '--lum-dur': `${1.8 + i * 0.25}s`,
+                '--lum-delay': `${i * 0.18 + 0.3}s`,
+                '--lum-spike-lo': '0.3',
+                '--lum-spike-hi': '0.7',
+              } as React.CSSProperties}
+              opacity={spikeOpacity}
+            >
+              <line
+                x1={0} y1={-(nodeR + 3)}
+                x2={0} y2={nodeR + 3}
+                stroke={nodeColors[i]}
+                strokeWidth={0.7}
+                strokeOpacity={0.9}
+                strokeLinecap="round"
+              />
+              <line
+                x1={-(nodeR + 3)} y1={0}
+                x2={nodeR + 3} y2={0}
+                stroke={nodeColors[i]}
+                strokeWidth={0.7}
+                strokeOpacity={0.9}
+                strokeLinecap="round"
+              />
+            </g>
+          );
+        }
         return (
-        <motion.g
-          key={`spike-${i}-${entranceKey}`}
-          initial={entering ? { x: scatter[0], y: scatter[1], opacity: 0, scale: 0 } : false}
-          animate={{
-            x: animX,
-            y: animY,
-            opacity: burst ? [0.9, 1, 0.9] : excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
-            scale: burst ? [1.2, 1.6, 1.2] : excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
-            color: burst ? burstColor : nodeColors[i],
-          }}
-          transition={{
-            x: xTrans,
-            y: yTrans,
-            opacity: entering
-              ? { duration: 0.3, delay: i * 0.065 + 0.1 }
-              : burst
-              ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
-              : {
-                  duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: i * (excited ? 0.06 : 0.18) + 0.3,
-                },
-            scale: entering
-              ? { duration: 0.4, ease: "easeOut", delay: i * 0.065 + 0.1 }
-              : burst
-              ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
-              : {
-                  duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: i * (excited ? 0.06 : 0.18) + 0.3,
-                },
-            color: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
-          }}
-        >
-          {/* Vertical spike */}
-          <line
-            x1={0} y1={-(nodeR + 3)}
-            x2={0} y2={nodeR + 3}
-            stroke="currentColor"
-            strokeWidth={0.7}
-            strokeOpacity={0.9}
-            strokeLinecap="round"
-          />
-          {/* Horizontal spike */}
-          <line
-            x1={-(nodeR + 3)} y1={0}
-            x2={nodeR + 3} y2={0}
-            stroke="currentColor"
-            strokeWidth={0.7}
-            strokeOpacity={0.9}
-            strokeLinecap="round"
-          />
-        </motion.g>
+          <motion.g
+            key={`spike-${i}-${entranceKey}`}
+            initial={entering ? { x: scatter[0], y: scatter[1], opacity: 0, scale: 0 } : false}
+            animate={{
+              x: animX,
+              y: animY,
+              opacity: burst ? [0.9, 1, 0.9] : excited ? [0.7, 1, 0.7] : [0.3, 0.7, 0.3],
+              scale: burst ? [1.2, 1.6, 1.2] : excited ? [0.8, 1.2, 0.8] : [0.6, 1, 0.6],
+              color: burst ? burstColor : nodeColors[i],
+            }}
+            transition={{
+              x: xTrans,
+              y: yTrans,
+              opacity: entering
+                ? { duration: 0.3, delay: i * 0.065 + 0.1 }
+                : burst
+                ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
+                : {
+                    duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * (excited ? 0.06 : 0.18) + 0.3,
+                  },
+              scale: entering
+                ? { duration: 0.4, ease: "easeOut", delay: i * 0.065 + 0.1 }
+                : burst
+                ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" }
+                : {
+                    duration: excited ? 0.55 + i * 0.1 : 1.8 + i * 0.25,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: i * (excited ? 0.06 : 0.18) + 0.3,
+                  },
+              color: { duration: burst ? 0.12 : 1.2, ease: "easeInOut" },
+            }}
+          >
+            {/* Vertical spike */}
+            <line
+              x1={0} y1={-(nodeR + 3)}
+              x2={0} y2={nodeR + 3}
+              stroke="currentColor"
+              strokeWidth={0.7}
+              strokeOpacity={0.9}
+              strokeLinecap="round"
+            />
+            {/* Horizontal spike */}
+            <line
+              x1={-(nodeR + 3)} y1={0}
+              x2={nodeR + 3} y2={0}
+              stroke="currentColor"
+              strokeWidth={0.7}
+              strokeOpacity={0.9}
+              strokeLinecap="round"
+            />
+          </motion.g>
         )
       })}
 
@@ -552,6 +660,21 @@ function LumiiOrb({
         const y0 = e.r0 * Math.sin(rad);
         const x1 = e.r1 * Math.cos(rad);
         const y1 = e.r1 * Math.sin(rad);
+        // Mobile: static position + CSS opacity/scale pulse; no JS drift
+        if (isMobile) {
+          const midX = (x0 + x1) / 2;
+          const midY = (y0 + y1) / 2;
+          return (
+            <g
+              key={`ember-${i}`}
+              transform={`translate(${midX}, ${midY})`}
+              className="lumii-ember"
+              style={{ animationDelay: `${e.delay}s`, animationDuration: `${e.dur}s`, filter: `drop-shadow(0 0 3px ${e.col})` }}
+            >
+              <circle r={e.sz} fill={e.col} />
+            </g>
+          );
+        }
         return (
           <motion.g
             key={`ember-${i}`}
@@ -595,6 +718,7 @@ function TetherBeam({
   const isVert = direction === "down" || direction === "up";
   const isDown = direction === "down";
   const isAction = attention === "action";
+  const isMobile = useIsMobile();
   const LENGTH = 58;
   const CROSS = 18;
   const gradDir = isVert ? (isDown ? "to bottom" : "to top") : "to left";
@@ -647,41 +771,78 @@ function TetherBeam({
             : `linear-gradient(${gradDir}, rgba(168,85,247,0.45), transparent)`,
         }}
       />
-      {/* Travelling dots */}
+      {/* Travelling dots — CSS on mobile, JS on desktop */}
       {DOT_COLORS.map((color, i) => (
-        <motion.div
-          key={i}
-          animate={isVert ? { y: dotKeyframe } : { x: dotKeyframe }}
-          transition={{ duration: dotDuration, repeat: Infinity, delay: i * 0.28, ease: "easeInOut" }}
-          style={{
-            position: "absolute",
-            width: isAction ? 6 : 5,
-            height: isAction ? 6 : 5,
-            borderRadius: "50%",
-            background: color,
-            boxShadow: `0 0 ${glowSize}px ${color}`,
-            ...(isVert
-              ? { left: "50%", top: 0, transform: "translateX(-50%)" }
-              : { top: "50%", left: 0, transform: "translateY(-50%)" }),
-          }}
-        />
+        isMobile ? (
+          <div
+            key={i}
+            className={isVert ? "lumii-tether-dot-vert" : "lumii-tether-dot-horiz"}
+            style={{
+              position: "absolute",
+              width: isAction ? 6 : 5,
+              height: isAction ? 6 : 5,
+              borderRadius: "50%",
+              background: color,
+              boxShadow: `0 0 ${glowSize}px ${color}`,
+              ...(isVert
+                ? { left: "50%", top: 0, transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+              ['--lum-dur' as string]: `${dotDuration}s`,
+              ['--lum-delay' as string]: `${i * 0.28}s`,
+              ['--lum-tether-len' as string]: `${LENGTH}px`,
+            } as React.CSSProperties}
+          />
+        ) : (
+          <motion.div
+            key={i}
+            animate={isVert ? { y: dotKeyframe } : { x: dotKeyframe }}
+            transition={{ duration: dotDuration, repeat: Infinity, delay: i * 0.28, ease: "easeInOut" }}
+            style={{
+              position: "absolute",
+              width: isAction ? 6 : 5,
+              height: isAction ? 6 : 5,
+              borderRadius: "50%",
+              background: color,
+              boxShadow: `0 0 ${glowSize}px ${color}`,
+              ...(isVert
+                ? { left: "50%", top: 0, transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+            }}
+          />
+        )
       ))}
       {/* Pulsing tip indicator — action beats only */}
       {isAction && (
-        <motion.div
-          animate={{ scale: [0.7, 1.5, 0.7], opacity: [0.9, 0, 0.9] }}
-          transition={{ duration: 0.9, repeat: Infinity, ease: "easeOut" }}
-          style={{
-            position: "absolute",
-            width: 10,
-            height: 10,
-            borderRadius: "50%",
-            background: tipColor,
-            ...(isVert && isDown ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
-              : isVert ? { top: 0, left: "50%", transform: "translateX(-50%)" }
-              : { top: "50%", left: 0, transform: "translateY(-50%)" }),
-          }}
-        />
+        isMobile ? (
+          <div
+            className="lumii-tip-pulse"
+            style={{
+              position: "absolute",
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: tipColor,
+              ...(isVert && isDown ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
+                : isVert ? { top: 0, left: "50%", transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+            }}
+          />
+        ) : (
+          <motion.div
+            animate={{ scale: [0.7, 1.5, 0.7], opacity: [0.9, 0, 0.9] }}
+            transition={{ duration: 0.9, repeat: Infinity, ease: "easeOut" }}
+            style={{
+              position: "absolute",
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: tipColor,
+              ...(isVert && isDown ? { bottom: 0, left: "50%", transform: "translateX(-50%)" }
+                : isVert ? { top: 0, left: "50%", transform: "translateX(-50%)" }
+                : { top: "50%", left: 0, transform: "translateY(-50%)" }),
+            }}
+          />
+        )
       )}
     </div>
   );
@@ -696,13 +857,16 @@ function AttentionArrow({
   direction: "down" | "left" | "up";
   attention: LumiiAttentionState;
 }) {
+  const isMobile = useIsMobile();
   const isAction = attention === "action";
   const color = isAction ? "#fbbf24" : "#a855f7";
   const dur = isAction ? 0.65 : 1.3;
-  const bounce =
-    direction === "down" ? { y: [0, 7, 0] } :
-    direction === "up"   ? { y: [0, -7, 0] } :
-    { x: [0, -7, 0] };
+  const bounceClass =
+    direction === "down" ? "lumii-arrow-bounce-down" :
+    direction === "up"   ? "lumii-arrow-bounce-up" :
+    "lumii-arrow-bounce-left";
+  const opacityLo = isAction ? 0.8 : 0.5;
+  const opacityHi = isAction ? 1.0 : 0.85;
 
   const Icon =
     direction === "down" ? ChevronDown :
@@ -710,13 +874,35 @@ function AttentionArrow({
     ChevronLeft;
 
   return (
-    <motion.div
-      animate={{ ...bounce, opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] }}
-      transition={{ duration: dur, repeat: Infinity, ease: "easeInOut" }}
-      style={{ color, lineHeight: 0, flexShrink: 0 }}
+    <div
+      className={isMobile ? bounceClass : ""}
+      style={{
+        color,
+        lineHeight: 0,
+        flexShrink: 0,
+        ...(isMobile ? {
+          ['--lum-dur' as string]: `${dur}s`,
+          ['--lum-opacity-lo' as string]: opacityLo,
+          ['--lum-opacity-hi' as string]: opacityHi,
+        } : {}),
+      } as React.CSSProperties}
     >
-      <Icon style={{ width: 18, height: 18 }} />
-    </motion.div>
+      {isMobile ? (
+        <Icon style={{ width: 18, height: 18 }} />
+      ) : (
+        <motion.div
+          animate={
+            direction === "down" ? { y: [0, 7, 0], opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] } :
+            direction === "up"   ? { y: [0, -7, 0], opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] } :
+            { x: [0, -7, 0], opacity: isAction ? [0.8, 1, 0.8] : [0.5, 0.85, 0.5] }
+          }
+          transition={{ duration: dur, repeat: Infinity, ease: "easeInOut" }}
+          style={{ color, lineHeight: 0, flexShrink: 0 }}
+        >
+          <Icon style={{ width: 18, height: 18 }} />
+        </motion.div>
+      )}
+    </div>
   );
 }
 
@@ -1185,8 +1371,6 @@ interface Props {
   executeAction: (payload: Record<string, unknown>) => Promise<void>;
   nudgeTick?: number;
   burstIntensity?: number;
-  burstDuration?: number;
-  burstEase?: EasingDefinition;
 }
 
 export function LumiiTutorial({
@@ -1197,8 +1381,6 @@ export function LumiiTutorial({
   executeAction,
   nudgeTick = 0,
   burstIntensity = 1.15,
-  burstDuration = 0.35,
-  burstEase = [0.34, 1.56, 0.64, 1] as EasingDefinition,
 }: Props) {
   const [, setLocation] = useLocation();
   const vpH = useViewportH();
@@ -1466,12 +1648,12 @@ export function LumiiTutorial({
             // interaction — it dismisses automatically when fast-forward ends.
             className="fixed inset-0 z-[9000] bg-black flex flex-col items-center justify-center gap-4"
           >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+            <div
+              className="lumii-spinner"
+              style={{ animation: 'lumii-spin 1.2s linear infinite' }}
             >
               <LumiiOrb size={80} excited highlightZone={null} />
-            </motion.div>
+            </div>
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1550,13 +1732,11 @@ export function LumiiTutorial({
               transition={{ type: "spring", stiffness: 280, damping: 22 }}
               className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/98 p-6 shadow-2xl text-center"
             >
-              <motion.div
-                className="flex justify-center mb-4"
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              <div
+                className="flex justify-center mb-4 lumii-modal-bounce"
               >
                 <LumiiOrb size={68} excited highlightZone={null} />
-              </motion.div>
+              </div>
               <h2 id="lumii-completion-heading" className="text-xl font-bold font-serif mb-1">Your civilization is ready.</h2>
               <p className="text-sm text-muted-foreground mb-4">
                 You've seen the full arc of ascension in Luminae.
@@ -1761,22 +1941,14 @@ export function LumiiTutorial({
                             </>
                           )}
                         </AnimatePresence>
-                        <motion.div
-                          style={{ position: "relative", zIndex: 1 }}
-                          animate={{
-                            y: currentAttention === "action" ? [0, -13, 0] : [0, -8, 0],
-                            scale: burstActive ? [1, currentBurstIntensity, 1] : 1,
-                          }}
-                          transition={{
-                            y: {
-                              duration: currentAttention === "action" ? 1.8 : 2.8,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                            },
-                            scale: burstActive
-                              ? { duration: burstDuration, ease: burstEase }
-                              : { duration: 0.2 },
-                          }}
+                        <div
+                          className="lumii-float"
+                          style={{
+                            position: "relative",
+                            zIndex: 1,
+                            '--lum-float-amp': currentAttention === "action" ? "-13px" : "-8px",
+                            '--lum-dur': currentAttention === "action" ? "1.8s" : "2.8s",
+                          } as React.CSSProperties}
                         >
                           <LumiiOrb
                             size={72}
@@ -1793,7 +1965,7 @@ export function LumiiTutorial({
                             highlightZone={LUMII_ZONE_HIGHLIGHTS[tutorialStep] ?? null}
                             beatKey={beat?.position}
                           />
-                        </motion.div>
+                        </div>
                       </div>
                     }
                     bubble={

@@ -190,7 +190,7 @@ export function ForgeButton({
         transition: { duration: 0.07 },
       }}
       transition={isPending ? {
-        boxShadow: { duration: 1.15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        boxShadow: isMobile ? { duration: 0.20 } : { duration: 1.15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         filter:    isMobile ? { duration: 0.20 } : { duration: 1.15, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         y:         { duration: 0.12 },
       } : {
@@ -420,7 +420,7 @@ export function EncryptButton({
         transition: { duration: 0.07 },
       }}
       transition={isPending ? {
-        boxShadow: { duration: 1.30, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        boxShadow: isMobile ? { duration: 0.20 } : { duration: 1.30, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         filter:    isMobile ? { duration: 0.20 } : { duration: 1.30, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         y:         { duration: 0.12 },
       } : {
@@ -665,7 +665,7 @@ export function AssimilateButton({
         transition: { duration: 0.07 },
       }}
       transition={isPending ? {
-        boxShadow: { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+        boxShadow: isMobile ? { duration: 0.20 } : { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         filter:    isMobile ? { duration: 0.20 } : { duration: 1.10, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
         y:         { duration: 0.12 },
       } : {
