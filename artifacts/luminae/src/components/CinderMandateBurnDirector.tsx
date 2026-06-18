@@ -191,13 +191,14 @@ export function CinderMandateBurnDirector({
     };
 
     // ── Phase 1: decree overlay (animate in immediately) ────────────────────
+    // Fades out after BurnFlash completes so the announcement covers its full
+    // burn animation segment (decree hold → shudder → BurnFlash).
     const decree = decreeRef.current;
     if (!reducedMotion && decree) {
       void animate(decree, { opacity: 1 }, { duration: 0.28, ease: 'easeOut' });
-      // Fade out after hold
       t(() => {
         void animate(decree, { opacity: 0 }, { duration: 0.22, ease: 'easeOut' });
-      }, DECREE_MS);
+      }, DECREE_MS + SHUDDER_MS + BURN_FLASH_TOTAL_MS);
     }
 
     // ── Phase 2: shudder — direct DOM manipulation, no state ───────────────

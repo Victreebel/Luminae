@@ -168,12 +168,10 @@ export function CinderMandateBrandingDirector({
           void animate(overlay, { opacity: 1 }, { duration: 0.22, ease: 'easeOut' });
         }
 
-        // ── Phase 2: after beat hold, animate out + fire strikes ─────────────
+        // ── Phase 2: after beat hold, fire strikes ────────────────────────────
+        // NOTE: the overlay stays visible — it fades out after the brand-strike
+        // animation completes so the announcement covers its full segment.
         const beatTimer = setTimeout(() => {
-          if (overlay) {
-            void animate(overlay, { opacity: 0 }, { duration: 0.18, ease: 'easeOut' });
-          }
-
           // Scroll is already locked (locked at mount, above).
           // Capture source-portal rect now that layout has settled.
           const portalEl = document.querySelector(`[data-luminary-id="${luminaryId}"]`);
@@ -222,6 +220,17 @@ export function CinderMandateBrandingDirector({
           const completeDelay = strikeId
             ? strikeTotalMs + AFTERMATH_HOLD_MS
             : 200; // No visible DOM targets — complete quickly
+
+          // Fade the overlay out once the brand-strike aura fully settles
+          // (at strikeTotalMs from now), so the announcement covers its entire
+          // branding animation segment instead of vanishing before beams fire.
+          if (overlay) {
+            const overlayFadeDelay = strikeId ? strikeTotalMs : 0;
+            const overlayFadeTimer = setTimeout(() => {
+              void animate(overlay, { opacity: 0 }, { duration: 0.28, ease: 'easeOut' });
+            }, overlayFadeDelay);
+            timers.push(overlayFadeTimer);
+          }
 
           // After strikes settle + aftermath hold: call onComplete.
           // Camera stays compact — no restore() here.
