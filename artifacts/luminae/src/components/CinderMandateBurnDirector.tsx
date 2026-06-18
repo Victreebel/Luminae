@@ -34,6 +34,7 @@ import React, { useEffect, useRef } from 'react';
 import { animate } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import type { AnimationProcedureStep } from '@/lib/animationProcedure';
+import type { ArtifactCard } from '@workspace/api-client-react';
 
 // ─── Timing constants ─────────────────────────────────────────────────────────
 
@@ -62,6 +63,12 @@ export interface DirectorBurnSlot {
   slotRect: DOMRect;
   slotKey: string; // "tier-slotIndex"
   sourceLuminaryId?: string;
+  /**
+   * The condemned card captured before the state update.
+   * Used to show the correct card art as a ghost during BurnFlash so the
+   * player sees the condemned card burning (not the replacement card).
+   */
+  condemnedCard?: ArtifactCard | null;
 }
 
 export interface CinderMandateBurnActions {
@@ -95,17 +102,20 @@ export interface CinderMandateBurnActions {
   /** Launch a charred-fragment particle from the card slot toward the chip. */
   onBurnPileParticle: (fromRect: DOMRect, toRect: DOMRect) => void;
   /**
-   * Hide condemned card slots just before BurnFlash fires.
+   * Show condemned cards as ghost cards in their slots during BurnFlash.
    *
-   * Called synchronously at burnAt (Phase 4) before the querySelector
-   * re-measure loop.  React batches this setState with the subsequent
-   * onBurnFlash setState so the replacement card is hidden and BurnFlash
-   * appears atomically — the replacement card never flashes through while
-   * the fire animation is playing.
+   * Called synchronously at burnAt (Phase 4).  React batches this setState
+   * with the subsequent onBurnFlash setState so the condemned card art is
+   * visible and BurnFlash fires over it atomically.
    *
-   * Called before querySelector re-measures so the DOM still shows the
-   * replacement card (React has not yet committed the hide), giving a valid
-   * liveRect for BurnFlash positioning.
+   * The ghost blocks the replacement card from showing.  Cleared by
+   * onRefillPulse once BurnFlash completes and the replacement card should
+   * be revealed.
+   */
+  onSetCondemnedGhosts: (entries: Array<{ slotKey: string; card: ArtifactCard }>) => void;
+  /**
+   * Fallback: hide slots that have no condemned card snapshot.
+   * Called only when condemnedCard is null/undefined on a slot.
    */
   onHideSlots: (slotKeys: string[]) => void;
   /** Trigger the ↺ refill-pulse animation on one or more slot keys. */
@@ -228,15 +238,23 @@ export function CinderMandateBurnDirector({
     // ── Phase 4: BurnFlash (fires after shudder completes) ─────────────────
     const burnAt = shudderStart + SHUDDER_MS;
     t(() => {
-      // Hide condemned slots now so replacement cards never show through
-      // BurnFlash. Called before querySelector re-measures so the DOM still
-      // holds the replacement card element — React queues the hide setState
-      // but hasn't committed it yet, ensuring the element is findable and
-      // liveRect is valid. React then batches this hide with the subsequent
-      // onBurnFlash setState so both commit atomically.
-      const slotKeysToHide = slots.map(s => s.slotKey);
-      if (slotKeysToHide.length > 0) {
-        actionsRef.current.onHideSlots(slotKeysToHide);
+      // Show condemned cards as ghost cards so BurnFlash fires over the
+      // actual condemned art, not the replacement card.  For any slot that
+      // has no condemned card snapshot (condemnedCard is null/undefined),
+      // fall back to hiding the slot so the replacement card never bleeds
+      // through the fire animation.
+      const ghostEntries = slots
+        .filter(s => s.condemnedCard != null)
+        .map(s => ({ slotKey: s.slotKey, card: s.condemnedCard! }));
+      const noGhostKeys = slots
+        .filter(s => s.condemnedCard == null)
+        .map(s => s.slotKey);
+
+      if (ghostEntries.length > 0) {
+        actionsRef.current.onSetCondemnedGhosts(ghostEntries);
+      }
+      if (noGhostKeys.length > 0) {
+        actionsRef.current.onHideSlots(noGhostKeys);
       }
 
       const chipEl = document.querySelector('[data-burn-pile-chip]');

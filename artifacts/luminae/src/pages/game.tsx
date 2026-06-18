@@ -572,6 +572,9 @@ export default function GameBoard() {
   // receives this as a prop snapshot and fires BurnFlash at its own timeline point.
   // Written by processUpdate; cleared to [] at the start of each new lum_ember burn batch.
   const pendingDirectorBurnSlotsRef = useRef<DirectorBurnSlot[]>([]);
+  // Slot keys that currently have condemned ghost cards set by the director.
+  // Tracked separately so onBurnComplete can clear them even if onRefillPulse was skipped.
+  const directorGhostSlotKeysRef = useRef<string[]>([]);
   // IDs of luminaries claimed in this session — their entity overlay persists.
   const [claimedThisSession, setClaimedThisSession] = useState<string[]>([]);
   // DEV-only: luminary IDs whose portal visual is toggled on for local preview.
@@ -1485,7 +1488,7 @@ export default function GameBoard() {
         ] as const;
         // Collect (cardId, slot element, sourceLuminaryId) for every newly burned card
         // so we can show the "Burned" badge first, then fire the flash 300 ms later.
-        type BurnEntry = { burnedId: string; tier: number; slotIndex: number; sourceLuminaryId?: string };
+        type BurnEntry = { burnedId: string; tier: number; slotIndex: number; sourceLuminaryId?: string; condemnedCard: ArtifactCard | null };
         const burnEntries: BurnEntry[] = [];
         for (const burnedId of newBurnedIds) {
           let found = false;
@@ -1494,7 +1497,7 @@ export default function GameBoard() {
             for (let i = 0; i < cards.length; i++) {
               if (cards[i]?.id === burnedId) {
                 const sourceLuminaryId = sourceLuminaryByCardId.get(burnedId);
-                burnEntries.push({ burnedId, tier, slotIndex: i, sourceLuminaryId });
+                burnEntries.push({ burnedId, tier, slotIndex: i, sourceLuminaryId, condemnedCard: cards[i] ?? null });
                 found = true;
                 break;
               }
@@ -1513,7 +1516,7 @@ export default function GameBoard() {
           if (directorEntries.length > 0) {
             // Reset accumulator for this activation cycle
             pendingDirectorBurnSlotsRef.current = [];
-            for (const { tier, slotIndex, sourceLuminaryId } of directorEntries) {
+            for (const { tier, slotIndex, sourceLuminaryId, condemnedCard } of directorEntries) {
               const slotKey = `${tier}-${slotIndex}`;
               const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
               if (slotEl) {
@@ -1521,6 +1524,7 @@ export default function GameBoard() {
                   slotRect: slotEl.getBoundingClientRect(),
                   slotKey,
                   sourceLuminaryId,
+                  condemnedCard,
                 });
               }
             }
@@ -2907,7 +2911,7 @@ export default function GameBoard() {
                   const slotKey2 = `${tier}-${i}`;
                   const slotEl2 = document.querySelector(`[data-slot-key="${slotKey2}"]`);
                   if (slotEl2) {
-                    emberSlots2.push({ slotRect: slotEl2.getBoundingClientRect(), slotKey: slotKey2, sourceLuminaryId: 'lum_ember' });
+                    emberSlots2.push({ slotRect: slotEl2.getBoundingClientRect(), slotKey: slotKey2, sourceLuminaryId: 'lum_ember', condemnedCard: cards[i] ?? null });
                   }
                   found2 = true;
                   break;
@@ -9354,6 +9358,16 @@ export default function GameBoard() {
                 if (lumRow) lumRow.style.overflow = '';
               },
               setAnimEndTime,
+              onSetCondemnedGhosts: (entries) => {
+                // Add condemned cards as ghost cards so BurnFlash fires over the
+                // correct card art instead of the replacement card or a placeholder.
+                directorGhostSlotKeysRef.current = entries.map(e => e.slotKey);
+                setBurstGhostCards(prev => {
+                  const n = { ...prev };
+                  entries.forEach(({ slotKey, card }) => { n[slotKey] = card; });
+                  return n;
+                });
+              },
               onHideSlots: (slotKeys) => {
                 setHiddenSlots(new Set(slotKeys));
               },
@@ -9385,8 +9399,16 @@ export default function GameBoard() {
                 }, 780);
               },
               onRefillPulse: (slotKeys) => {
-                // Reveal the replacement cards now that BurnFlash has completed,
-                // then play the refill sweep so new cards deal in cleanly.
+                // Clear condemned ghost cards, reveal replacement cards, play refill sweep.
+                const ghostKeys = directorGhostSlotKeysRef.current;
+                if (ghostKeys.length > 0) {
+                  setBurstGhostCards(prev => {
+                    const n = { ...prev };
+                    ghostKeys.forEach(k => delete n[k]);
+                    return n;
+                  });
+                  directorGhostSlotKeysRef.current = [];
+                }
                 setHiddenSlots(new Set());
                 setRefillingSlots(new Set(slotKeys));
                 gameAudio.playMarketRefill();
@@ -9396,7 +9418,8 @@ export default function GameBoard() {
             }}
             onBurnComplete={() => {
               // Director already called restore() internally at the end of its timeline.
-              // Safety: clear hidden slots in case onRefillPulse was skipped (empty slots).
+              // Safety: clear ghost cards and hidden slots in case onRefillPulse was
+              // skipped (reduced motion / empty slot path).
               // NOTE: do NOT clear pendingDirectorBurnSlotsRef here. If a second Cinder
               // Mandate state update arrived while this director was still running,
               // processUpdate has already reset and repopulated the ref for the next
@@ -9404,6 +9427,15 @@ export default function GameBoard() {
               // mounts, causing it to fire BurnFlash on an empty list.
               // processUpdate owns the ref reset (pendingDirectorBurnSlotsRef.current = [])
               // at the start of every new lum_ember burn batch — no cleanup needed here.
+              const ghostKeys = directorGhostSlotKeysRef.current;
+              if (ghostKeys.length > 0) {
+                setBurstGhostCards(prev => {
+                  const n = { ...prev };
+                  ghostKeys.forEach(k => delete n[k]);
+                  return n;
+                });
+                directorGhostSlotKeysRef.current = [];
+              }
               setHiddenSlots(new Set());
               setActivationQueue(q => q.slice(1));
               executeAction({ type: 'resolve_luminary_activation', eventId: evt.eventId });
