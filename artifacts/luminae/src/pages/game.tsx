@@ -1812,12 +1812,22 @@ export default function GameBoard() {
               srcLum,
               instant,
             });
-          } else if (!hasIncomingActivation) {
-            // No arrival blocking, just no mapped source — fire immediately.
-            // Skip when an activation director (e.g. CinderMandateBrandingDirector) is
-            // about to own this brand-strike: it calls fireBrandStrikes + unsuppressMarkers
-            // at the correct beat timing. Firing here would clear the suppression early and
-            // show the badge before the beam hits the card.
+          } else if (
+            !hasIncomingActivation &&
+            !(activationQueueLenRef.current > 0 && firstType === 'condemned')
+          ) {
+            // No arrival or active activation director blocking — fire immediately.
+            //
+            // Two guards protect against premature badge reveal:
+            //   !hasIncomingActivation — covers the rare case where markers and
+            //     activation event arrive in the same state diff (event not yet consumed).
+            //   !(activationQueueLenRef > 0 && firstType === 'condemned') — covers the
+            //     normal case: marketMarkers are set in the SERVER'S RESPONSE to
+            //     resolve_luminary_activation, so by the time processUpdate sees the newly
+            //     condemned cards, the activation event is already gone from the state but
+            //     the CinderMandateBrandingDirector is still mid-sequence (queue len > 0).
+            //     Firing here would clear suppression before the beat overlay + beam fire.
+            //     Leave suppression in place; the director calls unsuppressMarkers itself.
             gameAudio.playBrandStrike();
             fireBrandStrikes(newlyMarked, nextMarkers);
             // Reveal overlays+badges immediately; brandDelayMap handles per-card badge timing.
@@ -1827,8 +1837,7 @@ export default function GameBoard() {
               return next;
             });
           }
-          // else: hasIncomingActivation && !arrivalPending — suppression stays in place;
-          // the activation director (CinderMandateBrandingDirector) fires + unsuppresses.
+          // else: activation director owns this — suppression stays; director fires + unsuppresses.
         }
       }
     }
