@@ -1310,12 +1310,10 @@ export default function GameBoard() {
   // Placed after `state` is declared but before early returns so hook order
   // is always stable across renders.
   useEffect(() => {
-    if (import.meta.env.DEV) console.log(`[arrival-diag] initial-load effect — checkedInitial=${checkedInitialArrivalRef.current} stateVer=${(state as unknown as {version?:number})?.version}`);
     if (checkedInitialArrivalRef.current) return;
     if (!state) return;
     checkedInitialArrivalRef.current = true;
     const pending = state?.pendingSummonEvents ?? [];
-    if (import.meta.env.DEV && pending.length > 0) console.log(`[arrival-diag] initial-load firing for ${pending.length} pending events: ${pending.map(e=>e.eventId).join(',')}`);
     // If the game was already finished when we loaded, identify the sealing
     // Luminary so its cutscene burst visuals can use the correct summonColor (API contract).
     const initialWinTrigId = state.winTriggerLuminaryId ?? undefined;
@@ -3283,10 +3281,6 @@ export default function GameBoard() {
     if (!state || !prevStateRef.current) return;
     const polledVersion = state.version;
     const prevVersion = prevStateRef.current.version;
-    if (import.meta.env.DEV && typeof polledVersion === 'number' && polledVersion > prevVersion) {
-      const inQ = stateQueueRef.current.some(s => s.version === polledVersion);
-      console.log(`[arrival-diag] poll-effect: polledV=${polledVersion} prevV=${prevVersion} inQueue=${inQ} pendingEvts=${JSON.stringify((state as unknown as {pendingSummonEvents?:{eventId:string}[]}).pendingSummonEvents?.map(e=>e.eventId))}`);
-    }
     if (typeof polledVersion !== 'number' || polledVersion <= prevVersion) return;
     // Guard: the WS onStateUpdate handler eagerly calls queryClient.setQueryData,
     // which flips `state` and triggers this effect BEFORE prevStateRef has been
@@ -3313,7 +3307,6 @@ export default function GameBoard() {
       // eslint-disable-next-line no-restricted-syntax -- same TanStack Query width mismatch as above; server response is Zod-validated so the cast is safe.
       processUpdateRef.current(state as unknown as GameState);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   // ── Burst-ghost safety valve ───────────────────────────────────────────────
@@ -3370,10 +3363,6 @@ export default function GameBoard() {
   ) => {
     // 1. Dedup guard (skip for dev tests which intentionally replay)
     if (!isDevTest) {
-      if (import.meta.env.DEV) {
-        console.log(`[arrival-diag] enqueueSummon called — eventId="${eventId}" setSize=${handledArrivalEventIdsRef.current.size} hasId=${handledArrivalEventIdsRef.current.has(eventId)} setContents=[${[...handledArrivalEventIdsRef.current].join(',')}]`);
-        console.trace('[arrival-diag] enqueueSummon call stack');
-      }
       if (handledArrivalEventIdsRef.current.has(eventId)) {
         console.log(`[Luminae] enqueueSummon: duplicate eventId="${eventId}" — skipped`);
         return;
