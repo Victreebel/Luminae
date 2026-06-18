@@ -47,9 +47,10 @@ export const SETTLE_ESTIMATE_MS = 800;
 
 /**
  * Aftermath hold after the last brand-strike aura fades.
- * Chosen to let the aura crackle fully clear before the game drains.
+ * Short buffer so the camera restore fires promptly after the aura clears.
+ * The aura window (3820 + 400 ms) already covers the crackle tail.
  */
-export const AFTERMATH_HOLD_MS = 1000;
+export const AFTERMATH_HOLD_MS = 200;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
