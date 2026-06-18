@@ -863,6 +863,24 @@ button,
 }
 .lum-aura-distorted { animation: lum-aura-distorted 2.4s linear infinite; will-change: transform, opacity; contain: layout; }
 
+/* ── Luminary cinematic entity — silhouette reveal filter sequence ──────────
+   CSS keyframe replaces framer-motion filter animation (brightness/saturate
+   multi-stop sequence) to keep GPU-composited filter changes off the JS
+   animation thread. Duration must match ENTITY_DUR_S = 1.81s in
+   LuminaryActivationCinematic.tsx. Percentages match ENTITY_FILTER_TIMES.  */
+@keyframes lum-entity-reveal {
+  0%    { filter: brightness(0.05) saturate(0);   }
+  8.8%  { filter: brightness(0.15) saturate(0);   }
+  17.5% { filter: brightness(0.45) saturate(0.4); }
+  20%   { filter: brightness(1.0)  saturate(1.0); }
+  24.8% { filter: brightness(1.0)  saturate(1.0); }
+  100%  { filter: brightness(0)    saturate(1.0); }
+}
+.lum-entity-reveal {
+  animation: lum-entity-reveal 1.81s linear both;
+  will-change: filter;
+}
+
 /* ── Ambient board glow — low-opacity halo cast onto surrounding board area ─
    A 2.5× card-sized fixed div sits behind each claimed Luminary's idle
    overlay (z-index 17, below the card-size overlay at z-index 18) and

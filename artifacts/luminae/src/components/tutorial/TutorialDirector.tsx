@@ -3580,7 +3580,7 @@ function GameplayPhase({ s, dispatch }: { s: TutState; dispatch: React.Dispatch<
             );
           })}
         </div>
-      </motion.div>
+      </div>
 
 
       {/* Floating Lumii */}

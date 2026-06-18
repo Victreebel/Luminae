@@ -225,16 +225,11 @@ const ENTITY_Y_EASE: Easing[] = ['easeIn', 'easeIn', 'easeOut', 'easeOut', 'ease
 // ── Silhouette veil filter ─────────────────────────────────────────────────────
 // Crisp dark silhouette: brightness/saturation only — no blur so the entity reads
 // as a recognisable shadowy figure moving through space, not a misty dissolve.
+// Filter values are now owned by the CSS keyframe `lum-entity-reveal` in index.css
+// (replaced framer-motion filter animation to keep GPU filter changes off the JS
+// thread). The percentages in that keyframe MUST stay in sync with ENTITY_TIMES.
 // Index[3] and index[4] must match ENTITY_TIMES[3]/[4] — keep all three in sync.
 export const ENTITY_FILTER_TIMES = [0, 0.088, 0.175, 0.200, 0.248, 1];
-const ENTITY_FILTER = [
-  'brightness(0.05) saturate(0)',    // 0.000  — pure dark silhouette
-  'brightness(0.15) saturate(0)',    // 0.088  — still shadowed
-  'brightness(0.45) saturate(0.4)', // 0.175  — emerging
-  'brightness(1.0)  saturate(1.0)', // 0.200  — full reveal (overshoot peak)
-  'brightness(1.0)  saturate(1.0)', // 0.248  — hold (settle complete, 101ms before beat)
-  'brightness(0)    saturate(1.0)', // 1.000  — gone
-];
 
 // ── Effect beats (within HOLD_MS = 550ms window) ──────────────────────────────
 // All offsets are absolute from hold-phase start.  All must complete before HOLD_MS expires.
@@ -655,14 +650,13 @@ export function LuminaryActivationCinematic({
       {showEntity && (
         <motion.div
           key="entity"
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center lum-entity-reveal"
           style={{ pointerEvents: 'none' }}
-          initial={{ opacity: 0, scale: 0.88, y: entityYInitial, filter: ENTITY_FILTER[0] }}
+          initial={{ opacity: 0, scale: 0.88, y: entityYInitial }}
           animate={{
             opacity: ENTITY_OPACITY,
             scale:   ENTITY_SCALE,
             y:       entityY,
-            filter:  ENTITY_FILTER,
           }}
           transition={{
             duration: ENTITY_DUR_S,
@@ -673,24 +667,22 @@ export function LuminaryActivationCinematic({
               times:    ENTITY_TIMES,
               ease:     ENTITY_Y_EASE,
             },
-            filter: {
-              duration: ENTITY_DUR_S,
-              times:    ENTITY_FILTER_TIMES,
-              ease:     'linear',
-            },
           }}
         >
-          {/* Colored glow bloom behind the entity — animated for lum_radiant */}
-          <div
-            className={luminaryId === 'lum_radiant' ? 'lum-aura-bloom' : undefined}
-            style={{
-              position: 'absolute',
-              inset: '-20%',
-              background: `radial-gradient(ellipse at center, ${primaryColor}25 0%, transparent 60%)`,
-              filter: 'blur(60px)',
-              pointerEvents: 'none',
-            }}
-          />
+          {/* Colored glow bloom — suppressed on mobile (blur(60px) on a viewport-sized
+              div is expensive; skip it on low-powered devices).                       */}
+          {!isMobile && (
+            <div
+              className={luminaryId === 'lum_radiant' ? 'lum-aura-bloom' : undefined}
+              style={{
+                position: 'absolute',
+                inset: '-20%',
+                background: `radial-gradient(ellipse at center, ${primaryColor}25 0%, transparent 60%)`,
+                filter: 'blur(60px)',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
 
           {/* lum_radiant: living three-layer animated composite instead of static PNG */}
           {luminaryId === 'lum_radiant' ? (
@@ -710,7 +702,9 @@ export function LuminaryActivationCinematic({
                 display: 'block',
                 position: 'relative',
                 zIndex: 1,
-                filter: `drop-shadow(0 0 52px ${primaryColor}72) drop-shadow(0 0 100px ${primaryColor}38)`,
+                filter: isMobile
+                  ? `drop-shadow(0 0 32px ${primaryColor}88)`
+                  : `drop-shadow(0 0 52px ${primaryColor}72) drop-shadow(0 0 100px ${primaryColor}38)`,
                 ...(entityBlendMode ? { mixBlendMode: entityBlendMode as React.CSSProperties['mixBlendMode'] } : {}),
               }}
             />
@@ -724,7 +718,9 @@ export function LuminaryActivationCinematic({
                 justifyContent: 'center',
                 position: 'relative',
                 zIndex: 1,
-                filter: `drop-shadow(0 0 52px ${primaryColor}88)`,
+                filter: isMobile
+                  ? `drop-shadow(0 0 32px ${primaryColor}aa)`
+                  : `drop-shadow(0 0 52px ${primaryColor}88)`,
               }}
             >
               <EntityArt
