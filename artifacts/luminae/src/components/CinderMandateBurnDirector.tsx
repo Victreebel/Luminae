@@ -166,6 +166,33 @@ export function CinderMandateBurnDirector({
     const slots = slotsRef.current;
     const ids = targetIdsRef.current;
 
+    // ── Phase 0: set condemned ghost cards immediately at mount ─────────────
+    // The server burns condemned cards (replacing them in the market) in the
+    // same advanceTurn call that pushes the activation event.  By the time
+    // this director mounts, the TQ state already shows replacement cards in
+    // the condemned slots.  We must set ghost cards NOW — before any timer
+    // fires — so the condemned card art is visible from the first frame of
+    // the cinematic through decree, shudder, and BurnFlash.
+    //
+    // Ghost cards also supply the data-card-id attribute that the Phase 2
+    // shudder uses to locate the slot elements in the DOM.  Without them,
+    // document.querySelector('[data-card-id="<condemndedId>"]') returns null
+    // and the shudder animation does nothing visible.
+    {
+      const ghostEntries = slots
+        .filter(s => s.condemnedCard != null)
+        .map(s => ({ slotKey: s.slotKey, card: s.condemnedCard! }));
+      const noGhostKeys = slots
+        .filter(s => s.condemnedCard == null)
+        .map(s => s.slotKey);
+      if (ghostEntries.length > 0) {
+        actionsRef.current.onSetCondemnedGhosts(ghostEntries);
+      }
+      if (noGhostKeys.length > 0) {
+        actionsRef.current.onHideSlots(noGhostKeys);
+      }
+    }
+
     // Lock scroll immediately — before camera prepare() so the entire sequence
     // (decree → shudder → heat wash → BurnFlash → refill → aftermath) is
     // fully protected from player scrolling.
@@ -237,27 +264,10 @@ export function CinderMandateBurnDirector({
     }, heatStart);
 
     // ── Phase 4: BurnFlash (fires after shudder completes) ─────────────────
+    // Ghost cards were already set at Phase 0 (mount), so condemned card art
+    // is visible throughout decree and shudder.  Just fire BurnFlash here.
     const burnAt = shudderStart + SHUDDER_MS;
     t(() => {
-      // Show condemned cards as ghost cards so BurnFlash fires over the
-      // actual condemned art, not the replacement card.  For any slot that
-      // has no condemned card snapshot (condemnedCard is null/undefined),
-      // fall back to hiding the slot so the replacement card never bleeds
-      // through the fire animation.
-      const ghostEntries = slots
-        .filter(s => s.condemnedCard != null)
-        .map(s => ({ slotKey: s.slotKey, card: s.condemnedCard! }));
-      const noGhostKeys = slots
-        .filter(s => s.condemnedCard == null)
-        .map(s => s.slotKey);
-
-      if (ghostEntries.length > 0) {
-        actionsRef.current.onSetCondemnedGhosts(ghostEntries);
-      }
-      if (noGhostKeys.length > 0) {
-        actionsRef.current.onHideSlots(noGhostKeys);
-      }
-
       const chipEl = document.querySelector('[data-burn-pile-chip]');
       const chipRect = chipEl?.getBoundingClientRect() ?? null;
 
