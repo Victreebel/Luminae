@@ -881,6 +881,104 @@ button,
   will-change: filter;
 }
 
+/* ── BurnFlash CSS keyframes ─────────────────────────────────────────────────
+   Replaces framer-motion animate props so burn sequences run on the
+   compositor thread, immune to React re-renders during WebSocket state
+   updates. Dynamic pixel values (slot height, particle offsets) are set as
+   inline CSS custom properties on each element. Duration/delay are set via
+   inline animation shorthand. Timing matches the original framer-motion spec.
+   See BurnFlash component in game-luminary-effects.tsx for usage.           */
+
+/* Phase 1: ember outline ring snaps onto card */
+@keyframes burn-target-ring {
+  0%   { opacity: 0;    transform: scale(0.92); }
+  18%  { opacity: 1;    transform: scale(1.00); }
+  60%  { opacity: 0.85; transform: scale(1.00); }
+  100% { opacity: 0;    transform: scale(1.02); }
+}
+
+/* Phase 2: bottom ignition bar widens and fades */
+@keyframes burn-ignition {
+  0%   { transform: scaleX(0);   opacity: 0;   }
+  22%  { transform: scaleX(1);   opacity: 1;   }
+  72%  { transform: scaleX(1);   opacity: 0.9; }
+  100% { transform: scaleX(0.5); opacity: 0;   }
+}
+
+/* Phase 3: ash overlay rises from bottom (scaleY) then fades.
+   times: [0, BURN_DUR_S/(BURN_DUR_S+0.45), 1] = [0, 75.7%, 100%]
+   Two-segment easing via animation-timing-function inside keyframe.        */
+@keyframes burn-ash-overlay {
+  0% {
+    transform: scaleY(0);
+    opacity: 1;
+    animation-timing-function: linear;
+  }
+  75.7% {
+    transform: scaleY(1);
+    opacity: 1;
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+/* Phase 3: flame edge line travels from bottom to top of card.
+   --burn-slot-h must be set as an inline custom property (px value).       */
+@keyframes burn-flame-edge {
+  0%   { transform: translateY(var(--burn-slot-h)); opacity: 0; }
+  4%   { transform: translateY(var(--burn-slot-h)); opacity: 1; }
+  96%  { transform: translateY(0);                  opacity: 1; }
+  100% { transform: translateY(-3px);               opacity: 0; }
+}
+
+/* Phase 3b: flame tongue flicker (suppressed on mobile).
+   --tongue-rise (px, negative) set inline. transformOrigin: bottom center. */
+@keyframes burn-flame-tongue {
+  0%   { transform: translateY(0)                               scaleY(0.3) scaleX(0.6); opacity: 0;    }
+  15%  { transform: translateY(calc(var(--tongue-rise) * 0.3)) scaleY(1.0) scaleX(0.9); opacity: 0.85; }
+  35%  { transform: translateY(calc(var(--tongue-rise) * 0.6)) scaleY(0.7) scaleX(1.1); opacity: 0.6;  }
+  50%  { transform: translateY(calc(var(--tongue-rise) * 0.9)) scaleY(1.1) scaleX(0.8); opacity: 0.9;  }
+  70%  { transform: translateY(var(--tongue-rise))             scaleY(0.5) scaleX(1.0); opacity: 0.5;  }
+  85%  { transform: translateY(calc(var(--tongue-rise) - 4px)) scaleY(0.8) scaleX(0.7); opacity: 0.7;  }
+  100% { transform: translateY(calc(var(--tongue-rise) - 8px)) scaleY(0.4) scaleX(0.5); opacity: 0;    }
+}
+
+/* Phase 3: cinder sparks rise from flame front.
+   --cinder-dx / --cinder-dy (px) set inline per particle.                  */
+@keyframes burn-cinder {
+  0%   { transform: translate(0, 0)                                                          scale(1);   opacity: 0; }
+  20%  { transform: translate(calc(var(--cinder-dx) * 0.2), calc(var(--cinder-dy) * 0.2))   scale(1.4); opacity: 1; }
+  100% { transform: translate(var(--cinder-dx), var(--cinder-dy))                            scale(0);   opacity: 0; }
+}
+
+/* Phase 4 & 5: top-edge sparks and ash arc fragments scatter.
+   --p-dx / --p-dy (px) set inline per particle.                            */
+@keyframes burn-particle {
+  0%   { transform: translate(0, 0)                       scale(1);   opacity: 0.9; }
+  100% { transform: translate(var(--p-dx), var(--p-dy))  scale(0.2); opacity: 0;   }
+}
+
+/* Phase 6: smoke wisps rise after burn (suppressed on mobile — blur cost).
+   --smoke-drift / --smoke-rise (px) set inline per wisp.                   */
+@keyframes burn-smoke-wisp {
+  0%   { transform: translate(0, 0)                                                                       scale(0.6); opacity: 0;    }
+  20%  { transform: translate(calc(var(--smoke-drift) * 0.30), calc(var(--smoke-rise) * 0.30))            scale(1.0); opacity: 0.35; }
+  45%  { transform: translate(calc(var(--smoke-drift) * 0.60), calc(var(--smoke-rise) * 0.60))            scale(1.3); opacity: 0.25; }
+  70%  { transform: translate(calc(var(--smoke-drift) * 0.85), calc(var(--smoke-rise) * 0.85))            scale(1.6); opacity: 0.15; }
+  100% { transform: translate(var(--smoke-drift), var(--smoke-rise))                                       scale(2.0); opacity: 0;    }
+}
+
+/* Phase 7: scorch residue fades on the emptied slot */
+@keyframes burn-scorch {
+  0%   { opacity: 0;    }
+  8%   { opacity: 0.88; }
+  45%  { opacity: 0.65; }
+  100% { opacity: 0;    }
+}
+
 /* ── Ambient board glow — low-opacity halo cast onto surrounding board area ─
    A 2.5× card-sized fixed div sits behind each claimed Luminary's idle
    overlay (z-index 17, below the card-size overlay at z-index 18) and

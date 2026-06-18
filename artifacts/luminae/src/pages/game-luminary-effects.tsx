@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 // ── CardMarkerBadge ──────────────────────────────────────────────────────────
@@ -977,7 +978,20 @@ const SMOKE_WISPS = [
   { xFrac: 0.35, yFrac: 0.88, w: 22, h: 14, dur: 0.35, delay: 1.60, rise: -40, drift:  6 },
 ] as const;
 
-export function BurnFlash({
+// ── BurnFlash — CSS keyframe migration ───────────────────────────────────────
+// All motion.div elements replaced with plain divs + CSS keyframe animations
+// (see index.css @keyframes burn-*). CSS animations run on the compositor
+// thread and are immune to React re-renders from WebSocket state updates,
+// which previously interrupted the burn sequence mid-flight on mobile.
+//
+// React.memo + custom comparator prevents BurnFlash from re-rendering when
+// game.tsx re-renders (onDone is a new arrow fn each render but is kept
+// current via a sync-effect ref, so no re-render is needed for it to update).
+//
+// Mobile suppressions:
+//   • Flame tongues (8 blending divs, 7-stop animation) — omitted.
+//   • Smoke wisps (5 blurred divs, filter:blur(3px) each) — omitted.
+export const BurnFlash = React.memo(function BurnFlash({
   slotRect,
   onDone,
   sourceLuminaryId: _sourceLuminaryId,
@@ -988,132 +1002,107 @@ export function BurnFlash({
   sourceLuminaryId?: string;
 }) {
   const onDoneRef = useRef(onDone);
+  useEffect(() => { onDoneRef.current = onDone; });
   useEffect(() => {
     const t = setTimeout(() => onDoneRef.current(), 2000);
     return () => clearTimeout(t);
   }, []);
 
+  const isMobile = useIsMobile();
   const cx   = slotRect.left + slotRect.width  / 2;
   const topY = slotRect.top;
+  const ashDur  = `${(BURN_DUR_S + 0.45).toFixed(2)}s`;
+  const edgeDur = `${(BURN_DUR_S + 0.04).toFixed(2)}s`;
+  const edgeDel = `${(BURN_START_S - 0.02).toFixed(2)}s`;
 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9995 }}>
 
       {/* ── Phase 1: Target claim — ember outline ring ── */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          left: slotRect.left - 3,
-          top:  slotRect.top  - 3,
-          width:  slotRect.width  + 6,
-          height: slotRect.height + 6,
-          borderRadius: 14,
-          border: '2px solid #ff6820',
-          boxShadow: '0 0 10px 3px #ff6820aa, inset 0 0 16px 2px #ff330044',
-        }}
-        initial={{ opacity: 0, scale: 0.92 }}
-        animate={{ opacity: [0, 1, 0.85, 0], scale: [0.92, 1.0, 1.0, 1.02] }}
-        transition={{ duration: 0.50, ease: 'easeOut', times: [0, 0.18, 0.6, 1] }}
-      />
+      <div style={{
+        position: 'absolute',
+        left: slotRect.left - 3,
+        top:  slotRect.top  - 3,
+        width:  slotRect.width  + 6,
+        height: slotRect.height + 6,
+        borderRadius: 14,
+        border: '2px solid #ff6820',
+        boxShadow: '0 0 10px 3px #ff6820aa, inset 0 0 16px 2px #ff330044',
+        animation: 'burn-target-ring 0.50s ease-out both',
+      }} />
 
       {/* ── Phase 2: Bottom ignition — sharp ember glow at the bottom edge ── */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          left: slotRect.left + 4,
-          top:  slotRect.bottom - 10,
-          width:  slotRect.width - 8,
-          height: 14,
-          borderRadius: 4,
-          background: 'linear-gradient(to top, #ff2200ee 0%, #ff8800cc 55%, #ffcc44aa 100%)',
-          boxShadow: '0 0 14px 6px #ff550088',
-        }}
-        initial={{ scaleX: 0, opacity: 0 }}
-        animate={{ scaleX: [0, 1, 1, 0.5], opacity: [0, 1, 0.9, 0] }}
-        transition={{ duration: 0.40, delay: 0.20, ease: 'easeOut', times: [0, 0.22, 0.72, 1] }}
-      />
+      <div style={{
+        position: 'absolute',
+        left: slotRect.left + 4,
+        top:  slotRect.bottom - 10,
+        width:  slotRect.width - 8,
+        height: 14,
+        borderRadius: 4,
+        background: 'linear-gradient(to top, #ff2200ee 0%, #ff8800cc 55%, #ffcc44aa 100%)',
+        boxShadow: '0 0 14px 6px #ff550088',
+        animation: 'burn-ignition 0.40s 0.20s ease-out both',
+      }} />
 
       {/* ── Phase 3: Ash overlay — grows from bottom to top via scaleY ──
            transformOrigin 'bottom center' keeps the bottom edge anchored at
            slotRect.bottom while the top edge rises toward slotRect.top.
            This covers the burned-away portion; the card below is still
            visible above the flame line until the overlay reaches it.        ── */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          left: slotRect.left,
-          top:  slotRect.top,
-          width:  slotRect.width,
-          height: slotRect.height,
-          borderRadius: 12,
-          background: 'linear-gradient(to top, #0a0400 0%, #180800 40%, #261000 75%, #341500 100%)',
-          transformOrigin: 'bottom center',
-        }}
-        initial={{ scaleY: 0 }}
-        animate={{ scaleY: [0, 1, 1], opacity: [1, 1, 0] }}
-        transition={{ duration: BURN_DUR_S + 0.45, delay: BURN_START_S, ease: ['linear', 'easeOut'], times: [0, BURN_DUR_S / (BURN_DUR_S + 0.45), 1] }}
-      />
+      <div style={{
+        position: 'absolute',
+        left: slotRect.left,
+        top:  slotRect.top,
+        width:  slotRect.width,
+        height: slotRect.height,
+        borderRadius: 12,
+        background: 'linear-gradient(to top, #0a0400 0%, #180800 40%, #261000 75%, #341500 100%)',
+        transformOrigin: 'bottom center',
+        animation: `burn-ash-overlay ${ashDur} ${BURN_START_S}s both`,
+      }} />
 
       {/* ── Phase 3: Flame edge line — rides at the top of the rising ash ──
-           Positioned at top:slotRect.top, y animates from +slotRect.height
-           (bottom of card) to 0 (top of card), matching the ash overlay.    ── */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          left: slotRect.left - 2,
-          top:  slotRect.top - 5,
-          width:  slotRect.width + 4,
-          height: 12,
-          borderRadius: 3,
-          background: 'linear-gradient(to top, #ff2200 0%, #ff8800 50%, #ffee44 100%)',
-          boxShadow: '0 0 10px 5px #ff660099, 0 0 3px 2px #ffbb44cc',
-        }}
-        initial={{ y: slotRect.height, opacity: 0 }}
-        animate={{ y: [slotRect.height, slotRect.height, 0, -3], opacity: [0, 1, 1, 0] }}
-        transition={{ duration: BURN_DUR_S + 0.04, delay: BURN_START_S - 0.02, ease: 'linear', times: [0, 0.04, 0.96, 1] }}
-      />
+           --burn-slot-h carries the card height so the keyframe can start
+           the line at the bottom without a JS-driven translateY.            ── */}
+      <div style={{
+        position: 'absolute',
+        left: slotRect.left - 2,
+        top:  slotRect.top - 5,
+        width:  slotRect.width + 4,
+        height: 12,
+        borderRadius: 3,
+        background: 'linear-gradient(to top, #ff2200 0%, #ff8800 50%, #ffee44 100%)',
+        boxShadow: '0 0 10px 5px #ff660099, 0 0 3px 2px #ffbb44cc',
+        ['--burn-slot-h' as string]: `${slotRect.height}px`,
+        animation: `burn-flame-edge ${edgeDur} ${edgeDel} linear both`,
+      } as React.CSSProperties} />
 
-      {/* ── Phase 3b: Flame tongues — flickering vertical fire columns ── */}
-      {FLAME_TONGUES.map((f, i) => {
-        const startX = slotRect.left + slotRect.width * f.xFrac - f.w / 2;
-        const startY = slotRect.bottom - f.h;
-        return (
-          <motion.div
-            key={`flame-${i}`}
-            style={{
-              position: 'absolute',
-              left: startX,
-              top: startY,
-              width: f.w,
-              height: f.h,
-              borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
-              background: `linear-gradient(to top, rgba(255,34,0,0.85) 0%, rgba(255,136,0,0.6) 45%, rgba(255,238,68,0.25) 75%, transparent 100%)`,
-              transformOrigin: 'bottom center',
-              mixBlendMode: 'screen',
-              pointerEvents: 'none',
-            }}
-            initial={{ scaleY: 0.3, opacity: 0, scaleX: 0.6 }}
-            animate={{
-              scaleY: [0.3, 1.0, 0.7, 1.1, 0.5, 0.8, 0.4],
-              scaleX: [0.6, 0.9, 1.1, 0.8, 1.0, 0.7, 0.5],
-              opacity: [0, 0.85, 0.6, 0.9, 0.5, 0.7, 0],
-              y: [0, f.rise * 0.3, f.rise * 0.6, f.rise * 0.9, f.rise, f.rise - 4, f.rise - 8],
-            }}
-            transition={{
-              duration: f.dur,
-              delay: f.delay,
-              ease: 'easeInOut',
-              times: [0, 0.15, 0.35, 0.50, 0.70, 0.85, 1],
-            }}
-          />
-        );
-      })}
+      {/* ── Phase 3b: Flame tongues — suppressed on mobile (8 blending layers) ── */}
+      {!isMobile && FLAME_TONGUES.map((f, i) => (
+        <div
+          key={`flame-${i}`}
+          style={{
+            position: 'absolute',
+            left: slotRect.left + slotRect.width * f.xFrac - f.w / 2,
+            top:  slotRect.bottom - f.h,
+            width: f.w,
+            height: f.h,
+            borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%',
+            background: 'linear-gradient(to top, rgba(255,34,0,0.85) 0%, rgba(255,136,0,0.6) 45%, rgba(255,238,68,0.25) 75%, transparent 100%)',
+            transformOrigin: 'bottom center',
+            mixBlendMode: 'screen',
+            pointerEvents: 'none',
+            ['--tongue-rise' as string]: `${f.rise}px`,
+            animation: `burn-flame-tongue ${f.dur}s ${f.delay}s ease-in-out both`,
+          } as React.CSSProperties}
+        />
+      ))}
 
       {/* ── Phase 3: Cinders — spawn at the flame front position and rise ── */}
       {CINDERS.map((c, i) => {
         const delay = BURN_START_S + (1 - c.yFrac) * BURN_DUR_S;
         return (
-          <motion.div
+          <div
             key={i}
             style={{
               position: 'absolute',
@@ -1123,17 +1112,17 @@ export function BurnFlash({
               height: c.size,
               borderRadius: i % 3 === 0 ? '50%' : 2,
               background: i % 2 === 0 ? '#ffaa44' : '#ff6622',
-            }}
-            initial={{ y: 0, x: 0, opacity: 0, scale: 1 }}
-            animate={{ y: -22 - (i % 3) * 8, x: c.dxPx, opacity: [0, 1, 0], scale: [1, 1.4, 0] }}
-            transition={{ duration: 0.36, delay, ease: 'easeOut', times: [0, 0.2, 1] }}
+              ['--cinder-dx' as string]: `${c.dxPx}px`,
+              ['--cinder-dy' as string]: `${-22 - (i % 3) * 8}px`,
+              animation: `burn-cinder 0.36s ${delay.toFixed(2)}s ease-out both`,
+            } as React.CSSProperties}
           />
         );
       })}
 
       {/* ── Phase 4: Top-edge spark burst — fires as the last of the card burns ── */}
       {TOP_SPARKS.map((s, i) => (
-        <motion.div
+        <div
           key={i}
           style={{
             position: 'absolute',
@@ -1144,16 +1133,16 @@ export function BurnFlash({
             borderRadius: '50%',
             background: i % 2 === 0 ? '#ffcc44' : '#ff8822',
             boxShadow: '0 0 4px 2px #ff660066',
-          }}
-          initial={{ x: 0, y: 0, opacity: 0.95, scale: 1 }}
-          animate={{ x: s.dx, y: s.dy, opacity: 0, scale: 0.2 }}
-          transition={{ duration: 0.32, delay: s.delay, ease: [0.2, 0.6, 0.4, 0.9] }}
+            ['--p-dx' as string]: `${s.dx}px`,
+            ['--p-dy' as string]: `${s.dy}px`,
+            animation: `burn-particle 0.32s ${s.delay}s cubic-bezier(0.2,0.6,0.4,0.9) both`,
+          } as React.CSSProperties}
         />
       ))}
 
       {/* ── Phase 5: Ash arc fragments scatter from the top of the consumed card ── */}
       {ASH_ARCS.map((f, i) => (
-        <motion.div
+        <div
           key={i}
           style={{
             position: 'absolute',
@@ -1163,69 +1152,55 @@ export function BurnFlash({
             height: f.size,
             borderRadius: i % 2 === 0 ? '50%' : 2,
             background: i % 3 === 0 ? '#cc5500' : i % 3 === 1 ? '#ff8833' : '#6a5a4a',
-          }}
-          initial={{ x: 0, y: 0, opacity: 0.88, scale: 1 }}
-          animate={{ x: f.dx, y: f.dy, opacity: 0, scale: 0.15 }}
-          transition={{ duration: 0.40, delay: f.delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+            ['--p-dx' as string]: `${f.dx}px`,
+            ['--p-dy' as string]: `${f.dy}px`,
+            animation: `burn-particle 0.40s ${f.delay}s cubic-bezier(0.25,0.46,0.45,0.94) both`,
+          } as React.CSSProperties}
         />
       ))}
 
-      {/* ── Phase 6: Smoke wisps — rising grey clouds after the burn ── */}
-      {SMOKE_WISPS.map((s, i) => {
-        const startX = slotRect.left + slotRect.width * s.xFrac - s.w / 2;
-        const startY = slotRect.top + slotRect.height * s.yFrac;
-        return (
-          <motion.div
-            key={`smoke-${i}`}
-            style={{
-              position: 'absolute',
-              left: startX,
-              top: startY,
-              width: s.w,
-              height: s.h,
-              borderRadius: '50%',
-              background: `radial-gradient(ellipse at 50% 50%, rgba(80,80,80,0.35) 0%, rgba(60,60,60,0.20) 50%, transparent 80%)`,
-              filter: 'blur(3px)',
-              transformOrigin: 'center bottom',
-              pointerEvents: 'none',
-            }}
-            initial={{ opacity: 0, scale: 0.6, y: 0, x: 0 }}
-            animate={{
-              opacity: [0, 0.35, 0.25, 0.15, 0],
-              scale: [0.6, 1.0, 1.3, 1.6, 2.0],
-              y: [0, s.rise * 0.3, s.rise * 0.6, s.rise * 0.85, s.rise],
-              x: [0, s.drift * 0.3, s.drift * 0.6, s.drift * 0.85, s.drift],
-            }}
-            transition={{
-              duration: s.dur,
-              delay: s.delay,
-              ease: 'easeOut',
-              times: [0, 0.20, 0.45, 0.70, 1],
-            }}
-          />
-        );
-      })}
+      {/* ── Phase 6: Smoke wisps — suppressed on mobile (filter:blur cost) ── */}
+      {!isMobile && SMOKE_WISPS.map((s, i) => (
+        <div
+          key={`smoke-${i}`}
+          style={{
+            position: 'absolute',
+            left: slotRect.left + slotRect.width * s.xFrac - s.w / 2,
+            top:  slotRect.top  + slotRect.height * s.yFrac,
+            width: s.w,
+            height: s.h,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse at 50% 50%, rgba(80,80,80,0.35) 0%, rgba(60,60,60,0.20) 50%, transparent 80%)',
+            filter: 'blur(3px)',
+            transformOrigin: 'center bottom',
+            pointerEvents: 'none',
+            ['--smoke-drift' as string]: `${s.drift}px`,
+            ['--smoke-rise' as string]: `${s.rise}px`,
+            animation: `burn-smoke-wisp ${s.dur}s ${s.delay}s ease-out both`,
+          } as React.CSSProperties}
+        />
+      ))}
 
       {/* ── Phase 7: Scorch residue — brief dark char on the empty slot ── */}
-      <motion.div
-        style={{
-          position: 'absolute',
-          left: slotRect.left,
-          top:  slotRect.top,
-          width:  slotRect.width,
-          height: slotRect.height,
-          borderRadius: 12,
-          background: 'radial-gradient(ellipse at 50% 65%, rgba(50,15,0,0.50) 0%, rgba(18,5,0,0.30) 55%, transparent 82%)',
-          border: '1px solid rgba(90,28,0,0.26)',
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: [0, 0.88, 0.65, 0] }}
-        transition={{ duration: 0.40, delay: 1.60, ease: 'easeOut', times: [0, 0.08, 0.45, 1] }}
-      />
+      <div style={{
+        position: 'absolute',
+        left: slotRect.left,
+        top:  slotRect.top,
+        width:  slotRect.width,
+        height: slotRect.height,
+        borderRadius: 12,
+        background: 'radial-gradient(ellipse at 50% 65%, rgba(50,15,0,0.50) 0%, rgba(18,5,0,0.30) 55%, transparent 82%)',
+        border: '1px solid rgba(90,28,0,0.26)',
+        animation: 'burn-scorch 0.40s 1.60s ease-out both',
+      }} />
     </div>,
     document.body,
   );
-}
+}, (prev, next) =>
+  // Skip re-render if slot geometry and luminary source haven't changed.
+  // onDone updates are captured by the sync-effect above — no re-render needed.
+  prev.slotRect === next.slotRect && prev.sourceLuminaryId === next.sourceLuminaryId,
+);
 
 // ── DelayedEffectFloat ────────────────────────────────────────────────────────
 // Floating "+N◆" that rises from a Luminary portal when a delayed effect fires
