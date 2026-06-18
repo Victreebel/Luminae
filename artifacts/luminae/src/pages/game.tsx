@@ -3836,6 +3836,36 @@ export default function GameBoard() {
       if (normalized.crystals) {
         normalized.crystals = Object.assign({ ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 }, normalized.crystals) as CrystalCounts;
       }
+
+      // Pre-set a ghost card for the market slot being purchased/reserved.
+      // This blocks the replacement card from flashing in during the gap between
+      // submission and processUpdate (REST 200ms delay, or a polling useEffect
+      // render firing before the queue drains).  burstGhostCards renders with
+      // highest priority over the actual TQ state card, so the old card stays
+      // visible until the forge / cipher animation fires.
+      // processUpdate already calls setBurstGhostCards(delete slotKey) atomically
+      // when the animation starts — no separate cleanup is needed here.
+      if (
+        (payload.type === 'purchase_card' || payload.type === 'reserve_card') &&
+        payload.cardId &&
+        state
+      ) {
+        const targetId = payload.cardId as string;
+        const tiers: [1 | 2 | 3, (ArtifactCard | null)[]][] = [
+          [1, state.marketTier1 as (ArtifactCard | null)[]],
+          [2, state.marketTier2 as (ArtifactCard | null)[]],
+          [3, state.marketTier3 as (ArtifactCard | null)[]],
+        ];
+        for (const [tierNum, tier] of tiers) {
+          const idx = tier.findIndex((c) => c?.id === targetId);
+          if (idx >= 0 && tier[idx]) {
+            const preGhostKey = `${tierNum}-${idx}`;
+            setBurstGhostCards(prev => ({ ...prev, [preGhostKey]: tier[idx]! }));
+            break;
+          }
+        }
+      }
+
       const restState = await submitAction.mutateAsync({ roomId: roomId!, data: { sessionToken: session.sessionToken, ...normalized } as ActionRequest });
       // Fallback: if the WebSocket state_update is missed (e.g. transient disconnect at the
       // moment of submission), the WS-driven animation never fires. The REST response contains
