@@ -81,7 +81,7 @@ import { useGameKeyboardShortcuts } from '@/hooks/use-game-keyboard-shortcuts';
 import { useMarketKeyboardNav } from '@/hooks/use-market-keyboard-nav';
 import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
-import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
+import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
 import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
 import { LuminaryCard } from './game-luminary';
@@ -754,6 +754,23 @@ export default function GameBoard() {
     animScale: [number, number, number];
     faceScale: number;
   } | null>(null);
+  // Post-burn refill deals — Cinder Mandate burns multiple cards simultaneously;
+  // each replacement gets its own fly+flip animation staggered by ~120 ms.
+  // Kept separate from dealingCard to avoid touching the existing forge paths.
+  const [directorDealingCards, setDirectorDealingCards] = useState<Array<{
+    id: string;
+    card: ArtifactCard;
+    tier: number;
+    slotKey: string;
+    deckRect: { x: number; y: number; w: number; h: number };
+    slotRect: { x: number; y: number; w: number; h: number };
+    animX: number[];
+    animY: number[];
+    animRotateY: [number, number, number];
+    animScale: [number, number, number];
+    faceScale: number;
+    delay: number;
+  }>>([]);
   const prevStateRef = useRef<GameState | null>(null);
   const playerPanelRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
@@ -1186,6 +1203,7 @@ export default function GameBoard() {
     setOpponentForgeAbsorb(null);
     setCipherBurst(null);
     setDealingCard(null);
+    setDirectorDealingCards([]);
     // Reveal any hidden market slots / flip animations so the board is clean.
     setHiddenSlots(new Set());
     setFlippingCards(new Set());
@@ -7739,6 +7757,83 @@ export default function GameBoard() {
         );
       })()}
 
+      {/* ── Cinder Mandate post-burn refill deals — staggered fly+flip per slot ── */}
+      {directorDealingCards.length > 0 && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9050, pointerEvents: 'none', perspective: '1200px' }}>
+          {directorDealingCards.map(dc => (
+            <motion.div
+              key={dc.id}
+              style={{
+                position: 'absolute',
+                left: dc.deckRect.x,
+                top: dc.deckRect.y,
+                width: dc.deckRect.w,
+                height: dc.deckRect.h,
+                transformStyle: 'preserve-3d',
+              }}
+              initial={{ x: 0, y: 0, rotateY: 0, scale: 1 }}
+              animate={{
+                x: dc.animX,
+                y: dc.animY,
+                rotateY: dc.animRotateY,
+                scale: dc.animScale,
+              }}
+              transition={{
+                duration: 1.5,
+                delay: dc.delay,
+                x: { ease: 'easeInOut', times: [0, 0.4, 1] },
+                y: { ease: 'easeInOut', times: [0, 0.35, 1] },
+                rotateY: { ease: 'easeInOut', times: [0, 0.5, 1] },
+                scale: { ease: 'easeInOut', times: [0, 0.35, 1] },
+              }}
+              onAnimationComplete={() => {
+                setDirectorDealingCards(prev => prev.filter(d => d.id !== dc.id));
+                setHiddenSlots(prev => {
+                  const n = new Set(prev);
+                  n.delete(dc.slotKey);
+                  return n;
+                });
+              }}
+            >
+              {/* Card back — hidden after rotateY reaches 90° */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                overflow: 'hidden',
+                borderRadius: 12,
+              }}>
+                <div className="w-full h-full relative rounded-xl bg-[#030509] border border-[#c4a85a]/30">
+                  {dc.tier === 1 && <CardBackTier1 />}
+                  {dc.tier === 2 && <CardBackTier2 />}
+                  {dc.tier === 3 && <CardBackTier3 />}
+                </div>
+              </div>
+              {/* Card face — revealed after rotateY passes 90° */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)',
+                overflow: 'hidden',
+                borderRadius: 12,
+              }}>
+                <div style={{ transformOrigin: 'top left', transform: `scale(${dc.faceScale})` }}>
+                  <ArtifactCardView
+                    card={dc.card}
+                    tier={dc.tier}
+                    onTap={() => {}}
+                    tapped={false}
+                    effectiveCosts={computeCosts(dc.card, costMode)}
+                    hideStrike={costMode === 'needed_now'}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
       {/* ── Purchase Celebration Burst (reserved card purchases only) ── */}
       <AnimatePresence>
         {purchaseBurst && (
@@ -9471,7 +9566,7 @@ export default function GameBoard() {
                 }, 780);
               },
               onRefillPulse: (slotKeys) => {
-                // Clear condemned ghost cards, reveal replacement cards, play refill sweep.
+                // Clear condemned ghost cards before revealing replacements.
                 const ghostKeys = directorGhostSlotKeysRef.current;
                 if (ghostKeys.length > 0) {
                   setBurstGhostCards(prev => {
@@ -9481,10 +9576,70 @@ export default function GameBoard() {
                   });
                   directorGhostSlotKeysRef.current = [];
                 }
-                setHiddenSlots(new Set());
-                setRefillingSlots(new Set(slotKeys));
-                gameAudio.playMarketRefill();
-                setTimeout(() => setRefillingSlots(new Set()), 700);
+
+                // Build fly+flip deal animations for each refilling slot.
+                const rawCardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-w')) || 112;
+                const dealEntries: typeof directorDealingCards = [];
+                const fallbackSlotKeys: string[] = [];
+                const hiddenDealSlotKeys: string[] = [];
+
+                slotKeys.forEach((slotKey, i) => {
+                  const [tierStr, idxStr] = slotKey.split('-');
+                  const tier = parseInt(tierStr, 10) as 1 | 2 | 3;
+                  const idx = parseInt(idxStr, 10);
+                  const marketArr = tier === 1 ? state?.marketTier1 : tier === 2 ? state?.marketTier2 : state?.marketTier3;
+                  const newCard = marketArr?.[idx] ?? null;
+
+                  if (!newCard) { fallbackSlotKeys.push(slotKey); return; }
+
+                  const deckEl = document.querySelector(`[data-deck-tier="${tier}"]`);
+                  const slotEl = document.querySelector(`[data-slot-key="${slotKey}"]`);
+                  const deckR = deckEl?.getBoundingClientRect();
+                  const slotR = slotEl?.getBoundingClientRect();
+
+                  if (!deckR || !slotR) { fallbackSlotKeys.push(slotKey); return; }
+
+                  const faceScale = slotR.width / rawCardW;
+                  const startX = deckR.left + (deckR.width  - slotR.width)  / 2;
+                  const startY = deckR.top  + (deckR.height - slotR.height) / 2;
+                  const dx = slotR.left - startX;
+                  const dy = slotR.top  - startY;
+                  const arcY = Math.min(dy - 60, -40);
+
+                  hiddenDealSlotKeys.push(slotKey);
+                  dealEntries.push({
+                    id: `director-deal-${slotKey}-${Date.now()}-${i}`,
+                    card: newCard,
+                    tier,
+                    slotKey,
+                    deckRect: { x: startX, y: startY, w: slotR.width, h: slotR.height },
+                    slotRect: { x: slotR.left, y: slotR.top, w: slotR.width, h: slotR.height },
+                    animX: [0, dx * 0.5, dx],
+                    animY: [0, arcY, dy],
+                    animRotateY: [0, 90, 180],
+                    animScale: [1, 1, 1],
+                    faceScale,
+                    delay: i * 0.12,
+                  });
+                });
+
+                // Keep slots that are receiving a deal animation hidden during flight.
+                // Fallback slots (deck/slot element missing) pop in immediately with ↺.
+                setHiddenSlots(new Set(hiddenDealSlotKeys));
+
+                if (dealEntries.length > 0) {
+                  setDirectorDealingCards(dealEntries);
+                  // Stagger the card-draw flip sound to the half-rotation point of each deal.
+                  dealEntries.forEach((_, i) => {
+                    setTimeout(() => gameAudio.playCardDraw(), i * 120 + DEAL_FLIP_SOUND_MS);
+                  });
+                }
+
+                if (fallbackSlotKeys.length > 0) {
+                  setRefillingSlots(new Set(fallbackSlotKeys));
+                  gameAudio.playMarketRefill();
+                  setTimeout(() => setRefillingSlots(new Set()), 700);
+                }
               },
               playCardBurn: (index, total) => gameAudio.playCardBurn(index, total),
             }}
