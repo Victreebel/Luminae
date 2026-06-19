@@ -832,7 +832,7 @@ export default function GameBoard() {
       auraMap.set(cardId, { type: markers[cardId].type as MarkerType, delay: lead + i * 90 + 420 });
     });
     setStrikeAuraMap(auraMap);
-    setTimeout(() => setStrikeAuraMap(new Map()), lead + (ids.length - 1) * 90 + 420 + 3400);
+    setTimeout(() => setStrikeAuraMap(new Map()), lead + (ids.length - 1) * 90 + 420 + 1000);
     return strikeId;
   }, []);
 
@@ -1759,7 +1759,7 @@ export default function GameBoard() {
           // (SOURCE_PULSE_LEAD_MS) because we don't yet know whether a valid portal
           // rect will be found; the gate is refined inside onSettled once we know.
           const ARRIVAL_CAMERA_SETTLE_MS = 800;
-          const estimatedTotalMs = lead + (newlyMarked.length - 1) * 90 + 3820 + 400;
+          const estimatedTotalMs = lead + (newlyMarked.length - 1) * 90 + 1420 + 400;
           setAnimEndTime(ARRIVAL_CAMERA_SETTLE_MS + estimatedTotalMs);
           viewOrchestrator.prepare(procedure, () => {
             // Re-capture rects AFTER the centering scroll settles, so they reflect the
@@ -1806,8 +1806,8 @@ export default function GameBoard() {
             // Safety net: if ArrivalBrandStrike never reports done (unmount, manual scroll,
             // etc.), still release the camera. restore() is idempotent with the render-site
             // onDone, so a double call is a harmless no-op.
-            // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
-            const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 3820 + 400;
+            // Matches onDone timing: maxDelay + 1420ms (aura-complete), plus 400ms buffer.
+            const totalMs = usedLead + (newlyMarked.length - 1) * 90 + 1420 + 400;
             // Refine the drain gate now that we have the exact lead duration.
             setAnimEndTime(totalMs);
             setTimeout(() => viewOrchestrator.restore({ immediate: instant }), totalMs);
@@ -9121,8 +9121,8 @@ export default function GameBoard() {
               let totalStrikesMs = 0;
               for (const s of strikes) {
                 const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                // Per-set: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
-                totalStrikesMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
+                // Per-set: camera settle + lead + stagger + aura-complete (1420ms) + buffer (400ms)
+                totalStrikesMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 1420 + 400;
               }
               if (totalStrikesMs > 0) setAnimEndTime(totalStrikesMs);
               let nextAt = 0;
@@ -9186,8 +9186,8 @@ export default function GameBoard() {
                         capturedS.ids.forEach(id => next.delete(id));
                         return next;
                       });
-                      // Matches onDone timing: maxDelay + 3820ms (aura-complete), plus 400ms buffer.
-                      const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 3820 + 400;
+                      // Matches onDone timing: maxDelay + 1420ms (aura-complete), plus 400ms buffer.
+                      const totalMs = usedLead + (capturedS.ids.length - 1) * 90 + 1420 + 400;
                       setTimeout(() => viewOrchestrator.restore({ immediate: capturedS.instant }), totalMs);
                     }, { forceOrchestrate: true, ...(shouldInheritCompact ? { inheritCompact: true } : {}) });
                   } else {
@@ -9208,9 +9208,9 @@ export default function GameBoard() {
                     }
                   }
                 }, capturedOffset);
-                // Estimate full cycle: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
+                // Estimate full cycle: camera settle + lead + stagger + aura-complete (1420ms) + buffer (400ms)
                 const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                nextAt += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
+                nextAt += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 1420 + 400;
               }
             };
             // ── Return-flight gate ─────────────────────────────────────────────────
@@ -9278,8 +9278,8 @@ export default function GameBoard() {
                   let precomputedTotalMs = 0;
                   for (const s of augmentedStrikes) {
                     const lead = (s.srcMeta && s.srcLum && !s.instant) ? SOURCE_PULSE_LEAD_MS : 0;
-                    // Per-set: camera settle + lead + stagger + aura-complete (3820ms) + buffer (400ms)
-                    precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 3820 + 400;
+                    // Per-set: camera settle + lead + stagger + aura-complete (1420ms) + buffer (400ms)
+                    precomputedTotalMs += CAMERA_SETTLE_MS + lead + (s.ids.length - 1) * 90 + 1420 + 400;
                   }
                   postActivationStrikesTotalMsRef.current = precomputedTotalMs;
                   postActivationStrikesFirerRef.current = () => fireStrikeSet(augmentedStrikes);

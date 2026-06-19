@@ -18,7 +18,7 @@ import { SOURCE_PULSE_LEAD_MS as FX_SOURCE_PULSE_LEAD_MS } from '@/pages/game-lu
 //   t=SETTLE_ESTIMATE_MS + BEAT_HOLD_MS : beat overlay fades out; fireBrandStrikes()
 //                              called with lead=SOURCE_PULSE_LEAD_MS
 //   t=… + SOURCE_PULSE_LEAD_MS          : portal pulse fires; strike beams travel
-//   t=… + (N-1)*90 + 3820 + 400        : aura-complete; aftermath begins
+//   t=… + (N-1)*90 + 1420 + 400        : aura-complete; aftermath begins
 //   t=… + AFTERMATH_HOLD_MS             : onComplete called
 //
 // Invariants:
@@ -32,7 +32,7 @@ import { SOURCE_PULSE_LEAD_MS as FX_SOURCE_PULSE_LEAD_MS } from '@/pages/game-lu
 //   6. The minimum drain-gate estimate (N=1 card) exceeds the sum of
 //      SETTLE_ESTIMATE_MS + BEAT_HOLD_MS + SOURCE_PULSE_LEAD_MS + AFTERMATH_HOLD_MS
 
-const AURA_COMPLETE_MS = 3820;
+const AURA_COMPLETE_MS = 1420;
 const AURA_BUFFER_MS   = 400;
 const MIN_READ_MS      = 300;
 const MIN_AFTERMATH_MS = 200;
@@ -99,7 +99,7 @@ describe('CinderMandateBrandingDirector — cross-file SOURCE_PULSE_LEAD_MS pari
 //   SETTLE_ESTIMATE_MS + BEAT_HOLD_MS + SOURCE_PULSE_LEAD_MS + (0)*90 + AURA_COMPLETE_MS + AURA_BUFFER_MS + AFTERMATH_HOLD_MS
 //
 // The code also adds a 400 ms buffer: the total in the director is:
-//   SETTLE_ESTIMATE_MS + BEAT_HOLD_MS + lead + (N-1)*90 + 3820 + 400 + AFTERMATH_HOLD_MS
+//   SETTLE_ESTIMATE_MS + BEAT_HOLD_MS + lead + (N-1)*90 + 1420 + 400 + AFTERMATH_HOLD_MS
 //
 // We test N=1 (minimum card count) as the most constrained case.
 
@@ -112,8 +112,8 @@ describe('CinderMandateBrandingDirector — drain-gate minimum budget', () => {
     AURA_BUFFER_MS +
     AFTERMATH_HOLD_MS;
 
-  it('minimum drain-gate estimate (N=1) exceeds 5000 ms (sanity floor)', () => {
-    expect(minEstimate).toBeGreaterThan(5000);
+  it('minimum drain-gate estimate (N=1) exceeds 3000 ms (sanity floor)', () => {
+    expect(minEstimate).toBeGreaterThan(3000);
   });
 
   it('minimum drain-gate estimate (N=1) accounts for every named phase', () => {

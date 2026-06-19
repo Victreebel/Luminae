@@ -262,11 +262,11 @@ export function ArrivalBrandStrike({
 
   useEffect(() => {
     const maxDelay = strikes.length > 0 ? Math.max(...strikes.map(s => s.delay)) : 0;
-    // Aura crackles from beam-impact (+420ms) for 3200ms. Wait until it fully fades
+    // Aura crackles from beam-impact (+420ms) for 1000ms. Wait until it fully fades
     // before calling onDone so the camera does not restore while the aura is still
-    // visible. Add a 200ms buffer after the aura ends.
-    //   maxDelay + 420 (beam impact) + 3200 (aura duration) + 200 (buffer) = +3820
-    const totalMs = reducedMotion ? 350 : maxDelay + 3820;
+    // visible.
+    //   maxDelay + 420 (beam impact) + 1000 (aura duration) = +1420
+    const totalMs = reducedMotion ? 350 : maxDelay + 1420;
     const t = setTimeout(() => onDoneRef.current(), totalMs);
     return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -437,6 +437,32 @@ export function ArrivalBrandStrike({
               animate={{ opacity: [0, 1, 0] }}
               transition={{ duration: 0.22, delay: d + 0.41, ease: 'easeOut' }}
             />
+            {/* ── Glow halo — pulsing behind the brand symbol like the condemned badge ── */}
+            <motion.div
+              style={{
+                position: 'fixed',
+                left: s.rect.x + s.rect.w / 2,
+                top: s.rect.y + s.rect.h / 2,
+                translateX: '-50%',
+                translateY: '-50%',
+                width: s.rect.w * 0.6,
+                height: s.rect.w * 0.6,
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${(source?.primary ?? bm.brandColor)}22 0%, transparent 70%)`,
+                pointerEvents: 'none',
+              }}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{
+                opacity: [0, 0.65, 0.65, 0.65, 0.65, 0],
+                scale: [0.5, 1.3, 1.1, 1.3, 1.1, 0],
+              }}
+              transition={{
+                duration: 1.35,
+                delay: d + 0.41,
+                times: [0, 0.18, 0.30, 0.48, 0.62, 1],
+                ease: 'easeOut',
+              }}
+            />
             {/* ── Large brand symbol — stamps in at the audio peak (420ms) ── */}
             <motion.div
               style={{
@@ -492,7 +518,7 @@ export function BrandStrikeAura({
   return (
     <>
       {/* Electric border arc — impact flash then crackle-linger then dissipate.
-          Timing targets: flash ~200ms, linger ~900ms, dissipation ~600ms → 1.6s total. */}
+          Compressed to ~0.7s to fit the 1000ms post-strike window. */}
       <motion.div
         style={{
           position: 'absolute',
@@ -505,7 +531,7 @@ export function BrandStrikeAura({
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 1, 0.30, 0.75, 0.12, 0.50, 0.05, 0.22, 0] }}
         transition={{
-          duration: 1.6,
+          duration: 0.7,
           delay: d,
           times: [0, 0.05, 0.18, 0.30, 0.45, 0.58, 0.68, 0.80, 1.0],
           ease: 'linear',
@@ -523,7 +549,7 @@ export function BrandStrikeAura({
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 0.85, 0.18, 0.62, 0.05, 0.35, 0] }}
         transition={{
-          duration: 1.4,
+          duration: 0.6,
           delay: d + 0.02,
           times: [0, 0.05, 0.18, 0.32, 0.52, 0.72, 1.0],
           ease: 'linear',

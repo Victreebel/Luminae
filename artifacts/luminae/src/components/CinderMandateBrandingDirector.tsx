@@ -48,7 +48,7 @@ export const SETTLE_ESTIMATE_MS = 800;
 /**
  * Aftermath hold after the last brand-strike aura fades.
  * Short buffer so the camera restore fires promptly after the aura clears.
- * The aura window (3820 + 400 ms) already covers the crackle tail.
+ * The aura window (1420 + 400 ms) already covers the crackle tail.
  */
 export const AFTERMATH_HOLD_MS = 200;
 
@@ -155,7 +155,7 @@ export function CinderMandateBrandingDirector({
       BEAT_HOLD_MS +
       lead +
       (targetCardIds.length - 1) * 90 +
-      3820 + // aura-complete window
+      1420 + // aura-complete window
       400 +  // buffer
       AFTERMATH_HOLD_MS;
     actionsRef.current.setAnimEndTime(estimatedTotalMs);
@@ -214,7 +214,7 @@ export function CinderMandateBrandingDirector({
           // Reveal overlays + badges (badges use brandDelayMap timing)
           actionsRef.current.unsuppressMarkers(targetCardIds);
 
-          const strikeTotalMs = usedLead + (targetCardIds.length - 1) * 90 + 3820 + 400;
+          const strikeTotalMs = usedLead + (targetCardIds.length - 1) * 90 + 1420 + 400;
           // Refine the drain gate to the exact strike duration
           actionsRef.current.setAnimEndTime(strikeTotalMs + AFTERMATH_HOLD_MS);
 
