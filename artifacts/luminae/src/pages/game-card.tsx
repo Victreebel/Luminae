@@ -14,16 +14,150 @@ export function MiniGem({ color, size = 16 }: { color: GemKey; size?: number }) 
 }
 
 export function EminenceDiamond({ size = 10 }: { size?: number }) {
+  return <EminenceSigil size={size} />;
+}
+
+const ASCENSION_MARKS = Array.from({ length: 15 }, (_, index) => {
+  const stage = Math.floor(index / 5);
+  const mark = index % 5;
+  const radius = [39, 29, 19][stage];
+  const angle = ((-142 + mark * 71) * Math.PI) / 180;
+  return {
+    x: 50 + Math.cos(angle) * radius,
+    y: 53 + Math.sin(angle) * radius,
+    stage,
+  };
+});
+
+export function EminenceSigil({
+  size = 24,
+  value = 0,
+  target = 15,
+}: {
+  size?: number;
+  value?: number;
+  target?: number;
+}) {
+  const score = Math.max(0, Math.min(value, target));
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 10 10"
+      viewBox="0 0 100 100"
       style={{ display: 'inline-block', flexShrink: 0, verticalAlign: 'middle' }}
       aria-hidden="true"
     >
-      <polygon points="5,0.5 9.5,5 5,9.5 0.5,5" fill="white" />
+      <path d="M50 10 61 47 50 90 39 47 50 10Z" fill="#4D2D08" stroke="#D59C35" strokeWidth="2" />
+      <path d="M50 20 56 47 50 78 44 47 50 20Z" fill="#FFF0B1" opacity="0.92" />
+      <path d="M50 35 53 48 50 63 47 48 50 35Z" fill="#FFFFFF" />
+      {[39, 29, 19].map((radius, index) => (
+        <circle
+          key={radius}
+          cx="50"
+          cy="53"
+          r={radius}
+          fill="none"
+          stroke={index === 0 ? 'rgba(213,156,53,0.35)' : 'rgba(255,228,147,0.2)'}
+          strokeWidth="1"
+          strokeDasharray={index === 0 ? '2 4' : '1 4'}
+        />
+      ))}
+      {ASCENSION_MARKS.map((mark, index) => {
+        const filled = index < score;
+        const isStageEnd = index % 5 === 4;
+        return (
+          <circle
+            key={index}
+            cx={mark.x}
+            cy={mark.y}
+            r={isStageEnd ? 3.6 : 2.65}
+            fill={filled ? '#FFF1B3' : '#241A0C'}
+            stroke={filled ? '#E9B94B' : 'rgba(232,192,104,0.34)'}
+            strokeWidth={isStageEnd ? 1.15 : 0.9}
+          />
+        );
+      })}
     </svg>
+  );
+}
+
+export function EminenceProgress({
+  value,
+  target = 15,
+  variant = 'hud',
+}: {
+  value: number;
+  target?: number;
+  variant?: 'hud' | 'monument';
+}) {
+  const score = Math.max(0, Math.min(value, target));
+  const isNearVictory = score >= target - 3;
+  const isVictorious = score >= target;
+  const isMonument = variant === 'monument';
+
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-md border text-left ${isMonument ? 'min-w-[170px] px-3 py-2' : 'min-w-[106px] px-1.5 py-1'}`}
+      style={{
+        borderColor: isVictorious ? 'rgba(255,232,160,0.86)' : isNearVictory ? 'rgba(236,184,71,0.72)' : 'rgba(221,171,61,0.38)',
+        background: isVictorious
+          ? 'linear-gradient(135deg, rgba(124,82,18,0.76), rgba(38,26,9,0.92))'
+          : 'linear-gradient(135deg, rgba(90,59,17,0.45), rgba(8,7,18,0.72))',
+        boxShadow: isVictorious
+          ? '0 0 18px rgba(255,218,118,0.46), inset 0 1px 0 rgba(255,255,255,0.28)'
+          : isNearVictory
+            ? '0 0 13px rgba(231,175,52,0.26), inset 0 1px 0 rgba(255,255,255,0.14)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.1)',
+      }}
+    >
+      <motion.div
+        key={score}
+        initial={{ scale: 1.22, rotate: -14, opacity: 0.55 }}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 360, damping: 18 }}
+      >
+        <EminenceSigil size={isMonument ? 78 : 28} value={score} target={target} />
+      </motion.div>
+      <div className="min-w-0">
+        <div className="mb-0.5 text-[8px] font-bold uppercase text-[#f4cf78]/75">Ascension</div>
+        <div className="flex items-baseline gap-0.5 leading-none">
+          <motion.span
+            key={`score-${score}`}
+            initial={{ y: 5, opacity: 0, scale: 1.16 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 22 }}
+            className={`${isMonument ? 'text-3xl' : 'text-base'} font-serif font-black tabular-nums text-[#fff4c5]`}
+            style={{ textShadow: '0 0 10px rgba(255,222,133,0.62)' }}
+          >
+            {value}
+          </motion.span>
+          <span className={`${isMonument ? 'text-xs' : 'text-[9px]'} font-bold text-[#f4cf78]/75`}>/{target}</span>
+        </div>
+        <div className="mt-1.5 flex gap-1" aria-hidden="true">
+          {[0, 1, 2].map((stage) => {
+            const stageStart = stage * 5;
+            const filledInStage = Math.max(0, Math.min(5, score - stageStart));
+            return (
+              <div key={stage} className="flex gap-px">
+                {Array.from({ length: 5 }, (_, offset) => {
+                  const filled = offset < filledInStage;
+                  return (
+                    <span
+                      key={offset}
+                      className={`${isMonument ? 'h-1.5 w-2' : 'h-1 w-1.5'} rounded-full`}
+                      style={{
+                        background: filled ? '#F5C75F' : 'rgba(255,255,255,0.13)',
+                        boxShadow: filled ? '0 0 4px rgba(255,214,112,0.72)' : 'none',
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -238,7 +372,7 @@ export const ArtifactCardView = React.memo(function ArtifactCardView({
           </div>
           <div className="flex flex-wrap gap-0.5 justify-end">
             {CRYSTALS.map((c) => {
-              const baseCost = card.cost[c as keyof CrystalCounts];
+              const baseCost = card.cost[c as keyof CrystalCounts] ?? 0;
               if (baseCost <= 0) return null;
               const effCost = effectiveCosts !== undefined ? (effectiveCosts[c] ?? 0) : baseCost;
               const isReduced = effectiveCosts !== undefined && effCost < baseCost;

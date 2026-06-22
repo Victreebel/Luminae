@@ -2055,3 +2055,107 @@ export function LumiiTutorial({
     </>
   );
 }
+
+type GuidedHint = {
+  key: string;
+  text: string;
+};
+
+/**
+ * A real match companion, distinct from the scripted fast-forward tutorial
+ * above. It never blocks play: Lumii explains each system after the player
+ * encounters it in a normal game against the passive guided opponent.
+ */
+export function LumiiGuidedMatch({
+  state,
+  sessionPlayerId,
+}: {
+  state: GameState | null | undefined;
+  sessionPlayerId: string;
+}) {
+  const [hint, setHint] = useState<GuidedHint | null>(null);
+  const shownRef = useRef(new Set<string>());
+  const claimedCountRef = useRef<number | null>(null);
+
+  const showHint = useCallback((key: string, text: string) => {
+    if (shownRef.current.has(key)) return;
+    shownRef.current.add(key);
+    setHint({ key, text });
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      showHint(
+        "welcome",
+        "This is a full guided match. I will pass while you learn. Begin with the Affinity Well.",
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [showHint]);
+
+  useEffect(() => {
+    if (!state || !sessionPlayerId) return;
+    const action = state.lastAction as { type?: string; playerId?: string } | null;
+    if (action?.playerId === sessionPlayerId) {
+      if (action.type === "take_three_crystals" || action.type === "take_two_crystals") {
+        showHint(
+          "first-harness",
+          "Good. A Harness takes up to 3 different Affinities, or 2 of the same. The Forge shows what an Artifact still needs.",
+        );
+      } else if (action.type === "reserve_card") {
+        showHint(
+          "first-encryption",
+          "Encryption keeps that Artifact from rival civilizations. It waits in the Singularity panel and grants 1 Singularity to cover a missing Affinity.",
+        );
+      } else if (action.type === "purchase_card" || action.type === "purchase_reserved") {
+        showHint(
+          "first-forge",
+          "A forged Artifact stays with your civilization. Its bonus lowers matching future costs automatically.",
+        );
+      }
+    }
+
+    const player = state.players.find((candidate) => candidate.playerId === sessionPlayerId);
+    const claimedCount = player?.claimedLuminaryIds?.length ?? 0;
+    if (claimedCountRef.current === null) {
+      claimedCountRef.current = claimedCount;
+    } else if (claimedCount > claimedCountRef.current) {
+      claimedCountRef.current = claimedCount;
+      showHint(
+        "first-luminary",
+        "A Luminary has answered your civilization. Its living bonus joins your civilization on your next turn.",
+      );
+    }
+  }, [state?.version, state, sessionPlayerId, showHint]);
+
+  if (!hint) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key={hint.key}
+        initial={{ opacity: 0, y: -10, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -8, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="fixed right-4 top-20 z-[130] flex max-w-[min(21rem,calc(100vw-2rem))] items-start gap-2 rounded-lg border border-indigo-300/30 bg-[#09091c]/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-md"
+      >
+        <div className="shrink-0 pt-0.5">
+          <LumiiOrb size={38} speaking highlightZone={null} beatKey={hint.key} />
+        </div>
+        <div className="min-w-0 pr-4">
+          <div className="mb-1 text-[9px] font-bold uppercase text-indigo-200/65">Lumii</div>
+          <p className="text-xs leading-relaxed text-white/90">{hint.text}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setHint(null)}
+          aria-label="Dismiss Lumii's guidance"
+          className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-md text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </motion.div>
+    </AnimatePresence>
+  );
+}

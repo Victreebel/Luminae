@@ -228,6 +228,13 @@ export default defineConfig({
     port,
     strictPort: true,
     host: "0.0.0.0",
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/ws": {
+        target: "ws://localhost:8080",
+        ws: true,
+      },
+    },
     allowedHosts: true,
     // Vite's built-in client-side ping fires every `hmr.timeout` ms.
     // Default is 30 000 ms — exactly the Replit proxy idle timeout, so
@@ -241,6 +248,13 @@ export default defineConfig({
   preview: {
     port,
     host: "0.0.0.0",
+    proxy: {
+      "/api": "http://localhost:8080",
+      "/ws": {
+        target: "ws://localhost:8080",
+        ws: true,
+      },
+    },
     allowedHosts: true,
   },
 });

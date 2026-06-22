@@ -71,7 +71,7 @@ import backgroundCosmos from '@assets/generated_images/background_cosmos.png';
 import { LuminaryPanelArt, LuminaryArrivalCutscene, LuminaryIdleOverlay, AuraPreviewModal, getLuminaryVisuals, AURA_VARIANTS } from '@/lib/luminaryAssets';
 import { BOARD_CARD_W, BOARD_CARD_H } from '@/lib/constants';
 import { CardBackTier1, CardBackTier2, CardBackTier3 } from '@/components/ArtifactCardBack';
-import { LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
+import { LumiiGuidedMatch, LumiiTutorial, LUMII_BEAT_COUNT, LUMII_BEAT_GATES, LUMII_ZONE_HIGHLIGHTS, LUMII_ATTENTION, type LumiiAttentionState } from '@/components/LumiiTutorial';
 import { SwipeHintBar } from '@/components/SwipeHintBar';
 import { AffinityWellCells } from '@/components/AffinityWell';
 import { useFocusTrap } from '@/hooks/use-focus-trap';
@@ -83,7 +83,7 @@ import { KardashevScene } from '@/components/KardashevScene';
 import { getKardashevTier, getDominantAffinityPalette, getCivilizationName, type AffinityPalette } from '@/lib/kardashev';
 import { hexRgba, CRYSTALS, TIER_CIVILIZATION, GEM_KEY_TO_HEX, localTurnVariants, DEAL_ANIM_MS, DEAL_FLIP_SOUND_MS, INITIAL_TURN_GUARD_MS, ABRIDGED_SHRINK_MS, ANIM_LOCK_BUFFER_MS, ABRIDGED_ACTION_MS, FORGE_FULL_MS, RESERVED_FORGE_FULL_MS, FALLBACK_FLIP_ANIM_MS, FALLBACK_FLIP_CLEANUP_MS, CIPHER_TAIL_BUFFER_MS, GEM_BURST_STAGGER_MS, GEM_BURST_BASE_MS, GEM_BURST_SETTLE_MS, ABRIDGED_FORGE_LOCK_MS, CIPHER_GAME_TOTAL_MS, CIPHER_DEAL_FIRE_DELAY_MS, ARRIVAL_LABEL_LINGER_MS, RETURN_FLIGHT_MS } from './game-constants';
 import { PlayerAvatar, OpponentChip, RematchCountdown } from './game-player';
-import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond } from './game-card';
+import { MiniGem, BaseDialog, type EminenceBreakdown, ArtifactCardView, ForgedCardWithTooltip, QueuedOverlay, TurnCountdown, CardBack, EminenceDiamond, EminenceProgress } from './game-card';
 import { LuminaryCard } from './game-luminary';
 import { LuminaryOrderPicker } from './game-luminary-order-picker';
 import { CompactCardGhost } from './game-animation';
@@ -274,8 +274,12 @@ export default function GameBoard() {
 
   const isTutorial = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('tutorial') === '1';
-  }, []);
+    return params.get('tutorial') === '1' || session?.isTutorial === true;
+  }, [session?.isTutorial]);
+  const isGuidedMatch = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('guided') === '1' || session?.isGuidedMatch === true;
+  }, [session?.isGuidedMatch]);
   const [tutorialStep, setTutorialStep] = useState<number>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('tutorial') === '1' ? 0 : -1;
@@ -2114,16 +2118,13 @@ export default function GameBoard() {
   );
   const kardashevPalette = useMemo(() => getDominantAffinityPalette(myPurchasedCards), [myPurchasedCards]);
 
-  // At Tier 1, grow city-light count as Eminence climbs (0 → ~80 lights).
-  // At Tier 2, grow the Dyson swarm density as Eminence climbs.
-  // Win threshold is 15 lumens; fraction is clamped to [0, 1].
-  // Tiers 0 and 3 leave progressFraction undefined (KardashevScene defaults to 1).
+  // Civilization structure is earned through forging, not just through score.
+  // Each tier's artifacts add lasting visual capacity to the civilization scene.
   const kardashevProgressFraction = useMemo(() => {
-    if (kardashevTier !== 1 && kardashevTier !== 2) return undefined;
-    const WIN_THRESHOLD = 15;
-    const lumens = me?.lumens ?? 0;
-    return Math.min(1, Math.max(0, lumens / WIN_THRESHOLD));
-  }, [kardashevTier, me?.lumens]);
+    const tierCards = myPurchasedCards.filter((card) => card.tier === Math.max(1, kardashevTier));
+    const milestones = kardashevTier === 3 ? 3 : kardashevTier === 2 ? 4 : 5;
+    return Math.min(1, tierCards.length / milestones);
+  }, [kardashevTier, myPurchasedCards]);
 
   const opponentData = useMemo(() => {
     const players = state?.players;
@@ -4471,7 +4472,7 @@ export default function GameBoard() {
                 isArmed={armedLumIds.has(l.id)}
                 isFlashing={flashLumId === l.id}
                 burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
-                costMode={costMode}
+                costMode="printed"
               />
             );
           })}
@@ -5342,15 +5343,7 @@ export default function GameBoard() {
             </button>
           )}
         </div>
-        <div className="text-center">
-          <div
-            className="relative flex items-center justify-center gap-1.5"
-          >
-            <div className="text-4xl font-serif font-bold text-white">{me?.lumens}</div>
-            <EminenceDiamond size={22} />
-          </div>
-          <div className="text-xs text-white/50 mt-0.5">eminence</div>
-        </div>
+        <EminenceProgress value={me?.lumens ?? 0} variant="monument" />
       </div>
 
       {/* Reserved Cards */}
@@ -6107,7 +6100,13 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <header className="shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
+      <header className="relative shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
+        <span
+          className="pointer-events-none absolute left-4 font-serif text-base font-bold leading-none text-[#c5caff]"
+          style={{ textShadow: '0 0 16px rgba(151, 161, 255, 0.42)' }}
+        >
+          LUMINAe
+        </span>
         {/* Balancing spacer — same width as the menu button so chips stay centred */}
         <div className="w-8 shrink-0" />
 
@@ -6309,23 +6308,23 @@ export default function GameBoard() {
                 return (
                   <div className="flex items-center gap-1" title={`${projected} / 10 tokens held`}>
                     <Hand className="h-3.5 w-3.5" style={{ color: numColor }} />
-                    <span className="text-sm font-black font-mono tabular-nums leading-none" style={{ color: numColor }}>{projected}<span className="text-[10px] font-semibold" style={{ opacity: 0.5 }}>/10</span></span>
+                    <span className="text-sm font-black font-mono tabular-nums leading-none" style={{ color: '#a8c5ff' }}>{projected}<span className="text-[10px] font-semibold" style={{ opacity: 0.5 }}>/10</span></span>
                   </div>
                 );
               })()}
               <button
                 type="button"
                 onClick={() => setShowEminenceBreakdown(true)}
-                className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 hover:text-foreground transition-colors"
-                title="View eminence breakdown"
+                className="rounded-md transition-transform hover:scale-[1.03] active:scale-95"
+                title="Eminence: reach 15 to win. View score breakdown."
+                aria-label={`Eminence ${me.lumens} of 15. View score breakdown.`}
                 style={isTutorial && (tutorialStep === 9 || tutorialStep === 11) ? {
                   boxShadow: '0 0 0 2px rgba(168,85,247,0.6), 0 0 12px 3px rgba(168,85,247,0.22)',
                   borderRadius: 8,
                   transition: 'box-shadow 0.3s',
                 } : undefined}
               >
-                <span className="font-serif font-black text-lg text-white leading-none">{me.lumens}</span>
-                <EminenceDiamond size={12} />
+                <EminenceProgress value={me.lumens} />
               </button>
             </div>
           </div>
@@ -6741,19 +6740,9 @@ export default function GameBoard() {
                       {CRYSTALS.map((c) => {
                         const baseCost = selectedCard.card.cost[c as keyof CrystalCounts] ?? 0;
                         if (baseCost <= 0) return null;
-                        const effCosts = me ? computeCosts(selectedCard.card, costMode) as Record<string, number> : undefined;
-                        const effCost = effCosts ? (effCosts[c] ?? 0) : baseCost;
-                        const isReduced = effCosts !== undefined && effCost < baseCost;
-                        const bonusOnlyForSheet = me ? computeCosts(selectedCard.card, 'after_bonuses') as Record<string, number> | undefined : undefined;
-                        const bonusEffCostSheet = bonusOnlyForSheet ? (bonusOnlyForSheet[c] ?? baseCost) : effCost;
-                        const isFree = isReduced && effCost === 0 && bonusEffCostSheet === 0;
-                        // In needed_now mode, effCost=0 means player has enough right now — show ✓ visually only.
-                        const isNeededCovered = costMode === 'needed_now' && effCost === 0 && !isFree;
-                        const isGreen = isFree || isNeededCovered;
                         return (
-                          <div key={c} className={`flex items-center gap-0.5 rounded px-1 py-0.5 ${isGreen ? 'bg-green-900/70' : isReduced ? 'bg-blue-900/70' : 'bg-black/55'}`}>
-                            {isReduced && !isGreen && costMode !== 'needed_now' && <span className="text-[7px] font-bold text-white/40 line-through mr-0.5">{baseCost}</span>}
-                            <span className={`text-[10px] font-bold ${isGreen ? 'text-green-300' : isReduced ? 'text-blue-200' : 'text-white'}`}>{isGreen ? '✓' : effCost}</span>
+                          <div key={c} className="flex items-center gap-0.5 rounded bg-black/55 px-1 py-0.5">
+                            <span className="text-[10px] font-bold text-white">{baseCost}</span>
                             <MiniGem color={c} size={10} />
                           </div>
                         );
@@ -7272,32 +7261,18 @@ export default function GameBoard() {
                           const req = selectedLuminary.requirements[c as keyof CrystalCounts];
                           if (!req || req <= 0) return null;
                           const meta = GEM_META[c];
-                          const bonus = me?.bonuses?.[c as keyof CrystalCounts] ?? 0;
-                          const have = Math.min(req, bonus);
-                          const short = Math.max(0, req - bonus);
-                          const isMet = short === 0;
                           return (
                             <div
                               key={c}
-                              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ${isMet ? 'bg-green-900/40 text-green-300' : 'bg-black/40 text-white/80'}`}
-                              style={{ border: `1px solid ${isMet ? 'rgba(74,222,128,0.35)' : `${meta.glowHex}55`}`, boxShadow: isMet ? 'none' : `0 0 8px ${meta.glowHex}33` }}
+                              className="flex items-center gap-1.5 rounded-lg bg-black/40 px-2 py-1 text-xs font-semibold text-white/80"
+                              style={{ border: `1px solid ${meta.glowHex}55`, boxShadow: `0 0 8px ${meta.glowHex}33` }}
                             >
                               <MiniGem color={c} size={13} />
-                              <span style={{ color: isMet ? undefined : meta.glowHex, textShadow: isMet ? undefined : `0 0 6px ${meta.glowHex}88` }}>{req}</span>
+                              <span style={{ color: meta.glowHex, textShadow: `0 0 6px ${meta.glowHex}88` }}>{req}</span>
                               <span className="text-[9px] font-medium text-white/50">{meta.name}</span>
-                              {isMet && <span className="text-green-400 text-[9px] ml-0.5">✓</span>}
-                              {!isMet && bonus > 0 && <span className="text-white/35 text-[8px]">({have}/{req})</span>}
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
-                    {/* Eminence reward */}
-                    <div className="flex items-center gap-2 rounded-lg px-3 py-2 bg-amber-950/30 border border-amber-500/20">
-                      <EminenceDiamond size={16} />
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-400/60">Eminence Reward</span>
-                        <span className="flex items-center gap-1 text-sm font-bold text-amber-200">+{selectedLuminary.lumens}<EminenceDiamond size={10} /></span>
                       </div>
                     </div>
                     {/* Active Affinity Selector (sheet) — only for claimed Luminaries with multi-eligible affinities */}
@@ -7865,12 +7840,18 @@ export default function GameBoard() {
               transition={{ duration: 1.1, ease: 'easeOut' }}
             >
               <span className="text-3xl font-serif font-black text-amber-300 drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
-                Forged!
+                {purchaseBurst.lumens > 0 ? 'Eminence rises' : 'Forged!'}
               </span>
               {purchaseBurst.lumens > 0 && (
-                <span className="flex items-center gap-1.5 text-lg font-bold" style={{ color: GEM_META.flux.hex }}>
-                  <EminenceDiamond size={16} /> +{purchaseBurst.lumens} eminence
-                </span>
+                <motion.span
+                  initial={{ scale: 0.6, opacity: 0, y: 12 }}
+                  animate={{ scale: [0.6, 1.28, 1], opacity: 1, y: 0 }}
+                  transition={{ delay: 0.14, duration: 0.52, ease: 'easeOut' }}
+                  className="flex items-center gap-2 text-xl font-black uppercase"
+                  style={{ color: '#fff1bf', textShadow: '0 0 18px rgba(255,199,84,0.82)' }}
+                >
+                  <EminenceDiamond size={24} /> +{purchaseBurst.lumens} Eminence
+                </motion.span>
               )}
             </motion.div>
           </motion.div>
@@ -9772,6 +9753,12 @@ export default function GameBoard() {
           setTutorialStep={setTutorialStep}
           executeAction={executeAction}
           nudgeTick={tutorialNudgeTick}
+        />
+      )}
+      {isGuidedMatch && !isTutorial && (
+        <LumiiGuidedMatch
+          state={state}
+          sessionPlayerId={session?.playerId ?? ''}
         />
       )}
 

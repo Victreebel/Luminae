@@ -427,8 +427,13 @@ router.post("/rooms/:roomId/ai-players", async (req, res): Promise<void> => {
     return;
   }
 
-  const aiName = pickAiName(players.map((p) => p.name));
-  const aiAvatarId = pickAiAvatar(players.map((p) => p.avatarId).filter((v): v is string => !!v));
+  // Passive AI is reserved for the guided match. Lumii passes legally and
+  // never forges, leaving the player room to learn the board.
+  const isGuidedLumii = validatedDifficulty === "passive";
+  const aiName = isGuidedLumii ? "Lumii" : pickAiName(players.map((p) => p.name));
+  const aiAvatarId = isGuidedLumii
+    ? "oracle"
+    : pickAiAvatar(players.map((p) => p.avatarId).filter((v): v is string => !!v));
   const orderIndex = players.length;
   const aiSessionToken = `ai-${randomBytes(16).toString("hex")}`;
 

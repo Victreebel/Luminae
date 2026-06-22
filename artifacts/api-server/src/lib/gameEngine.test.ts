@@ -17,6 +17,7 @@ import {
   LUMINARIES,
 } from "./gameEngine.js";
 import type { GameStateData } from "./gameEngine.js";
+import { chooseAiAction } from "./aiPlayer.js";
 
 // ─── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -74,6 +75,24 @@ function claimLuminary(state: GameStateData, lumId: string) {
   const r = applyAction(state, player.playerId, { type: "purchase_card", cardId });
   if (!r.success) throw new Error(`claimLuminary purchase failed: ${r.error}`);
 }
+
+describe("guided Lumii", () => {
+  it("passes a legal turn without taking resources or building a civilization", () => {
+    const state = makeGame();
+    state.currentPlayerIndex = 1;
+    const lumii = state.players[1];
+    const bankBefore = { ...state.crystalBank };
+
+    const action = chooseAiAction(state, lumii.playerId, "passive");
+    expect(action).toEqual({ type: "pass" });
+
+    const result = applyAction(state, lumii.playerId, action);
+    expect(result.success).toBe(true);
+    expect(lumii.crystals).toEqual({ ruby: 0, sapphire: 0, emerald: 0, onyx: 0, pearl: 0, flux: 0 });
+    expect(lumii.purchasedCardIds).toEqual([]);
+    expect(state.crystalBank).toEqual(bankBefore);
+  });
+});
 
 // ─── Normalisation ────────────────────────────────────────────────────────────
 

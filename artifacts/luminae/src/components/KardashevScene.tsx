@@ -800,6 +800,7 @@ function drawGalaxy(
   palette: AffinityPalette,
   scale: number,
   secondaryColor: string | null,
+  progressFraction: number,
 ) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -819,7 +820,8 @@ function drawGalaxy(
 
   // Arm particles — outer arm (frac >= 0.65) uses secondary affinity color when dual
   const outerArmColor = secondaryColor ?? palette.secondary;
-  for (const p of points) {
+  const visiblePoints = Math.round(points.length * (0.22 + 0.78 * progressFraction));
+  for (const p of points.slice(0, visiblePoints)) {
     const ax = p.x * scale;
     const ay = p.y * scale;
     const frac = Math.sqrt(p.x * p.x + p.y * p.y) / 0.5;
@@ -920,11 +922,12 @@ function renderTier3(
   galaxyPoints: GalaxyPoint[],
   palette: AffinityPalette,
   secondaryColor: string | null,
+  progressFraction: number,
 ) {
   drawBackground(ctx, w, h, 3);
   drawStars(ctx, w, h, t, stars, 0.3);
   const scale = Math.min(w, h) * 0.47;
-  drawGalaxy(ctx, w * 0.5, h * 0.5, t, galaxyPoints, palette, scale, secondaryColor);
+  drawGalaxy(ctx, w * 0.5, h * 0.5, t, galaxyPoints, palette, scale, secondaryColor, progressFraction);
 }
 
 // ── Error boundary ───────────────────────────────────────────────────────────
@@ -1061,7 +1064,7 @@ function KardashevCanvas({ tier, palette, progressFraction = 1 }: KardashevCanva
       if (tier === 0) renderTier0(ctx, w, h, t, stars);
       else if (tier === 1) renderTier1(ctx, w, h, t, stars, patches, palette, secondaryColor, cityLights, clampedFraction);
       else if (tier === 2) renderTier2(ctx, w, h, t, stars, orbits, isMobileRef.current ? [] : dysonSwarm, palette, secondaryColor, clampedFraction, bornAtRef.current);
-      else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor);
+      else renderTier3(ctx, w, h, t, stars, galaxyPoints, palette, secondaryColor, clampedFraction);
 
       rafId = requestAnimationFrame(render);
     };

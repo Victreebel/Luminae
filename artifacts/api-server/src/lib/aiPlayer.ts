@@ -405,9 +405,10 @@ export function chooseAiAction(
   playerId: string,
   difficulty: AiDifficulty,
 ): ActionPayload {
-  // Passive placeholder: takes no affinities, forges no cards, cannot win.
+  // Guided Lumii always passes legally and never forges, so the player has a
+  // real opponent without competitive pressure or interference with the Well.
   if (difficulty === "passive") {
-    return { type: "take_three_crystals", crystals: {} };
+    return { type: "pass" };
   }
 
   const player = state.players.find((p) => p.playerId === playerId);

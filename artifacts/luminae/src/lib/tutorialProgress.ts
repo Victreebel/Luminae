@@ -9,6 +9,7 @@ export function setTutorialToken(token: string | null): void {
 const PROGRESS_KEY = "luminae_tutorial_progress";
 const PROGRESS_ID_KEY = "luminae_tutorial_progress_id";
 const PROGRESS_VERSION_KEY = "luminae_tutorial_progress_ver";
+const STATE_KEY = "luminae_tutorial_state";
 const SEEN_KEY = "luminae_tutorial_seen";
 const COMPLETED_KEY = "luminae_tutorial_completed";
 const INTRO_SEEN_KEY = "luminae_intro_seen_beat";
@@ -66,6 +67,25 @@ export function saveTutorialProgressId(id: string): void {
   }
 }
 
+/** Saves the guided game's actual board state, not only its chapter number. */
+export function saveTutorialState(state: unknown): void {
+  try {
+    localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  } catch {
+  }
+}
+
+export function loadTutorialState<T>(): T | null {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" ? parsed as T : null;
+  } catch {
+    return null;
+  }
+}
+
 export function loadTutorialProgressId(): string | null {
   try {
     return localStorage.getItem(PROGRESS_ID_KEY);
@@ -79,6 +99,7 @@ export function clearTutorialProgress(): void {
     localStorage.removeItem(PROGRESS_KEY);
     localStorage.removeItem(PROGRESS_ID_KEY);
     localStorage.removeItem(PROGRESS_VERSION_KEY);
+    localStorage.removeItem(STATE_KEY);
   } catch {
   }
 }
