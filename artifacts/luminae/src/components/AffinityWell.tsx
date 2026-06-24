@@ -15,7 +15,7 @@ import type { LumiiAttentionState } from '@/components/LumiiTutorial';
 const CRYSTALS: GemKey[] = GEM_KEYS;
 
 // Cell width used for all six modules
-const CELL_W = 64;
+const CELL_W = 'var(--well-cell-w, 64px)';
 
 export interface AffinityWellCellsProps {
   me: GamePlayerState;
@@ -99,7 +99,7 @@ function HorizontalWellMeter({
   }, [filledCount]);
 
   return (
-    <div style={{ display: 'flex', gap: 2, alignItems: 'center', position: 'relative' }}>
+    <div style={{ display: 'flex', gap: 'var(--well-pip-gap, 2px)', alignItems: 'center', position: 'relative' }}>
       {Array.from({ length: capacity }, (_, i) => {
         const filled = pipFilled[i] ?? false;
         return (
@@ -112,7 +112,7 @@ function HorizontalWellMeter({
             }
             transition={{ duration: 0.14, ease: 'easeOut' }}
             style={{
-              width: 4, height: 4, borderRadius: 2, flexShrink: 0,
+              width: 'var(--well-pip-size, 4px)', height: 'var(--well-pip-size, 4px)', borderRadius: 'var(--well-pip-radius, 2px)', flexShrink: 0,
               border: filled ? `1px solid ${glowHex}60` : `1px solid ${glowHex}22`,
               boxShadow: filled ? `0 0 4px ${glowHex}55` : 'none',
             }}
@@ -338,7 +338,7 @@ export function AffinityWellCells({
   }, [me.bonuses, state, sessionPlayerId]);
 
   return (
-    <div className="relative">
+    <div className="affinity-well-cells relative">
 
       {/* Planning-mode banner — floats above the rail */}
       <AnimatePresence>
@@ -376,7 +376,7 @@ export function AffinityWellCells({
         <div
           style={{
             position: 'absolute', right: 0, top: 0, bottom: 0,
-            width: 36, zIndex: 2, pointerEvents: 'none',
+            width: 'var(--well-edge-fade-w, 36px)', zIndex: 2, pointerEvents: 'none',
             background: 'linear-gradient(to left, rgba(4,2,14,0.92), transparent)',
           }}
         />
@@ -415,8 +415,8 @@ export function AffinityWellCells({
           <div
             style={{
               display: 'flex',
-              gap: 4,
-              padding: '4px 8px 6px 6px',
+              gap: 'var(--well-rail-gap, 4px)',
+              padding: 'var(--well-rail-pad, 4px 8px 6px 6px)',
               width: 'max-content',
             }}
           >
@@ -481,11 +481,13 @@ export function AffinityWellCells({
               return (
                 <div
                   key={c}
-                  style={{ display: 'flex', flexDirection: 'column', gap: 2, width: CELL_W, flexShrink: 0 }}
+                  className="affinity-well-cell"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--well-cell-stack-gap, 2px)', width: CELL_W, flexShrink: 0 }}
                 >
                   {/* ── Main cell button ── */}
                   <motion.button
                     type="button"
+                    className="affinity-well-cell-button"
                     // Singularity always tappable; others need selectable + non-empty bank
                     disabled={isFlux ? false : !selectable && !showForgedLink || bankEmpty && !showForgedLink}
                     {...(isFlux ? { 'data-singularity-well': '' } : { 'data-affinity-well': c })}
@@ -514,12 +516,12 @@ export function AffinityWellCells({
                     }}
                     style={{
                       width: CELL_W,
-                      borderRadius: 10,
-                      padding: '6px 3px 5px',
+                      borderRadius: 'var(--well-cell-radius, 10px)',
+                      padding: 'var(--well-cell-pad, 6px 3px 5px)',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 2,
+                      gap: 'var(--well-cell-gap, 2px)',
                       cursor:
                         isFlux || selectable || showForgedLink
                           ? 'pointer'
@@ -594,7 +596,7 @@ export function AffinityWellCells({
                             key={fullFlashKeys[c]}
                             style={{
                               position: 'absolute', inset: 0,
-                              borderRadius: 10,
+                              borderRadius: 'var(--well-cell-radius, 10px)',
                               border: '1.5px solid #f59e0b',
                               boxShadow: '0 0 8px #f59e0b66, inset 0 0 8px #f59e0b1a',
                               pointerEvents: 'none',
@@ -619,7 +621,7 @@ export function AffinityWellCells({
                     {/* ── Affinity name label ── */}
                     <span
                       style={{
-                        fontSize: 6.5,
+                        fontSize: 'var(--well-label-size, 6.5px)',
                         fontWeight: 700,
                         letterSpacing: '0.07em',
                         textTransform: 'uppercase',
@@ -640,7 +642,7 @@ export function AffinityWellCells({
                     <motion.div
                       animate={isFlux ? tokenControls : (gemTokenControls[c] ?? {})}
                       style={{
-                        position: 'relative', width: 32, height: 32,
+                        position: 'relative', width: 'var(--well-icon-size, 32px)', height: 'var(--well-icon-size, 32px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         transformOrigin: 'center',
                       }}
@@ -648,7 +650,7 @@ export function AffinityWellCells({
                       <AffinityEmblem
                         color={c}
                         className="object-contain pointer-events-none select-none"
-                        style={{ width: 32, height: 32, filter: emblemFilter }}
+                        style={{ width: 'var(--well-icon-size, 32px)', height: 'var(--well-icon-size, 32px)', filter: emblemFilter }}
                       />
                       {/* Forge-cost deduction badge */}
                       {forgeDed > 0 && (
@@ -656,7 +658,7 @@ export function AffinityWellCells({
                           className="lum-aw-forge-pulse"
                           style={{
                             position: 'absolute', top: -2, right: -2, zIndex: 10,
-                            fontSize: 8, fontWeight: 900, lineHeight: 1,
+                            fontSize: 'var(--well-badge-size, 8px)', fontWeight: 900, lineHeight: 1,
                             padding: '1px 3px', borderRadius: 999,
                             background: '#1a0505', color: '#f87171',
                             border: '1px solid #ef444455',
@@ -677,7 +679,7 @@ export function AffinityWellCells({
                         /* Singularity: owned flux count */
                         <span
                           style={{
-                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            fontSize: 'var(--well-count-size, 16px)', fontWeight: 900, lineHeight: 1,
                             color: gems > 0 ? '#fff' : `${meta.hex}28`,
                             textShadow: gems > 0 ? `0 0 8px ${meta.glowHex}` : 'none',
                           }}
@@ -689,7 +691,7 @@ export function AffinityWellCells({
                         <span
                           className="lum-aw-forge-pulse"
                           style={{
-                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            fontSize: 'var(--well-count-size, 16px)', fontWeight: 900, lineHeight: 1,
                             color: '#f59e0b',
                             textShadow: '0 0 10px #f59e0bcc',
                           }}
@@ -701,7 +703,7 @@ export function AffinityWellCells({
                         <span
                           className="lum-aw-pending-pulse"
                           style={{
-                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            fontSize: 'var(--well-count-size, 16px)', fontWeight: 900, lineHeight: 1,
                             color: meta.glowHex,
                             textShadow: `0 0 10px ${meta.glowHex}cc, 0 0 22px ${meta.glowHex}44`,
                           }}
@@ -712,7 +714,7 @@ export function AffinityWellCells({
                         /* Normal owned count */
                         <span
                           style={{
-                            fontSize: 16, fontWeight: 900, lineHeight: 1,
+                            fontSize: 'var(--well-count-size, 16px)', fontWeight: 900, lineHeight: 1,
                             color: hasContent ? '#fff' : `${meta.hex}28`,
                             textShadow: hasContent ? `0 0 7px ${meta.glowHex}` : 'none',
                           }}
@@ -733,7 +735,7 @@ export function AffinityWellCells({
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ duration: 0.4, ease: 'easeOut' }}
                           style={{
-                            fontSize: 8,
+                            fontSize: 'var(--well-badge-size, 8px)',
                             fontWeight: 800,
                             lineHeight: 1,
                             padding: '1px 3px',
@@ -761,7 +763,7 @@ export function AffinityWellCells({
                       >
                         <span
                           style={{
-                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                            fontSize: 'var(--well-sub-label-size, 5.5px)', fontWeight: 700, lineHeight: 1,
                             color: `${meta.glowHex}42`,
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
@@ -787,10 +789,10 @@ export function AffinityWellCells({
                           color: reservedCount > 0 ? `${meta.glowHex}cc` : `${meta.glowHex}30`,
                           transition: 'color 0.2s',
                         }}>
-                          <span style={{ fontSize: 8, fontWeight: 800, lineHeight: 1 }}>
+                          <span style={{ fontSize: 'var(--well-badge-size, 8px)', fontWeight: 800, lineHeight: 1 }}>
                             {reservedCount}/3
                           </span>
-                          <span style={{ width: 11, height: 11, flexShrink: 0, display: 'inline-flex' }}>
+                          <span style={{ width: 'var(--well-cipher-size, 11px)', height: 'var(--well-cipher-size, 11px)', flexShrink: 0, display: 'inline-flex' }}>
                             <CipherSigil affinityHex={reservedCount > 0 ? meta.glowHex : `${meta.glowHex}50`} id={99} />
                           </span>
                         </div>
@@ -809,7 +811,7 @@ export function AffinityWellCells({
                       >
                         <span
                           style={{
-                            fontSize: 5.5, fontWeight: 700, lineHeight: 1,
+                            fontSize: 'var(--well-sub-label-size, 5.5px)', fontWeight: 700, lineHeight: 1,
                             color: `${meta.glowHex}42`,
                             letterSpacing: '0.06em',
                             textTransform: 'uppercase',
@@ -847,8 +849,10 @@ export function AffinityWellCells({
                         pointerEvents: canTake2 ? 'auto' : 'none',
                         visibility: canTake2 ? 'visible' : 'hidden',
                         width: CELL_W,
+                        height: 'var(--well-take2-h, auto)',
+                        paddingBlock: 'var(--well-take2-pad-y, 0.25rem)',
                       }}
-                      className={`text-[9px] font-bold rounded-md py-1 leading-none transition-colors ${
+                      className={`affinity-well-take2 text-[9px] font-bold rounded-md leading-none transition-colors ${
                         isPlanningMode
                           ? 'text-amber-400/80 bg-amber-400/10 active:bg-amber-400/25'
                           : 'text-primary/80 bg-primary/10 active:bg-primary/25'

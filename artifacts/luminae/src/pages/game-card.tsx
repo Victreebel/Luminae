@@ -17,17 +17,7 @@ export function EminenceDiamond({ size = 10 }: { size?: number }) {
   return <EminenceSigil size={size} />;
 }
 
-const ASCENSION_MARKS = Array.from({ length: 15 }, (_, index) => {
-  const stage = Math.floor(index / 5);
-  const mark = index % 5;
-  const radius = [39, 29, 19][stage];
-  const angle = ((-142 + mark * 71) * Math.PI) / 180;
-  return {
-    x: 50 + Math.cos(angle) * radius,
-    y: 53 + Math.sin(angle) * radius,
-    stage,
-  };
-});
+const SEAL_STAGES = [0, 1, 2] as const;
 
 export function EminenceSigil({
   size = 24,
@@ -39,6 +29,7 @@ export function EminenceSigil({
   target?: number;
 }) {
   const score = Math.max(0, Math.min(value, target));
+  const stageValue = target / SEAL_STAGES.length;
   return (
     <svg
       width={size}
@@ -47,36 +38,33 @@ export function EminenceSigil({
       style={{ display: 'inline-block', flexShrink: 0, verticalAlign: 'middle' }}
       aria-hidden="true"
     >
-      <path d="M50 10 61 47 50 90 39 47 50 10Z" fill="#4D2D08" stroke="#D59C35" strokeWidth="2" />
-      <path d="M50 20 56 47 50 78 44 47 50 20Z" fill="#FFF0B1" opacity="0.92" />
-      <path d="M50 35 53 48 50 63 47 48 50 35Z" fill="#FFFFFF" />
-      {[39, 29, 19].map((radius, index) => (
-        <circle
-          key={radius}
-          cx="50"
-          cy="53"
-          r={radius}
-          fill="none"
-          stroke={index === 0 ? 'rgba(213,156,53,0.35)' : 'rgba(255,228,147,0.2)'}
-          strokeWidth="1"
-          strokeDasharray={index === 0 ? '2 4' : '1 4'}
-        />
-      ))}
-      {ASCENSION_MARKS.map((mark, index) => {
-        const filled = index < score;
-        const isStageEnd = index % 5 === 4;
+      <defs>
+        <linearGradient id="eminence-seal-metal" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFF6D3" />
+          <stop offset="0.42" stopColor="#E7BA58" />
+          <stop offset="1" stopColor="#71440D" />
+        </linearGradient>
+        <linearGradient id="eminence-seal-core" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="0.45" stopColor="#FFF0A8" />
+          <stop offset="1" stopColor="#CA7B20" />
+        </linearGradient>
+      </defs>
+      <path d="M50 4 75 27 69 79 50 96 31 79 25 27 50 4Z" fill="#100B12" stroke="url(#eminence-seal-metal)" strokeWidth="2.5" />
+      <path d="M50 12 64 30 59 77 50 86 41 77 36 30 50 12Z" fill="none" stroke="rgba(255,239,180,0.35)" strokeWidth="1" />
+      <path d="M50 17 58 31 50 45 42 31 50 17Z" fill="#24170B" stroke="#DFA847" strokeWidth="1" />
+      {SEAL_STAGES.map((stage) => {
+        const stageProgress = Math.max(0, Math.min(1, (score - stage * stageValue) / stageValue));
+        const y = 39 + stage * 15;
         return (
-          <circle
-            key={index}
-            cx={mark.x}
-            cy={mark.y}
-            r={isStageEnd ? 3.6 : 2.65}
-            fill={filled ? '#FFF1B3' : '#241A0C'}
-            stroke={filled ? '#E9B94B' : 'rgba(232,192,104,0.34)'}
-            strokeWidth={isStageEnd ? 1.15 : 0.9}
-          />
+          <g key={stage} opacity={0.28 + stageProgress * 0.72}>
+            <path d={`M50 ${y - 7} 60 ${y} 50 ${y + 7} 40 ${y} 50 ${y - 7}Z`} fill={stageProgress > 0 ? 'url(#eminence-seal-core)' : '#21170F'} stroke={stageProgress > 0 ? '#FFF0AE' : 'rgba(222,168,71,0.46)'} strokeWidth="1" />
+            <path d={`M31 ${y}H40M60 ${y}H69`} stroke={stageProgress > 0 ? '#F9D77A' : 'rgba(222,168,71,0.36)'} strokeWidth="1.4" strokeLinecap="round" />
+          </g>
         );
       })}
+      <circle cx="50" cy="31" r="3.2" fill={score > 0 ? '#FFF7D1' : '#2A1B0D'} stroke="#E8B84F" strokeWidth="1.2" />
+      <path d="M25 27 16 35M75 27 84 35M31 79 23 85M69 79 77 85" stroke="rgba(239,204,116,0.64)" strokeWidth="1.35" strokeLinecap="round" />
     </svg>
   );
 }
@@ -97,17 +85,19 @@ export function EminenceProgress({
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-md border text-left ${isMonument ? 'min-w-[170px] px-3 py-2' : 'min-w-[106px] px-1.5 py-1'}`}
+      className={`eminence-progress flex items-center text-left ${isMonument ? 'eminence-progress--monument min-w-[170px] gap-3 px-3 py-2' : 'eminence-progress--hud gap-1 px-0.5 py-0.5'}`}
       style={{
-        borderColor: isVictorious ? 'rgba(255,232,160,0.86)' : isNearVictory ? 'rgba(236,184,71,0.72)' : 'rgba(221,171,61,0.38)',
+        borderColor: isVictorious ? 'rgba(255,232,160,0.86)' : isNearVictory ? 'rgba(236,184,71,0.72)' : 'rgba(221,171,61,0.28)',
         background: isVictorious
           ? 'linear-gradient(135deg, rgba(124,82,18,0.76), rgba(38,26,9,0.92))'
-          : 'linear-gradient(135deg, rgba(90,59,17,0.45), rgba(8,7,18,0.72))',
+          : isMonument
+            ? 'linear-gradient(135deg, rgba(90,59,17,0.45), rgba(8,7,18,0.72))'
+            : 'transparent',
         boxShadow: isVictorious
           ? '0 0 18px rgba(255,218,118,0.46), inset 0 1px 0 rgba(255,255,255,0.28)'
           : isNearVictory
             ? '0 0 13px rgba(231,175,52,0.26), inset 0 1px 0 rgba(255,255,255,0.14)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.1)',
+            : isMonument ? 'inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
       }}
     >
       <motion.div
@@ -116,10 +106,10 @@ export function EminenceProgress({
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 360, damping: 18 }}
       >
-        <EminenceSigil size={isMonument ? 78 : 28} value={score} target={target} />
+        <EminenceSigil size={isMonument ? 78 : 31} value={score} target={target} />
       </motion.div>
       <div className="min-w-0">
-        <div className="mb-0.5 text-[8px] font-bold uppercase text-[#f4cf78]/75">Ascension</div>
+        <div className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-[#f4cf78]/75">Eminence</div>
         <div className="flex items-baseline gap-0.5 leading-none">
           <motion.span
             key={`score-${score}`}
@@ -133,29 +123,7 @@ export function EminenceProgress({
           </motion.span>
           <span className={`${isMonument ? 'text-xs' : 'text-[9px]'} font-bold text-[#f4cf78]/75`}>/{target}</span>
         </div>
-        <div className="mt-1.5 flex gap-1" aria-hidden="true">
-          {[0, 1, 2].map((stage) => {
-            const stageStart = stage * 5;
-            const filledInStage = Math.max(0, Math.min(5, score - stageStart));
-            return (
-              <div key={stage} className="flex gap-px">
-                {Array.from({ length: 5 }, (_, offset) => {
-                  const filled = offset < filledInStage;
-                  return (
-                    <span
-                      key={offset}
-                      className={`${isMonument ? 'h-1.5 w-2' : 'h-1 w-1.5'} rounded-full`}
-                      style={{
-                        background: filled ? '#F5C75F' : 'rgba(255,255,255,0.13)',
-                        boxShadow: filled ? '0 0 4px rgba(255,214,112,0.72)' : 'none',
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+        {isMonument && <div className="mt-1 text-[9px] font-medium text-[#f7d888]/65">Complete the seal to win.</div>}
       </div>
     </div>
   );

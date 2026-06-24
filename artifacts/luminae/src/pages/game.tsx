@@ -353,6 +353,21 @@ export default function GameBoard() {
   const [showActiveLuminaries, setShowActiveLuminaries] = useState(true);
   const [forgedView, setForgedView] = useState<'cards' | 'timeline'>('cards');
   const [marketCompact, setMarketCompact] = useState(false);
+  const [isLandscapeCockpit, setIsLandscapeCockpit] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 940px) and (max-height: 520px) and (orientation: landscape)').matches;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 940px) and (max-height: 520px) and (orientation: landscape)');
+    const update = () => setIsLandscapeCockpit(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    if (isLandscapeCockpit) setMarketCompact(true);
+  }, [isLandscapeCockpit]);
   const [deckPosition, setDeckPosition] = useState<'left' | 'right'>(() => {
     const stored = getAccountSession();
     const key = stored ? `luminae_deck_pos_${stored.account.id}` : 'luminae_deck_pos';
@@ -4307,6 +4322,9 @@ export default function GameBoard() {
     : false;
   const safePlayers = state.players ?? [];
   const safeLuminaries = state.luminaries ?? [];
+  const showDevCutscenePanel = import.meta.env.DEV
+    && typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('debugCutscene') === '1';
 
 
   const dismissUndoHint = () => {
@@ -4332,7 +4350,7 @@ export default function GameBoard() {
   const BoardTabMain = () => {
     return (
     <div
-      className="flex flex-col gap-0 pb-6"
+      className="board-tab-main flex flex-col gap-0 pb-6"
       style={isTutorial && tutorialStep >= 0 && tutorialStep < LUMII_BEAT_COUNT
         ? { paddingBottom: 'var(--tutorial-panel-height, 0px)' }
         : undefined}
@@ -4378,11 +4396,11 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ═══════════════════════════════════════════════════════
-          THE PARTICLE HORIZON
+          THE TERMINUS
           ═══════════════════════════════════════════════════════ */}
       <div
         data-tutorial-zone="luminaries"
-        className="relative"
+        className="board-terminus relative"
         style={tutorialZone === 'luminaries' ? {
           boxShadow: tutorialAttention === 'action'
             ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
@@ -4390,11 +4408,9 @@ export default function GameBoard() {
           transition: 'box-shadow 0.3s',
         } : undefined}
       >
-        {/* Zone background — deep cosmic gradient */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'linear-gradient(180deg, rgba(15,8,40,0.55) 0%, rgba(8,5,28,0.40) 100%)',
-          borderBottom: '1px solid rgba(120,80,220,0.22)',
-        }} />
+        <div aria-hidden="true" className="board-terminus-space" />
+        <div aria-hidden="true" className="board-terminus-edge" />
+        <div aria-hidden="true" className="board-terminus-threshold" />
         {/* Starfield overlay dots */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.35 }}>
           {[...Array(18)].map((_, i) => (
@@ -4410,8 +4426,9 @@ export default function GameBoard() {
           ))}
         </div>
         {/* Zone header */}
-        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2.5">
+        <div className="board-terminus-header relative flex items-center gap-3 px-4 pt-3 pb-1.5">
+          <div className="board-terminus-rail board-terminus-rail--left" />
+          <div className="board-terminus-title flex items-center gap-2.5">
             <svg width="10" height="18" viewBox="0 0 10 18" fill="none" className="shrink-0" style={{ color: '#C4AAFF', opacity: 0.85 }}>
               <polygon points="5,0 1.5,4.5 8.5,4.5" fill="currentColor" />
               <polygon points="1.5,4.5 2.2,15.5 7.8,15.5 8.5,4.5" fill="currentColor" />
@@ -4424,11 +4441,12 @@ export default function GameBoard() {
                 textShadow: '0 0 24px rgba(180,140,255,0.5), 0 1px 0 rgba(0,0,0,0.8)',
                 letterSpacing: '0.06em',
               }}>Terminus</span>
+              <span className="board-terminus-subtitle">Edge of the observable universe</span>
             </div>
-            <div className="flex-1 h-[1px] w-8" style={{ background: 'linear-gradient(90deg, rgba(160,120,255,0.5), transparent)' }} />
           </div>
+          <div className="board-terminus-rail board-terminus-rail--right" />
         </div>
-        <div data-luminary-scroll className="relative flex gap-3 overflow-x-auto pb-3 px-4 no-scrollbar">
+        <div data-luminary-scroll className="board-terminus-cards relative flex overflow-x-auto no-scrollbar">
           {safeLuminaries.map(l => {
             const claimedByPlayer = safePlayers.find(p => (p.claimedLuminaryIds ?? []).includes(l.id)) ?? null;
             const claimedByNames = claimedByPlayer ? [claimedByPlayer.playerName] : [];
@@ -4454,26 +4472,40 @@ export default function GameBoard() {
             // slot keeps rendering the sealed panel until onComplete fires.
             const visibleClaimedByPlayer = isArrivalInProgress ? null : claimedByPlayer;
             const visibleClaimedByNames  = isArrivalInProgress ? []   : claimedByNames;
+            const edgeKey = ((serverLumAffinity?.activeAffinity as GemKey | undefined)
+              ?? (GEM_KEYS.find(k => k !== 'flux' && (l.requirements[k as GemKey] ?? 0) > 0) as GemKey | undefined)
+              ?? 'flux') as GemKey;
+            const edgeMeta = GEM_META[edgeKey];
+            const isAwakened = !!visibleClaimedByPlayer;
 
             return (
-              <LuminaryCard
+              <div
                 key={l.id}
-                luminary={l}
-                claimedByNames={visibleClaimedByNames}
-                isReleased={claimedThisSession.includes(l.id)}
-                luminaryAffinity={serverLumAffinity}
-                claimedByPlayer={visibleClaimedByPlayer}
-                isLive={isArrivalInProgress ? false : isLive}
-                canToggle={isOwnedByMe && !!serverLumAffinity && (serverLumAffinity.eligibleAffinities?.length ?? 0) >= 2 && turnCount > serverLumAffinity.summonedAtTurnCount}
-                onToggle={(affinity) => executeAction({ type: 'toggle_luminary_affinity', luminaryId: l.id, affinity: affinity as ActionRequestAffinity })}
-                playerBonuses={me?.bonuses}
-                isMyTurn={isMyTurn}
-                onOpenSheet={() => setSelectedLuminary(l)}
-                isArmed={armedLumIds.has(l.id)}
-                isFlashing={flashLumId === l.id}
-                burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
-                costMode="printed"
-              />
+                className={`board-terminus-card-stage ${isAwakened ? 'board-terminus-card-stage--awakened' : 'board-terminus-card-stage--dormant'}`}
+                data-state-label={isAwakened ? 'Breakthrough' : 'Dormant'}
+                style={{
+                  '--terminus-affinity': edgeMeta.glowHex,
+                  '--terminus-affinity-core': edgeMeta.hex,
+                } as React.CSSProperties}
+              >
+                <LuminaryCard
+                  luminary={l}
+                  claimedByNames={visibleClaimedByNames}
+                  isReleased={claimedThisSession.includes(l.id)}
+                  luminaryAffinity={serverLumAffinity}
+                  claimedByPlayer={visibleClaimedByPlayer}
+                  isLive={isArrivalInProgress ? false : isLive}
+                  canToggle={isOwnedByMe && !!serverLumAffinity && (serverLumAffinity.eligibleAffinities?.length ?? 0) >= 2 && turnCount > serverLumAffinity.summonedAtTurnCount}
+                  onToggle={(affinity) => executeAction({ type: 'toggle_luminary_affinity', luminaryId: l.id, affinity: affinity as ActionRequestAffinity })}
+                  playerBonuses={me?.bonuses}
+                  isMyTurn={isMyTurn}
+                  onOpenSheet={() => setSelectedLuminary(l)}
+                  isArmed={armedLumIds.has(l.id)}
+                  isFlashing={flashLumId === l.id}
+                  burnCount={l.id === 'lum_bloom' ? (state.burnPile ?? []).length : undefined}
+                  costMode="printed"
+                />
+              </div>
             );
           })}
         </div>
@@ -4485,7 +4517,7 @@ export default function GameBoard() {
       <div
         data-tutorial-zone="market"
         data-market-section="true"
-        className="relative"
+        className="board-forge relative"
         style={(tutorialZone === 'market' || tutorialZone === 'filters') ? {
           boxShadow: tutorialAttention === 'action'
             ? '0 0 0 2px rgba(168,85,247,0.78), 0 0 38px 12px rgba(168,85,247,0.22)'
@@ -4513,8 +4545,9 @@ export default function GameBoard() {
             />
           ))}
         </div>
+        <div aria-hidden="true" className="board-forge-frame" />
         {/* Zone header */}
-        <div className="relative flex items-center justify-between px-4 pt-3 pb-2">
+        <div className="board-forge-header relative flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2.5">
             <Hammer className="h-4 w-4 shrink-0" style={{ color: '#D4A84B', opacity: 0.85 }} />
             <div className="flex flex-col leading-none">
@@ -4565,10 +4598,11 @@ export default function GameBoard() {
             )}
             <button
               type="button"
-              onClick={() => { if (isCameraControlled) return; viewOrchestrator.onManualToggle(); setMarketCompact(v => !v); }}
-              className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'}`}
-              title={marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
+              onClick={() => { if (isCameraControlled || isLandscapeCockpit) return; viewOrchestrator.onManualToggle(); setMarketCompact(v => !v); }}
+              className={`flex items-center gap-1 rounded px-1.5 py-1 transition-colors ${marketCompact ? 'text-amber-400' : 'text-muted-foreground hover:text-amber-400/60'} ${isLandscapeCockpit ? 'cursor-default opacity-80' : ''}`}
+              title={isLandscapeCockpit ? 'Landscape cockpit uses compact Forge view' : marketCompact ? 'Switch to full card view' : 'Switch to compact view'}
               aria-pressed={marketCompact}
+              aria-disabled={isLandscapeCockpit}
             >
               <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
               <span className="text-[9px] font-bold uppercase tracking-wide leading-none">
@@ -4581,7 +4615,7 @@ export default function GameBoard() {
         {/* ── COST filter strip — above Tier 3 ── */}
         <div
           data-tutorial-zone="filters"
-          className="relative flex items-center gap-2 px-3 pb-2"
+          className="board-forge-controls relative flex items-center gap-2 px-3 pb-2"
           style={tutorialZone === 'filters' ? {
             boxShadow: '0 0 0 2px rgba(168,85,247,0.65), 0 0 14px 4px rgba(168,85,247,0.22)',
             transition: 'box-shadow 0.3s',
@@ -4630,13 +4664,23 @@ export default function GameBoard() {
             if (burstGhostCards[sk] || hiddenSlots.has(sk) || !c) return -1;
             return _col++;
           });
+          const shelfAccent = row.tier === 3
+            ? 'rgba(244, 208, 118, 0.9)'
+            : row.tier === 2
+              ? 'rgba(205, 159, 84, 0.62)'
+              : 'rgba(166, 132, 82, 0.44)';
+          const tierRoman = row.tier === 3 ? 'III' : row.tier === 2 ? 'II' : 'I';
           return (
-          <div key={row.tier} className="relative rounded-xl" style={{ background: 'rgba(255,255,255,0.018)', border: '1px solid rgba(160,140,104,0.18)', padding: '8px 8px 4px 8px' }}>
-            <div className="flex items-center gap-2 mb-2 px-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: '#C0A472', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>Tier {row.tier}, {TIER_CIVILIZATION[row.tier]}</span>
+          <div key={row.tier} className="board-forge-shelf relative rounded-xl" style={{ padding: '8px 8px 4px 8px', '--shelf-accent': shelfAccent } as React.CSSProperties}>
+            <div className="board-forge-tier-header flex items-center gap-2 mb-2 px-0.5">
+              <div className="board-forge-tier-mark" aria-hidden="true">{tierRoman}</div>
+              <div className="flex flex-col leading-none shrink-0">
+                <span className="text-[7px] font-bold uppercase tracking-[0.18em]" style={{ color: 'rgba(224,190,118,0.56)' }}>Tier {row.tier}</span>
+                <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: '#D4B46F', letterSpacing: '0.12em', textShadow: '0 1px 6px rgba(192,164,114,0.35)' }}>{TIER_CIVILIZATION[row.tier]}</span>
+              </div>
               <div className="shrink-0 flex-1 h-[1.5px] divider-brass" />
             </div>
-            <div className={`flex pb-1 no-scrollbar ${marketCompact ? 'flex-wrap gap-2' : 'gap-2.5 overflow-x-auto'}`}>
+            <div className={`board-forge-card-row flex pb-1 no-scrollbar ${marketCompact ? 'flex-wrap gap-2' : 'gap-2.5 overflow-x-auto'}`}>
               {/* Deck — left position */}
               {deckPosition === 'left' && (marketCompact ? (
                 <button
@@ -4648,7 +4692,7 @@ export default function GameBoard() {
                     openDeckSheet(row.tier as 1 | 2 | 3);
                   }}
                   disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
-                  className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="board-forge-compact-deck relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
                 >
                   <CardBack size="compact" tier={row.tier as 1 | 2 | 3} />
@@ -4733,7 +4777,7 @@ export default function GameBoard() {
                       key={ghostCard.id}
                       data-card-id={ghostCard.id}
                       data-slot-key={slotKey}
-                      className="relative shrink-0 overflow-hidden rounded-lg"
+                      className="board-forge-compact-chip relative shrink-0 overflow-hidden rounded-lg"
                       style={{ width: 56, height: 78 }}
                     >
                       <div className="absolute inset-0 scale-[0.47] origin-top-left pointer-events-none" style={{ width: 'var(--card-w)', height: 'var(--card-h)' }}>
@@ -4762,7 +4806,7 @@ export default function GameBoard() {
                 }
 
                 if (isHidden || !c) {
-                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className={`rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0 ${marketCompact ? 'w-[56px] h-[78px]' : 'w-[var(--card-w)] h-[var(--card-h)]'}`} />;
+                  return <div key={c?.id ?? `empty-${i}`} data-slot-key={slotKey} className={`rounded-xl border-2 border-dashed border-border/30 opacity-40 shrink-0 ${marketCompact ? 'board-forge-compact-chip w-[56px] h-[78px]' : 'w-[var(--card-w)] h-[var(--card-h)]'}`} />;
                 }
 
                 // Keyboard-nav focus props for this card slot (roving tabindex).
@@ -4795,7 +4839,7 @@ export default function GameBoard() {
                       <div
                         key={c.id}
                         data-card-id={c.id}
-                        className="relative shrink-0"
+                        className="board-forge-compact-chip relative shrink-0"
                         style={{ width: 56, height: 78 }}
                         {...(cardFocusProps ?? {})}
                       >
@@ -4864,7 +4908,7 @@ export default function GameBoard() {
                       key={c.id}
                       data-card-id={c.id}
                       data-slot-key={slotKey}
-                      className="relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
+                      className="board-forge-compact-chip relative shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 rounded-xl overflow-hidden"
                       style={{
                         width: 56, height: 80,
                         boxShadow: isTapped
@@ -5029,7 +5073,7 @@ export default function GameBoard() {
                     openDeckSheet(row.tier as 1 | 2 | 3);
                   }}
                   disabled={row.deck === 0 || !me || (!isMyTurn && !canPlan)}
-                  className="relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="board-forge-compact-deck relative shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={row.deck === 0 ? 'Deck empty' : 'View deck — encrypt a hidden card'}
                 >
                   <CardBack size="compact" tier={row.tier as 1 | 2 | 3} />
@@ -6063,7 +6107,7 @@ export default function GameBoard() {
   );
 
   return (
-    <div className="h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
+    <div className="game-shell h-[100dvh] bg-background text-foreground flex flex-col overflow-hidden relative">
       {/* ── Cosmic background layers ──────────────────────────────────────── */}
       {/* Star-field photo: opacity pulses slowly so stars appear to breathe   */}
       <div
@@ -6100,7 +6144,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <header className="relative shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
+      <header className="game-header relative shrink-0 min-h-14 px-4 pt-[env(safe-area-inset-top)] flex items-center bg-card/95 border-b border-border z-20">
         <span
           className="pointer-events-none absolute left-4 font-serif text-base font-bold leading-none text-[#c5caff]"
           style={{ textShadow: '0 0 16px rgba(151, 161, 255, 0.42)' }}
@@ -6224,7 +6268,7 @@ export default function GameBoard() {
         data-game-board="true"
         ref={mainScrollRef as React.RefObject<HTMLDivElement>}
         tabIndex={-1}
-        className="flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none relative"
+        className="game-main flex-1 overflow-y-auto overflow-x-hidden z-10 outline-none relative"
         onPointerDown={() => {
           // Fallback for non-iOS (Android Chrome, desktop): blur any focused
           // panel element as soon as a pointer gesture starts in the board.
@@ -6252,7 +6296,7 @@ export default function GameBoard() {
       {me && (
         <div
           ref={playerPanelRef}
-          className="shrink-0 z-20 transition-all"
+          className="affinity-well-panel shrink-0 z-20 transition-all"
           style={{
             background: 'linear-gradient(180deg, rgba(6,4,20,0.97) 0%, rgba(4,2,14,0.99) 100%)',
             borderTop: isMyTurn
@@ -6270,9 +6314,9 @@ export default function GameBoard() {
           }}
         >
           {/* ── Zone header row ── */}
-          <div className="flex items-center justify-between px-3 pt-2 pb-1">
+          <div className="affinity-well-header">
             {/* Left: zone name */}
-            <div className="flex items-center gap-2">
+            <div className="affinity-well-title flex items-center gap-2">
               <Droplets className="h-3.5 w-3.5 shrink-0" style={{ color: '#a8c5ff', opacity: 0.85 }} />
               <div className="flex flex-col leading-none">
                 <span className="text-[7px] font-bold uppercase tracking-[0.22em]" style={{ color: 'rgba(168,197,255,0.5)' }}>The</span>
@@ -6287,7 +6331,7 @@ export default function GameBoard() {
               initial={false}
               animate={isMyTurn ? 'active' : 'idle'}
               variants={localTurnVariants}
-              className="flex items-center gap-1.5 min-w-0"
+              className="affinity-well-player flex items-center gap-1.5 min-w-0"
             >
               <PlayerAvatar avatarId={session.avatarId} name={me.playerName} size={18} />
               {isMyTurn && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shrink-0" />}
@@ -6297,7 +6341,7 @@ export default function GameBoard() {
               )}
             </motion.div>
             {/* Right: stats */}
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="affinity-well-status shrink-0">
               {(() => {
                 const heldTotal = Object.values(me.crystals).reduce((a, b) => a + b, 0);
                 const pendingTotal = Object.values(selectedCrystals).reduce((a, b) => a + (b ?? 0), 0);
@@ -6306,7 +6350,7 @@ export default function GameBoard() {
                 const isAmber = !isRed && projected >= 8;
                 const numColor = isRed ? '#f87171' : isAmber ? '#fbbf24' : 'rgba(255,255,255,0.85)';
                 return (
-                  <div className="flex items-center gap-1" title={`${projected} / 10 tokens held`}>
+                  <div className="affinity-well-held flex items-center gap-1" title={`${projected} / 10 tokens held`}>
                     <Hand className="h-3.5 w-3.5" style={{ color: numColor }} />
                     <span className="text-sm font-black font-mono tabular-nums leading-none" style={{ color: '#a8c5ff' }}>{projected}<span className="text-[10px] font-semibold" style={{ opacity: 0.5 }}>/10</span></span>
                   </div>
@@ -6315,7 +6359,7 @@ export default function GameBoard() {
               <button
                 type="button"
                 onClick={() => setShowEminenceBreakdown(true)}
-                className="rounded-md transition-transform hover:scale-[1.03] active:scale-95"
+                className="affinity-well-eminence rounded-md transition-transform hover:scale-[1.03] active:scale-95"
                 title="Eminence: reach 15 to win. View score breakdown."
                 aria-label={`Eminence ${me.lumens} of 15. View score breakdown.`}
                 style={isTutorial && (tutorialStep === 9 || tutorialStep === 11) ? {
@@ -6352,7 +6396,7 @@ export default function GameBoard() {
           />
 
           {/* ── Fixed action zone — harness bar and hint crossfade in-place, no layout shift ── */}
-          <div className="relative" style={{ height: 44, overflow: 'hidden' }}>
+          <div className="affinity-well-action-zone relative" style={{ height: 'var(--well-action-zone-h, 44px)', overflow: 'hidden' }}>
             <motion.div
               animate={{ opacity: crystalQueueActive ? 1 : 0 }}
               transition={{ duration: 0.15 }}
@@ -6606,7 +6650,7 @@ export default function GameBoard() {
       )}
 
       {/* ── Bottom Navigation ── */}
-      <nav className="shrink-0 grid grid-cols-3 border-t border-border bg-card z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
+      <nav className="game-bottom-nav shrink-0 grid grid-cols-3 border-t border-border bg-card z-20 pt-2 pb-[max(env(safe-area-inset-bottom,0px),8px)]">
         {([
           { tab: 'board' as ActiveTab, label: 'Board', icon: LayoutGrid },
           { tab: 'hand' as ActiveTab, label: 'Civilization', icon: Landmark },
@@ -9069,7 +9113,7 @@ export default function GameBoard() {
       </AnimatePresence>
 
       {/* ── Dev: Luminary Summon Test Panel ── */}
-      {import.meta.env.DEV && arrivalQueue.length === 0 && state?.status === 'playing' && (
+      {showDevCutscenePanel && arrivalQueue.length === 0 && state?.status === 'playing' && (
         <div className="fixed bottom-20 right-2 z-[150] flex flex-col gap-1 p-2 rounded-lg border border-amber-500/40 bg-black/80 shadow-lg shadow-black/60">
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-amber-300 font-mono uppercase tracking-wider font-semibold">Test Cutscene</span>

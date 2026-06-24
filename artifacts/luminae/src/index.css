@@ -75,6 +75,8 @@ button,
      Height preserves 7:10 aspect ratio.                            */
   --card-w: clamp(96px, 26vw, 112px);
   --card-h: clamp(137px, 37.2vw, 160px);
+  --well-cell-w: 64px;
+  --well-action-zone-h: 44px;
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
   --elevate-1: rgba(255,255,255, .04);
@@ -135,6 +137,49 @@ button,
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+.game-header {
+  background:
+    linear-gradient(180deg, rgba(9, 8, 18, 0.97), rgba(5, 5, 12, 0.96)) !important;
+  border-color: rgba(183, 153, 101, 0.24) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 207, 0.06),
+    0 1px 18px rgba(0, 0, 0, 0.34);
+}
+
+.game-main {
+  background:
+    radial-gradient(ellipse 52% 34% at 50% 0%, rgba(134, 102, 195, 0.06), transparent 72%),
+    radial-gradient(ellipse 45% 36% at 50% 100%, rgba(218, 161, 72, 0.045), transparent 70%);
+}
+
+.board-tab-main {
+  min-width: 0;
+}
+
+.affinity-well-panel {
+  --well-cell-w: 64px;
+  --well-action-zone-h: 44px;
+  --well-cell-pad: 6px 3px 5px;
+  --well-cell-radius: 10px;
+  --well-cell-gap: 2px;
+  --well-cell-stack-gap: 2px;
+  --well-rail-gap: 4px;
+  --well-rail-pad: 4px 8px 6px 6px;
+  --well-edge-fade-w: 36px;
+  --well-icon-size: 32px;
+  --well-count-size: 16px;
+  --well-label-size: 6.5px;
+  --well-sub-label-size: 5.5px;
+  --well-badge-size: 8px;
+  --well-cipher-size: 11px;
+  --well-pip-size: 4px;
+  --well-pip-gap: 2px;
+  --well-pip-radius: 2px;
+  --well-take2-h: auto;
+  --well-take2-pad-y: 0.25rem;
+  border-top-color: rgba(168, 197, 255, 0.28) !important;
+}
+
 .dark {
   /* Intentionally identical as we force dark mode */
 }
@@ -146,6 +191,1071 @@ button,
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* ── Board: Terminus / edge of observable space ─────────────────────────── */
+.board-terminus {
+  position: relative;
+  min-height: 296px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 68% 80% at 50% -18%, rgba(123, 96, 189, 0.18), transparent 64%),
+    radial-gradient(ellipse 54% 76% at 50% 112%, rgba(217, 172, 86, 0.1), transparent 68%),
+    linear-gradient(180deg, rgba(4, 5, 12, 0.99), rgba(5, 7, 14, 0.99) 60%, rgba(2, 3, 8, 1));
+  border-block: 1px solid rgba(174, 146, 94, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(230, 217, 169, 0.1),
+    inset 0 -48px 62px rgba(0, 0, 0, 0.78),
+    0 1px 0 rgba(255, 255, 255, 0.025);
+  isolation: isolate;
+}
+
+.board-terminus::before {
+  content: '';
+  position: absolute;
+  inset: 8px 12px 6px;
+  border: 1px solid rgba(174, 146, 94, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 239, 187, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.board-terminus-space {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 14% 34%, rgba(255, 255, 255, 0.16) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 76% 20%, rgba(255, 255, 255, 0.12) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 88% 62%, rgba(255, 255, 255, 0.1) 0 1px, transparent 1.5px),
+    radial-gradient(ellipse 42% 42% at 50% 42%, rgba(27, 31, 53, 0.58), transparent 72%);
+  opacity: 0.72;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.board-terminus-edge {
+  content: '';
+  position: absolute;
+  left: clamp(1.25rem, 6vw, 6rem);
+  right: clamp(1.25rem, 6vw, 6rem);
+  top: 82px;
+  height: 88px;
+  border-top: 1px solid rgba(218, 194, 139, 0.48);
+  border-radius: 50% 50% 0 0 / 66% 66% 0 0;
+  background:
+    radial-gradient(ellipse 50% 76% at 50% 0%, rgba(197, 165, 255, 0.11), transparent 68%),
+    linear-gradient(90deg, transparent, rgba(224, 191, 123, 0.11) 18%, rgba(224, 191, 123, 0.18) 50%, rgba(224, 191, 123, 0.11) 82%, transparent);
+  box-shadow:
+    0 -1px 16px rgba(236, 217, 169, 0.12),
+    0 -18px 42px rgba(116, 91, 176, 0.16),
+    inset 0 1px 0 rgba(255, 246, 211, 0.08);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.board-terminus-edge::before,
+.board-terminus-edge::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  width: 18%;
+  height: 6px;
+  background: linear-gradient(90deg, transparent, rgba(248, 222, 160, 0.68), transparent);
+  filter: blur(1px);
+}
+
+.board-terminus-edge::before { left: 7%; }
+.board-terminus-edge::after { right: 7%; }
+
+.board-terminus-threshold {
+  position: absolute;
+  left: 50%;
+  top: 73px;
+  width: min(620px, 72vw);
+  height: 120px;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(ellipse 62% 50% at 50% 0%, rgba(255, 240, 199, 0.1), transparent 68%),
+    radial-gradient(ellipse 66% 62% at 50% 28%, rgba(105, 79, 164, 0.16), transparent 72%);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.board-terminus-header {
+  justify-content: center;
+  z-index: 4;
+}
+
+.board-terminus-title { flex: 0 0 auto; }
+
+.board-terminus-subtitle {
+  margin-top: 3px;
+  color: rgba(221, 210, 255, 0.45);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.board-terminus-rail {
+  height: 1px;
+  flex: 1 1 8rem;
+  max-width: 21rem;
+  min-width: 1.5rem;
+  background: linear-gradient(90deg, transparent, rgba(183, 153, 101, 0.62));
+  box-shadow: 0 0 9px rgba(182, 145, 82, 0.18);
+}
+
+.board-terminus-rail--right { transform: scaleX(-1); }
+
+.board-terminus-cards {
+  min-height: 235px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(0.75rem, 2.6vw, 2.35rem);
+  padding: 54px max(1.25rem, 5vw) 28px;
+  scroll-padding-inline: max(1.25rem, 5vw);
+  z-index: 3;
+}
+
+.board-terminus-card-stage {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  padding: 8px 8px 18px;
+  z-index: 0;
+}
+
+.board-terminus-card-stage > * {
+  position: relative;
+  z-index: 1;
+  transition: filter 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.board-terminus-card-stage--dormant > * {
+  filter: saturate(0.84) brightness(0.82);
+  opacity: 0.88;
+}
+
+.board-terminus-card-stage--dormant:hover > *,
+.board-terminus-card-stage--awakened > * {
+  filter: none;
+  opacity: 1;
+}
+
+.board-terminus-card-stage::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -41px;
+  width: 1px;
+  height: 44px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(230, 217, 169, 0.02), var(--terminus-affinity, rgba(196,170,255,0.7)), rgba(230, 217, 169, 0.22));
+  box-shadow: 0 0 10px var(--terminus-affinity, rgba(196,170,255,0.4));
+  opacity: 0.62;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.board-terminus-card-stage::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -49px;
+  width: 17px;
+  height: 17px;
+  transform: translateX(-50%) rotate(45deg);
+  border: 1px solid color-mix(in srgb, var(--terminus-affinity-core, #c4aaff) 58%, rgba(255, 239, 188, 0.7));
+  border-radius: 4px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--terminus-affinity, rgba(196,170,255,0.8)) 0 2px, transparent 3px),
+    linear-gradient(135deg, rgba(8, 9, 17, 0.96), rgba(34, 27, 47, 0.92));
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--terminus-affinity, #c4aaff) 52%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.board-terminus-card-stage--awakened::before {
+  width: 2px;
+  opacity: 0.95;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), var(--terminus-affinity, #c4aaff), rgba(255, 255, 255, 0.34));
+}
+
+.board-terminus-card-stage--awakened::after {
+  width: 24px;
+  height: 24px;
+  top: -53px;
+  border-color: rgba(255, 245, 216, 0.9);
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 3px, var(--terminus-affinity, #c4aaff) 4px 7px, transparent 8px),
+    conic-gradient(from 45deg, var(--terminus-affinity, #c4aaff), rgba(255,255,255,0.75), var(--terminus-affinity-core, #c4aaff), var(--terminus-affinity, #c4aaff));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--terminus-affinity, #c4aaff) 78%, transparent),
+    0 0 46px color-mix(in srgb, var(--terminus-affinity, #c4aaff) 42%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.board-forge {
+  background:
+    radial-gradient(ellipse 56% 48% at 50% 0%, rgba(153, 103, 49, 0.24), transparent 67%),
+    linear-gradient(180deg, rgba(19, 17, 17, 0.99), rgba(8, 10, 15, 0.99) 36%, rgba(4, 6, 11, 1));
+  border-top: 1px solid rgba(239, 196, 101, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 238, 190, 0.15), inset 0 36px 52px rgba(255, 179, 61, 0.035);
+  isolation: isolate;
+}
+
+.board-forge-frame {
+  position: absolute;
+  inset: 8px 10px;
+  border: 1px solid rgba(225, 183, 98, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 241, 193, 0.06);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.board-forge-header {
+  border-bottom: 1px solid rgba(240, 198, 105, 0.24);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.48), 0 8px 18px rgba(0, 0, 0, 0.1);
+  z-index: 1;
+}
+
+.board-forge-controls {
+  background: rgba(6, 5, 12, 0.4);
+  border-block: 1px solid rgba(231, 185, 91, 0.15);
+}
+
+.board-forge-shelf {
+  background:
+    linear-gradient(90deg, rgba(240, 208, 142, 0.09), rgba(255,255,255,0.014) 44%, rgba(240, 208, 142, 0.06)),
+    linear-gradient(180deg, rgba(25, 24, 24, 0.96), rgba(5, 7, 12, 0.94));
+  border: 1px solid rgba(230, 193, 117, 0.5);
+  border-left: 3px solid var(--shelf-accent, rgba(220, 186, 112, 0.45));
+  border-right: 1px solid rgba(230, 193, 117, 0.3);
+  border-radius: 7px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 245, 211, 0.12), inset 0 -20px 28px rgba(0,0,0,0.36), 0 15px 26px rgba(0,0,0,0.24);
+}
+
+.board-forge-shelf::before {
+  content: '';
+  position: absolute;
+  inset: 7px 7px auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--shelf-accent, rgba(220, 186, 112, 0.45)), transparent 28%, transparent 72%, var(--shelf-accent, rgba(220, 186, 112, 0.45)));
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.board-forge-shelf::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  right: 7px;
+  width: 1px;
+  background: linear-gradient(180deg, var(--shelf-accent, rgba(220, 186, 112, 0.45)), transparent 38%, transparent 62%, var(--shelf-accent, rgba(220, 186, 112, 0.45)));
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.board-forge-tier-header { min-height: 30px; }
+
+.board-forge-tier-mark {
+  display: grid;
+  width: 30px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--shelf-accent, rgba(220, 186, 112, 0.45));
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(255, 233, 184, 0.14), rgba(18, 10, 7, 0.78));
+  color: #f4d58a;
+  font-family: Georgia, serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(255, 212, 119, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.38), 0 0 12px rgba(207, 161, 76, 0.12);
+}
+
+/* ── Affinity Well header — one tactical readout, one victory seal ─────── */
+.affinity-well-header {
+  display: grid;
+  grid-template-columns: minmax(106px, 1fr) auto minmax(112px, 1fr);
+  align-items: center;
+  column-gap: 0.65rem;
+  padding: 0.5rem 0.75rem 0.28rem;
+}
+
+.affinity-well-title { min-width: 0; }
+
+.affinity-well-player {
+  justify-self: center;
+  white-space: nowrap;
+}
+
+.affinity-well-status {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.affinity-well-held {
+  padding-right: 0.45rem;
+  border-right: 1px solid rgba(168, 197, 255, 0.2);
+}
+
+.affinity-well-eminence {
+  min-width: 0;
+}
+
+.eminence-progress--hud {
+  border: 0;
+  border-radius: 0;
+}
+
+/* The market rail scrolls horizontally, so its padded runway keeps hover-lift
+   cards and their shadows inside the clipping boundary. */
+.board-forge-card-row {
+  padding: 8px 0.5rem 10px;
+  margin: -8px -0.5rem -10px;
+  scroll-padding-inline: 0.5rem;
+}
+
+@media (max-width: 540px) {
+  .affinity-well-header {
+    grid-template-columns: minmax(99px, 1fr) auto minmax(99px, 1fr);
+    column-gap: 0.3rem;
+    padding-inline: 0.55rem;
+  }
+
+  .affinity-well-title > div > span:last-child { font-size: 11px; }
+
+  .affinity-well-player { gap: 0.25rem; }
+  .affinity-well-player > span:not(:last-child) { max-width: 52px; }
+  .affinity-well-status { gap: 0.25rem; }
+  .affinity-well-held { padding-right: 0.25rem; }
+  .eminence-progress--hud > div:last-child > div:first-child { display: none; }
+}
+
+@media (min-width: 960px) {
+  .board-terminus {
+    min-height: 354px;
+  }
+
+  .board-terminus-cards {
+    min-height: 294px;
+    padding-block: 62px 34px;
+  }
+
+  .board-forge-card-row {
+    width: min(100%, 900px);
+    margin: -8px auto -10px;
+    justify-content: space-between;
+    overflow-x: visible;
+    padding: 8px 0.75rem 10px;
+  }
+}
+
+@media (max-width: 680px) {
+  .board-terminus { min-height: 268px; }
+  .board-terminus::before { inset-inline: 7px; }
+  .board-terminus-edge {
+    left: 9%;
+    right: 9%;
+    top: 74px;
+  }
+  .board-terminus-threshold {
+    top: 64px;
+    width: 84vw;
+  }
+  .board-terminus-title { gap: 0.5rem; }
+  .board-terminus-title svg { width: 8px; height: 15px; }
+  .board-terminus-subtitle { font-size: 7px; letter-spacing: 0.12em; }
+  .board-terminus-cards {
+    padding-block: 48px 24px;
+    align-items: flex-start;
+  }
+  .board-terminus-card-stage { padding-inline: 4px; }
+  .board-forge-frame { inset-inline: 6px; }
+}
+
+@media (max-width: 680px) and (orientation: portrait) {
+  :root {
+    --card-w: clamp(88px, 25.5vw, 100px);
+    --card-h: clamp(126px, 36.5vw, 143px);
+    --well-cell-w: 62px;
+  }
+
+  .game-header {
+    min-height: 52px;
+    padding-inline: 0.75rem;
+  }
+
+  .board-tab-main {
+    padding-bottom: 0.75rem;
+  }
+
+  .board-terminus {
+    min-height: 236px;
+  }
+
+  .board-terminus-header {
+    justify-content: flex-start;
+    padding-inline: 0.8rem;
+  }
+
+  .board-terminus-rail {
+    flex-basis: 2rem;
+    min-width: 1rem;
+  }
+
+  .board-terminus-rail--left {
+    display: none;
+  }
+
+  .board-terminus-edge {
+    top: 70px;
+    left: 1rem;
+    right: 1rem;
+    height: 70px;
+  }
+
+  .board-terminus-threshold {
+    top: 62px;
+    height: 92px;
+    width: 88vw;
+  }
+
+  .board-terminus-cards {
+    min-height: 176px;
+    justify-content: flex-start;
+    gap: 0.55rem;
+    padding: 43px 0.85rem 18px;
+    scroll-snap-type: x proximity;
+  }
+
+  .board-terminus-card-stage {
+    scroll-snap-align: center;
+    padding-bottom: 12px;
+  }
+
+  .board-terminus-card-stage::before {
+    top: -31px;
+    height: 34px;
+  }
+
+  .board-terminus-card-stage::after {
+    top: -39px;
+  }
+
+  .board-forge-header {
+    padding-inline: 0.85rem;
+  }
+
+  .board-forge-controls {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .board-forge-controls::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-market-tiers="true"] {
+    gap: 0.7rem !important;
+    padding-inline: 0.65rem !important;
+  }
+
+  .board-forge-shelf {
+    padding: 7px 6px 3px !important;
+  }
+
+  .board-forge-card-row {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 0.55rem;
+    padding: 8px 0.35rem 10px;
+    margin: -8px -0.35rem -10px;
+    scroll-snap-type: x proximity;
+  }
+
+  .board-forge-card-row > * {
+    scroll-snap-align: start;
+  }
+
+  .affinity-well-panel {
+    --well-cell-w: 62px;
+  }
+}
+
+@media (max-width: 940px) and (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --card-w: clamp(60px, 8.8vw, 72px);
+    --card-h: clamp(86px, 12.6vw, 103px);
+    --well-cell-w: 52px;
+    --well-action-zone-h: 34px;
+  }
+
+  .game-header {
+    min-height: 42px;
+    padding-inline: 0.6rem;
+  }
+
+  .game-header > span:first-child {
+    font-size: 0.86rem;
+  }
+
+  .board-tab-main {
+    padding-bottom: 0.35rem;
+  }
+
+  .board-terminus {
+    min-height: 132px;
+  }
+
+  .board-terminus::before {
+    inset: 5px 7px 4px;
+  }
+
+  .board-terminus-header {
+    padding: 0.42rem 0.75rem 0;
+    gap: 0.55rem;
+  }
+
+  .board-terminus-title {
+    gap: 0.45rem;
+  }
+
+  .board-terminus-title svg {
+    width: 8px;
+    height: 14px;
+  }
+
+  .board-terminus-title span:first-child {
+    display: none;
+  }
+
+  .board-terminus-title span:nth-child(2) {
+    font-size: 12px !important;
+  }
+
+  .board-terminus-subtitle {
+    margin-top: 1px;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 6px;
+    letter-spacing: 0.1em;
+  }
+
+  .board-terminus-rail {
+    max-width: 13rem;
+  }
+
+  .board-terminus-edge {
+    top: 43px;
+    left: 1.25rem;
+    right: 1.25rem;
+    height: 43px;
+  }
+
+  .board-terminus-threshold {
+    top: 37px;
+    width: 70vw;
+    height: 56px;
+  }
+
+  .board-terminus-cards {
+    min-height: 91px;
+    justify-content: flex-start;
+    gap: 0.45rem;
+    padding: 23px 0.7rem 6px;
+  }
+
+  .board-terminus-card-stage {
+    padding: 3px 4px 7px;
+  }
+
+  .board-terminus-card-stage::before {
+    top: -18px;
+    height: 21px;
+  }
+
+  .board-terminus-card-stage::after {
+    top: -24px;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  .board-terminus-card-stage--awakened::after {
+    top: -27px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .board-forge-frame {
+    inset: 5px 7px;
+  }
+
+  .board-forge-header {
+    padding: 0.38rem 0.7rem 0.35rem;
+  }
+
+  .board-forge-header .h-4 {
+    width: 0.8rem;
+    height: 0.8rem;
+  }
+
+  .board-forge-controls {
+    padding: 0.2rem 0.55rem 0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .board-forge-controls::-webkit-scrollbar {
+    display: none;
+  }
+
+  [data-market-tiers="true"] {
+    gap: 0.35rem !important;
+    padding: 0 0.5rem 0.5rem !important;
+  }
+
+  .board-forge-shelf {
+    padding: 4px 5px 2px !important;
+    border-radius: 5px !important;
+  }
+
+  .board-forge-tier-header {
+    min-height: 21px;
+    margin-bottom: 3px !important;
+    gap: 0.4rem;
+  }
+
+  .board-forge-tier-mark {
+    width: 23px;
+    height: 21px;
+    font-size: 8px;
+    border-radius: 3px;
+  }
+
+  .board-forge-tier-header span:first-child {
+    display: none;
+  }
+
+  .board-forge-tier-header span:last-child {
+    font-size: 8px !important;
+    letter-spacing: 0.09em !important;
+  }
+
+  .board-forge-card-row {
+    width: auto;
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 0.45rem;
+    padding: 5px 0.25rem 6px;
+    margin: -5px -0.25rem -6px;
+  }
+
+  .affinity-well-panel {
+    --well-cell-w: 40px;
+    --well-action-zone-h: 18px;
+    --well-cell-pad: 2px 2px 2px;
+    --well-cell-radius: 7px;
+    --well-cell-gap: 1px;
+    --well-cell-stack-gap: 1px;
+    --well-rail-gap: 2px;
+    --well-rail-pad: 1px 4px 2px;
+    --well-edge-fade-w: 18px;
+    --well-icon-size: 18px;
+    --well-count-size: 10px;
+    --well-label-size: 4.5px;
+    --well-sub-label-size: 3.8px;
+    --well-badge-size: 6px;
+    --well-cipher-size: 8px;
+    --well-pip-size: 2.5px;
+    --well-pip-gap: 1px;
+    --well-pip-radius: 1.25px;
+    --well-take2-h: 12px;
+    --well-take2-pad-y: 0;
+  }
+
+  .affinity-well-header {
+    grid-template-columns: minmax(86px, 1fr) auto minmax(92px, 1fr);
+    column-gap: 0.3rem;
+    padding: 0.14rem 0.5rem 0;
+  }
+
+  .affinity-well-title {
+    gap: 0.4rem;
+  }
+
+  .affinity-well-title svg {
+    width: 0.65rem;
+    height: 0.65rem;
+  }
+
+  .affinity-well-title > div > span:first-child {
+    display: none;
+  }
+
+  .affinity-well-title > div > span:last-child {
+    font-size: 8px;
+  }
+
+  .affinity-well-player {
+    gap: 0.25rem;
+  }
+
+  .affinity-well-player > span:not(:last-child) {
+    max-width: 58px;
+  }
+
+  .affinity-well-status {
+    gap: 0.25rem;
+  }
+
+  .affinity-well-held {
+    padding-right: 0.25rem;
+  }
+
+  .eminence-progress--hud > div:first-child svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .eminence-progress--hud > div:last-child > div:first-child {
+    display: none;
+  }
+
+  [data-well-carousel] > div {
+    gap: var(--well-rail-gap) !important;
+    padding: var(--well-rail-pad) !important;
+  }
+
+  .affinity-well-cell-button {
+    min-height: 0;
+  }
+
+  .affinity-well-take2 {
+    font-size: 7px !important;
+  }
+
+  .affinity-well-action-zone {
+    font-size: 0.62rem;
+  }
+
+  .game-bottom-nav {
+    padding-top: 0.18rem;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+  }
+
+  .game-bottom-nav button {
+    gap: 0;
+  }
+
+  .game-bottom-nav svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .game-bottom-nav span {
+    font-size: 8px;
+  }
+
+  :root {
+    --card-w: 56px;
+    --card-h: 80px;
+    --forge-chip-w: 47px;
+    --forge-chip-h: 42px;
+  }
+
+  .game-shell {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) clamp(244px, 30.5vw, 268px);
+    grid-template-rows: 42px minmax(0, 1fr) 34px;
+    grid-template-areas:
+      "header header"
+      "main well"
+      "main nav";
+    gap: 8px;
+    padding: 0 8px 8px;
+  }
+
+  .game-header {
+    grid-area: header;
+    margin-inline: -8px;
+    min-height: 42px;
+  }
+
+  .game-main {
+    grid-area: main;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid rgba(196, 170, 105, 0.32);
+    background:
+      radial-gradient(ellipse 48% 18% at 54% 0%, rgba(196, 170, 255, 0.08), transparent 72%),
+      rgba(4, 5, 12, 0.78);
+  }
+
+  .board-tab-main {
+    height: 100%;
+    min-height: 0;
+    display: grid !important;
+    grid-template-rows: 112px minmax(0, 1fr);
+    gap: 8px;
+    overflow: hidden;
+    padding-bottom: 0 !important;
+  }
+
+  .board-tab-main ~ * {
+    display: none !important;
+  }
+
+  .board-terminus {
+    height: 100%;
+    min-height: 0;
+    border-block: 0;
+  }
+
+  .board-terminus::before {
+    inset: 5px 6px;
+  }
+
+  .board-terminus-header {
+    justify-content: flex-start;
+    padding: 0.52rem 0.75rem 0;
+  }
+
+  .board-terminus-rail--left {
+    display: none;
+  }
+
+  .board-terminus-rail {
+    max-width: 24rem;
+  }
+
+  .board-terminus-edge {
+    top: 48px;
+    left: 1rem;
+    right: 1.25rem;
+    height: 40px;
+  }
+
+  .board-terminus-threshold {
+    top: 42px;
+    width: min(440px, 74%);
+    height: 52px;
+  }
+
+  .board-terminus-cards {
+    min-height: 0;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    padding: 25px 0.65rem 5px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .board-terminus-card-stage {
+    padding: 2px 3px 5px;
+  }
+
+  .board-forge {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    border-top: 1px solid rgba(239, 196, 101, 0.5);
+  }
+
+  .board-forge-frame {
+    inset: 5px 6px;
+  }
+
+  .board-forge-header {
+    padding: 0.48rem 0.75rem 0.38rem;
+  }
+
+  .board-forge-controls {
+    min-height: 24px;
+    padding: 0.2rem 0.55rem;
+  }
+
+  [data-market-tiers="true"] {
+    min-height: 0;
+    display: grid !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 5px !important;
+    overflow: hidden;
+    padding: 5px 0.55rem 0.5rem !important;
+  }
+
+  .board-forge-shelf {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 70px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.45rem;
+    overflow: hidden;
+    padding: 4px 7px !important;
+  }
+
+  .board-forge-tier-header {
+    min-height: 0;
+    margin-bottom: 0 !important;
+    gap: 0.35rem;
+  }
+
+  .board-forge-tier-header .divider-brass {
+    display: none;
+  }
+
+  .board-forge-tier-mark {
+    width: 24px;
+    height: 24px;
+  }
+
+  .board-forge-card-row {
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap !important;
+    justify-content: space-between;
+    gap: 0.4rem !important;
+    padding: 0;
+    margin: 0;
+  }
+
+  .board-forge-compact-chip {
+    width: var(--forge-chip-w) !important;
+    height: var(--forge-chip-h) !important;
+    border-radius: 7px !important;
+  }
+
+  .board-forge-compact-deck > div:first-child {
+    width: var(--forge-chip-w) !important;
+    height: var(--forge-chip-h) !important;
+    border-radius: 7px !important;
+  }
+
+  .board-forge-compact-deck > div:not(:first-child) {
+    transform: scale(0.78);
+    transform-origin: top right;
+  }
+
+  .affinity-well-panel {
+    grid-area: well;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    border: 1px solid rgba(168, 197, 255, 0.22) !important;
+    border-top-color: rgba(168, 197, 255, 0.32) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04) !important;
+  }
+
+  .affinity-well-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "player status"
+      "title title";
+    row-gap: 0.28rem;
+    padding: 0.5rem 0.55rem 0.38rem;
+    border-bottom: 1px solid rgba(168, 197, 255, 0.14);
+  }
+
+  .affinity-well-title {
+    grid-area: title;
+    justify-self: start;
+  }
+
+  .affinity-well-player {
+    grid-area: player;
+    justify-self: start;
+  }
+
+  .affinity-well-status {
+    grid-area: status;
+    justify-self: end;
+  }
+
+  .affinity-well-title > div > span:first-child {
+    display: inline;
+  }
+
+  .affinity-well-title > div > span:last-child {
+    font-size: 11px;
+  }
+
+  .affinity-well-cells {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .affinity-well-cells > div,
+  .affinity-well-cells > div > div,
+  .affinity-well-cells [data-well-carousel] {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .affinity-well-cells [data-well-carousel] {
+    overflow: hidden !important;
+  }
+
+  .affinity-well-cells [data-well-carousel] > div {
+    width: 100% !important;
+    height: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 7px !important;
+    padding: 0.5rem 0.55rem !important;
+  }
+
+  .affinity-well-cell,
+  .affinity-well-cell-button,
+  .affinity-well-take2 {
+    width: 100% !important;
+  }
+
+  .affinity-well-cell-button {
+    min-height: 0;
+  }
+
+  .affinity-well-action-zone {
+    border-top: 1px solid rgba(168, 197, 255, 0.12);
+  }
+
+  .game-bottom-nav {
+    grid-area: nav;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    min-height: 0;
+    padding: 0 !important;
+    border: 1px solid rgba(168, 197, 255, 0.18);
+    background: rgba(8, 10, 20, 0.92);
+  }
+
+  .game-bottom-nav button {
+    min-height: 0;
+    gap: 0;
   }
 }
 
